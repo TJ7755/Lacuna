@@ -363,7 +363,7 @@ describe('LearnMode course/lesson scope', () => {
       </ThemeProvider>,
     );
 
-    expect(await screen.findByText(/^Review$/)).toBeInTheDocument();
+    expect(await screen.findByText(/^Review from the start/)).toBeInTheDocument();
     // The served line is the last recitation box: its chunk is recited down to it.
     const boxes = [...document.querySelectorAll<HTMLTextAreaElement>('textarea[data-line]')];
     const dueBox = boxes.at(-1)!;

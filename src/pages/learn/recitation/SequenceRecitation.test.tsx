@@ -134,18 +134,13 @@ it('reports both lines of a completed chunk as mastered', async () => {
   expect(await screen.findByText('Gamma line')).toBeInTheDocument();
 });
 
-it('replaces the textboxes with a spoken recall and remembers the choice', async () => {
-  const first = renderRecitation();
+it('recalls without textboxes when Settings choose reciting aloud', async () => {
+  localStorage.setItem('lacuna.recitationInput', 'aloud');
+  renderRecitation();
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Say it aloud instead' }));
 
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   expect(screen.getByText('line 1')).toBeInTheDocument();
-  expect(localStorage.getItem('lacuna.recitationInput')).toBe('aloud');
-  first.unmount();
-
-  renderRecitation();
-  fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
-  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Type instead' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  expect(await screen.findByText('Alpha line')).toBeInTheDocument();
 });

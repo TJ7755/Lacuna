@@ -364,8 +364,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   source hidden. Other speakers' lines stay visible as cues. Once a chunk is complete, all
   chunks so far are recited once from the top; an error there returns to the chunk holding
   the first error, fully unlocked. A failed check retries the same lines without unlocking more.
-- Recall is typed by default (one field per line, Enter moves on), or aloud
-  (`lacuna.recitationInput`). After **Check** the source is shown with the typed-answer diff
+- Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
+  **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
+  titled with the sequence name, with its progress in plain text beneath. After **Check** the source is shown with the typed-answer diff
   (global answer strictness), and the learner marks wrong lines; marking is the only grade.
 - Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
   timed as the check's duration per recited line and excluded from speed calibration. Lines

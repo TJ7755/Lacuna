@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MarkdownView } from '../../../components/markdown/MarkdownView';
 import { Button } from '../../../components/ui/Button';
+import { FileTextIcon } from '../../../components/ui/icons';
 import { presetForSequence } from '../../../db/sequencePresets';
 import type { Sequence } from '../../../db/types';
 import type { AnswerComparisonOptions } from '../../../utils/answerComparison';
@@ -41,9 +42,7 @@ interface Props {
 function CueLine({ line }: { line: RecitationLine }) {
   return (
     <div className="text-ink-soft">
-      {line.speaker && (
-        <span className="text-[11px] uppercase tracking-[0.2em] text-ink-faint">{line.speaker}</span>
-      )}
+      {line.speaker && <div className="text-sm font-medium text-ink">{line.speaker}</div>}
       <MarkdownView source={line.value} />
     </div>
   );
@@ -55,7 +54,7 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
   const [state, setState] = useState<RecitationState>(() =>
     initialRecitationState(plan, masteredItemIds),
   );
-  const [input, setInput] = useRecitationInput();
+  const [input] = useRecitationInput();
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);
   const [wrong, setWrong] = useState<Set<string>>(new Set());
@@ -78,13 +77,14 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
 
   if (step.kind === 'done' && !review) return null;
 
+  const capitalised = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
   const status = review
-    ? 'Review'
+    ? `Review from the start of the ${terminology.chunkLabel.toLowerCase()}`
     : step.kind === 'join'
-      ? `From the top · ${plan.chunks.length > 1 ? `${terminology.chunkLabel}s 1–${step.upTo + 1}` : 'all lines'}`
+      ? `From the top, ${plan.chunks.length > 1 ? `${terminology.chunkLabel.toLowerCase()}s 1 to ${step.upTo + 1}` : 'every line'}`
       : step.kind === 'done'
         ? ''
-        : `${plan.chunks.length > 1 ? `${terminology.chunkLabel} ${step.chunk + 1} of ${plan.chunks.length} · ` : ''}${terminology.item} ${step.unlocked} of ${
+        : `${plan.chunks.length > 1 ? `${terminology.chunkLabel} ${step.chunk + 1} of ${plan.chunks.length}, ${terminology.item}` : capitalised(terminology.item)} ${step.unlocked} of ${
           plan.chunks[step.chunk].filter((i) => plan.lines[i].mine).length
         }`;
 
@@ -148,7 +148,7 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
   return (
     <div
       ref={rootRef}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-6"
+      className="mx-auto flex w-full max-w-2xl flex-col gap-6 rounded-3xl border border-line bg-surface px-6 py-8 md:px-10 md:py-10"
       onKeyDown={(event) => {
         if (event.key !== 'Enter' || event.shiftKey || event.target instanceof HTMLTextAreaElement) return;
         if (event.target instanceof HTMLButtonElement) return;
@@ -156,10 +156,13 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
         void submit();
       }}
     >
-      <div className="flex items-center justify-between gap-4 text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-        <span>{sequence.name}</span>
-        <span>{status}</span>
-      </div>
+      <header className="flex items-start gap-3">
+        <FileTextIcon width={20} height={20} className="mt-1.5 shrink-0 text-accent" aria-hidden />
+        <div className="min-w-0">
+          <h2 className="font-display text-2xl text-ink">{sequence.name}</h2>
+          <p className="mt-1 text-sm text-ink-soft">{status}</p>
+        </div>
+      </header>
 
       <ol className="flex flex-col gap-3" aria-label={phase === 'present' ? 'New line' : 'Recitation'}>
         {shown.map((index) => {
@@ -256,15 +259,6 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
         >
           {action}
         </Button>
-        {phase === 'recall' && !checking && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setInput(input === 'type' ? 'aloud' : 'type')}
-          >
-            {input === 'type' ? 'Say it aloud instead' : 'Type instead'}
-          </Button>
-        )}
       </div>
     </div>
   );

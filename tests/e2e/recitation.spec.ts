@@ -62,6 +62,11 @@ test('learns a poem by cumulative recitation', async ({ page }) => {
   await page.screenshot({ path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/recall.png` : undefined });
   await page.keyboard.press('Enter');
   await page.getByRole('button', { name: /line 2/ }).click();
+  await expect(page.getByRole('button', { name: 'line 2: marked wrong' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  if (process.env.RECITATION_SHOTS) await page.waitForTimeout(400);
   await page.screenshot({ path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/check.png` : undefined });
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('textbox', { name: 'line 2' })).toBeVisible();
