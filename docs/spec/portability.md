@@ -33,7 +33,8 @@ app:
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
     leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
-    precedence over commas within answers during format detection.
+    precedence over commas within answers during format detection. Prefixed answers retain
+    continuation lines until the next question or blank-line card boundary.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
 - **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects

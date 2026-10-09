@@ -10,8 +10,9 @@ import { hasCloze } from '../utils/cloze';
 import { parseImport, splitDelimited, type ParsedCard, type ImportParseResult } from './import';
 import { isMarkdownTableSeparator, parseMarkdownTable } from './importMarkdownTable';
 import { parseMarkdownList } from './importMarkdownList';
+import { parsePlainTextQA } from './importPlainTextQA';
 
-export { parseMarkdownTable, parseMarkdownList };
+export { parseMarkdownTable, parseMarkdownList, parsePlainTextQA };
 
 // ---------------------------------------------------------------------------
 // Format detection
@@ -297,112 +298,6 @@ export function parseAnkiText(input: string): ImportParseResult {
 // ---------------------------------------------------------------------------
 // Plain text Q&A parser
 // ---------------------------------------------------------------------------
-
-/** Separator patterns and their lengths, ordered by specificity. */
-const SEPARATORS = [
-  { pattern: ' — ', length: 3 },
-  { pattern: ' – ', length: 3 },
-  { pattern: ' | ', length: 3 },
-  { pattern: '\t', length: 1 },
-] as const;
-
-/**
- * Parse generic plain text Q&A patterns:
- *   - "Q: ... \n A: ..." or "Question: ... \n Answer: ..."
- *   - "Front: ... \n Back: ..."
- *   - Lines with " — " or " | " separator
- *   - Blank-line separated blocks (first line = Q, second = A)
- */
-export function parsePlainTextQA(input: string): ImportParseResult {
-  const cards: ParsedCard[] = [];
-  let skipped = 0;
-  const trimmed = input.trim();
-  if (!trimmed) return { cards, skipped };
-
-  const lines = trimmed.split('\n');
-  const qPattern = /^\s*(?:Q(?:uestion)?|Front|Prompt|Term)\s*[:.]\s*(.+)/i;
-  const aPattern = /^\s*(?:A(?:nswer)?|Back|Response|Definition)\s*[:.]\s*(.+)/i;
-
-  let pendingFront = '';
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine) {
-      if (pendingFront) {
-        skipped++;
-        pendingFront = '';
-      }
-      continue;
-    }
-
-    const qMatch = trimmedLine.match(qPattern);
-    if (qMatch) {
-      if (pendingFront) skipped++;
-      pendingFront = qMatch[1].trim();
-      continue;
-    }
-
-    const aMatch = trimmedLine.match(aPattern);
-    if (aMatch && pendingFront) {
-      const back = aMatch[1].trim();
-      if (hasCloze(pendingFront)) {
-        cards.push({ type: 'cloze', front: pendingFront, back });
-      } else {
-        cards.push({ type: 'front_back', front: pendingFront, back });
-      }
-      pendingFront = '';
-      continue;
-    }
-
-    // If we have a pending front and this line is not a Q, treat it as the answer
-    // (for cases where A: prefix is omitted).
-    if (pendingFront) {
-      if (hasCloze(pendingFront)) {
-        cards.push({ type: 'cloze', front: pendingFront, back: trimmedLine });
-      } else {
-        cards.push({ type: 'front_back', front: pendingFront, back: trimmedLine });
-      }
-      pendingFront = '';
-      continue;
-    }
-  }
-  if (pendingFront) skipped++;
-
-  if (cards.length > 0) return { cards, skipped };
-
-  // Pattern 2: Separator-based. Use the first matching separator per line,
-  // tracking its length so slice() is accurate for all separator types.
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    if (!trimmedLine) continue;
-
-    let sepIdx = -1;
-    let sepLen = 0;
-    for (const { pattern, length } of SEPARATORS) {
-      sepIdx = trimmedLine.indexOf(pattern);
-      if (sepIdx >= 0) {
-        sepLen = length;
-        break;
-      }
-    }
-
-    if (sepIdx > 0) {
-      const front = trimmedLine.slice(0, sepIdx).trim();
-      const back = trimmedLine.slice(sepIdx + sepLen).trim();
-      if (front && back) {
-        if (hasCloze(front)) {
-          cards.push({ type: 'cloze', front, back });
-        } else {
-          cards.push({ type: 'front_back', front, back });
-        }
-        continue;
-      }
-    }
-
-    skipped++;
-  }
-
-  return { cards, skipped };
-}
 
 // ---------------------------------------------------------------------------
 // Unified parser
