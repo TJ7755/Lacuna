@@ -157,7 +157,9 @@ session. Numeric/working items retain their own inputs; occlusions require answe
 Typing shows an input and **Check answer**. Enter reveals the expected answer with
 word-by-word comparison against the learner's answer. Yes/No or manual four-point
 self-grading still decides the result; there is no AI request or automatic marking.
-Comparison strictness remains a per-user setting in Settings (`src/state/answerStrictness.ts`).
+Canonically equivalent Unicode letters compare equally; accents remain significant, and
+feedback preserves the original spelling. Comparison strictness remains a per-user setting
+in Settings (`src/state/answerStrictness.ts`).
 The former global typing switch no longer controls study sessions.
 
 Lesson defaults and card overrides travel through backups, course share codes and
