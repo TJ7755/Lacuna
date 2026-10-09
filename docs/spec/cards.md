@@ -96,6 +96,8 @@ ordinary `front_back` cards to the scheduler.
 - **Touch targets:** the toolbar buttons and type-selector are 44px tall with
   active-state colours; on narrow viewports the toolbar scrolls horizontally with
   a hidden scrollbar.
+- **Save feedback:** the delayed return is cancelled when the route starts exiting, unmounts
+  or changes card identity, including when an outstanding save finishes after departure.
 - **Return-to-origin back-link:** Cancel, post-save navigation and the breadcrumb
   "back" link normally follow the route (the lesson if the URL encodes one, otherwise
   the course's Cards page), but two entry points need to say otherwise — editing a

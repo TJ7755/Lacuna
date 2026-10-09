@@ -293,3 +293,10 @@ for handler-only fixes; a deliberate wire change needs its own reviewed surface 
 Changing a list count clears index-based heights, but retained DOM rows keep their refs
 and need not emit another ResizeObserver notification. Rebuild mounted measurements at
 that boundary; observe and measure the same box to avoid losing padding and borders.
+
+
+## Card save feedback owns its navigation
+A saved card appears in the live list before the editor confirmation delay ends.
+Cancel delayed returns as the route starts exiting (`useIsPresent`), on unmount and
+card-identity changes, including async saves that finish after departure; otherwise
+navigation to Share or Settings can be redirected to Cards.
