@@ -1,0 +1,1 @@
+- Keep Pomodoro focus and break durations accurate when background timer callbacks are delayed, including pause and resume.

@@ -463,7 +463,9 @@ studied — but it provides a tactile, visible session for focus.
   default 25), short break minutes (1–60, default 5), long break minutes (1–60,
   default 15), and `autoStartBreaks` (default off).
 - **State machine:** `idle -> focus -> shortBreak (every 4th: longBreak) -> idle`.
-  Crossing zero auto-advances the phase and (optionally) auto-starts the break.
+  Crossing zero records a pending break, which the study flow offers at a safe boundary.
+  Countdown uses an elapsed-time deadline so delayed background callbacks cannot extend a
+  focus or break period. Pausing captures the elapsed countdown; resuming preserves it.
 - **Visuals:** the header face is a 36px SVG ring with a 1Hz progress arc; the
   expanded popup (click the face) is a 160px circular timer with the same arc and a
   centre read-out in display type. Phase colours: focus = accent, short break =
