@@ -397,7 +397,8 @@ function freeVariables(root: MathNode): string[] {
   return [...variables].sort();
 }
 
-function constantValue(expression: Expression): number | null {
+/** Evaluate a validated constant as a finite real number, or return null. */
+export function constantValue(expression: Expression): number | null {
   if (expression.variables.length > 0) return null;
   return evaluateNumber(expression.node.compile(), new Map());
 }
