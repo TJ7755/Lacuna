@@ -15,15 +15,19 @@ app:
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
+    A single CSV/TSV row is detected too. Lacuna full exports use their existing header
+    to locate question, answer and semicolon-separated tag columns; the warning and header
+    are skipped. Quoted multi-line fields stay intact in the plain-text Anki path as well.
     Leading empty TSV columns are preserved, so a row without a question is
     skipped rather than shifting its answer and tags into question/answer columns.
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
-    `tags`/`tag`/`label` -> tags. Pipes in cell content are escaped on export.
+    `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
+    rows are skipped. Pipes in cell content are escaped on export.
   - **Markdown list** — three patterns: (1) definition-list style
     (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
-    back).
+    back); every answer line is retained.
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
@@ -81,6 +85,8 @@ drag and drop, automatic format detection and a manual format override.
   authored answer mode, shares its
   original's Concept and starts with independent scheduling. Cloze and Anki package
   cards are not automatically reversed. Duplicate warnings include generated reverses.
+- Duplicate checks compare type, question and answer as separate fields, so colons in
+  content cannot collide with field boundaries.
 - Previews use the normal card-content renderer, with separate answer reveals and
   previous/next navigation. All originals can be inspected; the reverse preview is
   shown beside an eligible original when enabled. Anki package images and audio use
@@ -507,3 +513,11 @@ Full backups and course shares preserve `Lesson.answerMode` defaults and optiona
 Shared-course updates treat these as authored content, preserving learner review history.
 Standalone JSON card exports include each card's resolved mode; re-import keeps that
 explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
+
+
+### MCP Card import matching
+
+`lacuna.diff_import_preview` and `lacuna.import_cards` compare normalised questions within
+one destination: the named Lesson or the Course bank. Matching text in a different Lesson
+does not suppress a proposed Card or become an update candidate. Every supplied Lesson must
+belong to the target Course; all destinations are validated before any Cards are written.
