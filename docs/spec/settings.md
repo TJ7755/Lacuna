@@ -7,6 +7,9 @@ and **Integrations**. Existing child section ids remain in the DOM so old deep l
 reach the same control. Group ids and ordering remain centralised in the page so the scrollspy and
 its navigation cannot drift from the rendered groups.
 
+Device-local preference hooks re-read their value when subscribing, so changes made during
+mounting are visible immediately even if their change event preceded the subscription.
+
 - **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
   (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
   `SectionRailMobileJumper` (a compact sticky `<select>`-style jumper) were extracted

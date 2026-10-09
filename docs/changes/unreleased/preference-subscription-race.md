@@ -1,0 +1,1 @@
+- Keep device-local preferences current when they change between mounting and subscription.
