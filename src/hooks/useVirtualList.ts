@@ -132,9 +132,9 @@ export function useVirtualList({
           if (typeof ResizeObserver !== 'undefined') {
             observer = new ResizeObserver((entries) => {
               const entry = entries[0];
-              if (entry) updateHeight(entry.contentRect.height);
+              if (entry) updateHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
             });
-            observer.observe(el);
+            observer.observe(el, { box: 'border-box' });
           }
         });
       }
@@ -252,3 +252,4 @@ export function useVirtualList({
 
   return { totalHeight, virtualItems, measureRef, containerRef, scrollToIndex };
 }
+

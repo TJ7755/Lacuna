@@ -134,3 +134,4 @@ retains its Attempt receipts as personal evidence.
 
 Virtualised lists rebuild the heights of mounted rows when the card count changes,
 so adding or deleting cards preserves spacing without waiting for another resize.
+Resize measurements include the full row border box, keeping padding and borders in the layout.

@@ -133,5 +133,22 @@ describe('useVirtualList', () => {
     await waitFor(() => expect(list.style.height).toBe('10220px'));
   });
 
+  it('includes padding and borders in observed row heights', async () => {
+    render(<Fixture />);
+    const list = await screen.findByTestId('list');
+    const initialHeight = parseFloat(list.style.height);
+    act(() => {
+      resizeCallback?.(
+        [
+          {
+            contentRect: { height: 180 },
+            borderBoxSize: [{ blockSize: 220, inlineSize: 500 }],
+          } as unknown as ResizeObserverEntry,
+        ],
+        {} as ResizeObserver,
+      );
+    });
+    await waitFor(() => expect(parseFloat(list.style.height)).toBe(initialHeight + 120));
+  });
 });
 
