@@ -1888,7 +1888,7 @@ describe('LearnMode course/lesson scope', () => {
     );
   });
 
-  it('guards an outstanding Card, keeps it mounted on Stay and clears resume on Leave', async () => {
+  it('guards an outstanding Card, keeps it mounted on Stay and keeps resume on Leave', async () => {
     const course = await createCourse('Geography');
     const lesson = await createLesson(course.id, 'River processes');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Define erosion', 'Wearing away');
@@ -1923,7 +1923,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(unload.defaultPrevented).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
-      '0 of 1 Card answered',
+      '0 of 1 Card answered. Your progress is saved, so you can pick up where you left off.',
     );
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
     expect(studyFaceText('Define erosion')).toBeInTheDocument();
@@ -1935,6 +1935,55 @@ describe('LearnMode course/lesson scope', () => {
       [...Array(localStorage.length)].some((_, index) =>
         localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
       ),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it('resumes a recitation at the line reached after leaving', async () => {
+    const course = await createCourse('Poems');
+    const lesson = await createLesson(course.id, 'Dickinson');
+    await createSequence(
+      course.id,
+      lesson.id,
+      'Because I could not stop',
+      [
+        { id: 'line-1', value: 'Because I could not stop for Death' },
+        { id: 'line-2', value: 'He kindly stopped for me' },
+      ],
+      { mode: 'lines' },
+    );
+    const study = () => {
+      const router = createMemoryRouter(
+        [
+          { path: '/lesson/:lessonId/learn', element: <LearnMode /> },
+          { path: '/course/:courseId/lesson/:lessonId', element: <p>Lesson destination</p> },
+        ],
+        { initialEntries: [`/lesson/${lesson.id}/learn`] },
+      );
+      return render(
+        <ThemeProvider>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </ThemeProvider>,
+      );
+    };
+
+    const first = study();
+    await continueFromNotes();
+    fireEvent.click(await screen.findByRole('button', { name: /^recite$/i }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
+      target: { value: 'Because I could not stop for Death' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
+    expect(await screen.findByText('He kindly stopped for me')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+    expect(await screen.findByText('Lesson destination')).toBeInTheDocument();
+    first.unmount();
+
+    study();
+    await continueFromNotes();
+    expect(await screen.findByText('He kindly stopped for me')).toBeInTheDocument();
+    expect(screen.queryByText('Because I could not stop for Death')).not.toBeInTheDocument();
   });
 });

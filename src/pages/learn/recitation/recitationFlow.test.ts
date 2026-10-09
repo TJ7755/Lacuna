@@ -4,6 +4,7 @@ import {
   advanceRecitation,
   initialRecitationState,
   inRecitationOrder,
+  isRecitationStateFor,
   presentedLines,
   recitationPlan,
   targetLines,
@@ -143,5 +144,24 @@ describe('inRecitationOrder', () => {
     const cards = [card('x'), card('c3', 'c'), card('y'), card('a1', 'a'), card('b2', 'b')];
     const map = new Map([['a1', poem], ['b2', poem], ['c3', poem]]);
     expect(inRecitationOrder(cards, map).map((c) => c.id)).toEqual(['x', 'a1', 'b2', 'c3', 'y']);
+  });
+});
+
+describe('isRecitationStateFor', () => {
+  const plan = recitationPlan(sequence([{}, {}, {}], { recitationChunkSize: 2 }));
+  it('accepts a step that fits the plan', () => {
+    expect(isRecitationStateFor(plan, initialRecitationState(plan))).toBe(true);
+    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 1 }, phase: 'recall' })).toBe(true);
+  });
+  it('rejects a step an edited sequence no longer fits', () => {
+    const build = (chunk: number, unlocked: number) => ({
+      step: { kind: 'build', chunk, unlocked, joinTarget: chunk },
+      phase: 'recall',
+    });
+    expect(isRecitationStateFor(plan, build(2, 1))).toBe(false);
+    expect(isRecitationStateFor(plan, build(1, 2))).toBe(false);
+    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 0 }, phase: 'recall' })).toBe(false);
+    expect(isRecitationStateFor(plan, { step: { kind: 'done' }, phase: 'recall' })).toBe(false);
+    expect(isRecitationStateFor(plan, null)).toBe(false);
   });
 });

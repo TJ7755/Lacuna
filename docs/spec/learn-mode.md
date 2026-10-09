@@ -349,9 +349,10 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
   invented reviews. A live pill UI
   (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
   grade-distribution chart to keep attention on first-pass progress. A versioned local recovery
-  record stores only the scoped Card-id queue, mastered ids, outcomes and small session events. On
-  restart it discards ineligible ids and appends newly eligible Cards. Completion or a deliberate
-  confirmed exit clears the record; an unexpected refresh or termination leaves it resumable.
+  record stores only the scoped Card-id queue, mastered ids, outcomes, small session events and
+  each in-progress recitation's step. On restart it discards ineligible ids and appends newly
+  eligible Cards. Only completion clears the record: leaving, refreshing or termination all leave
+  it resumable, and the exit dialog says so.
 
 ### Cumulative recitation (`src/pages/learn/recitation/`)
 
@@ -375,8 +376,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   pips lit as current are the lines being presented or recited.
 - Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
   timed as the check's duration per recited line and excluded from speed calibration. Lines
-  become mastered, with lesson exposure, as their chunk is completed, so a resumed session
-  starts at the first chunk with an unmastered line.
+  become mastered, with lesson exposure, as their chunk is completed. The current step is saved
+  with the Simple session, so a resumed session returns to the same line; a saved step that no
+  longer fits an edited sequence falls back to the first chunk with an unmastered line.
 - **Scheduled sessions** show a due line as a recitation of its chunk down to that line.
   Only that line is graded, through the normal answer path (manual grade 3 or 1, undoable),
   timed per recited line.

@@ -169,6 +169,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isLinesModeCard,
     recitationSequence,
     recitationMasteredItemIds,
+    savedRecitationStep,
+    saveRecitationStep,
     currentCardIds,
     setRecitationFocus,
     answerRecitation,
@@ -215,7 +217,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     simpleWrong,
     lessonHasMembersRef,
     persistSimpleResume,
-    clearSimpleSessionResume,
     resetSimpleSessionOutcomes,
   } = useLearnSession({
     enabled: sessionReady,
@@ -372,6 +373,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           (phase === 'question' || phase === 'answer')
         }
         itemName="Card"
+        resumable={isSimpleMode}
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
         onAttempt={() => {
@@ -380,7 +382,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         }}
         onConfirm={() => {
           leavingSessionRef.current = true;
-          clearSimpleSessionResume();
         }}
         onExplicitLeave={backOut}
       />
@@ -551,6 +552,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
                   }
                   onFocusLines={setRecitationFocus}
+                  savedState={savedRecitationStep(recitationSequence.id)}
+                  onStateChange={(state) => saveRecitationStep(recitationSequence.id, state)}
                   review={
                     isSimpleMode || !current.sequenceItemId
                       ? undefined

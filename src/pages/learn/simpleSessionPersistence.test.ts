@@ -29,6 +29,18 @@ describe('Simple session persistence', () => {
     }
   });
 
+  it('round-trips in-progress recitation steps', () => {
+    const step = { step: { kind: 'build', chunk: 1, unlocked: 2, joinTarget: 1 }, phase: 'present' };
+    saveSimpleSession(scope, {
+      queueCardIds: ['card-1'],
+      masteredCardIds: [],
+      outcomes: [],
+      events: [],
+      recitations: new Map([['sequence-1', step]]),
+    });
+    expect(loadSimpleSession(scope, ['card-1'])?.recitations).toEqual(new Map([['sequence-1', step]]));
+  });
+
   it('round-trips a versioned ID-only session snapshot', () => {
     saveSimpleSession(scope, {
       queueCardIds: ['card-2', 'card-1'],
