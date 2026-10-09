@@ -41,10 +41,11 @@ test('learns a poem by cumulative recitation', async ({ page }) => {
   await page.getByRole('button', { name: 'Add sequence' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));
 
-  await page.goto(`/#/lesson/${lessonId}/learn`);
-  const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
-  if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
+  await page.goto('/#/');
+  await page.getByRole('button', { name: 'Study Poems' }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
+  await expect(page.getByRole('button', { name: 'Recite', exact: true })).toBeVisible();
   await expect(page.getByText('Because I could not stop for Death')).toBeVisible();
   await page.getByRole('button', { name: 'Recite', exact: true }).click();
   await expect(page.getByText('Because I could not stop for Death')).toHaveCount(0);

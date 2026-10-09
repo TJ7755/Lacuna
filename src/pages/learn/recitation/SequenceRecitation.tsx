@@ -84,7 +84,7 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
       ? `From the top · ${plan.chunks.length > 1 ? `${terminology.chunkLabel}s 1–${step.upTo + 1}` : 'all lines'}`
       : step.kind === 'done'
         ? ''
-        : `${terminology.chunkLabel} ${step.chunk + 1} of ${plan.chunks.length} · ${terminology.item} ${step.unlocked} of ${
+        : `${plan.chunks.length > 1 ? `${terminology.chunkLabel} ${step.chunk + 1} of ${plan.chunks.length} · ` : ''}${terminology.item} ${step.unlocked} of ${
           plan.chunks[step.chunk].filter((i) => plan.lines[i].mine).length
         }`;
 
@@ -232,9 +232,6 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
                     input === 'type' ? { answer: answer ?? '', options: comparison } : undefined
                   }
                 />
-                {input === 'type' && (
-                  <div className="mt-1 text-sm text-ink-faint">{answer?.trim() || 'No answer'}</div>
-                )}
               </button>
             </li>
           );
