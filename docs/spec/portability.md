@@ -23,17 +23,22 @@ app:
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
     `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
-    rows are skipped. Pipes and backslashes in cell content are escaped on export.
-  - **Markdown list** — three patterns: (1) definition-list style
-    (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
+    rows are skipped. Escaped final pipes remain cell content even when the closing separator
+    is omitted. Opening pipes are optional in headers, delimiter rows and card rows.
+    Pipes and backslashes in cell content are escaped on export.
+  - **Markdown list** — three patterns: (1) Q:/A: list items, including bold prefixes,
+    (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
-    back); every answer line is retained.
+    back); every answer line is retained. Indented list-item continuation lines stay with
+    their question or answer, including nested answer lists.
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
     leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
-    precedence over commas within answers during format detection.
+    precedence over commas within answers during format detection. Prefixed answers retain
+    continuation lines until the next question or blank-line card boundary. Blank-line
+    separated plain-text blocks use the first line as the front and all remaining lines as the back.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
 - **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects

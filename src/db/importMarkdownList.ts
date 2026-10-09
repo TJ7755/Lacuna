@@ -1,6 +1,22 @@
 import { hasCloze } from '../utils/cloze';
 import type { ImportParseResult, ParsedCard } from './import';
 
+/** Keep an indented continuation inside its list item, including nested list markers. */
+function listLines(input: string): string[] {
+  const lines: string[] = [];
+  let contentIndent = 0;
+  for (const line of input.split('\n')) {
+    if (contentIndent > 0 && line.trim() && line.startsWith(' '.repeat(contentIndent))) {
+      lines[lines.length - 1] += `\n${line.slice(contentIndent)}`;
+      continue;
+    }
+    const marker = /^( *)([-*+]|\d+[.)])( +)(.+)$/.exec(line);
+    contentIndent = marker ? marker[1].length + marker[2].length + marker[3].length : 0;
+    lines.push(line);
+  }
+  return lines;
+}
+
 /**
  * Parse Markdown lists (ordered or unordered) into ParsedCard[].
  *
@@ -18,13 +34,13 @@ export function parseMarkdownList(input: string): ImportParseResult {
   const trimmed = input.trim();
   if (!trimmed) return { cards, skipped };
 
-  const lines = trimmed.split('\n');
+  const lines = listLines(trimmed);
 
   // Pattern 1: List items with Q:/A: or **Q:**/**A:** inside them.
   const qaPattern =
-    /^\s*[-*+]\s+(?:\*\*)?(?:Q(?:uestion)?|Front|Prompt)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/i;
+    /^\s*[-*+]\s+(?:\*\*)?(?:Q(?:uestion)?|Front|Prompt)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
   const aaPattern =
-    /^\s*[-*+]\s+(?:\*\*)?(?:A(?:nswer)?|Back|Response)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/i;
+    /^\s*[-*+]\s+(?:\*\*)?(?:A(?:nswer)?|Back|Response)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
 
   let currentQ: string | null = null;
 
@@ -56,7 +72,7 @@ export function parseMarkdownList(input: string): ImportParseResult {
   const orderedItems: string[] = [];
 
   for (const line of lines) {
-    const orderedMatch = line.match(/^\s*\d+[.)]\s+(.+)/);
+    const orderedMatch = line.match(/^\s*\d+[.)]\s+(.+)/s);
     if (orderedMatch) {
       orderedItems.push(orderedMatch[1].trim());
     }

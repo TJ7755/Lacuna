@@ -46,6 +46,7 @@ import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { useIsTouchMode } from '../state/inputMode';
+import { useEditorReturn } from '../hooks/useEditorReturn';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
 import type { EditorOriginState } from '../utils/editorOrigin';
 import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
@@ -75,6 +76,7 @@ export function CardEditor() {
   const bankMode = !lessonMode;
   const navigate = useNavigate();
   const location = useLocation();
+  const scheduleReturn = useEditorReturn(`${courseId}:${lessonId}:${cardId}`);
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -593,10 +595,10 @@ export function CardEditor() {
       setDraftDirty(false);
       flashSaved();
       // Let the confirmation flourish play briefly before leaving the page.
-      window.setTimeout(() => {
+      scheduleReturn(() => {
         notify('Card updated.', 'positive');
         void navigate(backPath);
-      }, 450);
+      });
       return;
     }
 
@@ -631,10 +633,10 @@ export function CardEditor() {
       flashSaved();
     } else {
       flashSaved();
-      window.setTimeout(() => {
+      scheduleReturn(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
         void navigate(backPath);
-      }, 450);
+      });
     }
   }
 
