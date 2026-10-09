@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterSessionCardPool,
+  plainPreview,
   questionEditPath,
   searchCardsInScope,
   searchQuestionsInScope,
@@ -322,5 +323,22 @@ describe('filterSessionCardPool', () => {
     expect(
       filterSessionCardPool(cards, { filters: ['suspended', 'flagged'] }).map((item) => item.id),
     ).toEqual([]);
+  });
+});
+
+describe('plainPreview', () => {
+  it.each([
+    ['Before {{c1::line one\nline two}} after', 'Before line one line two after'],
+    ['Before {{c1::answer::first\nsecond}} after', 'Before answer after'],
+    [
+      '{{c1::line one\r\nline two::first\r\nsecond}} and {{c2::last}}',
+      'line one line two and last',
+    ],
+  ])('unwraps multiline clozes in %j', (source, expected) => {
+    expect(plainPreview(source)).toBe(expected);
+  });
+
+  it('strips formatting and truncates after unwrapping a multiline cloze', () => {
+    expect(plainPreview('**{{c1::line one\nline two::hint}}**', 8)).toBe('line one…');
   });
 });

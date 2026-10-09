@@ -374,7 +374,7 @@ export function questionEditPath(question: QuestionDefinition): string {
 /** A short, plain-text preview of a card's markdown for result lists. */
 export function plainPreview(md: string, max = 120): string {
   const text = md
-    .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/g, '$1') // cloze -> the answer text
+    .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/gs, '$1') // cloze -> the answer text, including multiline deletions
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
     .replace(/[#*_`>~$]/g, '') // markdown punctuation
     .replace(/\s+/g, ' ')
