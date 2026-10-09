@@ -102,14 +102,14 @@ it('consumes a dismissed install prompt until the browser supplies a new event',
     prompt,
     userChoice: Promise.resolve({ outcome: 'dismissed', platform: '' }),
   });
-  act(() => window.dispatchEvent(event));
+  await act(() => window.dispatchEvent(event));
   expect(result.current.isInstallable).toBe(true);
   await act(() => result.current.promptInstall());
   expect(result.current.isInstalled).toBe(false);
   expect(result.current.isInstallable).toBe(false);
   await act(() => result.current.promptInstall());
   expect(prompt).toHaveBeenCalledTimes(1);
-  act(() => window.dispatchEvent(new Event('beforeinstallprompt')));
+  await act(() => window.dispatchEvent(new Event('beforeinstallprompt')));
   expect(result.current.isInstallable).toBe(true);
 });
 
@@ -122,7 +122,7 @@ it('consumes an install event before concurrent clicks can prompt it twice', asy
         finishPrompts.push(resolve);
       }),
   );
-  act(() =>
+  await act(() =>
     window.dispatchEvent(
       Object.assign(new Event('beforeinstallprompt'), {
         prompt,
@@ -139,3 +139,4 @@ it('consumes an install event before concurrent clicks can prompt it twice', asy
   expect(prompt).toHaveBeenCalledTimes(1);
   expect(result.current.isInstalled).toBe(true);
 });
+
