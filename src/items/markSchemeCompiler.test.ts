@@ -204,3 +204,14 @@ describe('mark-scheme authoring helpers', () => {
     ).toBe('[1] method :: 2x = 8\n[2] answer :: within 0.1 :: 4');
   });
 });
+
+it.each(['1 / 0', 'sqrt(-1)', '10^1000', '4 = 4'])(
+  'rejects unusable numeric predicate argument %s during compilation',
+  (value) => {
+    for (const body of [`within 0.1 :: ${value}`, `matches-one-of :: ${value}`]) {
+      const result = compileMarkScheme(`[1] answer :: ${body}`);
+      expect(result.totalMarks).toBe(0);
+      expect(result.lines[0].kind).toBe('error');
+    }
+  },
+);

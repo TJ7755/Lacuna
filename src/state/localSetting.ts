@@ -46,7 +46,13 @@ export function createLocalSetting<T>({
   };
   function use(): [T, (value: T) => void] {
     const [value, setValue] = useState(read);
-    useEffect(() => subscribe(() => setValue(read())), []);
+    useEffect(() => {
+      const refresh = () => setValue(read());
+      const unsubscribe = subscribe(refresh);
+      // A layout effect may have changed the preference before this subscription existed.
+      refresh();
+      return unsubscribe;
+    }, []);
     const set = useCallback((next: T) => {
       write(next);
       setValue(read());

@@ -185,7 +185,10 @@ longer parses or whose predicate arguments are unusable — is flagged `undeterm
 `LineVerdict`, counted in `WorkingVerificationResult.undeterminedLines`, and shown in the study face
 as unchecked rather than as a zero, with the existing dispute control alongside it. It earns no
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
-specifications share this parser for exact, tolerance and one-of checks.
+specifications share this parser for exact, tolerance and one-of checks. Scalar answer
+specifications and submissions reject equations rather than treating their residual as an answer.
+The mark-scheme compiler rejects non-finite, non-real and equation arguments for `within` and
+`matches-one-of` before authoring or import can persist an unusable criterion.
 
 A value predicate (`equals`, `within`, `matches-one-of`) accepts an answer written as
 `<variable> = value` as well as the bare value, since students and authoring models alike end their
@@ -460,14 +463,17 @@ studied — but it provides a tactile, visible session for focus.
   default 25), short break minutes (1–60, default 5), long break minutes (1–60,
   default 15), and `autoStartBreaks` (default off).
 - **State machine:** `idle -> focus -> shortBreak (every 4th: longBreak) -> idle`.
-  Crossing zero auto-advances the phase and (optionally) auto-starts the break.
+  Crossing zero records a pending break, which the study flow offers at a safe boundary.
+  Countdown uses an elapsed-time deadline so delayed background callbacks cannot extend a
+  focus or break period. Pausing captures the elapsed countdown; resuming preserves it.
 - **Visuals:** the header face is a 36px SVG ring with a 1Hz progress arc; the
   expanded popup (click the face) is a 160px circular timer with the same arc and a
   centre read-out in display type. Phase colours: focus = accent, short break =
   positive, long break = ink. The popup is closed by `Escape` or outside click and
   uses a focus trap.
 - **Input validation:** the load-and-save helpers clamp each minute field to its
-  allowed range and fall back to the default if a stored value is `NaN`, so a
+  allowed range and fall back to the default if a stored value is non-finite. Runtime
+  seconds and completed-session counts also reject non-finite values, so a
   corrupted `localStorage` entry can never crash the timer.
 
 ### Recording a review

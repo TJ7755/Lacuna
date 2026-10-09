@@ -24,3 +24,9 @@ describe('numeric answer evaluation', () => {
     },
   );
 });
+
+it.each(['4 = 4', '8 = 4'])('rejects equation %s as a numeric answer specification', (value) => {
+  expect(numericAnswerSpecIsValid({ kind: 'exact', value })).toBe(false);
+  expect(numericAnswerSpecIsValid({ kind: 'within', value, tolerance: 0.1 })).toBe(false);
+  expect(numericAnswerSpecIsValid({ kind: 'matches-one-of', values: [value] })).toBe(false);
+});

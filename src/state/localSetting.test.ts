@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createLocalSetting, oneOf, parseJson } from './localSetting';
@@ -111,4 +112,14 @@ describe('device-local setting keys', () => {
       'lacuna.typingSetting',
     ]);
   });
+});
+
+
+it('observes preference changes between the initial read and subscribing', () => {
+  const { result } = renderHook(() => {
+    const value = colour.use();
+    useLayoutEffect(() => colour.write('blue'), []);
+    return value;
+  });
+  expect(result.current[0]).toBe('blue');
 });

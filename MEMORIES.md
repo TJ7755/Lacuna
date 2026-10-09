@@ -280,3 +280,10 @@ review text before waiting for merge gates, rather than updating it mid-run.
 Shell-piped Python scripts can encode new non-ASCII literals differently from source files.
 Use explicit UTF-8 reads/writes and Unicode escapes in piped scripts so test expectations
 and user-facing text do not acquire invalid characters.
+
+
+## MCP descriptions are part of the frozen wire surface
+
+The reviewed MCP surface hash includes tool descriptions as well as schemas, scopes and order.
+A wording-only edit therefore fails the versioned contract test. Preserve contract metadata
+for handler-only fixes; a deliberate wire change needs its own reviewed surface update.

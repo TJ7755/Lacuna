@@ -195,3 +195,60 @@ describe('usePomodoro', () => {
     expect(restored.result.current.isRunning).toBe(false);
   });
 });
+
+
+it('counts elapsed time when background callbacks are delayed', () => {
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  act(() => {
+    vi.setSystemTime(Date.now() + 60_000);
+    vi.advanceTimersByTime(1000);
+  });
+  expect(result.current.formattedTime).toBe('23:59');
+});
+
+it('records a completed focus phase after a delayed background tick', () => {
+  savePomodoroSettings({ workMinutes: 1 });
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  act(() => {
+    vi.setSystemTime(Date.now() + 120_000);
+    vi.advanceTimersByTime(1000);
+  });
+  expect(result.current.secondsLeft).toBe(0);
+  expect(result.current.sessionsCompleted).toBe(1);
+  expect(result.current.breakPending).toBe(true);
+  expect(result.current.isRunning).toBe(false);
+});
+
+it('pauses at the elapsed countdown even before the next delayed tick', () => {
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  act(() => {
+    vi.setSystemTime(Date.now() + 60_000);
+    result.current.pause();
+  });
+  expect(result.current.formattedTime).toBe('24:00');
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  expect(result.current.formattedTime).toBe('24:00');
+  act(() => result.current.resume());
+  act(() => {
+    vi.advanceTimersByTime(1000);
+  });
+  expect(result.current.formattedTime).toBe('23:59');
+});
+
+it('recovers a finite paused timer from corrupted non-finite runtime values', () => {
+  localStorage.setItem(
+    'lacuna-pomodoro-runtime',
+    '{"phase":"focus","secondsLeft":1e309,"sessionsCompleted":1e309}',
+  );
+  const { result } = renderHook(() => usePomodoro());
+  expect(result.current.secondsLeft).toBe(0);
+  expect(result.current.sessionsCompleted).toBe(0);
+  expect(result.current.formattedTime).toBe('00:00');
+  act(() => result.current.resume());
+  expect(result.current.formattedTime).toBe('25:00');
+});
