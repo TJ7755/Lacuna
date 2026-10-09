@@ -28,3 +28,10 @@ it('imports the blank-line separated plain-text blocks advertised by the import 
     skipped: 0,
   });
 });
+
+it('preserves inline separator pairs whose front starts with a question prefix', () => {
+  expect(parseImportAuto('Q: Capital? | Paris')).toEqual({
+    cards: [{ type: 'front_back', front: 'Q: Capital?', back: 'Paris' }],
+    skipped: 0,
+  });
+});

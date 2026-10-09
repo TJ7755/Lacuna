@@ -16,6 +16,7 @@ function listLines(input: string): string[] {
   }
   return lines;
 }
+
 /**
  * Parse Markdown lists (ordered or unordered) into ParsedCard[].
  *

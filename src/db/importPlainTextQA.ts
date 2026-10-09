@@ -15,7 +15,7 @@ const SEPARATORS = [
  *   - "Q: ... \n A: ..." or "Question: ... \n Answer: ..."
  *   - "Front: ... \n Back: ..."
  *   - Lines with " — " or " | " separator
- *   - Blank-line separated blocks (first line = Q, second = A)
+ *   - Blank-line separated blocks (first line = Q, remaining lines = A)
  */
 export function parsePlainTextQA(input: string): ImportParseResult {
   const cards: ParsedCard[] = [];
@@ -27,7 +27,6 @@ export function parsePlainTextQA(input: string): ImportParseResult {
   const qPattern = /^\s*(?:Q(?:uestion)?|Front|Prompt|Term)\s*[:.]\s*(.+)/i;
   const aPattern = /^\s*(?:A(?:nswer)?|Back|Response|Definition)\s*[:.]\s*(.+)/i;
 
-  let sawQuestion = false;
   let pendingFront = '';
   const pendingBack: string[] = [];
   const flush = () => {
@@ -54,7 +53,6 @@ export function parsePlainTextQA(input: string): ImportParseResult {
     const qMatch = trimmedLine.match(qPattern);
     if (qMatch) {
       flush();
-      sawQuestion = true;
       pendingFront = qMatch[1].trim();
       continue;
     }
@@ -67,7 +65,10 @@ export function parsePlainTextQA(input: string): ImportParseResult {
   }
   flush();
 
-  if (sawQuestion) return { cards, skipped };
+  if (cards.length > 0) return { cards, skipped };
+  // Only one parser owns skipped counts. A prefix-like front may still form an
+  // inline separator pair, so retain that fallback without counting rows twice.
+  skipped = 0;
 
   // Pattern 2: Separator-based. Use the first matching separator per line,
   // tracking its length so slice() is accurate for all separator types.
