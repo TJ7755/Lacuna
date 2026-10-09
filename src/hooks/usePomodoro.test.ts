@@ -239,3 +239,16 @@ it('pauses at the elapsed countdown even before the next delayed tick', () => {
   });
   expect(result.current.formattedTime).toBe('23:59');
 });
+
+it('recovers a finite paused timer from corrupted non-finite runtime values', () => {
+  localStorage.setItem(
+    'lacuna-pomodoro-runtime',
+    '{"phase":"focus","secondsLeft":1e309,"sessionsCompleted":1e309}',
+  );
+  const { result } = renderHook(() => usePomodoro());
+  expect(result.current.secondsLeft).toBe(0);
+  expect(result.current.sessionsCompleted).toBe(0);
+  expect(result.current.formattedTime).toBe('00:00');
+  act(() => result.current.resume());
+  expect(result.current.formattedTime).toBe('25:00');
+});

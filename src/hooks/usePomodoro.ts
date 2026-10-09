@@ -29,7 +29,7 @@ interface PomodoroRuntime {
 
 function toNumber(value: unknown, fallback: number): number {
   const n = Number(value);
-  return Number.isNaN(n) ? fallback : n;
+  return Number.isFinite(n) ? n : fallback;
 }
 
 export function loadPomodoroSettings(): PomodoroSettings {

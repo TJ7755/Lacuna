@@ -472,7 +472,8 @@ studied — but it provides a tactile, visible session for focus.
   positive, long break = ink. The popup is closed by `Escape` or outside click and
   uses a focus trap.
 - **Input validation:** the load-and-save helpers clamp each minute field to its
-  allowed range and fall back to the default if a stored value is `NaN`, so a
+  allowed range and fall back to the default if a stored value is non-finite. Runtime
+  seconds and completed-session counts also reject non-finite values, so a
   corrupted `localStorage` entry can never crash the timer.
 
 ### Recording a review
