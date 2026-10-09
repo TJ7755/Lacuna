@@ -388,3 +388,12 @@ describe('advanced search query text', () => {
     expect(results.map((result) => result.card.id)).toEqual(['match']);
   });
 });
+
+describe('link previews', () => {
+  it('shows link labels without destinations or Markdown syntax', () => {
+    expect(plainPreview('Read [**the guide**](https://example.com/guide) today.')).toBe(
+      'Read the guide today.',
+    );
+    expect(plainPreview('[A very long label](https://example.com)', 6)).toBe('A very\u2026');
+  });
+});

@@ -23,7 +23,8 @@
   same core. Card and Question results are visibly distinct and link to their respective editors,
   while course/lesson/note results link to their page.
   `plainPreview` strips Markdown/cloze/images for previews, including multiline cloze
-  answers and hints; only the answer text appears in the preview.
+  answers and hints; only the answer text appears in the preview. Inline Markdown
+  links show their labels without destinations or link syntax before truncation.
 - **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
   the search filter, but scheduling is never changed automatically.
 

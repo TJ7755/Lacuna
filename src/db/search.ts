@@ -377,6 +377,7 @@ export function plainPreview(md: string, max = 120): string {
   const text = md
     .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/gs, '$1') // cloze -> the answer text, including multiline deletions
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+    .replace(/\[([^\]]*)\]\((?:\\.|[^\\)])*\)/g, '$1') // links -> their readable labels
     .replace(/[#*_`>~$]/g, '') // markdown punctuation
     .replace(/\s+/g, ' ')
     .trim();
