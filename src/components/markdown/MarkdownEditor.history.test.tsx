@@ -27,25 +27,25 @@ describe('Markdown editor undo history', () => {
     expect(field).toHaveValue('Original extra');
   });
 
-  it('records edits made without keydown, including paste and context-menu changes', () => {
+  it('records edits made without keydown, including paste and context-menu changes', async () => {
     render(<Editor />);
     const field = screen.getByRole('textbox', { name: 'Front' });
     fireEvent.change(field, { target: { value: 'First paste' } });
-    act(() => vi.advanceTimersByTime(801));
+    await act(async () => { vi.advanceTimersByTime(801); });
     fireEvent.change(field, { target: { value: 'Second paste' } });
-    act(() => vi.advanceTimersByTime(801));
+    await act(async () => { vi.advanceTimersByTime(801); });
     historyKey('z');
     expect(field).toHaveValue('First paste');
     historyKey('z');
     expect(field).toHaveValue('Original');
   });
 
-  it('does not redo over a fresh edit made after undo', () => {
+  it('does not redo over a fresh edit made after undo', async () => {
     render(<Editor />);
     const field = screen.getByRole('textbox', { name: 'Front' });
     fireEvent.keyDown(field, { key: 'x' });
     fireEvent.change(field, { target: { value: 'First edit' } });
-    act(() => vi.advanceTimersByTime(801));
+    await act(async () => { vi.advanceTimersByTime(801); });
     historyKey('z');
     fireEvent.change(field, { target: { value: 'New edit' } });
     historyKey('y');
