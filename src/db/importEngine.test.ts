@@ -334,6 +334,28 @@ describe('parseImportAuto', () => {
     expect(result.cards).toHaveLength(2);
   });
 
+  it.each([undefined, 'tsv'] as const)(
+    'preserves an empty first TSV question with format %s',
+    (format) => {
+      const result = parseImportAuto('\tOrphan answer\ttag\nQuestion\tAnswer\nNext\tReply', {
+        format,
+      });
+      expect(result).toEqual({
+        cards: [
+          { type: 'front_back', front: 'Question', back: 'Answer' },
+          { type: 'front_back', front: 'Next', back: 'Reply' },
+        ],
+        skipped: 1,
+      });
+    },
+  );
+  it.each(['csv', 'tsv'] as const)('still parses a BOM-prefixed quoted %s field', (format) => {
+    const separator = format === 'csv' ? ',' : '\t';
+    expect(parseImportAuto(`\uFEFF"Question${separator}detail"${separator}Answer`, { format })).toEqual({
+      cards: [{ type: 'front_back', front: `Question${separator}detail`, back: 'Answer' }],
+      skipped: 0,
+    });
+  });
   it('handles empty input', () => {
     expect(parseImportAuto('').cards).toHaveLength(0);
   });

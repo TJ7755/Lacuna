@@ -619,11 +619,20 @@ export function parseImportAuto(
     case 'json':
       return parseJsonImport(trimmed);
 
+    // Preserve empty leading columns; only remove the file's encoding marker.
     case 'tsv':
-      return parseImport(trimmed, options.fieldSeparator ?? '\t', options.rowSeparator ?? '\n');
+      return parseImport(
+        input.replace(/^\uFEFF/, ''),
+        options.fieldSeparator ?? '\t',
+        options.rowSeparator ?? '\n',
+      );
 
     case 'csv':
-      return parseImport(trimmed, options.fieldSeparator ?? ',', options.rowSeparator ?? '\n');
+      return parseImport(
+        input.replace(/^\uFEFF/, ''),
+        options.fieldSeparator ?? ',',
+        options.rowSeparator ?? '\n',
+      );
 
     case 'plain-text': {
       if (trimmed.includes('\t')) {
