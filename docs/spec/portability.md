@@ -15,6 +15,8 @@ app:
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
+    Leading empty TSV columns are preserved, so a row without a question is
+    skipped rather than shifting its answer and tags into question/answer columns.
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
     `tags`/`tag`/`label` -> tags. Pipes in cell content are escaped on export.
