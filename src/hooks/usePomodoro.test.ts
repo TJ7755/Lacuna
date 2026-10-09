@@ -359,3 +359,20 @@ it('restores idle when a break expired before the closing page could tick', () =
   expect(restored.result.current.sessionsCompleted).toBe(1);
   expect(restored.result.current.isRunning).toBe(false);
 });
+
+it('restores the active ring duration after settings changed in another tab', () => {
+  const first = renderHook(() => usePomodoro());
+  act(() => first.result.current.startFocus());
+  act(() => {
+    vi.advanceTimersByTime(60_000);
+  });
+  const progress = first.result.current.progress;
+  act(() => {
+    savePomodoroSettings({ workMinutes: 1 });
+    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }));
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  const restored = renderHook(() => usePomodoro());
+  expect(restored.result.current.formattedTime).toBe('24:00');
+  expect(restored.result.current.progress).toBe(progress);
+});

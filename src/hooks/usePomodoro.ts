@@ -21,6 +21,8 @@ const STORAGE_KEY = 'lacuna-pomodoro-settings';
 const RUNTIME_STORAGE_KEY = 'lacuna-pomodoro-runtime';
 
 interface PomodoroRuntime {
+  /** Optional for timers saved before active duration was retained. */
+  phaseSeconds?: number;
   phase: PomodoroPhase;
   secondsLeft: number;
   sessionsCompleted: number;
@@ -96,6 +98,9 @@ function loadPomodoroRuntime(): PomodoroRuntime {
         : null;
     return {
       phase,
+      phaseSeconds: parsed.phaseSeconds === undefined
+        ? undefined
+        : Math.max(0, Math.ceil(toNumber(parsed.phaseSeconds, 0))),
       secondsLeft: Math.max(0, Math.floor(toNumber(parsed.secondsLeft, 0))),
       sessionsCompleted: Math.max(0, Math.floor(toNumber(parsed.sessionsCompleted, 0))),
       pendingBreakPhase,
@@ -136,7 +141,10 @@ export function usePomodoro() {
   const hasMountedRef = useRef(false);
 
   // Preference changes apply to the next phase, never the active ring's denominator.
-  const [phaseSeconds, setPhaseSeconds] = useState(() => phaseDuration(phase, settings));
+  const [phaseSeconds, setPhaseSeconds] = useState(() => Math.max(
+    initialRuntime.current!.secondsLeft,
+    initialRuntime.current!.phaseSeconds ?? phaseDuration(phase, settings),
+  ));
 
   useEffect(() => {
     secondsLeftRef.current = secondsLeft;
@@ -151,6 +159,7 @@ export function usePomodoro() {
         ? Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
         : secondsLeftRef.current;
       let runtime: PomodoroRuntime = {
+        phaseSeconds,
         phase,
         secondsLeft: remaining,
         sessionsCompleted,
@@ -184,7 +193,7 @@ export function usePomodoro() {
       window.removeEventListener('pagehide', onPageHide);
       persistRuntime();
     };
-  }, [isRunning, pendingBreakPhase, phase, sessionsCompleted]);
+  }, [isRunning, pendingBreakPhase, phase, phaseSeconds, sessionsCompleted]);
 
   // Sync settings when they change in another tab.
   useEffect(() => {

@@ -469,7 +469,8 @@ studied — but it provides a tactile, visible session for focus.
   Page closure saves the elapsed countdown and any break earned before a delayed tick.
   Reopening restores the timer paused. Accepted breaks read the latest saved settings.
   Fractional minute durations round up to whole seconds before the countdown starts.
-  Duration changes in another tab leave the active phase and its progress ring unchanged.
+  Duration changes in another tab leave the active phase and its progress ring unchanged,
+  including after reopening; older runtime records remain readable.
 - **Visuals:** the header face is a 36px SVG ring with a 1Hz progress arc; the
   expanded popup (click the face) is a 160px circular timer with the same arc and a
   centre read-out in display type. Phase colours: focus = accent, short break =

@@ -33,6 +33,7 @@ test('keeps timer focus in its popup and restores elapsed time after reload', as
 
   await page.clock.setSystemTime(new Date(timerStart.getTime() + 66_000));
   await page.reload();
+  await page.clock.resume();
   await expect(page.getByRole('button', { name: 'Focus · 23:55' })).toBeVisible();
   await page.getByRole('button', { name: 'Focus · 23:55' }).click();
   await expect(popup.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
