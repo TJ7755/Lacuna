@@ -252,4 +252,3 @@ export function useVirtualList({
 
   return { totalHeight, virtualItems, measureRef, containerRef, scrollToIndex };
 }
-

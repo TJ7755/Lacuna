@@ -139,4 +139,3 @@ it('consumes an install event before concurrent clicks can prompt it twice', asy
   expect(prompt).toHaveBeenCalledTimes(1);
   expect(result.current.isInstalled).toBe(true);
 });
-

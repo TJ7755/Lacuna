@@ -151,4 +151,3 @@ describe('useVirtualList', () => {
     await waitFor(() => expect(parseFloat(list.style.height)).toBe(initialHeight + 120));
   });
 });
-
