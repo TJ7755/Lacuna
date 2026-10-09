@@ -8,9 +8,11 @@ import {
   exportCardsMarkdownTable,
   exportCardsPlainText,
   exportCardsTsv,
+  exportCardsSimple,
   exportReviewHistoryCsv,
   exportReviewHistoryJson,
 } from './export';
+import { parseImport } from './import';
 import { reviewHistoryEntryForCard } from './reviewHistory';
 
 async function reset() {
@@ -165,4 +167,37 @@ describe('card exporters: course/lesson naming', () => {
       }),
     );
   });
+});
+
+
+describe('export field escaping', () => {
+  beforeEach(reset);
+
+  it('round-trips quotation marks through the simple TSV exporter', () => {
+    const cards = [
+      { front: '"quoted question"', back: '"quoted answer"' },
+      { front: 'A "quote" inside', back: 'B "quote" inside' },
+      { front: 'Next question', back: 'Next answer' },
+    ];
+    const parsed = parseImport(exportCardsSimple(cards));
+    expect(parsed.skipped).toBe(0);
+    expect(parsed.cards).toEqual(cards.map((card) => ({ type: 'front_back', ...card })));
+  });
+
+  it.each(['\r', '\r\n', '\n'])(
+    'keeps %j line endings inside a Markdown table row',
+    async (newline) => {
+      const course = await createCourse('Export');
+      await createCourseCard(
+        course.id,
+        'front_back',
+        `First${newline}second`,
+        `Third${newline}fourth`,
+      );
+      const markdown = await exportCardsMarkdownTable();
+      expect(markdown.split('\n')).toHaveLength(3);
+      expect(markdown).not.toContain('\r');
+      expect(markdown).toContain('| First second | Third fourth |');
+    },
+  );
 });

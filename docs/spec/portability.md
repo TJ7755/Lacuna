@@ -105,9 +105,11 @@ A single, reusable export UI offering multiple output formats:
   (`downloadBackup`).
   Selected backup files over 200 MB are rejected before they are read or parsed.
 - **CSV** — comma-separated values with all card fields.
-- **TSV** — tab-separated values, compatible with Anki import.
+- **TSV** — tab-separated values, compatible with Anki import. Quotation marks, tabs and
+  line endings are escaped in both full and simple Card exports.
 - **Markdown table** (`exportCardsMarkdownTable`) — GFM table with Deck, Front,
-  Back, and Tags columns. Pipes in cell content are escaped.
+  Back, and Tags columns. Pipes in cell content are escaped; Windows, old-Mac and Unix
+  line endings within cells become spaces to keep each Card on one table row.
 - **JSON array** (`exportCardsJson`) — array of objects with front, back, tags,
   deck, and type keys. Re-importable into Lacuna.
 - **Plain text** — human-readable Q:/A: format with course, lesson, and tag metadata.
