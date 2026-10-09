@@ -16,6 +16,8 @@
 - **Structured filters** (AND-combined, usable without a query, cards only): **due, new,
   leech, flagged, suspended**. These turn search into course-wide card management ("show
   me all leeches").
+- The advanced-query core accepts quoted `tag:` and `deck:` values containing spaces;
+  apostrophes within ordinary words remain literal.
 - The full-page **Search content** surface and the `Ctrl/Cmd+K` **Quick search** overlay share the
   same core. Card and Question results are visibly distinct and link to their respective editors,
   while course/lesson/note results link to their page.

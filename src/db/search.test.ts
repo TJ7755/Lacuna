@@ -342,3 +342,38 @@ describe('plainPreview', () => {
     expect(plainPreview('**{{c1::line one\nline two::hint}}**', 8)).toBe('line one…');
   });
 });
+
+describe('advanced search query text', () => {
+  it.each(['deck:"Ancient Rome"', "deck:'Ancient Rome'", 'tag:"final exam"'])(
+    'keeps quoted operator values together in %s',
+    (query) => {
+      const cards = [card('match', { tags: ['final exam'] }), card('other', { courseId: 'other' })];
+      const results = searchCardsInScope(
+        query,
+        {
+          cards,
+          courses: [course, { ...course, id: 'other', name: 'Other course' }],
+          lessons: [],
+        },
+        { parseQuery: true },
+      );
+      expect(results.map((result) => result.card.id)).toEqual(['match']);
+    },
+  );
+
+  it('preserves apostrophes in ordinary query words', () => {
+    expect(
+      searchCardsInScope(
+        "don't",
+        {
+          cards: [card('match', { front: "don't forget" })],
+          courses: [course],
+          lessons: [],
+        },
+        { parseQuery: true },
+      ),
+    ).toHaveLength(1);
+  });
+
+
+});
