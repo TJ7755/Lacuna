@@ -80,7 +80,9 @@ mounting are visible immediately even if their change event preceded the subscri
   two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from
   Lacuna; an independently mirrored folder file is not removed.
 - **Install** (where supported): a panel of platform-specific install
-  instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
+  instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`. Browser install
+  events are consumed immediately, including on dismissal; the action becomes available
+  again only when the browser supplies a fresh event.
 - **AI** (desktop layouts): a device-local opt-in which is off by default, plus an independent
   stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
   navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
@@ -272,6 +274,3 @@ defaults** is always available.
 
 
 [Specification index](../SPEC.md)
-
-The browser install action consumes its event immediately, including on dismissal;
-it becomes available again only when the browser supplies a fresh install event.

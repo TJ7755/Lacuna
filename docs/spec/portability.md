@@ -522,4 +522,3 @@ explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
 one destination: the named Lesson or the Course bank. Matching text in a different Lesson
 does not suppress a proposed Card or become an update candidate. Every supplied Lesson must
 belong to the target Course; all destinations are validated before any Cards are written.
-
