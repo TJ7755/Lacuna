@@ -26,6 +26,7 @@ import { loadAiPanel } from '../ai/loaders';
 import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
+import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 
 const SharingAnnouncement = lazy(() =>
   import('./SharingAnnouncement').then((module) => ({ default: module.SharingAnnouncement })),
@@ -187,10 +188,11 @@ function AppShellLayout() {
     mobileWasOpenRef.current = mobileOpen;
   }, [mobileOpen, paletteOpen]);
 
-  // Global shortcuts within the shell: Ctrl/Cmd+K (quick search), / (content search), ? (help).
+  // Global shortcuts: Ctrl/Cmd+K (quick search), / (content search), configured help key.
   // Single-key shortcuts stay inert while typing so they never hijack a text field.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.isComposing) return;
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setPaletteOpen((open) => {
@@ -212,7 +214,7 @@ function AppShellLayout() {
           el.isContentEditable)
       )
         return;
-      if (e.key === '?') {
+      if (keyMatches(e, loadBindings().help)) {
         e.preventDefault();
         setHintsLoaded(true);
         setHintsOpen((v) => !v);

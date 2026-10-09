@@ -21,7 +21,7 @@ export function useLearnView(
   const [focusMode, setFocusMode] = useState(startInFocusMode);
   const [focusChromeVisible, setFocusChromeVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // The keyboard-shortcuts cheatsheet (opened with ?).
+  // The keyboard-shortcuts cheatsheet (opened with the configured help key).
   const [hintsOpen, setHintsOpen] = useState(false);
   // Navigation drawer — closed by default to keep Learn mode distraction-free,
   // opened on demand for quick navigation away without leaving the session UI.

@@ -420,8 +420,8 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
   from Focus Mode, whose target-style icon describes hiding distractions rather than changing
   the browser window.
 - **Keyboard shortcuts**: accessible via the "Keyboard shortcuts" item in the 3-dot
-  action menu, which opens a modal listing all available shortcuts. The `?` key
-  still toggles this overlay from anywhere.
+  action menu, which opens a modal listing all available shortcuts. The configured help
+  key (`?` by default) also toggles this overlay, and its labels use the current bindings.
 - **Distraction** (Page Visibility + window blur) is recorded per card for the report
   only; it never affects the grade.
 

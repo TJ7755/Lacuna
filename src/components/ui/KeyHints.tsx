@@ -1,17 +1,18 @@
 import { ModalBackdrop } from './ModalBackdrop';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { SHORTCUT_GROUPS } from '../../state/shortcuts';
-import { useShortcutBindings, formatBinding } from '../../state/shortcutBindings';
+import { loadBindings, keyMatches, formatBinding } from '../../state/shortcutBindings';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { CloseIcon } from './icons';
 
 /**
- * A keyboard-shortcuts cheatsheet, opened with "?" from anywhere. Its contents come from
+ * A keyboard-shortcuts cheatsheet, opened with the configured help key ("?" by default). Its contents come from
  * the shared SHORTCUT_GROUPS registry so it always matches the real handlers.
  */
 export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void }) {
   const trapRef = useFocusTrap(open);
-  const { bindings } = useShortcutBindings();
+  // A read-only view must refresh on reopen without persisting stale overrides.
+  const bindings = loadBindings();
 
   // Build shortcut groups from live bindings so the cheatsheet never drifts.
   const liveGroups = SHORTCUT_GROUPS.map((group) => ({
@@ -19,6 +20,9 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
     shortcuts: group.shortcuts.map((s) => {
       // Replace hardcoded keys with custom bindings for the Learn actions.
       const description = s.description.toLowerCase();
+      if (description.includes('show this help')) {
+        return { ...s, keys: [formatBinding(bindings.help)] };
+      }
       if (description.includes('show the answer')) {
         return { ...s, keys: [formatBinding(bindings.reveal)] };
       }
@@ -66,8 +70,10 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onKeyDown={(e) => {
-            if (e.key === 'Escape' || e.key === '?') {
+            if (e.ctrlKey || e.metaKey || e.altKey || e.nativeEvent.isComposing) return;
+            if (e.key === 'Escape' || keyMatches(e.nativeEvent, bindings.help)) {
               e.preventDefault();
+              e.stopPropagation();
               onClose();
             }
           }}

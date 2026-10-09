@@ -117,3 +117,15 @@ it('retains unmodified grading and shifted letter bindings', () => {
   fireEvent.keyDown(window, { key: 'Y', shiftKey: true });
   expect(callbacks.answer).toHaveBeenCalledWith(true);
 });
+
+it('uses the configured help key to open and close study hints', () => {
+  const callbacks = params({ bindings: { ...DEFAULT_BINDINGS, help: 'b' } });
+  const { rerender } = renderHook(({ hintsOpen }) => useLearnKeyboardShortcuts({ ...callbacks, hintsOpen }),
+    { initialProps: { hintsOpen: false } });
+  fireEvent.keyDown(window, { key: 'b' });
+  expect(callbacks.setHintsOpen).toHaveBeenCalledWith(true);
+  vi.mocked(callbacks.setHintsOpen).mockClear();
+  rerender({ hintsOpen: true });
+  fireEvent.keyDown(window, { key: 'b' });
+  expect(callbacks.setHintsOpen).toHaveBeenCalledWith(false);
+});

@@ -92,9 +92,9 @@ export function useLearnKeyboardShortcuts({
       ) {
         return;
       }
-      // The help overlay only listens for ? / Escape to close itself.
+      // The help overlay only listens for its configured key / Escape to close itself.
       if (hintsOpen) {
-        if (e.key === '?' || e.key === 'Escape') {
+        if (keyMatches(e, bindings.help) || e.key === 'Escape') {
           e.preventDefault();
           setHintsOpen(false);
         }
@@ -127,7 +127,7 @@ export function useLearnKeyboardShortcuts({
         setFocusChromeVisible(false);
         return;
       }
-      if (e.key === '?') {
+      if (keyMatches(e, bindings.help)) {
         e.preventDefault();
         setHintsOpen(true);
         return;
