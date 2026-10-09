@@ -42,7 +42,7 @@ export function parseMarkdownTable(input: string): ImportParseResult {
   const cards: ParsedCard[] = [];
   let skipped = 0;
 
-  const pipeLines = lines.filter((l) => /^\s*\|/.test(l));
+  const pipeLines = lines.filter((line) => line.includes('|'));
   if (pipeLines.length < 2) return { cards, skipped };
 
   const headerCells = splitMarkdownTableRow(pipeLines[0]);

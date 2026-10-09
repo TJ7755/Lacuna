@@ -24,9 +24,10 @@ app:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
     `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
     rows are skipped. Escaped final pipes remain cell content even when the closing separator
-    is omitted. Pipes and backslashes in cell content are escaped on export.
-  - **Markdown list** — three patterns: (1) definition-list style
-    (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
+    is omitted. Opening pipes are optional in headers, delimiter rows and card rows.
+    Pipes and backslashes in cell content are escaped on export.
+  - **Markdown list** — three patterns: (1) Q:/A: list items, including bold prefixes,
+    (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
     back); every answer line is retained. Indented list-item continuation lines stay with
     their question or answer, including nested answer lists.

@@ -84,6 +84,14 @@ export function detectFormat(input: string): FormatDetection {
   const lines = trimmed.split('\n');
   const nonBlankLines = lines.filter((l) => l.trim().length > 0);
 
+  // A delimiter row identifies a GFM table even when outer pipes are omitted.
+  const separatorIndex = nonBlankLines.findIndex((line) =>
+    line.includes('|') && isMarkdownTableSeparator(line),
+  );
+  if (separatorIndex > 0 && nonBlankLines[separatorIndex - 1].includes('|')) {
+    return { format: 'markdown-table', confidence: 0.95 };
+  }
+
   // Markdown table: non-blank lines starting with |.
   const pipeLines = nonBlankLines.filter((l) => /^\s*\|/.test(l));
   if (nonBlankLines.length >= 2 && pipeLines.length >= 2) {
