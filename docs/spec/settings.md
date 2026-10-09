@@ -272,3 +272,6 @@ defaults** is always available.
 
 
 [Specification index](../SPEC.md)
+
+The browser install action consumes its event immediately, including on dismissal;
+it becomes available again only when the browser supplies a fresh install event.
