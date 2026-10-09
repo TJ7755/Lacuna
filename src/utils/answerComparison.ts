@@ -38,11 +38,12 @@ const DEFAULT_OPTIONS: Required<AnswerComparisonOptions> = {
 
 /** Strip leading/trailing punctuation from a word, leaving internal punctuation intact. */
 function stripPunctuation(word: string): string {
-  return word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  return word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
 }
 
 function normaliseWord(word: string, options: Required<AnswerComparisonOptions>): string {
-  let result = word;
+  // Canonical forms represent the same letters, regardless of keyboard or import source.
+  let result = word.normalize('NFC');
   if (options.ignorePunctuation) result = stripPunctuation(result);
   if (options.ignoreCase) result = result.toLowerCase();
   return result;
