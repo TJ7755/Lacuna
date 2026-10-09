@@ -85,6 +85,7 @@ import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../../components/learn/types';
 import type { useToast } from '../../components/ui/Toast';
 import { linesModeSequencesByCard } from '../../db/linesModeCards';
+import { isLabelCardId } from '../../db/sequenceGeneration';
 import { occlusionDataByCard, type OcclusionCardData } from '../../db/occlusionStudy';
 import { filterSessionCardPool } from '../../db/search';
 import type { CardFilter } from '../../db/search';
@@ -334,6 +335,13 @@ export function useLearnSession({
   // Whether the current card was generated from a lines-mode Sequence (see
   // linesModeCards.ts) — drives the optional first-letter hint step in the question phase.
   const isLinesModeCard = current !== null && linesModeMapRef.current.has(current.id);
+  // A lines-mode line is studied by recitation (see recitation/recitationFlow.ts): Simple
+  // mode learns the whole sequence cumulatively, and scheduled sessions recite the line's
+  // chunk up to it. Label cards stay ordinary cards.
+  const recitationSequence =
+    current?.sequenceItemId && !isLabelCardId(current.sequenceItemId)
+      ? (linesModeMapRef.current.get(current.id) ?? null)
+      : null;
   // Cache sessionProgress so repeated calls while the card pool is unchanged don't recompute.
   const progressCacheRef = useRef<{ dirty: boolean; value: number }>({ dirty: true, value: 0 });
   const [summary, setSummary] = useState<SessionSummary | null>(null);
@@ -1457,6 +1465,19 @@ export function useLearnSession({
     distraction.setAnswerVisible(true);
   }, [distraction]);
 
+  /** Reveal a scheduled recitation, timing it per recited line for calibration. */
+  const revealRecitation = useCallback(
+    (lines: number) => {
+      setPhase((p) => {
+        if (p !== 'question') return p;
+        responseTime.current = (performance.now() - timerStart.current) / 1000 / Math.max(1, lines);
+        return 'answer';
+      });
+      distraction.setAnswerVisible(true);
+    },
+    [distraction],
+  );
+
   const hide = useCallback(() => {
     setPhase((p) => {
       if (p !== 'answer') return p;
@@ -1574,6 +1595,101 @@ export function useLearnSession({
       return { undoAvailable: false };
     },
     [answerUnit, finish, persistSimpleResume, reviewSessionKind, serveNext],
+  );
+
+  /** Item ids of a sequence's lines already mastered this session (a resumed pass). */
+  const recitationMasteredItemIds = useCallback(
+    (sequenceId: string) =>
+      new Set(
+        simpleQueue.current.flatMap((card) =>
+          card.sequenceItemId &&
+          simpleMastered.current.has(card.id) &&
+          linesModeMapRef.current.get(card.id)?.id === sequenceId
+            ? [card.sequenceItemId]
+            : [],
+        ),
+      ),
+    [],
+  );
+
+  /**
+   * Record one self-marked check of a cumulative recitation (Simple mode, lines-mode
+   * sequences). Each queued line gets one review per session, on its first recall;
+   * `masteredItemIds` completes those lines ('all' once the recitation is finished), and
+   * the session moves on once the whole sequence is mastered.
+   */
+  const answerRecitation = useCallback(
+    async (
+      results: readonly { itemId: string; correct: boolean }[],
+      responseTimeSec: number,
+      masteredItemIds: readonly string[] | 'all',
+    ) => {
+      if (!recitationSequence || !isSimpleMode) return;
+      const cards = new Map<string, Card>();
+      for (const card of simpleQueue.current) {
+        if (
+          card.sequenceItemId &&
+          !isLabelCardId(card.sequenceItemId) &&
+          linesModeMapRef.current.get(card.id)?.id === recitationSequence.id
+        ) {
+          cards.set(card.sequenceItemId, card);
+        }
+      }
+      const outcomes = new Map(sessionCardOutcomesRef.current);
+      const replace = (updated: Card) => {
+        cardsRef.current = cardsRef.current.map((c) => (c.id === updated.id ? updated : c));
+        simpleQueue.current = simpleQueue.current.map((c) => (c.id === updated.id ? updated : c));
+        cards.set(updated.sequenceItemId!, updated);
+      };
+      for (const { itemId, correct } of results) {
+        const card = cards.get(itemId);
+        const deck = card && answerUnit(card);
+        if (!card || !deck || events.current.some((event) => event.cardId === card.id)) continue;
+        const grade: Grade = correct ? 3 : 1;
+        // Recitation is not timed per line, so it leaves speed calibration untouched.
+        const { result } = await persistAnswer(
+          {
+            card,
+            eventId: makeId(),
+            sessionId: reviewSessionIdRef.current,
+            sessionKind: reviewSessionKind,
+            deck,
+            kind: reviewKindRef.current,
+            grade,
+            responseTimeSec,
+            distracted: false,
+            hintUsed: false,
+            correct,
+          },
+          deck.id,
+          undefined,
+        );
+        replace(result.card);
+        events.current = [
+          ...events.current,
+          { cardId: card.id, grade, correct, responseTimeSec, distracted: false },
+        ];
+        if (!correct) {
+          simpleWrong.current.add(card.id);
+          outcomes.set(card.id, 'wrong');
+        }
+      }
+      for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
+        const card = cards.get(itemId);
+        if (!card || simpleMastered.current.has(card.id)) continue;
+        simpleMastered.current.add(card.id);
+        simpleWrong.current.delete(card.id);
+        outcomes.set(card.id, 'correct');
+        if (lessonExposureIdRef.current) {
+          await upsertLessonCardExposure(lessonExposureIdRef.current, card.id);
+        }
+      }
+      sessionCardOutcomesRef.current = outcomes;
+      setSessionCardOutcomes(outcomes);
+      persistSimpleResume(outcomes);
+      if ([...cards.values()].every((card) => simpleMastered.current.has(card.id))) serveNext();
+    },
+    [answerUnit, isSimpleMode, persistSimpleResume, recitationSequence, reviewSessionKind, serveNext],
   );
 
   /**
@@ -2007,6 +2123,10 @@ export function useLearnSession({
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
+    recitationSequence,
+    recitationMasteredItemIds,
+    answerRecitation,
+    revealRecitation,
     occlusion: currentOcclusionData?.occlusion,
     occlusionAnswerText: currentOcclusionData?.answerText,
     summary,

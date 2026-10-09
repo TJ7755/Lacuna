@@ -206,7 +206,7 @@ describe('LearnMode course/lesson scope', () => {
     },
   );
 
-  it('waits for line-sequence classification before serving a line-specific prompt', async () => {
+  it('waits for line-sequence classification before serving a recitation', async () => {
     const course = await createCourse('Drama');
     const lesson = await createLesson(course.id, 'Scene one');
     const sequence = await createSequence(
@@ -251,7 +251,9 @@ describe('LearnMode course/lesson scope', () => {
       expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
       await act(async () => resolveLineMap(lineMap));
       await continueFromNotes();
-      expect(await findStudyFaceText('Next line?')).toBeInTheDocument();
+      // Lesson teaching learns lines-mode sequences by cumulative recitation.
+      expect(await screen.findByRole('button', { name: /^recite$/i })).toBeInTheDocument();
+      expect(screen.getByText('Where are you?')).toBeInTheDocument();
       expect(queryStudyFaceText('Next item?')).toBeUndefined();
     } finally {
       lookup.mockRestore();
