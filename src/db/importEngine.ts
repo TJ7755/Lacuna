@@ -117,7 +117,7 @@ export function detectFormat(input: string): FormatDetection {
   const hasAnswer = nonBlankLines.some((line) =>
     /^\s*(?:A(?:nswer)?|Back|Response|Definition)\s*[:.]/i.test(line),
   );
-  if (qaLines.length >= 2 || (qaLines.length > 0 && hasAnswer)) {
+  if (qaLines.length > 0 && hasAnswer) {
     return { format: 'plain-text', confidence: 0.8 };
   }
 
@@ -129,6 +129,10 @@ export function detectFormat(input: string): FormatDetection {
     if (maxCount >= 2) {
       return { format: 'csv', confidence: 0.75 };
     }
+  }
+
+  if (qaLines.length >= 2) {
+    return { format: 'plain-text', confidence: 0.8 };
   }
 
   return { format: 'plain-text', confidence: 0.4 };
@@ -476,3 +480,4 @@ export function parseImportAuto(
       );
   }
 }
+

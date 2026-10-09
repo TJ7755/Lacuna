@@ -434,3 +434,12 @@ it.each([
   });
   expect(result.skipped).toBe(0);
 });
+
+it('keeps comma-separated rows with question-like fronts classified as CSV', () => {
+  const input = 'Q: First,Answer one\nQ: Second,Answer two';
+  expect(detectFormat(input).format).toBe('csv');
+  expect(parseImportAuto(input).cards).toEqual([
+    { type: 'front_back', front: 'Q: First', back: 'Answer one' },
+    { type: 'front_back', front: 'Q: Second', back: 'Answer two' },
+  ]);
+});
