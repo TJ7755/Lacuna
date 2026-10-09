@@ -207,6 +207,10 @@ belongs to it; it also includes Lacuna's parser, verifier and renderer helpers.
 
 ### Numeric Question face
 
+Numeric answer specifications must evaluate to finite real constants. Authoring and import
+validation reject division by zero, overflow and non-real results in exact, tolerance and
+one-of answers, using the same evaluator as the study checker.
+
 A fixed Question with a v1 `numeric` payload renders its Markdown prompt and the same
 maths-expression input used by authoring. Submitting a valid expression runs `checkNumeric` against
 the payload's exact, tolerance or one-of specification and awards one mark or zero out of one. The

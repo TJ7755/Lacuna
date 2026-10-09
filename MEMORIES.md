@@ -273,3 +273,10 @@ animation defect, and stop the recording after verification.
 CI subscribes to the pull-request `edited` event so retargeted branches receive checks.
 Editing a PR description also restarts CI and cancels its current run. Finalise the
 review text before waiting for merge gates, rather than updating it mid-run.
+
+
+## Python file encoding on Windows
+
+Shell-piped Python scripts can encode new non-ASCII literals differently from source files.
+Use explicit UTF-8 reads/writes and Unicode escapes in piped scripts so test expectations
+and user-facing text do not acquire invalid characters.

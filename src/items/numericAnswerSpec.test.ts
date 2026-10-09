@@ -11,3 +11,16 @@ describe('numericAnswerSpecIsValid', () => {
     expect(numericAnswerSpecIsValid({ kind: 'anything', value: '4' })).toBe(false);
   });
 });
+
+describe('numeric answer evaluation', () => {
+  it.each(['1/0', '0/0', 'sqrt(-1)', '10^1000'])(
+    'rejects unevaluable constant %s in every answer shape',
+    (value) => {
+      expect(numericAnswerSpecIsValid({ kind: 'exact', value })).toBe(false);
+      expect(numericAnswerSpecIsValid({ kind: 'within', value, tolerance: 0.1 })).toBe(false);
+      expect(numericAnswerSpecIsValid({ kind: 'matches-one-of', values: ['4', value] })).toBe(
+        false,
+      );
+    },
+  );
+});

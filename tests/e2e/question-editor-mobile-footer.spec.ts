@@ -33,8 +33,12 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await save.click({ trial: true });
 
   await remove.click();
-  const confirm = page.getByRole('button', { name: 'Delete', exact: true });
-  const cancel = page.getByRole('button', { name: 'Cancel', exact: true });
+  // The outgoing trigger can remain mounted while the inline confirmation enters.
+  const confirmation = footer
+    .getByText('Delete this Question definition? Its attempt evidence will be retained.', { exact: true })
+    .locator('..');
+  const confirm = confirmation.getByRole('button', { name: 'Delete', exact: true });
+  const cancel = confirmation.getByRole('button', { name: 'Cancel', exact: true });
   await confirm.click({ trial: true });
   await cancel.click({ trial: true });
 });

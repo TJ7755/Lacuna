@@ -87,21 +87,22 @@ function parseAdvancedQuery(query: string): ParsedQuery {
   const filters: CardFilter[] = [];
   const textParts: string[] = [];
 
-  // Split on spaces, but keep quoted strings together.
-  const tokens = query.match(/[^\s"']+|"[^"]*"|'[^']*'/g) ?? [];
+  // A quoted value belongs to its operator; apostrophes inside words stay literal.
+  const tokens = query.match(/(?:[a-z]+:)?(?:"[^"]*"|'[^']*')|[^\s]+/gi) ?? [];
+  const unquote = (value: string) => (/^(".*"|'.*')$/s.test(value) ? value.slice(1, -1) : value);
   for (const token of tokens) {
-    const clean = token.replace(/^["']|["']$/g, '').trim();
+    const clean = unquote(token).trim();
     if (!clean) continue;
 
     const tagMatch = clean.match(/^tag:(.+)$/i);
     if (tagMatch) {
-      tags.push(normalise(tagMatch[1]!));
+      tags.push(normalise(unquote(tagMatch[1]!).trim()));
       continue;
     }
 
     const deckMatch = clean.match(/^deck:(.+)$/i);
     if (deckMatch) {
-      decks.push(normalise(deckMatch[1]!));
+      decks.push(normalise(unquote(deckMatch[1]!).trim()));
       continue;
     }
 
@@ -116,8 +117,8 @@ function parseAdvancedQuery(query: string): ParsedQuery {
         filter === 'suspended'
       ) {
         filters.push(filter as CardFilter);
+        continue;
       }
-      continue;
     }
 
     textParts.push(clean);
@@ -376,6 +377,7 @@ export function plainPreview(md: string, max = 120): string {
   const text = md
     .replace(/\{\{c\d+::(.*?)(?:::.*?)?\}\}/gs, '$1') // cloze -> the answer text, including multiline deletions
     .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+    .replace(/\[([^\]]*)\]\((?:\\.|[^\\)])*\)/g, '$1') // links -> their readable labels
     .replace(/[#*_`>~$]/g, '') // markdown punctuation
     .replace(/\s+/g, ' ')
     .trim();
