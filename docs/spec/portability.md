@@ -27,7 +27,8 @@ app:
   - **Markdown list** — three patterns: (1) definition-list style
     (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
-    back); every answer line is retained.
+    back); every answer line is retained. Indented list-item continuation lines stay with
+    their question or answer, including nested answer lists.
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
