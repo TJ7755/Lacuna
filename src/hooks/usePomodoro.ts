@@ -65,11 +65,11 @@ export function loadPomodoroSettings(): PomodoroSettings {
 function phaseDuration(p: PomodoroPhase, s: PomodoroSettings): number {
   switch (p) {
     case 'focus':
-      return s.workMinutes * 60;
+      return Math.ceil(s.workMinutes * 60);
     case 'shortBreak':
-      return s.shortBreakMinutes * 60;
+      return Math.ceil(s.shortBreakMinutes * 60);
     case 'longBreak':
-      return s.longBreakMinutes * 60;
+      return Math.ceil(s.longBreakMinutes * 60);
     default:
       return 0;
   }
@@ -150,33 +150,43 @@ export function usePomodoro() {
   // pause/resume boundaries so a background timer does not serialise to
   // localStorage every second; a restored timer is paused on app start anyway.
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-    try {
-      const runtime: PomodoroRuntime = {
+    const persistRuntime = (captureDeadline = false) => {
+      const remaining = captureDeadline && isRunning && deadlineRef.current !== null
+        ? Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
+        : secondsLeftRef.current;
+      let runtime: PomodoroRuntime = {
         phase,
-        secondsLeft: secondsLeftRef.current,
+        secondsLeft: remaining,
         sessionsCompleted,
         pendingBreakPhase,
       };
-      localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
-    } catch {
-      // Runtime persistence is optional; the timer still works without storage.
-    }
-    return () => {
+      if (captureDeadline && isRunning && remaining === 0) {
+        if (phase === 'focus') {
+          const completed = sessionsCompleted + 1;
+          runtime = {
+            ...runtime,
+            sessionsCompleted: completed,
+            pendingBreakPhase: completed % 4 === 0 ? 'longBreak' : 'shortBreak',
+          };
+        } else {
+          runtime = { ...runtime, phase: 'idle' };
+        }
+      }
       try {
-        const runtime: PomodoroRuntime = {
-          phase,
-          secondsLeft: secondsLeftRef.current,
-          sessionsCompleted,
-          pendingBreakPhase,
-        };
         localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
       } catch {
         // Runtime persistence is optional; the timer still works without storage.
       }
+    };
+    if (hasMountedRef.current) persistRuntime();
+    else hasMountedRef.current = true;
+
+    // Closing a browser page does not unmount React. Capture its elapsed deadline.
+    const onPageHide = () => persistRuntime(true);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      persistRuntime();
     };
   }, [isRunning, pendingBreakPhase, phase, sessionsCompleted]);
 
@@ -264,10 +274,12 @@ export function usePomodoro() {
   const acceptBreak = useCallback(() => {
     if (!pendingBreakPhase) return;
     clearTick();
+    const fresh = loadPomodoroSettings();
+    setSettings(fresh);
     setPhase(pendingBreakPhase);
     setPendingBreakPhase(null);
-    beginCountdown(durationForPhase(pendingBreakPhase));
-  }, [clearTick, durationForPhase, pendingBreakPhase, beginCountdown]);
+    beginCountdown(phaseDuration(pendingBreakPhase, fresh));
+  }, [clearTick, pendingBreakPhase, beginCountdown]);
 
   const deferBreak = useCallback(() => {
     if (!pendingBreakPhase) return;

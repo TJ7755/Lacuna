@@ -252,3 +252,86 @@ it('recovers a finite paused timer from corrupted non-finite runtime values', ()
   act(() => result.current.resume());
   expect(result.current.formattedTime).toBe('25:00');
 });
+
+it('saves the elapsed countdown when the page closes before another tick', () => {
+  const first = renderHook(() => usePomodoro());
+  act(() => first.result.current.startFocus());
+  act(() => {
+    vi.setSystemTime(Date.now() + 65_000);
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  const restored = renderHook(() => usePomodoro());
+  expect(restored.result.current.formattedTime).toBe('23:55');
+  expect(restored.result.current.isRunning).toBe(false);
+});
+
+it('uses the latest saved duration when accepting a pending break', () => {
+  savePomodoroSettings({ workMinutes: 1 });
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  act(() => vi.advanceTimersByTime(60_000));
+  savePomodoroSettings({ shortBreakMinutes: 8 });
+  act(() => result.current.acceptBreak());
+  expect(result.current.formattedTime).toBe('08:00');
+  expect(result.current.settings.shortBreakMinutes).toBe(8);
+  expect(result.current.progress).toBe(0);
+});
+
+it('starts fractional-minute phases with whole seconds in the countdown', () => {
+  savePomodoroSettings({ workMinutes: 1.001 });
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  expect(result.current.secondsLeft).toBe(61);
+  expect(result.current.formattedTime).toBe('01:01');
+  expect(result.current.progress).toBe(0);
+  act(() => vi.advanceTimersByTime(1000));
+  expect(result.current.formattedTime).toBe('01:00');
+});
+
+it('restores a pending break when focus expired before the closing page could tick', () => {
+  savePomodoroSettings({ workMinutes: 1 });
+  const first = renderHook(() => usePomodoro());
+  act(() => first.result.current.startFocus());
+  act(() => {
+    vi.setSystemTime(Date.now() + 90_000);
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  const restored = renderHook(() => usePomodoro());
+  expect(restored.result.current.secondsLeft).toBe(0);
+  expect(restored.result.current.sessionsCompleted).toBe(1);
+  expect(restored.result.current.pendingBreakPhase).toBe('shortBreak');
+  expect(restored.result.current.isRunning).toBe(false);
+  act(() => restored.result.current.resume());
+  expect(restored.result.current.isRunning).toBe(false);
+});
+
+it('keeps a paused countdown unchanged when the page closes later', () => {
+  const first = renderHook(() => usePomodoro());
+  act(() => first.result.current.startFocus());
+  act(() => vi.advanceTimersByTime(5_000));
+  act(() => first.result.current.pause());
+  act(() => {
+    vi.setSystemTime(Date.now() + 65_000);
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  const restored = renderHook(() => usePomodoro());
+  expect(restored.result.current.formattedTime).toBe('24:55');
+  expect(restored.result.current.isRunning).toBe(false);
+});
+
+it('restores idle when a break expired before the closing page could tick', () => {
+  savePomodoroSettings({ workMinutes: 1, shortBreakMinutes: 1 });
+  const first = renderHook(() => usePomodoro());
+  act(() => first.result.current.startFocus());
+  act(() => vi.advanceTimersByTime(60_000));
+  act(() => first.result.current.acceptBreak());
+  act(() => {
+    vi.setSystemTime(Date.now() + 90_000);
+    window.dispatchEvent(new Event('pagehide'));
+  });
+  const restored = renderHook(() => usePomodoro());
+  expect(restored.result.current.phase).toBe('idle');
+  expect(restored.result.current.secondsLeft).toBe(0);
+  expect(restored.result.current.sessionsCompleted).toBe(1);
+  expect(restored.result.current.isRunning).toBe(false);
+});
