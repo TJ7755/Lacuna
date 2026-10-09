@@ -1,0 +1,1 @@
+- Locate Markdown table headers from their delimiter rows and exclude surrounding pipe-containing prose from card imports.
