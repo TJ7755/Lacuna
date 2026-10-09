@@ -38,9 +38,9 @@ export function parseMarkdownList(input: string): ImportParseResult {
 
   // Pattern 1: List items with Q:/A: or **Q:**/**A:** inside them.
   const qaPattern =
-    /^\s*[-*+]\s+(?:\*\*)?(?:Q(?:uestion)?|Front|Prompt)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
+    /^\s*(?:[-*+]|\d+[.)])\s+(?:\*\*)?(?:Q(?:uestion)?|Front|Prompt)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
   const aaPattern =
-    /^\s*[-*+]\s+(?:\*\*)?(?:A(?:nswer)?|Back|Response)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
+    /^\s*(?:[-*+]|\d+[.)])\s+(?:\*\*)?(?:A(?:nswer)?|Back|Response)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/is;
 
   let currentQ: string | null = null;
 
