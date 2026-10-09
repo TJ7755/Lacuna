@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
 import type { Course, Card } from '../db/types';
 
@@ -190,12 +190,17 @@ describe('Dashboard', () => {
   });
 
   it('renders skeleton when data is loading', async () => {
-    render(<Dashboard />);
-    // The placeholder is withheld until loading has lasted long enough to be worth
-    // showing, so a load that resolves quickly never flashes one. See DelayedFallback.
-    await waitFor(() => {
+    vi.useFakeTimers();
+    try {
+      render(<Dashboard />);
+      // The placeholder is withheld for 250ms so fast loads never flash one.
+      await act(() => vi.advanceTimersByTime(249));
+      expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
+      await act(() => vi.advanceTimersByTime(1));
       expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('withholds the loading skeleton while a load could still finish instantly', () => {
