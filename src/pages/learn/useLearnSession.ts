@@ -108,6 +108,7 @@ import {
   loadSimpleSession,
   saveSimpleSession,
 } from './simpleSessionPersistence';
+import { inRecitationOrder } from './recitation/recitationFlow';
 import { resolveLearnSessionScope } from './sessionScope';
 import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
 import {
@@ -406,6 +407,21 @@ export function useLearnSession({
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
+  // Simple mode's progress bar highlights the recited lines rather than the card that
+  // opened the recitation; SequenceRecitation reports them as item ids.
+  const [recitationFocus, setRecitationFocus] = useState<string[]>([]);
+  const currentCardIds = useMemo(() => {
+    if (!current) return [];
+    if (!recitationSequence || !isSimpleMode) return [current.id];
+    const ids = cardsRef.current.flatMap((card) =>
+      card.sequenceItemId &&
+      recitationFocus.includes(card.sequenceItemId) &&
+      linesModeMapRef.current.get(card.id)?.id === recitationSequence.id
+        ? [card.id]
+        : [],
+    );
+    return ids.length > 0 ? ids : [current.id];
+  }, [current, recitationSequence, isSimpleMode, recitationFocus]);
   const lessonExposureIdRef = useRef<string | null>(null);
   const lessonHasMembersRef = useRef(false);
   const practiceSessionRef = useRef<{
@@ -1287,7 +1303,9 @@ export function useLearnSession({
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
       setSchedulerProgress(sessionCompletionProgress(cards, ctx, sessionCardOutcomesRef.current));
-      setSessionCardIds(cards.map((card) => card.id));
+      // Simple mode recites each lines-mode sequence whole, so its lines sit together.
+      const sessionOrder = isSimpleMode ? inRecitationOrder(cards, linesModeMapRef.current) : cards;
+      setSessionCardIds(sessionOrder.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
       if (!isSimpleMode) {
@@ -1314,7 +1332,7 @@ export function useLearnSession({
               const card = cardsById.get(cardId);
               return card ? [card] : [];
             })
-          : [...cards];
+          : [...sessionOrder];
         simpleMastered.current = new Set(resumed?.masteredCardIds ?? []);
         simpleWrong.current = new Set(
           [...(resumed?.outcomes ?? [])]
@@ -2123,6 +2141,8 @@ export function useLearnSession({
     isLinesModeCard,
     recitationSequence,
     recitationMasteredItemIds,
+    currentCardIds,
+    setRecitationFocus,
     answerRecitation,
     revealRecitation,
     occlusion: currentOcclusionData?.occlusion,

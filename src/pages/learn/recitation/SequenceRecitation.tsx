@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MarkdownView } from '../../../components/markdown/MarkdownView';
+import { MarkdownView, markdownAnswerCorrect } from '../../../components/markdown/MarkdownView';
 import { Button } from '../../../components/ui/Button';
-import { FileTextIcon } from '../../../components/ui/icons';
+import { CheckIcon, CloseIcon, FileTextIcon } from '../../../components/ui/icons';
 import { presetForSequence } from '../../../db/sequencePresets';
 import type { Sequence } from '../../../db/types';
 import type { AnswerComparisonOptions } from '../../../utils/answerComparison';
@@ -37,6 +37,8 @@ interface Props {
    * that line is graded. Replaces the cumulative flow.
    */
   review?: { itemId: string; onReveal: (lines: number) => void; onGrade: (correct: boolean) => void };
+  /** Reports the item ids of the lines in focus (the new line, or those being recited). */
+  onFocusLines?: (itemIds: string[]) => void;
 }
 
 function CueLine({ line }: { line: RecitationLine }) {
@@ -49,7 +51,14 @@ function CueLine({ line }: { line: RecitationLine }) {
 }
 
 /** Cumulative recitation of one lines-mode sequence; see recitationFlow.ts. */
-export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCheck, review }: Props) {
+export function SequenceRecitation({
+  sequence,
+  masteredItemIds,
+  comparison,
+  onCheck,
+  review,
+  onFocusLines,
+}: Props) {
   const plan = useMemo(() => recitationPlan(sequence), [sequence]);
   const [state, setState] = useState<RecitationState>(() =>
     initialRecitationState(plan, masteredItemIds),
@@ -68,6 +77,11 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
   const mineTarget = target.filter((i) => plan.lines[i].mine);
   const shown = phase === 'present' ? presentedLines(plan, step) : target;
   const terminology = presetForSequence(sequence).terminology;
+  const focusKey = shown.filter((i) => plan.lines[i].mine).map((i) => plan.lines[i].itemId).join('\n');
+
+  useEffect(() => {
+    onFocusLines?.(focusKey ? focusKey.split('\n') : []);
+  }, [focusKey, onFocusLines]);
 
   useEffect(() => {
     if (phase === 'recall' && !checking) recallStart.current = performance.now();
@@ -95,6 +109,24 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
       return;
     }
     if (!checking) {
+      // Typed lines are marked by comparison; the learner only overrides a mark.
+      const marked = new Set(
+        input === 'type'
+          ? mineTarget.flatMap((i) =>
+            markdownAnswerCorrect(plan.lines[i].value, {
+              answer: typed[plan.lines[i].itemId] ?? '',
+              options: comparison,
+            })
+              ? []
+              : [plan.lines[i].itemId],
+          )
+          : [],
+      );
+      if (input === 'type' && marked.size === 0 && !review) {
+        await record(marked);
+        return;
+      }
+      setWrong(marked);
       setChecking(true);
       review?.onReveal(mineTarget.length);
       return;
@@ -103,6 +135,10 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
       review.onGrade(!wrong.has(review.itemId));
       return;
     }
+    await record(wrong);
+  }
+
+  async function record(wrong: ReadonlySet<string>) {
     setSaving(true);
     const elapsed = (performance.now() - recallStart.current) / 1000;
     const { state: next, mastered } = advanceRecitation(plan, state, wrong);
@@ -222,19 +258,22 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
                 aria-label={`${terminology.item} ${position}: ${isWrong ? 'marked wrong' : 'correct'}`}
                 onClick={() => toggleWrong(line.itemId)}
                 className={cn(
-                  'w-full rounded-lg border px-4 py-3 text-left transition-colors',
-                  isWrong
-                    ? 'border-negative/50 bg-negative/10'
-                    : 'border-line hover:border-line-strong',
+                  'flex w-full items-start gap-3 rounded-lg px-4 py-3 text-left transition-colors',
+                  isWrong ? 'bg-negative/10 hover:bg-negative/15' : 'hover:bg-ink/5',
                 )}
               >
                 <MarkdownView
                   source={line.value}
-                  className="text-ink"
+                  className="min-w-0 flex-1 text-ink"
                   typedAnswerFeedback={
                     input === 'type' ? { answer: answer ?? '', options: comparison } : undefined
                   }
                 />
+                {isWrong ? (
+                  <CloseIcon width={18} height={18} className="mt-1 shrink-0 text-negative" aria-hidden />
+                ) : (
+                  <CheckIcon width={18} height={18} className="mt-1 shrink-0 text-positive" aria-hidden />
+                )}
               </button>
             </li>
           );
@@ -246,7 +285,7 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
           <p className="text-sm text-ink-soft">
             {wrong.size > 0 && !review
               ? `Recite from the start of this ${step.kind === 'join' ? 'pass' : terminology.chunkLabel.toLowerCase()} again.`
-              : 'Tap any line you got wrong.'}
+              : 'Tap a line to change its mark.'}
           </p>
         )}
         <Button

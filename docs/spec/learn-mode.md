@@ -367,7 +367,11 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
   **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
   titled with the sequence name, with its progress in plain text beneath. After **Check** the source is shown with the typed-answer diff
-  (global answer strictness), and the learner marks wrong lines; marking is the only grade.
+  (global answer strictness). Typed lines arrive pre-marked by that comparison and the
+  learner taps a line to overturn its mark; when every typed line matches, the check passes
+  without a marking step. Aloud recall is marked by hand. The mark is the only grade.
+- The Simple-mode progress bar holds each sequence's lines together in poem order, and the
+  pips lit as current are the lines being presented or recited.
 - Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
   timed as the check's duration per recited line and excluded from speed calibration. Lines
   become mastered, with lesson exposure, as their chunk is completed, so a resumed session

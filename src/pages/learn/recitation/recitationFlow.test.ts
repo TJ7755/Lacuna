@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { Sequence, SequenceItem } from '../../../db/types';
+import type { Card, Sequence, SequenceItem } from '../../../db/types';
 import {
   advanceRecitation,
   initialRecitationState,
+  inRecitationOrder,
   presentedLines,
   recitationPlan,
   targetLines,
@@ -132,5 +133,15 @@ describe('cumulative recitation', () => {
     );
     const state = check(script, initialRecitationState(script)).state;
     expect(ids(script, presentedLines(script, state.step))).toEqual(['i1', 'i2', 'i3']);
+  });
+});
+
+describe('inRecitationOrder', () => {
+  it('gathers a sequence\'s line cards in poem order at its first card', () => {
+    const poem = sequence([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+    const card = (id: string, sequenceItemId?: string) => ({ id, sequenceItemId }) as Card;
+    const cards = [card('x'), card('c3', 'c'), card('y'), card('a1', 'a'), card('b2', 'b')];
+    const map = new Map([['a1', poem], ['b2', poem], ['c3', poem]]);
+    expect(inRecitationOrder(cards, map).map((c) => c.id)).toEqual(['x', 'a1', 'b2', 'c3', 'y']);
   });
 });

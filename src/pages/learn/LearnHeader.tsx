@@ -124,7 +124,7 @@ export function LearnHeader({
   onSuspend,
   onShowShortcuts,
   m,
-  currentCardId,
+  currentCardIds,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -156,7 +156,8 @@ export function LearnHeader({
   onSuspend: () => void;
   onShowShortcuts: () => void;
   m: number;
-  currentCardId: string | null;
+  /** Cards in focus: the current card, or every line being recited. */
+  currentCardIds: readonly string[];
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -219,7 +220,7 @@ export function LearnHeader({
             <SessionSegments
               cardIds={sessionCardIds}
               outcomes={sessionCardOutcomes}
-              currentCardId={currentCardId}
+              currentCardIds={currentCardIds}
               value={displayedProgress}
               label={progressName}
             />
@@ -385,17 +386,17 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
 function SessionSegments({
   cardIds,
   outcomes,
-  currentCardId,
+  currentCardIds,
   value,
   label,
 }: {
   cardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
-  currentCardId: string | null;
+  currentCardIds: readonly string[];
   value: number;
   label: string;
 }) {
-  const currentIndex = currentCardId === null ? -1 : cardIds.indexOf(currentCardId);
+  const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
     currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
   const maxSegments = 120;
@@ -422,7 +423,7 @@ function SessionSegments({
       </span>
       <div className="flex h-2 w-full gap-1" aria-hidden="true">
         {groups.map((group) => {
-          const current = currentCardId !== null && group.includes(currentCardId);
+          const current = group.some((id) => currentCardIds.includes(id));
           const groupOutcomes = group.map((id) => outcomes.get(id));
           const status = current
             ? 'current'

@@ -289,25 +289,38 @@ describe('LearnMode course/lesson scope', () => {
     await continueFromNotes();
     fireEvent.click(await screen.findByRole('button', { name: /^recite$/i }));
     fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
-      target: { value: 'Where are you?' },
+      target: { value: 'Where is it?' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    const line1Toggle = screen.getByRole('button', { name: 'line 1: correct' });
-    fireEvent.click(line1Toggle);
+    // A mistyped line arrives marked wrong.
     expect(screen.getByRole('button', { name: 'line 1: marked wrong' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );
     // Try again sends the chunk back to recall with line 1 still unlocked.
     fireEvent.click(screen.getByRole('button', { name: /^try again$/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /^check$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
+      target: { value: 'Where are you?' },
+    });
+    // A matching recitation needs no marking.
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
 
-    // Line 2 is presented only once line 1 has passed.
+    // Line 2 is presented only once line 1 has passed, and the bar follows it.
     expect(await screen.findByText('I am here.')).toBeInTheDocument();
+    const pips = () =>
+      [...document.querySelectorAll('[data-session-card-status]')].map((pip) =>
+        pip.getAttribute('data-session-card-status'),
+      );
+    await waitFor(() => expect(pips()).toEqual(['wrong', 'current']));
     fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /^check$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
+    await waitFor(() => expect(pips()).toEqual(['current', 'current']));
+    fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
+      target: { value: 'Where are you?' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'line 2' }), {
+      target: { value: 'I am here.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
 
     await screen.findByRole('heading', {
       name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
@@ -370,7 +383,11 @@ describe('LearnMode course/lesson scope', () => {
     const dueItemId = dueBox.dataset.line!;
     const dueLabel = dueBox.getAttribute('aria-label')!;
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    fireEvent.click(screen.getByRole('button', { name: `${dueLabel}: correct` }));
+    // Left blank, the due line arrives already marked wrong.
+    expect(screen.getByRole('button', { name: `${dueLabel}: marked wrong` })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
     fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
 
     const dueCard = cards.find((card) => card.sequenceItemId === dueItemId)!;
