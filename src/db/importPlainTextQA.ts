@@ -1,5 +1,6 @@
 import { hasCloze } from '../utils/cloze';
 import type { ImportParseResult, ParsedCard } from './import';
+import { parseMarkdownList } from './importMarkdownList';
 
 /** Separator patterns and their lengths, ordered by specificity. */
 const SEPARATORS = [
@@ -100,5 +101,10 @@ export function parsePlainTextQA(input: string): ImportParseResult {
     skipped++;
   }
 
+  // Plain-text block imports share the existing first-line/front, remaining-lines/back parser.
+  if (cards.length === 0 && /\n\s*\n/.test(trimmed)) {
+    const blocks = parseMarkdownList(trimmed);
+    if (blocks.cards.length > 0) return blocks;
+  }
   return { cards, skipped };
 }

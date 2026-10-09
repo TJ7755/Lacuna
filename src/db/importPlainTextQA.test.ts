@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { parsePlainTextQA } from './importEngine';
+import { parsePlainTextQA, parseImportAuto } from './importEngine';
 
 it.each(['A: First reason', 'First reason'])(
   'preserves continuation lines in prefixed plain-text answers starting with %s',
@@ -17,4 +17,14 @@ it.each(['A: First reason', 'First reason'])(
 
 it('counts a prefixed question without an answer once', () => {
   expect(parsePlainTextQA('Q: Unanswered')).toEqual({ cards: [], skipped: 1 });
+});
+
+it('imports the blank-line separated plain-text blocks advertised by the import panel', () => {
+  expect(parseImportAuto('First question\nFirst answer\nMore detail\n\nSecond question\nSecond answer')).toEqual({
+    cards: [
+      { type: 'front_back', front: 'First question', back: 'First answer\nMore detail' },
+      { type: 'front_back', front: 'Second question', back: 'Second answer' },
+    ],
+    skipped: 0,
+  });
 });
