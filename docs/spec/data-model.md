@@ -209,7 +209,8 @@ createdAt }` — `items` is ordered and stored inline (sequences are small); `pr
   card front (keyboard: `h`) that advances no hint -> first letters -> first words:
   - Step 1, first letters: the answer reduced to each word's initial letter
     (`firstLetterHint` in `src/utils/firstLetterHint.ts`, e.g. "To be, or not to be" ->
-    "T b, o n t b"; punctuation kept in place, whitespace normalised).
+    "T b, o n t b"; punctuation kept in place, whitespace normalised). Combining
+    marks stay with the initial letter; marks belonging to hidden letters are removed.
   - Step 2, first words: the answer reduced to the first word of each clause/sentence
     chunk (`firstWordsHint` in `src/utils/firstWordsHint.ts`, e.g. "To be, or not to be,
     that is the question" -> "To…, or…, that…"; boundary punctuation kept in place).

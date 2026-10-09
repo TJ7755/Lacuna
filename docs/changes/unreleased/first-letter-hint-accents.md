@@ -1,0 +1,1 @@
+- Fixed first-letter hints moving combining accents from hidden letters onto the visible initial; accents belonging to the initial remain intact.
