@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { KeyHints } from './KeyHints';
+import { loadBindings, saveBindings, DEFAULT_BINDINGS } from '../../state/shortcutBindings';
 
 vi.mock('../../state/shortcuts', () => ({
   SHORTCUT_GROUPS: [
@@ -14,29 +15,14 @@ vi.mock('../../state/shortcuts', () => ({
     {
       title: 'Navigation',
       shortcuts: [
+        { description: 'Show this help', keys: ['?'] },
         { description: 'Open search', keys: ['/'] },
       ],
     },
   ],
 }));
 
-vi.mock('../../state/shortcutBindings', () => ({
-  useShortcutBindings: () => ({
-    bindings: {
-      reveal: { key: 'Space', ctrl: false, meta: false, alt: false, shift: false },
-      yes: { key: 'y', ctrl: false, meta: false, alt: false, shift: false },
-      no: { key: 'n', ctrl: false, meta: false, alt: false, shift: false },
-      again: { key: '1', ctrl: false, meta: false, alt: false, shift: false },
-      hard: { key: '2', ctrl: false, meta: false, alt: false, shift: false },
-      good: { key: '3', ctrl: false, meta: false, alt: false, shift: false },
-      easy: { key: '4', ctrl: false, meta: false, alt: false, shift: false },
-      edit: { key: 'e', ctrl: false, meta: false, alt: false, shift: false },
-      focus: { key: 'f', ctrl: false, meta: false, alt: false, shift: false },
-      undo: { key: 'u', ctrl: false, meta: false, alt: false, shift: false },
-    },
-  }),
-  formatBinding: (b: { key: string }) => b.key,
-}));
+beforeEach(() => localStorage.clear());
 
 describe('KeyHints', () => {
   it('renders nothing when closed', () => {
@@ -75,4 +61,29 @@ describe('KeyHints', () => {
     const closeBtn = screen.getByLabelText('Close');
     expect(closeBtn).toBeInTheDocument();
   });
+});
+
+it('refreshes displayed bindings when reopened and closes with the configured help key', () => {
+  const onClose = vi.fn();
+  const { rerender } = render(<KeyHints open={false} onClose={onClose} />);
+  saveBindings({ ...DEFAULT_BINDINGS, help: 'b', yes: 'j' });
+  rerender(<KeyHints open onClose={onClose} />);
+  expect(screen.getByText('b')).toBeInTheDocument();
+  expect(screen.getByText('j')).toBeInTheDocument();
+  fireEvent.keyDown(screen.getByTestId('keyhints-dialog'), { key: 'b' });
+  expect(onClose).toHaveBeenCalledOnce();
+});
+
+it('does not overwrite newer bindings from a closed help view', async () => {
+  vi.useFakeTimers();
+  try {
+    const { unmount } = render(<KeyHints open={false} onClose={vi.fn()} />);
+    const updated = { ...DEFAULT_BINDINGS, help: 'b', yes: 'j' };
+    saveBindings(updated);
+    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    expect(loadBindings()).toEqual(updated);
+    unmount();
+  } finally {
+    vi.useRealTimers();
+  }
 });

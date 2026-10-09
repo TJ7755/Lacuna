@@ -42,7 +42,21 @@ export function parseMarkdownTable(input: string): ImportParseResult {
   const cards: ParsedCard[] = [];
   let skipped = 0;
 
-  const pipeLines = lines.filter((line) => line.includes('|'));
+  // A GFM delimiter identifies the real header; surrounding prose may contain pipes.
+  const separatorIndex = lines.findIndex(
+    (line, index) =>
+      index > 0 &&
+      line.includes('|') &&
+      isMarkdownTableSeparator(line) &&
+      lines[index - 1].includes('|'),
+  );
+  let tableLines = lines;
+  if (separatorIndex > 0) {
+    const start = separatorIndex - 1;
+    const end = lines.findIndex((line, index) => index > separatorIndex && !line.includes('|'));
+    tableLines = lines.slice(start, end === -1 ? undefined : end);
+  }
+  const pipeLines = tableLines.filter((line) => line.includes('|'));
   if (pipeLines.length < 2) return { cards, skipped };
 
   const headerCells = splitMarkdownTableRow(pipeLines[0]);

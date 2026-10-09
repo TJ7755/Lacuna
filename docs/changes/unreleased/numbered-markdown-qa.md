@@ -1,0 +1,1 @@
+- Strip question and answer labels from numbered Markdown Q/A lists while retaining indented continuation lines.

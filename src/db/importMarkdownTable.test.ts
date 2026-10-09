@@ -18,3 +18,10 @@ it.each([
     skipped: 0,
   });
 });
+
+it('uses the delimiter row to locate a table amongst pipe-containing prose', () => {
+  expect(parseImportAuto('Compare A | B first.\n\nFront | Back\n--- | ---\nWhy? | Because.\n\nOther | prose')).toEqual({
+    cards: [{ type: 'front_back', front: 'Why?', back: 'Because.' }],
+    skipped: 0,
+  });
+});

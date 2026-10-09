@@ -25,8 +25,11 @@ app:
     `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
     rows are skipped. Escaped final pipes remain cell content even when the closing separator
     is omitted. Opening pipes are optional in headers, delimiter rows and card rows.
+    A delimiter row identifies the actual table header; surrounding prose is excluded,
+    even when it contains pipes. Tables without delimiter rows retain their existing fallback.
     Pipes and backslashes in cell content are escaped on export.
-  - **Markdown list** — three patterns: (1) Q:/A: list items, including bold prefixes,
+  - **Markdown list** — three patterns: (1) Q:/A: list items, including bold prefixes
+    and numbered markers (the labels are removed from imported card text),
     (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
     back); every answer line is retained. Indented list-item continuation lines stay with

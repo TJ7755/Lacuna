@@ -344,6 +344,28 @@ describe('QuestionLearnMode', () => {
     await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(expect.any(String)));
   });
 
+  it('retains unload ownership as soon as an attempt starts, before passive effects', async () => {
+    let startedId: string | undefined;
+    mocks.start.mockImplementationOnce((input: { sessionId: string; attemptId: string }) => ({
+      then(resolve: (attempt: QuestionAttempt) => void) {
+        startedId = input.attemptId;
+        resolve(shownAttempt(input));
+        // Unload immediately after promise resolution, before React's passive effects.
+        queueMicrotask(() => window.dispatchEvent(new Event('pagehide')));
+      },
+    }));
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(startedId));
+    expect(startedId).toBeDefined();
+    expect(mocks.abandon).toHaveBeenCalledTimes(1);
+  });
+
   it('abandons an attempt that finishes starting after the session unmounts', async () => {
     let resolveStart: ((attempt: QuestionAttempt) => void) | undefined;
     let startInput: { sessionId: string; attemptId: string } | undefined;

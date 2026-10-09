@@ -41,7 +41,8 @@ browser back open one modal decision. **Stay** is focused by default and preserv
 answer. Confirmed departure states the unique answered count, retains already committed evidence
 and abandons only the current presentation. Reload and window close use the browser's native unload
 decision. Loading, lesson notes, empty, failed-start and completed states do not manufacture a
-warning when no work can be lost.
+warning when no work can be lost. A Question attempt becomes owned by the unload handler as soon
+as its start resolves, before React effects run, so an immediate departure still abandons it.
 
 For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
@@ -444,8 +445,8 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   from Focus Mode, whose target-style icon describes hiding distractions rather than changing
   the browser window.
 - **Keyboard shortcuts**: accessible via the "Keyboard shortcuts" item in the 3-dot
-  action menu, which opens a modal listing all available shortcuts. The `?` key
-  still toggles this overlay from anywhere.
+  action menu, which opens a modal listing all available shortcuts. The configured help
+  key (`?` by default) also toggles this overlay, and its labels use the current bindings.
 - **Distraction** (Page Visibility + window blur) is recorded per card for the report
   only; it never affects the grade.
 

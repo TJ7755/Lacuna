@@ -76,19 +76,25 @@ export function useLearnKeyboardShortcuts({
 }: UseLearnKeyboardShortcutsParams) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat || e.defaultPrevented || editing) return;
-      // While the user is typing into any input, textarea, or content-editable
+      if (
+        e.repeat || e.defaultPrevented || e.isComposing ||
+        e.ctrlKey || e.metaKey || e.altKey || editing
+      ) return;
+      // While the user is typing into any input, textarea, select, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
       ) {
         return;
       }
-      // The help overlay only listens for ? / Escape to close itself.
+      // The help overlay only listens for its configured key / Escape to close itself.
       if (hintsOpen) {
-        if (e.key === '?' || e.key === 'Escape') {
+        if (keyMatches(e, bindings.help) || e.key === 'Escape') {
           e.preventDefault();
           setHintsOpen(false);
         }
@@ -121,7 +127,7 @@ export function useLearnKeyboardShortcuts({
         setFocusChromeVisible(false);
         return;
       }
-      if (e.key === '?') {
+      if (keyMatches(e, bindings.help)) {
         e.preventDefault();
         setHintsOpen(true);
         return;

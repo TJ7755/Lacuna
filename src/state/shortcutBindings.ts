@@ -61,8 +61,15 @@ function readStoredBindings(): Partial<ShortcutBindings> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<ShortcutBindings>;
-      return parsed;
+      const parsed: unknown = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+      const stored = parsed as Record<string, unknown>;
+      const bindings: Partial<ShortcutBindings> = {};
+      for (const action of Object.keys(DEFAULT_BINDINGS) as LearnAction[]) {
+        const value = stored[action];
+        if (typeof value === 'string' && value.length > 0) bindings[action] = value;
+      }
+      return bindings;
     }
   } catch {
     // Invalid stored JSON; fall back to defaults.

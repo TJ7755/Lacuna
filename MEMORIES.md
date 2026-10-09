@@ -300,3 +300,21 @@ A saved card appears in the live list before the editor confirmation delay ends.
 Cancel delayed returns as the route starts exiting (`useIsPresent`), on unmount and
 card-identity changes, including async saves that finish after departure; otherwise
 navigation to Share or Settings can be redirected to Cards.
+
+## Editor history follows input changes
+
+Track undo history from `onChange`, because paste, context-menu edits and other input
+methods need not send keydown. Flush pending history before undo or redo so the debounce
+does not lose recent text or retain a stale redo branch.
+
+## Read-only settings views must not persist
+
+`useShortcutBindings` debounces writes as well as reading. Display-only help views
+should read `loadBindings` on render; mounting the writing hook retains stale values
+and can overwrite newer settings when its debounce fires.
+
+## Browser lifecycle ownership must be immediate
+
+Unload events can arrive between an async attempt starting and React passive effects.
+Update the active-attempt ref when start resolves, as answer writes already do, so
+pagehide can abandon the persisted presentation in that interval.

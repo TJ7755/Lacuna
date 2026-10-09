@@ -24,3 +24,12 @@ it('keeps nested ordered answer lists inside their parent card', () => {
     skipped: 0,
   });
 });
+
+it.each(['1.', '1)', '-'])('strips Q/A labels from %s Markdown list items', (marker) => {
+  const nextMarker = marker.startsWith('1') ? marker.replace('1', '2') : marker;
+  const input = `${marker} **Question:** Why?\n${nextMarker} **Answer:** First reason\n${' '.repeat(nextMarker.length + 1)}Second reason`;
+  expect(parseImportAuto(input)).toEqual({
+    cards: [{ type: 'front_back', front: 'Why?', back: 'First reason\nSecond reason' }],
+    skipped: 0,
+  });
+});
