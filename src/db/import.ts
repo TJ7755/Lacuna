@@ -7,6 +7,7 @@
 
 import type { AnswerMode, CardType, ItemPayload } from './types';
 import { hasCloze } from '../utils/cloze';
+import { parseCardExportRows } from './importCardExport';
 
 /** A card ready to be created: the same shape createCards() consumes. */
 export interface ParsedCard {
@@ -35,7 +36,7 @@ const DEFAULT_ROW_SEPARATOR = '\n';
  * opens a field at its very start; inside a quoted field a doubled quote ("") is a
  * literal quote, and the field/row separators are treated as ordinary text.
  */
-function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[][] {
+export function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -130,7 +131,11 @@ export function parseImport(
   const field = fieldSeparator || DEFAULT_FIELD_SEPARATOR;
   const row = rowSeparator || DEFAULT_ROW_SEPARATOR;
 
-  for (const rawFields of splitDelimited(raw, field, row)) {
+  const rows = splitDelimited(raw, field, row);
+  const exported = parseCardExportRows(rows);
+  if (exported) return exported;
+
+  for (const rawFields of rows) {
     const fields = rawFields.map((f) => f.trim());
     if (fields.every((f) => f.length === 0)) continue; // blank row
 

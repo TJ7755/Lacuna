@@ -7,7 +7,11 @@
 // paste, file upload, clipboard detection, or share-code import.
 
 import { hasCloze } from '../utils/cloze';
-import { parseImport, type ParsedCard, type ImportParseResult } from './import';
+import { parseImport, splitDelimited, type ParsedCard, type ImportParseResult } from './import';
+import { isMarkdownTableSeparator, parseMarkdownTable } from './importMarkdownTable';
+import { parseMarkdownList } from './importMarkdownList';
+
+export { parseMarkdownTable, parseMarkdownList };
 
 // ---------------------------------------------------------------------------
 // Format detection
@@ -82,7 +86,7 @@ export function detectFormat(input: string): FormatDetection {
   // Markdown table: non-blank lines starting with |.
   const pipeLines = nonBlankLines.filter((l) => /^\s*\|/.test(l));
   if (nonBlankLines.length >= 2 && pipeLines.length >= 2) {
-    const hasSeparator = nonBlankLines.some((l) => /^\s*\|[\s]*-+[\s]*(\|[\s]*-+[\s]*)*\|/.test(l));
+    const hasSeparator = nonBlankLines.some(isMarkdownTableSeparator);
     if (hasSeparator) {
       return { format: 'markdown-table', confidence: 0.95 };
     }
@@ -102,13 +106,13 @@ export function detectFormat(input: string): FormatDetection {
 
   // Tab-separated: most non-blank lines contain tabs.
   const tabLines = nonBlankLines.filter((l) => l.includes('\t'));
-  if (tabLines.length >= 2 && tabLines.length >= nonBlankLines.length * 0.5) {
+  if (tabLines.length >= 1 && tabLines.length >= nonBlankLines.length * 0.5) {
     return { format: 'tsv', confidence: 0.85 };
   }
 
   // CSV: most non-blank lines contain commas in a consistent column count.
   const commaLines = nonBlankLines.filter((l) => l.includes(','));
-  if (commaLines.length >= 2 && commaLines.length >= nonBlankLines.length * 0.5) {
+  if (commaLines.length >= 1 && commaLines.length >= nonBlankLines.length * 0.5) {
     const counts = commaLines.map((l) => l.split(',').length);
     const maxCount = Math.max(...counts);
     if (maxCount >= 2) {
@@ -129,185 +133,9 @@ export function detectFormat(input: string): FormatDetection {
 // Markdown table parser
 // ---------------------------------------------------------------------------
 
-/**
- * Parse a GFM Markdown table into ParsedCard[].
- *
- * The first row is treated as headers. If the header contains "front"/"back"
- * (or "question"/"answer", "q"/"a", "term"/"definition"), those columns are
- * used. Otherwise column 1 = front, column 2 = back.
- *
- * A separator row (| --- | --- |) is skipped.
- */
-export function parseMarkdownTable(input: string): ImportParseResult {
-  const lines = input.trim().split('\n');
-  const cards: ParsedCard[] = [];
-  let skipped = 0;
-
-  const pipeLines = lines.filter((l) => /^\s*\|/.test(l));
-  if (pipeLines.length < 2) return { cards, skipped };
-
-  const parseRow = (line: string): string[] => {
-    const trimmed = line.trim();
-    const inner = trimmed.replace(/^\|/, '').replace(/\|$/, '');
-    return inner.split('|').map((c) => c.trim());
-  };
-
-  const headerCells = parseRow(pipeLines[0]);
-  const headerLower = headerCells.map((h) => h.toLowerCase().replace(/[^a-z]/g, ''));
-
-  const frontIdx = headerLower.findIndex((h) =>
-    ['front', 'question', 'q', 'term', 'prompt'].includes(h),
-  );
-  const backIdx = headerLower.findIndex((h) =>
-    ['back', 'answer', 'a', 'definition', 'response'].includes(h),
-  );
-  const tagsIdx = headerLower.findIndex((h) => ['tags', 'tag', 'labels'].includes(h));
-  const typeIdx = headerLower.findIndex((h) => ['type', 'kind', 'cardtype'].includes(h));
-
-  const colFront = frontIdx >= 0 ? frontIdx : 0;
-  const colBack = backIdx >= 0 ? backIdx : headerCells.length >= 2 ? 1 : -1;
-
-  for (let i = 1; i < pipeLines.length; i++) {
-    const line = pipeLines[i];
-    // Skip separator rows (| --- | --- |).
-    if (/^\s*\|[\s]*-+[\s]*(\|[\s]*-+[\s]*)*\|/.test(line)) continue;
-
-    const cells = parseRow(line);
-    if (cells.every((c) => c.length === 0)) continue;
-
-    const front = (cells[colFront] ?? '').trim();
-    if (!front) {
-      skipped++;
-      continue;
-    }
-    const back = colBack >= 0 ? (cells[colBack] ?? '').trim() : '';
-    const tagField = tagsIdx >= 0 ? (cells[tagsIdx] ?? '').trim() : '';
-    const tags = tagField ? tagField.split(/[,;]\s*/).filter(Boolean) : undefined;
-
-    const explicitType = typeIdx >= 0 ? (cells[typeIdx] ?? '').trim().toLowerCase() : '';
-    if (explicitType === 'cloze' || hasCloze(front)) {
-      cards.push({ type: 'cloze', front, back: back || '', ...(tags ? { tags } : {}) });
-    } else if (back) {
-      cards.push({ type: 'front_back', front, back, ...(tags ? { tags } : {}) });
-    } else {
-      skipped++;
-    }
-  }
-
-  return { cards, skipped };
-}
-
 // ---------------------------------------------------------------------------
 // Markdown list parser
 // ---------------------------------------------------------------------------
-
-/**
- * Parse Markdown lists (ordered or unordered) into ParsedCard[].
- *
- * Supported patterns:
- *   - Q: question / A: answer
- *   - **Q:** question / **A:** answer
- *   - Blank-line separated blocks where first line = question, second = answer.
- *
- * Pattern 2 (ordered pairs) intentionally requires an even item count so
- * each item has a front and back. Odd-count lists fall through to pattern 3.
- */
-export function parseMarkdownList(input: string): ImportParseResult {
-  const cards: ParsedCard[] = [];
-  let skipped = 0;
-  const trimmed = input.trim();
-  if (!trimmed) return { cards, skipped };
-
-  const lines = trimmed.split('\n');
-
-  // Pattern 1: List items with Q:/A: or **Q:**/**A:** inside them.
-  const qaPattern = /^\s*[-*+]\s+(?:\*\*)?(?:Q(?:uestion)?|Front|Prompt)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/i;
-  const aaPattern = /^\s*[-*+]\s+(?:\*\*)?(?:A(?:nswer)?|Back|Response)\s*(?:\*\*)?\s*[:.]\s*(?:\*\*)?\s*(.+)/i;
-
-  let currentQ: string | null = null;
-
-  for (const line of lines) {
-    const qMatch = line.match(qaPattern);
-    if (qMatch) {
-      if (currentQ) skipped++;
-      currentQ = qMatch[1].trim();
-      continue;
-    }
-
-    const aMatch = line.match(aaPattern);
-    if (aMatch && currentQ) {
-      const back = aMatch[1].trim();
-      if (hasCloze(currentQ)) {
-        cards.push({ type: 'cloze', front: currentQ, back });
-      } else {
-        cards.push({ type: 'front_back', front: currentQ, back });
-      }
-      currentQ = null;
-      continue;
-    }
-  }
-  if (currentQ) skipped++;
-
-  if (cards.length > 0) return { cards, skipped };
-
-  // Pattern 2: Ordered list items where odd = front, even = back.
-  const orderedItems: string[] = [];
-
-  for (const line of lines) {
-    const orderedMatch = line.match(/^\s*\d+[.)]\s+(.+)/);
-    if (orderedMatch) {
-      orderedItems.push(orderedMatch[1].trim());
-    }
-  }
-
-  if (orderedItems.length >= 2 && orderedItems.length % 2 === 0) {
-    let allPaired = true;
-    for (let i = 0; i < orderedItems.length; i += 2) {
-      if (!orderedItems[i] || !orderedItems[i + 1]) {
-        allPaired = false;
-        break;
-      }
-    }
-    if (allPaired) {
-      for (let i = 0; i < orderedItems.length; i += 2) {
-        const front = orderedItems[i];
-        const back = orderedItems[i + 1];
-        if (hasCloze(front)) {
-          cards.push({ type: 'cloze', front, back });
-        } else {
-          cards.push({ type: 'front_back', front, back });
-        }
-      }
-      return { cards, skipped };
-    }
-  }
-
-  // Pattern 3: Blank-line separated blocks (first line = Q, second = A).
-  const blocks = trimmed.split(/\n\s*\n/);
-  if (blocks.length >= 2) {
-    for (const block of blocks) {
-      const blockLines = block.split('\n').map((l) => l.trim()).filter(Boolean);
-      if (blockLines.length >= 2) {
-        const front = blockLines[0].replace(/^\s*[-*+]\s+/, '');
-        const back = blockLines[1].replace(/^\s*[-*+]\s+/, '');
-        if (front && back) {
-          if (hasCloze(front)) {
-            cards.push({ type: 'cloze', front, back });
-          } else {
-            cards.push({ type: 'front_back', front, back });
-          }
-        } else {
-          skipped++;
-        }
-      } else if (blockLines.length === 1) {
-        skipped++;
-      }
-    }
-    return { cards, skipped };
-  }
-
-  return { cards, skipped };
-}
 
 // ---------------------------------------------------------------------------
 // JSON parser
@@ -431,12 +259,11 @@ export function parseJsonImport(input: string): ImportParseResult {
 export function parseAnkiText(input: string): ImportParseResult {
   const cards: ParsedCard[] = [];
   let skipped = 0;
-  const lines = input.split('\n');
   let currentTag = '';
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
+  for (const parts of splitDelimited(input, '\t', '\n')) {
+    const trimmed = (parts[0] ?? '').trim();
+    if (parts.every((part) => !part.trim()) || trimmed.startsWith('#')) continue;
 
     if (trimmed.startsWith(' tagging ') || trimmed.startsWith('tags:')) {
       const tagPart = trimmed.replace(/^tags:\s*/i, '').replace(/^ tagging\s+/, '').trim();
@@ -444,7 +271,6 @@ export function parseAnkiText(input: string): ImportParseResult {
       continue;
     }
 
-    const parts = trimmed.split('\t');
     const front = (parts[0] ?? '').trim();
     const back = (parts[1] ?? '').trim();
     const tagField = (parts[2] ?? '').trim() || currentTag;
@@ -636,7 +462,7 @@ export function parseImportAuto(
 
     case 'plain-text': {
       if (trimmed.includes('\t')) {
-        const ankiResult = parseAnkiText(trimmed);
+        const ankiResult = parseAnkiText(input.replace(/^\uFEFF/, ''));
         if (ankiResult.cards.length > 0) return ankiResult;
       }
       const qaResult = parsePlainTextQA(trimmed);

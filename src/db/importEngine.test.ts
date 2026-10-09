@@ -360,3 +360,63 @@ describe('parseImportAuto', () => {
     expect(parseImportAuto('').cards).toHaveLength(0);
   });
 });
+
+
+it('imports escaped Markdown table pipes without shifting answers or tags', () => {
+  const result = parseImportAuto(
+    '| Front | Back | Tags |\n| --- | --- | --- |\n| A \\| B | C \\| D | first, second |',
+  );
+  expect(result).toEqual({
+    cards: [{ type: 'front_back', front: 'A | B', back: 'C | D', tags: ['first', 'second'] }],
+    skipped: 0,
+  });
+});
+
+it('recognises aligned Markdown separators without importing them as Cards', () => {
+  const input = '| Front | Back |\n| :--- | ---: |\n| Q | A |';
+  expect(detectFormat(input)).toEqual({ format: 'markdown-table', confidence: 0.95 });
+  expect(parseMarkdownTable(input)).toEqual({
+    cards: [{ type: 'front_back', front: 'Q', back: 'A' }],
+    skipped: 0,
+  });
+});
+
+it('preserves every answer line in Markdown list blocks', () => {
+  const result = parseMarkdownList(
+    '- First question\nFirst answer\nContinued answer\n\n- Second question\nSecond answer\nMore detail',
+  );
+  expect(result.cards).toEqual([
+    { type: 'front_back', front: 'First question', back: 'First answer\nContinued answer' },
+    { type: 'front_back', front: 'Second question', back: 'Second answer\nMore detail' },
+  ]);
+});
+
+it('preserves quotation marks and quoted newlines through automatic single-card TSV import', () => {
+  const result = parseImportAuto('"Question\ncontinued"\t"Answer with ""quotes"""');
+  expect(result).toEqual({
+    cards: [{ type: 'front_back', front: 'Question\ncontinued', back: 'Answer with "quotes"' }],
+    skipped: 0,
+  });
+});
+
+it('does not shift an empty question into the answer when plain-text TSV is forced', () => {
+  expect(parseImportAuto('\tOrphan\ttag\nQuestion\tAnswer', { format: 'plain-text' })).toEqual({
+    cards: [{ type: 'front_back', front: 'Question', back: 'Answer' }],
+    skipped: 1,
+  });
+});
+
+it('imports a single CSV card without a manual format override', () => {
+  expect(parseImportAuto('"Question, detail",Answer')).toEqual({
+    cards: [{ type: 'front_back', front: 'Question, detail', back: 'Answer' }],
+    skipped: 0,
+  });
+});
+
+
+it('keeps quoted Anki fields intact with a plain-text format override', () => {
+  expect(parseImportAuto('"Question\ncontinued"\t"Answer with ""quotes"""', { format: 'plain-text' })).toEqual({
+    cards: [{ type: 'front_back', front: 'Question\ncontinued', back: 'Answer with "quotes"' }],
+    skipped: 0,
+  });
+});
