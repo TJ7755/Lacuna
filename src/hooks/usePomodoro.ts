@@ -135,12 +135,8 @@ export function usePomodoro() {
   const secondsLeftRef = useRef(secondsLeft);
   const hasMountedRef = useRef(false);
 
-  const durationForPhase = useCallback(
-    (p: PomodoroPhase) => {
-      return phaseDuration(p, settings);
-    },
-    [settings],
-  );
+  // Preference changes apply to the next phase, never the active ring's denominator.
+  const [phaseSeconds, setPhaseSeconds] = useState(() => phaseDuration(phase, settings));
 
   useEffect(() => {
     secondsLeftRef.current = secondsLeft;
@@ -250,7 +246,9 @@ export function usePomodoro() {
     setSettings(fresh);
     setPhase('focus');
     setPendingBreakPhase(null);
-    beginCountdown(phaseDuration('focus', fresh));
+    const seconds = phaseDuration('focus', fresh);
+    setPhaseSeconds(seconds);
+    beginCountdown(seconds);
   }, [beginCountdown]);
 
   const pause = useCallback(() => {
@@ -268,7 +266,13 @@ export function usePomodoro() {
   const resume = useCallback(() => {
     if (phase === 'idle' || pendingBreakPhase) return;
     // Phase completed while paused; restart the same phase.
-    beginCountdown(secondsLeft === 0 ? phaseDuration(phase, settings) : secondsLeft);
+    if (secondsLeft === 0) {
+      const seconds = phaseDuration(phase, settings);
+      setPhaseSeconds(seconds);
+      beginCountdown(seconds);
+    } else {
+      beginCountdown(secondsLeft);
+    }
   }, [secondsLeft, phase, settings, pendingBreakPhase, beginCountdown]);
 
   const acceptBreak = useCallback(() => {
@@ -278,7 +282,9 @@ export function usePomodoro() {
     setSettings(fresh);
     setPhase(pendingBreakPhase);
     setPendingBreakPhase(null);
-    beginCountdown(phaseDuration(pendingBreakPhase, fresh));
+    const seconds = phaseDuration(pendingBreakPhase, fresh);
+    setPhaseSeconds(seconds);
+    beginCountdown(seconds);
   }, [clearTick, pendingBreakPhase, beginCountdown]);
 
   const deferBreak = useCallback(() => {
@@ -301,7 +307,7 @@ export function usePomodoro() {
   }, [clearTick]);
 
   const progress =
-    phase === 'idle' || secondsLeft === 0 ? 0 : 1 - secondsLeft / durationForPhase(phase);
+    phase === 'idle' || secondsLeft === 0 ? 0 : 1 - secondsLeft / phaseSeconds;
 
   const formattedTime = `${Math.floor(secondsLeft / 60)
     .toString()

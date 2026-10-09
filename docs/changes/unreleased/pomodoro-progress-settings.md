@@ -1,0 +1,1 @@
+- Keep the active Pomodoro progress ring stable when another tab changes timer durations; apply the new duration to the next phase.

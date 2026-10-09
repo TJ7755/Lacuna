@@ -319,6 +319,20 @@ it('keeps a paused countdown unchanged when the page closes later', () => {
   expect(restored.result.current.isRunning).toBe(false);
 });
 
+it('keeps the active progress ring stable when another tab changes durations', () => {
+  const { result } = renderHook(() => usePomodoro());
+  act(() => result.current.startFocus());
+  act(() => vi.advanceTimersByTime(60_000));
+  const progress = result.current.progress;
+  act(() => {
+    savePomodoroSettings({ workMinutes: 1 });
+    window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }));
+  });
+  expect(result.current.settings.workMinutes).toBe(1);
+  expect(result.current.formattedTime).toBe('24:00');
+  expect(result.current.progress).toBe(progress);
+});
+
 it('restores idle when a break expired before the closing page could tick', () => {
   savePomodoroSettings({ workMinutes: 1, shortBreakMinutes: 1 });
   const first = renderHook(() => usePomodoro());
