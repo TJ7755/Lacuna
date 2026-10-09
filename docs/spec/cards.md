@@ -71,7 +71,8 @@ ordinary `front_back` cards to the scheduler.
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
   a cloze editor can preview the revealed answer. Each textarea takes its accessible name from the
   visible field label (for example, Front or Back) unless its caller supplies a more specific
-  `ariaLabel`.
+  `ariaLabel`. Undo records typing, paste and other input changes; it captures pending
+  edits immediately, and editing after undo replaces the redo branch.
 - **Tags** input with deck-wide suggestions.
 - **Images** are downscaled to <= 1280 px, re-encoded (~0.8 quality), stored as a
   `Uint8Array` in the `assets` table (deduplicated by SHA-256 hash), and referenced

@@ -300,3 +300,9 @@ A saved card appears in the live list before the editor confirmation delay ends.
 Cancel delayed returns as the route starts exiting (`useIsPresent`), on unmount and
 card-identity changes, including async saves that finish after departure; otherwise
 navigation to Share or Settings can be redirected to Cards.
+
+## Editor history follows input changes
+
+Track undo history from `onChange`, because paste, context-menu edits and other input
+methods need not send keydown. Flush pending history before undo or redo so the debounce
+does not lose recent text or retain a stale redo branch.
