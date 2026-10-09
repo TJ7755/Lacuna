@@ -3,7 +3,7 @@ import type { ImportParseResult, ParsedCard } from './import';
 
 /** Decode pipe/backslash escape pairs and split only unescaped column separators. */
 function splitMarkdownTableRow(line: string): string[] {
-  const inner = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const inner = line.trim().replace(/^\|/, '');
   const cells = [''];
   for (let index = 0; index < inner.length; index++) {
     const character = inner[index];
@@ -17,6 +17,8 @@ function splitMarkdownTableRow(line: string): string[] {
       cells[cells.length - 1] += character;
     }
   }
+  // Only an unescaped closing separator creates this final empty cell.
+  if (inner.endsWith('|') && cells[cells.length - 1] === '') cells.pop();
   return cells.map((cell) => cell.trim());
 }
 

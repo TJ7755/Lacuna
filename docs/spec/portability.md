@@ -23,7 +23,8 @@ app:
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
     `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
-    rows are skipped. Pipes and backslashes in cell content are escaped on export.
+    rows are skipped. Escaped final pipes remain cell content even when the closing separator
+    is omitted. Pipes and backslashes in cell content are escaped on export.
   - **Markdown list** — three patterns: (1) definition-list style
     (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
