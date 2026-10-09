@@ -1,0 +1,2 @@
+- Reject equations as scalar numeric answers instead of grading their subtraction residual.
+- Reject non-finite and non-real numeric mark-scheme arguments before they can create unmarkable criteria.

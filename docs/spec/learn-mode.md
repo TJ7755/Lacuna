@@ -185,7 +185,10 @@ longer parses or whose predicate arguments are unusable — is flagged `undeterm
 `LineVerdict`, counted in `WorkingVerificationResult.undeterminedLines`, and shown in the study face
 as unchecked rather than as a zero, with the existing dispute control alongside it. It earns no
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
-specifications share this parser for exact, tolerance and one-of checks.
+specifications share this parser for exact, tolerance and one-of checks. Scalar answer
+specifications and submissions reject equations rather than treating their residual as an answer.
+The mark-scheme compiler rejects non-finite, non-real and equation arguments for `within` and
+`matches-one-of` before authoring or import can persist an unusable criterion.
 
 A value predicate (`equals`, `within`, `matches-one-of`) accepts an answer written as
 `<variable> = value` as well as the bare value, since students and authoring models alike end their
