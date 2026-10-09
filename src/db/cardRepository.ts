@@ -66,13 +66,13 @@ export async function checkDuplicatesBatch(
 ): Promise<Set<number>> {
   const existing = await db.cards.where('schedulingUnitId').equals(deckId).toArray();
   const existingSet = new Set(
-    existing.map((c) => `${c.type}:${normaliseCardText(c.front)}:${normaliseCardText(c.back)}`),
+    existing.map((c) => JSON.stringify([c.type, normaliseCardText(c.front), normaliseCardText(c.back)])),
   );
   const seen = new Set<string>();
   const duplicates = new Set<number>();
   for (let i = 0; i < drafts.length; i++) {
     const d = drafts[i];
-    const key = `${d.type}:${normaliseCardText(d.front)}:${normaliseCardText(d.back)}`;
+    const key = JSON.stringify([d.type, normaliseCardText(d.front), normaliseCardText(d.back)]);
     if (existingSet.has(key) || seen.has(key)) {
       duplicates.add(i);
     } else {
