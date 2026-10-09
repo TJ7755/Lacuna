@@ -72,3 +72,16 @@ describe('parseImport', () => {
     expect(parseImport('   ')).toEqual({ cards: [], skipped: 0 });
   });
 });
+
+describe('multiline import row separators', () => {
+  it.each(['\r\n', '\r'])('accepts %j line endings with a blank-line separator', (newline) => {
+    const source = `Q1\tline one${newline}line two${newline}${newline}Q2\tB2`;
+    expect(parseImport(source, '\t', '\n\n')).toEqual({
+      cards: [
+        { type: 'front_back', front: 'Q1', back: `line one${newline}line two` },
+        { type: 'front_back', front: 'Q2', back: 'B2' },
+      ],
+      skipped: 0,
+    });
+  });
+});

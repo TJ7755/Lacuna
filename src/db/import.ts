@@ -42,6 +42,14 @@ function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[]
   let inQuotes = false;
   let fieldStart = true; // current field has no characters yet (for quote detection)
   let i = 0;
+  // Match logical newlines in row separators without rewriting quoted field content.
+  const rowPattern =
+    rowSep.includes('\n') && !rowSep.includes('\r')
+      ? new RegExp(
+          rowSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, String.raw`(?:\r\n|\r(?!\n)|(?<!\r)\n)`),
+          'y',
+        )
+      : null;
 
   while (i < raw.length) {
     const ch = raw[i];
@@ -76,12 +84,11 @@ function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[]
       continue;
     }
     let rowSepLen = 0;
-    if (rowSep && raw.startsWith(rowSep, i)) {
+    if (rowPattern) {
+      rowPattern.lastIndex = i;
+      rowSepLen = rowPattern.exec(raw)?.[0].length ?? 0;
+    } else if (rowSep && raw.startsWith(rowSep, i)) {
       rowSepLen = rowSep.length;
-    } else if (rowSep === '\n' && raw.startsWith('\r\n', i)) {
-      rowSepLen = 2;
-    } else if (rowSep === '\n' && raw[i] === '\r') {
-      rowSepLen = 1;
     }
     if (rowSepLen > 0) {
       row.push(field);

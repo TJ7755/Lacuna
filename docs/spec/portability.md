@@ -37,7 +37,8 @@ app:
 - **Legacy parser** (`parseImport` in `src/db/import.ts`): the quote-aware
   delimited parser continues to exist for backward compatibility and is used as
   the CSV/TSV backend. Defaults: **tab** field separator, **newline** row
-  separator. Windows/old-Mac line endings are normalised first. Per row: field 1
+  separator. Logical newlines in custom row separators also accept Windows/old-Mac
+  line endings; line endings inside field content are preserved. Per row: field 1
   = front, field 2 = back, optional field 3 of space-separated tags. A row with a
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
