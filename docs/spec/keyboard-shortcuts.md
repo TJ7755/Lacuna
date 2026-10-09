@@ -26,3 +26,6 @@ menu.
 
 
 [Specification index](../SPEC.md)
+
+Saved shortcut overrides are validated per action. Invalid records or values fall back
+to the defaults without discarding valid overrides for other actions.
