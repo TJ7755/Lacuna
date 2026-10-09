@@ -14,9 +14,9 @@ class ResizeObserverMock implements ResizeObserver {
   unobserve = vi.fn();
 }
 
-function Fixture() {
+function Fixture({ itemCount = 100 }: { itemCount?: number }) {
   const [, rerender] = useState(0);
-  const virtual = useVirtualList({ itemCount: 100, estimateSize: 100, enabled: true });
+  const virtual = useVirtualList({ itemCount, estimateSize: 100, enabled: true });
   return (
     <div data-testid="scroll-root" style={{ height: 300, overflowY: 'auto' }}>
       <div
@@ -45,7 +45,7 @@ describe('useVirtualList', () => {
         return { top: 0, bottom: 300, height: 300, left: 0, right: 500, width: 500, x: 0, y: 0, toJSON() {} };
       }
       const top = Number(this.dataset.top ?? 0);
-      return { top, bottom: top + 100, height: 100, left: 0, right: 500, width: 500, x: 0, y: top, toJSON() {} };
+      return { top, bottom: top + 100, height: Number(this.dataset.height ?? 100), left: 0, right: 500, width: 500, x: 0, y: top, toJSON() {} };
     });
   });
 
@@ -124,4 +124,14 @@ describe('useVirtualList', () => {
       expect(Number((list as HTMLElement).style.height.replace('px', ''))).toBe(initialHeight + 120);
     });
   });
+  it('retains mounted row measurements after the card count changes', async () => {
+    const { rerender } = render(<Fixture itemCount={100} />);
+    const row = await screen.findByTestId('item-0');
+    row.dataset.height = '220';
+    const list = screen.getByTestId('list');
+    rerender(<Fixture itemCount={101} />);
+    await waitFor(() => expect(list.style.height).toBe('10220px'));
+  });
+
 });
+

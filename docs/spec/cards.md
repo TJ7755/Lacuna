@@ -129,3 +129,8 @@ retains its Attempt receipts as personal evidence.
 
 
 [Specification index](../SPEC.md)
+
+### Large card lists
+
+Virtualised lists rebuild the heights of mounted rows when the card count changes,
+so adding or deleting cards preserves spacing without waiting for another resize.
