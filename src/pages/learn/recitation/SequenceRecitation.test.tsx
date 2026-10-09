@@ -144,3 +144,13 @@ it('recalls without textboxes when Settings choose reciting aloud', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
   expect(await screen.findByText('Alpha line')).toBeInTheDocument();
 });
+
+it('ignores Enter while an input method is composing', async () => {
+  renderRecitation();
+  fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
+  const box = screen.getByRole('textbox', { name: 'line 1' });
+  fireEvent.keyDown(box, { key: 'Enter', isComposing: true });
+  expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
+  fireEvent.keyDown(box, { key: 'Enter' });
+  expect(await screen.findByRole('button', { name: 'All correct' })).toBeInTheDocument();
+});

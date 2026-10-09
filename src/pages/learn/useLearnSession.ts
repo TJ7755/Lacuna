@@ -1468,11 +1468,9 @@ export function useLearnSession({
   /** Reveal a scheduled recitation, timing it per recited line for calibration. */
   const revealRecitation = useCallback(
     (lines: number) => {
-      setPhase((p) => {
-        if (p !== 'question') return p;
-        responseTime.current = (performance.now() - timerStart.current) / 1000 / Math.max(1, lines);
-        return 'answer';
-      });
+      if (phaseRef.current !== 'question') return;
+      responseTime.current = (performance.now() - timerStart.current) / 1000 / Math.max(1, lines);
+      setPhase('answer');
       distraction.setAnswerVisible(true);
     },
     [distraction],

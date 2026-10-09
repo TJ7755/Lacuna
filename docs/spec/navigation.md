@@ -417,8 +417,9 @@ audio autoplay. Generated sequence cards keep the current cue on the card's vert
 their sequence label and recall instruction sit above and below that shared cue/answer anchor.
 
 **Card editor**, **Course settings**, **Settings**, **Search** follow the same
-centred-column pattern with an eyebrow + display title and `rounded-2xl` sections; the
-editor and course settings add a sticky bottom action bar.
+centred-column pattern with a display title and `rounded-2xl` sections; the editor and
+course settings add a sticky bottom action bar. Their existing eyebrow labels predate the
+no-eyebrow rule (visual-design §3.2) and are not to be copied.
 
 
 [Specification index](../SPEC.md)

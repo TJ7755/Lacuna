@@ -192,7 +192,7 @@ export function SequenceRecitation({ sequence, masteredItemIds, comparison, onCh
                     value={typed[line.itemId] ?? ''}
                     onChange={(event) => setTyped({ ...typed, [line.itemId]: event.target.value })}
                     onKeyDown={(event) => {
-                      if (event.key !== 'Enter' || event.shiftKey) return;
+                      if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
                       event.preventDefault();
                       const next = nextMine(index);
                       const field = next === undefined ? null : rootRef.current?.querySelector<HTMLElement>(
