@@ -16,7 +16,7 @@ function escapeTsvCell(value: string): string {
 }
 
 function escapeMarkdownPipe(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\r\n|\r|\n/g, ' ');
+  return value.replace(/[\\|]/g, '\\$&').replace(/\r\n|\r|\n/g, ' ');
 }
 
 function formatRow(values: string[], delimiter: ',' | '\t'): string {

@@ -1,7 +1,7 @@
 import { hasCloze } from '../utils/cloze';
 import type { ImportParseResult, ParsedCard } from './import';
 
-/** Split only unescaped pipes, retaining other Markdown escapes verbatim. */
+/** Decode pipe/backslash escape pairs and split only unescaped column separators. */
 function splitMarkdownTableRow(line: string): string[] {
   const inner = line.trim().replace(/^\|/, '').replace(/\|$/, '');
   const cells = [''];
@@ -9,7 +9,7 @@ function splitMarkdownTableRow(line: string): string[] {
     const character = inner[index];
     const next = inner[index + 1];
     if (character === '\\' && (next === '|' || next === '\\')) {
-      cells[cells.length - 1] += next === '|' ? '|' : '\\\\';
+      cells[cells.length - 1] += next;
       index++;
     } else if (character === '|') {
       cells.push('');

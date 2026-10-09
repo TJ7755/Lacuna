@@ -234,3 +234,17 @@ describe('full Card export re-import', () => {
     },
   );
 });
+
+
+describe('Markdown export backslash escaping', () => {
+  beforeEach(reset);
+
+  it('round-trips backslashes immediately before table pipes', async () => {
+    const course = await createCourse('Markdown');
+    await createCourseCard(course.id, 'front_back', String.raw`A \| B`, String.raw`C \| D`);
+    expect(parseImportAuto(await exportCardsMarkdownTable())).toEqual({
+      cards: [{ type: 'front_back', front: String.raw`A \| B`, back: String.raw`C \| D` }],
+      skipped: 0,
+    });
+  });
+});

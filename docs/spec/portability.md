@@ -23,7 +23,7 @@ app:
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
     `front`/`question`/`term`/`q` -> front; `back`/`answer`/`definition`/`a` -> back;
     `tags`/`tag`/`label` -> tags. Escaped pipes remain within their cells; aligned delimiter
-    rows are skipped. Pipes in cell content are escaped on export.
+    rows are skipped. Pipes and backslashes in cell content are escaped on export.
   - **Markdown list** — three patterns: (1) definition-list style
     (`**Term:** Definition`), (2) ordered pairs (even-numbered items paired as
     Q/A), (3) blank-line separated blocks (first non-empty line = front, rest =
@@ -114,7 +114,7 @@ A single, reusable export UI offering multiple output formats:
 - **TSV** — tab-separated values, compatible with Anki import. Quotation marks, tabs and
   line endings are escaped in both full and simple Card exports.
 - **Markdown table** (`exportCardsMarkdownTable`) — GFM table with Deck, Front,
-  Back, and Tags columns. Pipes in cell content are escaped; Windows, old-Mac and Unix
+  Back, and Tags columns. Pipes and backslashes in cell content are escaped; Windows, old-Mac and Unix
   line endings within cells become spaces to keep each Card on one table row.
 - **JSON array** (`exportCardsJson`) — array of objects with front, back, tags,
   deck, and type keys. Re-importable into Lacuna.
