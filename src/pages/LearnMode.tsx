@@ -12,7 +12,7 @@ import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
-import { useAnswerStrictness } from '../state/answerStrictness';
+import { answerComparisonOptions, useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
 import { useLessonCourse } from '../state/useCourseData';
 import { useStartInFocusMode } from '../state/focusModePreference';
@@ -33,6 +33,7 @@ import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
+import { SequenceRecitation } from './learn/recitation/SequenceRecitation';
 import type { LearnModeType, LearnSessionRequest, MachineMarkedAnswer } from './learn/types';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
@@ -166,6 +167,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
+    recitationSequence,
+    recitationMasteredItemIds,
+    answerRecitation,
+    revealRecitation,
     occlusion,
     occlusionAnswerText,
     summary,
@@ -244,7 +249,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
-  const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
+  const suppressClassicGrading =
+    isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
 
   const undoWithTransitionCancel = useCallback(async () => {
     if (undoInFlightRef.current) return;
@@ -533,7 +539,26 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
               }
             >
-              {current && (
+              {current && recitationSequence ? (
+                <SequenceRecitation
+                  key={isSimpleMode ? recitationSequence.id : current.id}
+                  sequence={recitationSequence}
+                  masteredItemIds={recitationMasteredItemIds(recitationSequence.id)}
+                  comparison={answerComparisonOptions(answerStrictness)}
+                  onCheck={({ results, responseTimeSec, masteredItemIds, done }) =>
+                    answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
+                  }
+                  review={
+                    isSimpleMode || !current.sequenceItemId
+                      ? undefined
+                      : {
+                          itemId: current.sequenceItemId,
+                          onReveal: revealRecitation,
+                          onGrade: (correct) => answerWithUndo(correct ? 3 : 1),
+                        }
+                  }
+                />
+              ) : current && (
                 <StudyCardTransition
                   key={current.id}
                   ref={cardTransitionRef}

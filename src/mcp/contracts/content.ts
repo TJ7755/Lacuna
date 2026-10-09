@@ -144,6 +144,9 @@ export const createSequenceContract = {
       '`list` (default): every item generates a positional recall card. `lines`: script mode, see mySpeaker.',
     ),
     mySpeaker: z.string().optional().describe('`lines` mode only: the speaker whose lines are the recall target.'),
+    recitationChunkSize: z.number().int().min(2).max(8).optional().describe(
+      'Lines mode only: lines per chunk in cumulative recitation. Omit to chunk by stanza, or by 4 lines.',
+    ),
   }),
   requiredScope: 'write',
 } satisfies ToolContract;
@@ -159,6 +162,9 @@ export const updateSequenceContract = {
     name: z.string().optional().describe('New sequence name.'),
     items: z.array(sequenceItemSchema).optional().describe('Replacement ordered list of recallable units.'),
     cueWindow: z.number().int().optional().describe('New cue window.'),
+    recitationChunkSize: z.number().int().min(2).max(8).optional().describe(
+      'Lines mode only: lines per chunk in cumulative recitation. Omit to chunk by stanza, or by 4 lines.',
+    ),
   }),
   requiredScope: 'write',
 } satisfies ToolContract;

@@ -31,7 +31,7 @@ const PACKAGED_MCP_ENTRY_POINTS = [
 const REVIEWED_TOOL_SURFACE = {
   version: 3,
   toolCount: 64,
-  sha256: 'b765634a22cc5ff66be5f6e1d75c3c6dcca11c37989367b2226e9948ec578111',
+  sha256: 'ed5ae5bdff584c3c6767d9b2c853f09c9f1403ed1b3f46c4316997514a0afedd',
 } as const;
 
 function normalise(filePath: string): string {

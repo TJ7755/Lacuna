@@ -41,8 +41,9 @@ mounting are visible immediately even if their change event preceded the subscri
   header.
 - **Study behaviour:** **Manual four-point grading** toggle (off by default ->
   silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
-  see "Typing setting" above), audio-answer controls and **Start Learn sessions in Focus Mode**
-  (off by default).
+  see "Typing setting" above), audio-answer controls, **Recite poems and scripts aloud** (off by
+  default -> lines are typed in cumulative recitation; `lacuna.recitationInput`) and **Start Learn
+  sessions in Focus Mode** (off by default).
 - **Course defaults:** automatic Practice placement and the global **Optimise scheduling** default
   (on -> fit FSRS weights to review history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per
   course, applied only on confirmation), plus the device-local **After the final exam** policy

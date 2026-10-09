@@ -206,7 +206,7 @@ describe('LearnMode course/lesson scope', () => {
     },
   );
 
-  it('waits for line-sequence classification before serving a line-specific prompt', async () => {
+  it('waits for line-sequence classification before serving a recitation', async () => {
     const course = await createCourse('Drama');
     const lesson = await createLesson(course.id, 'Scene one');
     const sequence = await createSequence(
@@ -251,11 +251,133 @@ describe('LearnMode course/lesson scope', () => {
       expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
       await act(async () => resolveLineMap(lineMap));
       await continueFromNotes();
-      expect(await findStudyFaceText('Next line?')).toBeInTheDocument();
+      // Lesson teaching learns lines-mode sequences by cumulative recitation.
+      expect(await screen.findByRole('button', { name: /^recite$/i })).toBeInTheDocument();
+      expect(screen.getByText('Where are you?')).toBeInTheDocument();
       expect(queryStudyFaceText('Next item?')).toBeUndefined();
     } finally {
       lookup.mockRestore();
     }
+  });
+
+  it('learns a lines-mode sequence by cumulative recitation with one review per line', async () => {
+    const course = await createCourse('Drama Simple');
+    const lesson = await createLesson(course.id, 'Scene two');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Scene two',
+      [
+        { id: 'line-1', value: 'Where are you?' },
+        { id: 'line-2', value: 'I am here.' },
+      ],
+      { mode: 'lines' },
+    );
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    await continueFromNotes();
+    fireEvent.click(await screen.findByRole('button', { name: /^recite$/i }));
+    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
+      target: { value: 'Where are you?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
+    const line1Toggle = screen.getByRole('button', { name: 'line 1: correct' });
+    fireEvent.click(line1Toggle);
+    expect(screen.getByRole('button', { name: 'line 1: marked wrong' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    // Try again sends the chunk back to recall with line 1 still unlocked.
+    fireEvent.click(screen.getByRole('button', { name: /^try again$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^check$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
+
+    // Line 2 is presented only once line 1 has passed.
+    expect(await screen.findByText('I am here.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^check$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
+
+    await screen.findByRole('heading', {
+      name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
+    });
+    const cards = await cardsForSequence(sequence);
+    expect(cards).toHaveLength(2);
+    const reviews = await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray();
+    expect(reviews).toHaveLength(2);
+    const gradeFor = (itemId: string) => {
+      const card = cards.find((candidate) => candidate.sequenceItemId === itemId)!;
+      return reviews.find((review) => review.cardId === card.id)?.grade;
+    };
+    expect(gradeFor('line-1')).toBe(1);
+    expect(gradeFor('line-2')).toBe(3);
+  });
+
+  it('reviews a due lines-mode line by reciting its chunk', async () => {
+    const course = await createCourse('Drama FSRS');
+    const lesson = await createLesson(course.id, 'Scene three');
+    const sequence = await createSequence(
+      course.id,
+      lesson.id,
+      'Scene three',
+      [
+        { id: 'line-1', value: 'Where are you?' },
+        { id: 'line-2', value: 'I am here.' },
+      ],
+      { mode: 'lines' },
+    );
+    const cards = await cardsForSequence(sequence);
+    const now = Date.now();
+    for (const card of cards) {
+      await upsertLessonCardExposure(lesson.id, card.id);
+      await db.cards.update(card.id, {
+        state: 2,
+        stability: 2,
+        difficulty: 5,
+        reps: 1,
+        lastReviewed: now - 24 * 60 * 60 * 1000,
+        due: now - 1,
+      });
+    }
+
+    render(
+      <ThemeProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+            <Routes>
+              <Route path="/course/:courseId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </ThemeProvider>,
+    );
+
+    expect(await screen.findByText(/^Review from the start/)).toBeInTheDocument();
+    // The served line is the last recitation box: its chunk is recited down to it.
+    const boxes = [...document.querySelectorAll<HTMLTextAreaElement>('textarea[data-line]')];
+    const dueBox = boxes.at(-1)!;
+    const dueItemId = dueBox.dataset.line!;
+    const dueLabel = dueBox.getAttribute('aria-label')!;
+    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
+    fireEvent.click(screen.getByRole('button', { name: `${dueLabel}: correct` }));
+    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
+
+    const dueCard = cards.find((card) => card.sequenceItemId === dueItemId)!;
+    await waitFor(async () => {
+      const [review] = await storedReviewsForCard(dueCard.id);
+      expect(review).toMatchObject({ grade: 1, correct: false });
+    });
   });
 
   it('teaches a lesson in Simple mode and records its lesson-scoped FSRS review', async () => {
