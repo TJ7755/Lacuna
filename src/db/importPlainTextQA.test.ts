@@ -14,3 +14,7 @@ it.each(['A: First reason', 'First reason'])(
     });
   },
 );
+
+it('counts a prefixed question without an answer once', () => {
+  expect(parsePlainTextQA('Q: Unanswered')).toEqual({ cards: [], skipped: 1 });
+});
