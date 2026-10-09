@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useOptionalPomodoroContext, type PomodoroController } from '../../hooks/PomodoroContext';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { ClockIcon, PlayIcon, PauseIcon, CloseIcon } from '../ui/icons';
@@ -54,6 +55,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
   const m = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popupRef = useFocusTrap(open);
 
   /* close on Esc or outside click */
   useEffect(() => {
@@ -103,6 +105,8 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
         onClick={() => setOpen((v) => !v)}
         title={compactLabel}
         aria-label={compactLabel}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
       >
         <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0 h-full w-full">
@@ -170,6 +174,9 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={popupRef}
+            role="dialog"
+            aria-label="Pomodoro timer"
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}

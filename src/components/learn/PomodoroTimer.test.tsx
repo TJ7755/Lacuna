@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { PomodoroTimer } from './PomodoroTimer';
 
@@ -46,4 +46,22 @@ describe('PomodoroTimer', () => {
       screen.getByRole('button', { name: 'Focus · 120:00' }).querySelector('text'),
     ).toHaveAttribute('font-size', '7');
   });
+});
+
+
+it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
+  render(<PomodoroTimer />);
+  const trigger = screen.getByRole('button', { name: /^Focus ·/ });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const pause = screen.getByRole('button', { name: 'Pause' });
+  const reset = screen.getByRole('button', { name: 'Reset' });
+  expect(document.activeElement).toBe(pause);
+  reset.focus();
+  fireEvent.keyDown(reset, { key: 'Tab' });
+  expect(document.activeElement).toBe(pause);
+  fireEvent.keyDown(pause, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(reset);
+  fireEvent.keyDown(reset, { key: 'Escape' });
+  expect(document.activeElement).toBe(trigger);
 });
