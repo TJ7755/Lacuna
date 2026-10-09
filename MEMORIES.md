@@ -312,3 +312,9 @@ does not lose recent text or retain a stale redo branch.
 `useShortcutBindings` debounces writes as well as reading. Display-only help views
 should read `loadBindings` on render; mounting the writing hook retains stale values
 and can overwrite newer settings when its debounce fires.
+
+## Browser lifecycle ownership must be immediate
+
+Unload events can arrive between an async attempt starting and React passive effects.
+Update the active-attempt ref when start resolves, as answer writes already do, so
+pagehide can abandon the persisted presentation in that interval.
