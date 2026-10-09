@@ -106,6 +106,20 @@ export function initialRecitationState(
   return chunk === -1 ? { step: { kind: 'done' }, phase: 'recall' } : startChunk(chunk);
 }
 
+/** Whether a saved state still fits the plan; an edited sequence can invalidate it. */
+export function isRecitationStateFor(plan: RecitationPlan, value: unknown): value is RecitationState {
+  if (typeof value !== 'object' || value === null) return false;
+  const { step, phase } = value as Partial<RecitationState>;
+  if (phase !== 'present' && phase !== 'recall') return false;
+  if (typeof step !== 'object' || step === null) return false;
+  const last = plan.chunks.length - 1;
+  const index = (n: unknown, min: number, max: number) =>
+    Number.isInteger(n) && (n as number) >= min && (n as number) <= max;
+  if (step.kind === 'join') return phase === 'recall' && index(step.upTo, 1, last);
+  if (step.kind !== 'build' || !index(step.chunk, 0, last)) return false;
+  return index(step.unlocked, 1, mineCount(plan, step.chunk)) && index(step.joinTarget, step.chunk, last);
+}
+
 /** Line indices the learner sees for this step, cue lines included, in order. */
 export function targetLines(plan: RecitationPlan, step: RecitationStep): number[] {
   if (step.kind === 'done') return [];

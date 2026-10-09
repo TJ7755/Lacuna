@@ -25,6 +25,8 @@ interface StoredSimpleSession {
   masteredCardIds: string[];
   outcomes: [string, SessionCardOutcome][];
   events: SessionEvent[];
+  /** In-progress recitations by sequence id; validated against the sequence on use. */
+  recitations?: Record<string, unknown>;
 }
 
 export interface SimpleSessionSnapshot {
@@ -32,6 +34,8 @@ export interface SimpleSessionSnapshot {
   masteredCardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
   events: SessionEvent[];
+  /** Saved recitation states, unvalidated until the sequence is known. */
+  recitations?: Map<string, unknown>;
 }
 
 export interface SaveSimpleSessionInput {
@@ -39,6 +43,7 @@ export interface SaveSimpleSessionInput {
   masteredCardIds: string[];
   outcomes: Iterable<readonly [string, SessionCardOutcome]>;
   events: SessionEvent[];
+  recitations?: ReadonlyMap<string, unknown>;
 }
 
 function unique(values: string[]): string[] {
@@ -140,6 +145,7 @@ export function saveSimpleSession(scope: SimpleSessionScope, input: SaveSimpleSe
     masteredCardIds: unique(input.masteredCardIds),
     outcomes: [...input.outcomes].map(([cardId, outcome]) => [cardId, outcome]),
     events: input.events,
+    ...(input.recitations?.size ? { recitations: Object.fromEntries(input.recitations) } : {}),
   };
   try {
     localStorage.setItem(simpleSessionStorageKey(scope), JSON.stringify(stored));
@@ -178,7 +184,11 @@ export function loadSimpleSession(
     if (!queued.has(cardId)) queueCardIds.push(cardId);
   }
   const outcomes = new Map(stored.outcomes.filter(([cardId]) => eligible.has(cardId)));
-  return { queueCardIds, masteredCardIds, outcomes, events: stored.events };
+  const snapshot: SimpleSessionSnapshot = { queueCardIds, masteredCardIds, outcomes, events: stored.events };
+  if (typeof stored.recitations === 'object' && stored.recitations !== null) {
+    snapshot.recitations = new Map(Object.entries(stored.recitations));
+  }
+  return snapshot;
 }
 
 export function clearSimpleSession(scope: SimpleSessionScope): void {

@@ -10,6 +10,7 @@ import { useRecitationInput } from '../../../state/recitationInput';
 import {
   advanceRecitation,
   initialRecitationState,
+  isRecitationStateFor,
   presentedLines,
   recitationPlan,
   reviewLines,
@@ -39,6 +40,10 @@ interface Props {
   review?: { itemId: string; onReveal: (lines: number) => void; onGrade: (correct: boolean) => void };
   /** Reports the item ids of the lines in focus (the new line, or those being recited). */
   onFocusLines?: (itemIds: string[]) => void;
+  /** A step saved by an earlier visit; ignored unless it still fits the sequence. */
+  savedState?: unknown;
+  /** Reports each new step so it can be saved, or null once the recitation is done. */
+  onStateChange?: (state: RecitationState | null) => void;
 }
 
 function CueLine({ line }: { line: RecitationLine }) {
@@ -58,11 +63,18 @@ export function SequenceRecitation({
   onCheck,
   review,
   onFocusLines,
+  savedState,
+  onStateChange,
 }: Props) {
   const plan = useMemo(() => recitationPlan(sequence), [sequence]);
   const [state, setState] = useState<RecitationState>(() =>
-    initialRecitationState(plan, masteredItemIds),
+    isRecitationStateFor(plan, savedState) ? savedState : initialRecitationState(plan, masteredItemIds),
   );
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
+  useEffect(() => {
+    if (!review) onStateChangeRef.current?.(state.step.kind === 'done' ? null : state);
+  }, [state, review]);
   const [input] = useRecitationInput();
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);

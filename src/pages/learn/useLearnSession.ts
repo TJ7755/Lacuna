@@ -355,6 +355,8 @@ export function useLearnSession({
   const simpleQueue = useRef<Card[]>([]);
   const simpleMastered = useRef<Set<string>>(new Set());
   const simpleWrong = useRef<Set<string>>(new Set());
+  // Simple mode: in-progress recitation steps by sequence id, saved with the session.
+  const simpleRecitations = useRef<Map<string, unknown>>(new Map());
   const [sessionCardIds, setSessionCardIds] = useState<string[]>([]);
   const [sessionCardOutcomes, setSessionCardOutcomes] = useState<Map<string, SessionCardOutcome>>(
     () => new Map(),
@@ -500,14 +502,11 @@ export function useLearnSession({
         masteredCardIds: [...simpleMastered.current],
         outcomes,
         events: events.current,
+        recitations: simpleRecitations.current,
       });
     },
     [isSimpleMode, simpleSessionScope],
   );
-
-  const clearSimpleSessionResume = useCallback(() => {
-    if (isSimpleMode) clearSimpleSession(simpleSessionScope);
-  }, [isSimpleMode, simpleSessionScope]);
 
   const resetSimpleSessionOutcomes = useCallback(() => {
     const outcomes = new Map<string, SessionCardOutcome>();
@@ -1340,6 +1339,7 @@ export function useLearnSession({
             .map(([cardId]) => cardId),
         );
         events.current = resumed?.events ?? [];
+        simpleRecitations.current = resumed?.recitations ?? new Map();
         sessionCardOutcomesRef.current = resumed?.outcomes ?? new Map();
         setSessionCardOutcomes(sessionCardOutcomesRef.current);
       }
@@ -1629,6 +1629,24 @@ export function useLearnSession({
   );
 
   /**
+   * Save a recitation's current step so leaving and returning resumes it. Null forgets a
+   * finished one without saving: its final check has already saved the session, and
+   * finishing the pass may have cleared it since.
+   */
+  const saveRecitationStep = useCallback(
+    (sequenceId: string, state: unknown) => {
+      if (!isSimpleMode) return;
+      if (state === null) {
+        simpleRecitations.current.delete(sequenceId);
+        return;
+      }
+      simpleRecitations.current.set(sequenceId, state);
+      persistSimpleResume();
+    },
+    [isSimpleMode, persistSimpleResume],
+  );
+
+  /**
    * Record one self-marked check of a cumulative recitation (Simple mode, lines-mode
    * sequences). Each queued line gets one review per session, on its first recall;
    * `masteredItemIds` completes those lines ('all' once the recitation is finished), and
@@ -1690,6 +1708,7 @@ export function useLearnSession({
           outcomes.set(card.id, 'wrong');
         }
       }
+      if (masteredItemIds === 'all') simpleRecitations.current.delete(recitationSequence.id);
       for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
         const card = cards.get(itemId);
         if (!card || simpleMastered.current.has(card.id)) continue;
@@ -2141,6 +2160,8 @@ export function useLearnSession({
     isLinesModeCard,
     recitationSequence,
     recitationMasteredItemIds,
+    savedRecitationStep: (sequenceId: string) => simpleRecitations.current.get(sequenceId),
+    saveRecitationStep,
     currentCardIds,
     setRecitationFocus,
     answerRecitation,
@@ -2190,7 +2211,6 @@ export function useLearnSession({
     simpleWrong,
     lessonHasMembersRef,
     persistSimpleResume,
-    clearSimpleSessionResume,
     resetSimpleSessionOutcomes,
   };
 }
