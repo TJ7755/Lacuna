@@ -375,5 +375,16 @@ describe('advanced search query text', () => {
     ).toHaveLength(1);
   });
 
-
+  it('searches unrecognised is: operators as literal text', () => {
+    const results = searchCardsInScope(
+      'is:pending apple',
+      {
+        cards: [card('match', { front: 'is:pending apple' }), card('other', { front: 'apple' })],
+        courses: [course],
+        lessons: [],
+      },
+      { parseQuery: true },
+    );
+    expect(results.map((result) => result.card.id)).toEqual(['match']);
+  });
 });

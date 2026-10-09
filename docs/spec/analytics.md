@@ -17,7 +17,8 @@
   leech, flagged, suspended**. These turn search into course-wide card management ("show
   me all leeches").
 - The advanced-query core accepts quoted `tag:` and `deck:` values containing spaces;
-  apostrophes within ordinary words remain literal.
+  apostrophes within ordinary words remain literal. Unrecognised `is:` values remain
+  part of the literal text query rather than silently broadening the result set.
 - The full-page **Search content** surface and the `Ctrl/Cmd+K` **Quick search** overlay share the
   same core. Card and Question results are visibly distinct and link to their respective editors,
   while course/lesson/note results link to their page.

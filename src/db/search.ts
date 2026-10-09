@@ -117,8 +117,8 @@ function parseAdvancedQuery(query: string): ParsedQuery {
         filter === 'suspended'
       ) {
         filters.push(filter as CardFilter);
+        continue;
       }
-      continue;
     }
 
     textParts.push(clean);
