@@ -32,7 +32,8 @@ app:
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
-    leading `Q:`/`Q.`/`Question:` prefix is stripped.
+    leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
+    precedence over commas within answers during format detection.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
 - **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects
@@ -521,3 +522,4 @@ explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
 one destination: the named Lesson or the Course bank. Matching text in a different Lesson
 does not suppress a proposed Card or become an update candidate. Every supplied Lesson must
 belong to the target Course; all destinations are validated before any Cards are written.
+
