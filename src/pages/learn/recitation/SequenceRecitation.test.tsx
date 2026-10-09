@@ -51,18 +51,13 @@ it('presents only the new line, then hides it once the learner recites', async (
   expect(screen.queryByText('Alpha line')).not.toBeInTheDocument();
 });
 
-it('reveals the typed line, and an all-correct mark advances to the next line', async () => {
+it('advances without self-marking when every typed line matches', async () => {
   const { onCheck } = renderRecitation();
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
-    target: { value: 'Alpha line' },
+    target: { value: 'alpha line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-
-  expect(await screen.findByRole('button', { name: 'line 1: correct' })).toHaveTextContent(
-    'Alpha line',
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'All correct' }));
 
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
   expect(onCheck).toHaveBeenCalledWith(
@@ -75,18 +70,20 @@ it('reveals the typed line, and an all-correct mark advances to the next line', 
   expect(screen.getByRole('button', { name: 'Recite' })).toBeInTheDocument();
 });
 
-it('marks a line wrong and returns to the same recall without presenting a new line', async () => {
+it('pre-marks a mistyped line, and the learner can overturn the mark', async () => {
   const { onCheck } = renderRecitation();
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
-    target: { value: 'Alpha line' },
+    target: { value: 'Alpha lime' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
-  const toggle = await screen.findByRole('button', { name: 'line 1: correct' });
-  expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  fireEvent.click(toggle);
+  const toggle = await screen.findByRole('button', { name: 'line 1: marked wrong' });
   expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: 'All correct' })).toBeInTheDocument();
+  fireEvent.click(toggle);
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
@@ -110,7 +107,6 @@ it('reports both lines of a completed chunk as mastered', async () => {
     target: { value: 'Alpha line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'All correct' }));
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
   expect(await screen.findByText('Beta line')).toBeInTheDocument();
 
@@ -123,7 +119,6 @@ it('reports both lines of a completed chunk as mastered', async () => {
     target: { value: 'Beta line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'All correct' }));
 
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(2));
   expect(onCheck).toHaveBeenLastCalledWith(
@@ -152,5 +147,27 @@ it('ignores Enter while an input method is composing', async () => {
   fireEvent.keyDown(box, { key: 'Enter', isComposing: true });
   expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
   fireEvent.keyDown(box, { key: 'Enter' });
-  expect(await screen.findByRole('button', { name: 'All correct' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+});
+
+it('reports the lines in focus as the recitation moves on', async () => {
+  const onFocusLines = vi.fn();
+  render(
+    <SequenceRecitation
+      sequence={sequence}
+      masteredItemIds={new Set()}
+      comparison={comparison}
+      onCheck={vi.fn().mockResolvedValue(undefined)}
+      onFocusLines={onFocusLines}
+    />,
+  );
+  expect(onFocusLines).toHaveBeenLastCalledWith(['line-0']);
+  fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
+    target: { value: 'Alpha line' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  await waitFor(() => expect(onFocusLines).toHaveBeenLastCalledWith(['line-1']));
+  fireEvent.click(screen.getByRole('button', { name: 'Recite' }));
+  expect(onFocusLines).toHaveBeenLastCalledWith(['line-0', 'line-1']);
 });

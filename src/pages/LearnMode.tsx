@@ -169,6 +169,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isLinesModeCard,
     recitationSequence,
     recitationMasteredItemIds,
+    currentCardIds,
+    setRecitationFocus,
     answerRecitation,
     revealRecitation,
     occlusion,
@@ -515,7 +517,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     setHintsOpen(true);
                   }}
                   m={m}
-                  currentCardId={current?.id ?? null}
+                  currentCardIds={currentCardIds}
                 />
               )}
             </AnimatePresence>
@@ -548,6 +550,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   onCheck={({ results, responseTimeSec, masteredItemIds, done }) =>
                     answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
                   }
+                  onFocusLines={setRecitationFocus}
                   review={
                     isSimpleMode || !current.sequenceItemId
                       ? undefined

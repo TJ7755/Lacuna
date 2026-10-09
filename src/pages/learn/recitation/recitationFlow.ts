@@ -5,7 +5,7 @@
 // the learner back to the chunk containing it. Pure and React-free so every transition is
 // unit tested.
 
-import type { Sequence, SequenceItem } from '../../../db/types';
+import type { Card, Sequence, SequenceItem } from '../../../db/types';
 
 export const DEFAULT_RECITATION_CHUNK_SIZE = 4;
 export const MIN_RECITATION_CHUNK_SIZE = 2;
@@ -191,4 +191,28 @@ export function reviewLines(plan: RecitationPlan, itemId: string): number[] {
   const index = plan.lines.findIndex((line) => line.itemId === itemId);
   const chunk = plan.chunks.find((indices) => indices.includes(index));
   return chunk ? chunk.slice(0, chunk.indexOf(index) + 1) : [];
+}
+
+/**
+ * Session order for Simple mode: each lines-mode sequence's line cards are gathered at
+ * the position of its first card, in poem order, so the progress bar follows the
+ * recitation. Other cards keep their places.
+ */
+export function inRecitationOrder(cards: Card[], sequenceByCard: ReadonlyMap<string, Sequence>): Card[] {
+  const groups = new Map<string, Card[]>();
+  for (const card of cards) {
+    const sequence = sequenceByCard.get(card.id);
+    if (!sequence || !card.sequenceItemId) continue;
+    groups.set(sequence.id, [...(groups.get(sequence.id) ?? []), card]);
+  }
+  const position = (card: Card) =>
+    sequenceByCard.get(card.id)!.items.findIndex((item) => item.id === card.sequenceItemId);
+  const placed = new Set<string>();
+  return cards.flatMap((card) => {
+    const sequence = sequenceByCard.get(card.id);
+    if (!sequence || !card.sequenceItemId) return [card];
+    if (placed.has(sequence.id)) return [];
+    placed.add(sequence.id);
+    return [...groups.get(sequence.id)!].sort((a, b) => position(a) - position(b));
+  });
 }
