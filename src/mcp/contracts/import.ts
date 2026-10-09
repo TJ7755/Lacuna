@@ -18,7 +18,7 @@ export const diffImportPreviewContract = {
   description:
     'Preview how a batch of proposed cards compares to a course\'s existing cards, without writing ' +
     'anything: which are new (toCreate), which already exist verbatim (toSkip), and which share a ' +
-    'question in the same lesson or course bank but have different content (toUpdate, apply manually via lacuna.update_card).',
+    'question but have different content (toUpdate, apply manually via lacuna.update_card).',
   inputSchema: importSchema,
   requiredScope: 'read',
 } satisfies ToolContract;
@@ -27,7 +27,7 @@ export const importCardsContract = {
   name: 'lacuna.import_cards',
   description:
     'Import a batch of proposed cards into a course: creates cards that are new, skips ones that ' +
-    'already exist verbatim, and reports (without applying) any that share a question in the same lesson or course bank but have ' +
+    'already exist verbatim, and reports (without applying) any that share a question but have ' +
     'different content. Safe to re-run with the same payload — the second call creates nothing new.',
   inputSchema: importSchema,
   requiredScope: 'write',
