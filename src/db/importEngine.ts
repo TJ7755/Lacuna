@@ -110,6 +110,17 @@ export function detectFormat(input: string): FormatDetection {
     return { format: 'tsv', confidence: 0.85 };
   }
 
+  // Explicit Q/A prefixes are stronger evidence than commas within an answer.
+  const qaLines = nonBlankLines.filter((line) =>
+    /^\s*(?:Q(?:uestion)?|Front|Prompt|Term)\s*[:.]/i.test(line),
+  );
+  const hasAnswer = nonBlankLines.some((line) =>
+    /^\s*(?:A(?:nswer)?|Back|Response|Definition)\s*[:.]/i.test(line),
+  );
+  if (qaLines.length > 0 && hasAnswer) {
+    return { format: 'plain-text', confidence: 0.8 };
+  }
+
   // CSV: most non-blank lines contain commas in a consistent column count.
   const commaLines = nonBlankLines.filter((l) => l.includes(','));
   if (commaLines.length >= 1 && commaLines.length >= nonBlankLines.length * 0.5) {
@@ -120,8 +131,6 @@ export function detectFormat(input: string): FormatDetection {
     }
   }
 
-  // Q&A text patterns: "Q:" / "A:" or "Question:" / "Answer:" prefixes.
-  const qaLines = nonBlankLines.filter((l) => /^\s*(Q|Question|Front)\s*[:.]/i.test(l.trim()));
   if (qaLines.length >= 2) {
     return { format: 'plain-text', confidence: 0.8 };
   }

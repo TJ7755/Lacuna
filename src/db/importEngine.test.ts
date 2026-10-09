@@ -420,3 +420,26 @@ it('keeps quoted Anki fields intact with a plain-text format override', () => {
     skipped: 0,
   });
 });
+
+it.each([
+  'Q: Which colours?\nA: Red, blue',
+  'Q: Which colours?\nA: Red, blue\nQ: Which shapes?\nA: Circle, square',
+])('detects prefixed question-answer text before commas in the answers: %s', (input) => {
+  expect(detectFormat(input).format).toBe('plain-text');
+  const result = parseImportAuto(input);
+  expect(result.cards[0]).toEqual({
+    type: 'front_back',
+    front: 'Which colours?',
+    back: 'Red, blue',
+  });
+  expect(result.skipped).toBe(0);
+});
+
+it('keeps comma-separated rows with question-like fronts classified as CSV', () => {
+  const input = 'Q: First,Answer one\nQ: Second,Answer two';
+  expect(detectFormat(input).format).toBe('csv');
+  expect(parseImportAuto(input).cards).toEqual([
+    { type: 'front_back', front: 'Q: First', back: 'Answer one' },
+    { type: 'front_back', front: 'Q: Second', back: 'Answer two' },
+  ]);
+});

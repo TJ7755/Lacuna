@@ -287,3 +287,9 @@ and user-facing text do not acquire invalid characters.
 The reviewed MCP surface hash includes tool descriptions as well as schemas, scopes and order.
 A wording-only edit therefore fails the versioned contract test. Preserve contract metadata
 for handler-only fixes; a deliberate wire change needs its own reviewed surface update.
+
+## Mounted virtual rows may never resize
+
+Changing a list count clears index-based heights, but retained DOM rows keep their refs
+and need not emit another ResizeObserver notification. Rebuild mounted measurements at
+that boundary; observe and measure the same box to avoid losing padding and borders.
