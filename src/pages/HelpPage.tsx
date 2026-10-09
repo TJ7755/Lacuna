@@ -669,6 +669,16 @@ export function HelpPage() {
                 </p>
               </div>
               <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
+                <h3 className="mb-2 font-medium text-ink">Reciting poems, speeches and scripts</h3>
+                <p className="text-sm text-ink-soft">
+                  Simple Learn teaches a poem, speech or script by recitation. Each new line is
+                  shown once; you then recite every line so far from memory, typed or aloud, and
+                  mark any you got wrong. Lines are learnt in chunks (stanzas, or four lines unless
+                  you choose otherwise); after each chunk you recite everything from the top. In
+                  later reviews, a due line is recited from the start of its chunk.
+                </p>
+              </div>
+              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
                 <h3 className="mb-2 font-medium text-ink">Label cards</h3>
                 <p className="text-sm text-ink-soft">
                   Turning on label cards additionally generates an unordered label-to-value card for

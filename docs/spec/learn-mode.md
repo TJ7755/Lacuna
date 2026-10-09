@@ -352,6 +352,30 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
   restart it discards ineligible ids and appends newly eligible Cards. Completion or a deliberate
   confirmed exit clears the record; an unexpected refresh or termination leaves it resumable.
 
+### Cumulative recitation (`src/pages/learn/recitation/`)
+
+Cards generated from a `lines`-mode Sequence (poetry, speech, script) are studied by
+recitation rather than as flip cards; label cards stay ordinary cards.
+
+- **Simple mode** replaces the card loop for the whole sequence with the progressive-part
+  method (`recitationFlow.ts`). The sequence is split into chunks: `Sequence.recitationChunkSize`
+  mine lines (2-8) when set, otherwise its stanzas (`SequenceItem.chunkIndex`), otherwise 4.
+  Each new line is presented once, then every unlocked line of the chunk is recalled with the
+  source hidden. Other speakers' lines stay visible as cues. Once a chunk is complete, all
+  chunks so far are recited once from the top; an error there returns to the chunk holding
+  the first error, fully unlocked. A failed check retries the same lines without unlocking more.
+- Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
+  **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
+  titled with the sequence name, with its progress in plain text beneath. After **Check** the source is shown with the typed-answer diff
+  (global answer strictness), and the learner marks wrong lines; marking is the only grade.
+- Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
+  timed as the check's duration per recited line and excluded from speed calibration. Lines
+  become mastered, with lesson exposure, as their chunk is completed, so a resumed session
+  starts at the first chunk with an unmastered line.
+- **Scheduled sessions** show a due line as a recitation of its chunk down to that line.
+  Only that line is graded, through the normal answer path (manual grade 3 or 1, undoable),
+  timed per recited line.
+
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 
 - The response timer **starts on reveal** ("Show answer") and **stops when the answer

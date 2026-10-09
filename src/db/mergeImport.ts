@@ -670,6 +670,7 @@ async function applySequences(
       ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
       ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
       ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
+      ...(shareSeq.rc !== undefined ? { recitationChunkSize: shareSeq.rc } : {}),
       createdAt,
       updatedAt: createdAt,
     };

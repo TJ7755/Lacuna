@@ -167,11 +167,13 @@ element a turn as the recall target with local context as the cue.
 
 - `Sequence { id, courseId, primaryLessonId: string | null, name, description?, mode?,
 items: SequenceItem[], cueWindow, chunkLabels?, generateLabelCards?, mySpeaker?, presetId?,
-createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
+recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (sequences are small); `primaryLessonId`
   follows the same semantics as `Card.primaryLessonId`. `generateLabelCards` (default off)
   additionally generates an unordered label -> value card per item that carries a `label`
   (e.g. "Atomic number 11 -> ?"), alongside the positional card. These are additive optional
   fields — no schema/index change was needed to add lines mode or presets.
+  `recitationChunkSize` (lines mode, 2-8) sets the chunk size for cumulative recitation
+  (learn-mode spec); it travels in backups and share codes (`rc`) and does not touch cards.
 - `SequenceItem { id, value, label?, chunkIndex?, speaker? }` — `id` is stable across edits
   and anchors the generated card(s); `value` is Markdown. `speaker` is optional even in lines
   mode: a speakerless item is always "mine" (see below).
@@ -204,7 +206,9 @@ createdAt }` — `items` is ordered and stored inline (sequences are small); `pr
   so editing later redisplays the same terminology; `presetForSequence` falls back to
   inferring a preset from `mode`/`mySpeaker` for sequences created before presets existed (or
   if a preset id no longer resolves), defaulting speakerless `lines` mode to poetry.
-- **Lines-mode study flow** (Learn mode): cards generated from a `lines`-mode sequence get
+- **Lines-mode study flow** (Learn mode): positional line cards are now studied by
+  cumulative recitation (learn-mode spec), so what follows applies to their label cards.
+  Cards generated from a `lines`-mode sequence get
   an optional two-step **hint ladder** between question and reveal — a Hint button on the
   card front (keyboard: `h`) that advances no hint -> first letters -> first words:
   - Step 1, first letters: the answer reduced to each word's initial letter

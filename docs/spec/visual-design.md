@@ -25,8 +25,8 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 - **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
 - **Mono (`font-mono`, JetBrains Mono):** code, and `.tabular` numerals (progress %, stats,
   streak, timers) via `font-variant-numeric: tabular-nums`.
-- Eyebrow labels are small uppercase with wide tracking (`tracking-[0.18em]`,
-  `text-ink-faint`).
+- No eyebrow labels: never use small uppercase, widely tracked caption text. Name things with
+  real headings in the display face, and put secondary context in sentence-case body text.
 - A global font-scale control multiplies all text (see §15).
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel
