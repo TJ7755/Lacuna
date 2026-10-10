@@ -425,12 +425,12 @@ function SessionSegments({
         {groups.map((group) => {
           const current = group.some((id) => currentCardIds.includes(id));
           const groupOutcomes = group.map((id) => outcomes.get(id));
-          const status = current
-            ? 'current'
-            : groupOutcomes.some((outcome) => outcome === 'wrong')
-              ? 'wrong'
-              : groupOutcomes.every((outcome) => outcome === 'correct')
-                ? 'correct'
+          const status = groupOutcomes.some((outcome) => outcome === 'wrong')
+            ? 'wrong'
+            : groupOutcomes.every((outcome) => outcome === 'correct')
+              ? 'correct'
+              : current
+                ? 'current'
                 : 'unseen';
           return (
             <span
@@ -438,10 +438,17 @@ function SessionSegments({
               data-session-card-status={status}
               className={cn(
                 'min-w-px flex-1 rounded-full border transition-colors duration-200',
-                status === 'correct' && 'border-positive bg-positive',
-                status === 'wrong' && 'border-negative bg-negative',
-                status === 'current' && 'border-accent bg-accent/10',
-                status === 'unseen' && 'border-transparent bg-ink/10',
+                status === 'correct' && 'bg-positive',
+                status === 'wrong' && 'bg-negative',
+                current
+                  ? 'border-accent'
+                  : status === 'correct'
+                    ? 'border-positive'
+                    : status === 'wrong'
+                      ? 'border-negative'
+                      : 'border-transparent',
+                status === 'current' && 'bg-accent/10',
+                status === 'unseen' && 'bg-ink/10',
               )}
             />
           );

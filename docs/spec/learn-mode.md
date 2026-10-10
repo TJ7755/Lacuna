@@ -368,12 +368,16 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   the first error, fully unlocked. A failed check retries the same lines without unlocking more.
 - Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
   **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
-  titled with the sequence name, with its progress in plain text beneath. After **Check** the source is shown with the typed-answer diff
-  (global answer strictness). Typed lines arrive pre-marked by that comparison and the
-  learner taps a line to overturn its mark; when every typed line matches, the check passes
-  without a marking step. Aloud recall is marked by hand. The mark is the only grade.
+  showing only the lines and the action; the sequence name and verse/line position remain
+  available to screen readers. **Check** reveals the source beside the typed answer, without
+  automatic comparison or punctuation highlighting. Typed and aloud recall are both marked
+  by hand: tap any missed line, then confirm **All correct** or **Try again**. A matching
+  answer never skips the marking step. The learner's mark is the only grade.
 - The Simple-mode progress bar holds each sequence's lines together in poem order, and the
-  pips lit as current are the lines being presented or recited.
+  pips outlined in accent are the lines being presented or recited. Each confirmed manual
+  check updates their green/red fill immediately, including retries, and that fill stays
+  visible during cumulative recitation. The numerical value counts the latest correct marks;
+  chunk mastery still controls completion and lesson exposure.
 - Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
   timed as the check's duration per recited line and excluded from speed calibration. Lines
   become mastered, with lesson exposure, as their chunk is completed. The current step is saved

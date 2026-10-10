@@ -21,16 +21,9 @@ const sequence: Sequence = {
   updatedAt: 0,
 };
 
-const comparison = { ignoreCase: true, ignorePunctuation: true };
-
 function renderRecitation(onCheck = vi.fn().mockResolvedValue(undefined)) {
   const view = render(
-    <SequenceRecitation
-      sequence={sequence}
-      masteredItemIds={new Set()}
-      comparison={comparison}
-      onCheck={onCheck}
-    />,
+    <SequenceRecitation sequence={sequence} masteredItemIds={new Set()} onCheck={onCheck} />,
   );
   return { ...view, onCheck };
 }
@@ -51,13 +44,16 @@ it('presents only the new line, then hides it once the learner recites', async (
   expect(screen.queryByText('Alpha line')).not.toBeInTheDocument();
 });
 
-it('advances without self-marking when every typed line matches', async () => {
+it('waits for manual marking even when every typed line matches', async () => {
   const { onCheck } = renderRecitation();
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
     target: { value: 'alpha line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+  expect(onCheck).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'All correct' }));
 
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
   expect(onCheck).toHaveBeenCalledWith(
@@ -70,7 +66,7 @@ it('advances without self-marking when every typed line matches', async () => {
   expect(screen.getByRole('button', { name: 'Recite' })).toBeInTheDocument();
 });
 
-it('pre-marks a mistyped line, and the learner can overturn the mark', async () => {
+it('lets the learner mark a mistyped line without an automatic verdict', async () => {
   const { onCheck } = renderRecitation();
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
   fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
@@ -78,7 +74,11 @@ it('pre-marks a mistyped line, and the learner can overturn the mark', async () 
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
-  const toggle = await screen.findByRole('button', { name: 'line 1: marked wrong' });
+  const toggle = await screen.findByRole('button', { name: 'line 1: correct' });
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+  expect(onCheck).not.toHaveBeenCalled();
+  fireEvent.click(toggle);
   expect(toggle).toHaveAttribute('aria-pressed', 'true');
   fireEvent.click(toggle);
   expect(toggle).toHaveAttribute('aria-pressed', 'false');
@@ -107,6 +107,7 @@ it('reports both lines of a completed chunk as mastered', async () => {
     target: { value: 'Alpha line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  fireEvent.click(screen.getByRole('button', { name: 'All correct' }));
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(1));
   expect(await screen.findByText('Beta line')).toBeInTheDocument();
 
@@ -120,6 +121,7 @@ it('reports both lines of a completed chunk as mastered', async () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
 
+  fireEvent.click(screen.getByRole('button', { name: 'All correct' }));
   await waitFor(() => expect(onCheck).toHaveBeenCalledTimes(2));
   expect(onCheck).toHaveBeenLastCalledWith(
     expect.objectContaining({
@@ -147,7 +149,7 @@ it('ignores Enter while an input method is composing', async () => {
   fireEvent.keyDown(box, { key: 'Enter', isComposing: true });
   expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument();
   fireEvent.keyDown(box, { key: 'Enter' });
-  expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'All correct' })).toBeInTheDocument();
 });
 
 it('reports the lines in focus as the recitation moves on', async () => {
@@ -156,7 +158,6 @@ it('reports the lines in focus as the recitation moves on', async () => {
     <SequenceRecitation
       sequence={sequence}
       masteredItemIds={new Set()}
-      comparison={comparison}
       onCheck={vi.fn().mockResolvedValue(undefined)}
       onFocusLines={onFocusLines}
     />,
@@ -167,7 +168,16 @@ it('reports the lines in focus as the recitation moves on', async () => {
     target: { value: 'Alpha line' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  fireEvent.click(screen.getByRole('button', { name: 'All correct' }));
   await waitFor(() => expect(onFocusLines).toHaveBeenLastCalledWith(['line-1']));
   fireEvent.click(screen.getByRole('button', { name: 'Recite' }));
   expect(onFocusLines).toHaveBeenLastCalledWith(['line-0', 'line-1']);
+});
+
+it('keeps the sequence title and position available only to screen readers', async () => {
+  renderRecitation();
+  const title = screen.getByRole('heading', { name: 'Verse' });
+  expect(title).toHaveClass('sr-only');
+  expect(screen.getByText('Verse 1 of 2, line 1 of 2')).toHaveClass('sr-only');
+  expect(await screen.findByText('Alpha line')).toBeVisible();
 });

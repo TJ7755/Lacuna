@@ -1678,7 +1678,13 @@ export function useLearnSession({
       for (const { itemId, correct } of results) {
         const card = cards.get(itemId);
         const deck = card && answerUnit(card);
-        if (!card || !deck || events.current.some((event) => event.cardId === card.id)) continue;
+          if (!card || !deck) continue;
+          // The bar follows each manual check, including retries; scheduling still
+          // records only the first recall and mastery waits for a completed chunk.
+          outcomes.set(card.id, correct ? 'correct' : 'wrong');
+          if (correct) simpleWrong.current.delete(card.id);
+          else simpleWrong.current.add(card.id);
+          if (events.current.some((event) => event.cardId === card.id)) continue;
         const grade: Grade = correct ? 3 : 1;
         // Recitation is not timed per line, so it leaves speed calibration untouched.
         const { result } = await persistAnswer(
@@ -1703,10 +1709,6 @@ export function useLearnSession({
           ...events.current,
           { cardId: card.id, grade, correct, responseTimeSec, distracted: false },
         ];
-        if (!correct) {
-          simpleWrong.current.add(card.id);
-          outcomes.set(card.id, 'wrong');
-        }
       }
       if (masteredItemIds === 'all') simpleRecitations.current.delete(recitationSequence.id);
       for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
