@@ -318,3 +318,9 @@ and can overwrite newer settings when its debounce fires.
 Unload events can arrive between an async attempt starting and React passive effects.
 Update the active-attempt ref when start resolves, as answer writes already do, so
 pagehide can abandon the persisted presentation in that interval.
+
+## Recitation marking is manual
+
+The prompter explicitly rejected automatic marking for poem/script recitation (10 October 2026).
+Punctuation is not the learning objective: reveal the source and let the learner mark it.
+Matching typed text must not skip confirmation; ordinary typed and maths checkers retain their own behaviour.

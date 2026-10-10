@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MarkdownView, markdownAnswerCorrect } from '../../../components/markdown/MarkdownView';
+import { MarkdownView } from '../../../components/markdown/MarkdownView';
 import { Button } from '../../../components/ui/Button';
-import { CheckIcon, CloseIcon, FileTextIcon } from '../../../components/ui/icons';
+import { CheckIcon, CloseIcon } from '../../../components/ui/icons';
 import { presetForSequence } from '../../../db/sequencePresets';
 import type { Sequence } from '../../../db/types';
-import type { AnswerComparisonOptions } from '../../../utils/answerComparison';
 import { cn } from '../../../components/ui/cn';
 import { useRecitationInput } from '../../../state/recitationInput';
 import {
@@ -31,13 +30,16 @@ interface Props {
   sequence: Sequence;
   /** Lines already mastered this session, so a resumed pass skips their chunks. */
   masteredItemIds: ReadonlySet<string>;
-  comparison: AnswerComparisonOptions;
   onCheck: (check: RecitationCheck) => Promise<void>;
   /**
    * A scheduled review of one due line: its chunk is recited down to it once, and only
    * that line is graded. Replaces the cumulative flow.
    */
-  review?: { itemId: string; onReveal: (lines: number) => void; onGrade: (correct: boolean) => void };
+  review?: {
+    itemId: string;
+    onReveal: (lines: number) => void;
+    onGrade: (correct: boolean) => void;
+  };
   /** Reports the item ids of the lines in focus (the new line, or those being recited). */
   onFocusLines?: (itemIds: string[]) => void;
   /** A step saved by an earlier visit; ignored unless it still fits the sequence. */
@@ -59,7 +61,6 @@ function CueLine({ line }: { line: RecitationLine }) {
 export function SequenceRecitation({
   sequence,
   masteredItemIds,
-  comparison,
   onCheck,
   review,
   onFocusLines,
@@ -68,7 +69,9 @@ export function SequenceRecitation({
 }: Props) {
   const plan = useMemo(() => recitationPlan(sequence), [sequence]);
   const [state, setState] = useState<RecitationState>(() =>
-    isRecitationStateFor(plan, savedState) ? savedState : initialRecitationState(plan, masteredItemIds),
+    isRecitationStateFor(plan, savedState)
+      ? savedState
+      : initialRecitationState(plan, masteredItemIds),
   );
   const onStateChangeRef = useRef(onStateChange);
   onStateChangeRef.current = onStateChange;
@@ -89,7 +92,10 @@ export function SequenceRecitation({
   const mineTarget = target.filter((i) => plan.lines[i].mine);
   const shown = phase === 'present' ? presentedLines(plan, step) : target;
   const terminology = presetForSequence(sequence).terminology;
-  const focusKey = shown.filter((i) => plan.lines[i].mine).map((i) => plan.lines[i].itemId).join('\n');
+  const focusKey = shown
+    .filter((i) => plan.lines[i].mine)
+    .map((i) => plan.lines[i].itemId)
+    .join('\n');
 
   useEffect(() => {
     onFocusLines?.(focusKey ? focusKey.split('\n') : []);
@@ -111,8 +117,8 @@ export function SequenceRecitation({
       : step.kind === 'done'
         ? ''
         : `${plan.chunks.length > 1 ? `${terminology.chunkLabel} ${step.chunk + 1} of ${plan.chunks.length}, ${terminology.item}` : capitalised(terminology.item)} ${step.unlocked} of ${
-          plan.chunks[step.chunk].filter((i) => plan.lines[i].mine).length
-        }`;
+            plan.chunks[step.chunk].filter((i) => plan.lines[i].mine).length
+          }`;
 
   async function submit() {
     if (saving) return;
@@ -121,24 +127,8 @@ export function SequenceRecitation({
       return;
     }
     if (!checking) {
-      // Typed lines are marked by comparison; the learner only overrides a mark.
-      const marked = new Set(
-        input === 'type'
-          ? mineTarget.flatMap((i) =>
-            markdownAnswerCorrect(plan.lines[i].value, {
-              answer: typed[plan.lines[i].itemId] ?? '',
-              options: comparison,
-            })
-              ? []
-              : [plan.lines[i].itemId],
-          )
-          : [],
-      );
-      if (input === 'type' && marked.size === 0 && !review) {
-        await record(marked);
-        return;
-      }
-      setWrong(marked);
+      // Revealing an answer never grades it: the learner marks any missed lines.
+      setWrong(new Set());
       setChecking(true);
       review?.onReveal(mineTarget.length);
       return;
@@ -198,21 +188,20 @@ export function SequenceRecitation({
       ref={rootRef}
       className="mx-auto flex w-full max-w-2xl flex-col gap-6 rounded-3xl border border-line bg-surface px-6 py-8 md:px-10 md:py-10"
       onKeyDown={(event) => {
-        if (event.key !== 'Enter' || event.shiftKey || event.target instanceof HTMLTextAreaElement) return;
+        if (event.key !== 'Enter' || event.shiftKey || event.target instanceof HTMLTextAreaElement)
+          return;
         if (event.target instanceof HTMLButtonElement) return;
         event.preventDefault();
         void submit();
       }}
     >
-      <header className="flex items-start gap-3">
-        <FileTextIcon width={20} height={20} className="mt-1.5 shrink-0 text-accent" aria-hidden />
-        <div className="min-w-0">
-          <h2 className="font-display text-2xl text-ink">{sequence.name}</h2>
-          <p className="mt-1 text-sm text-ink-soft">{status}</p>
-        </div>
-      </header>
+      <h2 className="sr-only">{sequence.name}</h2>
+      <p className="sr-only">{status}</p>
 
-      <ol className="flex flex-col gap-3" aria-label={phase === 'present' ? 'New line' : 'Recitation'}>
+      <ol
+        className="flex flex-col gap-3"
+        aria-label={phase === 'present' ? 'New line' : 'Recitation'}
+      >
         {shown.map((index) => {
           const line = plan.lines[index];
           if (!line.mine) {
@@ -240,12 +229,16 @@ export function SequenceRecitation({
                     value={typed[line.itemId] ?? ''}
                     onChange={(event) => setTyped({ ...typed, [line.itemId]: event.target.value })}
                     onKeyDown={(event) => {
-                      if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+                      if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing)
+                        return;
                       event.preventDefault();
                       const next = nextMine(index);
-                      const field = next === undefined ? null : rootRef.current?.querySelector<HTMLElement>(
-                        `textarea[data-line="${plan.lines[next].itemId}"]`,
-                      );
+                      const field =
+                        next === undefined
+                          ? null
+                          : rootRef.current?.querySelector<HTMLElement>(
+                              `textarea[data-line="${plan.lines[next].itemId}"]`,
+                            );
                       if (field) field.focus();
                       else void submit();
                     }}
@@ -274,17 +267,26 @@ export function SequenceRecitation({
                   isWrong ? 'bg-negative/10 hover:bg-negative/15' : 'hover:bg-ink/5',
                 )}
               >
-                <MarkdownView
-                  source={line.value}
-                  className="min-w-0 flex-1 text-ink"
-                  typedAnswerFeedback={
-                    input === 'type' ? { answer: answer ?? '', options: comparison } : undefined
-                  }
-                />
+                <div className="min-w-0 flex-1 text-ink">
+                  {input === 'type' && answer && (
+                    <p className="mb-2 whitespace-pre-wrap text-ink-soft">{answer}</p>
+                  )}
+                  <MarkdownView source={line.value} />
+                </div>
                 {isWrong ? (
-                  <CloseIcon width={18} height={18} className="mt-1 shrink-0 text-negative" aria-hidden />
+                  <CloseIcon
+                    width={18}
+                    height={18}
+                    className="mt-1 shrink-0 text-negative"
+                    aria-hidden
+                  />
                 ) : (
-                  <CheckIcon width={18} height={18} className="mt-1 shrink-0 text-positive" aria-hidden />
+                  <CheckIcon
+                    width={18}
+                    height={18}
+                    className="mt-1 shrink-0 text-positive"
+                    aria-hidden
+                  />
                 )}
               </button>
             </li>
@@ -293,13 +295,7 @@ export function SequenceRecitation({
       </ol>
 
       <div className="flex flex-col items-center gap-3">
-        {checking && (
-          <p className="text-sm text-ink-soft">
-            {wrong.size > 0 && !review
-              ? `Recite from the start of this ${step.kind === 'join' ? 'pass' : terminology.chunkLabel.toLowerCase()} again.`
-              : 'Tap a line to change its mark.'}
-          </p>
-        )}
+        {checking && <p className="text-sm text-ink-soft">Tap any line you missed.</p>}
         <Button
           variant={checking && wrong.size > 0 && !review ? 'secondary' : 'primary'}
           size="lg"

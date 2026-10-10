@@ -12,7 +12,7 @@ import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
-import { answerComparisonOptions, useAnswerStrictness } from '../state/answerStrictness';
+import { useAnswerStrictness } from '../state/answerStrictness';
 import { useStudyMode } from '../state/studyMode';
 import { useLessonCourse } from '../state/useCourseData';
 import { useStartInFocusMode } from '../state/focusModePreference';
@@ -547,7 +547,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   key={isSimpleMode ? recitationSequence.id : current.id}
                   sequence={recitationSequence}
                   masteredItemIds={recitationMasteredItemIds(recitationSequence.id)}
-                  comparison={answerComparisonOptions(answerStrictness)}
                   onCheck={({ results, responseTimeSec, masteredItemIds, done }) =>
                     answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
                   }

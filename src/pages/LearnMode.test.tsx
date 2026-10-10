@@ -292,7 +292,9 @@ describe('LearnMode course/lesson scope', () => {
       target: { value: 'Where is it?' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    // A mistyped line arrives marked wrong.
+    // Revealing never marks a line wrong; the learner decides.
+    expect(screen.getByRole('button', { name: 'line 1: correct' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'line 1: correct' }));
     expect(screen.getByRole('button', { name: 'line 1: marked wrong' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -302,8 +304,9 @@ describe('LearnMode course/lesson scope', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
       target: { value: 'Where are you?' },
     });
-    // A matching recitation needs no marking.
+    // A matching recitation still waits for the learner's mark.
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
 
     // Line 2 is presented only once line 1 has passed, and the bar follows it.
     expect(await screen.findByText('I am here.')).toBeInTheDocument();
@@ -311,9 +314,11 @@ describe('LearnMode course/lesson scope', () => {
       [...document.querySelectorAll('[data-session-card-status]')].map((pip) =>
         pip.getAttribute('data-session-card-status'),
       );
-    await waitFor(() => expect(pips()).toEqual(['wrong', 'current']));
+    await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
     fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
-    await waitFor(() => expect(pips()).toEqual(['current', 'current']));
+    await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
+    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass('bg-positive', 'border-accent');
+    expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute('aria-valuenow', '50');
     fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
       target: { value: 'Where are you?' },
     });
@@ -322,6 +327,7 @@ describe('LearnMode course/lesson scope', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
 
+    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
     await screen.findByRole('heading', {
       name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
     });
@@ -383,7 +389,9 @@ describe('LearnMode course/lesson scope', () => {
     const dueItemId = dueBox.dataset.line!;
     const dueLabel = dueBox.getAttribute('aria-label')!;
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    // Left blank, the due line arrives already marked wrong.
+    // Even a blank answer is marked manually.
+    expect(screen.getByRole('button', { name: `${dueLabel}: correct` })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: `${dueLabel}: correct` }));
     expect(screen.getByRole('button', { name: `${dueLabel}: marked wrong` })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -1975,6 +1983,7 @@ describe('LearnMode course/lesson scope', () => {
       target: { value: 'Because I could not stop for Death' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
     expect(await screen.findByText('He kindly stopped for me')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
