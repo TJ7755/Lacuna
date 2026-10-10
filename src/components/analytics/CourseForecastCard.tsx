@@ -47,7 +47,7 @@ export function CourseForecastCard({
   return (
     <section
       aria-label="Exam-day forecast"
-      className="rounded-[28px] bg-surface px-6 pb-6 pt-7 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-8 md:pt-8"
+      className="rounded-[28px] bg-surface px-6 pb-6 pt-7 shadow-card md:px-8 md:pt-8"
     >
       <ForecastChart
         lines={[line]}

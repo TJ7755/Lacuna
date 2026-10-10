@@ -46,7 +46,7 @@ const inputClass =
   'min-h-12 w-full rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-ink';
 const labelClass = 'mb-2 block text-[13px] font-bold text-ink-soft';
 const cardClass =
-  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'rounded-3xl bg-surface shadow-card';
 
 export function QuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();

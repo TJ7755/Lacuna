@@ -66,7 +66,7 @@ export function AiPanel({
   return (
     <aside
       aria-label="AI conversation"
-      className="flex h-full w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_24px_56px_-24px_hsl(var(--ink)/0.4)]"
+      className="flex h-full w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-card"
     >
       <header
         {...windowControls?.handleProps}

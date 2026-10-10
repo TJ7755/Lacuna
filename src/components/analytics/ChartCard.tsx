@@ -63,7 +63,7 @@ export function ChartCard({
   const m = speedMultiplier(motionSpeed);
   const [ref, revealed] = useRevealOnce<HTMLDivElement>(m === 0);
   return (
-    <SectionCard className="min-w-0 rounded-3xl bg-surface p-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-6">
+    <SectionCard className="min-w-0 rounded-3xl bg-surface p-5 shadow-card md:p-6">
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h3 className="font-display text-lg font-semibold tracking-tight">{title}</h3>

@@ -19,7 +19,7 @@ const SIDE_OPTIONS = [
 ] as const;
 
 const SURFACE =
-  'shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'shadow-card';
 
 function Face({
   type,

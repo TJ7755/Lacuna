@@ -158,7 +158,7 @@ export function LegacyQuestionsPage() {
       </motion.header>
 
       {data.questions.length === 0 ? (
-        <section className="rounded-3xl bg-surface px-6 py-16 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
+        <section className="rounded-3xl bg-surface px-6 py-16 text-center shadow-card">
           <p className="font-display text-2xl font-semibold tracking-tight text-ink">
             No Questions yet
           </p>

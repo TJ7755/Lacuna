@@ -416,7 +416,7 @@ function AppShellLayout() {
                 <span className="block h-0.5 w-5 bg-current" />
               </span>
             </button>
-            <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
+            <span className="flex items-center gap-2 font-display text-lg font-extrabold leading-none tracking-[-0.035em]">
               <img
                 data-testid="mobile-brand-mark"
                 src={`${import.meta.env.BASE_URL}icon.svg`}

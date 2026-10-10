@@ -253,7 +253,7 @@ export function SharedCourseImport({
 
   return (
     <SectionCard
-      className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-6"
+      className="rounded-3xl bg-surface shadow-card p-6"
       onKeyDown={(event) => {
         // Ctrl/Cmd+Enter does the next step: import once a course is read, otherwise read the code.
         if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.defaultPrevented)

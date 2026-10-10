@@ -702,7 +702,7 @@ export function UnifiedImportPanel({
                 animate={{ opacity: 1 }}
                 exit={m > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-5"
+                className="rounded-3xl bg-surface shadow-card p-5"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <span className="text-xs font-medium text-ink-soft">

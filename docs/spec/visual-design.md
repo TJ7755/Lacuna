@@ -5,28 +5,36 @@
 Defined as raw HSL triples in `:root` and overridden under `.dark`, then exposed as Tailwind
 colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
-- **Light:** warm stone paper (`--paper`), white surfaces (`--surface`), navy ink. The
-  sidebar sits on a slightly darker `--chrome` ground.
-- **Dark (default):** deep blue-black paper and chrome, blue-grey surfaces, pale ink.
+- **Light:** untinted near-white paper (`--paper`), white surfaces (`--surface`), near-black
+  ink. The sidebar sits on a slightly darker `--chrome` ground.
+- **Dark (default):** true black paper and chrome, neutral grey surfaces, near-white ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
-  is amber; the user may pick **red, rose, pink, violet, blue, teal or green**. Selecting one
+  is violet; the user may pick **orange, red, rose, pink, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and
-  dark recipes so each accent reads correctly in both themes.
+  dark recipes so each accent reads correctly in both themes. A stored `amber` (the old
+  default, saved on every visit) reads as the default.
+- **Second colour and item hues:** `--pop` (neon chartreuse in dark, a deeper green in light)
+  marks completed days. `--hue-1` to `--hue-4` colour repeating items through `hueAt()` in
+  `src/components/ui/hues.ts`: lessons cycle through them, card counts are `hue-4` and time is
+  `hue-2`. The active sidebar destination and course tab are filled with the accent; the
+  active course is `accent-soft`. No gradients on surfaces.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
   (orange) for on-track, failure and behind-target states.
-- **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
-  never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
+- **Surfaces:** cards are flat (`rounded-3xl`) with a hairline ring (`shadow-card`, drawn as
+  a 1px box-shadow so it adds no layout), never a soft drop shadow or a tinted halo. Floating
+  layers (menus, dialogs, toasts) keep their elevation shadow. Buttons are pills; the primary button carries no shadow.
   Segmented controls are a pill track with a white pill that slides between options. The
   paper grain is off (`--grain-opacity: 0`).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Bricolage Grotesque):** headings (`h1`–`h4`) and large figures,
-  weight 600 with tight negative letter-spacing. Page titles are `text-4xl` to `44px`.
-- **Body (`font-body`, Atkinson Hyperlegible Next):** all running text. Both faces are
-  bundled locally (OFL) so they work offline; Instrument Sans remains the fallback and the
-  landing page's face.
-- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
+- **Display and body (`font-display`, `font-body`, Host Grotesk):** one face for headings
+  (weight 600, tight negative letter-spacing; page titles `text-4xl` to `44px`) and running
+  text. Bundled locally (OFL) so it works offline; Instrument Sans remains the fallback and
+  the landing page's face. Its zeros are plain, so tabular figures do not read as code.
+- **Wordmark:** the app's Lacuna wordmark is the display face, extra bold, tracked to
+  `-0.035em`. The serif `font-brand` (Fraunces) belongs to the landing and download pages
+  only.
 - **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
   or display face; axis and metadata labels are never monospace.
 - Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
@@ -196,8 +204,8 @@ keyboard shortcuts on keyboard).
   rhythm, left section rail and card surfaces; below 1280px, both expose the compact section
   jumper. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously.
-- Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with a
-  soft layered ink shadow. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
+- Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with the
+  `shadow-card` hairline. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
 - Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
   controls (label, hint, error). A label above its control is small semibold ink
   (`fieldLabelClassName`), its hint regular and faint; `Select` and inputs laid out in a row

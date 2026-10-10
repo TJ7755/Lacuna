@@ -55,7 +55,7 @@ export function CardsToolbar({
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search this course"
-          className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink shadow-card outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent/60"
         />
       </label>
       <div role="group" aria-label="Filter cards" className="flex flex-wrap gap-1.5">

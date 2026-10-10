@@ -9,10 +9,10 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
       const heading = page.getByRole('heading', { name: 'Today', exact: true });
       await expect(heading).toBeVisible();
-      await expect(page.locator('main')).toHaveCSS('font-family', /Atkinson Hyperlegible Next/);
+      await expect(page.locator('main')).toHaveCSS('font-family', /Host Grotesk/);
       await page.evaluate(() => document.fonts.ready);
       expect(
-        await page.evaluate(() => document.fonts.check('16px "Atkinson Hyperlegible Next"')),
+        await page.evaluate(() => document.fonts.check('16px "Host Grotesk"')),
       ).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
@@ -30,7 +30,7 @@ for (const theme of ['light', 'dark'] as const) {
         level: 1,
       });
       await expect(course).toBeVisible();
-      await expect(course).toHaveCSS('font-family', /Bricolage Grotesque/);
+      await expect(course).toHaveCSS('font-family', /Host Grotesk/);
       await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();
       await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toBeFocused();

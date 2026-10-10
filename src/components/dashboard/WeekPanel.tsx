@@ -28,7 +28,7 @@ export function WeekPanel({
     <dl className="grid grid-cols-2 gap-x-3 gap-y-4 border-t border-line pt-4 sm:grid-cols-3 sm:gap-4 sm:pt-5">
       <div className="flex items-center gap-3 text-ink-soft">
         <motion.span
-          className={streak > 0 ? 'text-accent' : undefined}
+          className={streak > 0 ? 'text-hue-2' : undefined}
           initial={multiplier > 0 && streak > 0 ? { scale: 0.6, rotate: -12 } : false}
           animate={
             multiplier > 0 && streak > 0
@@ -47,7 +47,7 @@ export function WeekPanel({
         </div>
       </div>
       <div className="flex items-center gap-3 text-ink-soft">
-        <CardsIcon width={20} height={20} aria-hidden="true" />
+        <CardsIcon width={20} height={20} aria-hidden="true" className="text-hue-4" />
         <div className="flex flex-col-reverse leading-tight">
           <dt className="text-sm text-ink-faint">cards this week</dt>
           <dd className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
@@ -66,8 +66,8 @@ export function WeekPanel({
                 <motion.span
                   className={
                     'block h-3 w-3 rounded-full border-[1.5px] ' +
-                    (done ? 'border-ink bg-ink' : future ? 'border-line' : 'border-line-strong') +
-                    (isToday ? ' ring-2 ring-ink ring-offset-2 ring-offset-surface' : '')
+                    (done ? 'border-pop bg-pop' : future ? 'border-line' : 'border-line-strong') +
+                    (isToday ? ' ring-2 ring-accent ring-offset-2 ring-offset-surface' : '')
                   }
                   initial={multiplier > 0 && done ? { scale: 0 } : false}
                   animate={{ scale: 1 }}

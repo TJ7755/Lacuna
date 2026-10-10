@@ -46,7 +46,7 @@ export function QuestionFeedback({
   const tone = resultTone(marksEarned, marksAvailable, scheduleWithheld);
 
   return (
-    <section className="rounded-[28px] bg-surface px-6 py-8 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-[52px] md:py-11">
+    <section className="rounded-[28px] bg-surface px-6 py-8 shadow-card md:px-[52px] md:py-11">
       <div className="flex items-center gap-4">
         <ResultMark tone={tone} className="size-11" />
         <p className="flex-1 font-display text-2xl font-semibold tracking-tight text-ink">

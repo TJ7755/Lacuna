@@ -13,7 +13,7 @@ import { CardSizeMeasurements, useStableCardHeight } from './useStableCardHeight
 
 // One quiet surface in every mode and phase: no outline and no tinted halo.
 const CARD_SURFACE_CLASS =
-  'border-transparent shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'border-transparent shadow-card';
 
 /**
  * A card that flips vertically to reveal its answer, and responds to touch and mouse

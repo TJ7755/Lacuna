@@ -378,6 +378,15 @@ describe('Dashboard', () => {
     expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
   });
 
+  it('shows no sharing announcement between the queue and the forecast', async () => {
+    setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
+    render(<Dashboard />);
+
+    await expect(
+      screen.findByRole('region', { name: 'New sharing features' }, { timeout: 500 }),
+    ).rejects.toThrow();
+  });
+
   it('opens the course menu under its More button without navigating, then dismisses it', async () => {
     setCourseData();
     render(<Dashboard />);
