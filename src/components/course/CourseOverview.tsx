@@ -7,6 +7,7 @@ import type { LessonReorderInteraction } from './useLessonPathReorder';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatShortDate } from '../../utils/datetime';
 import { MOTION_EASING } from '../ui/motion';
+import { hueAt } from '../ui/hues';
 import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
@@ -56,7 +57,7 @@ interface CourseOverviewProps {
 }
 
 const CARD =
-  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'rounded-3xl bg-surface shadow-card';
 const SECURE = 90;
 
 /**
@@ -276,7 +277,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                             ? 'border-positive bg-positive text-surface'
                             : locked
                               ? 'border-line-strong bg-surface text-ink-faint'
-                              : 'border-ink bg-surface text-ink',
+                              : cn(hueAt(index).mark, 'text-ink'),
                         )}
                       >
                         {practice ? (
@@ -305,12 +306,15 @@ export function CourseOverview(props: CourseOverviewProps) {
                         </span>
                         <span
                           aria-hidden="true"
-                          className="block h-1 overflow-hidden rounded-full bg-line"
+                          className={cn(
+                            'block h-1 overflow-hidden rounded-full',
+                            locked ? 'bg-line' : hueAt(index).track,
+                          )}
                         >
                           <motion.span
                             className={cn(
                               'block h-1 origin-left rounded-full',
-                              done ? 'bg-positive' : 'bg-ink',
+                              done ? 'bg-positive' : hueAt(index).fill,
                             )}
                             style={{ width: `${locked ? 0 : pct}%` }}
                             initial={m > 0 ? { scaleX: 0 } : false}

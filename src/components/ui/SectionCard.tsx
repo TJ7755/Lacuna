@@ -2,7 +2,7 @@ import { createElement, type HTMLAttributes, type ReactNode, type Ref } from 're
 import { cn } from './cn';
 
 export const SECTION_CARD_SURFACE_CLASS =
-  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'rounded-3xl bg-surface shadow-card';
 
 type SectionCardProps = Omit<HTMLAttributes<HTMLElement>, 'className' | 'children'> & {
   ref?: Ref<HTMLElement>;

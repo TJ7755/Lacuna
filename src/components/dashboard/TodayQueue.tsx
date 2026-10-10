@@ -71,7 +71,7 @@ export function TodayQueue({
               if (!event.currentTarget.contains(event.relatedTarget as Node | null))
                 setFocusedId(null);
             }}
-            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)] focus-within:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
+            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-card transition-shadow hover:shadow-card-strong focus-within:shadow-card-strong"
           >
             <span
               aria-hidden="true"
@@ -113,12 +113,12 @@ export function TodayQueue({
             ) : (
               <>
                 <span className="hidden items-center gap-1.5 text-ink-soft tabular-nums sm:inline-flex">
-                  <CardsIcon width={16} height={16} aria-hidden="true" />
+                  <CardsIcon width={16} height={16} aria-hidden="true" className="text-hue-4" />
                   <span className="sr-only">Cards due:</span>
                   {row.due}
                 </span>
                 <span className="hidden min-w-[72px] items-center gap-1.5 whitespace-nowrap text-ink-soft tabular-nums sm:inline-flex">
-                  <ClockIcon width={16} height={16} aria-hidden="true" />
+                  <ClockIcon width={16} height={16} aria-hidden="true" className="text-hue-2" />
                   {Math.max(1, Math.round(row.minutes))} min
                 </span>
                 {/* Study opens the course's session plan, as Study does on the course page. */}

@@ -28,7 +28,7 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
   // welcome-course seed, which start-up loads whenever its flags are missing, and the
   // motion features every start-up loads straight after first paint.
   const deferredControls = chunks.filter((chunk) =>
-    /^assets\/(?:RouteAnnouncement|SharingAnnouncement|CourseActions|seed|motionFeatures)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/(?:RouteAnnouncement|CourseActions|seed|motionFeatures)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   return [
     ...new Set([

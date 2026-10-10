@@ -25,7 +25,7 @@ export function KpiRow({
       {items.map((item) => (
         <div
           key={item.label}
-          className="flex flex-col gap-1.5 rounded-3xl bg-surface px-5 py-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-6"
+          className="flex flex-col gap-1.5 rounded-3xl bg-surface px-5 py-5 shadow-card md:px-6"
         >
           <span className="text-sm text-ink-soft">{item.label}</span>
           <span className="font-display text-[34px] font-semibold leading-none tracking-tight text-ink tabular-nums md:text-[38px]">

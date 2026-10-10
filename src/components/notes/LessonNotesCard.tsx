@@ -90,7 +90,7 @@ export function LessonNotesCard({
   return (
     <article
       className={cn(
-        'flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-6 text-[17px] leading-[1.65] shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-12 md:py-10',
+        'flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-6 text-[17px] leading-[1.65] shadow-card md:px-12 md:py-10',
         className,
       )}
     >

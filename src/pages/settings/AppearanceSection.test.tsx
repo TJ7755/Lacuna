@@ -43,10 +43,22 @@ describe('AppearanceSection', () => {
 
     const group = screen.getByRole('radiogroup', { name: 'Accent colour' });
     expect(group.querySelectorAll('[role="radio"]').length).toBeGreaterThan(1);
-    expect(screen.getByRole('radio', { name: 'Amber' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Violet' })).toHaveAttribute('aria-checked', 'true');
 
     fireEvent.click(screen.getByRole('radio', { name: 'Teal' }));
     expect(screen.getByRole('radio', { name: 'Teal' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('radio', { name: 'Amber' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('radio', { name: 'Violet' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('moves the old stored amber default to violet but keeps other choices', () => {
+    localStorage.setItem('lacuna-accent', 'amber');
+    const { unmount } = renderAppearance();
+    expect(screen.getByRole('radio', { name: 'Violet' })).toHaveAttribute('aria-checked', 'true');
+    expect(document.documentElement.dataset.accent).toBe('violet');
+    unmount();
+
+    localStorage.setItem('lacuna-accent', 'teal');
+    renderAppearance();
+    expect(screen.getByRole('radio', { name: 'Teal' })).toHaveAttribute('aria-checked', 'true');
   });
 });

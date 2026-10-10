@@ -65,7 +65,7 @@ export function LessonCardsList({
     <aside
       aria-labelledby="lesson-cards-heading"
       className={cn(
-        'flex min-w-0 flex-col gap-1 rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]',
+        'flex min-w-0 flex-col gap-1 rounded-3xl bg-surface p-6 shadow-card',
         className,
       )}
     >

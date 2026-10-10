@@ -40,19 +40,14 @@ describe('design rules', () => {
     expect(offenders).toEqual([]);
   });
 
-  // Fraunces is the wordmark's face (visual-design §3.2); names and headings use the display face.
-  it('keeps the brand face to the wordmark and the occlusion question mark', () => {
-    const allowed = new Set([
-      join('components', 'layout', 'Sidebar.tsx'),
-      join('components', 'layout', 'AppShell.tsx'),
-      join('components', 'occlusion', 'OcclusionMaskLayer.tsx'),
-    ]);
+  // The app sets its wordmark in the display face (visual-design §3.2); the serif brand
+  // face belongs to the public landing and download pages only.
+  it('keeps the serif brand face out of the app', () => {
     const offenders = sourceFiles(SRC)
       .filter((path) => path.endsWith('.tsx'))
       .filter((path) => !/^(pages[\\/]landing|components[\\/](welcome|landing))/.test(relative(SRC, path)))
       .filter((path) => /\bfont-brand\b/.test(readFileSync(path, 'utf8')))
-      .map((path) => relative(SRC, path))
-      .filter((path) => !allowed.has(path));
+      .map((path) => relative(SRC, path));
     expect(offenders).toEqual([]);
   });
 

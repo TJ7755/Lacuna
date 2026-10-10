@@ -23,11 +23,11 @@ export interface Accent {
 
 /** The selectable accents. The first entry is the default. */
 export const ACCENTS: readonly Accent[] = [
-  { key: 'amber', label: 'Amber', swatch: 'hsl(32 90% 48%)' },
+  { key: 'violet', label: 'Violet', swatch: 'hsl(258 80% 58%)' },
+  { key: 'orange', label: 'Orange', swatch: 'hsl(32 90% 48%)' },
   { key: 'red', label: 'Red', swatch: 'hsl(6 90% 48%)' },
   { key: 'rose', label: 'Rose', swatch: 'hsl(340 90% 48%)' },
   { key: 'pink', label: 'Pink', swatch: 'hsl(320 80% 52%)' },
-  { key: 'violet', label: 'Violet', swatch: 'hsl(265 80% 55%)' },
   { key: 'blue', label: 'Blue', swatch: 'hsl(217 90% 52%)' },
   { key: 'teal', label: 'Teal', swatch: 'hsl(186 90% 38%)' },
   { key: 'green', label: 'Green', swatch: 'hsl(150 70% 38%)' },
@@ -45,6 +45,9 @@ const AccentContext = createContext<AccentValue | null>(null);
 function readStored(): string {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
+    // Amber was the default and was stored on every visit, so it cannot be told apart
+    // from a choice: it follows the current default. The same colour is now Orange.
+    if (stored === 'amber') return DEFAULT_ACCENT;
     if (stored && ACCENTS.some((a) => a.key === stored)) return stored;
   } catch {
     // Ignore storage access errors and fall back to the default.

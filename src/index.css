@@ -10,21 +10,11 @@
   font-display: swap;
 }
 
-/* The app's own faces, bundled so they work offline: Bricolage Grotesque for
-   display type and Atkinson Hyperlegible Next for reading. */
+/* The app's own face, bundled so it works offline: Host Grotesk for display and reading. */
 @font-face {
-  font-family: 'Bricolage Grotesque';
-  src: url('/fonts/BricolageGrotesque-Variable.ttf') format('truetype');
-  font-weight: 200 800;
-  font-stretch: 75% 100%;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Atkinson Hyperlegible Next';
-  src: url('/fonts/AtkinsonHyperlegibleNext-Variable.ttf') format('truetype');
-  font-weight: 200 800;
+  font-family: 'Host Grotesk';
+  src: url('/fonts/HostGrotesk-Variable.ttf') format('truetype');
+  font-weight: 300 800;
   font-style: normal;
   font-display: swap;
 }
@@ -83,9 +73,11 @@
 }
 
 /*
- * Light = warm stone paper with white surfaces and navy ink; dark = deep blue-black.
- * `--chrome` is the slightly darker ground behind the sidebar.
- * A single warm amber accent carries every interactive and success state by default.
+ * Light = white surfaces on a near-white neutral ground with near-black ink; dark = true
+ * black with neutral greys. `--chrome` is the slightly darker ground behind the sidebar.
+ * A violet accent carries every interactive state by default; `--pop` (neon green in dark,
+ * a deeper green in light) is the second brand colour. `--hue-1` to `--hue-4` colour
+ * repeating items such as lessons, and icons, so screens are not monochrome.
  * Defined as raw custom properties so they can switch with the `.dark` class, then
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
@@ -93,19 +85,24 @@
   /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
      the app's theme rather than the system's, which can differ when the theme is chosen. */
   color-scheme: light;
-  --paper: 50 21% 95%;
+  --paper: 0 0% 98%;
   --surface: 0 0% 100%;
   --surface-raised: 0 0% 100%;
-  --chrome: 51 15% 91%;
-  --ink: 221 41% 12%;
-  --ink-soft: 220 17% 35%;
-  --ink-faint: 218 12% 42%;
-  --line: 52 12% 87%;
-  --line-strong: 69 9% 80%;
-  --accent: 32 90% 48%;
-  --accent-soft: 32 85% 92%;
-  --accent-ink: 28 60% 24%;
-  --accent-fg: 28 60% 14%;
+  --chrome: 0 0% 95%;
+  --ink: 0 0% 6%;
+  --ink-soft: 0 0% 32%;
+  --ink-faint: 0 0% 42%;
+  --line: 0 0% 89%;
+  --line-strong: 0 0% 80%;
+  --accent: 258 80% 58%;
+  --accent-soft: 258 85% 95%;
+  --accent-ink: 258 60% 38%;
+  --accent-fg: 0 0% 100%;
+  --pop: 150 75% 32%;
+  --hue-1: 150 75% 34%;
+  --hue-2: 330 80% 50%;
+  --hue-3: 258 80% 58%;
+  --hue-4: 195 90% 38%;
   --positive: 150 60% 30%;
   --negative: 4 77% 40%;
   --warning: 28 76% 50%;
@@ -115,18 +112,24 @@
 
 .dark {
   color-scheme: dark;
-  --paper: 220 23% 8%;
-  --surface: 221 21% 12%;
-  --surface-raised: 221 19% 15%;
-  --chrome: 220 22% 10%;
-  --ink: 222 26% 94%;
-  --ink-soft: 220 12% 72%;
-  --ink-faint: 220 10% 64%;
-  --line: 221 15% 19%;
-  --line-strong: 221 13% 27%;
-  --accent: 34 92% 56%;
-  --accent-soft: 32 40% 18%;
-  --accent-ink: 36 90% 70%;
+  --paper: 0 0% 4%;
+  --surface: 0 0% 8%;
+  --surface-raised: 0 0% 11%;
+  --chrome: 0 0% 6%;
+  --ink: 0 0% 96%;
+  --ink-soft: 0 0% 72%;
+  --ink-faint: 0 0% 58%;
+  --line: 0 0% 15%;
+  --line-strong: 0 0% 23%;
+  --accent: 258 90% 70%;
+  --accent-soft: 258 40% 20%;
+  --accent-ink: 258 95% 82%;
+  --accent-fg: 258 60% 8%;
+  --pop: 75 95% 55%;
+  --hue-1: 75 95% 55%;
+  --hue-2: 330 90% 68%;
+  --hue-3: 258 90% 72%;
+  --hue-4: 190 90% 58%;
   --positive: 150 40% 55%;
   --negative: 6 70% 62%;
   --warning: 38 92% 56%;
@@ -135,24 +138,24 @@
 }
 
 /*
- * Selectable accent colours. The base palette above is amber; choosing another
+ * Selectable accent colours. The base palette above is violet; choosing another
  * accent sets `data-accent` on the root and overrides just the accent triad.
  * Each accent carries a light variant (on :root) and a dark variant (on .dark),
- * following the same lightness/saturation recipe as the original amber so every
- * accent reads correctly in both themes.
+ * following one lightness/saturation recipe so every accent reads correctly in
+ * both themes.
  */
+:root[data-accent='orange'] { --accent: 32 90% 48%; --accent-soft: 32 85% 92%; --accent-ink: 28 60% 24%; --accent-fg: 28 60% 14%; }
 :root[data-accent='red']    { --accent: 6 90% 48%;   --accent-soft: 6 85% 92%;   --accent-ink: 6 60% 24%;   --accent-fg: 6 60% 14%; }
 :root[data-accent='rose']   { --accent: 340 90% 48%; --accent-soft: 340 85% 93%; --accent-ink: 340 60% 26%; --accent-fg: 340 60% 14%; }
 :root[data-accent='pink']   { --accent: 320 80% 50%; --accent-soft: 320 80% 93%; --accent-ink: 320 55% 28%; --accent-fg: 320 55% 14%; }
-:root[data-accent='violet'] { --accent: 265 80% 55%; --accent-soft: 265 75% 94%; --accent-ink: 265 55% 32%; --accent-fg: 265 55% 16%; }
 :root[data-accent='blue']   { --accent: 217 90% 52%; --accent-soft: 213 85% 93%; --accent-ink: 217 60% 30%; --accent-fg: 217 60% 14%; }
 :root[data-accent='teal']   { --accent: 186 90% 36%; --accent-soft: 186 70% 90%; --accent-ink: 186 70% 20%; --accent-fg: 186 70% 12%; }
 :root[data-accent='green']  { --accent: 150 70% 36%; --accent-soft: 150 60% 90%; --accent-ink: 150 60% 20%; --accent-fg: 150 60% 12%; }
 
+.dark[data-accent='orange'] { --accent: 34 92% 56%; --accent-soft: 32 40% 18%; --accent-ink: 36 90% 70%; --accent-fg: 28 60% 14%; }
 .dark[data-accent='red']    { --accent: 6 85% 60%;   --accent-soft: 6 40% 18%;   --accent-ink: 6 85% 72%; }
 .dark[data-accent='rose']   { --accent: 340 85% 62%; --accent-soft: 340 35% 18%; --accent-ink: 340 85% 76%; }
 .dark[data-accent='pink']   { --accent: 320 80% 64%; --accent-soft: 320 35% 18%; --accent-ink: 320 80% 78%; }
-.dark[data-accent='violet'] { --accent: 265 85% 70%; --accent-soft: 265 35% 22%; --accent-ink: 265 85% 80%; }
 .dark[data-accent='blue']   { --accent: 213 90% 64%; --accent-soft: 215 40% 20%; --accent-ink: 213 90% 76%; }
 .dark[data-accent='teal']   { --accent: 186 80% 48%; --accent-soft: 186 40% 16%; --accent-ink: 186 80% 66%; }
 .dark[data-accent='green']  { --accent: 150 65% 50%; --accent-soft: 150 35% 15%; --accent-ink: 150 70% 66%; }
@@ -175,11 +178,25 @@
   --color-negative: hsl(var(--negative));
   --color-warning: hsl(var(--warning));
   --color-warning-fg: hsl(var(--warning-fg));
+  --color-pop: hsl(var(--pop));
+  --color-hue-1: hsl(var(--hue-1));
+  --color-hue-2: hsl(var(--hue-2));
+  --color-hue-3: hsl(var(--hue-3));
+  --color-hue-4: hsl(var(--hue-4));
 
   --font-brand: 'Fraunces', 'Georgia', serif;
-  --font-display: 'Bricolage Grotesque', 'Instrument Sans', sans-serif;
-  --font-body: 'Atkinson Hyperlegible Next', 'Instrument Sans', sans-serif;
+  --font-display: 'Host Grotesk', 'Instrument Sans', sans-serif;
+  --font-body: 'Host Grotesk', 'Instrument Sans', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Cards sit flat: a hairline ring (drawn with box-shadow so it adds no layout) instead of a
+   soft drop shadow. The stronger ring marks a hovered or focused row. */
+@utility shadow-card {
+  box-shadow: 0 0 0 1px hsl(var(--line));
+}
+@utility shadow-card-strong {
+  box-shadow: 0 0 0 1px hsl(var(--line-strong));
 }
 
 @layer base {

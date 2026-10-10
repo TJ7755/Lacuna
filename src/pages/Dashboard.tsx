@@ -7,7 +7,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
-import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import {
   ForecastChart,
   forecastStatus,
@@ -32,11 +31,6 @@ import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
 // The course actions open on demand, so they stay out of the first-load bundle.
-const SharingAnnouncement = lazy(() =>
-  import('../components/layout/SharingAnnouncement').then((module) => ({
-    default: module.SharingAnnouncement,
-  })),
-);
 const CourseContextMenu = lazy(() =>
   import('../components/dashboard/CourseActions').then((module) => ({
     default: module.CourseContextMenu,
@@ -196,14 +190,14 @@ export function Dashboard() {
             aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'card' : 'cards'}, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <CardsIcon width={20} height={20} />
+              <CardsIcon width={20} height={20} className="text-hue-4" />
               <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
                 <CountUp value={totalCards} multiplier={m} />
               </strong>
               {totalCards === 1 ? 'card' : 'cards'}
             </span>
             <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <ClockIcon width={20} height={20} />
+              <ClockIcon width={20} height={20} className="text-hue-2" />
               <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
                 <CountUp value={totalMinutes} multiplier={m} />
               </strong>
@@ -242,16 +236,10 @@ export function Dashboard() {
               setCourseMenu({ course, position, trigger });
             }}
           />
-          {/* Below the queue, so the day's work is always the first thing on Today. */}
-          <ErrorBoundary fallback={null}>
-            <Suspense fallback={null}>
-              <SharingAnnouncement />
-            </Suspense>
-          </ErrorBoundary>
           {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
             <motion.section
               aria-label="Forecast and this week"
-              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-card sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
               initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5 * m, delay: 0.15 * m, ease: MOTION_EASING.emphasised }}

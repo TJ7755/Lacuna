@@ -167,7 +167,7 @@ export function ReviewHeatmap({
     <section
       ref={sectionRef}
       aria-label="Review activity"
-      className="rounded-3xl bg-surface p-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-6"
+      className="rounded-3xl bg-surface p-5 shadow-card md:p-6"
     >
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4">
         <h2 className="font-display text-lg font-semibold tracking-tight">When you studied</h2>

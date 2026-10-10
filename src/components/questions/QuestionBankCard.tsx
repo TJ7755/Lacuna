@@ -50,7 +50,7 @@ export function QuestionBankCard({
       initial={multiplier > 0 ? { opacity: 0, y: 14 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.46 * multiplier, delay, ease: MOTION_EASING.emphasised }}
-      className="flex flex-col gap-3 rounded-3xl bg-surface px-6 py-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+      className="flex flex-col gap-3 rounded-3xl bg-surface px-6 py-5 shadow-card"
     >
       <div className="flex items-center gap-2 text-[13px]">
         <span className="min-w-0 truncate font-bold text-ink-soft">{topic}</span>

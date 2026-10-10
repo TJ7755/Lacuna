@@ -4,16 +4,16 @@
 //
 // An <img> cannot read the app's CSS, but its prefers-color-scheme follows the page's
 // color-scheme, which index.css sets from the theme. Colours are the Direction C palette's
-// ink-faint and default amber accent, light then dark.
+// ink-faint and default violet accent, light then dark.
 
 const STYLE = `<style>
-    .axis { stroke: hsl(218 12% 42%); stroke-opacity: 0.45; }
-    .label { fill: hsl(218 12% 42%); font-family: system-ui, sans-serif; }
-    .accent { stroke: hsl(32 90% 48%); }
+    .axis { stroke: hsl(0 0% 42%); stroke-opacity: 0.45; }
+    .label { fill: hsl(0 0% 42%); font-family: system-ui, sans-serif; }
+    .accent { stroke: hsl(258 80% 58%); }
     @media (prefers-color-scheme: dark) {
-      .axis { stroke: hsl(220 10% 64%); }
-      .label { fill: hsl(220 10% 64%); }
-      .accent { stroke: hsl(34 92% 56%); }
+      .axis { stroke: hsl(0 0% 58%); }
+      .label { fill: hsl(0 0% 58%); }
+      .accent { stroke: hsl(258 90% 70%); }
     }
   </style>`;
 

@@ -61,8 +61,7 @@ const FOOTER_NAV = new Set(['share', 'settings', 'help']);
 const GLYPH_SIZE = 'clamp(28px, 4.6dvh, 40px)';
 
 /** Static (non-shared-layout) active state: the white pill, as NavItem draws it. */
-const ACTIVE_PILL = 'bg-surface font-semibold text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
-const PILL_SHADOW = 'shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
+const ACTIVE_PILL = 'bg-accent-soft font-semibold text-accent-ink';
 const IDLE_ITEM = 'text-ink-soft hover:bg-ink/5 hover:text-ink';
 
 function NavItem({
@@ -98,7 +97,7 @@ function NavItem({
             'group relative flex min-h-11 items-center gap-3 rounded-xl transition-colors duration-150',
             compact ? 'px-3 py-2 text-xs' : 'h-11 px-3 text-[15px] short:h-9 short:min-h-9',
             collapsed && 'justify-center px-0',
-            isActive ? 'font-semibold text-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+            isActive ? 'font-semibold text-accent-fg' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
           )
         }
       >
@@ -112,7 +111,7 @@ function NavItem({
                     ? { type: 'spring', stiffness: 500 / m ** 2, damping: 38 / m }
                     : { duration: 0 }
                 }
-                className={cn('absolute inset-0 z-0 rounded-xl bg-surface', PILL_SHADOW)}
+                className="absolute inset-0 z-0 rounded-xl bg-accent"
               />
             )}
             <span className="relative z-10 shrink-0">{icon}</span>
@@ -518,7 +517,7 @@ export function Sidebar({
         {!collapsed && (
           <span
             className={cn(
-              'font-brand font-medium leading-none tracking-tight',
+              'font-display font-extrabold leading-none tracking-[-0.035em]',
               sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
             )}
           >

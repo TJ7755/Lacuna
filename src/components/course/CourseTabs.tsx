@@ -75,7 +75,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
               className={cn(
                 // The pseudo-element lifts the 36px pill to a 44px target, as PillToggleGroup's sm size does.
                 "relative flex h-full items-center whitespace-nowrap rounded-full px-4 font-semibold transition-colors before:absolute before:-inset-y-1 before:inset-x-0 before:content-['']",
-                active ? 'text-ink' : 'text-ink-soft hover:text-ink',
+                active ? 'text-accent-fg' : 'text-ink-soft hover:text-ink',
               )}
             >
               {active && (
@@ -86,7 +86,7 @@ export function CourseTabs({ courseId }: { courseId: string }) {
                   data-course-tab-indicator=""
                   aria-hidden="true"
                   transition={scaledSpring(multiplier, 320, 28)}
-                  className="absolute inset-0 rounded-full bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.08)]"
+                  className="absolute inset-0 rounded-full bg-accent"
                 />
               )}
               <span className="relative z-10 sm:hidden">{short}</span>

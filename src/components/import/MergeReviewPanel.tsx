@@ -264,7 +264,7 @@ export function MergeReviewPanel() {
     return (
       <div className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         {backLink}
-        <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-10 text-center">
+        <div className="rounded-3xl bg-surface shadow-card p-10 text-center">
           <p className="text-sm text-ink-soft">This course is up to date. There is nothing to review.</p>
         </div>
       </div>
@@ -348,7 +348,7 @@ export function MergeReviewPanel() {
       )}
 
       {outstanding === 0 && (
-        <div className="rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] p-10 text-center">
+        <div className="rounded-3xl bg-surface shadow-card p-10 text-center">
           <p className="text-sm text-ink-soft">Everything in this update has been reviewed.</p>
         </div>
       )}

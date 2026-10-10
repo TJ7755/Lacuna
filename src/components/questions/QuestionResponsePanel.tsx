@@ -82,7 +82,7 @@ export function QuestionResponsePanel({
   const canCheck = numeric ? Boolean(parsed?.ok) : studentLines.length > 0;
 
   return (
-    <section className="flex flex-col gap-6 rounded-[28px] bg-surface px-6 py-8 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-[52px] md:py-11">
+    <section className="flex flex-col gap-6 rounded-[28px] bg-surface px-6 py-8 shadow-card md:px-[52px] md:py-11">
       {onReroll && (
         <div className="flex justify-end">
           <Button type="button" size="sm" onClick={onReroll} className="border border-line-strong">

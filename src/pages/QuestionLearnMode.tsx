@@ -244,7 +244,7 @@ export function QuestionLearnMode() {
           initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.98 } : false}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.46 * multiplier, ease: MOTION_EASING.emphasised }}
-          className="flex w-full max-w-lg flex-col items-center rounded-[28px] bg-surface px-7 py-12 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+          className="flex w-full max-w-lg flex-col items-center rounded-[28px] bg-surface px-7 py-12 text-center shadow-card"
         >
           {questionIds.length > 0 && <ResultMark tone="right" className="mb-5 size-12" />}
           <h1 className="font-display text-4xl font-semibold tracking-tight">
@@ -288,7 +288,7 @@ export function QuestionLearnMode() {
         {startError ? (
           <section
             role="alert"
-            className="grid min-h-[24rem] place-items-center rounded-[28px] bg-surface px-6 py-12 text-center shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+            className="grid min-h-[24rem] place-items-center rounded-[28px] bg-surface px-6 py-12 text-center shadow-card"
           >
             <div className="max-w-md">
               <h1 className="font-display text-3xl font-semibold tracking-tight">

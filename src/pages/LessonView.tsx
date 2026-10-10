@@ -185,7 +185,7 @@ export function LessonView({
   if (lesson === null || course === null) {
     return (
       <div className={`${COURSE_PAGE_FRAME} py-8`}>
-        <div className="rounded-3xl bg-surface p-10 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]">
+        <div className="rounded-3xl bg-surface p-10 shadow-card">
           <p className="mb-4 text-ink-soft">
             {lesson === null
               ? 'This lesson could not be found.'
@@ -420,7 +420,7 @@ export function LessonView({
 
           <AnimatedDisclosure open={viewMode === 'edit' && Boolean(courseId && lessonId)}>
             {courseId && lessonId && (
-              <div className="rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-8">
+              <div className="rounded-3xl bg-surface p-6 shadow-card md:p-8">
                 <LessonCardsSection
                   courseId={courseId}
                   lessonId={lessonId}

@@ -20,7 +20,7 @@ export function GeneratedQuestionConfiguration({
   };
 
   return (
-    <SectionCard className="rounded-3xl bg-surface p-6 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-7">
+    <SectionCard className="rounded-3xl bg-surface p-6 shadow-card md:p-7">
       <h2 className="font-display text-2xl font-semibold tracking-tight text-ink">{generator.name}</h2>
       <p className="mt-2 text-sm leading-6 text-ink-soft">{generator.summary}</p>
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
