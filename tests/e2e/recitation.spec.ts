@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function lessonIdForCourse(page: Page, courseId: string) {
   return page.evaluate(
@@ -43,7 +43,11 @@ test('learns a poem by cumulative recitation', async ({ page }, testInfo) => {
 
   await page.goto('/#/');
   await page.getByRole('button', { name: 'Study Poems' }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await chooseScheduledStudy(page);
+  const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
+  const reciteButton = page.getByRole('button', { name: 'Recite', exact: true });
+  await expect(continueButton.or(reciteButton)).toBeVisible();
+  if (await continueButton.isVisible()) await continueButton.click();
 
   await expect(page.getByRole('button', { name: 'Recite', exact: true })).toBeVisible();
   await expect(page.getByText('Because I could not stop for Death')).toBeVisible();
