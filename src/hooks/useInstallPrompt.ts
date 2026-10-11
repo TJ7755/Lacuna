@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -38,7 +38,7 @@ function detectIos(): boolean {
  * function to trigger the prompt where one exists.
  */
 export function useInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos] = useState(detectIos);
@@ -57,12 +57,12 @@ export function useInstallPrompt() {
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      deferredPrompt.current = e as BeforeInstallPromptEvent;
       setIsInstallable(true);
     };
 
     const onAppInstalled = () => {
-      setDeferredPrompt(null);
+      deferredPrompt.current = null;
       setIsInstallable(false);
       setIsInstalled(true);
     };
@@ -78,15 +78,18 @@ export function useInstallPrompt() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
+    const event = deferredPrompt.current;
+    if (!event) return;
+    // Browser install events are single-use, including when dismissed. Consume
+    // synchronously so repeated clicks cannot reuse the same event while awaiting it.
+    deferredPrompt.current = null;
+    setIsInstallable(false);
+    await event.prompt();
+    const choice = await event.userChoice;
     if (choice.outcome === 'accepted') {
-      setDeferredPrompt(null);
-      setIsInstallable(false);
       setIsInstalled(true);
     }
-  }, [deferredPrompt]);
+  }, []);
 
   const method: InstallMethod = isInstallable ? 'prompt' : isIos ? 'manual-ios' : 'unavailable';
 

@@ -268,3 +268,13 @@ describe('verifyWorkingLines: answers written as "<variable> = value"', () => {
     expect(marksFor(oneOf, 'x = 5')).toBe(0);
   });
 });
+
+
+it('does not grade an equation residual as a submitted numeric answer', () => {
+  expect(checkNumeric(expression('4 = 4'), { kind: 'exact', value: '0' })).toBe(false);
+  expect(checkNumeric(expression('8 = 4'), { kind: 'within', value: '4', tolerance: 0 })).toBe(
+    false,
+  );
+  expect(checkNumeric(expression('8 = 4'), { kind: 'matches-one-of', values: ['4'] })).toBe(false);
+  expect(checkNumeric(expression('0'), { kind: 'exact', value: '4 = 4' })).toBe(false);
+});

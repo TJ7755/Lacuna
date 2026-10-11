@@ -1,0 +1,1 @@
+- Simple Learn recitation is clearer: typed lines are marked automatically (tap a line to overturn its mark, and a fully matching recitation moves straight on), marked lines no longer look like text fields, and the progress bar follows the poem in order, lighting the lines being recited

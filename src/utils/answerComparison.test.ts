@@ -2,6 +2,27 @@ import { describe, expect, it } from 'vitest';
 import { compareAnswer } from './answerComparison';
 
 describe('compareAnswer', () => {
+  it.each([
+    { ignoreCase: true, ignorePunctuation: true },
+    { ignoreCase: true, ignorePunctuation: false },
+    { ignoreCase: false, ignorePunctuation: false },
+  ])('matches canonically equivalent accents with %j', (options) => {
+    for (const [typed, expected] of [
+      ['caf\u00e9', 'cafe\u0301'],
+      ['cafe\u0301', 'caf\u00e9'],
+    ]) {
+      const result = compareAnswer(typed, expected, options);
+      expect(result.correct).toBe(true);
+      expect(result.words).toEqual([{ text: expected, matched: true }]);
+      expect(result.typedWords).toEqual([{ text: typed, matched: true }]);
+    }
+  });
+
+  it('does not discard a decomposed accent as trailing punctuation', () => {
+    expect(compareAnswer('cafe', 'cafe\u0301').correct).toBe(false);
+    expect(compareAnswer('q', 'q\u0301').correct).toBe(false);
+  });
+
   it('marks an exact match as correct', () => {
     const result = compareAnswer('Tokyo', 'Tokyo');
     expect(result.correct).toBe(true);

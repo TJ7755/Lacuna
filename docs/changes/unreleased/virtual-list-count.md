@@ -1,0 +1,1 @@
+- Keep large card lists correctly spaced after cards are added or deleted.

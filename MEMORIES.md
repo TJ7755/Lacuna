@@ -362,3 +362,48 @@ The Welcome course's seed drawings rely on this; keep `color-scheme` on `:root` 
 CI's `windows-installed-upgrade` installs the last release, upgrades and asserts that courses,
 lessons, cards and reviews are byte-identical. A content repair that rewrites rows fails it;
 change what is displayed instead (`src/db/seedArtwork.ts` swaps seed drawings by asset hash).
+
+
+## Python file encoding on Windows
+
+Shell-piped Python scripts can encode new non-ASCII literals differently from source files.
+Use explicit UTF-8 reads/writes and Unicode escapes in piped scripts so test expectations
+and user-facing text do not acquire invalid characters.
+
+
+## MCP descriptions are part of the frozen wire surface
+
+The reviewed MCP surface hash includes tool descriptions as well as schemas, scopes and order.
+A wording-only edit therefore fails the versioned contract test. Preserve contract metadata
+for handler-only fixes; a deliberate wire change needs its own reviewed surface update.
+
+## Mounted virtual rows may never resize
+
+Changing a list count clears index-based heights, but retained DOM rows keep their refs
+and need not emit another ResizeObserver notification. Rebuild mounted measurements at
+that boundary; observe and measure the same box to avoid losing padding and borders.
+
+
+## Editor history follows input changes
+
+Track undo history from `onChange`, because paste, context-menu edits and other input
+methods need not send keydown. Flush pending history before undo or redo so the debounce
+does not lose recent text or retain a stale redo branch.
+
+## Read-only settings views must not persist
+
+`useShortcutBindings` debounces writes as well as reading. Display-only help views
+should read `loadBindings` on render; mounting the writing hook retains stale values
+and can overwrite newer settings when its debounce fires.
+
+## Browser lifecycle ownership must be immediate
+
+Unload events can arrive between an async attempt starting and React passive effects.
+Update the active-attempt ref when start resolves, as answer writes already do, so
+pagehide can abandon the persisted presentation in that interval.
+
+## Recitation marking is manual
+
+The prompter explicitly rejected automatic marking for poem/script recitation (10 October 2026).
+Punctuation is not the learning objective: reveal the source and let the learner mark it.
+Matching typed text must not skip confirmation; ordinary typed and maths checkers retain their own behaviour.

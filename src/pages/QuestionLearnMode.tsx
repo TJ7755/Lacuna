@@ -135,6 +135,7 @@ export function QuestionLearnMode() {
     void start()
       .then((started) => {
         if (!cancelled) {
+          activeAttemptRef.current = started;
           setAttempt(started);
           setStartError(null);
         } else {

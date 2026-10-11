@@ -4,17 +4,17 @@
 // reveal in Learn mode's flow (src/pages/LearnMode.tsx) — optional, requested by the
 // learner, and never itself graded.
 
-/** Matches a word's leading non-alphanumeric run, its first letter/digit, and the rest. */
-const WORD_PARTS = /^([^\p{L}\p{N}]*)([\p{L}\p{N}])(.*)$/u;
+/** Matches leading punctuation, the initial letter/digit with its combining marks, and the rest. */
+const WORD_PARTS = /^([^\p{L}\p{N}]*)([\p{L}\p{N}]\p{M}*)(.*)$/u;
 
 /** Reduce a single word to its first letter/digit, stripping any other letters/digits
- *  from the remainder but preserving punctuation (leading, trailing, or internal) in place.
+ *  and their combining marks from the remainder but preserving punctuation in place.
  *  Words with no letter/digit at all (e.g. "—") pass through unchanged. */
 function firstLetterOfWord(word: string): string {
   const match = WORD_PARTS.exec(word);
   if (!match) return word;
   const [, leading, firstChar, rest] = match;
-  return `${leading}${firstChar}${rest.replace(/[\p{L}\p{N}]/gu, '')}`;
+  return `${leading}${firstChar}${rest.replace(/[\p{L}\p{M}\p{N}]/gu, '')}`;
 }
 
 /**

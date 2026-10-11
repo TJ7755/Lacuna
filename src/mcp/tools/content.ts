@@ -217,20 +217,21 @@ const createSequence: ToolDefinition<
   Awaited<ReturnType<typeof repoCreateSequence>>
 > = {
   ...createSequenceContract,
-  async handler({ courseId, lessonId, name, items, cueWindow, mode, mySpeaker }) {
+  async handler({ courseId, lessonId, name, items, cueWindow, mode, mySpeaker, recitationChunkSize }) {
     if (!(await read.getCourse(courseId))) notFound('Course', courseId);
     if (lessonId !== undefined && !(await read.getLesson(lessonId))) notFound('Lesson', lessonId);
     const opts: Partial<Awaited<ReturnType<typeof repoCreateSequence>>> = {};
     if (cueWindow !== undefined) opts.cueWindow = cueWindow;
     if (mode !== undefined) opts.mode = mode;
     if (mySpeaker !== undefined) opts.mySpeaker = mySpeaker;
+    if (recitationChunkSize !== undefined) opts.recitationChunkSize = recitationChunkSize;
     return ok(await repoCreateSequence(courseId, lessonId ?? null, name, items, opts));
   },
 };
 
 const updateSequence: ToolDefinition<z.infer<typeof updateSequenceContract.inputSchema>, { id: string }> = {
   ...updateSequenceContract,
-  async handler({ sequenceId, name, items, cueWindow }) {
+  async handler({ sequenceId, name, items, cueWindow, recitationChunkSize }) {
     const existing = await read.getSequence(sequenceId);
     if (!existing) notFound('Sequence', sequenceId);
     await repoUpdateSequence({
@@ -238,6 +239,7 @@ const updateSequence: ToolDefinition<z.infer<typeof updateSequenceContract.input
       ...(name !== undefined ? { name } : {}),
       ...(items !== undefined ? { items } : {}),
       ...(cueWindow !== undefined ? { cueWindow } : {}),
+      ...(recitationChunkSize !== undefined ? { recitationChunkSize } : {}),
     });
     return ok({ id: sequenceId });
   },

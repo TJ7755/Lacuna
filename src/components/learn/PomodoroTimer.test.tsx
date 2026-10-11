@@ -62,3 +62,21 @@ describe('PomodoroTimer', () => {
     expect(screen.getByRole('button', { name: 'Reset timer' })).toHaveClass('rounded-full');
   });
 });
+
+
+it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
+  render(<PomodoroTimer />);
+  const trigger = screen.getByRole('button', { name: /^Focus ·/ });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const pause = screen.getByRole('button', { name: 'Pause' });
+  const reset = screen.getByRole('button', { name: 'Reset' });
+  expect(document.activeElement).toBe(pause);
+  reset.focus();
+  fireEvent.keyDown(reset, { key: 'Tab' });
+  expect(document.activeElement).toBe(pause);
+  fireEvent.keyDown(pause, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(reset);
+  fireEvent.keyDown(reset, { key: 'Escape' });
+  expect(document.activeElement).toBe(trigger);
+});

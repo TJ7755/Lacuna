@@ -4,7 +4,7 @@
 | ---------------------- | ------------------ | ------------------------------------- |
 | Global (shell)         | `Ctrl/Cmd+K`       | Toggle Quick search                   |
 | Global (shell)         | `/`                | Open Search content                   |
-| Global (shell)         | `?`                | Toggle keyboard hints                 |
+| Global (shell)         | `?` (default)                | Toggle keyboard hints                 |
 | Desktop app            | `Ctrl/Cmd+,`       | Open Settings                         |
 | Desktop app            | `F1` / `Cmd+Shift+/` | Open Lacuna Help                    |
 | Path or lesson (Edit)  | `Shift+F10`        | Lesson actions menu                   |
@@ -23,12 +23,18 @@
 | Learn                  | `F`                | Toggle focus mode                     |
 | Overlays               | `Esc`              | Close                                 |
 
-Single-key shortcuts are inert while a text field is focused. The `?` overlay can
+Single-key study shortcuts are inert while a text field or select is focused, during
+IME composition, and while Ctrl, Cmd or Alt is held. Shift still supports capital
+letters and punctuation bindings. The configured help key (default `?`) opens and
+closes the overlay in both the shell and Learn; the displayed keys refresh on reopen.
+The shell respects closing events already consumed by the overlay. The overlay can
 also be opened from the "Keyboard shortcuts" item in the Learn mode 3-dot action
 menu and, in the desktop app, from Help > Keyboard Shortcuts. The native menu adds only
 existing actions: Settings (application menu on macOS, File elsewhere), Lacuna Help and
 Keyboard Shortcuts. Quick search stays a renderer shortcut, because a menu accelerator would
 consume `Ctrl/Cmd+K` before the page sees it.
 
+Saved shortcut overrides are validated per action. Invalid records or values fall back
+to the defaults without discarding valid overrides for other actions.
 
 [Specification index](../SPEC.md)

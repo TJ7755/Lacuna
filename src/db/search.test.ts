@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterSessionCardPool,
+  plainPreview,
   questionEditPath,
   searchCardsInScope,
   searchQuestionsInScope,
@@ -322,5 +323,77 @@ describe('filterSessionCardPool', () => {
     expect(
       filterSessionCardPool(cards, { filters: ['suspended', 'flagged'] }).map((item) => item.id),
     ).toEqual([]);
+  });
+});
+
+describe('plainPreview', () => {
+  it.each([
+    ['Before {{c1::line one\nline two}} after', 'Before line one line two after'],
+    ['Before {{c1::answer::first\nsecond}} after', 'Before answer after'],
+    [
+      '{{c1::line one\r\nline two::first\r\nsecond}} and {{c2::last}}',
+      'line one line two and last',
+    ],
+  ])('unwraps multiline clozes in %j', (source, expected) => {
+    expect(plainPreview(source)).toBe(expected);
+  });
+
+  it('strips formatting and truncates after unwrapping a multiline cloze', () => {
+    expect(plainPreview('**{{c1::line one\nline two::hint}}**', 8)).toBe('line one…');
+  });
+});
+
+describe('advanced search query text', () => {
+  it.each(['deck:"Ancient Rome"', "deck:'Ancient Rome'", 'tag:"final exam"'])(
+    'keeps quoted operator values together in %s',
+    (query) => {
+      const cards = [card('match', { tags: ['final exam'] }), card('other', { courseId: 'other' })];
+      const results = searchCardsInScope(
+        query,
+        {
+          cards,
+          courses: [course, { ...course, id: 'other', name: 'Other course' }],
+          lessons: [],
+        },
+        { parseQuery: true },
+      );
+      expect(results.map((result) => result.card.id)).toEqual(['match']);
+    },
+  );
+
+  it('preserves apostrophes in ordinary query words', () => {
+    expect(
+      searchCardsInScope(
+        "don't",
+        {
+          cards: [card('match', { front: "don't forget" })],
+          courses: [course],
+          lessons: [],
+        },
+        { parseQuery: true },
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('searches unrecognised is: operators as literal text', () => {
+    const results = searchCardsInScope(
+      'is:pending apple',
+      {
+        cards: [card('match', { front: 'is:pending apple' }), card('other', { front: 'apple' })],
+        courses: [course],
+        lessons: [],
+      },
+      { parseQuery: true },
+    );
+    expect(results.map((result) => result.card.id)).toEqual(['match']);
+  });
+});
+
+describe('link previews', () => {
+  it('shows link labels without destinations or Markdown syntax', () => {
+    expect(plainPreview('Read [**the guide**](https://example.com/guide) today.')).toBe(
+      'Read the guide today.',
+    );
+    expect(plainPreview('[A very long label](https://example.com)', 6)).toBe('A very\u2026');
   });
 });

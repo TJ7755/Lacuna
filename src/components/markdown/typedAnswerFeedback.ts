@@ -5,14 +5,14 @@ export interface TypedAnswerFeedback {
   options: AnswerComparisonOptions;
 }
 
-/** Decorate already-sanitised Markdown, preserving its elements and media. */
-export function typedAnswerFeedbackHtml(
-  html: string,
-  feedback: TypedAnswerFeedback,
-  cloze: boolean,
-): string {
-  const document = new DOMParser().parseFromString(html, 'text/html');
-  const root = document.body;
+/** Whether a typed answer matches already-sanitised Markdown, as the feedback marks it. */
+export function typedAnswerCorrect(html: string, feedback: TypedAnswerFeedback): boolean {
+  const { expected } = expectedText(new DOMParser().parseFromString(html, 'text/html').body, false);
+  return compareAnswer(feedback.answer, expected, feedback.options).correct;
+}
+
+/** The answer text a typed response is compared with, and the text nodes holding it. */
+function expectedText(root: HTMLElement, cloze: boolean) {
   const nodes: { node: Text; start: number; end: number }[] = [];
   let expected = '';
   function collect(node: Node) {
@@ -36,6 +36,18 @@ export function typedAnswerFeedbackHtml(
     collect(target);
     if (cloze) target.removeAttribute('class');
   });
+  return { nodes, expected };
+}
+
+/** Decorate already-sanitised Markdown, preserving its elements and media. */
+export function typedAnswerFeedbackHtml(
+  html: string,
+  feedback: TypedAnswerFeedback,
+  cloze: boolean,
+): string {
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  const root = document.body;
+  const { nodes, expected } = expectedText(root, cloze);
   const comparison = compareAnswer(feedback.answer, expected, feedback.options);
   const ranges = [...expected.matchAll(/\S+/g)].flatMap((match, i) =>
     comparison.words[i].matched ? [] : [{ start: match.index, end: match.index + match[0].length }],

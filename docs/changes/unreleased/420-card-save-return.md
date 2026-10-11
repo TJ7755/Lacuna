@@ -1,0 +1,1 @@
+- Cancel delayed card-save navigation when leaving the editor, so opening Share or another route cannot be redirected back to Cards. (#420)

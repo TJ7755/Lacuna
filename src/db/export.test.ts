@@ -8,9 +8,12 @@ import {
   exportCardsMarkdownTable,
   exportCardsPlainText,
   exportCardsTsv,
+  exportCardsSimple,
   exportReviewHistoryCsv,
   exportReviewHistoryJson,
 } from './export';
+import { parseImport } from './import';
+import { parseImportAuto } from './importEngine';
 import { reviewHistoryEntryForCard } from './reviewHistory';
 
 async function reset() {
@@ -164,5 +167,84 @@ describe('card exporters: course/lesson naming', () => {
         fsrsWeightsFingerprint: 'w1:3f2a91c4',
       }),
     );
+  });
+});
+
+
+describe('export field escaping', () => {
+  beforeEach(reset);
+
+  it('round-trips quotation marks through the simple TSV exporter', () => {
+    const cards = [
+      { front: '"quoted question"', back: '"quoted answer"' },
+      { front: 'A "quote" inside', back: 'B "quote" inside' },
+      { front: 'Next question', back: 'Next answer' },
+    ];
+    const parsed = parseImport(exportCardsSimple(cards));
+    expect(parsed.skipped).toBe(0);
+    expect(parsed.cards).toEqual(cards.map((card) => ({ type: 'front_back', ...card })));
+  });
+
+  it.each(['\r', '\r\n', '\n'])(
+    'keeps %j line endings inside a Markdown table row',
+    async (newline) => {
+      const course = await createCourse('Export');
+      await createCourseCard(
+        course.id,
+        'front_back',
+        `First${newline}second`,
+        `Third${newline}fourth`,
+      );
+      const markdown = await exportCardsMarkdownTable();
+      expect(markdown.split('\n')).toHaveLength(3);
+      expect(markdown).not.toContain('\r');
+      expect(markdown).toContain('| First second | Third fourth |');
+    },
+  );
+});
+
+
+describe('full Card export re-import', () => {
+  beforeEach(reset);
+
+  it.each(['csv', 'tsv'] as const)(
+    're-imports %s content instead of deck names and header rows',
+    async (format) => {
+      const course = await createCourse('Biology', { colour: 'green' });
+      await createCourseCard(course.id, 'front_back', 'What, exactly?', '"Answer"\ncontinued', [
+        'two words',
+        'science',
+      ]);
+      await createCourseCard(course.id, 'cloze', 'Water is {{c1::H2O}}', '', ['chemistry']);
+      const text = format === 'csv' ? await exportCardsCsv() : await exportCardsTsv();
+      const result = parseImportAuto(text, { format });
+      result.cards.sort((left, right) => left.front.localeCompare(right.front));
+      expect(result).toEqual({
+        cards: [
+          { type: 'cloze', front: 'Water is {{c1::H2O}}', back: '', tags: ['chemistry'] },
+          {
+            type: 'front_back',
+            front: 'What, exactly?',
+            back: '"Answer"\ncontinued',
+            tags: ['two words', 'science'],
+          },
+        ],
+        skipped: 0,
+      });
+    },
+  );
+});
+
+
+describe('Markdown export backslash escaping', () => {
+  beforeEach(reset);
+
+  it('round-trips backslashes immediately before table pipes', async () => {
+    const course = await createCourse('Markdown');
+    await createCourseCard(course.id, 'front_back', String.raw`A \| B`, String.raw`C \| D`);
+    expect(parseImportAuto(await exportCardsMarkdownTable())).toEqual({
+      cards: [{ type: 'front_back', front: String.raw`A \| B`, back: String.raw`C \| D` }],
+      skipped: 0,
+    });
   });
 });

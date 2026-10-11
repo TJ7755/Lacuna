@@ -1,0 +1,1 @@
+- Recover from non-finite persisted Pomodoro countdowns and completed-session counts.

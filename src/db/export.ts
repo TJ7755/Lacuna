@@ -9,14 +9,14 @@ function escapeCsvCell(value: string): string {
 }
 
 function escapeTsvCell(value: string): string {
-  if (value.includes('\t') || value.includes('\n') || value.includes('\r')) {
+  if (value.includes('\t') || value.includes('\n') || value.includes('\r') || value.includes('"')) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
 }
 
 function escapeMarkdownPipe(value: string): string {
-  return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  return value.replace(/[\\|]/g, '\\$&').replace(/\r\n|\r|\n/g, ' ');
 }
 
 function formatRow(values: string[], delimiter: ',' | '\t'): string {

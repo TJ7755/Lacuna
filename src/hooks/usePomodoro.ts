@@ -21,6 +21,8 @@ const STORAGE_KEY = 'lacuna-pomodoro-settings';
 const RUNTIME_STORAGE_KEY = 'lacuna-pomodoro-runtime';
 
 interface PomodoroRuntime {
+  /** Optional for timers saved before active duration was retained. */
+  phaseSeconds?: number;
   phase: PomodoroPhase;
   secondsLeft: number;
   sessionsCompleted: number;
@@ -29,7 +31,7 @@ interface PomodoroRuntime {
 
 function toNumber(value: unknown, fallback: number): number {
   const n = Number(value);
-  return Number.isNaN(n) ? fallback : n;
+  return Number.isFinite(n) ? n : fallback;
 }
 
 export function loadPomodoroSettings(): PomodoroSettings {
@@ -65,11 +67,11 @@ export function loadPomodoroSettings(): PomodoroSettings {
 function phaseDuration(p: PomodoroPhase, s: PomodoroSettings): number {
   switch (p) {
     case 'focus':
-      return s.workMinutes * 60;
+      return Math.ceil(s.workMinutes * 60);
     case 'shortBreak':
-      return s.shortBreakMinutes * 60;
+      return Math.ceil(s.shortBreakMinutes * 60);
     case 'longBreak':
-      return s.longBreakMinutes * 60;
+      return Math.ceil(s.longBreakMinutes * 60);
     default:
       return 0;
   }
@@ -96,6 +98,9 @@ function loadPomodoroRuntime(): PomodoroRuntime {
         : null;
     return {
       phase,
+      phaseSeconds: parsed.phaseSeconds === undefined
+        ? undefined
+        : Math.max(0, Math.ceil(toNumber(parsed.phaseSeconds, 0))),
       secondsLeft: Math.max(0, Math.floor(toNumber(parsed.secondsLeft, 0))),
       sessionsCompleted: Math.max(0, Math.floor(toNumber(parsed.sessionsCompleted, 0))),
       pendingBreakPhase,
@@ -131,15 +136,15 @@ export function usePomodoro() {
   // always be an explicit action rather than a surprise countdown in the background.
   const [isRunning, setIsRunning] = useState(false);
   const intervalRef = useRef<number | null>(null);
+  const deadlineRef = useRef<number | null>(null);
   const secondsLeftRef = useRef(secondsLeft);
   const hasMountedRef = useRef(false);
 
-  const durationForPhase = useCallback(
-    (p: PomodoroPhase) => {
-      return phaseDuration(p, settings);
-    },
-    [settings],
-  );
+  // Preference changes apply to the next phase, never the active ring's denominator.
+  const [phaseSeconds, setPhaseSeconds] = useState(() => Math.max(
+    initialRuntime.current!.secondsLeft,
+    initialRuntime.current!.phaseSeconds ?? phaseDuration(phase, settings),
+  ));
 
   useEffect(() => {
     secondsLeftRef.current = secondsLeft;
@@ -149,35 +154,46 @@ export function usePomodoro() {
   // pause/resume boundaries so a background timer does not serialise to
   // localStorage every second; a restored timer is paused on app start anyway.
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-    try {
-      const runtime: PomodoroRuntime = {
+    const persistRuntime = (captureDeadline = false) => {
+      const remaining = captureDeadline && isRunning && deadlineRef.current !== null
+        ? Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000))
+        : secondsLeftRef.current;
+      let runtime: PomodoroRuntime = {
+        phaseSeconds,
         phase,
-        secondsLeft: secondsLeftRef.current,
+        secondsLeft: remaining,
         sessionsCompleted,
         pendingBreakPhase,
       };
-      localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
-    } catch {
-      // Runtime persistence is optional; the timer still works without storage.
-    }
-    return () => {
+      if (captureDeadline && isRunning && remaining === 0) {
+        if (phase === 'focus') {
+          const completed = sessionsCompleted + 1;
+          runtime = {
+            ...runtime,
+            sessionsCompleted: completed,
+            pendingBreakPhase: completed % 4 === 0 ? 'longBreak' : 'shortBreak',
+          };
+        } else {
+          runtime = { ...runtime, phase: 'idle' };
+        }
+      }
       try {
-        const runtime: PomodoroRuntime = {
-          phase,
-          secondsLeft: secondsLeftRef.current,
-          sessionsCompleted,
-          pendingBreakPhase,
-        };
         localStorage.setItem(RUNTIME_STORAGE_KEY, JSON.stringify(runtime));
       } catch {
         // Runtime persistence is optional; the timer still works without storage.
       }
     };
-  }, [isRunning, pendingBreakPhase, phase, sessionsCompleted]);
+    if (hasMountedRef.current) persistRuntime();
+    else hasMountedRef.current = true;
+
+    // Closing a browser page does not unmount React. Capture its elapsed deadline.
+    const onPageHide = () => persistRuntime(true);
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+      persistRuntime();
+    };
+  }, [isRunning, pendingBreakPhase, phase, phaseSeconds, sessionsCompleted]);
 
   // Sync settings when they change in another tab.
   useEffect(() => {
@@ -195,14 +211,22 @@ export function usePomodoro() {
     }
   }, []);
 
-  // Tick down every second while running.
+  const beginCountdown = useCallback((seconds: number) => {
+    deadlineRef.current = Date.now() + seconds * 1000;
+    setSecondsLeft(seconds);
+    setIsRunning(true);
+  }, []);
+
+  // Derive the countdown from elapsed time so background throttling cannot stretch a phase.
   useEffect(() => {
     if (!isRunning || secondsLeftRef.current <= 0) {
       clearTick();
       return;
     }
     intervalRef.current = window.setInterval(() => {
-      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+      if (deadlineRef.current !== null) {
+        setSecondsLeft(Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000)));
+      }
     }, 1000);
     return () => clearTick();
   }, [isRunning, clearTick]);
@@ -230,39 +254,54 @@ export function usePomodoro() {
     const fresh = loadPomodoroSettings();
     setSettings(fresh);
     setPhase('focus');
-    setSecondsLeft(phaseDuration('focus', fresh));
     setPendingBreakPhase(null);
-    setIsRunning(true);
-  }, []);
+    const seconds = phaseDuration('focus', fresh);
+    setPhaseSeconds(seconds);
+    beginCountdown(seconds);
+  }, [beginCountdown]);
 
   const pause = useCallback(() => {
     clearTick();
+    if (deadlineRef.current !== null) {
+      const remaining = Math.max(0, Math.ceil((deadlineRef.current - Date.now()) / 1000));
+      setSecondsLeft(remaining);
+      deadlineRef.current = null;
+      // A completed phase must still reach the normal break boundary.
+      if (remaining === 0) return;
+    }
     setIsRunning(false);
   }, [clearTick]);
 
   const resume = useCallback(() => {
     if (phase === 'idle' || pendingBreakPhase) return;
+    // Phase completed while paused; restart the same phase.
     if (secondsLeft === 0) {
-      // Phase completed while paused; restart the same phase.
-      setSecondsLeft(phaseDuration(phase, settings));
+      const seconds = phaseDuration(phase, settings);
+      setPhaseSeconds(seconds);
+      beginCountdown(seconds);
+    } else {
+      beginCountdown(secondsLeft);
     }
-    setIsRunning(true);
-  }, [secondsLeft, phase, settings, pendingBreakPhase]);
+  }, [secondsLeft, phase, settings, pendingBreakPhase, beginCountdown]);
 
   const acceptBreak = useCallback(() => {
     if (!pendingBreakPhase) return;
     clearTick();
+    const fresh = loadPomodoroSettings();
+    setSettings(fresh);
     setPhase(pendingBreakPhase);
-    setSecondsLeft(durationForPhase(pendingBreakPhase));
     setPendingBreakPhase(null);
-    setIsRunning(true);
-  }, [clearTick, durationForPhase, pendingBreakPhase]);
+    const seconds = phaseDuration(pendingBreakPhase, fresh);
+    setPhaseSeconds(seconds);
+    beginCountdown(seconds);
+  }, [clearTick, pendingBreakPhase, beginCountdown]);
 
   const deferBreak = useCallback(() => {
     if (!pendingBreakPhase) return;
     clearTick();
     setPendingBreakPhase(null);
     setPhase('idle');
+    deadlineRef.current = null;
     setSecondsLeft(0);
     setIsRunning(false);
   }, [clearTick, pendingBreakPhase]);
@@ -270,13 +309,14 @@ export function usePomodoro() {
   const reset = useCallback(() => {
     clearTick();
     setPhase('idle');
+    deadlineRef.current = null;
     setSecondsLeft(0);
     setPendingBreakPhase(null);
     setIsRunning(false);
   }, [clearTick]);
 
   const progress =
-    phase === 'idle' || secondsLeft === 0 ? 0 : 1 - secondsLeft / durationForPhase(phase);
+    phase === 'idle' || secondsLeft === 0 ? 0 : 1 - secondsLeft / phaseSeconds;
 
   const formattedTime = `${Math.floor(secondsLeft / 60)
     .toString()

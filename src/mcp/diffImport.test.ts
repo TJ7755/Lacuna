@@ -137,3 +137,22 @@ describe('diffImport', () => {
     expect(result.toCreate[0]).toBe(proposed);
   });
 });
+
+
+it('compares existing Cards only within the proposed lesson or bank', () => {
+  const bank = existing({ id: 'bank', lessonId: null });
+  const lesson = existing({ id: 'lesson', lessonId: 'lesson-1', back: '5' });
+  const proposal = item({ lessonId: 'lesson-1', back: '6' });
+  expect(diffImport([bank, lesson], [proposal]).toUpdate).toEqual([
+    { item: proposal, existingCardId: 'lesson', backChanged: true, tagsChanged: false },
+  ]);
+  expect(diffImport([bank, lesson], [item({ lessonId: 'lesson-2' })]).toCreate).toHaveLength(1);
+});
+
+it('keeps the same question in different lesson destinations within a batch', () => {
+  const proposed = [item(), item({ lessonId: 'lesson-1' }), item({ lessonId: 'lesson-2' })];
+  const first = diffImport([], proposed);
+  expect(first.toCreate).toEqual(proposed);
+  const existingCards = proposed.map((value, index) => ({ ...value, id: `created-${index}` }));
+  expect(diffImport(existingCards, proposed).toSkip).toEqual(proposed);
+});

@@ -47,6 +47,7 @@ export function useVirtualList({
 }: UseVirtualListOptions): UseVirtualListResult {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemHeights = useRef<Record<number, number>>({});
+  const measuredElements = useRef(new Map<number, HTMLElement>());
   const measureCallbacks = useRef(new Map<number, (el: HTMLElement | null) => void>());
 
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -58,6 +59,11 @@ export function useVirtualList({
   // React a chance to invoke the old callback with null.
   useEffect(() => {
     itemHeights.current = {};
+    // Mounted rows retain their callback refs when cards are added or removed.
+    // Rebuild their measurements rather than waiting for a resize that may never occur.
+    for (const [index, element] of measuredElements.current) {
+      if (index < itemCount) itemHeights.current[index] = element.getBoundingClientRect().height;
+    }
     setMeasureVersion((version) => version + 1);
   }, [itemCount]);
 
@@ -117,16 +123,18 @@ export function useVirtualList({
             // Virtualised rows are mounted and unmounted as the viewport moves.
             // Retaining one callback closure per row defeats that lifecycle and
             // keeps every ResizeObserver handle reachable indefinitely.
+            measuredElements.current.delete(index);
             measureCallbacks.current.delete(index);
             return;
           }
+          measuredElements.current.set(index, el);
           updateHeight(el.getBoundingClientRect().height);
           if (typeof ResizeObserver !== 'undefined') {
             observer = new ResizeObserver((entries) => {
               const entry = entries[0];
-              if (entry) updateHeight(entry.contentRect.height);
+              if (entry) updateHeight(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
             });
-            observer.observe(el);
+            observer.observe(el, { box: 'border-box' });
           }
         });
       }

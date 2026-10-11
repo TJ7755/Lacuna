@@ -1,5 +1,5 @@
 import type { MarkSchemeLine } from '../db/types';
-import { parseExpression } from './verify';
+import { constantValue, parseExpression } from './verify';
 
 export const MARK_SCHEME_PREDICATES = [
   'equals',
@@ -306,6 +306,15 @@ function validateConstantArgument(
       column,
       Math.max(1, value.length),
       'This predicate needs a numeric value without variables.',
+    );
+  }
+  if (constantValue(parsed.expression) === null) {
+    return failure(
+      source,
+      lineNumber,
+      column,
+      Math.max(1, value.length),
+      'This predicate needs a finite real numeric value, not an equation.',
     );
   }
   return null;

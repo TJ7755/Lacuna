@@ -1,0 +1,1 @@
+- Make Markdown undo capture recent typing and pasted text immediately, and prevent redo from replacing fresh edits.

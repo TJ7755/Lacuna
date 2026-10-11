@@ -1,0 +1,1 @@
+- Match MCP Card imports within their target Lesson or Course bank, keeping identical questions in different destinations separate.

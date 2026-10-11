@@ -35,6 +35,7 @@ import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
 import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
+import { SequenceRecitation } from './learn/recitation/SequenceRecitation';
 import type { LearnModeType, LearnSessionRequest, MachineMarkedAnswer } from './learn/types';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
@@ -172,6 +173,14 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
+    recitationSequence,
+    recitationMasteredItemIds,
+    savedRecitationStep,
+    saveRecitationStep,
+    currentCardIds,
+    setRecitationFocus,
+    answerRecitation,
+    revealRecitation,
     occlusion,
     occlusionAnswerText,
     summary,
@@ -214,7 +223,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     simpleWrong,
     lessonHasMembersRef,
     persistSimpleResume,
-    clearSimpleSessionResume,
     resetSimpleSessionOutcomes,
   } = useLearnSession({
     enabled: sessionReady,
@@ -250,7 +258,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
   // can't render at all — see UnknownItemFace and docs/archive/roadmap-2026-08-11.md §11.2 rule 3.
-  const suppressClassicGrading = isMachineMarkedCard || hasUnrenderableItemPayload;
+  const suppressClassicGrading =
+    isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
 
   const undoWithTransitionCancel = useCallback(async () => {
     if (undoInFlightRef.current) return;
@@ -380,6 +389,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           (phase === 'question' || phase === 'answer')
         }
         itemName="Card"
+        resumable={isSimpleMode}
         answeredCount={sessionCardOutcomes.size}
         totalCount={sessionCardIds.length}
         onAttempt={() => {
@@ -388,7 +398,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         }}
         onConfirm={() => {
           leavingSessionRef.current = true;
-          clearSimpleSessionResume();
         }}
         onExplicitLeave={backOut}
       />
@@ -527,7 +536,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                     setHintsOpen(true);
                   }}
                   m={m}
-                  currentCardId={current?.id ?? null}
+                  currentCardIds={currentCardIds}
                 />
               )}
             </AnimatePresence>
@@ -556,7 +565,28 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 multiplier={m}
                 onDone={clearStreakMoment}
               />
-              {current && (
+              {current && recitationSequence ? (
+                <SequenceRecitation
+                  key={isSimpleMode ? recitationSequence.id : current.id}
+                  sequence={recitationSequence}
+                  masteredItemIds={recitationMasteredItemIds(recitationSequence.id)}
+                  onCheck={({ results, responseTimeSec, masteredItemIds, done }) =>
+                    answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
+                  }
+                  onFocusLines={setRecitationFocus}
+                  savedState={savedRecitationStep(recitationSequence.id)}
+                  onStateChange={(state) => saveRecitationStep(recitationSequence.id, state)}
+                  review={
+                    isSimpleMode || !current.sequenceItemId
+                      ? undefined
+                      : {
+                          itemId: current.sequenceItemId,
+                          onReveal: revealRecitation,
+                          onGrade: (correct) => answerWithUndo(correct ? 3 : 1),
+                        }
+                  }
+                />
+              ) : current && (
                 <StudyCardTransition
                   key={current.id}
                   ref={cardTransitionRef}

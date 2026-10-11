@@ -29,4 +29,16 @@ describe('firstLetterHint', () => {
   it('handles a single word', () => {
     expect(firstLetterHint('Hello')).toBe('H');
   });
+
+  it('keeps combining accents attached to the initial letter', () => {
+    expect(firstLetterHint('E\u0301lan vital')).toBe('E\u0301 v');
+  });
+
+  it('removes combining accents belonging to hidden letters', () => {
+    expect(firstLetterHint('cafe\u0301, de\u0301ja\u0300!')).toBe('c, d!');
+  });
+
+  it('preserves initial marks that have no precomposed form and surrounding punctuation', () => {
+    expect(firstLetterHint('"q\u0307\u0301uiet,"')).toBe('"q\u0307\u0301,"');
+  });
 });

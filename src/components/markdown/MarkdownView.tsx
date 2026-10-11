@@ -1,4 +1,4 @@
-import { typedAnswerFeedbackHtml, type TypedAnswerFeedback } from './typedAnswerFeedback';
+import { typedAnswerCorrect, typedAnswerFeedbackHtml, type TypedAnswerFeedback } from './typedAnswerFeedback';
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
@@ -399,6 +399,11 @@ function evictLru(): void {
     }
   }
   if (oldestKey !== undefined) HTML_CACHE.delete(oldestKey);
+}
+
+/** Whether a typed answer matches Markdown source, judged as its typed feedback marks it. */
+export function markdownAnswerCorrect(source: string, feedback: TypedAnswerFeedback): boolean {
+  return typedAnswerCorrect(renderMarkdownToHtml(source, false, false), feedback);
 }
 
 function renderMarkdownToHtml(

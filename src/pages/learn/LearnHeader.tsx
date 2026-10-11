@@ -128,7 +128,7 @@ export function LearnHeader({
   onSuspend,
   onShowShortcuts,
   m,
-  currentCardId,
+  currentCardIds,
   canUndo = false,
   onUndo,
 }: {
@@ -162,7 +162,8 @@ export function LearnHeader({
   onSuspend: () => void;
   onShowShortcuts: () => void;
   m: number;
-  currentCardId: string | null;
+  /** Cards in focus: the current card, or every line being recited. */
+  currentCardIds: readonly string[];
   /** Phone undo control; renders only when the parent supplies onUndo. */
   canUndo?: boolean;
   onUndo?: () => void;
@@ -183,7 +184,7 @@ export function LearnHeader({
   // Position through the session, not the card's index: queues serve cards in their own order.
   const sessionTotal = sessionCardIds.length;
   const cardPosition =
-    currentCardId !== null && sessionTotal > 0 && !plannedRevision
+    currentCardIds.length > 0 && sessionTotal > 0 && !plannedRevision
       ? `${Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)} of ${sessionTotal}`
       : null;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
@@ -223,7 +224,7 @@ export function LearnHeader({
             <SessionSegments
               cardIds={sessionCardIds}
               outcomes={sessionCardOutcomes}
-              currentCardId={currentCardId}
+              currentCardIds={currentCardIds}
               value={displayedProgress}
               label={progressName}
             />
@@ -452,17 +453,17 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
 function SessionSegments({
   cardIds,
   outcomes,
-  currentCardId,
+  currentCardIds,
   value,
   label,
 }: {
   cardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
-  currentCardId: string | null;
+  currentCardIds: readonly string[];
   value: number;
   label: string;
 }) {
-  const currentIndex = currentCardId === null ? -1 : cardIds.indexOf(currentCardId);
+  const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
     currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
   const maxSegments = 120;
@@ -489,14 +490,14 @@ function SessionSegments({
       </span>
       <div className="flex h-2 w-full gap-1" aria-hidden="true">
         {groups.map((group) => {
-          const current = currentCardId !== null && group.includes(currentCardId);
+          const current = group.some((id) => currentCardIds.includes(id));
           const groupOutcomes = group.map((id) => outcomes.get(id));
-          const status = current
-            ? 'current'
-            : groupOutcomes.some((outcome) => outcome === 'wrong')
-              ? 'wrong'
-              : groupOutcomes.every((outcome) => outcome === 'correct')
-                ? 'correct'
+          const status = groupOutcomes.some((outcome) => outcome === 'wrong')
+            ? 'wrong'
+            : groupOutcomes.every((outcome) => outcome === 'correct')
+              ? 'correct'
+              : current
+                ? 'current'
                 : 'unseen';
           return (
             <span
@@ -504,10 +505,17 @@ function SessionSegments({
               data-session-card-status={status}
               className={cn(
                 'min-w-px flex-1 rounded-full border transition-colors duration-200',
-                status === 'correct' && 'border-positive bg-positive',
-                status === 'wrong' && 'border-negative bg-negative',
-                status === 'current' && 'border-accent bg-accent/10',
-                status === 'unseen' && 'border-transparent bg-ink/10',
+                status === 'correct' && 'bg-positive',
+                status === 'wrong' && 'bg-negative',
+                current
+                  ? 'border-accent'
+                  : status === 'correct'
+                    ? 'border-positive'
+                    : status === 'wrong'
+                      ? 'border-negative'
+                      : 'border-transparent',
+                status === 'current' && 'bg-accent/10',
+                status === 'unseen' && 'bg-ink/10',
               )}
             />
           );

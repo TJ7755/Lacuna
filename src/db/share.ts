@@ -338,6 +338,7 @@ const ShareSequenceSchema = z.object({
   pl: z.number().optional(), // index into the payload's lessons array (primaryLessonId)
   m: z.literal('lines').optional(), // mode ('list' is the default, so omitted)
   ms: z.string().optional(), // mySpeaker (lines mode)
+  rc: z.number().int().min(2).max(8).optional(), // recitationChunkSize (lines mode)
   // presetId (sequencePresets.ts), only present when it can't be re-inferred from m/ms
   // alone (see presetForSequence) — e.g. distinguishing poetry from speech, or
   // procedure/timeline from a plain list.
@@ -579,6 +580,7 @@ interface ShareSequence {
   pl?: number; // index into the payload's lessons array (primaryLessonId)
   m?: 'lines'; // mode ('list' is the default, so omitted)
   ms?: string; // mySpeaker (lines mode)
+  rc?: number; // recitationChunkSize (lines mode)
   pr?: string; // presetId, only when it diverges from what m/ms alone would infer
 }
 
@@ -1236,6 +1238,7 @@ export async function buildCourseSharePayload(
       ...(pl !== undefined ? { pl } : {}),
       ...(s.mode === 'lines' ? { m: 'lines' as const } : {}),
       ...(s.mySpeaker ? { ms: s.mySpeaker } : {}),
+      ...(s.recitationChunkSize !== undefined ? { rc: s.recitationChunkSize } : {}),
       // Only spend payload space on the preset id when the receiving end couldn't
       // re-derive it from m/ms alone (see presetForSequence) — e.g. poetry vs. speech.
       ...(s.presetId &&
@@ -1678,6 +1681,7 @@ async function importCourseSharePayload(
           ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
           ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
           ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
+          ...(shareSeq.rc !== undefined ? { recitationChunkSize: shareSeq.rc } : {}),
           // `pr` only travels when it diverges from the m/ms inference (see the export
           // side above); resolve it through getPreset so an unrecognised id degrades to
           // 'list' rather than sticking around as an invalid presetId.

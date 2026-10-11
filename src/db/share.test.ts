@@ -596,7 +596,7 @@ describe('course share codes (v2)', () => {
     expect(labelCard!.back).toBe('Lithium');
   });
 
-  it('round-trips a lines-mode sequence with speaker-tagged items and mySpeaker', async () => {
+  it('round-trips a lines-mode sequence with speaker-tagged items, mySpeaker and recitationChunkSize', async () => {
     const course = await createCourse('Drama');
     const lesson = await createLesson(course.id, 'Scene one');
     const sequence = await createSequence(
@@ -607,7 +607,7 @@ describe('course share codes (v2)', () => {
         { id: 'l1', value: 'Hello there.', speaker: 'BOB' },
         { id: 'l2', value: 'General Kenobi.', speaker: 'ALICE' },
       ],
-      { mode: 'lines', mySpeaker: 'ALICE' },
+      { mode: 'lines', mySpeaker: 'ALICE', recitationChunkSize: 4 },
     );
 
     const payload = await decodeShare(await buildCourseShareCode(course.id));
@@ -616,6 +616,7 @@ describe('course share codes (v2)', () => {
     expect(payload.sequences).toHaveLength(1);
     expect(payload.sequences![0].m).toBe('lines');
     expect(payload.sequences![0].ms).toBe('ALICE');
+    expect(payload.sequences![0].rc).toBe(4);
     expect(payload.sequences![0].items.map((i) => i.sp)).toEqual(['BOB', 'ALICE']);
     // Only ALICE's line generates a card.
     expect(payload.lessons[0].cards).toHaveLength(1);
@@ -626,6 +627,7 @@ describe('course share codes (v2)', () => {
     const imported = importedSequences.find((s) => s.id !== sequence.id)!;
     expect(imported.mode).toBe('lines');
     expect(imported.mySpeaker).toBe('ALICE');
+    expect(imported.recitationChunkSize).toBe(4);
     expect(imported.items.map((i) => i.speaker)).toEqual(['BOB', 'ALICE']);
   });
 

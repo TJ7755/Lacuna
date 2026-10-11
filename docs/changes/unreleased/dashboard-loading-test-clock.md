@@ -1,0 +1,1 @@
+- Make the dashboard loading-placeholder regression deterministic by checking its delay with a controlled clock.

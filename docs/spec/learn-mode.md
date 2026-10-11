@@ -41,7 +41,8 @@ browser back open one modal decision. **Stay** is focused by default and preserv
 answer. Confirmed departure states the unique answered count, retains already committed evidence
 and abandons only the current presentation. Reload and window close use the browser's native unload
 decision. Loading, lesson notes, empty, failed-start and completed states do not manufacture a
-warning when no work can be lost.
+warning when no work can be lost. A Question attempt becomes owned by the unload handler as soon
+as its start resolves, before React effects run, so an immediate departure still abandons it.
 
 For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
@@ -158,7 +159,9 @@ session. Numeric/working items retain their own inputs; occlusions require answe
 Typing shows an input and **Check answer**. Enter reveals the expected answer with
 word-by-word comparison against the learner's answer. Yes/No or manual four-point
 self-grading still decides the result; there is no AI request or automatic marking.
-Comparison strictness remains a per-user setting in Settings (`src/state/answerStrictness.ts`).
+Canonically equivalent Unicode letters compare equally; accents remain significant, and
+feedback preserves the original spelling. Comparison strictness remains a per-user setting
+in Settings (`src/state/answerStrictness.ts`).
 The former global typing switch no longer controls study sessions.
 
 Lesson defaults and card overrides travel through backups, course share codes and
@@ -184,7 +187,10 @@ longer parses or whose predicate arguments are unusable — is flagged `undeterm
 `LineVerdict`, counted in `WorkingVerificationResult.undeterminedLines`, and shown in the study face
 as unchecked rather than as a zero, with the existing dispute control alongside it. It earns no
 marks, so the marks total still reflects only what the checker could actually award. Numeric answer
-specifications share this parser for exact, tolerance and one-of checks.
+specifications share this parser for exact, tolerance and one-of checks. Scalar answer
+specifications and submissions reject equations rather than treating their residual as an answer.
+The mark-scheme compiler rejects non-finite, non-real and equation arguments for `within` and
+`matches-one-of` before authoring or import can persist an unusable criterion.
 
 A value predicate (`equals`, `within`, `matches-one-of`) accepts an answer written as
 `<variable> = value` as well as the bare value, since students and authoring models alike end their
@@ -205,6 +211,10 @@ bytes gzip. The latter is an upper bound for mathjs rather than a dishonest clai
 belongs to it; it also includes Lacuna's parser, verifier and renderer helpers.
 
 ### Numeric Question face
+
+Numeric answer specifications must evaluate to finite real constants. Authoring and import
+validation reject division by zero, overflow and non-real results in exact, tolerance and
+one-of answers, using the same evaluator as the study checker.
 
 A fixed Question with a v1 `numeric` payload renders its Markdown prompt and the same
 maths-expression input used by authoring. Submitting a valid expression runs `checkNumeric` against
@@ -340,9 +350,43 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
   invented reviews. A live pill UI
   (Wrong / Remaining / Right) updates on every answer. The SessionReport omits the
   grade-distribution chart to keep attention on first-pass progress. A versioned local recovery
-  record stores only the scoped Card-id queue, mastered ids, outcomes and small session events. On
-  restart it discards ineligible ids and appends newly eligible Cards. Completion or a deliberate
-  confirmed exit clears the record; an unexpected refresh or termination leaves it resumable.
+  record stores only the scoped Card-id queue, mastered ids, outcomes, small session events and
+  each in-progress recitation's step. On restart it discards ineligible ids and appends newly
+  eligible Cards. Only completion clears the record: leaving, refreshing or termination all leave
+  it resumable, and the exit dialog says so.
+
+### Cumulative recitation (`src/pages/learn/recitation/`)
+
+Cards generated from a `lines`-mode Sequence (poetry, speech, script) are studied by
+recitation rather than as flip cards; label cards stay ordinary cards.
+
+- **Simple mode** replaces the card loop for the whole sequence with the progressive-part
+  method (`recitationFlow.ts`). The sequence is split into chunks: `Sequence.recitationChunkSize`
+  mine lines (2-8) when set, otherwise its stanzas (`SequenceItem.chunkIndex`), otherwise 4.
+  Each new line is presented once, then every unlocked line of the chunk is recalled with the
+  source hidden. Other speakers' lines stay visible as cues. Once a chunk is complete, all
+  chunks so far are recited once from the top; an error there returns to the chunk holding
+  the first error, fully unlocked. A failed check retries the same lines without unlocking more.
+- Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
+  **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
+  showing only the lines and the action; the sequence name and verse/line position remain
+  available to screen readers. **Check** reveals the source beside the typed answer, without
+  automatic comparison or punctuation highlighting. Typed and aloud recall are both marked
+  by hand: tap any missed line, then confirm **All correct** or **Try again**. A matching
+  answer never skips the marking step. The learner's mark is the only grade.
+- The Simple-mode progress bar holds each sequence's lines together in poem order, and the
+  pips outlined in accent are the lines being presented or recited. Each confirmed manual
+  check updates their green/red fill immediately, including retries, and that fill stays
+  visible during cumulative recitation. The numerical value counts the latest correct marks;
+  chunk mastery still controls completion and lesson exposure.
+- Each queued line gets one review per session, on its first recall: Good (3) or Again (1),
+  timed as the check's duration per recited line and excluded from speed calibration. Lines
+  become mastered, with lesson exposure, as their chunk is completed. The current step is saved
+  with the Simple session, so a resumed session returns to the same line; a saved step that no
+  longer fits an edited sequence falls back to the first chunk with an unmastered line.
+- **Scheduled sessions** show a due line as a recitation of its chunk down to that line.
+  Only that line is graded, through the normal answer path (manual grade 3 or 1, undoable),
+  timed per recited line.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 
@@ -412,8 +456,8 @@ Simple mode). Course settings expose **Learn first**, enabled by default. Turnin
   from Focus Mode, whose target-style icon describes hiding distractions rather than changing
   the browser window.
 - **Keyboard shortcuts**: accessible via the "Keyboard shortcuts" item in the 3-dot
-  action menu, which opens a modal listing all available shortcuts. The `?` key
-  still toggles this overlay from anywhere.
+  action menu, which opens a modal listing all available shortcuts. The configured help
+  key (`?` by default) also toggles this overlay, and its labels use the current bindings.
 - **Distraction** (Page Visibility + window blur) is recorded per card for the report
   only; it never affects the grade.
 
@@ -455,14 +499,22 @@ studied — but it provides a tactile, visible session for focus.
   default 25), short break minutes (1–60, default 5), long break minutes (1–60,
   default 15), and `autoStartBreaks` (default off).
 - **State machine:** `idle -> focus -> shortBreak (every 4th: longBreak) -> idle`.
-  Crossing zero auto-advances the phase and (optionally) auto-starts the break.
+  Crossing zero records a pending break, which the study flow offers at a safe boundary.
+  Countdown uses an elapsed-time deadline so delayed background callbacks cannot extend a
+  focus or break period. Pausing captures the elapsed countdown; resuming preserves it.
+  Page closure saves the elapsed countdown and any break earned before a delayed tick.
+  Reopening restores the timer paused. Accepted breaks read the latest saved settings.
+  Fractional minute durations round up to whole seconds before the countdown starts.
+  Duration changes in another tab leave the active phase and its progress ring unchanged,
+  including after reopening; older runtime records remain readable.
 - **Visuals:** the header face is a 36px SVG ring with a 1Hz progress arc; the
   expanded popup (click the face) is a 160px circular timer with the same arc and a
   centre read-out in display type. Phase colours: focus = accent, short break =
   positive, long break = ink. The popup is closed by `Escape` or outside click and
   uses a focus trap.
 - **Input validation:** the load-and-save helpers clamp each minute field to its
-  allowed range and fall back to the default if a stored value is `NaN`, so a
+  allowed range and fall back to the default if a stored value is non-finite. Runtime
+  seconds and completed-session counts also reject non-finite values, so a
   corrupted `localStorage` entry can never crash the timer.
 
 ### Recording a review

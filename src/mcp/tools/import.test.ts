@@ -135,3 +135,39 @@ describe('mcp import tools', () => {
     });
   });
 });
+
+
+describe('MCP import destination ownership', () => {
+  beforeEach(clearAll);
+
+  it('rejects a lesson from another course during preview', async () => {
+    const course = await createCourse('Target');
+    const otherCourse = await createCourse('Other');
+    const lesson = await createLesson(otherCourse.id, 'Foreign lesson');
+    await expect(
+      tools.diffImportPreview.handler(
+        { courseId: course.id, items: [{ front: 'Q', back: 'A', lessonId: lesson.id }] },
+        ctx,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it('validates every lesson destination before writing any Cards', async () => {
+    const course = await createCourse('Target');
+    const otherCourse = await createCourse('Other');
+    const lesson = await createLesson(otherCourse.id, 'Foreign lesson');
+    await expect(
+      tools.importCards.handler(
+        {
+          courseId: course.id,
+          items: [
+            { front: 'Valid question', back: 'Valid answer' },
+            { front: 'Invalid destination', back: 'Answer', lessonId: lesson.id },
+          ],
+        },
+        ctx,
+      ),
+    ).rejects.toThrow();
+    expect(await db.cards.count()).toBe(0);
+  });
+});

@@ -5,6 +5,7 @@ import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
 import { useStartInFocusMode } from '../../state/focusModePreference';
 import { useGradingMode } from '../../state/gradingMode';
+import { useRecitationInput } from '../../state/recitationInput';
 import { useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { cn } from '../../components/ui/cn';
@@ -32,6 +33,7 @@ export function StudySection() {
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
   const [audioSettings, setAudioSettings] = useAudioSettings();
+  const [recitationInput, setRecitationInput] = useRecitationInput();
 
   return (
     <SettingsCard id="settings-study">
@@ -98,6 +100,14 @@ export function StudySection() {
           ))}
         </div>
       </div>
+
+      <SettingToggle
+        bordered
+        title="Recite poems and scripts aloud"
+        description="Off: type each line from memory. On: say the lines aloud, then reveal them and mark any you got wrong."
+        checked={recitationInput === 'aloud'}
+        onChange={(checked) => setRecitationInput(checked ? 'aloud' : 'type')}
+      />
 
       <div className="mt-6 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">

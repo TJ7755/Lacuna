@@ -71,7 +71,8 @@ ordinary `front_back` cards to the scheduler.
   italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
   a cloze editor can preview the revealed answer. Each textarea takes its accessible name from the
   visible field label (for example, Front or Back) unless its caller supplies a more specific
-  `ariaLabel`.
+  `ariaLabel`. Undo records typing, paste and other input changes; it captures pending
+  edits immediately, and editing after undo replaces the redo branch.
 - **Tags** input with deck-wide suggestions.
 - **Images** are downscaled to <= 1280 px, re-encoded (~0.8 quality), stored as a
   `Uint8Array` in the `assets` table (deduplicated by SHA-256 hash), and referenced
@@ -96,6 +97,8 @@ ordinary `front_back` cards to the scheduler.
 - **Touch targets:** the toolbar buttons and type-selector are 44px tall with
   active-state colours; on narrow viewports the toolbar scrolls horizontally with
   a hidden scrollbar.
+- **Save feedback:** the delayed return is cancelled when the route starts exiting, unmounts
+  or changes card identity, including when an outstanding save finishes after departure.
 - **Return-to-origin back-link:** Cancel, post-save navigation and the breadcrumb
   "back" link normally follow the route (the lesson if the URL encodes one, otherwise
   the course's Cards page), but two entry points need to say otherwise — editing a
@@ -133,3 +136,9 @@ retains its Attempt receipts as personal evidence.
 The card editor briefly confirms a save before returning to its origin. Leaving the editor
 or switching to another card cancels that return, including when persistence finishes after
 the editor has closed.
+
+### Large card lists
+
+Virtualised lists rebuild the heights of mounted rows when the card count changes,
+so adding or deleting cards preserves spacing without waiting for another resize.
+Resize measurements include the full row border box, keeping padding and borders in the layout.

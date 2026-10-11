@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { typedAnswerFeedbackHtml } from './typedAnswerFeedback';
+import { typedAnswerCorrect, typedAnswerFeedbackHtml } from './typedAnswerFeedback';
 
 function render(html: string, answer: string, cloze = false) {
   const root = document.createElement('div');
@@ -47,5 +47,13 @@ describe('typed answer feedback', () => {
     expect(root.querySelector('img')).toHaveAttribute('src', 'diagram.png');
     expect(root.querySelector('.katex')).toHaveTextContent('EE');
     expect(root.querySelector('mark')).toBeNull();
+  });
+});
+
+describe('typedAnswerCorrect', () => {
+  it('judges the rendered text, not the Markdown syntax', () => {
+    const html = '<p>We <em>slowly</em> drove</p>';
+    expect(typedAnswerCorrect(html, { answer: 'we slowly drove', options: {} })).toBe(true);
+    expect(typedAnswerCorrect(html, { answer: 'we quickly drove', options: {} })).toBe(false);
   });
 });

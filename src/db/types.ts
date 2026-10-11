@@ -619,6 +619,12 @@ export interface Sequence {
    */
   mySpeaker?: string;
   /**
+   * `lines` mode only: how many recited lines form one chunk in cumulative recitation
+   * (Simple Learn). Undefined chunks by stanza (`SequenceItem.chunkIndex`) when any item
+   * has one, otherwise by 4 lines. Integer 2-8 when set.
+   */
+  recitationChunkSize?: number;
+  /**
    * Which named preset (`src/db/sequencePresets.ts`) the author picked at creation —
    * data-only, purely for redisplaying the right terminology/picker state when editing;
    * `mode`/`cueWindow`/`mySpeaker` above remain the fields generation actually reads.

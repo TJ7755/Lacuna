@@ -1,0 +1,5 @@
+- Preserve escaped pipes in Markdown table imports and skip aligned delimiter rows rather than creating phantom Cards.
+- Preserve every answer line in Markdown list blocks.
+- Use quote-aware parsing for single-card and plain-text Anki imports, preserving quoted line breaks and empty question columns.
+- Detect single-row CSV and TSV imports without a manual format override.
+- Re-import Lacuna full CSV/TSV exports from their question, answer and tag columns, skipping warnings and headers.

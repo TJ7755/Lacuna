@@ -15,6 +15,12 @@ import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
 import { Select } from '../components/ui/Select';
+import {
+  DEFAULT_RECITATION_CHUNK_SIZE,
+  MAX_RECITATION_CHUNK_SIZE,
+  MIN_RECITATION_CHUNK_SIZE,
+  hasStanzas,
+} from './learn/recitation/recitationFlow';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
 import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
@@ -60,6 +66,7 @@ export function SequenceEditor() {
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
   const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
+  const [recitationChunkSize, setRecitationChunkSize] = useState<number | undefined>();
   const [showScriptPaste, setShowScriptPaste] = useState(false);
   const [confirmingPasteScript, setConfirmingPasteScript] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -94,6 +101,7 @@ export function SequenceEditor() {
       setGenerateLabelCards(sequence.generateLabelCards ?? false);
       setPresetId(presetForSequence(sequence).id);
       setMySpeaker(sequence.mySpeaker ?? '');
+      setRecitationChunkSize(sequence.recitationChunkSize);
       setLoaded(true);
     }
   }, [editing, sequence, loaded]);
@@ -379,6 +387,7 @@ export function SequenceEditor() {
         chunkLabels: chunkLabels.length > 0 ? chunkLabels : undefined,
         generateLabelCards,
         mySpeaker: usesSpeakers ? mySpeaker.trim() : undefined,
+        recitationChunkSize: mode === 'lines' ? recitationChunkSize : undefined,
       };
       if (editing && sequence) {
         await updateSequence({ ...sequence, name: name.trim(), items, ...opts });
@@ -562,6 +571,36 @@ export function SequenceEditor() {
               />
               Also generate label → value cards
             </label>
+            {mode === 'lines' && (
+              <label className="flex items-center gap-2 text-sm text-ink-soft">
+                Learn in
+                <Select
+                  aria-label="Learn in"
+                  value={
+                    recitationChunkSize !== undefined
+                      ? String(recitationChunkSize)
+                      : hasStanzas({ items })
+                        ? 'stanza'
+                        : String(DEFAULT_RECITATION_CHUNK_SIZE)
+                  }
+                  onChange={(e) =>
+                    setRecitationChunkSize(e.target.value === 'stanza' ? undefined : Number(e.target.value))
+                  }
+                >
+                  {hasStanzas({ items }) && (
+                    <option value="stanza">{preset.terminology.chunkLabel.toLowerCase()}s</option>
+                  )}
+                  {Array.from(
+                    { length: MAX_RECITATION_CHUNK_SIZE - MIN_RECITATION_CHUNK_SIZE + 1 },
+                    (_, i) => MIN_RECITATION_CHUNK_SIZE + i,
+                  ).map((size) => (
+                    <option key={size} value={size}>
+                      {size} {preset.terminology.itemPlural.toLowerCase()}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
             {usesSpeakers && (
               <label className="flex items-center gap-2 text-sm text-ink-soft">
                 My speaker

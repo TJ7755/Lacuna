@@ -1,0 +1,1 @@
+- Retain indented continuation lines and nested answer lists when importing Markdown card pairs.

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useOptionalPomodoroContext, type PomodoroController } from '../../hooks/PomodoroContext';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { Button } from '../ui/Button';
@@ -55,6 +56,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
   const m = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const popupRef = useFocusTrap(open);
 
   /* close on Esc or outside click */
   useEffect(() => {
@@ -174,12 +176,13 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={popupRef}
+            role="dialog"
+            aria-label="Pomodoro timer"
             initial={{ opacity: 0, y: -6, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            role="dialog"
-            aria-label="Pomodoro timer"
             className="absolute right-0 top-[52px] z-30 w-60 origin-top-right overflow-hidden rounded-[18px] bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
           >
             <div className="px-4 py-4">

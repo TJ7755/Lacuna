@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { useInstallPrompt } from './useInstallPrompt';
 
 const IPHONE_USER_AGENT =
@@ -93,4 +93,49 @@ describe('useInstallPrompt', () => {
     });
     window.matchMedia = originalMatchMedia;
   });
+});
+
+it('consumes a dismissed install prompt until the browser supplies a new event', async () => {
+  const { result } = renderHook(() => useInstallPrompt());
+  const prompt = vi.fn().mockResolvedValue(undefined);
+  const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+    prompt,
+    userChoice: Promise.resolve({ outcome: 'dismissed', platform: '' }),
+  });
+  await act(() => window.dispatchEvent(event));
+  expect(result.current.isInstallable).toBe(true);
+  await act(() => result.current.promptInstall());
+  expect(result.current.isInstalled).toBe(false);
+  expect(result.current.isInstallable).toBe(false);
+  await act(() => result.current.promptInstall());
+  expect(prompt).toHaveBeenCalledTimes(1);
+  await act(() => window.dispatchEvent(new Event('beforeinstallprompt')));
+  expect(result.current.isInstallable).toBe(true);
+});
+
+it('consumes an install event before concurrent clicks can prompt it twice', async () => {
+  const { result } = renderHook(() => useInstallPrompt());
+  const finishPrompts: (() => void)[] = [];
+  const prompt = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finishPrompts.push(resolve);
+      }),
+  );
+  await act(() =>
+    window.dispatchEvent(
+      Object.assign(new Event('beforeinstallprompt'), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'accepted', platform: 'web' }),
+      }),
+    ),
+  );
+  await act(async () => {
+    const first = result.current.promptInstall();
+    const second = result.current.promptInstall();
+    finishPrompts.forEach((finish) => finish());
+    await Promise.all([first, second]);
+  });
+  expect(prompt).toHaveBeenCalledTimes(1);
+  expect(result.current.isInstalled).toBe(true);
 });

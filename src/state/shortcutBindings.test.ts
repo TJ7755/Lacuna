@@ -81,3 +81,18 @@ describe('formatBinding', () => {
     expect(formatBinding('1')).toBe('1');
   });
 });
+
+it.each([null, false, 42, [], {}, ''])(
+  'ignores malformed saved binding %j while retaining valid overrides',
+  (reveal) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal, yes: 'j', unknown: 'x' }));
+    expect(loadBindings()).toEqual({ ...DEFAULT_BINDINGS, yes: 'j' });
+    expect(() => keyMatches(new KeyboardEvent('keydown', { key: 'j' }), loadBindings().reveal))
+      .not.toThrow();
+  },
+);
+
+it.each([null, ['Enter'], 'Enter', 42])('ignores a non-object bindings record %j', (value) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+  expect(loadBindings()).toEqual(DEFAULT_BINDINGS);
+});

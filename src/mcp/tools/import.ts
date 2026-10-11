@@ -45,8 +45,9 @@ async function existingCardsForCourse(courseId: string): Promise<ExistingCardFor
 async function runDiff(courseId: string, items: ProposedImportItem[]): Promise<DiffSummary> {
   if (!(await read.getCourse(courseId))) notFound('Course', courseId);
   for (const item of items) {
-    if (item.lessonId !== undefined && !(await read.getLesson(item.lessonId))) {
-      notFound('Lesson', item.lessonId);
+    if (item.lessonId !== undefined) {
+      const lesson = await read.getLesson(item.lessonId);
+      if (!lesson || lesson.courseId !== courseId) notFound('Lesson', item.lessonId);
     }
   }
   const existing = await existingCardsForCourse(courseId);

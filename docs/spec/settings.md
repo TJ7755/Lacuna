@@ -7,6 +7,9 @@ and **Integrations**. Existing child section ids remain in the DOM so old deep l
 reach the same control. Group ids and ordering remain centralised in the page so the scrollspy and
 its navigation cannot drift from the rendered groups.
 
+Device-local preference hooks re-read their value when subscribing, so changes made during
+mounting are visible immediately even if their change event preceded the subscription.
+
 - **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
   (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
   `SectionRailMobileJumper` (a compact sticky `<select>`-style jumper) were extracted
@@ -39,8 +42,9 @@ its navigation cannot drift from the rendered groups.
   header.
 - **Study behaviour:** **Manual four-point grading** toggle (off by default ->
   silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
-  see "Typing setting" above), audio-answer controls and **Start Learn sessions in Focus Mode**
-  (off by default).
+  see "Typing setting" above), audio-answer controls, **Recite poems and scripts aloud** (off by
+  default -> lines are typed in cumulative recitation; `lacuna.recitationInput`) and **Start Learn
+  sessions in Focus Mode** (off by default).
 - **Course defaults:** automatic Practice placement and the global **Optimise scheduling** default
   (on -> fit FSRS weights to review history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per
   course, applied only on confirmation), plus the device-local **After the final exam** policy
@@ -79,7 +83,9 @@ its navigation cannot drift from the rendered groups.
   two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from
   Lacuna; an independently mirrored folder file is not removed.
 - **Install** (where supported): a panel of platform-specific install
-  instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`.
+  instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`. Browser install
+  events are consumed immediately, including on dismissal; the action becomes available
+  again only when the browser supplies a fresh event.
 - **AI** (desktop layouts): a device-local opt-in which is off by default, plus an independent
   stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
   navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the

@@ -108,6 +108,7 @@ function shellElement() {
 
 beforeEach(() => {
   sessionStorage.clear();
+  localStorage.removeItem('lacuna-shortcut-bindings');
   mediaQueryState.aiDesktop = true;
   mediaQueryState.mobileViewport = true;
   mediaQueryState.motionMultiplier = 0;
@@ -502,4 +503,19 @@ describe('AppShell AI workspace', () => {
     expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
   });
+});
+
+it('reads the current help binding after the shell has mounted', async () => {
+  renderShell();
+  localStorage.setItem('lacuna-shortcut-bindings', JSON.stringify({ help: 'b' }));
+  fireEvent.keyDown(window, { key: 'b' });
+  expect(await screen.findByRole('dialog', { name: 'Keyboard shortcuts' })).toBeInTheDocument();
+});
+
+it('does not reopen help when the overlay consumes its closing key', async () => {
+  renderShell();
+  const event = new KeyboardEvent('keydown', { key: '?', cancelable: true });
+  event.preventDefault();
+  await act(async () => { fireEvent(window, event); });
+  expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).not.toBeInTheDocument();
 });

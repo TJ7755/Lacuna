@@ -1,0 +1,1 @@
+- Abandon Question attempts on immediate page unload even when their start has resolved before React effects update the view.

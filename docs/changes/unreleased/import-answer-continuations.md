@@ -1,0 +1,1 @@
+- Keep every line of prefixed plain-text answers during card import instead of truncating them after the first line.

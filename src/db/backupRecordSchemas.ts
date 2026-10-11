@@ -309,6 +309,7 @@ export const recordSchemas = {
     chunkLabels: strings.optional(),
     generateLabelCards: flag.optional(),
     mySpeaker: text.optional(),
+    recitationChunkSize: number.int().min(2).max(8).optional(),
     presetId: z.enum(['list', 'poetry', 'script', 'speech', 'procedure', 'timeline']).optional(),
   }),
   occlusions: object({

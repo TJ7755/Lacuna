@@ -201,6 +201,8 @@ export function MarkdownEditor({
   }
 
   function undo() {
+    cancelHistoryTimer();
+    pushHistory();
     if (historyIndexRef.current <= 0) return;
     historyIndexRef.current--;
     const entry = historyRef.current[historyIndexRef.current];
@@ -216,6 +218,9 @@ export function MarkdownEditor({
   }
 
   function redo() {
+    cancelHistoryTimer();
+    // A fresh edit replaces the redo branch even before the debounce has elapsed.
+    pushHistory();
     if (historyIndexRef.current >= historyRef.current.length - 1) return;
     historyIndexRef.current++;
     const entry = historyRef.current[historyIndexRef.current];
@@ -485,7 +490,11 @@ export function MarkdownEditor({
             ref={setTextareaRef}
             autoFocus={autoFocus}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => {
+              currentValueRef.current = e.target.value;
+              onChange(e.target.value);
+              scheduleHistoryPush();
+            }}
             onKeyDown={(e) => {
               if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
@@ -515,10 +524,7 @@ export function MarkdownEditor({
                 redo();
                 return;
               }
-              if (e.key !== 'Tab') {
-                scheduleHistoryPush();
-                return;
-              }
+              if (e.key !== 'Tab') return;
               if (e.shiftKey && onTabBackward) {
                 e.preventDefault();
                 onTabBackward();

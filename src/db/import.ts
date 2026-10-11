@@ -7,6 +7,7 @@
 
 import type { AnswerMode, CardType, ItemPayload } from './types';
 import { hasCloze } from '../utils/cloze';
+import { parseCardExportRows } from './importCardExport';
 
 /** A card ready to be created: the same shape createCards() consumes. */
 export interface ParsedCard {
@@ -35,13 +36,21 @@ const DEFAULT_ROW_SEPARATOR = '\n';
  * opens a field at its very start; inside a quoted field a doubled quote ("") is a
  * literal quote, and the field/row separators are treated as ordinary text.
  */
-function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[][] {
+export function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
   let inQuotes = false;
   let fieldStart = true; // current field has no characters yet (for quote detection)
   let i = 0;
+  // Match logical newlines in row separators without rewriting quoted field content.
+  const rowPattern =
+    rowSep.includes('\n') && !rowSep.includes('\r')
+      ? new RegExp(
+          rowSep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, String.raw`(?:\r\n|\r(?!\n)|(?<!\r)\n)`),
+          'y',
+        )
+      : null;
 
   while (i < raw.length) {
     const ch = raw[i];
@@ -76,12 +85,11 @@ function splitDelimited(raw: string, fieldSep: string, rowSep: string): string[]
       continue;
     }
     let rowSepLen = 0;
-    if (rowSep && raw.startsWith(rowSep, i)) {
+    if (rowPattern) {
+      rowPattern.lastIndex = i;
+      rowSepLen = rowPattern.exec(raw)?.[0].length ?? 0;
+    } else if (rowSep && raw.startsWith(rowSep, i)) {
       rowSepLen = rowSep.length;
-    } else if (rowSep === '\n' && raw.startsWith('\r\n', i)) {
-      rowSepLen = 2;
-    } else if (rowSep === '\n' && raw[i] === '\r') {
-      rowSepLen = 1;
     }
     if (rowSepLen > 0) {
       row.push(field);
@@ -123,7 +131,11 @@ export function parseImport(
   const field = fieldSeparator || DEFAULT_FIELD_SEPARATOR;
   const row = rowSeparator || DEFAULT_ROW_SEPARATOR;
 
-  for (const rawFields of splitDelimited(raw, field, row)) {
+  const rows = splitDelimited(raw, field, row);
+  const exported = parseCardExportRows(rows);
+  if (exported) return exported;
+
+  for (const rawFields of rows) {
     const fields = rawFields.map((f) => f.trim());
     if (fields.every((f) => f.length === 0)) continue; // blank row
 

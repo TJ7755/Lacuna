@@ -1,0 +1,1 @@
+- Preserve quoted tag/course names and apostrophes when parsing advanced card search queries.

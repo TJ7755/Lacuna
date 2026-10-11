@@ -1,0 +1,1 @@
+- Preserve empty leading TSV columns during card import, skipping rows without a question instead of turning answers and tags into a bogus card.
