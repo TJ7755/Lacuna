@@ -77,7 +77,7 @@ async function answerYesAndWaitForExposure(lessonId: string) {
 
 /** Leaves the notes screen; a lesson without notes opens on its first card instead. */
 async function continueFromNotes() {
-  const next = await screen.findAllByRole('button', { name: /^(continue|show answer)$/i });
+  const next = await screen.findAllByRole('button', { name: /^(continue|show answer|recite)$/i });
   const notesContinue = next.find((button) => /^continue$/i.test(button.textContent ?? ''));
   if (notesContinue) fireEvent.click(notesContinue);
 }
