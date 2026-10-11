@@ -61,7 +61,7 @@ export function BulkBarButton({
       type="button"
       {...props}
       className={cn(
-        'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-[background-color,opacity,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-40',
+        'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-[background-color,opacity,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:cursor-not-allowed disabled:opacity-40',
         danger
           ? 'bg-negative text-white hover:opacity-90'
           : active

@@ -36,7 +36,7 @@ export function StudyTargetTiles({
             key={mode}
             className={cn(
               'relative flex cursor-pointer flex-col gap-2 rounded-2xl px-4 py-3.5 transition-[background-color,box-shadow] duration-150',
-              'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/60',
+              'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink',
               selected
                 ? 'bg-accent-soft shadow-[inset_0_0_0_2px_hsl(var(--ink))]'
                 : 'bg-ink/[0.04] hover:bg-ink/[0.07]',

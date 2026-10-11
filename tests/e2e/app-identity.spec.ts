@@ -2,17 +2,17 @@ import { expect, test } from '@playwright/test';
 
 for (const theme of ['light', 'dark'] as const) {
   for (const width of [390, 1440]) {
-    test(`landing identity carries into the app: ${theme}, ${width}px`, async ({ page }) => {
+    test(`Volt identity carries into the app: ${theme}, ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
       await page.goto('/');
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
       const heading = page.getByRole('heading', { name: 'Today', exact: true });
       await expect(heading).toBeVisible();
-      await expect(page.locator('main')).toHaveCSS('font-family', /Atkinson Hyperlegible Next/);
+      await expect(page.locator('main')).toHaveCSS('font-family', /^"Instrument Sans"/);
       await page.evaluate(() => document.fonts.ready);
       expect(
-        await page.evaluate(() => document.fonts.check('16px "Atkinson Hyperlegible Next"')),
+        await page.evaluate(() => document.fonts.check('16px "Instrument Sans"')),
       ).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
         true,
@@ -30,7 +30,9 @@ for (const theme of ['light', 'dark'] as const) {
         level: 1,
       });
       await expect(course).toBeVisible();
-      await expect(course).toHaveCSS('font-family', /Bricolage Grotesque/);
+      await expect(course).toHaveCSS('font-family', /^"Space Grotesk"/);
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => document.fonts.check('600 44px "Space Grotesk"'))).toBe(true);
       await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
       await page.getByRole('button', { name: 'Rename course', exact: true }).click();
       await expect(page.getByRole('textbox', { name: 'Course name', exact: true })).toBeFocused();

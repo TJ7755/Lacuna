@@ -140,7 +140,7 @@ export function BatchAuthoringPromptDialog({
             className={cn(
               'min-h-11 rounded-full px-4 text-sm font-medium transition-colors',
               mode === value
-                ? 'bg-accent-soft text-accent'
+                ? 'bg-accent-soft text-accent-ink'
                 : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
             )}
           >

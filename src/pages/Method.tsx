@@ -217,7 +217,7 @@ export function Method() {
               <div key={s.num} className="rounded-[10px] bg-ink/[0.04] p-4">
                 <dt className="sr-only">{s.label}</dt>
                 <dd>
-                  <span className="font-mono text-xl text-accent">{s.num}</span>
+                  <span className="font-mono text-xl text-accent-ink">{s.num}</span>
                   <span className="mt-1.5 block text-sm leading-snug text-ink-soft">{s.label}</span>
                 </dd>
               </div>

@@ -158,7 +158,7 @@ export function CardsPage() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
+        <Link to="/" className="text-accent-ink underline">
           Back to Today
         </Link>
       </div>
@@ -236,7 +236,7 @@ export function CardsPage() {
                 setSearch('');
                 setFilters(new Set());
               }}
-              className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
               Clear search and filters
             </button>
@@ -330,7 +330,7 @@ function LessonBucket({
       </h2>
       <Link
         to={`/course/${courseId}/lesson/${lesson.id}`}
-        className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
       >
         Open lesson
       </Link>

@@ -62,7 +62,7 @@ export function SyncStatus() {
         <span className="text-ink-soft">{label}</span>
         {state.lastError && <span className="text-xs text-negative">· Sync failed</span>}
       </span>
-      <span className="text-xs text-accent">Open sync</span>
+      <span className="text-xs text-accent-ink">Open sync</span>
     </button>
   );
 }

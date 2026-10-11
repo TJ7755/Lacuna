@@ -101,7 +101,7 @@ export function AiPanel({
                   aria-label={hosted ? 'Sign out of built-in AI' : 'Disconnect AI client'}
                   disabled={connectionBusy}
                   onClick={resetConnection}
-                  className="min-h-6 shrink-0 rounded px-1 py-0.5 text-xs font-medium text-ink-faint underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-40"
+                  className="min-h-6 shrink-0 rounded px-1 py-0.5 text-xs font-medium text-ink-faint underline decoration-line-strong underline-offset-2 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:opacity-40"
                 >
                   {connectionBusy ? 'Disconnecting' : hosted ? 'Sign out' : 'Disconnect'}
                 </button>

@@ -56,7 +56,7 @@ export function LessonNotesStudyView({ notes, className }: LessonNotesStudyViewP
                   type="button"
                   aria-expanded={isOpen}
                   onClick={() => toggleNoteOpen(note.id)}
-                  className="flex min-h-14 w-full items-center gap-2.5 px-6 py-3 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
+                  className="flex min-h-14 w-full items-center gap-2.5 px-6 py-3 text-left transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink"
                 >
                   <motion.span
                     animate={{ rotate: isOpen ? 0 : -90 }}

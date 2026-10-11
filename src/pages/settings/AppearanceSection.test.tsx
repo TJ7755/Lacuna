@@ -43,10 +43,11 @@ describe('AppearanceSection', () => {
 
     const group = screen.getByRole('radiogroup', { name: 'Accent colour' });
     expect(group.querySelectorAll('[role="radio"]').length).toBeGreaterThan(1);
-    expect(screen.getByRole('radio', { name: 'Amber' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Volt' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Amber' })).toHaveAttribute('aria-checked', 'false');
 
     fireEvent.click(screen.getByRole('radio', { name: 'Teal' }));
     expect(screen.getByRole('radio', { name: 'Teal' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('radio', { name: 'Amber' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('radio', { name: 'Volt' })).toHaveAttribute('aria-checked', 'false');
   });
 });

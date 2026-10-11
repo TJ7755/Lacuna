@@ -3,7 +3,7 @@ import { m as motion } from 'motion/react';
 import { getMotionMultiplier } from '../../state/motionSpeed';
 
 // The overlay survives route navigation. Grow from the clicked link, navigate
-// once covered, then lift a single amber surface to reveal the dashboard.
+// once covered, then lift a single accent surface to reveal the dashboard.
 const BEGIN_EVENT = 'lacuna:landing-transition';
 export const COVERED_EVENT = 'lacuna:landing-covered';
 const ARRIVAL_KEY = 'lacuna.landingArrival';

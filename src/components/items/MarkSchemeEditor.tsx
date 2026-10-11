@@ -178,7 +178,7 @@ export function MarkSchemeEditor({
                   className={cn(
                     'flex w-full items-baseline gap-3 px-4 py-2.5 text-left text-sm',
                     index === activeSuggestion
-                      ? 'bg-accent-soft text-accent'
+                      ? 'bg-accent-soft text-accent-ink'
                       : 'text-ink hover:bg-ink/5',
                   )}
                 >

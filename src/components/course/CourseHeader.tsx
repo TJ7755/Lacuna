@@ -136,7 +136,7 @@ export function CourseHeader({
               onClick={startRename}
               aria-label={`Rename ${renameLabel}`}
               title={`Rename ${renameLabel}`}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
               <EditIcon width={17} height={17} />
             </button>
@@ -149,7 +149,7 @@ export function CourseHeader({
             aria-label="Study schedule"
             className={cn(
               'mt-6 flex items-center gap-2 border-t border-line pt-4 text-sm',
-              examUrgent ? 'text-accent' : 'text-ink-soft',
+              examUrgent ? 'text-accent-ink' : 'text-ink-soft',
             )}
           >
             <CalendarIcon width={16} height={16} aria-hidden="true" />

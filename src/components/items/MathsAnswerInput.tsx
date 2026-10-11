@@ -181,7 +181,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
               disabled={disabled}
               onMouseDown={preserveInputSelection}
               onClick={() => insertTemplate(template)}
-              className="relative inline-flex h-9 min-w-11 items-center justify-center rounded-full bg-ink/[0.06] px-3.5 font-display text-sm font-medium text-ink transition-colors after:absolute after:-inset-y-1 after:inset-x-0 hover:bg-ink hover:text-paper active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-40"
+              className="relative inline-flex h-9 min-w-11 items-center justify-center rounded-full bg-ink/[0.06] px-3.5 font-display text-sm font-medium text-ink transition-colors after:absolute after:-inset-y-1 after:inset-x-0 hover:bg-ink hover:text-paper active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:pointer-events-none disabled:opacity-40"
             >
               {template.symbol}
             </button>

@@ -43,7 +43,7 @@ const HELP_SECTIONS = [
 const HELP_ANCHOR_IDS = new Set(HELP_SECTIONS.map((section) => section.id));
 
 const FOOTER_LINK_CLASS =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink';
 
 function SectionCard({
   icon,
@@ -57,7 +57,7 @@ function SectionCard({
   return (
     <SurfaceCard as="div" className="md:p-7">
       <div className="mb-5 flex items-center gap-3">
-        <span className="text-accent">{icon}</span>
+        <span className="text-accent-ink">{icon}</span>
         <h2 className="font-display text-2xl font-semibold tracking-tight">{label}</h2>
       </div>
       {children}
@@ -91,7 +91,7 @@ function ModeCard({
         </p>
         {tip && (
           <p className="rounded-lg bg-accent-soft/40 px-3 py-2.5 text-xs text-accent-ink">
-            <strong className="text-accent">Tip:</strong> {tip}
+            <strong className="text-accent-ink">Tip:</strong> {tip}
           </p>
         )}
       </div>

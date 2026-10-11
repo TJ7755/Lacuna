@@ -358,7 +358,7 @@ export function LearnHeader({
             onClick={onToggleFocus}
             aria-label="Leave focus mode"
             title="Leave focus mode (F)"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
           >
             <FocusIcon width={19} height={19} />
           </button>

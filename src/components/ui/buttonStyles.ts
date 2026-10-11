@@ -7,7 +7,7 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
   'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors ' +
-  'duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ' +
+  'duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink ' +
   'focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 ' +
   'disabled:pointer-events-none select-none';
 

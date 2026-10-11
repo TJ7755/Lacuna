@@ -39,6 +39,8 @@ async function expectCardsRouteCached(page: Page) {
     })
     .toEqual(
       expect.arrayContaining([
+        '/fonts/InstrumentSans-Variable.ttf',
+        '/fonts/SpaceGrotesk-Variable.ttf',
         expect.stringMatching(/^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/),
         expect.stringMatching(/^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/),
       ]),
@@ -111,6 +113,12 @@ test('reloads a visited card library with persisted data while offline', async (
       await expect(page.getByRole('region', { name: 'New sharing features' })).toHaveCount(0);
       await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
       await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
+
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => [...document.fonts]
+        .filter((face) => ['Instrument Sans', 'Space Grotesk'].includes(face.family))
+        .map((face) => `${face.family}:${face.status}`).sort()),
+      ).toEqual(['Instrument Sans:loaded', 'Space Grotesk:loaded']);
 
       const search = cardsMain.getByLabel('Search all cards');
       await search.fill(searchMiss);

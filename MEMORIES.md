@@ -353,6 +353,12 @@ into its button's target; an inset ring does not.
 loses by Tailwind's stylesheet order, not by position. Use a class string without the
 conflicting utility (`inputFrameClassName` beside `inputClassName`) instead of overriding.
 
+## Inline theme fonts
+
+Tailwind's `@theme inline` font utilities bake in their font stacks. Change the canonical
+font definitions when adopting a new face; overriding root font variables alone does not
+change `font-display` or `font-body` utilities.
+
 ## Theme-aware SVG images
 
 An SVG shown through `<img>` cannot read the app's CSS, but in Chromium its

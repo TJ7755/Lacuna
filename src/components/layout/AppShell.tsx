@@ -243,7 +243,7 @@ function AppShellLayout() {
 
   return (
     // Arriving from the landing page's Get Started transition, the shell
-    // settles up from slightly under scale while the amber cover lifts.
+    // settles up from slightly under scale while the accent cover lifts.
     // Skip the scale entirely otherwise — a standing transform here would pin
     // every `position: fixed` descendant to this wrapper.
     <motion.div
@@ -340,7 +340,7 @@ function AppShellLayout() {
                 ? { ...scaledSpring(m, 380, 30), opacity: { duration: 0.16 * m } }
                 : { duration: 0 }
             }
-            className="fixed bottom-6 right-6 z-30 inline-flex h-12 items-center gap-2 rounded-full bg-ink pl-4 pr-5 text-sm font-semibold text-paper shadow-[0_16px_40px_-16px_hsl(var(--ink)/0.5)] transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            className="fixed bottom-6 right-6 z-30 inline-flex h-12 items-center gap-2 rounded-full bg-ink pl-4 pr-5 text-sm font-semibold text-paper shadow-[0_16px_40px_-16px_hsl(var(--ink)/0.5)] transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2"
           >
             <SparklesIcon width={17} height={17} />
             Assistant

@@ -302,7 +302,7 @@ export function CoursePath() {
       <div className={`${SECTION_CARD_SURFACE_CLASS} relative overflow-hidden p-10`}>
         <div className="relative">
           <p className="mb-4 text-ink-soft">This course could not be found.</p>
-          <Link to="/" className="text-accent underline">
+          <Link to="/" className="text-accent-ink underline">
             Back to Today
           </Link>
         </div>
@@ -402,7 +402,7 @@ export function CoursePath() {
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
               to={`/course/${courseId}/updates`}
-              className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent transition-colors hover:brightness-95"
+              className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent-ink transition-colors hover:brightness-95"
             >
               Review updates
             </Link>

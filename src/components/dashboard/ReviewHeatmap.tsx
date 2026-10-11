@@ -295,7 +295,7 @@ export function ReviewHeatmap({
                     delay,
                     ease: MOTION_EASING.emphasised,
                   }}
-                  className={`${compact ? 'h-9' : 'aspect-square'} rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent/70`}
+                  className={`${compact ? 'h-9' : 'aspect-square'} rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent-ink`}
                   style={{ ...placement, ...cellStyle(cell) }}
                 />
               );

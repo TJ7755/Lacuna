@@ -44,7 +44,7 @@ function InstallPanel() {
         <IosShareIcon
           width={16}
           height={16}
-          className="inline-block align-text-bottom text-accent"
+          className="inline-block align-text-bottom text-accent-ink"
         />
         <span className="sr-only">Share</span> in the Safari toolbar, then choose Add to Home
         Screen. Lacuna opens like any other app and works offline.
@@ -85,7 +85,7 @@ function DesktopDownload({ prefix = 'On Windows, you can download' }: { prefix?:
         href="https://github.com/TJ7755/Lacuna/releases"
         target="_blank"
         rel="noopener noreferrer"
-        className="text-accent underline"
+        className="text-accent-ink underline"
       >
         GitHub releases page
       </a>

@@ -763,7 +763,7 @@ export function DateTimePicker({
                                 isSelected
                                   ? 'bg-accent text-accent-fg'
                                   : isCurrent
-                                    ? 'bg-accent-soft text-accent'
+                                    ? 'bg-accent-soft text-accent-ink'
                                     : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
                               )}
                             >
@@ -809,7 +809,7 @@ export function DateTimePicker({
                                 isSelected
                                   ? 'bg-accent text-accent-fg'
                                   : isCurrent
-                                    ? 'bg-accent-soft text-accent'
+                                    ? 'bg-accent-soft text-accent-ink'
                                     : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
                               )}
                             >
@@ -902,7 +902,7 @@ export function DateTimePicker({
                       onChange(ms);
                       setView({ year: nowComponents.year, month: nowComponents.month });
                     }}
-                    className="text-xs font-medium text-accent transition-opacity hover:opacity-80 active:opacity-80"
+                    className="text-xs font-medium text-accent-ink transition-opacity hover:opacity-80 active:opacity-80"
                   >
                     Jump to today
                   </button>

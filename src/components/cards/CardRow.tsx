@@ -321,7 +321,7 @@ export const CardRow = React.memo(function CardRow({
             className={cn(
               'flex h-full flex-1 flex-col items-center justify-center gap-1 text-xs transition-colors',
               flagged
-                ? 'bg-accent/10 text-accent hover:bg-accent/20'
+                ? 'bg-accent/10 text-accent-ink hover:bg-accent/20'
                 : 'bg-ink/[0.03] text-ink-soft hover:bg-ink/5',
             )}
           >
@@ -332,7 +332,7 @@ export const CardRow = React.memo(function CardRow({
             type="button"
             aria-label="Edit card"
             onClick={handleEditClick}
-            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent"
+            className="flex h-full flex-1 flex-col items-center justify-center gap-1 bg-ink/[0.03] text-xs text-ink-soft transition-colors hover:bg-accent/10 hover:text-accent-ink"
           >
             <EditIcon width={18} height={18} />
             Edit
@@ -390,7 +390,7 @@ export const CardRow = React.memo(function CardRow({
           aria-label={`${selectMode && !generated && !linked ? 'Select card' : 'Card details'}: ${card.front || cardKindLabel(card)}`}
           aria-expanded={selectMode && !generated && !linked ? undefined : expanded}
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
-          className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         />
         <div className="relative flex items-center gap-3 sm:gap-4">
           {selectMode && !generated && !linked && (
@@ -456,7 +456,7 @@ export const CardRow = React.memo(function CardRow({
             >
               <ScheduleChip schedule={schedule} />
               <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-faint">
-                {flagged && <FlagIcon width={12} height={12} className="text-accent" aria-label="Flagged" />}
+                {flagged && <FlagIcon width={12} height={12} className="text-accent-ink" aria-label="Flagged" />}
                 {leech && (
                   <span
                     title={`Failed ${card.lapses} times. Consider rewording or splitting this card.`}
@@ -482,7 +482,7 @@ export const CardRow = React.memo(function CardRow({
                     type="button"
                     onClick={handleResumeClick}
                     title="Resume card"
-                    className="min-h-11 rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+                    className="min-h-11 rounded-full px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
                   >
                     Resume
                   </button>
@@ -496,8 +496,8 @@ export const CardRow = React.memo(function CardRow({
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
                   className={cn(
-                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 transition-colors hover:bg-ink/5 hover:text-accent',
-                    flagged ? 'text-accent' : 'text-ink-faint',
+                    'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 transition-colors hover:bg-ink/5 hover:text-accent-ink',
+                    flagged ? 'text-accent-ink' : 'text-ink-faint',
                   )}
                 >
                   <FlagIcon width={16} height={16} />
@@ -509,7 +509,7 @@ export const CardRow = React.memo(function CardRow({
                   data-press=""
                   whileTap={{ scale: 0.85 }}
                   whileHover={{ scale: 1.08 }}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent-ink"
                 >
                   <EditIcon width={16} height={16} />
                 </motion.button>

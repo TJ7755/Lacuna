@@ -55,7 +55,7 @@ export function CardsToolbar({
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search this course"
-          className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent-ink"
         />
       </label>
       <div role="group" aria-label="Filter cards" className="flex flex-wrap gap-1.5">
@@ -71,7 +71,7 @@ export function CardsToolbar({
               whileTap={multiplier > 0 ? { scale: 0.94 } : undefined}
               transition={scaledSpring(multiplier, 520, 24)}
               className={cn(
-                'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                 active ? 'bg-ink text-paper' : 'bg-ink/[0.06] text-ink-soft hover:text-ink',
               )}
             >

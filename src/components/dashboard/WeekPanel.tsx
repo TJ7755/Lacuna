@@ -28,7 +28,7 @@ export function WeekPanel({
     <dl className="grid grid-cols-2 gap-x-3 gap-y-4 border-t border-line pt-4 sm:grid-cols-3 sm:gap-4 sm:pt-5">
       <div className="flex items-center gap-3 text-ink-soft">
         <motion.span
-          className={streak > 0 ? 'text-accent' : undefined}
+          className={streak > 0 ? 'text-accent-ink' : undefined}
           initial={multiplier > 0 && streak > 0 ? { scale: 0.6, rotate: -12 } : false}
           animate={
             multiplier > 0 && streak > 0

@@ -405,7 +405,7 @@ export function CardEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
+        <Link to="/" className="text-accent-ink underline">
           Back to Today
         </Link>
       </div>
@@ -415,7 +415,7 @@ export function CardEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
+        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent-ink underline">
           {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
@@ -425,7 +425,7 @@ export function CardEditor() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This card could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
+        <Link to={backPath} className="text-accent-ink underline">
           Back to {backLabel}
         </Link>
       </div>
@@ -459,7 +459,7 @@ export function CardEditor() {
           <header className="flex flex-col gap-2">
             <Link
               {...returnTo.linkProps}
-              className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
               <ChevronLeftIcon width={14} height={14} />
               {backLabel ?? 'Back'}
@@ -692,7 +692,7 @@ export function CardEditor() {
         <motion.header {...riseIn(0, m)} className="flex flex-col gap-2">
           <Link
             {...returnTo.linkProps}
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
           >
             <ChevronLeftIcon width={14} height={14} />
             {backLabel ?? 'Back'}
@@ -938,7 +938,7 @@ export function CardEditor() {
                     aria-pressed={alsoReverse}
                     title="Also create a card testing the back side"
                     className={cn(
-                      'inline-flex min-h-11 items-center gap-2.5 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                      'inline-flex min-h-11 items-center gap-2.5 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                       alsoReverse
                         ? 'bg-accent-soft text-accent-ink'
                         : 'bg-ink/[0.06] text-ink-soft hover:text-ink',

@@ -1,9 +1,10 @@
 .landing-page {
-  --cinema: #131210;
-  --ivory: #f5f2ee;
-  --amber: #f6a328;
-  --stone: #b1a89d;
-  --sheet: #f8f5f1;
+  --cinema: #131910;
+  --ivory: #f0fbdc;
+  /* The existing illustration token now carries Volt's lime. */
+  --amber: #d5ff3d;
+  --stone: #b2c0a8;
+  --sheet: #f3f7ed;
   --landing-gutter: max(7vw, calc((100vw - 1200px) / 2));
   background: var(--cinema);
   color: var(--ivory);

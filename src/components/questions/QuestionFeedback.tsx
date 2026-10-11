@@ -67,7 +67,7 @@ export function QuestionFeedback({
           aria-expanded={solutionOpen}
           onClick={() => setSolutionOpen((open) => !open)}
           className={cn(
-            'inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+            'inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
             solutionOpen
               ? 'border-ink bg-ink text-paper'
               : 'border-line-strong bg-surface text-ink hover:border-ink/40',

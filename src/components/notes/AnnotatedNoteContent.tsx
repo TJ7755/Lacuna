@@ -265,7 +265,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                               setEditBody(annotation.body ?? '');
                               setDeletingId(null);
                             }}
-                            className="min-h-11 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                            className="min-h-11 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                             aria-label={`Edit annotation for ${annotation.selectedText}`}
                           >
                             Edit

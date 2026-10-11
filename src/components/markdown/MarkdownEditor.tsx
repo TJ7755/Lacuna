@@ -397,7 +397,7 @@ export function MarkdownEditor({
               title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
               className={cn(
-                'min-h-11 min-w-11 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10',
+                'min-h-11 min-w-11 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10',
                 typeof a.label === 'string' && /^[^A-Za-z]/.test(a.label) && 'font-mono',
                 typeof a.label !== 'string' && 'text-sm',
               )}
@@ -421,7 +421,7 @@ export function MarkdownEditor({
             type="button"
             title={clozeAction.title}
             onClick={() => runAction(clozeAction)}
-            className="min-h-11 rounded-md px-2 font-mono text-xs text-accent transition-colors hover:bg-accent-soft active:bg-accent-soft"
+            className="min-h-11 rounded-md px-2 font-mono text-xs text-accent-ink transition-colors hover:bg-accent-soft active:bg-accent-soft"
           >
             {clozeAction.label}
           </button>
@@ -433,7 +433,7 @@ export function MarkdownEditor({
               type="button"
               title={a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
             >
               {a.label}
             </button>
@@ -443,7 +443,7 @@ export function MarkdownEditor({
             type="button"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
           >
             <ImageIcon width={15} height={15} />
           </button>
@@ -469,7 +469,7 @@ export function MarkdownEditor({
               onClick={() => setMobileTab(tab)}
               className={cn(
                 'min-h-11 rounded-md px-2 text-xs capitalize',
-                mobileTab === tab ? 'bg-accent-soft text-accent' : 'text-ink-faint',
+                mobileTab === tab ? 'bg-accent-soft text-accent-ink' : 'text-ink-faint',
               )}
             >
               {tab}

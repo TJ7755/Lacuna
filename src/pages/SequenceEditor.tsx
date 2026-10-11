@@ -483,7 +483,7 @@ export function SequenceEditor() {
               </div>
             </div>
           ) : (
-            <div className="w-fit rounded-lg bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
+            <div className="w-fit rounded-lg bg-accent-soft px-3 py-1 text-xs font-medium text-accent-ink">
               {preset.name}
             </div>
           )}
@@ -692,7 +692,7 @@ export function SequenceEditor() {
                 variant="ghost"
                 onClick={() => addItem()}
                 title={`Add another ${preset.terminology.item} (Ctrl/Cmd+Enter while editing an item)`}
-                className="w-full border border-dashed border-line-strong text-ink-faint hover:border-accent/50 hover:text-accent"
+                className="w-full border border-dashed border-line-strong text-ink-faint hover:border-accent/50 hover:text-accent-ink"
               >
                 <PlusIcon width={14} height={14} />
                 Add another {preset.terminology.item}
@@ -709,7 +709,7 @@ export function SequenceEditor() {
                   'rounded-lg px-3 py-1 text-sm font-medium',
                   preview.length > 30
                     ? 'bg-warning/10 text-warning-fg'
-                    : 'bg-accent-soft text-accent',
+                    : 'bg-accent-soft text-accent-ink',
                 )}
               >
                 {preview.length} card{preview.length === 1 ? '' : 's'} generated

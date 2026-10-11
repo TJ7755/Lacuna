@@ -5,13 +5,16 @@
 Defined as raw HSL triples in `:root` and overridden under `.dark`, then exposed as Tailwind
 colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
-- **Light:** warm stone paper (`--paper`), white surfaces (`--surface`), navy ink. The
+- **Light:** pale green paper (`--paper`), near-white surfaces (`--surface`), green-black ink. The
   sidebar sits on a slightly darker `--chrome` ground.
-- **Dark (default):** deep blue-black paper and chrome, blue-grey surfaces, pale ink.
+- **Dark (default):** green charcoal paper and chrome, dark olive surfaces, pale green ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
-  is amber; the user may pick **red, rose, pink, violet, blue, teal or green**. Selecting one
+  is **Volt lime**; the user may pick **amber, red, rose, pink, violet, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and
   dark recipes so each accent reads correctly in both themes.
+  Use `accent` for filled actions and decorative highlights, `accent-fg` for their labels,
+  and `accent-ink` for readable text, charts and keyboard focus. Neutral dividers carry a
+  restrained green tint; warning colours retain their semantic role.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
   (orange) for on-track, failure and behind-target states.
 - **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
@@ -21,12 +24,11 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Bricolage Grotesque):** headings (`h1`–`h4`) and large figures,
+- **Display (`font-display`, Space Grotesk):** headings (`h1`–`h4`) and large figures,
   weight 600 with tight negative letter-spacing. Page titles are `text-4xl` to `44px`.
-- **Body (`font-body`, Atkinson Hyperlegible Next):** all running text. Both faces are
-  bundled locally (OFL) so they work offline; Instrument Sans remains the fallback and the
-  landing page's face.
-- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
+- **Body (`font-body`, Instrument Sans):** all running text, including the landing page.
+  Both faces are bundled locally (OFL) and precached so they work offline.
+- **Brand (`font-brand`, Space Grotesk):** the Lacuna wordmark and course overview title.
 - **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
   or display face; axis and metadata labels are never monospace.
 - Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
@@ -37,7 +39,7 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
-session-report states use small amber SVG line drawings in the landing page’s illustration
+session-report states use small accent-coloured SVG line drawings in the landing page’s illustration
 style, without changing their controls or motion. The course overview uses a compact winding
 path without decorative study scenes. Neutral curved SVG strokes connect stops; completed
 lesson nodes use the configured accent. Analytics empty states use drawings appropriate to

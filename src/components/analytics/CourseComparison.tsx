@@ -308,7 +308,7 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
               <div className="flex items-center gap-3 text-sm">
                 <Link
                   to={`/course/${courseA.id}/analytics`}
-                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent-ink hover:underline"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourA }} />
                   {courseA.name}
@@ -316,7 +316,7 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
                 <span className="text-ink-faint">vs</span>
                 <Link
                   to={`/course/${courseB.id}/analytics`}
-                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent-ink hover:underline"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourB }} />
                   {courseB.name}

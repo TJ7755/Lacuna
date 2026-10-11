@@ -32,6 +32,8 @@ describe('Welcome seed artwork', () => {
       // The dark stone panel followed neither theme.
       expect(svg).toContain('prefers-color-scheme: dark');
       expect(svg).not.toContain('#1c1917');
+      expect(svg).toContain('.accent { stroke: hsl(90 52% 19%); }');
+      expect(svg).toContain('.accent { stroke: hsl(73 100% 62%); }');
     }
     expect(seedArtworkFor('0'.repeat(64))).toBeUndefined();
   });

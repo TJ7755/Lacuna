@@ -49,7 +49,7 @@ export function StreakCelebration({
           >
             <Burst trigger={moment.key} multiplier={multiplier} count={16} spread={80} />
             <motion.span
-              className="text-accent"
+              className="text-accent-ink"
               initial={multiplier > 0 ? { rotate: -20, scale: 0.5 } : false}
               animate={{ rotate: [-20, 14, 0], scale: [0.5, 1.3, 1] }}
               transition={{ duration: 0.6 * multiplier, delay: 0.08 * multiplier }}

@@ -99,7 +99,7 @@ export function LessonHeader({
                 if (event.key === 'Enter') void commit();
                 if (event.key === 'Escape') cancel();
               }}
-              className="min-w-0 flex-1 rounded-xl bg-ink/[0.05] px-3 py-1 font-display text-4xl font-semibold tracking-tight text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60 md:text-[44px] md:leading-[1.05]"
+              className="min-w-0 flex-1 rounded-xl bg-ink/[0.05] px-3 py-1 font-display text-4xl font-semibold tracking-tight text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent-ink md:text-[44px] md:leading-[1.05]"
             />
           ) : (
             <h1
@@ -121,7 +121,7 @@ export function LessonHeader({
               onClick={start}
               aria-label="Rename lesson"
               title="Rename lesson"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
               <EditIcon width={17} height={17} />
             </button>

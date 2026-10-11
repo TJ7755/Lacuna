@@ -171,7 +171,7 @@ export function SearchPage() {
               className={cn(
                 'min-h-11 rounded-full border px-3 py-1 text-sm transition-colors',
                 on
-                  ? 'border-accent bg-accent-soft text-accent'
+                  ? 'border-accent bg-accent-soft text-accent-ink'
                   : 'border-line text-ink-soft hover:border-line-strong',
               )}
             >
@@ -206,7 +206,7 @@ export function SearchPage() {
         <div
           className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
         >
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
+          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-ink shadow-sm">
             <CardsIcon width={24} height={24} />
           </div>
           <h2 className="font-display text-xl">Nothing matches</h2>
@@ -237,7 +237,7 @@ export function SearchPage() {
                   whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
                   className={`${SECTION_CARD_SURFACE_CLASS} flex min-h-11 items-center gap-3 p-4 text-left transition-shadow hover:shadow-md`}
                 >
-                  <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-accent-soft text-accent">
+                  <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-accent-soft text-accent-ink">
                     <HitIcon width={16} height={16} />
                   </span>
                   <span className="flex min-w-0 flex-col">
@@ -304,7 +304,7 @@ export function SearchPage() {
                 )}
                 <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
                   <span>{hit.contextName}</span>
-                  {hit.card.flagged && <FlagIcon width={12} height={12} className="text-accent" />}
+                  {hit.card.flagged && <FlagIcon width={12} height={12} className="text-accent-ink" />}
                   {(hit.card.tags ?? []).length > 0 && (
                     <span className="inline-flex items-center gap-1">
                       <TagIcon width={12} height={12} />

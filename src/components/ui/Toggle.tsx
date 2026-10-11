@@ -37,7 +37,7 @@ export function Toggle({ checked, onChange, label, ariaLabel, id, disabled }: To
         style={{ transitionDuration: `${200 * multiplier}ms` }}
         className={cn(
           // The pseudo-element widens the hit area to the 44 px minimum without growing the visual.
-          "relative h-7 w-12 shrink-0 rounded-full transition-colors before:absolute before:-inset-2 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+          "relative h-7 w-12 shrink-0 rounded-full transition-colors before:absolute before:-inset-2 before:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
           checked ? 'bg-accent' : 'bg-ink/20',
           disabled && 'cursor-not-allowed opacity-60',
         )}

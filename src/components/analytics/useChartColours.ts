@@ -39,7 +39,7 @@ export function useChartColours(): ChartColours {
 
 function readAll(): ChartColours {
   return {
-    accent: read('--accent'),
+    accent: read('--accent-ink'),
     ink: read('--ink'),
     inkSoft: read('--ink-soft'),
     inkFaint: read('--ink-faint'),

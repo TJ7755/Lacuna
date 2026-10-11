@@ -73,14 +73,14 @@ export function AiComposer({
             aria-label="Edit queued follow-up"
             disabled={disabled}
             onClick={editQueuedFollowUp}
-            className="min-h-11 shrink-0 px-3 font-medium text-accent hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-11 shrink-0 px-3 font-medium text-accent-ink hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
           >
             Edit
           </button>
         </div>
       )}
       {editingQueued && (
-        <p className="mb-2 text-xs font-medium text-accent">Editing queued follow-up</p>
+        <p className="mb-2 text-xs font-medium text-accent-ink">Editing queued follow-up</p>
       )}
       <div className="overflow-hidden rounded-xl border border-line-strong bg-paper shadow-sm transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
         <textarea

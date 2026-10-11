@@ -264,7 +264,7 @@ export function SharedCourseImport({
       }}
     >
       <div className="mb-5 flex items-center gap-2">
-        <UploadIcon width={18} height={18} className="text-accent" />
+        <UploadIcon width={18} height={18} className="text-accent-ink" />
         <h2 className="font-display text-xl">Import a shared course</h2>
       </div>
 

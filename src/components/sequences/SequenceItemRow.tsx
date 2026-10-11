@@ -72,7 +72,7 @@ export function SequenceItemRow({
             onClick={onAddAfter}
             title={`Add ${itemTerm} below`}
             aria-label={`Add ${itemTerm} below ${itemTerm} ${index + 1}`}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent-ink"
           >
             <PlusIcon width={15} height={15} />
           </button>

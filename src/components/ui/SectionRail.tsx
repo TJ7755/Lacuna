@@ -203,7 +203,7 @@ export function SectionRailMobileJumper({
         <select
           value={activeSection}
           onChange={(event) => onNavigate(event.target.value)}
-          className="min-h-11 w-full appearance-none rounded-lg bg-transparent pl-3.5 pr-10 text-sm font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="min-h-11 w-full appearance-none rounded-lg bg-transparent pl-3.5 pr-10 text-sm font-medium text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           {sections.map((section) => (
             <option key={section.id} value={section.id}>

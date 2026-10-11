@@ -40,7 +40,7 @@ describe('design rules', () => {
     expect(offenders).toEqual([]);
   });
 
-  // Fraunces is the wordmark's face (visual-design §3.2); names and headings use the display face.
+  // The brand utility identifies the wordmark and question mark (visual-design §3.2).
   it('keeps the brand face to the wordmark and the occlusion question mark', () => {
     const allowed = new Set([
       join('components', 'layout', 'Sidebar.tsx'),

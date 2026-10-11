@@ -252,7 +252,7 @@ export function OcclusionCanvas({
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             className={cn(
-              'touch-none rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+              'touch-none rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
               tool !== 'select' && 'cursor-crosshair',
             )}
           >

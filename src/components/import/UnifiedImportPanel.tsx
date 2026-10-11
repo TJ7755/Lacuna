@@ -501,7 +501,7 @@ export function UnifiedImportPanel({
             className={cn(
               'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               !shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent'
+                ? 'border-accent/60 bg-accent-soft text-accent-ink'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -518,7 +518,7 @@ export function UnifiedImportPanel({
             className={cn(
               'flex-1 hit-target rounded-full border px-4 py-2 text-sm font-medium transition-all',
               shareMode
-                ? 'border-accent/60 bg-accent-soft text-accent'
+                ? 'border-accent/60 bg-accent-soft text-accent-ink'
                 : 'border-line text-ink-soft hover:border-line-strong hover:bg-ink/5',
             )}
           >
@@ -603,7 +603,7 @@ export function UnifiedImportPanel({
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="flex flex-col items-center gap-3 text-accent"
+                    className="flex flex-col items-center gap-3 text-accent-ink"
                   >
                     <div className="rounded-full border border-accent/30 bg-accent-soft p-3">
                       <DownloadIcon width={20} height={20} />
@@ -623,7 +623,7 @@ export function UnifiedImportPanel({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -4 }}
                 transition={{ duration: 0.15 * m }}
-                className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent"
+                className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent-ink"
               >
                 <Skeleton as="span" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                 {pasteNotification}
@@ -664,7 +664,7 @@ export function UnifiedImportPanel({
                       className={cn(
                         'hit-target rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all',
                         formatOverride === f
-                          ? 'border border-accent/40 bg-accent-soft text-accent'
+                          ? 'border border-accent/40 bg-accent-soft text-accent-ink'
                           : 'border border-transparent bg-ink/5 text-ink-faint hover:bg-ink/10',
                       )}
                       title={`Force ${FORMAT_LABELS[f]} format`}
@@ -995,7 +995,7 @@ function ShareCodeImport({
                   {pending.summary.deckNames.map((name, i) => (
                     <li
                       key={`${name}-${i}`}
-                      className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent"
+                      className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-ink"
                     >
                       {name}
                     </li>

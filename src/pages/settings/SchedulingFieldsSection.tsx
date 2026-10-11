@@ -149,7 +149,7 @@ export function SchedulingFieldsSection({
       </label>
 
       <details className="group pt-2">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
             <span className="mt-1 block text-xs leading-5 text-ink-faint">

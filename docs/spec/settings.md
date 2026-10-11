@@ -21,8 +21,11 @@ mounting are visible immediately even if their change event preceded the subscri
   replacement, the mobile jumper now gives wayfinding to every viewport size.
 
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches
-  (8 choices: Amber plus seven alternatives); **text size** steps that scale all text. All three persist to
+  (9 choices: Volt plus eight alternatives); **text size** steps that scale all text. All three persist to
   `localStorage` (via `ThemeContext`, `AccentContext`, `FontScaleContext`).
+  Adopting Volt replaces the previous automatically saved amber default once. Other saved
+  accents and all saved light/dark/automatic theme choices survive. Choosing Amber again
+  afterwards is honoured on later launches. Fresh installs open in dark mode.
 - **Motion:** a **motion-speed** setting with three steps (**Slow**, **Normal** and
   **Fast**) that multiplies animation and transition durations in the app by a single value.
   It is persisted to `localStorage`; the separate `prefers-reduced-motion` preference disables

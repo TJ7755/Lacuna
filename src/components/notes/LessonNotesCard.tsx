@@ -26,7 +26,7 @@ interface LessonNotesCardProps {
 }
 
 const ICON_BUTTON =
-  'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:pointer-events-none disabled:opacity-30';
+  'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:pointer-events-none disabled:opacity-30';
 
 export function LessonNotesCard({
   lessonId,
@@ -120,7 +120,7 @@ export function LessonNotesCard({
                       setConfirmDeleteId(null);
                     }}
                     className={cn(
-                      'relative min-h-11 shrink-0 whitespace-nowrap py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                      'relative min-h-11 shrink-0 whitespace-nowrap py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                       active ? 'font-bold text-ink' : 'text-ink-soft hover:text-ink',
                     )}
                   >

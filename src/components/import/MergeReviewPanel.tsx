@@ -456,7 +456,7 @@ function ReviewRow({
             onClick={primary.onClick}
             className={cn(
               'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              primary.emphasis ? 'text-accent hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
+              primary.emphasis ? 'text-accent-ink hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
             )}
           >
             {primary.label}
@@ -466,7 +466,7 @@ function ReviewRow({
             onClick={secondary.onClick}
             className={cn(
               'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-              secondary.emphasis ? 'text-accent hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
+              secondary.emphasis ? 'text-accent-ink hover:bg-accent/10' : 'text-ink-soft hover:bg-ink/5',
             )}
           >
             {secondary.label}

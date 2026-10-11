@@ -39,7 +39,7 @@ export function StudyDrawing({
       strokeLinejoin="round"
       aria-hidden="true"
       focusable="false"
-      className={cn('h-20 w-20 text-accent', className)}
+      className={cn('h-20 w-20 text-accent-ink', className)}
     >
       <path d={drawings[kind]} />
     </svg>

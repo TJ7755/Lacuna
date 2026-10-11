@@ -34,7 +34,7 @@ function AiClientSetupGuide() {
         href={TERMINAL_SETUP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex min-h-11 items-center font-medium text-accent underline underline-offset-2"
+        className="mt-2 inline-flex min-h-11 items-center font-medium text-accent-ink underline underline-offset-2"
       >
         Open AI client setup instructions
       </a>
@@ -244,7 +244,7 @@ export function AiConnectionState({
                 : 'Reading the packaged companion command…')
             }
             onFocus={(event) => event.currentTarget.select()}
-            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
+            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent-ink"
           />
 
           {(error || localSetupError) && (
@@ -270,7 +270,7 @@ export function AiConnectionState({
             href={TERMINAL_SETUP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent underline underline-offset-2"
+            className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent-ink underline underline-offset-2"
           >
             Open AI client setup instructions
           </a>
@@ -354,7 +354,7 @@ export function AiConnectionState({
             rows={4}
             value={instruction}
             onFocus={(event) => event.currentTarget.select()}
-            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent/20"
+            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent-ink"
           />
           <p className="mt-2 text-xs text-ink-soft">
             Need to set it up first?{' '}
@@ -362,7 +362,7 @@ export function AiConnectionState({
               href={TERMINAL_SETUP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-accent underline underline-offset-2"
+              className="font-medium text-accent-ink underline underline-offset-2"
             >
               Set up the AI client companion
             </a>

@@ -22,7 +22,7 @@ export function QuestionSessionHeader({
       <button
         type="button"
         onClick={onExit}
-        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line-strong bg-surface px-4 font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line-strong bg-surface px-4 font-semibold text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
       >
         <CloseIcon width={16} height={16} />
         Exit

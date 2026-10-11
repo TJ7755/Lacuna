@@ -220,7 +220,7 @@ export function RevisionPlanSetup({
           {!plan && (
             <button
               type="button"
-              className="mt-6 text-sm font-medium text-accent"
+              className="mt-6 text-sm font-medium text-accent-ink"
               onClick={() => void prepareSchedule()}
             >
               Edit future days
@@ -234,7 +234,7 @@ export function RevisionPlanSetup({
               <section className="mt-6">
                 <button
                   type="button"
-                  className="text-sm font-medium text-accent"
+                  className="text-sm font-medium text-accent-ink"
                   onClick={() => setEditingSchedule((value) => !value)}
                 >
                   {editingSchedule ? 'Hide future days' : 'Edit future days'}

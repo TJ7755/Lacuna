@@ -55,7 +55,7 @@ export function PracticeSettingsSection({
       </div>
 
       <details className="group border-t border-line pt-4">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
           <span className="min-w-0">
             <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
             <span className="mt-1 block text-xs leading-5 text-ink-faint">

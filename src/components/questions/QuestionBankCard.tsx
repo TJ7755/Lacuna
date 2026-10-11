@@ -101,7 +101,7 @@ export function QuestionBankCard({
         <Link
           to={editHref}
           aria-label={`Edit ${name}`}
-          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="-mr-2 grid size-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-ink/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           <EditIcon width={16} height={16} />
         </Link>

@@ -23,7 +23,7 @@ export function DataLinksSection() {
               href={href}
               data-press=""
               whileTap={multiplier > 0 ? { scale: 0.985 } : undefined}
-              className="group flex min-h-14 items-center gap-3 rounded-2xl px-4 py-2 text-ink transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+              className="group flex min-h-14 items-center gap-3 rounded-2xl px-4 py-2 text-ink transition-colors hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
               <span
                 aria-hidden="true"

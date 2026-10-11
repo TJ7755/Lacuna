@@ -191,7 +191,7 @@ export function SyncPairingFlow({
           <button
             type="button"
             onClick={() => setShowAdvanced((value) => !value)}
-            className="text-left text-xs text-accent hover:underline"
+            className="text-left text-xs text-accent-ink hover:underline"
           >
             {showAdvanced ? 'Hide advanced' : 'Advanced: use a private relay'}
           </button>
@@ -252,7 +252,7 @@ export function SyncPairingFlow({
           onClick={() => setJoinMode('qr')}
           className={cn(
             'min-h-10 flex-1 rounded-md px-3 text-sm transition-colors',
-            joinMode === 'qr' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink',
+            joinMode === 'qr' ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:text-ink',
           )}
         >
           QR code
@@ -264,7 +264,7 @@ export function SyncPairingFlow({
           onClick={() => setJoinMode('manual')}
           className={cn(
             'min-h-10 flex-1 rounded-md px-3 text-sm transition-colors',
-            joinMode === 'manual' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink',
+            joinMode === 'manual' ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:text-ink',
           )}
         >
           Enter details

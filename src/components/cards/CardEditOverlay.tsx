@@ -130,7 +130,7 @@ export function CardEditOverlay({
                 className={cn(
                   'flex-1 hit-target rounded-full border px-4 py-2.5 text-sm transition-colors',
                   type === t.key
-                    ? 'border-accent bg-accent-soft text-accent'
+                    ? 'border-accent bg-accent-soft text-accent-ink'
                     : 'border-line text-ink-soft hover:border-line-strong',
                 )}
               >

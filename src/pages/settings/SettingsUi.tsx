@@ -22,7 +22,7 @@ export const SETTINGS_CARD_CLASS =
   `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
 
 /** Section headings sit in ink with only the icon tinted, so cards read calmly. */
-export const SETTINGS_HEADING_ROW_CLASS = 'flex items-center gap-2.5 text-ink [&>svg]:text-accent';
+export const SETTINGS_HEADING_ROW_CLASS = 'flex items-center gap-2.5 text-ink [&>svg]:text-accent-ink';
 
 /** Longest stagger, so a long page never leaves later cards waiting. */
 const MAX_STAGGER_STEPS = 8;
@@ -151,7 +151,7 @@ export function SegmentedPills<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'relative inline-flex h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                'relative inline-flex h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >

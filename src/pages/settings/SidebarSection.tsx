@@ -121,7 +121,7 @@ function MoveButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent',
+        'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors focus-visible:ring-2 focus-visible:ring-accent-ink',
         !disabled ? 'hover:bg-ink/5 hover:text-ink' : 'opacity-30',
       )}
       aria-label={`Move ${label} ${direction}`}

@@ -97,7 +97,7 @@ export function Titlebar() {
         data-testid="titlebar-brand"
         className={`titlebar-drag flex items-center gap-2 text-sm text-ink-soft ${isMacOS ? '-translate-y-[3px]' : ''}`}
       >
-        <LacunaIcon width={14} height={14} className="text-accent" />
+        <LacunaIcon width={14} height={14} className="text-accent-ink" />
         <span className="font-display font-medium">Lacuna</span>
       </div>
 

@@ -97,7 +97,7 @@ export function NumericAnswerEditor({ value, onChange, invalid = false }: Numeri
           <button
             type="button"
             onClick={() => onChange({ ...value, values: [...value.values, ''] })}
-            className="min-h-11 rounded-full border border-line-strong px-4 text-sm text-ink-soft transition-colors hover:border-accent/60 hover:text-accent"
+            className="min-h-11 rounded-full border border-line-strong px-4 text-sm text-ink-soft transition-colors hover:border-accent/60 hover:text-accent-ink"
           >
             Add accepted answer
           </button>

@@ -87,7 +87,7 @@ function Output({
         value={value}
         onFocus={(event) => event.currentTarget.select()}
         rows={rows}
-        className="w-full resize-none break-all rounded-2xl bg-paper px-4 py-3 font-mono text-xs text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="w-full resize-none break-all rounded-2xl bg-paper px-4 py-3 font-mono text-xs text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
       />
       <div>
         <CopyButton copied={copied} onClick={() => void copy()} />

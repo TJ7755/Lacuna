@@ -55,7 +55,7 @@ export function PillToggleGroup<T extends string>({
               aria-label={option.ariaLabel}
               onClick={() => onChange(option.value)}
               className={cn(
-                'relative flex shrink-0 items-center justify-center whitespace-nowrap rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                'relative flex shrink-0 items-center justify-center whitespace-nowrap rounded-full font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                 size === 'md'
                   ? 'min-h-11 px-4 text-sm'
                   : // The pseudo-element reaches over the track's padding to the 44 px minimum.

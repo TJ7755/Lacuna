@@ -100,7 +100,7 @@ export function ConfirmInline({
           'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
           variant === 'destructive'
             ? 'text-negative hover:bg-negative/10'
-            : 'text-accent hover:bg-accent/10',
+            : 'text-accent-ink hover:bg-accent/10',
         )}
       >
         {confirmLabel}

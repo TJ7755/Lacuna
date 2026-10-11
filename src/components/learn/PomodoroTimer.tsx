@@ -23,7 +23,7 @@ const label = (p: string) => {
 };
 
 const colour = (p: string) => {
-  if (p === 'focus') return 'text-accent';
+  if (p === 'focus') return 'text-accent-ink';
   if (p === 'shortBreak') return 'text-positive';
   if (p === 'longBreak') return 'text-ink';
   return 'text-ink-faint';

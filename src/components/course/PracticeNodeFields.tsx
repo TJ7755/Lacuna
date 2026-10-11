@@ -82,7 +82,7 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
                   className={cn(
                     'hit-target rounded-full border px-3 py-1 text-xs transition-colors',
                     active
-                      ? 'border-accent bg-accent-soft text-accent'
+                      ? 'border-accent bg-accent-soft text-accent-ink'
                       : 'border-line text-ink-soft hover:border-line-strong',
                   )}
                 >

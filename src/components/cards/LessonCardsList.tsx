@@ -83,7 +83,7 @@ export function LessonCardsList({
           aria-hidden={editable ? undefined : true}
           onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
           className={cn(
-            'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+            'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
             // The first card is the lesson's next step, so it leads until one exists.
             cards.length === 0
               ? 'bg-accent text-accent-fg hover:brightness-105'
@@ -136,7 +136,7 @@ export function LessonCardsList({
                     to={`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`}
                     aria-label="Edit card"
                     tabIndex={editable ? 0 : -1}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                   >
                     <EditIcon width={16} height={16} />
                   </Link>
@@ -150,7 +150,7 @@ export function LessonCardsList({
       {cards.length > VISIBLE_ROWS && (
         <Link
           to={`/course/${courseId}/cards`}
-          className="mt-2 inline-flex min-h-11 items-center px-2 text-[15px] font-bold text-accent-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="mt-2 inline-flex min-h-11 items-center px-2 text-[15px] font-bold text-accent-ink hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           All {cards.length} cards
         </Link>

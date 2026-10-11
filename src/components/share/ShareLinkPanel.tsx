@@ -227,7 +227,7 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
                     aria-label="Share link"
                     value={url}
                     onFocus={(event) => event.currentTarget.select()}
-                    className="min-h-11 min-w-0 flex-1 truncate rounded-full bg-paper px-4 font-mono text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                    className="min-h-11 min-w-0 flex-1 truncate rounded-full bg-paper px-4 font-mono text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                   />
                   <CopyButton size="md" copied={copied} onClick={() => void copy()} />
                 </div>

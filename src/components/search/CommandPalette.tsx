@@ -354,7 +354,7 @@ function CommandPaletteDialog({
                               </span>
                             ) : hit.kind === 'question' ? (
                               <>
-                                <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent">
+                                <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
                                   <FileTextIcon width={14} height={14} />
                                 </span>
                                 <span className="flex min-w-0 flex-col gap-0.5">
@@ -383,7 +383,7 @@ function CommandPaletteDialog({
                                 const { icon: HitIcon, title, subtitle } = courseHitMeta(hit);
                                 return (
                                   <>
-                                    <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent">
+                                    <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
                                       <HitIcon width={14} height={14} />
                                     </span>
                                     <span className="flex min-w-0 flex-col gap-0.5">

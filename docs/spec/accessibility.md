@@ -43,6 +43,8 @@
   Sharing alternatives follow the same rule when switching or collapsing panels;
   quickly reopening a retained panel restores its active state without losing selector focus.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
+- Volt uses darker green for accent text and keyboard focus in light mode; lime-filled
+  actions use dark labels. Keyboard rings use the readable accent ink at full opacity.
 - Restoring an archived course moves focus to the next restoration action, or the
   page heading when no archived courses remain, without overriding focus moved elsewhere.
 - Archiving from Today returns focus to the next course action, or the Today heading

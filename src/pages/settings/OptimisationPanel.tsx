@@ -145,7 +145,7 @@ export function OptimisationPanel({
       <details className="group">
         <summary
           aria-label="Scheduling optimisation"
-          className="mt-1 flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"
+          className="mt-1 flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden"
         >
           <span className="min-w-0 text-sm text-ink-soft">
             {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to

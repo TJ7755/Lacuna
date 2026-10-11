@@ -89,7 +89,7 @@ export function CourseAnalytics() {
     return (
       <div className="p-10">
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
+        <Link to="/" className="text-accent-ink underline">
           Back to Today
         </Link>
       </div>

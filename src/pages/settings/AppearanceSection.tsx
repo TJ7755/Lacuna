@@ -59,7 +59,7 @@ export function AppearanceSection() {
                   onClick={() => setAccent(option.key)}
                   title={option.label}
                   aria-label={option.label}
-                  className="relative grid h-11 w-11 place-items-center rounded-full transition-transform duration-150 hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+                  className="relative grid h-11 w-11 place-items-center rounded-full transition-transform duration-150 hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                 >
                   <span
                     aria-hidden="true"
