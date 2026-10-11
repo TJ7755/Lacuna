@@ -370,9 +370,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
   **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
   showing only the lines and the action; the sequence name and verse/line position remain
-  available to screen readers. **Check** reveals the source beside the typed answer, without
-  automatic comparison or punctuation highlighting. Typed and aloud recall are both marked
-  by hand: tap any missed line, then confirm **All correct** or **Try again**. A matching
+  available to screen readers. **Check** reveals the source; the typed answer appears beneath
+  a line only when it differs beyond case and punctuation, with no highlighting. Typed and aloud recall are both marked
+  by hand: tap any missed line (or press its number), then confirm **All correct** or **Try again**. A matching
   answer never skips the marking step. The learner's mark is the only grade.
 - The Simple-mode progress bar holds each sequence's lines together in poem order, and the
   pips outlined in accent are the lines being presented or recited. Each confirmed manual
