@@ -18,8 +18,8 @@ raw HTML (for the cloze spans), inside `.prose-lacuna` styling. Memoised per car
 
 Mermaid fences render client-side to theme-aware SVG (`securityLevel: strict`;
 bundled locally with Mermaid and DOMPurify fetched concurrently when the Markdown
-renderer loads in a browser, before the first diagram mounts; no CSP change) with the source kept in a collapsible section and the code block left readable
-on failure. Diagrams re-render on light/dark toggles via a `documentElement` class
+renderer loads in a browser, before the first diagram mounts; no CSP change) with
+the source kept in a collapsible section and the code block left readable on failure. Diagrams re-render on light/dark toggles via a `documentElement` class
 observer. Wikilinks render as non-navigating pills (the target note may not exist on
 this device) and are skipped inside code. Tables render inside a scrolling card
 wrapper. Lesson notes use the same engine with `allowEmbeds`; the lesson workspace

@@ -219,10 +219,14 @@ async function loadSanitizer(): Promise<SanitizerApi | null> {
   }
   // Unbound factory bundling: bind explicitly as a fallback.
   if (typeof candidate === 'function' && typeof window !== 'undefined') {
-    const bound = asSanitizer((candidate as (window: Window) => unknown)(window));
-    if (bound) {
-      sanitizer = bound;
-      return sanitizer;
+    try {
+      const bound = asSanitizer((candidate as (window: Window) => unknown)(window));
+      if (bound) {
+        sanitizer = bound;
+        return sanitizer;
+      }
+    } catch {
+      return null;
     }
   }
   return null;
