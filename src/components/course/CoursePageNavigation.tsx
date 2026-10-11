@@ -68,7 +68,7 @@ export function CoursePageNavigation({
       className={cn(
         // Sticks to the top while the course scrolls beneath a frosted band, so the
         // sections stay in one place on every course surface.
-        'sticky top-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl bg-paper/85 px-3 py-1.5 backdrop-blur-md sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+        'sticky top-0 z-20 -mx-3 flex flex-wrap items-center justify-between gap-3 rounded-b-2xl bg-paper/85 px-3 py-1.5 backdrop-blur-md sm:grid sm:grid-cols-[minmax(min-content,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]',
         className,
       )}
     >
@@ -94,7 +94,7 @@ export function CoursePageNavigation({
         </Link>
       )}
 
-      <div className="min-w-0 justify-self-center">
+      <div className="min-w-0 max-w-full justify-self-center">
         {archived ? <ArchivedCourseBadge /> : <CourseTabs courseId={courseId} />}
       </div>
 

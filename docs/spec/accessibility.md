@@ -51,4 +51,6 @@
 - Settings and Help expose the same native section selector below desktop widths, so
   their topics remain reachable with a keyboard when the section rail is hidden.
 
+Course navigation reserves the width of adjacent controls; its tab strip scrolls when enlarged text would otherwise overlap them.
+
 [Specification index](../SPEC.md)
