@@ -1,0 +1,1 @@
+- Mermaid diagrams now preload their optional rendering and sanitisation modules to reduce the delay before diagrams replace their source code.

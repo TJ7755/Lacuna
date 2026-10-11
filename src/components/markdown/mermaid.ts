@@ -164,13 +164,17 @@ type MermaidApi = {
   render: (id: string, text: string) => Promise<{ svg: string }>;
 };
 
+let mermaidModulePromise: Promise<MermaidApi | null> | null = null;
+
+function importMermaid(): Promise<MermaidApi | null> {
+  mermaidModulePromise ??= import('mermaid')
+    .then((mod) => (mod as { default?: MermaidApi }).default ?? (mod as unknown as MermaidApi))
+    .catch(() => null);
+  return mermaidModulePromise;
+}
+
 async function loadMermaid(): Promise<MermaidApi | null> {
-  try {
-    const mod = await import('mermaid');
-    return (mod as { default?: MermaidApi }).default ?? (mod as unknown as MermaidApi);
-  } catch {
-    return null;
-  }
+  return importMermaid();
 }
 
 type SanitizerApi = {
@@ -178,6 +182,12 @@ type SanitizerApi = {
 };
 
 let sanitizer: SanitizerApi | null = null;
+let sanitizerModulePromise: Promise<unknown> | null = null;
+
+function importSanitizer(): Promise<unknown> {
+  sanitizerModulePromise ??= import('dompurify').catch(() => null);
+  return sanitizerModulePromise;
+}
 
 function asSanitizer(value: unknown): SanitizerApi | null {
   if (
@@ -199,26 +209,29 @@ function asSanitizer(value: unknown): SanitizerApi | null {
 
 async function loadSanitizer(): Promise<SanitizerApi | null> {
   if (sanitizer) return sanitizer;
-  try {
-    const mod = await import('dompurify');
-    const candidate = (mod as { default?: unknown }).default ?? mod;
-    const ready = asSanitizer(candidate);
-    if (ready) {
-      sanitizer = ready;
+  const mod = await importSanitizer();
+  if (!mod) return null;
+  const candidate = (mod as { default?: unknown }).default ?? mod;
+  const ready = asSanitizer(candidate);
+  if (ready) {
+    sanitizer = ready;
+    return sanitizer;
+  }
+  // Unbound factory bundling: bind explicitly as a fallback.
+  if (typeof candidate === 'function' && typeof window !== 'undefined') {
+    const bound = asSanitizer((candidate as (window: Window) => unknown)(window));
+    if (bound) {
+      sanitizer = bound;
       return sanitizer;
     }
-    // Unbound factory bundling: bind explicitly as a fallback.
-    if (typeof candidate === 'function' && typeof window !== 'undefined') {
-      const bound = asSanitizer((candidate as (window: Window) => unknown)(window));
-      if (bound) {
-        sanitizer = bound;
-        return sanitizer;
-      }
-    }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
+}
+
+// Start fetching optional rendering dependencies before the first diagram is mounted.
+if (typeof window !== 'undefined') {
+  void importMermaid();
+  void importSanitizer();
 }
 
 /**
