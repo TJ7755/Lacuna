@@ -27,7 +27,7 @@ it('refreshes chart colours after an accent choice and an automatic system theme
     getPropertyValue: () => document.documentElement.classList.contains('dark')
       ? '213 90% 64%'
       : document.documentElement.dataset.accent === 'blue' ? '217 90% 52%' : '32 90% 48%',
-  } as CSSStyleDeclaration));
+  } as unknown as CSSStyleDeclaration));
   render(<ThemeProvider><AccentProvider><Chart /></AccentProvider></ThemeProvider>);
   await waitFor(() => expect(screen.getByText('hsl(32 90% 48%)')).toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: 'Blue' }));
