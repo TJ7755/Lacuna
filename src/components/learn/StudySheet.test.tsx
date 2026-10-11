@@ -118,6 +118,13 @@ describe('StudySheet', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/lesson/l1/learn?mode=simple');
   });
 
+  it('keeps Simple Learn available when the course page owns the scheduled alternatives', async () => {
+    renderSheet('chem', { otherWays: false });
+    fireEvent.click(screen.getByText('Practise until all correct'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
+  });
+
   it('crossfades from the course picker to that course\'s options', async () => {
     renderSheet();
     expect(screen.getByRole('heading', { name: 'Which course?' })).toBeInTheDocument();

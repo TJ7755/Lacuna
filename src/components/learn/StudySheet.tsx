@@ -358,6 +358,10 @@ function CourseStudyOptions({
         </section>
       )}
 
+      {!otherWays && course && !course.archived && (
+        <SimpleLearnOptions courseId={courseId} />
+      )}
+
       <Button variant="ghost" size="lg" onClick={onClose}>
         Done
       </Button>
