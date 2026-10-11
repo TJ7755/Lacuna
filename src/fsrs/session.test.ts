@@ -84,6 +84,31 @@ describe('multi-deck session normalisation', () => {
     expect(next).not.toBeNull();
     expect(next?.deckId).toBe('b');
   });
+
+  it('keeps the within-deck winner when normalising against another deck', () => {
+    const near = deck('near', 2);
+    const far = deck('far', 30);
+    const reviewed = card('near-reviewed', near.id, {
+      stability: 1,
+      difficulty: 5,
+      lastReviewed: NOW - 10 * MS_PER_DAY,
+      reps: 3,
+      state: 2,
+      due: NOW - 9 * MS_PER_DAY,
+    });
+    const nearCards = [card('near-new', near.id), reviewed];
+
+    const alone = selectNext(nearCards, makeSessionContext([near]), new Map(), NOW);
+    const mixed = selectNext(
+      [...nearCards, card('far-card', far.id)],
+      makeSessionContext([near, far]),
+      new Map(),
+      NOW,
+    );
+
+    expect(alone).not.toBeNull();
+    expect(mixed?.id).toBe(alone?.id);
+  });
 });
 
 describe('single and multi-unit completion paths', () => {
