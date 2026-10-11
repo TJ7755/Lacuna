@@ -1,0 +1,1 @@
+- Analytics charts now refresh their colours when the accent changes or an automatic theme follows the system.
