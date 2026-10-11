@@ -554,6 +554,6 @@ additional checkpoints live in its Assessments section. The legacy `Deck.examDat
 field remains only for migration compatibility; the current Course UI has no `ExamDateBanner`.
 
 
-[Specification index](../SPEC.md)
-
 Optional Simple Learn remains available in the Study sheet when the course page provides the scheduled alternatives in its Other ways menu.
+
+[Specification index](../SPEC.md)

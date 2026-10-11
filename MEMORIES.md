@@ -44,6 +44,8 @@ risk and the separate Vitest-isolation issue with symlinks.
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.
 A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired this checkout.
 Do not regenerate lockfiles to compensate for an incomplete local installation.
+Keep a fresh install cache under `node_modules` or outside the checkout: Vite scans package
+tests in caches under `artifacts` as application source and attempts to resolve their dependencies.
 
 ## Database history and transactions
 
