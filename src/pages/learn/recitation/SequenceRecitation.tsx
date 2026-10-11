@@ -263,7 +263,7 @@ export function SequenceRecitation({
                 aria-label={`${terminology.item} ${position}: ${isWrong ? 'marked wrong' : 'correct'}`}
                 onClick={() => toggleWrong(line.itemId)}
                 className={cn(
-                  'flex w-full items-start gap-3 rounded-lg px-4 py-3 text-left transition-colors',
+                  'flex w-full items-start gap-3 rounded-full px-4 py-3 text-left transition-colors',
                   isWrong ? 'bg-negative/10 hover:bg-negative/15' : 'hover:bg-ink/5',
                 )}
               >
