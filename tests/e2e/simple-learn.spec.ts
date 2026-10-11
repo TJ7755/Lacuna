@@ -5,10 +5,11 @@ for (const width of [1280, 390]) {
   test(`keeps optional Simple Learn tucked inside Study at ${width}px`, async ({
     page,
   }, testInfo) => {
-    await page.setViewportSize({ width, height: 844 });
+    await page.setViewportSize({ width: 1280, height: 844 });
     await enterFreshLacuna(page);
     await createCourse(page, 'Anytime revision');
     await addLessonNote(page, 'Overview');
+    await page.setViewportSize({ width, height: 844 });
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
     await expect(sheet).toBeVisible();
