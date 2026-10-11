@@ -70,7 +70,7 @@ it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
   trigger.focus();
   fireEvent.click(trigger);
   const pause = screen.getByRole('button', { name: 'Pause' });
-  const reset = screen.getByRole('button', { name: 'Reset' });
+  const reset = screen.getByRole('button', { name: 'Reset timer' });
   expect(document.activeElement).toBe(pause);
   reset.focus();
   fireEvent.keyDown(reset, { key: 'Tab' });
