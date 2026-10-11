@@ -1,0 +1,1 @@
+- Add regression tests for the ten most worrying mutation-testing survivors from the 11 October 2026 test suite audit, covering merge-import review handling, lesson and manual-gate completion, final-assessment validation, session priority, held-out fit acceptance, recall variance and the cram success-grade distribution.
