@@ -10,7 +10,7 @@ import { seedArtworkFor } from './seedArtwork';
 
 /** Every SVG the seed has ever stored, read from seed.ts so a changed drawing cannot slip by. */
 function storedSeedSvgHashes(): string[] {
-  const source = readFileSync('src/db/seed.ts', 'utf8');
+  const source = readFileSync('src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
   return [...source.matchAll(/const \w+_SVG = `([\s\S]*?)`;/g)].map((match) =>
     createHash('sha256').update(match[1], 'utf8').digest('hex'),
   );
