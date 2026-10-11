@@ -221,6 +221,36 @@ describe('optimiseParameters', () => {
     expect(result.scored).toBeLessThanOrEqual(totalNonFirst - trainNonFirst);
   });
 
+  it('offers only a fit that improves the held-out loss', async () => {
+    const cards = syntheticDeck();
+    const sequences = reviewSequences(cards);
+    const { cutoffTimestamp } = chronologicallySplitSequences(sequences);
+    const overconfident = [...default_w];
+    overconfident.splice(0, 4, 100, 100, 100, 100);
+    const heldOutLoss = (w: number[]) =>
+      evaluateParameters(sequences, w, 0.9, { scoreAfterTimestamp: cutoffTimestamp }).logLoss;
+    const [better, worse] = [[...default_w], overconfident].sort(
+      (a, b) => heldOutLoss(a) - heldOutLoss(b),
+    );
+    expect(heldOutLoss(better)).toBeLessThan(heldOutLoss(worse));
+    const fit = (initialW: number[], fitted: number[]) =>
+      optimiseParameters(cards, {
+        ...bindingDeps,
+        requestRetention: 0.9,
+        initialW,
+        computeParameters: async () => [...fitted],
+      });
+
+    const improved = await fit(worse, better);
+    expect(improved.before).toBeCloseTo(heldOutLoss(worse), 12);
+    expect(improved.after).toBeCloseTo(heldOutLoss(better), 12);
+    expect(improved.isOutOfSampleWin).toBe(true);
+
+    const regressed = await fit(better, worse);
+    expect(regressed.after).toBeGreaterThan(regressed.before);
+    expect(regressed.isOutOfSampleWin).toBe(false);
+  });
+
   it('rejects out-of-range trainer output', async () => {
     const badCompute: typeof computeParameters = async () => {
       const w = [...default_w];

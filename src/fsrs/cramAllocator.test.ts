@@ -11,6 +11,7 @@ import {
 import { defaultFsrsParameters, MS_PER_DAY } from './params';
 import { makeObjectiveContext, sortByObjective } from './objective';
 import { estimateResponseTime, type ResponseTimeCoefficients } from './responseTimeCost';
+import { CRAM_SUCCESS_GRADES } from './halfLifeLogisticModel';
 
 const NOW = 30 * MS_PER_DAY;
 const ASSESSMENT = NOW + 2 * MS_PER_DAY;
@@ -224,6 +225,21 @@ describe('expected-gain allocator', () => {
     if (result.mode !== 'memory-model') return;
     expect(result.selected?.card.id).toBe('fast');
     expect(result.selected?.expectedGainPerMinute).toBeCloseTo(1.25);
+  });
+
+  it("allocates with the app's exported success-grade distribution", () => {
+    const { model, calls } = testModel({
+      successNow: { fast: 0.5 },
+      examNow: { fast: 0.4 },
+      after: { fast: { 1: 0.5, 3: 0.8 } },
+    });
+    const result = allocateCramReview({
+      ...allocationInput([card('fast')], model),
+      successGrades: CRAM_SUCCESS_GRADES,
+    });
+
+    expect(result.mode).toBe('memory-model');
+    expect(new Set(calls.map((call) => call.grade))).toEqual(new Set([1, 3]));
   });
 
   it('prioritises expected mastery crossings and never polishes secure cards', () => {

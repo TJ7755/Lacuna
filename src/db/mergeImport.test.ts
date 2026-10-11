@@ -489,6 +489,42 @@ describe('mergeImport: v3 Question lineage', () => {
     expect(await db.questionAttempts.get('attempt-quadratic')).toEqual(immutableAttempt);
   });
 
+  it('starts a new Question schedule when only the teacher prompt changes', async () => {
+    const first = questionPayloadV3();
+    const { course } = await importLineageFirstTime(first);
+    const shown = await startQuestionAttempt({
+      questionId: 'question-quadratic',
+      sessionId: 'session-questions',
+      attemptId: 'attempt-prompt-only',
+      now: 2_000,
+    });
+    await answerQuestionAttempt({
+      attemptId: shown.id,
+      submittedAnswer: '2',
+      marksEarned: 1,
+      marksAvailable: 1,
+      now: 3_000,
+    });
+    const scheduled = (await db.questions.get('question-quadratic'))!;
+    const sharedQuestion = first.questions[0];
+    if (sharedQuestion.k !== 0) throw new Error('Expected a fixed Question fixture.');
+
+    await mergeLineageUpdate(
+      course.id,
+      questionPayloadV3({
+        at: 4_000,
+        rv: 2,
+        questions: [{ ...sharedQuestion, f: 'What is the negative root of x² - 4 = 0?' }],
+      }),
+    );
+
+    const edited = (await db.questions.get('question-quadratic'))!;
+    expect(edited.contentVersion).toBe(scheduled.contentVersion + 1);
+    expect(edited.scheduleEpoch.id).not.toBe(scheduled.scheduleEpoch.id);
+    expect(edited.reps).toBe(0);
+    expect(edited.due).toBeNull();
+  });
+
   it('stamps updatedAt when a lineage merge reassigns a card concept', async () => {
     // Regression for #326: the concept reassignment path wrote conceptId without
     // stampUpdatedAt, so the reassignment kept its old timestamp and could lose a
