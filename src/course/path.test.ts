@@ -427,6 +427,31 @@ describe('buildPath', () => {
     if (n2?.nodeType === 'lesson') expect(n2.status).toBe('locked');
   });
 
+  it('keeps a lesson available until every required card has been taught', () => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'open' });
+    const lesson = makeLesson({ id: 'l1', courseId: 'c1', orderIndex: 0 });
+    const cardsById = new Map<string, Card[]>([
+      [
+        'l1',
+        [
+          makeCard({ id: 'a', deckId: 'd', state: 0 }),
+          makeCard({ id: 'b', deckId: 'd', state: 0 }),
+        ],
+      ],
+    ]);
+    const statusAfter = (taught: string[]) => {
+      const node = buildPath(course, [lesson], [], cardsById, [], 0, 0, Date.now(), {
+        exposures: taught.map((cardId) => ({ lessonId: 'l1', cardId, taughtAt: 1, updatedAt: 1 })),
+        lessonCompletions: [],
+        practiceMilestones: [],
+      }).find((n) => n.id === 'l1');
+      return node?.nodeType === 'lesson' ? node.status : undefined;
+    };
+
+    expect(statusAfter(['a'])).toBe('available');
+    expect(statusAfter(['a', 'b'])).toBe('completed');
+  });
+
   it('orders multiple checkpoints sharing a slot deterministically', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'open' });
     const lessons = [
@@ -799,6 +824,25 @@ describe('practiceGateAfterLesson', () => {
         'l1',
         active,
         new Set(['first']),
+      ),
+    ).toBe(true);
+  });
+
+  it('requires every active manual gate in one slot to be completed', () => {
+    const first = makePracticeNode({ id: 'first', courseId: 'c1', type: 'manual', position: 1 });
+    const second = makePracticeNode({ id: 'second', courseId: 'c1', type: 'manual', position: 1 });
+    const active = new Set(['first', 'second']);
+
+    expect(
+      manualPracticeGateOutcomeAfterLesson(lessons, [first, second], 'l2', active, new Set(['first'])),
+    ).toBe(false);
+    expect(
+      manualPracticeGateOutcomeAfterLesson(
+        lessons,
+        [first, second],
+        'l2',
+        active,
+        new Set(['first', 'second']),
       ),
     ).toBe(true);
   });
