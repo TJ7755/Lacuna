@@ -89,8 +89,9 @@ export function ConfirmInline({
   }, [focusOnMount, present]);
 
   const cancel = () => {
-    const returnFocus = rootRef.current?.contains(document.activeElement);
     onCancel();
+    // Only return focus the caller left inside the prompt; a caller that moved it knows better.
+    const returnFocus = rootRef.current?.contains(document.activeElement);
     const opener = openerRef.current;
     if (returnFocus && opener?.isConnected && !opener.closest('[inert]')) opener.focus();
   };
