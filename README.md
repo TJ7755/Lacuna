@@ -31,7 +31,10 @@ selected conversation and tool content to a hosted model. Export a full JSON bac
 
 ## Development
 
-Use Node.js 24 and Bun 1.4.2, matching CI. The checked-in lockfiles are authoritative.
+Use Node.js 24 and Bun 1.4.3, matching CI. The checked-in lockfiles are authoritative.
+
+Web typechecking uses `bun check -b` for the app, build configuration and release-tooling
+projects. Server and Electron checks, and desktop JavaScript emission, retain native TypeScript.
 
 ```bash
 git clone https://github.com/TJ7755/Lacuna.git

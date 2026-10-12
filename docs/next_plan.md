@@ -73,7 +73,7 @@ forecast is a later milestone, not a prerequisite for authoring and self-marking
 
 The React 19, TypeScript 7, Vite 8, Vitest 5 and ESLint 10 migrations are delivered, alongside
 Electron 44/Electron Builder 26, root and relay audit jobs, and release provenance checks.
-CI uses Node.js 24 and Bun 1.4.2; package manifests and lockfiles define exact dependencies. Remaining
+CI uses Node.js 24 and Bun 1.4.3; package manifests and lockfiles define exact dependencies. Remaining
 work is signing/notarisation before wider rollout and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
 and review date.
@@ -118,24 +118,27 @@ publication remains a manual maintainer action; it is not second-person enforced
 
 **Exit:** a red check means broken, not merely noisy.
 
-#### Proposed tooling evaluation: Bun 1.4.3
+#### Bun 1.4.3 web typechecking
 
-**Status:** proposed. Assess `bun check` after the Direction C fixes. The
-[release](https://bun.sh/blog/bun-v1.4.3) adds TypeScript 7 checking;
+**Status:** delivered. The web check uses `bun check -b`; smaller server and Electron
+checks retain native `tsc`. The [release](https://bun.sh/blog/bun-v1.4.3) adds TypeScript 7 checking;
 [the docs](https://bun.sh/docs/runtime/check) confirm project-reference support
 with `-b`, but no JavaScript/declaration emission or incremental `.tsbuildinfo` cache.
 Lacuna already uses native TypeScript 7.0.2 through `@typescript/native`, with
 TypeScript 6 under `typescript` for API compatibility; Electron preparation needs
-native `tsc` emission. Keep those packages and the current Bun 1.4.2 CI pin pending evaluation.
+native `tsc` emission. Those packages remain installed; development, CI, audits and
+release builds use Bun 1.4.3.
 
 Local Windows smoke checks on 12 October with Bun 1.4.3 passed all five root configurations.
 One sequential wall-clock pair in seconds (`tsc` / `bun check`): web references
 123.703 / 27.985; server 2.226 / 4.185; Electron main 1.753 / 4.195;
 preload 1.599 / 3.071; MCP 2.070 / 3.788. Concurrent development and process-start
-costs make these exploratory timings, not an adoption benchmark. Compare cold and
-unchanged incremental runs on quiet Windows and CI hosts, then compare diagnostic
-code/file/position on failing fixtures across every configuration, including the
-separate relay and AI MCP packages, before proposing a script or CI change.
+costs make these exploratory timings, not a promised speed-up. Regression coverage
+checks the web reference graph, matching native TypeScript diagnostics on deliberate
+type errors and emitting no JavaScript. Relay and AI MCP checks remain on native `tsc`.
+The migrated web graph passed on 1,554 files across three projects in 35.22 seconds,
+with a measured 578.9 MiB peak working set on an eight-CPU Windows host; Bun retains
+its default CPU-based thread count. This is local evidence, not CI certification.
 
 ### 4. Persistence consolidation
 
