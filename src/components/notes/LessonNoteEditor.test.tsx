@@ -10,6 +10,11 @@ function setup() {
 }
 
 describe('LessonNoteEditor', () => {
+  it('associates note title label with its input', () => {
+    setup();
+    expect(screen.getByLabelText('Title')).toBeInTheDocument();
+  });
+
   it('names the title field for assistive technology', () => {
     setup();
     expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus();

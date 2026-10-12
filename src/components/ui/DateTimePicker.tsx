@@ -825,7 +825,7 @@ export function DateTimePicker({
                 {/* Time selector */}
                 <div className="border-t border-line px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm font-medium text-ink-faint">
+                    <span className="flex items-center gap-2 text-sm text-ink-soft">
                       <ClockIcon width={13} height={13} />
                       Time
                     </span>

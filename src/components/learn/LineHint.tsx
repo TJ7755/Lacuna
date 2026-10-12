@@ -39,7 +39,7 @@ export function LineHintDisplay({
       transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
       className="mx-auto mt-4 max-w-prose text-center"
     >
-      <div className="mb-1 text-sm text-ink-faint">Hint</div>
+      <p className="mb-1 text-sm text-ink-faint">Hint</p>
       <div className="text-lg tracking-wide text-ink-faint">{hint}</div>
     </motion.div>
   );

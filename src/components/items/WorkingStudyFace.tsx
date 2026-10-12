@@ -167,7 +167,7 @@ export function WorkingStudyFace({
             <>
               <label
                 htmlFor="working-answer"
-                className="mb-2 block text-sm text-ink-faint"
+                className="mb-2 block text-sm text-ink-soft"
               >
                 Your working
               </label>

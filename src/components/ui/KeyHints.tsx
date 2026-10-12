@@ -121,7 +121,9 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
             <div className="grid gap-6 px-6 py-6 sm:grid-cols-2">
               {liveGroups.map((group) => (
                 <div key={group.title}>
-                  <h3 className="mb-2 text-sm text-ink-faint">{group.title}</h3>
+                  <h3 className="mb-2 font-display text-lg text-ink">
+                    {group.title}
+                  </h3>
                   <ul className="flex flex-col gap-2">
                     {group.shortcuts.map((s) => (
                       <li

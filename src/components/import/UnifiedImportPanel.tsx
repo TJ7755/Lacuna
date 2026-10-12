@@ -551,7 +551,7 @@ export function UnifiedImportPanel({
             className="relative"
           >
             <div className="mb-2.5 flex items-center justify-between">
-              <label className="text-sm font-medium text-ink-faint">
+              <label className="text-sm text-ink-soft">
                 Paste your cards
               </label>
               <div className="flex items-center gap-2">
@@ -642,7 +642,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.12 * m }}
                 className="flex items-center gap-3"
               >
-                <span className="text-sm font-medium text-ink-faint">
+                <span className="text-sm text-ink-soft">
                   Detected
                 </span>
                 <FormatBadge format={effectiveFormat} confidence={detection.confidence} />
@@ -910,7 +910,7 @@ function ShareCodeImport({
   return (
     <>
       <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60">
-        <label className="mb-2.5 block text-sm font-medium text-ink-faint">
+        <label className="mb-2.5 block text-sm text-ink-soft">
           Share code
         </label>
         <textarea

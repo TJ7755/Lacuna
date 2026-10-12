@@ -287,7 +287,7 @@ export function OcclusionEditor() {
 
         <div className="flex flex-col gap-5">
           <div>
-            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-faint">
+            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-soft">
               Name
             </label>
             <input

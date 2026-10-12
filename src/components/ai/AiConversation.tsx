@@ -22,7 +22,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
     return (
       <div className="grid flex-1 place-items-center px-8 py-12 text-center">
         <div className="max-w-xs">
-          <p className="font-display text-xl text-ink">What are you working on?</p>
+          <h2 className="font-display text-xl text-ink">What are you working on?</h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
             Chat with your connected AI client.
           </p>

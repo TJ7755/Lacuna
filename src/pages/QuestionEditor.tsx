@@ -44,7 +44,7 @@ import {
 
 const inputClass =
   'min-h-12 w-full rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-ink';
-const labelClass = 'mb-2 block text-[13px] font-bold text-ink-soft';
+const labelClass = 'mb-2 block text-sm text-ink-soft';
 const cardClass =
   'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
 
@@ -242,7 +242,7 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className={labelClass}>
+            <legend className="mb-2 font-display text-base text-ink">
               Question form
             </legend>
             <QuestionSegmented
@@ -335,7 +335,7 @@ export function QuestionEditor() {
           </div>
           {data.concepts.filter((concept) => concept.id !== targetConceptId).length > 0 && (
             <fieldset className="md:col-span-2">
-              <legend className={labelClass}>
+              <legend className="mb-2 font-display text-base text-ink">
                 Prerequisite Concepts
               </legend>
               <div className="flex flex-wrap gap-2">

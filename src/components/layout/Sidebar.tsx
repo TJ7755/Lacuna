@@ -563,12 +563,7 @@ export function Sidebar({
             transition={{ duration: 0.2 * m }}
             className="flex items-center justify-between px-3 pb-2"
           >
-            <span
-              className={cn(
-                'text-[13px] font-bold text-ink-faint',
-                sidebarSettings.compactMode && 'text-xs',
-              )}
-            >
+            <span className="font-display text-sm text-ink-soft">
               Courses
             </span>
             <button

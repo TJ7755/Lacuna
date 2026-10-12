@@ -499,13 +499,13 @@ export function CardEditor() {
 
           <div className="grid gap-6 md:grid-cols-2">
             <div className={`rounded-3xl bg-surface p-7 ${CARD_SURFACE}`}>
-              <div className="mb-3 text-[13px] font-bold text-ink-soft">Front</div>
+              <h2 className="mb-3 font-display text-lg tracking-tight">Front</h2>
               <div className="text-ink-soft">
                 <CardContent card={card} side="front" />
               </div>
             </div>
             <div className={`rounded-3xl bg-surface p-7 ${CARD_SURFACE}`}>
-              <div className="mb-3 text-[13px] font-bold text-ink-soft">Back</div>
+              <h2 className="mb-3 font-display text-lg tracking-tight">Back</h2>
               <div className="text-ink">
                 <CardContent card={card} side="back" />
               </div>
@@ -910,7 +910,7 @@ export function CardEditor() {
             )}
 
             <div>
-              <div className="mb-2 text-[13px] font-bold text-ink-soft">Tags</div>
+              <div className="mb-2 text-sm text-ink-soft">Tags</div>
               <TagInput
                 tags={tags}
                 onChange={(nextTags) => {

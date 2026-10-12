@@ -49,37 +49,39 @@ export function QuestionFeedback({
     <section className="rounded-[28px] bg-surface px-6 py-8 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:px-[52px] md:py-11">
       <div className="flex items-center gap-4">
         <ResultMark tone={tone} className="size-11" />
-        <p className="flex-1 font-display text-2xl font-semibold tracking-tight text-ink">
+        <h2 className="flex-1 font-display text-2xl font-semibold tracking-tight text-ink">
           {scheduleWithheld
             ? 'Checker review needed'
             : fullMarks
               ? 'Full marks'
               : 'Try this again sooner'}
-        </p>
+        </h2>
         <p className="text-lg tabular-nums text-ink-soft">
           {attempt.marksEarned} / {attempt.marksAvailable} marks
         </p>
       </div>
 
       <div className="mt-6">
-        <button
-          type="button"
-          aria-expanded={solutionOpen}
-          onClick={() => setSolutionOpen((open) => !open)}
-          className={cn(
-            'inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-            solutionOpen
-              ? 'border-ink bg-ink text-paper'
-              : 'border-line-strong bg-surface text-ink hover:border-ink/40',
-          )}
-        >
-          Worked solution
-          <ChevronDownIcon
-            width={16}
-            height={16}
-            className={cn('transition-transform duration-300', solutionOpen && 'rotate-180')}
-          />
-        </button>
+        <h3>
+          <button
+            type="button"
+            aria-expanded={solutionOpen}
+            onClick={() => setSolutionOpen((open) => !open)}
+            className={cn(
+              'inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+              solutionOpen
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+            )}
+          >
+            Worked solution
+            <ChevronDownIcon
+              width={16}
+              height={16}
+              className={cn('transition-transform duration-300', solutionOpen && 'rotate-180')}
+            />
+          </button>
+        </h3>
         <AnimatedDisclosure open={solutionOpen}>
           <div className="pt-4 text-base leading-7 text-ink">
             <MarkdownView source={attempt.renderedExplanation} />

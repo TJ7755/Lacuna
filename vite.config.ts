@@ -2,10 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { version } from './package.json' with { type: 'json' };
-import { settingsStaticClosurePlugin } from './scripts/settings-static-closure';
-import { publicPagePrerenderPlugin } from './scripts/public-page-prerender';
-import { appShellPrecachePlugin } from './scripts/app-shell-precache';
+import packageJson from './package.json' with { type: 'json' };
+import { settingsStaticClosurePlugin } from './scripts/settings-static-closure.ts';
+import { publicPagePrerenderPlugin } from './scripts/public-page-prerender.ts';
+import { appShellPrecachePlugin } from './scripts/app-shell-precache.ts';
 
 // Cross-origin isolation headers required by the FSRS WASM trainer worker.
 const crossOriginIsolationHeaders = {
@@ -119,7 +119,7 @@ export default defineConfig({
   },
   // Surface the package version to the app (used by the diagnostic bundle).
   define: {
-    __APP_VERSION__: JSON.stringify(version),
+    __APP_VERSION__: JSON.stringify(packageJson.version),
     // Vercel serves the analytics endpoint itself. Do not inject a script that
     // will 404 on local previews, Electron or other static hosts.
     __VERCEL_ANALYTICS_ENABLED__: JSON.stringify(process.env.VERCEL === '1'),

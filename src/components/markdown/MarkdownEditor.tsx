@@ -375,7 +375,7 @@ export function MarkdownEditor({
     // The whole field, toolbar included, marks focus in its text, as a plain input's border does.
     <div className="rounded-xl border border-line bg-surface transition-colors has-[textarea:focus]:border-accent has-[textarea:focus]:ring-2 has-[textarea:focus]:ring-accent/20">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-sm text-ink-faint">{label}</div>
+        <div className="border-b border-line px-3 py-2 text-sm text-ink-soft">{label}</div>
       )}
 
       {/* Toolbar */}

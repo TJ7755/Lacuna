@@ -196,6 +196,14 @@ beforeEach(() => {
   });
 });
 
+async function expectShareLinkRevision(revision: number) {
+  const heading = await screen.findByRole('heading', { name: 'Share link', level: 2 });
+  const revisionLabel = await within(heading.parentElement!).findByText(
+    new RegExp(`^Revision ${revision}(?: ·|$)`),
+  );
+  expect(heading.parentElement).toContainElement(revisionLabel);
+}
+
 describe('defaultShareCourse', () => {
   const archived = { ...mockCourse, id: 'archived', archived: true };
   const active = { ...mockCourse, id: 'active' };
@@ -412,6 +420,7 @@ describe('SharePage', () => {
     mockPublishShareLink.mockResolvedValue({ shareId, revision: 1, byteSize: 128 });
     render(<SharePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Create share link' }));
+    await expectShareLinkRevision(1);
     expect(await screen.findByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${desktop ? 'https://getlacuna.app' : window.location.origin}/#/s/${shareId}`,
     );
@@ -425,6 +434,7 @@ describe('SharePage', () => {
     const shareId = 'c'.repeat(32);
     given(linked(shareId, 3));
     render(<SharePage />);
+    await expectShareLinkRevision(3);
     expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${shareId}`,
     );
@@ -440,7 +450,7 @@ describe('SharePage', () => {
     mockPublishShareLink.mockResolvedValue({ shareId, revision: 2, byteSize: 128 });
     render(<SharePage />);
     fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
-    await screen.findByText(/^Revision 2/);
+    await expectShareLinkRevision(2);
     expect(mockNotify).toHaveBeenCalledWith('Link updated to revision 2.', 'positive');
   });
 
@@ -448,6 +458,7 @@ describe('SharePage', () => {
     given(linked('d'.repeat(32), 2));
     mockUnpublishShareLink.mockResolvedValue(undefined);
     render(<SharePage />);
+    await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, stop sharing' }));
     await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(mockCourse.id));
@@ -481,6 +492,7 @@ describe('SharePage', () => {
     await waitFor(() =>
       expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id, { replaceLink: true }),
     );
+    await expectShareLinkRevision(2);
     expect(await screen.findByRole('textbox', { name: 'Share link' })).toHaveValue(
       `${window.location.origin}/#/s/${replacementId}`,
     );
@@ -492,6 +504,7 @@ describe('SharePage', () => {
       new ShareLinkNeedsReplacementError('This link was created on another device.'),
     );
     render(<SharePage />);
+    await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
     await screen.findByText(/created on another device/);
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
@@ -512,9 +525,10 @@ describe('SharePage', () => {
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
   });
 
-  it('makes sending a newer revision the primary action when the link is behind', () => {
+  it('makes sending a newer revision the primary action when the link is behind', async () => {
     given(linked('c'.repeat(32), 5, { shareRevision: 3 }));
     render(<SharePage />);
+    await expectShareLinkRevision(3);
     expect(screen.getByText(/^Revision 3/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Send revision 5' })).toBeInTheDocument();
   });

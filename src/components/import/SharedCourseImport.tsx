@@ -323,9 +323,9 @@ export function SharedCourseImport({
           >
             <div className="rounded-2xl bg-paper p-4">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-semibold text-ink-soft">
+                <h3 className="font-display text-lg text-ink">
                   QR scanner
-                </span>
+                </h3>
                 <Button
                   size="sm"
                   variant="ghost"

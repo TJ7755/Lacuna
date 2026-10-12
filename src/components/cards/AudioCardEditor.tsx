@@ -130,7 +130,7 @@ export function AudioCardEditor({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="mb-2 text-sm text-ink-faint">Audio</div>
+        <h2 className="mb-2 font-display text-lg tracking-tight">Audio</h2>
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
           {previewUrl ? (
             <audio
@@ -172,7 +172,7 @@ export function AudioCardEditor({
       </div>
 
       <label>
-        <span className="mb-2 block text-sm text-ink-faint">
+        <span className="mb-2 block text-sm text-ink-soft">
           Prompt (optional)
         </span>
         <textarea
@@ -188,7 +188,7 @@ export function AudioCardEditor({
       </label>
 
       <label>
-        <span className="mb-2 block text-sm text-ink-faint">
+        <span className="mb-2 block text-sm text-ink-soft">
           Answer
         </span>
         <textarea

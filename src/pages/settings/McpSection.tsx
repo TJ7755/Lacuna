@@ -6,7 +6,7 @@ import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '../../mcp/connections';
 import { useCourses } from '../../state/useCourseData';
-import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import { SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 import { cn } from '../../components/ui/cn';
 
@@ -154,9 +154,9 @@ export function McpSection() {
       {status?.companion && (
         <div className="mb-5 rounded-2xl bg-ink/[0.04] px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="text-sm font-medium text-ink-faint">
+            <SettingsSubsectionHeading className="font-display text-base text-ink">
               MCP client configuration
-            </div>
+            </SettingsSubsectionHeading>
             <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>
               Copy
             </Button>
