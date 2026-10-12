@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { QuestionSetPanel } from './QuestionSetPanel';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal', vi.fn()],
+  speedMultiplier: () => 0,
+}));
 
 it('opens a focused task and returns focus to its trigger on Escape', () => {
   render(

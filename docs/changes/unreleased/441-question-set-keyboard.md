@@ -1,0 +1,1 @@
+- Make Question Set attempts fluent from the keyboard: Ctrl/Cmd+Enter advances answers and explicit self-marking decisions, task focus follows saved progress, and secondary tools retain unfinished notes and corrections. Simplify single-part navigation and place manual marking before annotations on narrow screens. (#441)

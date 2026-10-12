@@ -1,5 +1,5 @@
 import { QuestionSetPanel } from './QuestionSetPanel';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type {
   QuestionSetAttemptReflection,
   QuestionSetReflectionReason,
@@ -27,8 +27,13 @@ export function QuestionSetReflection({
   onDirty: (dirty: boolean) => void;
 }) {
   const [note, setNote] = useState(value.note);
+  const input = useRef<HTMLTextAreaElement>(null);
   return (
-    <QuestionSetPanel title="What would you change?" className="qs-reflection">
+    <QuestionSetPanel
+      title="What would you change?"
+      className="qs-reflection"
+      canClose={note === value.note}
+    >
       <fieldset>
         <legend className="sr-only">Reflection reasons</legend>
         {(Object.entries(reasons) as [QuestionSetReflectionReason, string][]).map(
@@ -55,6 +60,7 @@ export function QuestionSetReflection({
       <label className="qs-field">
         Reflection
         <textarea
+          ref={input}
           value={note}
           onChange={(event) => {
             setNote(event.target.value);
@@ -68,6 +74,7 @@ export function QuestionSetReflection({
         onClick={() => {
           onChange({ ...value, note });
           onDirty(false);
+          input.current?.focus();
         }}
       >
         Save reflection
@@ -78,6 +85,7 @@ export function QuestionSetReflection({
           onClick={() => {
             setNote(value.note);
             onDirty(false);
+            input.current?.focus();
           }}
         >
           Cancel reflection
