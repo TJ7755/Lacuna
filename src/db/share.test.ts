@@ -244,6 +244,20 @@ describe('course share codes (v2)', () => {
     expect(await db.schedulingUnits.get(result.courseIds[0])).not.toHaveProperty('examDate');
   });
 
+  it('rejects a received course with more than one final assessment', async () => {
+    const course = await createCourse('Spanish', { schedulingMode: 'steady' });
+    const payload = await decodeShare(await buildCourseShareCode(course.id));
+    if (payload.v === 1) throw new Error('expected a course payload');
+    const final = payload.exams!.find((assessment) => assessment.k === 'f')!;
+    payload.exams!.push({ ...final, id: `${final.id}-duplicate` });
+
+    await reset();
+    await expect(importSharePayload(payload)).rejects.toThrow(
+      'A shared course must contain exactly one final assessment.',
+    );
+    expect(await db.courses.count()).toBe(0);
+  });
+
   it('round-trips structured item payloads without changing their contents', async () => {
     const course = await createCourse('Mathematics');
     const lesson = await createLesson(course.id, 'Algebra');

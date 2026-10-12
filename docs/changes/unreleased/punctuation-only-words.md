@@ -1,0 +1,1 @@
+- Fixed lenient typed-answer marking: a word made only of punctuation, such as a lone dash or ampersand, no longer stops an otherwise correct answer from counting as correct.
