@@ -71,7 +71,6 @@ test('plays stored audio while authoring and studying in the production build', 
     .getByRole('button', { name: 'Study Audio playback' })
     .click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   const studyPlayer = page.locator('[data-study-face="front"] audio');
   await expect(studyPlayer).toHaveAttribute('src', /^blob:/);
