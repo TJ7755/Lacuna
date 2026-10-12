@@ -8,10 +8,31 @@ import { prefetchRoute } from '../../routes/prefetch';
 import { STATUS_COLOUR, type ForecastStatus } from './ForecastChart';
 import { contextMenuHandlers } from '../ui/contextMenu';
 
+/**
+ * What a row can offer today: work to study, today's work finished, nothing due
+ * without anything studied today, no cards at all, or a summary still loading.
+ */
+export type QueueState = 'study' | 'done' | 'clear' | 'empty' | 'loading';
+
+export function queueState(
+  summary: { cardCount: number; eligible: number; reviewedTodayCount: number } | undefined,
+): QueueState {
+  if (!summary) return 'loading';
+  if (summary.eligible > 0) return 'study';
+  if (summary.cardCount === 0) return 'empty';
+  return summary.reviewedTodayCount > 0 ? 'done' : 'clear';
+}
+
+/** The row whose Study button leads, which the S shortcut must also open. */
+export function leadStudyRow<T extends Pick<QueueRow, 'state'>>(rows: readonly T[]): T | undefined {
+  return rows.find((row) => row.state === 'study');
+}
+
 export interface QueueRow {
   id: string;
   name: string;
   status: ForecastStatus;
+  state: QueueState;
   due: number;
   minutes: number;
   href: string;
@@ -43,12 +64,10 @@ export function TodayQueue({
     };
   };
   const liftTransition = { duration: 0.16 * multiplier, delay: 0, ease: MOTION_EASING.emphasised };
-  const firstDue = rows.findIndex((row) => row.due > 0);
+  const lead = leadStudyRow(rows);
   return (
     <section aria-label="Today, most urgent first" className="flex flex-col gap-2">
       {rows.map((row, index) => {
-        const done = row.due === 0;
-        const lead = index === firstDue;
         return (
           <motion.div
             key={row.id}
@@ -93,7 +112,7 @@ export function TodayQueue({
                 )}
               </span>
             </Link>
-            {done ? (
+            {row.state === 'done' ? (
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-positive">
                 <motion.span
                   className="grid h-6 w-6 place-items-center rounded-full bg-positive text-surface"
@@ -110,7 +129,11 @@ export function TodayQueue({
                 </motion.span>
                 <span className="max-sm:sr-only">Done for today</span>
               </span>
-            ) : (
+            ) : row.state === 'clear' || row.state === 'empty' ? (
+              <span className="text-sm text-ink-faint">
+                {row.state === 'empty' ? 'No cards yet' : 'Nothing due'}
+              </span>
+            ) : row.state === 'study' ? (
               <>
                 <span className="hidden items-center gap-1.5 text-ink-soft tabular-nums sm:inline-flex">
                   <CardsIcon width={16} height={16} aria-hidden="true" />
@@ -123,7 +146,7 @@ export function TodayQueue({
                 </span>
                 {/* Study opens the course's session plan, as Study does on the course page. */}
                 <Button
-                  variant={lead ? 'primary' : 'secondary'}
+                  variant={row === lead ? 'primary' : 'secondary'}
                   onClick={() => onStudy(row.id)}
                   aria-label={`Study ${row.name}`}
                 >
@@ -131,7 +154,7 @@ export function TodayQueue({
                   <ArrowRightIcon />
                 </Button>
               </>
-            )}
+            ) : null}
             <button
               ref={(button) => {
                 if (button) menuButtons.current.set(row.id, button);

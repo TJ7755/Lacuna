@@ -40,6 +40,7 @@ describe('TodayQueue lift', () => {
             id: 'biology',
             name: 'Biology',
             status: 'ahead',
+            state: 'done',
             due: 0,
             minutes: 0,
             href: '/course/biology',
