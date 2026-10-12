@@ -39,6 +39,27 @@ describe('compareAnswer', () => {
     expect(result.correct).toBe(true);
   });
 
+  it('ignores punctuation-only words by default', () => {
+    const omitted = compareAnswer('To be or not', 'To be — or not');
+    expect(omitted.correct).toBe(true);
+    expect(omitted.words.every((word) => word.matched)).toBe(true);
+    const added = compareAnswer('Romeo & Juliet', 'Romeo Juliet');
+    expect(added.correct).toBe(true);
+    expect(added.typedWords.every((word) => word.matched)).toBe(true);
+    expect(
+      compareAnswer('To be or not', 'To be — or not', { ignorePunctuation: false }).correct,
+    ).toBe(false);
+  });
+
+  it('marks a symbol-only answer with its punctuation kept', () => {
+    const result = compareAnswer('%', '%');
+    expect(result.correct).toBe(true);
+    expect(result.words.every((word) => word.matched)).toBe(true);
+    const wrong = compareAnswer('&', '%');
+    expect(wrong.correct).toBe(false);
+    expect(wrong.words.some((word) => word.matched)).toBe(false);
+  });
+
   it('does not strip internal punctuation', () => {
     const result = compareAnswer('e.g.', 'e.g.');
     expect(result.correct).toBe(true);

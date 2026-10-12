@@ -169,6 +169,41 @@ describe('mergeImport: review resolution', () => {
     expect(review?.diff.removals.cardIds).toHaveLength(0);
   });
 
+  it('treats a student-renamed lesson as a conflict rather than overwriting it', async () => {
+    await db.lessons.update('lesson-1', { name: 'My cells' });
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] }),
+    );
+    const review = await db.pendingMergeReviews.where('courseId').equals(courseId).first();
+
+    expect(review?.diff.updates.lessons).toHaveLength(0);
+    expect(review?.diff.conflicts.map((c) => c.entityId)).toEqual(['lesson-1']);
+    expect((await db.lessons.get('lesson-1'))?.name).toBe('My cells');
+  });
+
+  it('keeps the review while other updates remain after accepting one item', async () => {
+    await mergeLineageUpdate(
+      courseId,
+      coursePayload({
+        rv: 2,
+        lessons: [
+          lessonOne({
+            n: 'Cells (revised)',
+            notes: [{ oi: 'note-1', n: 'Intro', c: 'Teacher rewrote this.' }],
+          }),
+        ],
+      }),
+    );
+    const reviewId = await pendingReviewId(courseId);
+
+    await acceptMergeReviewItems(reviewId, [{ kind: 'lesson', entityId: 'lesson-1' }]);
+
+    const review = await db.pendingMergeReviews.get(reviewId);
+    expect(review?.diff.updates.notes.map((u) => u.id)).toEqual(['note-1']);
+    expect((await db.notes.get('note-1'))?.content).toBe('Cells are the basic unit of life.');
+  });
+
   it('rejects all outstanding items, including conflicts, and clears the row', async () => {
     await db.notes.update('note-1', { content: 'My own rewritten notes.' });
     await mergeLineageUpdate(

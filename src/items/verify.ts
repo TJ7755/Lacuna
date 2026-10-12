@@ -320,7 +320,13 @@ function namedAnswerValue(studentLine: string): Expression | null {
   } catch {
     return null;
   }
-  if (!equation || !/^[A-Za-z][A-Za-z0-9_]*$/.test(equation.left)) return null;
+  if (
+    !equation ||
+    !/^[A-Za-z][A-Za-z0-9_]*$/.test(equation.left) ||
+    BUILT_IN_SYMBOLS.has(equation.left)
+  ) {
+    return null;
+  }
   const parsed = parseExpression(equation.right);
   return parsed.ok ? parsed.expression : null;
 }

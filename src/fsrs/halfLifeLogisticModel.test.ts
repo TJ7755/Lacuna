@@ -95,6 +95,10 @@ describe('half-life-logistic-v3 runtime', () => {
     expect(
       model.predictRecall({ card: card(), at: REVIEWED_AT + 3_600_000 }).probability,
     ).toBeCloseTo(0.9148754014047971, 12);
+    // Bernoulli uncertainty of a single recall outcome: sqrt(p(1 - p)).
+    expect(
+      model.predictRecall({ card: card(), at: REVIEWED_AT + 3_600_000 }).standardDeviation,
+    ).toBeCloseTo(Math.sqrt(0.9148754014047971 * (1 - 0.9148754014047971)), 12);
     // simulateOutcome supplies a genuine previous outcome (failure) for a non-first review,
     // so this is routed onto the post-failure path; still short-term-only at 3,600 s
     // (<= 345,600 s under v3).

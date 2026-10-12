@@ -1,0 +1,1 @@
+- Audio cards play again in the web and desktop builds: the Content Security Policy in `index.html`, `vercel.json` and the Electron renderer header now sets `media-src 'self' blob:`, so the blob URLs used for stored audio are no longer refused through the `default-src` fallback; the audio editor also explains how to recover when a clip genuinely cannot play (#459)
