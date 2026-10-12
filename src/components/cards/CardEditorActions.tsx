@@ -57,7 +57,7 @@ export function CardEditorActions({
       <div
         className={cn(
           // Give repeat entry the whole column; the shorter actions share a compact row.
-          // The natural-width Cancel never stretches to match another control's height.
+          // Cancel reserves the same width as Done and never stretches to another control's height.
           'grid grid-cols-[auto_minmax(0,1fr)] items-center gap-1.5',
           isTouchMode && 'mx-auto max-w-3xl',
         )}
@@ -65,6 +65,7 @@ export function CardEditorActions({
         <Button
           variant="ghost"
           size="lg"
+          style={{ paddingInline: '1rem' }}
           className="min-w-[6rem] justify-self-start py-2"
           onClick={onCancel}
         >
@@ -78,7 +79,8 @@ export function CardEditorActions({
             onClick={() => onSave(true)}
             disabled={!canSave}
             title="Save and add another (Ctrl/Cmd+Enter)"
-            className="order-first col-span-2 w-full px-4 py-2"
+            style={{ paddingInline: '1rem' }}
+            className="order-first col-span-2 w-full py-2"
           >
             Save &amp; add another
           </Button>
@@ -89,7 +91,8 @@ export function CardEditorActions({
           size="lg"
           onClick={() => onSave(false)}
           disabled={!canSave}
-          className="justify-self-end px-4 py-2"
+          style={{ paddingInline: '1rem' }}
+          className="justify-self-end py-2"
         >
           {editing ? 'Save changes' : 'Add card'}
         </Button>
