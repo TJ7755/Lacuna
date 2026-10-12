@@ -41,6 +41,25 @@ describe('AudioCardEditor', () => {
     );
   });
 
+  it('explains how to recover when the stored clip cannot be played', async () => {
+    const onError = vi.fn();
+    const { container } = render(
+      <AudioCardEditor
+        front={`Prompt\n\n![audio](lacuna-asset://${'c'.repeat(64)})`}
+        back="Answer"
+        onFrontChange={vi.fn()}
+        onBackChange={vi.fn()}
+        onError={onError}
+      />,
+    );
+
+    await waitFor(() => expect(container.querySelector('audio')).not.toBeNull());
+    fireEvent.error(container.querySelector('audio')!);
+    expect(onError).toHaveBeenCalledWith(
+      'This clip could not be played. Choose or record another.',
+    );
+  });
+
   it('keeps the prompt editable after an asset has been selected', async () => {
     const hash = 'a'.repeat(64);
     const onFrontChange = vi.fn();
