@@ -62,18 +62,37 @@ export function compareAnswer(
   const opts = { ...DEFAULT_OPTIONS, ...options };
   const words = splitWords(expected).map((text) => ({ text, matched: false }));
   const typedWords = splitWords(typed).map((text) => ({ text, matched: false }));
-  const a = words.map((word) => normaliseWord(word.text, opts));
-  const b = typedWords.map((word) => normaliseWord(word.text, opts));
+  // A token with nothing left after normalisation (a lone dash or ampersand under lenient
+  // punctuation) carries no answer: it is shown as matched and skipped by alignment.
+  const significant = (list: ComparisonWord[]) => {
+    const normalised: string[] = [];
+    const indices: number[] = [];
+    list.forEach((word, i) => {
+      const value = normaliseWord(word.text, opts);
+      if (!value) {
+        word.matched = true;
+        return;
+      }
+      normalised.push(value);
+      indices.push(i);
+    });
+    return [normalised, indices] as const;
+  };
+  const [a, aIndices] = significant(words);
+  const [b, bIndices] = significant(typedWords);
+  const match = (i: number, j: number) => {
+    words[aIndices[i]].matched = typedWords[bIndices[j]].matched = true;
+  };
   const correct = a.length > 0 && a.length === b.length && a.every((word, i) => word === b[i]);
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) {
-    words[start].matched = typedWords[start].matched = true;
+    match(start, start);
     start++;
   }
   let endA = a.length,
     endB = b.length;
   while (endA > start && endB > start && a[endA - 1] === b[endB - 1]) {
-    words[--endA].matched = typedWords[--endB].matched = true;
+    match(--endA, --endB);
   }
   const rows = endA - start,
     columns = endB - start;
@@ -92,7 +111,7 @@ export function compareAnswer(
       while (indices?.length && indices[indices.length - 1] < cursor) indices.pop();
       const j = indices?.pop();
       if (j !== undefined) {
-        words[i].matched = typedWords[j].matched = true;
+        match(i, j);
         cursor = j + 1;
       }
     }
@@ -108,7 +127,7 @@ export function compareAnswer(
       j = 0;
     while (i < rows && j < columns) {
       if (a[start + i] === b[start + j]) {
-        words[start + i++].matched = typedWords[start + j++].matched = true;
+        match(start + i++, start + j++);
       } else if (table[i + 1][j] >= table[i][j + 1]) i++;
       else j++;
     }
