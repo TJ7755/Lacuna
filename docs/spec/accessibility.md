@@ -41,6 +41,13 @@
   confirmation cancels a grade that has not yet committed; its deliberate animation and
   inter-card pause remain unchanged. A stable study landmark receives focus when a card
   change or editor dismissal removes the previous control; typed questions focus their input.
+  Working-card study uses the same focus hand-off for its working textarea, including the
+  next card; departing inert fields cannot become the new focus target.
+  Question-set attempts focus the current answer or selected marking choice and announce
+  question context. Progression waits for saves to settle, preserving a different control
+  deliberately selected whilst a write is pending. Resumption restores the saved choice.
+  Blank-answer confirmation and dirty notes, corrections and reflection remain protected;
+  manual marks always require an explicit learner decision.
 - Step-completion actions are visible and usable during their entrance sequence. Departing
   course pages are inert and hidden from assistive technology while the next page enters.
 - Closing shared dialogs and inline disclosures become inert and hidden immediately;

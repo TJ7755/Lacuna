@@ -211,6 +211,12 @@ keyboard shortcuts on keyboard).
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.
+  Card repeat-save spans its action column above natural-width Cancel/Done and Add card;
+  the added tally reserves space before the first save. Touch uses a compact two-row dock
+  that follows the visible viewport above a keyboard and restores its navigation/safe-area
+  offset when the keyboard closes. Answer-mode labels sit above their controls; reverse
+  creation shares the responsive field grid. Compact card toolbars expose extra formatting
+  through More and scroll their compact row at narrow widths rather than orphaning an action.
 
 
 [Specification index](../SPEC.md)

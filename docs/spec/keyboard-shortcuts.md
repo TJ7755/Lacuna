@@ -11,6 +11,7 @@
 | Path (Edit)            | `Alt+Up` / `Alt+Down` | Move a lesson                      |
 | Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
+| Question-set attempt   | `Ctrl/Cmd+Enter`    | Primary action; progress explicit manual marking |
 | Sequence editor        | `Ctrl/Cmd+Enter`   | Save                                  |
 | Sequence item          | `Enter`            | Next item (split at the caret); on an empty item, new section |
 | Sequence item          | `Shift+Enter`      | Line break within the item            |
@@ -42,6 +43,10 @@ consume `Ctrl/Cmd+K` before the page sees it.
 
 Saved shortcut overrides are validated per action. Invalid records or values fall back
 to the defaults without discarding valid overrides for other actions.
+Capture accepts single keys, including shifted characters, explains rejected Ctrl/Cmd/Alt
+chords and leaves composition keys untouched. Fixed Up/Right/Left aliases belong to
+reveal/correct/incorrect respectively; Down, `/` search, `h` hints, `r` audio replay,
+Escape, Tab and F1 Help remain reserved. Letter conflicts are case-insensitive.
 
 Forms, Markdown editors, Quick search and AI composition leave input-method composition
 keys alone, including the legacy key-code 229 signal. A nested field that consumes a

@@ -39,6 +39,12 @@ during `git worktree remove` and delete their targets' contents; 2.54.0 and late
 avoid this. Use a physical copy of `node_modules` to avoid older Git's cleanup
 risk and the separate Vitest-isolation issue with symlinks.
 
+## Local validation memory budget
+
+Parallel Node validation exhausted the prompter's laptop memory in October 2026.
+Use hosted GitHub Actions for full build, lint and browser gates. Any necessary local
+check must run alone; do not overlap it with agent runners or development servers.
+
 ## Windows dependency installation
 
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.
