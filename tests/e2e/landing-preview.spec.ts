@@ -291,7 +291,7 @@ test('welcome serves the approved landing and method shares its visual treatment
   await page.getByRole('link', { name: 'The method' }).click();
   const method = page.locator('.method-page');
   await expect(method).toBeVisible();
-  await expect(method).toHaveCSS('background-color', 'rgb(19, 18, 16)');
+  await expect(method).toHaveCSS('background-color', 'rgb(19, 25, 16)');
   await expect(
     page.getByRole('heading', { name: 'The thinking behind remembering.' }),
   ).toBeVisible();

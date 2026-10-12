@@ -68,6 +68,8 @@ for (const theme of ['light', 'dark'] as const) {
     }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme });
+      // Fresh installs open in dark mode, so the light pass chooses its theme explicitly.
+      await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
       await enterFreshLacuna(page);
       await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/);
       await page
@@ -114,6 +116,8 @@ for (const theme of ['light', 'dark'] as const) {
     }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: theme });
+      // Fresh installs open in dark mode, so the light pass chooses its theme explicitly.
+      await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
       await enterFreshLacuna(page);
       await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/);
       let baseline: Awaited<ReturnType<typeof geometry>> | undefined;

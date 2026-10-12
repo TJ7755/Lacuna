@@ -415,3 +415,9 @@ pagehide can abandon the persisted presentation in that interval.
 The prompter explicitly rejected automatic marking for poem/script recitation (10 October 2026).
 Punctuation is not the learning objective: reveal the source and let the learner mark it.
 Matching typed text must not skip confirmation; ordinary typed and maths checkers retain their own behaviour.
+
+## Fresh installs open dark
+
+The stored theme defaults to `dark`, not `auto`, so `emulateMedia({ colorScheme })` alone no
+longer changes a fresh app's theme. Browser specs that need a theme set `lacuna-theme` with
+`page.addInitScript` before loading the app.
