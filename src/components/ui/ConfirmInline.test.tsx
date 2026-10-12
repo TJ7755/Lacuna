@@ -15,6 +15,34 @@ afterAll(() => {
 });
 
 describe('ConfirmInline', () => {
+  it('preserves focus deliberately restored by its cancellation callback', () => {
+    function Harness() {
+      const [active, setActive] = useState(false);
+      return (
+        <>
+          <button onClick={() => setActive(true)}>Open confirmation</button>
+          <button id="next-confirm-action">Next action</button>
+          {active && (
+            <ConfirmInline
+              message="Delete?"
+              onConfirm={vi.fn()}
+              focusOnMount="cancel"
+              onCancel={() => {
+                setActive(false);
+                document.getElementById('next-confirm-action')?.focus();
+              }}
+            />
+          )}
+        </>
+      );
+    }
+    render(<Harness />);
+    const opener = screen.getByRole('button', { name: 'Open confirmation' });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Next action' })).toHaveFocus();
+  });
   it('renders the message and default labels', () => {
     render(<ConfirmInline message="Delete?" onConfirm={vi.fn()} onCancel={vi.fn()} />);
     expect(screen.getByText('Delete?')).toBeInTheDocument();

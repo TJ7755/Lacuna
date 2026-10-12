@@ -89,10 +89,17 @@ export function ConfirmInline({
   }, [focusOnMount, present]);
 
   const cancel = () => {
-    const returnFocus = rootRef.current?.contains(document.activeElement);
+    const focused = document.activeElement;
+    const returnFocus = rootRef.current?.contains(focused);
     onCancel();
     const opener = openerRef.current;
-    if (returnFocus && opener?.isConnected && !opener.closest('[inert]')) opener.focus();
+    if (
+      returnFocus &&
+      document.activeElement === focused &&
+      opener?.isConnected &&
+      !opener.closest('[inert]')
+    )
+      opener.focus();
   };
 
   return (
