@@ -138,8 +138,10 @@ for (const width of [320, 390, 768, 1063, 1440]) {
           const toolbar = field
             .locator('..')
             .locator('..')
+            .locator('..')
             .locator('> div')
             .filter({ has: page.getByRole('button', { name: 'Bold', exact: true }) });
+          await expect(toolbar).toHaveCount(1);
           await toolbar.scrollIntoViewIfNeeded();
           const rows = await toolbar
             .locator('button:visible')
