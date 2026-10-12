@@ -375,13 +375,16 @@ export function MarkdownEditor({
     // The whole field, toolbar included, marks focus in its text, as a plain input's border does.
     <div className="rounded-xl border border-line bg-surface transition-colors has-[textarea:focus]:border-accent has-[textarea:focus]:ring-2 has-[textarea:focus]:ring-accent/20">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-sm text-ink-faint">
-          {label}
-        </div>
+        <div className="border-b border-line px-3 py-2 text-sm text-ink-faint">{label}</div>
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
+      <div
+        className={cn(
+          'flex items-center gap-1 border-b border-line px-2 py-1.5',
+          compactToolbar && !moreTools ? 'flex-nowrap overflow-x-auto' : 'flex-wrap',
+        )}
+      >
         {actions
           .filter(
             (a) =>
@@ -397,7 +400,7 @@ export function MarkdownEditor({
               title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
               className={cn(
-                'min-h-11 min-w-11 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10',
+                'min-h-11 min-w-11 shrink-0 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10',
                 typeof a.label === 'string' && /^[^A-Za-z]/.test(a.label) && 'font-mono',
                 typeof a.label !== 'string' && 'text-sm',
               )}
@@ -411,7 +414,8 @@ export function MarkdownEditor({
             title="More formatting"
             aria-expanded={moreTools}
             onClick={() => setMoreTools(!moreTools)}
-            className="min-h-11 rounded-md px-2 text-xs text-ink-soft"
+            aria-label="More formatting"
+            className="min-h-11 min-w-11 shrink-0 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
           >
             {moreTools ? 'Less' : 'More'}
           </button>
@@ -421,7 +425,7 @@ export function MarkdownEditor({
             type="button"
             title={clozeAction.title}
             onClick={() => runAction(clozeAction)}
-            className="min-h-11 rounded-md px-2 font-mono text-xs text-accent-ink transition-colors hover:bg-accent-soft active:bg-accent-soft"
+            className="min-h-11 min-w-11 shrink-0 rounded-md px-2 font-mono text-xs text-accent-ink transition-colors hover:bg-accent-soft active:bg-accent-soft"
           >
             {clozeAction.label}
           </button>
@@ -433,7 +437,7 @@ export function MarkdownEditor({
               type="button"
               title={a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
+              className="min-h-11 min-w-11 shrink-0 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
             >
               {a.label}
             </button>
@@ -443,7 +447,7 @@ export function MarkdownEditor({
             type="button"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
           >
             <ImageIcon width={15} height={15} />
           </button>
@@ -459,7 +463,11 @@ export function MarkdownEditor({
 
         {/* Mobile write/preview switch */}
         <div
-          className={cn('ml-auto flex gap-1', layout === 'split' && 'md:hidden', hidePreview && 'hidden')}
+          className={cn(
+            'ml-auto flex gap-1',
+            layout === 'split' && 'md:hidden',
+            hidePreview && 'hidden',
+          )}
         >
           {(['write', 'preview'] as const).map((tab) => (
             <button

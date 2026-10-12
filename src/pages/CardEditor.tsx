@@ -780,6 +780,7 @@ export function CardEditor() {
                   )}
                 >
                   <MarkdownEditor
+                    compactToolbar
                     hidePreview
                     key={`cloze-${formKey}`}
                     inputRef={frontRef}
@@ -822,6 +823,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'front' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    compactToolbar
                     hidePreview
                     key={`structured-front-${formKey}`}
                     inputRef={frontRef}
@@ -872,6 +874,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'front' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    compactToolbar
                     hidePreview
                     key={`front-${formKey}`}
                     inputRef={frontRef}
@@ -890,6 +893,7 @@ export function CardEditor() {
                   className={cn(shakeField === 'back' ? 'shake-field' : '')}
                 >
                   <MarkdownEditor
+                    compactToolbar
                     hidePreview
                     inputRef={backRef}
                     label="Back"
@@ -919,7 +923,7 @@ export function CardEditor() {
             </div>
 
             {(!isStructured || canReverse) && (
-              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line pt-5">
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] items-end gap-4 border-t border-line pb-1 pt-5">
                 {!isStructured && (
                   <CardAnswerModeField
                     courseId={courseId}
@@ -940,15 +944,15 @@ export function CardEditor() {
                     aria-pressed={alsoReverse}
                     title="Also create a card testing the back side"
                     className={cn(
-                      'inline-flex min-h-11 items-center gap-2.5 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+                      'inline-flex min-h-11 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink active:bg-ink/10',
                       alsoReverse
-                        ? 'bg-accent-soft text-accent-ink'
-                        : 'bg-ink/[0.06] text-ink-soft hover:text-ink',
+                        ? 'border-accent/30 bg-accent-soft text-accent-ink'
+                        : 'border-line bg-surface text-ink hover:border-ink/40',
                     )}
                   >
                     <span
                       className={cn(
-                        'grid h-4 w-4 place-items-center rounded-full transition-colors',
+                        'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors',
                         alsoReverse ? 'bg-accent text-accent-fg' : 'bg-ink/15',
                       )}
                     >

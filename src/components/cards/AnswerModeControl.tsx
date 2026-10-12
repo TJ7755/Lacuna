@@ -50,10 +50,11 @@ export function CardAnswerModeField({
   const lesson = useLesson(lessonId);
   if (!course || course.archived || !isLessonAuthoringMode(course)) return null;
   return (
-    <label className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
-      Answer by
+    <label className="flex min-w-0 flex-col gap-2 text-sm font-semibold text-ink">
+      <span>Answer by</span>
       <Select
         aria-label="Card answer mode"
+        className="w-full min-w-0"
         value={value ?? 'inherit'}
         onChange={(event) =>
           onChange(
@@ -63,7 +64,7 @@ export function CardAnswerModeField({
       >
         <option value="inherit">
           {lessonId
-            ? `Use lesson setting (${lesson?.answerMode === 'type' ? 'Type' : 'Reveal'})`
+            ? `Lesson (${lesson?.answerMode === 'type' ? 'Type' : 'Reveal'})`
             : 'Default (Reveal)'}
         </option>
         <option value="reveal">Reveal answer</option>
