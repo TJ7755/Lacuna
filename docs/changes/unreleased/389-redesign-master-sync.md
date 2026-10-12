@@ -1,0 +1,2 @@
+- Inline confirmations leave focus where their caller put it on cancellation, returning it to the opener only when it is still inside the prompt; previously a caller's own focus return was overridden, losing focus to the page when the opener had never been focused. (#440)
+- The production-build audio playback check follows the redesign's Edit mode, editor preview and Today study entry.
