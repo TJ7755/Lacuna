@@ -133,7 +133,13 @@ export function AudioCardEditor({
         <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Audio</div>
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4">
           {previewUrl ? (
-            <audio className="min-w-0 flex-1" src={previewUrl} controls preload="metadata" />
+            <audio
+              className="min-w-0 flex-1"
+              src={previewUrl}
+              controls
+              preload="metadata"
+              onError={() => onError('This clip could not be played. Choose or record another.')}
+            />
           ) : (
             <span className="min-w-0 flex-1 text-sm text-ink-soft">
               Choose or record an audio clip.
