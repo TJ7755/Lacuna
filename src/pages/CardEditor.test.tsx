@@ -410,7 +410,7 @@ describe('CardEditor — live preview', () => {
     fireEvent.change(screen.getByPlaceholderText(/^Answer$/), { target: { value: 'A' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    expect(await screen.findByText(/^Saved$/, { selector: '[role="status"]' })).toBeInTheDocument();
   });
 });
 
