@@ -384,7 +384,7 @@ describe('QuestionSetPractice', () => {
     const submit = await screen.findByRole('button', { name: 'Submit question' });
     submit.focus();
     fireEvent.click(submit);
-    const cancel = await screen.findByRole('button', { name: 'Cancel', exact: true });
+    const cancel = await screen.findByRole('button', { name: /^Cancel$/ });
     await waitFor(() => expect(cancel).toHaveFocus());
     fireEvent.click(cancel);
     await waitFor(() =>
@@ -419,7 +419,7 @@ describe('QuestionSetPractice', () => {
     release();
     await screen.findByRole('button', { name: 'Submit unanswered' });
     expect(other).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
     await screen.findByRole('button', { name: 'Submit paper' });
     expect(other).toHaveFocus();
   });
