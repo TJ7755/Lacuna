@@ -1,0 +1,1 @@
+- Update the production audio-playback regression to use the redesigned Edit mode and Path navigation, retaining real WAV playback, persisted audio reload and CSP assertions.
