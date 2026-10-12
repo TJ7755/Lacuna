@@ -120,8 +120,19 @@ function course(id: string, name: string, extra: Partial<Course> = {}): Course {
   return { ...mockCourse, id, name, ...extra };
 }
 
-function summary(eligible: number) {
-  return { lessonCount: 2, cardCount: 10, mastery: 0.3, unreviewed: 5, eligible };
+function summary(
+  eligible: number,
+  extra: { cardCount?: number; reviewedTodayCount?: number } = {},
+) {
+  return {
+    lessonCount: 2,
+    cardCount: 10,
+    mastery: 0.3,
+    unreviewed: 5,
+    eligible,
+    reviewedTodayCount: 0,
+    ...extra,
+  };
 }
 
 function forecast(ifStopped: number, hasExam = true) {
@@ -162,6 +173,7 @@ function setCourseData(courses: Course[] = [mockCourse], options: DataOptions = 
 
 beforeEach(() => {
   mockNavigate.mockClear();
+  mockOpenStudySheet.mockClear();
   mockUpdateCourse.mockReset();
   mockUpdateCourse.mockResolvedValue(undefined);
   mockNotify.mockReset();
@@ -276,9 +288,9 @@ describe('Dashboard', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/course/course-1/study');
   });
 
-  it('shows Done for today and no Study button when nothing is due', () => {
+  it('shows Done for today and no Study button once today\'s work is finished', () => {
     setCourseData([mockCourse, course('course-2', 'Busy Course')], {
-      summaries: { 'course-1': summary(0), 'course-2': summary(2) },
+      summaries: { 'course-1': summary(0, { reviewedTodayCount: 4 }), 'course-2': summary(2) },
     });
     render(<Dashboard />);
 
@@ -288,6 +300,57 @@ describe('Dashboard', () => {
     // The row stays reachable and keeps its menu.
     expect(screen.getByRole('link', { name: 'Test Course' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'More for Test Course' })).toBeInTheDocument();
+  });
+
+  // Regression for #445: an empty or untouched course is not finished study.
+  it('never celebrates a course with no cards, nothing studied or no summary yet', () => {
+    setCourseData(
+      [
+        course('empty', 'Empty Course'),
+        course('quiet', 'Quiet Course'),
+        course('loading', 'Loading Course'),
+      ],
+      {
+        summaries: {
+          empty: summary(0, { cardCount: 0 }),
+          quiet: summary(0),
+        },
+      },
+    );
+    render(<Dashboard />);
+
+    expect(screen.queryByText('Done for today')).not.toBeInTheDocument();
+    expect(screen.getByText('No cards yet')).toBeInTheDocument();
+    expect(screen.getByText('Nothing due')).toBeInTheDocument();
+    for (const name of ['Empty Course', 'Quiet Course', 'Loading Course']) {
+      expect(screen.queryByRole('button', { name: `Study ${name}` })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+    }
+  });
+
+  it('studies with S the course whose Study button leads, skipping nearer courses with no work', () => {
+    const now = Date.now();
+    setCourseData(
+      [
+        course('near', 'Near Exam', { examDate: now + 2 * DAY }),
+        course('far', 'Far Exam', { examDate: now + 30 * DAY }),
+      ],
+      { summaries: { near: summary(0), far: summary(3) } },
+    );
+    render(<Dashboard />);
+
+    expect(queueLinks().map((link) => link.textContent)).toEqual(['Near Exam', 'Far Exam']);
+    fireEvent.keyDown(window, { key: 's' });
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('far');
+    expect(mockOpenStudySheet).not.toHaveBeenCalledWith('near');
+  });
+
+  it('leaves S without an action when no course has work to study', () => {
+    setCourseData([mockCourse], { summaries: { 'course-1': summary(0) } });
+    render(<Dashboard />);
+
+    fireEvent.keyDown(window, { key: 's' });
+    expect(mockOpenStudySheet).not.toHaveBeenCalled();
   });
 
   it('orders rows most urgent first: nearest exam, then larger workload, no-exam last', () => {

@@ -14,7 +14,7 @@ import {
   type ForecastLine,
 } from '../components/dashboard/ForecastChart';
 import { WeekPanel } from '../components/dashboard/WeekPanel';
-import { TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
+import { leadStudyRow, queueState, TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
@@ -108,6 +108,7 @@ export function Dashboard() {
         name: course.name,
         examDate: course.examDate,
         status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
+        state: queueState(summaries?.[course.id]),
         due: summaries?.[course.id]?.eligible ?? 0,
         minutes: slice?.minutes ?? 0,
         href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
@@ -172,9 +173,10 @@ export function Dashboard() {
     [reviewActivity],
   );
 
-  const firstCourseId = rows?.[0]?.id;
+  // S opens the same course as the leading Study button, never one with no work.
+  const leadCourseId = rows ? leadStudyRow(rows)?.id : undefined;
   usePageShortcuts({
-    s: firstCourseId ? () => openStudySheet(firstCourseId) : undefined,
+    s: leadCourseId ? () => openStudySheet(leadCourseId) : undefined,
   });
 
   const totalCards = rows?.reduce((sum, row) => sum + row.due, 0) ?? 0;
