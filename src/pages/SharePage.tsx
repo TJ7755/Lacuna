@@ -720,9 +720,12 @@ export function SharePage() {
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                        Your share code · {code.length.toLocaleString()} characters
-                      </span>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h3 className="font-display text-base text-ink">Your share code</h3>
+                        <span className="text-sm text-ink-soft">
+                          {code.length.toLocaleString()} characters
+                        </span>
+                      </div>
                       <Button size="sm" variant="secondary" onClick={handleCopy}>
                         {copied ? (
                           <>
@@ -761,9 +764,12 @@ export function SharePage() {
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                     <div className="mb-3 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                        QR code · {qrCode.length.toLocaleString()} characters
-                      </span>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h3 className="font-display text-base text-ink">QR code</h3>
+                        <span className="text-sm text-ink-soft">
+                          {qrCode.length.toLocaleString()} characters
+                        </span>
+                      </div>
                       <div className="flex gap-2">
                         <Button size="sm" variant="secondary" onClick={handleCopyQR}>
                           Copy text
@@ -807,9 +813,12 @@ export function SharePage() {
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4 shadow-sm">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                        Share link · revision {shareLink.revision}
-                      </span>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h3 className="font-display text-base text-ink">Share link</h3>
+                        <span className="text-sm text-ink-soft">
+                          Revision {shareLink.revision}
+                        </span>
+                      </div>
                       <Button size="sm" variant="secondary" onClick={() => void handleCopyLink()}>
                         {linkCopied ? (
                           <>
@@ -938,10 +947,13 @@ export function SharePage() {
                 >
                   <div className="rounded-xl border border-line-strong bg-surface-raised p-4">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
-                        Plain text export · {(courseCards?.length ?? 0).toLocaleString()} card
-                        {(courseCards?.length ?? 0) === 1 ? '' : 's'}
-                      </span>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <h3 className="font-display text-base text-ink">Plain text export</h3>
+                        <span className="text-sm text-ink-soft">
+                          {(courseCards?.length ?? 0).toLocaleString()} card
+                          {(courseCards?.length ?? 0) === 1 ? '' : 's'}
+                        </span>
+                      </div>
                       <Button size="sm" variant="secondary" onClick={handleCopyPlainText}>
                         {plainTextCopied ? (
                           <>

@@ -220,7 +220,7 @@ export function QuestionLearnMode() {
     return (
       <main className="grid min-h-screen place-items-center bg-paper px-6 text-ink">
         <section className="w-full max-w-lg rounded-3xl border border-line bg-surface px-7 py-12 text-center shadow-xl shadow-black/5">
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-faint">Question practice</p>
+          <p className="text-sm text-ink-soft">Question practice</p>
           <h1 className="mt-3 font-display text-4xl tracking-tight">
             {questionIds.length ? 'Session complete' : 'No Questions to practise'}
           </h1>
@@ -263,7 +263,7 @@ export function QuestionLearnMode() {
             Exit
           </button>
           <div className="text-right">
-            <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">{course.name}</p>
+            <p className="text-sm text-ink-soft">{course.name}</p>
             <p className="mt-1 font-mono text-sm tabular-nums text-ink-soft">
               {Math.min(answeredCount + 1, uniqueQuestionCount)} / {uniqueQuestionCount}
             </p>
@@ -284,7 +284,7 @@ export function QuestionLearnMode() {
             className="grid min-h-[30rem] place-items-center rounded-3xl border border-line bg-surface px-6 py-12 text-center shadow-xl shadow-black/5"
           >
             <div className="max-w-md">
-              <p className="text-xs uppercase tracking-[0.18em] text-negative">
+              <p className="text-sm text-negative">
                 Question unavailable
               </p>
               <h1 className="mt-3 font-display text-3xl tracking-tight">

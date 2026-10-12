@@ -191,9 +191,9 @@ export function StudySignals({ stats, courses }: StudySignalsProps) {
       {/* Seven-day time forecast */}
       <div className="sm:border-l sm:border-line sm:pl-5" onMouseLeave={resetDetail}>
         <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-xs uppercase tracking-[0.14em] text-ink-faint">
+          <h3 className="font-display text-base text-ink">
             Next 7 days
-          </span>
+          </h3>
           <span className="text-xs text-ink-soft">
             {allClear
               ? 'all clear'

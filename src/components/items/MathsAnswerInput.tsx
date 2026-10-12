@@ -118,7 +118,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
           <label
             id={labelId}
             htmlFor={inputId}
-            className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint"
+            className="mb-2 block text-sm text-ink-soft"
           >
             {label}
           </label>

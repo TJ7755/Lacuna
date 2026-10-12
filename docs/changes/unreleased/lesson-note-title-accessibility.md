@@ -1,0 +1,1 @@
+- Associate the lesson-note title label with its input for accessible naming.

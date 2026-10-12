@@ -569,12 +569,7 @@ export function Sidebar({
             transition={{ duration: 0.2 * m }}
             className="flex items-center justify-between px-3 pb-2"
           >
-            <span
-              className={cn(
-                'uppercase tracking-[0.16em] text-ink-faint',
-                sidebarSettings.compactMode ? 'text-[10px]' : 'text-[11px]',
-              )}
-            >
+            <span className="font-display text-sm text-ink-soft">
               Courses
             </span>
             <button

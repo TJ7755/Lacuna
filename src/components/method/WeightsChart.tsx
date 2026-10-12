@@ -85,7 +85,7 @@ export function WeightsChart() {
         })}
       </ul>
       <p className="mt-4 min-h-14 border-t border-line pt-3 text-sm leading-relaxed text-ink-soft" aria-live="polite">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-faint">
+        <span className="font-mono text-sm text-ink-soft">
           {COEFFICIENTS[selected].name} ·{' '}
         </span>
         {COEFFICIENTS[selected].reading}

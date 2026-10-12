@@ -506,20 +506,20 @@ export function CardEditor() {
 
           <div className="flex flex-col gap-5">
             <div className="rounded-xl border border-line bg-surface p-5">
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Front</div>
+              <h2 className="mb-2 font-display text-lg tracking-tight">Front</h2>
               <div className="text-ink-soft">
                 <CardContent card={card} side="front" />
               </div>
             </div>
             <div className="rounded-xl border border-line bg-surface p-5">
-              <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Back</div>
+              <h2 className="mb-2 font-display text-lg tracking-tight">Back</h2>
               <div className="text-ink">
                 <CardContent card={card} side="back" />
               </div>
             </div>
             {(card.tags ?? []).length > 0 && (
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+                <h2 className="mb-2 font-display text-lg tracking-tight">Tags</h2>
                 <div className="flex flex-wrap gap-1.5">
                   {(card.tags ?? []).map((t) => (
                     <span
@@ -749,7 +749,7 @@ export function CardEditor() {
 
           {/* Card type selector */}
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Card type</div>
+            <div className="mb-2 text-sm text-ink-soft">Card type</div>
             <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-3', isTouchMode && 'gap-3')}>
               {[
                 { key: 'front_back' as const, label: 'Front / Back' },
@@ -924,7 +924,7 @@ export function CardEditor() {
 
           {/* Tags */}
           <div>
-            <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+            <div className="mb-2 text-sm text-ink-soft">Tags</div>
             <TagInput
               tags={tags}
               onChange={(nextTags) => {

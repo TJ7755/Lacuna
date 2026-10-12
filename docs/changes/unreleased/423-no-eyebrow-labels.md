@@ -1,0 +1,1 @@
+- Replace eyebrow captions with display headings or sentence-case context across the app. (#423)

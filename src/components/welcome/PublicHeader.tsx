@@ -19,7 +19,7 @@ export function PublicHeader() {
         Lacuna
       </Link>
 
-      <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] sm:gap-4">
+      <div className="flex items-center gap-2 text-sm sm:gap-4">
         {!inElectron && (
           <NavLink
             to="/download"

@@ -42,10 +42,17 @@ async function openShare(page: Page, courseName: string): Promise<void> {
   await page.getByRole('button', { name: new RegExp(courseName) }).click();
 }
 
+async function expectShareLinkRevision(page: Page, revision: number): Promise<void> {
+  await expect(
+    page.getByRole('heading', { name: 'Share link', exact: true, level: 3 }),
+  ).toBeVisible();
+  await expect(page.getByText(`Revision ${revision}`, { exact: true })).toBeVisible();
+}
+
 async function createShareLink(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Share link', exact: true }).click();
   await page.getByRole('button', { name: 'Create share link' }).click();
-  await expect(page.getByText('Share link · revision 1')).toBeVisible();
+  await expectShareLinkRevision(page, 1);
   const url = await page.getByRole('textbox', { name: 'Share link', exact: true }).inputValue();
   const code = url.split('/').pop() ?? '';
   expect(code).toMatch(/^[0-9a-f]{32}$/);
@@ -110,9 +117,9 @@ test('a share link imports a course and republishes update it', async ({ browser
   // visit polls the manifest and merges the new revision.
   await addLessonCard(teacher, teacherCourseId!, 'Mitosis stages');
   await openShare(teacher, 'Link biology');
-  await expect(teacher.getByText('Share link · revision 1')).toBeVisible();
+  await expectShareLinkRevision(teacher, 1);
   await teacher.getByRole('button', { name: /Republish link/ }).click();
-  await expect(teacher.getByText('Share link · revision 2')).toBeVisible();
+  await expectShareLinkRevision(teacher, 2);
 
   // Remount the dashboard past the hourly poll throttle so it picks up revision 2.
   await student.evaluate(() => localStorage.removeItem('lacuna.sharePollCheckedAt'));
@@ -130,7 +137,7 @@ test('a share link imports a course and republishes update it', async ({ browser
   await editOnlyCard(teacher, teacherCourseId!, 'Mitosis stages revised');
   await openShare(teacher, 'Link biology');
   await teacher.getByRole('button', { name: /Republish link/ }).click();
-  await expect(teacher.getByText('Share link · revision 3')).toBeVisible();
+  await expectShareLinkRevision(teacher, 3);
 
   await student.evaluate(() => localStorage.removeItem('lacuna.sharePollCheckedAt'));
   await student.goto('/#/');

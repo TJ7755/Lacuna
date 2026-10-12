@@ -112,7 +112,7 @@ function FinalExamDecisionDialog({
         aria-labelledby="final-exam-decision-title"
         className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl"
       >
-        <p className="text-xs uppercase tracking-[0.18em] text-accent">Final exam passed</p>
+        <p className="text-sm text-ink-soft">Final exam passed</p>
         <h2 id="final-exam-decision-title" className="mt-2 font-display text-3xl tracking-tight">
           What should happen to {course.name}?
         </h2>

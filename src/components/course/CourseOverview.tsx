@@ -268,7 +268,7 @@ export function CourseOverview(props: CourseOverviewProps) {
         )}
         {props.assessments.length > 0 && (
           <section className="course-deadlines" aria-label="Assessments">
-            <h2 className="course-eyebrow">On the horizon</h2>
+            <h2 className="course-deadlines-title">On the horizon</h2>
             {props.assessments.map((assessment) => (
               <button
                 key={assessment.id}
