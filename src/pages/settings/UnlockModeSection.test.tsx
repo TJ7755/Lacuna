@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { UnlockModeSection } from './UnlockModeSection';
 
 describe('UnlockModeSection', () => {
@@ -10,8 +10,7 @@ describe('UnlockModeSection', () => {
         onUnlockModeChange={vi.fn()}
         linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
         onAnchorDateChange={vi.fn()}
-        onIntervalDaysChange={vi.fn()}
-        onIntervalDaysBlur={vi.fn()}
+        onIntervalDaysCommit={vi.fn()}
       />,
     );
     expect(screen.getByText('Open')).toBeInTheDocument();
@@ -31,10 +30,28 @@ describe('UnlockModeSection', () => {
         onUnlockModeChange={vi.fn()}
         linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
         onAnchorDateChange={vi.fn()}
-        onIntervalDaysChange={vi.fn()}
-        onIntervalDaysBlur={vi.fn()}
+        onIntervalDaysCommit={vi.fn()}
       />,
     );
     expect(screen.getByText('Days between lessons')).toBeInTheDocument();
+  });
+
+  it('does not turn a cleared interval into 1 before it is retyped', () => {
+    const onIntervalDaysCommit = vi.fn();
+    render(
+      <UnlockModeSection
+        unlockMode="linear"
+        onUnlockModeChange={vi.fn()}
+        linearCadence={{ anchorDate: Date.now(), intervalDays: 7 }}
+        onAnchorDateChange={vi.fn()}
+        onIntervalDaysCommit={onIntervalDaysCommit}
+      />,
+    );
+    const days = screen.getByRole('spinbutton', { name: 'Days between lessons' });
+    fireEvent.change(days, { target: { value: '' } });
+    expect(days).toHaveValue(null);
+    fireEvent.change(days, { target: { value: '14' } });
+    fireEvent.blur(days);
+    expect(onIntervalDaysCommit).toHaveBeenCalledExactlyOnceWith(14);
   });
 });

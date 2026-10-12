@@ -1,6 +1,7 @@
-import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
+import { fieldLabelClassName } from '../../components/ui/Field';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import type { UnlockMode } from '../../db/types';
+import { NumberField } from './NumberField';
 
 const MODES: { value: UnlockMode; label: string; description: string }[] = [
   {
@@ -28,9 +29,8 @@ export interface UnlockModeSectionProps {
   linearCadence: { anchorDate: number; intervalDays: number };
   /** Discrete date pick — the caller commits this immediately, like a select. */
   onAnchorDateChange: (anchorDate: number) => void;
-  /** Free-typed field — updates local state only; commits on blur via `onIntervalDaysBlur`. */
-  onIntervalDaysChange: (intervalDays: number) => void;
-  onIntervalDaysBlur: () => void;
+  /** Free-typed field — called only with a valid value, on Enter or blur. */
+  onIntervalDaysCommit: (intervalDays: number) => void;
   timeZone?: string;
 }
 
@@ -38,15 +38,14 @@ export interface UnlockModeSectionProps {
  * Course-only unlock-mode picker: `open` | `semi-linear` | `linear`, with the
  * anchor-date/interval cadence inputs shown only under `linear`. Pure controlled
  * component — all state lives with the caller, which also owns the instant-commit
- * mechanics (see the `on*Change`/`on*Blur` prop docs above).
+ * mechanics (see the prop docs above).
  */
 export function UnlockModeSection({
   unlockMode,
   onUnlockModeChange,
   linearCadence,
   onAnchorDateChange,
-  onIntervalDaysChange,
-  onIntervalDaysBlur,
+  onIntervalDaysCommit,
   timeZone,
 }: UnlockModeSectionProps) {
   return (
@@ -80,21 +79,18 @@ export function UnlockModeSection({
             timeZone={timeZone}
             label="First lesson unlocks on"
           />
-          <label className={fieldLabelClassName}>
-            Days between lessons
-            <Input
-              type="number"
-              min={1}
-              inputMode="numeric"
-              value={linearCadence.intervalDays}
-              onChange={(e) => onIntervalDaysChange(Math.max(1, Number(e.target.value) || 1))}
-              onBlur={onIntervalDaysBlur}
-            />
-            <span className={fieldHintClassName}>
-              Each lesson unlocks this many days after the previous one, starting from the date
-              above. Overriding one lesson&apos;s date on its own page cascades to the rest.
-            </span>
-          </label>
+          <NumberField
+            label="Days between lessons"
+            value={linearCadence.intervalDays}
+            min={1}
+            onCommit={onIntervalDaysCommit}
+            hint={
+              <>
+                Each lesson unlocks this many days after the previous one, starting from the date
+                above. Overriding one lesson&apos;s date on its own page cascades to the rest.
+              </>
+            }
+          />
         </div>
       )}
     </fieldset>

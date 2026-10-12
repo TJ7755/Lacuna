@@ -1,4 +1,3 @@
-import { fieldLabelClassName, inputFrameClassName } from '../../components/ui/Field';
 import { useState } from 'react';
 import { ClockIcon } from '../../components/ui/icons';
 import {
@@ -6,6 +5,7 @@ import {
   savePomodoroSettings,
   type PomodoroSettings,
 } from '../../hooks/usePomodoro';
+import { NumberField } from './NumberField';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 import { cn } from '../../components/ui/cn';
@@ -67,23 +67,14 @@ function DurationInput({
   onChange: (value: number) => void;
 }) {
   return (
-    <label className={fieldLabelClassName}>
-      {label}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="number"
-          aria-label={`${label} duration, in minutes`}
-          min={1}
-          max={120}
-          value={value}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (!Number.isNaN(next)) onChange(Math.max(1, Math.min(120, next)));
-          }}
-          className={`w-full ${inputFrameClassName}`}
-        />
-        <span className="shrink-0 text-xs font-normal text-ink-faint">min</span>
-      </div>
-    </label>
+    <NumberField
+      label={label}
+      ariaLabel={`${label} duration, in minutes`}
+      value={value}
+      suffix="min"
+      min={1}
+      max={120}
+      onCommit={onChange}
+    />
   );
 }

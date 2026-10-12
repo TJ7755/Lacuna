@@ -27,6 +27,9 @@
   without taking focus away from a different control chosen whilst work is pending.
 - Ending an inline lesson rename returns focus to its opening control after Enter or
   Escape. Saving on blur preserves focus on the next control the learner has chosen.
+- Bounded number settings (Pomodoro durations, practice-node defaults, days between
+  lessons) can be cleared and retyped; they save on Enter or blur, Escape restores the
+  saved value, and an empty or out-of-range entry stays unsaved with its bounds announced.
 - Cards search has an accessible name; typed study answers retain a visible label.
   The new-course name input is associated with its visible label; activating that
   label focuses the input.
