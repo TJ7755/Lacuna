@@ -197,7 +197,7 @@ export function LessonNode({
       >
         {lesson.name}
         {isExtension && (
-          <span className="mt-0.5 block text-[0.65rem] uppercase tracking-wide text-ink-faint">
+          <span className="mt-0.5 block text-[11px] text-ink-soft">
             Extension
           </span>
         )}

@@ -22,7 +22,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
     return (
       <div className="grid flex-1 place-items-center px-8 py-12 text-center">
         <div className="max-w-xs">
-          <p className="font-display text-xl text-ink">What are you working on?</p>
+          <h2 className="font-display text-xl text-ink">What are you working on?</h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
             Chat with your connected AI client.
           </p>
@@ -48,7 +48,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               data-speaker="user"
               className="ml-auto max-w-[88%] rounded-2xl rounded-br-md border border-accent/20 bg-accent-soft px-4 py-3 text-accent-ink shadow-sm"
             >
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent-ink/70">
+              <p className="text-sm text-ink-soft">
                 You
               </p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">
@@ -65,7 +65,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               data-speaker="assistant"
               className="mr-auto max-w-[92%] rounded-2xl rounded-bl-md border border-line bg-surface-raised px-4 py-3 text-ink shadow-sm"
             >
-              <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent">
+              <p className="text-sm text-ink-soft">
                 AI
               </p>
               <MarkdownView source={item.content} className="mt-1 break-words text-sm leading-6" />

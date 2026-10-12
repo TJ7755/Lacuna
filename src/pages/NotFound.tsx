@@ -8,7 +8,7 @@ export function NotFound() {
       <section className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line bg-surface p-8 shadow-sm sm:p-10">
         <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
         <div className="relative space-y-5">
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-accent">404 · Missing page</p>
+          <p className="font-mono text-sm text-accent">404 · Missing page</p>
           <div className="space-y-2">
             <h1 className="font-display text-3xl tracking-tight sm:text-4xl">This page is not on the path.</h1>
             <p className="max-w-lg text-ink-soft">

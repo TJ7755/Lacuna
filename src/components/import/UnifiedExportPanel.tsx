@@ -181,8 +181,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Eyebrow heading */}
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-faint">{heading}</p>
+      <h3 className="font-display text-lg text-ink">{heading}</h3>
 
       {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
       <div className="grid gap-3 sm:grid-cols-2">

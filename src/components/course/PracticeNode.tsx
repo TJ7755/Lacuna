@@ -103,7 +103,7 @@ export function PracticeNode({
       <span className="max-w-[7rem] text-center text-xs font-medium leading-tight text-ink-soft">
         {name}
       </span>
-      <span className="-mt-1 text-[0.65rem] font-medium uppercase tracking-wide text-ink-faint">
+      <span className="-mt-1 text-[11px] font-medium text-ink-faint">
         {kind}
       </span>
       {assessment && onAssessmentClick && (

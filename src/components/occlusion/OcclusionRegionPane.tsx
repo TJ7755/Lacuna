@@ -46,9 +46,9 @@ export function OcclusionRegionPane({
 
   return (
     <div className="flex min-w-0 flex-col border-t border-line min-[760px]:border-l min-[760px]:border-t-0">
-      <div className="flex items-center justify-between border-b border-line px-3 py-2 text-xs uppercase tracking-[0.1em] text-ink-faint">
-        <span>Regions</span>
-        <span>{regions.length}</span>
+      <div className="flex items-center justify-between border-b border-line px-3 py-2">
+        <h2 className="font-display text-lg text-ink">Regions</h2>
+        <span className="text-sm text-ink-soft">{regions.length}</span>
       </div>
 
       {regions.length === 0 ? (
@@ -70,7 +70,7 @@ export function OcclusionRegionPane({
                     current ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                   )}
                 >
-                  <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+                  <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 font-mono text-[10px] text-ink-faint">
                     {region.role === 'label' ? 'lbl' : 'ftr'}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
@@ -95,7 +95,7 @@ export function OcclusionRegionPane({
       {selected ? (
         <div className="flex flex-col gap-3 border-t border-line p-3">
           <div>
-            <div className="mb-1.5 text-[11px] uppercase tracking-[0.1em] text-ink-faint">Role</div>
+            <p className="mb-1.5 text-sm text-ink-soft">Role</p>
             <div className="flex gap-1.5">
               <RoleButton
                 label="Label box"
@@ -112,7 +112,7 @@ export function OcclusionRegionPane({
 
           {selected.role === 'feature' && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">Paired label</span>
+              <span className="text-sm text-ink-soft">Paired label</span>
               <select
                 value={selected.pairedRegionId ?? ''}
                 onChange={(e) => onUpdate(selected.id, { pairedRegionId: e.target.value || undefined })}
@@ -130,8 +130,8 @@ export function OcclusionRegionPane({
 
           {(selected.role === 'label' || !selected.pairedRegionId) && (
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">
-                Answer text <span className="normal-case text-ink-faint/70">(optional)</span>
+              <span className="text-sm text-ink-soft">
+                Answer text <span className="text-ink-faint/70">(optional)</span>
               </span>
               <input
                 type="text"
@@ -144,8 +144,8 @@ export function OcclusionRegionPane({
           )}
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[11px] uppercase tracking-[0.1em] text-ink-faint">
-              Note on back <span className="normal-case text-ink-faint/70">(optional)</span>
+            <span className="text-sm text-ink-soft">
+              Note on back <span className="text-ink-faint/70">(optional)</span>
             </span>
             <input
               type="text"

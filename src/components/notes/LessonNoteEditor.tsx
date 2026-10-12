@@ -34,7 +34,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
     <div className="flex flex-col gap-4">
       {/* Note title */}
       <div>
-        <label htmlFor={titleInputId} className="mb-1.5 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+        <label htmlFor={titleInputId} className="mb-1.5 block text-sm text-ink-soft">
           Title
         </label>
         <input

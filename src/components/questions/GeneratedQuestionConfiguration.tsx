@@ -21,7 +21,7 @@ export function GeneratedQuestionConfiguration({
 
   return (
     <SectionCard compact className="md:p-6">
-      <p className="text-xs uppercase tracking-[0.14em] text-ink-faint">Built-in family</p>
+      <p className="text-sm text-ink-soft">Built-in family</p>
       <h2 className="mt-2 font-display text-2xl text-ink">{generator.name}</h2>
       <p className="mt-2 text-sm leading-6 text-ink-soft">{generator.summary}</p>
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -41,7 +41,7 @@ export function GeneratedQuestionConfiguration({
             </label>
           ) : (
             <label key={field.key} className="block">
-              <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <span className="mb-2 block text-sm text-ink-soft">
                 {field.label}
               </span>
               <input

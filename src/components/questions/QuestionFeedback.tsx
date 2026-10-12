@@ -42,14 +42,14 @@ export function QuestionFeedback({
       <div className="mx-auto max-w-2xl">
         <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-5">
           <div>
-            <p className="text-xs uppercase tracking-[0.16em] text-ink-faint">First submission</p>
-            <p className="mt-1 font-display text-2xl text-ink">
+            <p className="text-sm text-ink-soft">First submission</p>
+            <h2 className="mt-1 font-display text-2xl text-ink">
               {scheduleWithheld
                 ? 'Checker review needed'
                 : fullMarks
                   ? 'Full marks'
                   : 'Try this again sooner'}
-            </p>
+            </h2>
           </div>
           <p className="font-mono text-lg tabular-nums text-ink">
             {attempt.marksEarned} / {attempt.marksAvailable} marks
@@ -57,7 +57,7 @@ export function QuestionFeedback({
         </div>
 
         <div className="py-7">
-          <p className="mb-3 text-xs uppercase tracking-[0.16em] text-ink-faint">Worked feedback</p>
+          <h3 className="mb-3 font-display text-lg text-ink">Worked feedback</h3>
           <div className="text-base leading-7 text-ink">
             <MarkdownView source={attempt.renderedExplanation} />
           </div>

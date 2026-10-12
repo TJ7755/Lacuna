@@ -135,9 +135,9 @@ export function OptimisationPanel({
   return (
     <SectionCard>
       <div>
-        <span className="text-xs uppercase tracking-[0.16em] text-ink-faint">
+        <p className="text-sm text-ink-soft">
           Advanced scheduling
-        </span>
+        </p>
         <SettingsSectionHeading level={headingLevel} className="mt-1 font-display text-xl">
           Scheduling optimisation
         </SettingsSectionHeading>

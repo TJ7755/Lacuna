@@ -239,7 +239,7 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <legend className="mb-2 font-display text-base text-ink">
               Question form
             </legend>
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-ink/5 p-1">
@@ -264,7 +264,7 @@ export function QuestionEditor() {
 
         <SectionCard compact className="grid gap-5 md:grid-cols-2 md:p-6">
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="mb-2 block text-sm text-ink-soft">
               Name
             </span>
             <input
@@ -276,7 +276,7 @@ export function QuestionEditor() {
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="mb-2 block text-sm text-ink-soft">
               Lesson
             </span>
             <select
@@ -293,7 +293,7 @@ export function QuestionEditor() {
             </select>
           </label>
           <label className="block">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="mb-2 block text-sm text-ink-soft">
               Primary skill practised
             </span>
             <select
@@ -318,7 +318,7 @@ export function QuestionEditor() {
             </select>
           </label>
           <div className="md:col-span-2">
-            <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+            <span className="mb-2 block text-sm text-ink-soft">
               Add a Concept
             </span>
             <div className="flex gap-2">
@@ -340,7 +340,7 @@ export function QuestionEditor() {
           </div>
           {data.concepts.filter((concept) => concept.id !== targetConceptId).length > 0 && (
             <fieldset className="md:col-span-2">
-              <legend className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+              <legend className="mb-2 font-display text-base text-ink">
                 Prerequisite Concepts
               </legend>
               <div className="flex flex-wrap gap-2">
@@ -387,7 +387,7 @@ export function QuestionEditor() {
                 onError={(message) => notify(message, 'negative')}
               />
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">
+                <div className="mb-2 text-sm text-ink-soft">
                   Answer type
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -442,7 +442,7 @@ export function QuestionEditor() {
         </StepSwap>
 
         <section>
-          <div className="mb-2 text-xs uppercase tracking-[0.14em] text-ink-faint">Tags</div>
+          <div className="mb-2 text-sm text-ink-soft">Tags</div>
           <TagInput
             tags={tags}
             onChange={(value) => draft.update({ tags: value })}

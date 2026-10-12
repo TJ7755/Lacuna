@@ -1262,7 +1262,7 @@ const CardRow = React.memo(function CardRow({
 
           <div className="min-w-0 flex-1">
             <div className="mb-1.5 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] uppercase tracking-wide text-ink-faint">
+              <span className="rounded-lg bg-ink/5 px-2 py-0.5 text-[11px] text-ink-soft">
                 {cardTypeLabel(card)}
               </span>
               {showBack && (

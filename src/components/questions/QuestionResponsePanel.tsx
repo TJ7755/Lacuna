@@ -127,7 +127,7 @@ export function QuestionResponsePanel({
                 />
               ) : (
                 <label className="block">
-                  <span className="mb-2 block text-xs uppercase tracking-[0.14em] text-ink-faint">
+                  <span className="mb-2 block text-sm text-ink-soft">
                     Your working
                   </span>
                   <textarea
