@@ -19,7 +19,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   (orange) for on-track, failure and behind-target states.
 - **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
   never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
-  Segmented controls are a pill track with a white pill that slides between options. The
+  Segmented controls are a pill track with a white pill that slides between options; when the
+  options cannot sit side by side (a narrow screen or enlarged text), the track stacks them
+  vertically at full width rather than overflowing its card. Choice chips wrap. The
   paper grain is off (`--grain-opacity: 0`).
 
 ### 3.2 Typography

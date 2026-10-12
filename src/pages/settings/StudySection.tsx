@@ -58,11 +58,11 @@ export function StudySection() {
         checked={audioSettings.autoplay}
         onChange={(autoplay) => setAudioSettings({ ...audioSettings, autoplay })}
       />
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-48">
           <div className="font-semibold text-ink">Audio playback speed</div>
         </div>
-        <div className="flex shrink-0 gap-1" role="radiogroup" aria-label="Audio playback speed">
+        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Audio playback speed">
           {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
             <button
               key={speed}
@@ -78,15 +78,15 @@ export function StudySection() {
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 pl-0">
-        <div className="min-w-0">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-64">
           <div className="font-semibold text-ink">Grading strictness</div>
           <p className="mt-1 text-sm text-ink-soft">
             How closely a typed answer must match. Lenient ignores case and punctuation, standard
             ignores case only, exact requires both to match.
           </p>
         </div>
-        <div className="flex shrink-0 gap-1">
+        <div className="flex flex-wrap gap-1">
           {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
             <button
               key={level}
