@@ -196,7 +196,8 @@ A value predicate (`equals`, `within`, `matches-one-of`) accepts an answer writt
 working with `y = 3` rather than `3`. The line as written is tried first, so nothing that matched
 before stops matching, and only a bare variable on the left is reduced — an equation carrying real
 content, such as `2y = 6` or `6+4=10`, keeps its meaning. Waypoints are excluded entirely: there the
-equation is the content.
+equation is the content. Built-in constants `pi` and `e` are not variable names and
+are never reduced to their right-hand value.
 
 A legacy Card payload with an unrecognised version, or a recognised-but-unsupported `kind`
 (`scaffold`), renders `UnknownItemFace`: the readable `front` fallback and a plain notice that this

@@ -234,6 +234,19 @@ describe('verifyWorkingLines: answers written as "<variable> = value"', () => {
     expect(marksFor({ ...equals, args: ['6'] }, '2y = 6')).toBe(0);
   });
 
+  it.each(['pi', 'e'])('keeps built-in constant %s out of named answers', (name) => {
+    const criteria: MarkSchemeLine[] = [
+      equals,
+      { ...equals, predicate: 'within', args: ['0.01', '3'] },
+      { ...equals, predicate: 'matches-one-of', args: ['3'] },
+    ];
+    for (const criterion of criteria) {
+      expect(marksFor(criterion, `${name} = 3`)).toBe(0);
+      expect(marksFor(criterion, 'x = 3')).toBe(1);
+    }
+    expect(marksFor({ ...equals, args: [name] }, `x = ${name}`)).toBe(1);
+  });
+
   it('leaves waypoint equations untouched', () => {
     const waypoint: MarkSchemeLine = {
       marks: 1,
