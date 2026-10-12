@@ -60,6 +60,11 @@ export function compareAnswer(
   options: AnswerComparisonOptions = {},
 ): AnswerComparisonResult {
   const opts = { ...DEFAULT_OPTIONS, ...options };
+  // An answer made only of symbols ("%", "&") would have nothing left to compare once
+  // punctuation is ignored, so it is marked with its punctuation kept.
+  if (opts.ignorePunctuation && expected.trim() && !stripPunctuation(expected)) {
+    return compareAnswer(typed, expected, { ...opts, ignorePunctuation: false });
+  }
   const words = splitWords(expected).map((text) => ({ text, matched: false }));
   const typedWords = splitWords(typed).map((text) => ({ text, matched: false }));
   // A token with nothing left after normalisation (a lone dash or ampersand under lenient
