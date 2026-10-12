@@ -7,10 +7,12 @@ import {
   createContext,
   useContext,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { LayoutGroup, m as motion } from 'motion/react';
 import { cn } from '../../components/ui/cn';
@@ -105,6 +107,8 @@ export function SegmentedPills<T extends string>({
   const groupId = useId();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const selected = options.findIndex((option) => option.value === value);
+  const track = useRef<HTMLDivElement>(null);
+  const stacked = useStackWhenCramped(track, buttons);
 
   function choose(index: number) {
     onChange(options[index].value);
@@ -132,7 +136,13 @@ export function SegmentedPills<T extends string>({
       role="radiogroup"
       aria-label={label}
       aria-describedby={describedBy}
-      className={cn('inline-flex rounded-full bg-ink/[0.06] px-1', className)}
+      ref={track}
+      data-stacked={stacked || undefined}
+      className={cn(
+        'bg-ink/[0.06] px-1',
+        stacked ? 'flex w-full flex-col rounded-[1.375rem]' : 'inline-flex rounded-full',
+        className,
+      )}
     >
       <LayoutGroup id={groupId}>
         {options.map((option, index) => {
@@ -151,7 +161,7 @@ export function SegmentedPills<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'relative inline-flex h-11 min-w-11 items-center justify-center rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+                'relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
@@ -170,6 +180,52 @@ export function SegmentedPills<T extends string>({
       </LayoutGroup>
     </div>
   );
+}
+
+/**
+ * True when the options cannot sit side by side in the space beside or beneath
+ * their label, so the track stacks them vertically instead of overflowing its
+ * card. Measured from the labels, so it follows the text-size setting too.
+ */
+function useStackWhenCramped(
+  track: RefObject<HTMLDivElement | null>,
+  buttons: RefObject<Array<HTMLButtonElement | null>>,
+): boolean {
+  const [stacked, setStacked] = useState(false);
+
+  useLayoutEffect(() => {
+    const element = track.current;
+    const parent = element?.parentElement;
+    if (!element || !parent || typeof ResizeObserver === 'undefined') return;
+    const px = (value: string) => parseFloat(value) || 0;
+
+    const measure = () => {
+      const trackStyle = getComputedStyle(element);
+      let needed = px(trackStyle.paddingLeft) + px(trackStyle.paddingRight);
+      for (const button of buttons.current) {
+        const label = button?.lastElementChild;
+        if (!button || !label) continue;
+        const style = getComputedStyle(button);
+        const content =
+          label.getBoundingClientRect().width + px(style.paddingLeft) + px(style.paddingRight);
+        needed += Math.max(px(style.minWidth), content);
+      }
+      const parentStyle = getComputedStyle(parent);
+      const available =
+        parent.clientWidth - px(parentStyle.paddingLeft) - px(parentStyle.paddingRight);
+      setStacked(needed > available + 0.5);
+    };
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(parent);
+    for (const button of buttons.current) {
+      if (button?.lastElementChild) observer.observe(button.lastElementChild);
+    }
+    measure();
+    return () => observer.disconnect();
+  }, [track, buttons]);
+
+  return stacked;
 }
 
 /** The app-wide pill switch; one implementation lives in components/ui/Toggle. */
