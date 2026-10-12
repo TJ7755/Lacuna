@@ -1,5 +1,5 @@
-import { fieldLabelClassName, inputFrameClassName } from '../../components/ui/Field';
 import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
+import { NumberField } from './NumberField';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
@@ -219,7 +219,7 @@ export function CourseDefaultsSection() {
             suffix="min"
             min={1}
             max={999}
-            onChange={(value) =>
+            onCommit={(value) =>
               setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: value })
             }
           />
@@ -229,7 +229,7 @@ export function CourseDefaultsSection() {
             suffix="min"
             min={1}
             max={999}
-            onChange={(value) =>
+            onCommit={(value) =>
               setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: value })
             }
           />
@@ -239,7 +239,7 @@ export function CourseDefaultsSection() {
             suffix="days"
             min={0}
             max={365}
-            onChange={(value) =>
+            onCommit={(value) =>
               setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: value })
             }
           />
@@ -249,7 +249,7 @@ export function CourseDefaultsSection() {
             suffix="lessons"
             min={1}
             max={99}
-            onChange={(value) =>
+            onCommit={(value) =>
               setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: value })
             }
           />
@@ -284,42 +284,5 @@ function SettingToggle({
       </div>
       <PillSwitch checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  suffix,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  suffix: string;
-  min: number;
-  max: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className={fieldLabelClassName}>
-      {label}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="number"
-          aria-label={label}
-          min={min}
-          max={max}
-          value={value}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (!Number.isNaN(next)) onChange(Math.max(min, Math.min(max, next)));
-          }}
-          className={`w-full ${inputFrameClassName}`}
-        />
-        <span className="shrink-0 text-xs font-normal text-ink-faint">{suffix}</span>
-      </div>
-    </label>
   );
 }

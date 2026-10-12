@@ -449,10 +449,11 @@ export function CourseSettings() {
                       setLinearCadence(next);
                       commitLinearCadence(next);
                     }}
-                    onIntervalDaysChange={(days) =>
-                      setLinearCadence((prev) => ({ ...prev, intervalDays: days }))
-                    }
-                    onIntervalDaysBlur={() => commitLinearCadence(linearCadence)}
+                    onIntervalDaysCommit={(days) => {
+                      const next = { ...linearCadence, intervalDays: days };
+                      setLinearCadence(next);
+                      commitLinearCadence(next);
+                    }}
                     timeZone={timeZone}
                   />
                   <LessonManagementSection courseId={course.id} />
