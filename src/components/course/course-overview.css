@@ -76,13 +76,6 @@
   font-size: 13px;
   font-weight: 500;
 }
-.course-eyebrow {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 1.7px;
-  color: hsl(var(--ink-soft));
-  text-transform: uppercase;
-}
 .course-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(240px, 1fr);
@@ -255,7 +248,10 @@
 .course-deadlines {
   padding: 25px 0;
 }
-.course-deadlines > .course-eyebrow {
+.course-deadlines-title {
+  font-size: 17px;
+  letter-spacing: -0.4px;
+  font-weight: 500;
   margin-bottom: 18px;
 }
 .course-deadlines > button {

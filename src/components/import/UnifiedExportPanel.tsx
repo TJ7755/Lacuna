@@ -7,6 +7,7 @@ import { DownloadIcon, FileTextIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useToast } from '../ui/Toast';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { SettingsSubsectionHeading } from '../../pages/settings/SettingsSectionHeading';
 
 // ---------------------------------------------------------------------------
 // Export format definitions
@@ -181,7 +182,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
 
   return (
     <div className="flex flex-col gap-5">
-      <h3 className="font-display text-lg text-ink">{heading}</h3>
+      <SettingsSubsectionHeading className="font-display text-lg text-ink">{heading}</SettingsSubsectionHeading>
 
       {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
       <div className="grid gap-3 sm:grid-cols-2">

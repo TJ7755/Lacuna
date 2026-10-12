@@ -4,10 +4,12 @@ import { expect, it } from 'vitest';
 
 const sourceRoot = join(process.cwd(), 'src');
 
-function tsxFiles(directory: string): string[] {
+function sourceFiles(directory: string, extension: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    return entry.isDirectory() ? tsxFiles(path) : path.endsWith('.tsx') ? [path] : [];
+    return entry.isDirectory()
+      ? sourceFiles(path, extension)
+      : path.endsWith(extension) ? [path] : [];
   });
 }
 
@@ -26,10 +28,23 @@ function eyebrowClasses(source: string) {
 }
 
 it('does not pair uppercase captions with wide tracking', () => {
-  const offenders = tsxFiles(sourceRoot).flatMap((path) =>
+  const offenders = sourceFiles(sourceRoot, '.tsx').flatMap((path) =>
     eyebrowClasses(readFileSync(path, 'utf8')).map((className) =>
       `${relative(sourceRoot, path)}: ${className}`,
     ),
+  );
+
+  expect(offenders).toEqual([]);
+});
+
+it('does not style uppercase captions with wide tracking in CSS', () => {
+  const offenders = sourceFiles(sourceRoot, '.css').flatMap((path) =>
+    [...readFileSync(path, 'utf8').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) =>
+        /text-transform:\s*uppercase/.test(body) &&
+        /letter-spacing:\s*(?!-|0[;\s]|normal)/.test(body),
+      )
+      .map(([, selector]) => `${relative(sourceRoot, path)}: ${selector.trim()}`),
   );
 
   expect(offenders).toEqual([]);

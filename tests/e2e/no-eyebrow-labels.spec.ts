@@ -49,6 +49,12 @@ test('key public and editing screens have no visible eyebrow captions', async ({
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
   expect(courseId).toBeTruthy();
+  await expect(page.locator('main')).toBeVisible();
+  await expectNoVisibleEyebrows(page);
+  await page.screenshot({
+    animations: 'disabled',
+    path: test.info().outputPath('course.png'),
+  });
 
   const screens = [
     ['card-editor', `/#/course/${courseId}/cards/new`],

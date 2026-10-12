@@ -6,7 +6,7 @@ import { GLOBAL_SCOPE_KEY } from '../../mcp/grants';
 import type { McpGrant } from '../../mcp/types';
 import type { McpClientConnection } from '../../mcp/connections';
 import { useCourses } from '../../state/useCourseData';
-import { SettingsSectionHeading } from './SettingsSectionHeading';
+import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
 import { SectionCard } from '../../components/ui/SectionCard';
 
 interface McpStatus {
@@ -119,7 +119,7 @@ export function McpSection() {
       </div>
       {status?.companion && <div className="mb-5 rounded-xl border border-line bg-surface-raised/40 px-4 py-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="font-display text-base text-ink">MCP client configuration</h3>
+          <SettingsSubsectionHeading className="font-display text-base text-ink">MCP client configuration</SettingsSubsectionHeading>
           <Button variant="secondary" size="sm" onClick={() => void copyConfiguration()}>Copy</Button>
         </div>
         <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs text-ink">{JSON.stringify({ mcpServers: { lacuna: { command: status.companion.command, args: status.companion.args, ...(status.companion.env ? { env: status.companion.env } : {}) } } }, null, 2)}</pre>
