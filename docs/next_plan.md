@@ -118,6 +118,25 @@ publication remains a manual maintainer action; it is not second-person enforced
 
 **Exit:** a red check means broken, not merely noisy.
 
+#### Proposed tooling evaluation: Bun 1.4.3
+
+**Status:** proposed. Assess `bun check` after the Direction C fixes. The
+[release](https://bun.sh/blog/bun-v1.4.3) adds TypeScript 7 checking;
+[the docs](https://bun.sh/docs/runtime/check) confirm project-reference support
+with `-b`, but no JavaScript/declaration emission or incremental `.tsbuildinfo` cache.
+Lacuna already uses native TypeScript 7.0.2 through `@typescript/native`, with
+TypeScript 6 under `typescript` for API compatibility; Electron preparation needs
+native `tsc` emission. Keep those packages and the current Bun 1.4.2 CI pin pending evaluation.
+
+Local Windows smoke checks on 12 October with Bun 1.4.3 passed all five root configurations.
+One sequential wall-clock pair in seconds (`tsc` / `bun check`): web references
+123.703 / 27.985; server 2.226 / 4.185; Electron main 1.753 / 4.195;
+preload 1.599 / 3.071; MCP 2.070 / 3.788. Concurrent development and process-start
+costs make these exploratory timings, not an adoption benchmark. Compare cold and
+unchanged incremental runs on quiet Windows and CI hosts, then compare diagnostic
+code/file/position on failing fixtures across every configuration, including the
+separate relay and AI MCP packages, before proposing a script or CI change.
+
 ### 4. Persistence consolidation
 
 **Status:** delivered.

@@ -1,0 +1,1 @@
+- Record a proposed Bun 1.4.3 type-checking evaluation with local compatibility checks, exploratory timings and compiler/emission constraints; retain the existing scripts and CI compiler.
