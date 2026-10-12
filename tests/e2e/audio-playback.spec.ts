@@ -47,7 +47,7 @@ test('plays stored audio while authoring and studying in the production build', 
 
   await enterFreshLacuna(page);
   await createCourse(page, 'Audio playback');
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).click();
   await page.getByRole('button', { name: 'Audio', exact: true }).click();
   await page
