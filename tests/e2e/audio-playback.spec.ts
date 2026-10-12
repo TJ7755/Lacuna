@@ -65,7 +65,7 @@ test('plays stored audio while authoring and studying in the production build', 
   await expect(page).not.toHaveURL(/\/cards\/new$/);
 
   await page.reload();
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page.getByRole('button', { name: 'View mode' }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
