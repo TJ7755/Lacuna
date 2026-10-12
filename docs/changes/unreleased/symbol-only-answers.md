@@ -1,0 +1,1 @@
+- Fixed lenient typed-answer marking: an answer made only of symbols, such as `%` or `&`, can be marked correct again instead of never matching.

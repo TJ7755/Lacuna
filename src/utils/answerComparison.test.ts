@@ -51,6 +51,15 @@ describe('compareAnswer', () => {
     ).toBe(false);
   });
 
+  it('marks a symbol-only answer with its punctuation kept', () => {
+    const result = compareAnswer('%', '%');
+    expect(result.correct).toBe(true);
+    expect(result.words.every((word) => word.matched)).toBe(true);
+    const wrong = compareAnswer('&', '%');
+    expect(wrong.correct).toBe(false);
+    expect(wrong.words.some((word) => word.matched)).toBe(false);
+  });
+
   it('does not strip internal punctuation', () => {
     const result = compareAnswer('e.g.', 'e.g.');
     expect(result.correct).toBe(true);
