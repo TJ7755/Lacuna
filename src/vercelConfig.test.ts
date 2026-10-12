@@ -36,6 +36,26 @@ describe('Vercel configuration', () => {
     expect(csp).toContain("form-action 'self'");
   });
 
+  it('lets locally stored audio play under both web policies', async () => {
+    // Regression for #459: without media-src, default-src 'self' blocked the
+    // blob: URLs that assetCache hands to <audio>, so audio cards never played.
+    const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
+      headers?: { source?: string; headers?: { key?: string; value?: string }[] }[];
+    };
+    const documentHeaders =
+      config.headers?.find((entry) => entry.source === '/(.*)')?.headers ?? [];
+    const headerPolicy =
+      documentHeaders.find((header) => header.key === 'Content-Security-Policy')?.value ?? '';
+    const document = await readFile('index.html', 'utf8');
+    const metaPolicy =
+      /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(document)?.[1] ?? '';
+
+    for (const policy of [headerPolicy, metaPolicy]) {
+      const sources = /(?:^|;\s*)media-src\s+([^;]*)/.exec(policy)?.[1].trim().split(/\s+/);
+      expect(sources).toEqual(["'self'", 'blob:']);
+    }
+  });
+
   it('keeps the header and meta policies in step on connect-src origins', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       headers?: { source?: string; headers?: { key?: string; value?: string }[] }[];
