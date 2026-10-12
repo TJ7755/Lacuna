@@ -171,6 +171,49 @@ describe('Paper question set authoring', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue to mark scheme' }));
     expect(screen.getByLabelText('Marking criterion')).toHaveValue('Keep this scheme');
   });
+  it.each([{ ctrlKey: true }, { metaKey: true }])(
+    'keeps split confirmation shortcuts inside the decision: %j',
+    async (modifier) => {
+      const course = await setup();
+      open(course.id);
+      await beginQuestion();
+      fireEvent.change(screen.getByLabelText('Question text'), {
+        target: { value: 'Name the organelle.' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Continue to mark scheme' }));
+      fireEvent.change(screen.getByLabelText('Marking criterion'), {
+        target: { value: 'Keep this scheme' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+      const trigger = screen.getByRole('button', { name: 'Use separate parts' });
+      trigger.focus();
+      fireEvent.click(trigger);
+      const cancel = screen.getByRole('button', { name: 'Cancel' });
+      expect(cancel).toHaveFocus();
+      fireEvent.keyDown(cancel, { key: 'Enter', ...modifier });
+      expect(screen.getByRole('heading', { name: 'Write Q1' })).toBeVisible();
+      expect(cancel).toBeInTheDocument();
+      fireEvent.keyDown(cancel, { key: 'Escape' });
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Write Q1' })).toBeVisible();
+      expect(trigger).toHaveFocus();
+      fireEvent.keyDown(trigger, { key: 'Enter', ...modifier });
+      expect(screen.getByLabelText('Marking criterion')).toHaveValue('Keep this scheme');
+    },
+  );
+
+  it('ignores composition whilst progressing question-set steps', async () => {
+    const course = await setup();
+    open(course.id);
+    const title = await screen.findByLabelText('Set title');
+    fireEvent.change(title, { target: { value: 'Cells' } });
+    fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true, isComposing: true });
+    expect(title).toBeInTheDocument();
+    fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true, keyCode: 229 });
+    expect(title).toBeInTheDocument();
+    fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true });
+    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+  });
   it('guides a multipart question from its introduction to its first part and subpart', async () => {
     const course = await setup();
     open(course.id);

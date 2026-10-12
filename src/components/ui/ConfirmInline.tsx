@@ -14,6 +14,7 @@ import {
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 
 export interface ConfirmInlineProps {
   /** Short prompt shown before the buttons, e.g. "Delete?" or "Replace all data?". */
@@ -74,16 +75,36 @@ export function ConfirmInline({
 }: ConfirmInlineProps) {
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const present = useIsPresent();
 
   useEffect(() => {
     if (!present) return;
+    if (!rootRef.current?.contains(document.activeElement)) {
+      openerRef.current = document.activeElement as HTMLElement | null;
+    }
     if (focusOnMount === 'confirm') confirmRef.current?.focus();
     if (focusOnMount === 'cancel') cancelRef.current?.focus();
   }, [focusOnMount, present]);
 
+  const cancel = () => {
+    const returnFocus = rootRef.current?.contains(document.activeElement);
+    onCancel();
+    const opener = openerRef.current;
+    if (returnFocus && opener?.isConnected && !opener.closest('[inert]')) opener.focus();
+  };
+
   return (
-    <div className={cn('flex items-center gap-1', className)}>
+    <div
+      ref={rootRef}
+      className={cn('flex items-center gap-1', className)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' || (event.key === 'Enter' && (event.ctrlKey || event.metaKey))) {
+          dialogKeyDown({ onCancel: cancel })(event);
+        }
+      }}
+    >
       <span
         role={announce ? 'status' : undefined}
         aria-live={announce ? 'polite' : undefined}
@@ -108,7 +129,7 @@ export function ConfirmInline({
       <button
         ref={cancelRef}
         type="button"
-        onClick={onCancel}
+        onClick={cancel}
         className="min-h-11 rounded-full px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-ink/5"
       >
         {cancelLabel}

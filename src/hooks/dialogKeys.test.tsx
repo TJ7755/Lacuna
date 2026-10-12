@@ -16,6 +16,31 @@ function setup(enterSubmits: boolean) {
 }
 
 describe('dialogKeyDown', () => {
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'leaves composition keys to the input method: %j',
+    (composition) => {
+      const { onSubmit, onCancel } = setup(true);
+      const input = screen.getByLabelText('Name');
+      fireEvent.keyDown(input, { key: 'Enter', ...composition });
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, ...composition });
+      fireEvent.keyDown(input, { key: 'Escape', ...composition });
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(onCancel).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onSubmit).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('respects an Enter already consumed by a nested field', () => {
+    const onSubmit = vi.fn();
+    render(
+      <div onKeyDown={dialogKeyDown({ onCancel: vi.fn(), onSubmit, enterSubmits: true })}>
+        <input aria-label="Suggestion" onKeyDown={(event) => event.preventDefault()} />
+      </div>,
+    );
+    fireEvent.keyDown(screen.getByLabelText('Suggestion'), { key: 'Enter' });
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
   it('cancels on Escape', () => {
     const { onCancel } = setup(true);
     fireEvent.keyDown(screen.getByLabelText('Name'), { key: 'Escape' });
@@ -64,6 +89,21 @@ function EditorHost({ onCancel, onSubmit }: { onCancel: () => void; onSubmit: ()
 }
 
 describe('useEditorKeys', () => {
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'does not submit or cancel during composition: %j',
+    (composition) => {
+      const onSubmit = vi.fn();
+      const onCancel = vi.fn();
+      render(<EditorHost onSubmit={onSubmit} onCancel={onCancel} />);
+      const input = screen.getByLabelText('Name');
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true, ...composition });
+      fireEvent.keyDown(input, { key: 'Escape', ...composition });
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(onCancel).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+      expect(onSubmit).toHaveBeenCalledOnce();
+    },
+  );
   it('submits on Ctrl/Cmd+Enter unless a field used the key', () => {
     const onSubmit = vi.fn();
     render(<EditorHost onCancel={vi.fn()} onSubmit={onSubmit} />);

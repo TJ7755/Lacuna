@@ -378,6 +378,12 @@ Shell-piped Python scripts can encode new non-ASCII literals differently from so
 Use explicit UTF-8 reads/writes and Unicode escapes in piped scripts so test expectations
 and user-facing text do not acquire invalid characters.
 
+## Windows test temporary files
+
+Vitest can lose transformed modules in the Windows sandbox's temporary directory between
+tool calls. If a suite reports an ENOENT there, use a stable ignored directory for `TEMP`
+and `TMP` and rerun outside the sandbox; that cache failure is not an application regression.
+
 
 ## MCP descriptions are part of the frozen wire surface
 

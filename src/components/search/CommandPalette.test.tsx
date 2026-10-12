@@ -126,6 +126,28 @@ afterAll(() => {
 });
 
 describe('CommandPalette', () => {
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'does not navigate or close whilst composing: %j',
+    async (composition) => {
+      dataHooks.useSearchData.mockReturnValue({
+        cards: [mockCard],
+        courses: [mockCourse],
+        lessons: [],
+        notes: [],
+        questions: [],
+      });
+      const onClose = vi.fn();
+      render(<CommandPalette open onClose={onClose} />, { wrapper: MemoryRouter });
+      const input = screen.getByRole('combobox');
+      fireEvent.change(input, { target: { value: 'Palatine' } });
+      await screen.findByRole('option', { name: /Palatine/ });
+      fireEvent.keyDown(input, { key: 'Enter', ...composition });
+      fireEvent.keyDown(input, { key: 'Escape', ...composition });
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
   it('retires the retained result list as soon as the query is cleared', async () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [mockCard],

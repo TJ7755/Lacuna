@@ -18,6 +18,29 @@ function session(): AiSession {
 }
 
 describe('AiComposer', () => {
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'keeps the draft when Enter confirms composition: %j',
+    async (composition) => {
+      const aiSession = session();
+      render(
+        <AiComposer
+          session={aiSession}
+          disabled={false}
+          initialDraft="Keep composing"
+          queuedFollowUp={null}
+          autoFocus={false}
+        />,
+      );
+      const input = screen.getByRole('textbox', { name: 'Message AI' });
+      fireEvent.keyDown(input, { key: 'Enter', ...composition });
+      expect(aiSession.send).not.toHaveBeenCalled();
+      expect(input).toHaveValue('Keep composing');
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+      expect(aiSession.send).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => expect(aiSession.send).toHaveBeenCalledWith('Keep composing'));
+    },
+  );
   it('uses an honest chat prompt while connected', () => {
     render(
       <AiComposer

@@ -20,17 +20,23 @@ export function dialogKeyDown({ onCancel, onSubmit, enterSubmits, ignore }: Dial
     if (event.key === 'Tab') return;
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
+    if (
+      event.defaultPrevented ||
+      event.nativeEvent.isComposing ||
+      event.nativeEvent.keyCode === 229
+    )
+      return;
     const target = event.target as Element;
     if (ignore?.(target, event.key)) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       onCancel();
-    } else if (event.key === 'Enter' && onSubmit) {
+    } else if (event.key === 'Enter') {
       const modified = event.ctrlKey || event.metaKey;
       const inTextInput = target instanceof HTMLInputElement && target.type === 'text';
-      if (modified || (enterSubmits && inTextInput)) {
+      if (modified || (onSubmit && enterSubmits && inTextInput)) {
         event.preventDefault();
-        onSubmit();
+        onSubmit?.();
       }
     }
   };
@@ -60,7 +66,12 @@ export function useEditorKeys({
     onInput: markDirty,
     onClick: markDirty,
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      if (event.defaultPrevented) return;
+      if (
+        event.defaultPrevented ||
+        event.nativeEvent.isComposing ||
+        event.nativeEvent.keyCode === 229
+      )
+        return;
       const target = event.target as Element;
       if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && onSubmit) {
         event.preventDefault();

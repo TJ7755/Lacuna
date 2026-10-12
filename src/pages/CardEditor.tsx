@@ -678,6 +678,8 @@ export function CardEditor() {
     <div
       className={cn(COURSE_PAGE_FRAME, 'pt-8', isTouchMode ? 'pb-40' : 'pb-10')}
       onKeyDown={(e) => {
+        if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)
+          return;
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           // In new-card mode, Cmd/Ctrl+Enter saves and keeps going for fast capture.

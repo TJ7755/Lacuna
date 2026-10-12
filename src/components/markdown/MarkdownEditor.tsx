@@ -36,9 +36,9 @@ interface MarkdownEditorProps {
   autoFocus?: boolean;
   /** Forwarded handle on the textarea so parents can drive a custom tab order. */
   inputRef?: Ref<HTMLTextAreaElement>;
-  /** Tab (no shift) inside the textarea; preventDefault is applied for you. */
+  /** Tab (no shift) inside the textarea; native traversal remains if focus cannot move. */
   onTabForward?: () => void;
-  /** Shift+Tab inside the textarea; preventDefault is applied for you. */
+  /** Shift+Tab inside the textarea; native traversal remains if focus cannot move. */
   onTabBackward?: () => void;
   /** Ctrl/Cmd+Enter inside the textarea; preventDefault is applied for you. */
   onModEnter?: () => void;
@@ -496,6 +496,8 @@ export function MarkdownEditor({
               scheduleHistoryPush();
             }}
             onKeyDown={(e) => {
+              if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)
+                return;
               if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 onModEnter();
@@ -525,12 +527,10 @@ export function MarkdownEditor({
                 return;
               }
               if (e.key !== 'Tab') return;
-              if (e.shiftKey && onTabBackward) {
-                e.preventDefault();
-                onTabBackward();
-              } else if (!e.shiftKey && onTabForward) {
-                e.preventDefault();
-                onTabForward();
+              const moveFocus = e.shiftKey ? onTabBackward : onTabForward;
+              if (moveFocus) {
+                moveFocus();
+                if (document.activeElement !== e.currentTarget) e.preventDefault();
               }
             }}
             onDrop={handleDrop}

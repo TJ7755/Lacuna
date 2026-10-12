@@ -43,4 +43,14 @@ consume `Ctrl/Cmd+K` before the page sees it.
 Saved shortcut overrides are validated per action. Invalid records or values fall back
 to the defaults without discarding valid overrides for other actions.
 
+Forms, Markdown editors, Quick search and AI composition leave input-method composition
+keys alone, including the legacy key-code 229 signal. A nested field that consumes a
+shortcut prevents the enclosing form from submitting it again. Single-line form Enter,
+multiline newlines and Ctrl/Cmd+Enter retain their ordinary behaviour after composition.
+Inline confirmations own Escape and Ctrl/Cmd+Enter: Escape cancels that decision and
+returns focus to its available opener; the primary chord does not advance the editor
+underneath or implicitly confirm a destructive action. Plain Enter activates the focused
+confirmation button. Card-entry Tab jumps apply only when the target actually receives
+focus; disabled or missing targets leave native forward and backward traversal available.
+
 [Specification index](../SPEC.md)

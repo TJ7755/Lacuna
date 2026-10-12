@@ -3,6 +3,56 @@ import { describe, expect, it, vi } from 'vitest';
 import { MarkdownEditor } from './MarkdownEditor';
 
 describe('MarkdownEditor accessible name', () => {
+  it('leaves Tab native when a disabled or missing explicit target cannot receive focus', () => {
+    const { rerender } = render(
+      <>
+        <MarkdownEditor
+          label="Back"
+          value=""
+          onChange={vi.fn()}
+          onTabForward={() => document.getElementById('save-target')?.focus()}
+        />
+        <button id="save-target" disabled>
+          Save
+        </button>
+      </>,
+    );
+    const input = screen.getByRole('textbox', { name: 'Back' });
+    input.focus();
+    expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(true);
+    rerender(
+      <>
+        <MarkdownEditor
+          label="Back"
+          value=""
+          onChange={vi.fn()}
+          onTabForward={() => document.getElementById('save-target')?.focus()}
+        />
+        <button id="save-target">Save</button>
+      </>,
+    );
+    input.focus();
+    expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(false);
+    expect(screen.getByRole('button', { name: /^Save$/ })).toHaveFocus();
+  });
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'leaves composition shortcuts unconsumed: %j',
+    (composition) => {
+      const onModEnter = vi.fn();
+      render(<MarkdownEditor label="Front" value="" onChange={vi.fn()} onModEnter={onModEnter} />);
+      fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), {
+        key: 'Enter',
+        ctrlKey: true,
+        ...composition,
+      });
+      expect(onModEnter).not.toHaveBeenCalled();
+      fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), {
+        key: 'Enter',
+        ctrlKey: true,
+      });
+      expect(onModEnter).toHaveBeenCalledOnce();
+    },
+  );
   it('uses its visible label when no explicit accessible name is supplied', () => {
     render(<MarkdownEditor label="Front" value="" onChange={vi.fn()} />);
 

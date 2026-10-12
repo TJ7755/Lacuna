@@ -195,6 +195,7 @@ function CommandPaletteDialog({
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === 'Escape') {
       onClose();
     } else if (e.key === 'ArrowDown') {

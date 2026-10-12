@@ -95,6 +95,12 @@ export function AiComposer({
             setContent(event.target.value);
           }}
           onKeyDown={(event) => {
+            if (
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              event.nativeEvent.keyCode === 229
+            )
+              return;
             if (event.key === 'Enter' && !event.shiftKey) {
               event.preventDefault();
               void send();

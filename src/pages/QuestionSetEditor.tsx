@@ -209,7 +209,12 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
     <div
       className="qs-editor qs-flow"
       onKeyDown={(event) => {
-        if (event.defaultPrevented) return;
+        if (
+          event.defaultPrevented ||
+          event.nativeEvent.isComposing ||
+          event.nativeEvent.keyCode === 229
+        )
+          return;
         const root = event.currentTarget;
         if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
           event.preventDefault();

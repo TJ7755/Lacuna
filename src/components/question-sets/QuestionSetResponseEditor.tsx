@@ -50,6 +50,7 @@ export function QuestionSetResponseEditor({
       {pending && (
         <ConfirmInline
           message="Remove the existing answer options?"
+          focusOnMount="cancel"
           confirmLabel="Change format"
           onConfirm={() => {
             change(pending);
