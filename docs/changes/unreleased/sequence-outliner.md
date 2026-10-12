@@ -1,0 +1,3 @@
+- The sequence editor is now a keyboard-first outline: Enter starts the next item, Enter on an empty item starts a new section, Backspace joins, Alt+arrows reorder, and pasting several lines adds one item per line (keeping script speakers). The separate script import dialog is gone; empty items are dropped on save, and Save explains what is missing instead of being disabled.
+- Recitation study follows Direction C: borderless card, filled placeholders, number keys mark missed lines, and a typed answer is shown only where it differs from the source.
+- Cards lists a sequence's generated cards in item order, each label card after its item.

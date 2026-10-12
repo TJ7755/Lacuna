@@ -31,7 +31,7 @@ import {
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useVirtualList } from '../../hooks/useVirtualList';
-import { sequenceForItemId } from '../../db/sequenceGeneration';
+import { baseItemId, isLabelCardId, sequenceForItemId } from '../../db/sequenceGeneration';
 import { occlusionForRegionId } from '../../db/occlusionGeneration';
 import { GeneratedCardGroup } from './GeneratedCardGroup';
 import type { Card, Occlusion, SchedulerConfig, Sequence } from '../../db/types';
@@ -160,6 +160,15 @@ export function CardList({
         group.cards.push(card);
         byOwner.set(key, group);
       }
+    }
+    // A sequence's cards follow its items, each item's label card after its positional one.
+    for (const group of byOwner.values()) {
+      if (group.kind !== 'sequence') continue;
+      const order = new Map((group.owner as Sequence).items.map((item, i) => [item.id, i]));
+      const rank = (card: Card) =>
+        (order.get(baseItemId(card.sequenceItemId!)) ?? 0) * 2 +
+        (isLabelCardId(card.sequenceItemId!) ? 1 : 0);
+      group.cards.sort((a, b) => rank(a) - rank(b));
     }
     // An occlusion's cards follow its regions, so "Label 1 of 4" comes first.
     for (const group of byOwner.values()) {

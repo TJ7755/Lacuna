@@ -134,7 +134,7 @@ test('anchors a sequence cue to its answer when the card flips', async ({ page }
   await page.goto(`/#/course/${courseId}/lesson/${lessonId}/sequence/new`);
   await page.getByRole('textbox', { name: 'Sequence name' }).fill('English monarchs');
   await page.getByRole('textbox', { name: 'Item 1 content' }).fill('King William the Conqueror');
-  await page.getByRole('button', { name: /Add another item/ }).click();
+  await page.keyboard.press('Enter');
   await page.getByRole('textbox', { name: 'Item 2 content' }).fill('King William II');
   await page.getByRole('button', { name: 'Add sequence' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));

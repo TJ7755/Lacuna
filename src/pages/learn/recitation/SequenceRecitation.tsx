@@ -5,6 +5,9 @@ import { CheckIcon, CloseIcon } from '../../../components/ui/icons';
 import { presetForSequence } from '../../../db/sequencePresets';
 import type { Sequence } from '../../../db/types';
 import { cn } from '../../../components/ui/cn';
+import { inputFrameClassName } from '../../../components/ui/Field';
+import { SECTION_CARD_SURFACE_CLASS } from '../../../components/ui/SectionCard';
+import { useIsTouchMode } from '../../../state/inputMode';
 import { useRecitationInput } from '../../../state/recitationInput';
 import {
   advanceRecitation,
@@ -48,6 +51,16 @@ interface Props {
   onStateChange?: (state: RecitationState | null) => void;
 }
 
+/** Whether a typed line differs from the answer by more than case, spacing or punctuation. */
+function differs(typed: string, answer: string) {
+  const plain = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim();
+  return plain(typed) !== plain(answer);
+}
+
 function CueLine({ line }: { line: RecitationLine }) {
   return (
     <div className="text-ink-soft">
@@ -79,6 +92,7 @@ export function SequenceRecitation({
     if (!review) onStateChangeRef.current?.(state.step.kind === 'done' ? null : state);
   }, [state, review]);
   const [input] = useRecitationInput();
+  const touch = useIsTouchMode();
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [checking, setChecking] = useState(false);
   const [wrong, setWrong] = useState<Set<string>>(new Set());
@@ -186,8 +200,18 @@ export function SequenceRecitation({
   return (
     <div
       ref={rootRef}
-      className="mx-auto flex w-full max-w-2xl flex-col gap-6 rounded-3xl border border-line bg-surface px-6 py-8 md:px-10 md:py-10"
+      className={cn(
+        SECTION_CARD_SURFACE_CLASS,
+        'mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8 md:px-10 md:py-10',
+      )}
       onKeyDown={(event) => {
+        // While marking, a line's number toggles it, so marking never needs the pointer.
+        const digit = /^[1-9]$/.test(event.key) ? mineTarget[Number(event.key) - 1] : undefined;
+        if (checking && digit !== undefined && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          event.preventDefault();
+          toggleWrong(plan.lines[digit].itemId);
+          return;
+        }
         if (event.key !== 'Enter' || event.shiftKey || event.target instanceof HTMLTextAreaElement)
           return;
         if (event.target instanceof HTMLButtonElement) return;
@@ -243,11 +267,15 @@ export function SequenceRecitation({
                       else void submit();
                     }}
                     data-line={line.itemId}
-                    className="w-full resize-none rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors [field-sizing:content] focus:border-accent"
+                    placeholder={`${capitalised(terminology.item)} ${position}`}
+                    className={cn(
+                      inputFrameClassName,
+                      'block min-h-11 w-full resize-none px-4 py-3 transition-colors [field-sizing:content] placeholder:text-ink-faint',
+                    )}
                   />
                 ) : (
-                  <div className="rounded-lg border border-dashed border-line px-4 py-3 text-ink-faint">
-                    {terminology.item} {position}
+                  <div className="rounded-xl bg-ink/[0.045] px-4 py-3 text-ink-faint">
+                    {capitalised(terminology.item)} {position}
                   </div>
                 )}
               </li>
@@ -260,18 +288,29 @@ export function SequenceRecitation({
               <button
                 type="button"
                 aria-pressed={isWrong}
+                aria-keyshortcuts={position <= 9 ? String(position) : undefined}
                 aria-label={`${terminology.item} ${position}: ${isWrong ? 'marked wrong' : 'correct'}`}
                 onClick={() => toggleWrong(line.itemId)}
                 className={cn(
-                  'flex w-full items-start gap-3 rounded-full px-4 py-3 text-left transition-colors',
+                  'flex min-h-11 w-full items-start gap-3 rounded-2xl px-4 py-3 text-left transition-colors',
                   isWrong ? 'bg-negative/10 hover:bg-negative/15' : 'hover:bg-ink/5',
                 )}
               >
+                {!touch && mineTarget.length > 1 && position <= 9 && (
+                  <span
+                    aria-hidden
+                    className="mt-0.5 w-3 shrink-0 text-sm tabular-nums text-ink-faint"
+                  >
+                    {position}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1 text-ink">
-                  {input === 'type' && answer && (
-                    <p className="mb-2 whitespace-pre-wrap text-ink-soft">{answer}</p>
-                  )}
                   <MarkdownView source={line.value} />
+                  {input === 'type' && answer?.trim() && differs(answer, line.value) && (
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-ink-faint">
+                      You wrote “{answer.trim()}”
+                    </p>
+                  )}
                 </div>
                 {isWrong ? (
                   <CloseIcon
@@ -295,7 +334,15 @@ export function SequenceRecitation({
       </ol>
 
       <div className="flex flex-col items-center gap-3">
-        {checking && <p className="text-sm text-ink-soft">Tap any line you missed.</p>}
+        {checking && (
+          <p className="text-center text-sm text-ink-soft">
+            {touch
+              ? 'Tap any line you missed.'
+              : mineTarget.length > 1
+                ? 'Click or press the number of any line you missed.'
+                : 'Click the line, or press 1, if you missed it.'}
+          </p>
+        )}
         <Button
           variant={checking && wrong.size > 0 && !review ? 'secondary' : 'primary'}
           size="lg"

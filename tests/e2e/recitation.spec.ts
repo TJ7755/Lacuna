@@ -33,10 +33,11 @@ test('learns a poem by cumulative recitation', async ({ page }, testInfo) => {
   expect(lessonId).toBeTruthy();
 
   await page.goto(`/#/course/${courseId}/lesson/${lessonId}/sequence/new`);
-  await page.getByRole('button', { name: /Poetry/ }).click();
+  await page.getByText('Poetry / verse', { exact: true }).click();
+  await expect(page.getByRole('radio', { name: /Poetry/ })).toBeChecked();
   await page.getByRole('textbox', { name: 'Sequence name' }).fill('Because I could not stop');
   await page.getByRole('textbox', { name: 'Line 1 content' }).fill('Because I could not stop for Death');
-  await page.getByRole('button', { name: /Add another line/ }).click();
+  await page.keyboard.press('Enter');
   await page.getByRole('textbox', { name: 'Line 2 content' }).fill('He kindly stopped for me');
   await page.getByRole('button', { name: 'Add sequence' }).click();
   await expect(page).toHaveURL(new RegExp(`#/course/${courseId}/lesson/${lessonId}$`));

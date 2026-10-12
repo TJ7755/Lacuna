@@ -137,7 +137,7 @@ it('recalls without textboxes when Settings choose reciting aloud', async () => 
   fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
 
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-  expect(screen.getByText('line 1')).toBeInTheDocument();
+  expect(screen.getByText('Line 1')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
   expect(await screen.findByText('Alpha line')).toBeInTheDocument();
 });
@@ -180,4 +180,30 @@ it('keeps the sequence title and position available only to screen readers', asy
   expect(title).toHaveClass('sr-only');
   expect(screen.getByText('Verse 1 of 2, line 1 of 2')).toHaveClass('sr-only');
   expect(await screen.findByText('Alpha line')).toBeVisible();
+});
+
+it('marks a missed line by its number and shows only answers that differ', async () => {
+  renderRecitation();
+  fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
+    target: { value: 'Alpha lime' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+
+  expect(screen.getByText('You wrote “Alpha lime”')).toBeInTheDocument();
+  const toggle = screen.getByRole('button', { name: 'line 1: correct' });
+  fireEvent.keyDown(toggle, { key: '1' });
+  expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.keyDown(toggle, { key: '1' });
+  expect(toggle).toHaveAttribute('aria-pressed', 'false');
+});
+
+it('hides a typed answer that matches apart from case and punctuation', async () => {
+  renderRecitation();
+  fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
+  fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
+    target: { value: 'alpha line.' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Check' }));
+  expect(screen.queryByText(/You wrote/)).not.toBeInTheDocument();
 });

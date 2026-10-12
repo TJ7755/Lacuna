@@ -660,6 +660,40 @@ describe('CardList', () => {
       expect(onEditSequence).toHaveBeenCalledWith('sequence-1');
     });
 
+    it('lists a sequence’s cards in item order, each label card after its item', async () => {
+      const ordered: Sequence = {
+        ...sequence,
+        items: [
+          { id: 'item-1', value: 'Sodium' },
+          { id: 'item-2', value: 'Potassium' },
+        ],
+      };
+      const card = (id: string, sequenceItemId: string, back: string): Card => ({
+        ...mockCard,
+        id,
+        front: id,
+        back,
+        sequenceItemId,
+      });
+      render(
+        <CardList
+          cards={[
+            card('c-2', 'item-2', 'Potassium'),
+            card('c-1-label', 'item-1::label', 'Sodium label'),
+            card('c-1', 'item-1', 'Sodium'),
+          ]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          sequences={[ordered]}
+        />,
+      );
+      await screen.findByText('Potassium');
+      const backs = ['Sodium', 'Sodium label', 'Potassium'].map((text) => screen.getByText(text));
+      for (let i = 1; i < backs.length; i++) {
+        expect(backs[i - 1].compareDocumentPosition(backs[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
     it('badges a generated card and hides its select checkbox and delete action', () => {
       render(
         <CardList
