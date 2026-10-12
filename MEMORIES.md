@@ -416,6 +416,17 @@ The prompter explicitly rejected automatic marking for poem/script recitation (1
 Punctuation is not the learning objective: reveal the source and let the learner mark it.
 Matching typed text must not skip confirmation; ordinary typed and maths checkers retain their own behaviour.
 
+## Editor dirtiness follows input events
+
+`useEditorKeys` marks a form dirty on `input`, not `change`. Tests of Escape-to-cancel must
+use `fireEvent.input`; `fireEvent.change` leaves the form pristine and Escape closes it.
+
+## Auto-growing textareas in stacked rows
+
+`flex-1` in a column flex layout sets the basis to 0 and clips a textarea sized from
+`scrollHeight`. Apply `flex-1` only at the row breakpoint, and re-measure on width changes,
+since wrapping changes height.
+
 ## Fresh installs open dark
 
 The stored theme defaults to `dark`, not `auto`, so `emulateMedia({ colorScheme })` alone no

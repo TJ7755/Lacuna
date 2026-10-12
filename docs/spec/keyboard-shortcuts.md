@@ -11,7 +11,13 @@
 | Path (Edit)            | `Alt+Up` / `Alt+Down` | Move a lesson                      |
 | Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
-| Sequence item editor   | `Ctrl/Cmd+Enter`   | Insert and focus the next item        |
+| Sequence editor        | `Ctrl/Cmd+Enter`   | Save                                  |
+| Sequence item          | `Enter`            | Next item (split at the caret); on an empty item, new section |
+| Sequence item          | `Shift+Enter`      | Line break within the item            |
+| Sequence item          | `Backspace` at start | Join to the item above, or remove a section break |
+| Sequence item          | `Up` / `Down`      | Previous / next item                  |
+| Sequence item          | `Alt+Up` / `Alt+Down` | Move the item (across a section break first) |
+| Recitation (marking)   | `1`-`9`            | Mark that line missed, or correct again |
 | Text editors           | `Ctrl/Cmd+B` / `Ctrl/Cmd+I` | Bold / italic                |
 | Learn                  | `Space` / `Up`     | Show answer                           |
 | Learn                  | `Down`             | Hide answer                           |

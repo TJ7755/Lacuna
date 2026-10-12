@@ -234,9 +234,9 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
   item for that speaker; a following non-matching line is folded in as a wrapped continuation
   of the same speech; blank lines are separators only and never break a continuing speech.
-  `src/components/sequences/ScriptPasteImport.tsx` wraps it in a paste → preview → correct →
-  confirm modal (mirroring `LinkCardsDialog`'s shell) so the author can fix a misattributed
-  speaker or line before it replaces the editor's item list.
+  Pasting several lines into the sequence editor's outline (`src/components/sequences/`
+  `sequenceOutline.ts`, `splitPaste`) adds one item per line and, for scripts, uses it to keep
+  speakers; blank lines start a new section. Each speaker stays editable on its row.
 - `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
   the positional card carries the item's own id; the label card (when generated) carries
   `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
