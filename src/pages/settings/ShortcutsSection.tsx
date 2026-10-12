@@ -6,6 +6,7 @@ import { useToast } from '../../components/ui/Toast';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import {
   ACTION_LABELS,
+  bindingError,
   formatBinding,
   useShortcutBindings,
   type LearnAction,
@@ -59,18 +60,16 @@ export function ShortcutsSection() {
         <KeyCaptureOverlay
           action={capturingAction}
           onCapture={(key) => {
-            const conflict = (Object.keys(shortcutBindings.bindings) as LearnAction[]).find(
-              (candidate) =>
-                candidate !== capturingAction && shortcutBindings.bindings[candidate] === key,
-            );
-            if (conflict) {
-              notify(`That key is already assigned to ${ACTION_LABELS[conflict]}.`, 'negative');
+            const error = bindingError(capturingAction, key, shortcutBindings.bindings);
+            if (error) {
+              notify(error, 'negative');
               return;
             }
             shortcutBindings.setBinding(capturingAction, key);
             setCapturingAction(null);
             notify('Shortcut updated.', 'positive');
           }}
+          onReject={(message) => notify(message, 'negative')}
           onCancel={() => setCapturingAction(null)}
         />
       )}
@@ -93,10 +92,12 @@ export function ShortcutsSection() {
 function KeyCaptureOverlay({
   action,
   onCapture,
+  onReject,
   onCancel,
 }: {
   action: LearnAction;
   onCapture: (key: string) => void;
+  onReject: (message: string) => void;
   onCancel: () => void;
 }) {
   const titleId = useId();
@@ -105,13 +106,26 @@ function KeyCaptureOverlay({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      if (
+        event.isComposing ||
+        event.keyCode === 229 ||
+        event.key === 'Process' ||
+        event.key === 'Dead'
+      )
+        return;
       if (event.key === 'Tab') return;
+      if (['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(event.key)) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        onReject('Use a single key without Ctrl, Cmd or Alt.');
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
         onCancel();
         return;
       }
-      if (['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Dead'].includes(event.key)) return;
       if (
         event.target instanceof HTMLElement &&
         event.target.closest('[data-shortcut-cancel]') &&
@@ -119,6 +133,7 @@ function KeyCaptureOverlay({
       )
         return;
       event.preventDefault();
+      event.stopImmediatePropagation();
       if (event.key === ' ') {
         onCapture('Space');
         return;
@@ -127,7 +142,7 @@ function KeyCaptureOverlay({
     };
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [action, onCapture, onCancel]);
+  }, [action, onCapture, onCancel, onReject]);
 
   return (
     <div
