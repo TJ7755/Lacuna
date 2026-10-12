@@ -1346,7 +1346,9 @@ describe('LearnMode course/lesson scope', () => {
           </ToastProvider>
         </AccentProvider></ThemeProvider>,
       );
-      fireEvent.change(await screen.findByLabelText('Your working'), {
+      const working = await screen.findByLabelText('Your working');
+      await waitFor(() => expect(working).toHaveFocus());
+      fireEvent.change(working, {
         target: { value: '2x = 8\n4' },
       });
       fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
@@ -1417,6 +1419,7 @@ describe('LearnMode course/lesson scope', () => {
       });
     });
     expect(await screen.findByLabelText('Your working')).toHaveValue('');
+    await waitFor(() => expect(screen.getByLabelText('Your working')).toHaveFocus());
     expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
   });
 
