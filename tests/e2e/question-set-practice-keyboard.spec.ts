@@ -154,8 +154,10 @@ for (const mode of ['practice', 'paper'] as const) {
       await page.getByRole('radio', { name: 'Not marked' }).press('Control+Enter');
       await expect(page.getByRole('radio', { name: 'Not marked' })).toBeChecked();
       if (mode === 'paper') {
-        const marks = page.locator('.qs-marking-criterion');
-        const original = page.locator('.qs-marking-answer');
+        const activePaper = page.locator('article.qs-paper:not([inert], [inert] *)');
+        await expect(activePaper).toHaveCount(1);
+        const marks = activePaper.locator('.qs-marking-criterion');
+        const original = activePaper.locator('.qs-marking-answer');
         expect((await marks.boundingBox())!.y).toBeLessThan((await original.boundingBox())!.y);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
           320,

@@ -5,6 +5,7 @@ import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useState } from 'react';
 import {
   questionSetPrimaryKey,
+  useQuestionSetBlankConfirmation,
   useQuestionSetPracticeFocus,
 } from '../components/question-sets/useQuestionSetPracticeFocus';
 import { StepSwap } from '../components/ui/StepSwap';
@@ -57,7 +58,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
   const origin = questionSetReturn(useLocation().state, attempt.courseId);
   const navigate = useNavigate();
   const rootRef = useQuestionSetScroll(`question-set-scroll:${attempt.id}`);
-  const [confirmBlank, setConfirmBlank] = useState(false);
+  const blankConfirmation = useQuestionSetBlankConfirmation(rootRef);
   const [actionError, setActionError] = useState('');
   const [acting, setActing] = useState(false);
   const allNodes = flattenQuestionSet(attempt.receipt);
@@ -128,7 +129,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
         saveQuestionSetAttemptPosition(current.id, current.revisionId, nodeId, allocationId),
       ),
     );
-    setConfirmBlank(false);
+    blankConfirmation.close();
   }
   function updateMarking(
     change: (current: QuestionSetAttemptRecord) => Partial<SaveQuestionSetMarkingInput>,
@@ -148,6 +149,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
     );
   }
   async function submit(confirmed = false) {
+    if (!confirmed) blankConfirmation.prepare();
     await progress.flush();
     const current = session.snapshot.record;
     const group =
@@ -161,7 +163,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
         : !response.text.trim();
     });
     if (hasBlank && !confirmed) {
-      setConfirmBlank(true);
+      blankConfirmation.show();
       return;
     }
     const submitted = await progress.run((row) =>
@@ -178,7 +180,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
         first.node.answer!.allocations[0].id,
       ),
     );
-    setConfirmBlank(false);
+    blankConfirmation.close();
   }
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
@@ -359,15 +361,17 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 ? 'The mark scheme opens after you submit the paper.'
                 : 'Submit all parts of this question before opening its mark scheme.'}
             </p>
-            {confirmBlank ? (
-              <ConfirmInline
-                message="Some parts are unanswered."
-                confirmLabel="Submit unanswered"
-                variant="default"
-                focusOnMount="cancel"
-                onCancel={() => setConfirmBlank(false)}
-                onConfirm={() => void perform(() => submit(true))}
-              />
+            {blankConfirmation.open ? (
+              <div ref={blankConfirmation.ref}>
+                <ConfirmInline
+                  message="Some parts are unanswered."
+                  confirmLabel="Submit unanswered"
+                  variant="default"
+                  focusOnMount={blankConfirmation.focusOnMount}
+                  onCancel={blankConfirmation.cancel}
+                  onConfirm={() => void perform(() => submit(true))}
+                />
+              </div>
             ) : (
               <div className="qs-primary-actions">
                 {advancePart && (
@@ -395,6 +399,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                 <Button
                   variant={advancePart ? 'secondary' : 'primary'}
                   data-attempt-primary={!advancePart || undefined}
+                  data-attempt-submit
                   disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
                   onClick={() => void perform(() => submit())}
                 >

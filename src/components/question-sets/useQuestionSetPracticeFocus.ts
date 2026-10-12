@@ -1,4 +1,55 @@
-import { useEffect, useRef, type KeyboardEvent, type RefObject } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react';
+
+/** The submission trigger is replaced only after flushing, so retain its focus ownership first. */
+export function useQuestionSetBlankConfirmation(root: RefObject<HTMLDivElement | null>) {
+  const [open, setOpen] = useState(false);
+  const [focusOnMount, setFocusOnMount] = useState<'cancel' | undefined>();
+  const ref = useRef<HTMLDivElement>(null);
+  const owner = useRef<Element | null>(null);
+  const returning = useRef<Element | null>(null);
+  useLayoutEffect(() => {
+    if (open || !returning.current) return;
+    const previous = returning.current;
+    returning.current = null;
+    const current = document.activeElement;
+    if (current !== previous && current !== document.body && current?.isConnected) return;
+    const trigger = root.current?.querySelector<HTMLButtonElement>('[data-attempt-submit]');
+    if (trigger && !trigger.disabled && !trigger.closest('[inert]')) trigger.focus();
+  }, [open, root]);
+  return {
+    open,
+    ref,
+    focusOnMount,
+    prepare() {
+      owner.current = document.activeElement;
+      returning.current = null;
+    },
+    show() {
+      const current = document.activeElement;
+      setFocusOnMount(
+        current === owner.current || current === document.body ? 'cancel' : undefined,
+      );
+      setOpen(true);
+    },
+    cancel() {
+      returning.current = ref.current?.contains(document.activeElement)
+        ? document.activeElement
+        : null;
+      setOpen(false);
+    },
+    close() {
+      returning.current = null;
+      setOpen(false);
+    },
+  };
+}
 
 /** Focus the active task after its writes settle, leaving ordinary edits alone. */
 export function useQuestionSetPracticeFocus(

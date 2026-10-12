@@ -377,6 +377,53 @@ describe('QuestionSetPractice', () => {
     expect(screen.queryByText('Controls cell activities.')).not.toBeInTheDocument();
   });
 
+  it('returns a cancelled blank confirmation to the remounted submission control', async () => {
+    const { course, set } = await fixture(true);
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    open(course.id, set.id, attempt.id);
+    const submit = await screen.findByRole('button', { name: 'Submit question' });
+    submit.focus();
+    fireEvent.click(submit);
+    const cancel = await screen.findByRole('button', { name: 'Cancel', exact: true });
+    await waitFor(() => expect(cancel).toHaveFocus());
+    fireEvent.click(cancel);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Submit question' })).toHaveFocus(),
+    );
+    expect((await getQuestionSetAttempt(attempt.id))?.status).toBe('answering');
+  });
+
+  it('keeps deliberate focus when a pending save reveals blank-answer confirmation', async () => {
+    const { course, set } = await fixture(true);
+    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    open(course.id, set.id, attempt.id);
+    const answer = await screen.findByLabelText('Your answer');
+    const original = attemptRepository.saveQuestionSetResponseDraft;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const save = vi
+      .spyOn(attemptRepository, 'saveQuestionSetResponseDraft')
+      .mockImplementationOnce(async (...args) => {
+        await pending;
+        return original(...args);
+      });
+    fireEvent.change(answer, { target: { value: ' ' } });
+    const submit = screen.getByRole('button', { name: 'Submit paper' });
+    submit.focus();
+    fireEvent.click(submit);
+    await waitFor(() => expect(save).toHaveBeenCalled());
+    const other = screen.getByRole('button', { name: 'Save and finish later' });
+    other.focus();
+    release();
+    await screen.findByRole('button', { name: 'Submit unanswered' });
+    expect(other).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+    await screen.findByRole('button', { name: 'Submit paper' });
+    expect(other).toHaveFocus();
+  });
+
   it('keeps marking unresolved until every criterion is awarded, including explicit zero', async () => {
     const { course, set } = await fixture();
     const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
