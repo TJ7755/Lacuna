@@ -226,6 +226,12 @@ beforeEach(() => {
   });
 });
 
+async function expectShareLinkRevision(revision: number) {
+  const heading = await screen.findByRole('heading', { name: 'Share link', level: 3 });
+  const revisionLabel = screen.getByText(`Revision ${revision}`, { exact: true });
+  expect(heading.parentElement).toContainElement(revisionLabel);
+}
+
 describe('SharePage', () => {
   it('preselects the requested course from a valid courseId query', () => {
     mockCourses = [mockCourse];
@@ -457,7 +463,7 @@ describe('SharePage', () => {
     fireEvent.click(screen.getByText('Test Course'));
     fireEvent.click(screen.getByRole('button', { name: 'Share link'}));
     fireEvent.click(screen.getByText('Create share link'));
-    await screen.findByText('Share link · revision 1');
+    await expectShareLinkRevision(1);
     expect(mockPublishShareLink).toHaveBeenCalledWith(mockCourse.id);
     expect(screen.getByLabelText('Share link')).toHaveValue(
       `${desktop ? 'https://getlacuna.app' : window.location.origin}/#/s/${shareId}`,
@@ -482,7 +488,7 @@ describe('SharePage', () => {
     mockSummaries = { [linked.id]: mockSummary };
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 3');
+    await expectShareLinkRevision(3);
     expect(screen.getByLabelText('Share link')).toHaveValue(
       `${window.location.origin}/#/s/${shareId}`,
     );
@@ -505,7 +511,7 @@ describe('SharePage', () => {
     mockUnpublishShareLink.mockResolvedValue(undefined);
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 2');
+    await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, stop sharing' }));
     await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(linked.id));
@@ -556,7 +562,7 @@ describe('SharePage', () => {
     await waitFor(() =>
       expect(mockPublishShareLink).toHaveBeenCalledWith(linked.id, { replaceLink: true }),
     );
-    await screen.findByText('Share link · revision 2');
+    await expectShareLinkRevision(2);
     expect(screen.getByLabelText('Share link')).toHaveValue(
       `${window.location.origin}/#/s/${replacementId}`,
     );
@@ -580,7 +586,7 @@ describe('SharePage', () => {
     );
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 2');
+    await expectShareLinkRevision(2);
     fireEvent.click(screen.getByText(/Republish link/));
     await screen.findByText(/created on another device/);
     await waitFor(() => expect(screen.queryByLabelText('Share link')).not.toBeInTheDocument());
@@ -631,7 +637,7 @@ describe('SharePage', () => {
     mockSummaries = { [linked.id]: mockSummary };
     render(<SharePage />);
     fireEvent.click(screen.getByText('Test Course'));
-    await screen.findByText('Share link · revision 3');
+    await expectShareLinkRevision(3);
     expect(
       screen.getByText(/The course is at revision 5 — republish the link to upload it\./),
     ).toBeInTheDocument();
