@@ -60,4 +60,43 @@ describe('MarkdownView image enlargement', () => {
       'true',
     );
   });
+
+  it('names images whose author left out the alt text', () => {
+    const plain = render(<MarkdownView source={'<img src="https://example.com/a.png">'} />);
+    expect(plain.container.querySelector('img')).toHaveAttribute('alt', 'Image');
+    plain.unmount();
+
+    render(
+      <MarkdownView
+        source="[![](https://example.com/a.png)](https://example.com/ref)"
+        enlargeImages
+      />,
+    );
+    expect(screen.getByRole('link', { name: 'Image' })).toHaveAttribute(
+      'href',
+      'https://example.com/ref',
+    );
+  });
+
+  it('keeps an unnamed enlargeable image from announcing its file name', () => {
+    const { container } = render(
+      <MarkdownView source={'<img src="https://example.com/a.png">'} enlargeImages />,
+    );
+    expect(screen.getByRole('button', { name: 'Enlarge image' })).toBeInTheDocument();
+    expect(container.querySelector('img')).toHaveAttribute('alt', '');
+  });
+
+  it('opens and closes the enlarged image from the keyboard', () => {
+    render(<MarkdownView source={source} enlargeImages />);
+    const trigger = screen.getByRole('button', { name: 'Enlarge image: Diagram' });
+
+    // A native button activates on Enter or Space by dispatching a click.
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Image' });
+    expect(within(dialog).getByRole('button', { name: 'Close image' })).toHaveFocus();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
 });
