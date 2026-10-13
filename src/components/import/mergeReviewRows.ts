@@ -135,7 +135,7 @@ function cardFields(existing: Card | undefined, next: CardUpdate): ReviewField[]
     field('Front', existing?.front, incoming.front, true),
     field('Back', existing?.back, incoming.back, true),
     field('Card type', type(existing?.type), type(incoming.type)),
-    field('Tags', existing?.tags.join(', '), incoming.tags?.join(', ')),
+    field('Tags', existing?.tags?.join(', '), incoming.tags?.join(', ')),
     field('Answer mode', answerMode(existing?.answerMode), answerMode(incoming.answerMode)),
     field('Answer specification', payloadText(existing?.payload), payloadText(incoming.payload)),
   ];

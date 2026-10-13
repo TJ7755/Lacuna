@@ -170,6 +170,19 @@ function renderPanel() {
 }
 
 describe('MergeReviewPanel', () => {
+  it('compares a card without optional tags', () => {
+    const tags = cards[1].tags;
+    delete cards[1].tags;
+    try {
+      mockReview!.diff.updates.cards[0].tags = ['Published'];
+      renderPanel();
+      fireEvent.click(screen.getAllByRole('button', { name: 'Expand detail' })[0]);
+      expect(screen.getByText('Tags · Added')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+    } finally {
+      cards[1].tags = tags;
+    }
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     mockReview = fullReview();
