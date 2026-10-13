@@ -395,8 +395,8 @@ describe('Dashboard', () => {
     expect(screen.getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Exam-day forecast' })).toBeInTheDocument();
     const legend = screen.getByRole('list', { name: 'Courses' });
-    expect(within(legend).getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
-    expect(within(legend).getByRole('button', { name: 'Second Course' })).toBeInTheDocument();
+    expect(within(legend).getByRole('button', { name: 'Test Course On track' })).toBeInTheDocument();
+    expect(within(legend).getByRole('button', { name: 'Second Course Behind' })).toBeInTheDocument();
     // Each course's figure appears once, beside its point at today.
     expect(screen.getAllByText('93%')).toHaveLength(1);
     expect(screen.getAllByText('71%')).toHaveLength(1);
