@@ -444,3 +444,8 @@ since wrapping changes height.
 The stored theme defaults to `dark`, not `auto`, so `emulateMedia({ colorScheme })` alone no
 longer changes a fresh app's theme. Browser specs that need a theme set `lacuna-theme` with
 `page.addInitScript` before loading the app.
+
+## Do not run Prettier over whole files
+
+Many source and test files are not Prettier-clean. `prettier --write` on a touched file reformats
+unrelated lines and bloats the diff; format only the lines you changed.

@@ -282,7 +282,10 @@ with its card count), then **Review due cards** when due reviews remain, marked 
 because the between-steps screen offers them beside Continue. Each step and the session carry an
 "about N min" estimate from the course's mean review time, counting a new card as three reviews;
 a step with no cards has no estimate and the session total is then omitted. The sheet never shows
-steps beyond those two, since the planner decides one step at a time. Opened from Today, the
+steps beyond those two, since the planner decides one step at a time. With nothing to start, the sheet
+names the blocker: an empty course offers **Add cards** when its lessons are editable, a locked
+lesson is named with its unlock condition (release date or the lesson before it), and an archived
+course says to restore it. Opened from Today, the
 plan is followed by **Other ways**: due review on its own, each applicable named assessment and
 Practise until all correct. Opened from a course page, which has its own Other ways menu beside
 Study, the sheet leaves that section out. When an imminent
@@ -300,7 +303,7 @@ always previews the session before it starts. Once the curriculum is finished, t
 conductor's next step is that same due review, under the same name. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
 nodes remain editable on the path, and Edit mode exposes one **Add** menu (Lesson, Card practice,
-Practice questions, Checkpoint) rather than repeating insertion controls at every gap; the chosen
+Practice questions, Checkpoint, each with a one-line description of what it is for) rather than repeating insertion controls at every gap; the chosen
 form opens in its own bounded area beneath the menu, on single- and multi-lesson courses alike. Course Settings
 explains the distinction, lists existing manual nodes and links back to the path instead of
 duplicating the editor.

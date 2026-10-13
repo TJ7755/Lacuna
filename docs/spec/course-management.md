@@ -57,7 +57,7 @@
   seven days after creation at 23:59 in the learner's current IANA time zone; changing it preserves
   that wall-clock choice when the course and its mandatory **Final exam** assessment are created.
   Invalid or nonexistent local date-times block creation. The course still opens with an initial
-  **Lesson 1**, while the import tab remains independent of these creation-only fields.
+  **Lesson 1**, with keyboard focus on its **New card** button, while the import tab remains independent of these creation-only fields.
 - **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
   `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
   `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry

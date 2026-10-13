@@ -114,7 +114,7 @@ describe('HelpPage', () => {
         <HelpPage />
       </MemoryRouter>,
     );
-    for (const name of ['Settings', 'Analytics', 'How the scheduler works']) {
+    for (const name of ['Settings', 'Progress', 'How the scheduler works']) {
       const link = screen.getByRole('link', { name });
       expect(link.querySelector('button')).toBeNull();
       expect(link).toHaveClass('min-h-11');
@@ -131,11 +131,33 @@ describe('HelpPage', () => {
       screen.queryByText(/Still have questions\? Check the settings pages/),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('href', '/analytics');
+    expect(screen.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/analytics');
     expect(screen.getByRole('link', { name: 'How the scheduler works' })).toHaveAttribute(
       'href',
       '/method',
     );
+  });
+
+  it('describes study entry with the controls the study sheet shows', () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(/Review today/)).not.toBeInTheDocument();
+    expect(screen.queryByText('Study all cards')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Start session').length).toBeGreaterThan(0);
+  });
+
+  it('lets the shortcuts table scroll within itself from the keyboard', () => {
+    render(
+      <MemoryRouter>
+        <HelpPage />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole('region', { name: 'Keyboard shortcuts table' });
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(region).toHaveClass('overflow-x-auto');
   });
 
   it('explains how to share diagrams with their media using a course file', () => {

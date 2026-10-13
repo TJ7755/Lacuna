@@ -5,7 +5,7 @@
 // out, so nothing shifts when the mode changes. Bulk management (selecting,
 // deleting, importing, linking) lives in LessonCardsSection below.
 
-import { lazy, Suspense, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { PlusIcon, EditIcon } from '../ui/icons';
@@ -13,7 +13,12 @@ import { cn } from '../ui/cn';
 import { Button } from '../ui/Button';
 import { motionTransition } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { cardKindLabel, cardScheduleLabel, orderOcclusionSiblings, plainFront } from './lessonCardRow';
+import {
+  cardKindLabel,
+  cardScheduleLabel,
+  orderOcclusionSiblings,
+  plainFront,
+} from './lessonCardRow';
 import { ScheduleChip } from './ScheduleChip';
 import { OcclusionThumbnail } from './OcclusionThumbnail';
 import { useOcclusions } from '../../state/useCourseData';
@@ -37,6 +42,8 @@ interface LessonCardsListProps {
   footer?: ReactNode;
   /** Offered beside an empty View-mode list, where cards can only be added in Edit. */
   onSwitchToEdit?: () => void;
+  /** Focus New card on arrival, as the next step after creating a course. */
+  focusNewCard?: boolean;
   className?: string;
 }
 
@@ -49,7 +56,12 @@ export function LessonCardsList({
   footer,
   className,
   onSwitchToEdit,
+  focusNewCard = false,
 }: LessonCardsListProps) {
+  const newCardRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (focusNewCard && editable) newCardRef.current?.focus();
+  }, [focusNewCard, editable]);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const now = Date.now();
@@ -77,6 +89,7 @@ export function LessonCardsList({
           Cards in this lesson
         </h2>
         <motion.button
+          ref={newCardRef}
           type="button"
           {...fade}
           tabIndex={editable ? 0 : -1}
