@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentMemory, BackupFile, CourseRecord } from '../db/types';
+import type {
+  AgentMemory,
+  BackupFile,
+  Card,
+  CourseRecord,
+  Lesson,
+  Note,
+  Occlusion,
+  SchedulingUnitRecord,
+  SessionHistoryEntry,
+} from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { PRE_V22_BACKUP_MESSAGE } from '../db/portability';
 import {
   assertSnapshotSize,
@@ -97,6 +108,59 @@ describe('snapshot wire helpers', () => {
           'This sync snapshot is 0.00 MB, above the 0.00 MB limit. Reduce content in: Organic Chemistry.',
       });
     }
+  });
+
+  it('attributes cards, reviews and sessions to a course through their scheduling unit', () => {
+    const snapshot = backup({
+      courses: [
+        { id: 'alpha', name: 'Alpha' } as CourseRecord,
+        { id: 'beta', name: 'Beta', description: 'b'.repeat(2_000) } as unknown as CourseRecord,
+      ],
+      schedulingUnits: [{ id: 'unit-a', courseId: 'alpha' } as unknown as SchedulingUnitRecord],
+      cards: [
+        { id: 'card-a', schedulingUnitId: 'unit-a', front: 'q', back: 'a'.repeat(3_000) },
+      ] as unknown as Card[],
+      reviewHistory: [{ cardId: 'card-a', grade: 3 }] as unknown as ReviewHistoryEntry[],
+      sessionHistory: [
+        // A course id that is not in the snapshot falls back to the scheduling unit.
+        { timestamp: 1, deckId: 'old', courseId: 'gone', schedulingUnitId: 'unit-a' },
+        { timestamp: 2, deckId: 'unit-a' },
+      ] as SessionHistoryEntry[],
+    });
+
+    // Nothing is left over as "other local data", so every row found its course.
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('charges assets to the courses that reference them and the rest to other data', () => {
+    const hash = (char: string) => char.repeat(64);
+    const asset = (char: string, size: number) => ({
+      hash: hash(char),
+      data: 'x'.repeat(size),
+      mimeType: 'image/png',
+      createdAt: 1,
+    });
+    const snapshot = backup({
+      courses: [
+        { id: 'alpha', name: 'Alpha' } as CourseRecord,
+        { id: 'beta', name: 'Beta', description: 'b'.repeat(2_000) } as unknown as CourseRecord,
+      ],
+      lessons: [{ id: 'lesson-a', courseId: 'alpha' } as Lesson],
+      // Note references are matched case-insensitively.
+      notes: [
+        { id: 'note', lessonId: 'lesson-a', content: `![](lacuna-asset://${hash('A')})` },
+      ] as Note[],
+      occlusions: [{ id: 'occ', courseId: 'beta', assetHash: hash('c') }] as Occlusion[],
+      assets: [asset('a', 5_000), asset('c', 10)],
+    });
+
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual(['Alpha', 'Beta']);
+    snapshot.assets.push(asset('d', 10));
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual([
+      'Alpha',
+      'Beta',
+      'other local data',
+    ]);
   });
 
   it('treats absent memory tables as empty and attributes scoped and global memory bytes', () => {
