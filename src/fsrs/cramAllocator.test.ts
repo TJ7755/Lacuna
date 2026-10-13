@@ -73,6 +73,7 @@ interface TestCoefficients {
   standardDeviation?: number;
   productiveDelay?: Record<string, number>;
   validationReason?: Exclude<MemoryModelFallbackReason, 'missing'>;
+  unscorable?: Set<string>;
 }
 
 function testModel(coefficients: TestCoefficients) {
@@ -85,10 +86,12 @@ function testModel(coefficients: TestCoefficients) {
   });
   const model: CramMemoryModel = {
     version: 'explicit-test-coefficients',
-    validate: () =>
+    validate: ({ card: value }) =>
       coefficients.validationReason
         ? { valid: false, reason: coefficients.validationReason }
-        : { valid: true },
+        : coefficients.unscorable?.has(value.id)
+          ? { valid: false, reason: 'unsupported' }
+          : { valid: true },
     predictRecall: ({ card: value, at }) =>
       prediction(
         at === ASSESSMENT
@@ -389,6 +392,43 @@ describe('expected-gain allocator', () => {
         },
       }),
     ).toMatchObject({ mode: 'practice-fallback', fallbackReason: 'unsupported' });
+  });
+
+  it('ranks scorable cards and serves unscorable ones in objective order', () => {
+    const values = [
+      card('scored'),
+      card('new-strong', { stability: 100 }),
+      card('new-weak', { stability: 1 }),
+    ];
+    const { model } = testModel({
+      successNow: { scored: 0.5 },
+      examNow: { scored: 0.4 },
+      after: { scored: { 1: 0.5, 2: 0.8, 3: 0.8, 4: 0.8 } },
+      unscorable: new Set(['new-strong', 'new-weak']),
+    });
+    const ordinary = sortByObjective(values.slice(1), makeObjectiveContext(deck()), NOW).map(
+      ({ card: value }) => value.id,
+    );
+    const result = allocateCramReview(allocationInput(values, model));
+    expect(result).toMatchObject({ mode: 'memory-model', selected: { card: { id: 'scored' } } });
+    expect(result.mode === 'memory-model' && result.fallbackCards.map(({ id }) => id)).toEqual(
+      ordinary,
+    );
+
+    const { model: noGain } = testModel({
+      successNow: { scored: 0.5 },
+      examNow: { scored: 0.4 },
+      after: { scored: { 1: 0.4, 2: 0.4, 3: 0.4, 4: 0.4 } },
+      unscorable: new Set(['new-strong', 'new-weak']),
+    });
+    const unranked = allocateCramReview(allocationInput(values, noGain));
+    expect(unranked).toMatchObject({ mode: 'memory-model', selected: null, ranked: [] });
+    expect(unranked.mode === 'memory-model' && unranked.stopReason).toBeUndefined();
+    const leftover = allocateCramReview({
+      ...allocationInput(values, model),
+      eligibleCardIds: new Set(['new-strong', 'new-weak']),
+    });
+    expect(leftover).toMatchObject({ mode: 'practice-fallback', fallbackReason: 'unsupported' });
   });
 
   it('falls back instead of using out-of-range predicted confidence', () => {

@@ -1,0 +1,1 @@
+- Keep ranking revision cards when some cards in the pool have no memory-model history, serving those cards in objective order instead of dropping the whole session to ordinary Practice. Thanks to nc-3388 (#503).
