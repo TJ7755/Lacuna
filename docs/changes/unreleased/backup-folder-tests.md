@@ -1,0 +1,1 @@
+- Unit-test backup folder selection, permission refusal and mirror file naming, which had no direct coverage.
