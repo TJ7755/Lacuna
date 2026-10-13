@@ -21,6 +21,19 @@ export const STATUS_COLOUR: Record<ForecastStatus, string> = {
   steady: 'hsl(var(--ink-faint))',
 };
 
+/**
+ * Lines are told apart by course, not status: four on-track courses would otherwise draw four
+ * identical green lines. The first course takes the readable accent; the rest use the chart series.
+ */
+export function courseColour(index: number): string {
+  return index === 0 ? 'hsl(var(--accent-ink))' : `hsl(var(--series-${((index - 1) % 5) + 1}))`;
+}
+
+const STATUS_LABEL: Partial<Record<ForecastStatus, string>> = {
+  ahead: 'On track',
+  behind: 'Behind',
+};
+
 export function forecastStatus(forecast: CourseForecast): ForecastStatus {
   if (!forecast.hasExam) return 'steady';
   return forecast.ifStopped + 0.005 >= forecast.target ? 'ahead' : 'behind';
@@ -195,7 +208,7 @@ export function ForecastChart({
           Exam-day forecast
         </h2>
         <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
-          {lines.map((line) => (
+          {lines.map((line, index) => (
             <li key={line.id}>
               <button
                 type="button"
@@ -208,11 +221,16 @@ export function ForecastChart({
                 <span
                   aria-hidden="true"
                   className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: STATUS_COLOUR[line.status] }}
+                  style={{ background: courseColour(index) }}
                 />
                 <span className="max-w-[14rem] truncate" title={line.name}>
                   {line.name}
                 </span>
+                {STATUS_LABEL[line.status] && (
+                  <span className={line.status === 'behind' ? 'text-warning-fg' : 'text-ink-faint'}>
+                    {STATUS_LABEL[line.status]}
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -305,7 +323,7 @@ export function ForecastChart({
               <motion.path
                 d={smoothPath(points)}
                 fill="none"
-                stroke={STATUS_COLOUR[line.status]}
+                stroke={courseColour(index)}
                 strokeWidth={focus === line.id ? 4.5 : 3.5}
                 strokeLinecap="round"
                 initial={draw ? { pathLength: 0 } : false}
@@ -318,7 +336,7 @@ export function ForecastChart({
                     cx={last.x}
                     cy={last.y}
                     r={5}
-                    fill={STATUS_COLOUR[line.status]}
+                    fill={courseColour(index)}
                     initial={draw ? { scale: 0 } : false}
                     animate={{ scale: 1 }}
                     style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
@@ -334,7 +352,7 @@ export function ForecastChart({
                       cy={last.y}
                       r={5}
                       fill="none"
-                      stroke={STATUS_COLOUR[line.status]}
+                      stroke={courseColour(index)}
                       strokeWidth={2}
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                       initial={{ scale: 1, opacity: 0 }}

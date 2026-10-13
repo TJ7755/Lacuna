@@ -17,6 +17,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   restrained green tint; warning colours retain their semantic role.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
   (orange) for on-track, failure and behind-target states.
+- **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where
+  lines stand for things rather than states (the exam-day forecast's courses), with separate
+  light and dark values.
 - **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
   never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
   Segmented controls are a pill track with a white pill that slides between options; when the

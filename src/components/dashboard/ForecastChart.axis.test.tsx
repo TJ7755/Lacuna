@@ -39,4 +39,26 @@ describe('ForecastChart axis', () => {
     expect(screen.queryByText(/· Exam/)).not.toBeInTheDocument();
     expect(screen.getByText(/^Exam .+ →$/)).toBeInTheDocument();
   });
+
+  it('colours each course apart and states its status in the legend', () => {
+    const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.7 + k * 0.1 }));
+    const ahead = { ...forecast(7), ifStopped: 0.95 };
+    const { container } = render(
+      <ForecastChart
+        lines={[
+          { id: 'a', name: 'Biology', status: 'ahead', forecast: ahead, history },
+          { id: 'b', name: 'Chemistry', status: 'ahead', forecast: ahead, history },
+          { id: 'c', name: 'Physics', status: 'behind', forecast: forecast(7), history },
+        ]}
+        now={NOW}
+        past={18}
+        future={12}
+        multiplier={0}
+      />,
+    );
+    const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
+    expect(new Set(strokes).size).toBe(3);
+    expect(screen.getByRole('button', { name: 'Biology On track' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Physics Behind' })).toBeInTheDocument();
+  });
 });
