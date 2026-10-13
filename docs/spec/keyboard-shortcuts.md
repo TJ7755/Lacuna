@@ -15,6 +15,7 @@
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
 | Question-set attempt   | `Ctrl/Cmd+Enter`    | Primary action; progress explicit manual marking |
 | Sequence editor        | `Ctrl/Cmd+Enter`   | Save                                  |
+| Question editor        | `Ctrl/Cmd+Enter`   | Save (and add another, for new Questions) |
 | Sequence item          | `Enter`            | Next item (split at the caret); on an empty item, new section |
 | Sequence item          | `Shift+Enter`      | Line break within the item            |
 | Sequence item          | `Backspace` at start | Join to the item above, or remove a section break |
