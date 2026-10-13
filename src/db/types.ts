@@ -414,6 +414,10 @@ export interface CourseDistributedCopy {
   autoAcceptUpdates: boolean;
   /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
   sourceLabel?: string;
+  /** The teacher's course details as last imported. A later update applies a changed
+   *  detail only where the local value still matches this, so a learner's own rename
+   *  survives. Absent on copies imported before course details were updated. */
+  source?: { name: string; description: string; unlockMode: UnlockMode };
 }
 
 /**

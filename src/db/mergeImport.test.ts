@@ -223,6 +223,7 @@ describe('mergeImport: first import of a lineage', () => {
       locked: true,
       autoAcceptUpdates: false,
       sourceLabel: 'Ms Teacher',
+      source: { name: 'Biology', description: '', unlockMode: 'open' },
     });
 
     const lesson = await db.lessons.get('lesson-1');
@@ -1358,6 +1359,52 @@ describe('mergeImport: merge apply', () => {
     expect(after[0].reps).toBe(4);
     expect(after[0].stability).toBe(12);
     expect((await db.occlusions.get('occ-1'))?.regions[0].y).toBe(0.3);
+  });
+});
+
+describe('mergeImport: course details', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  const course = (overrides: Partial<SharePayloadV2['course']> = {}): SharePayloadV2['course'] => ({
+    n: 'Biology',
+    d: 'Cells and genes',
+    o: 0,
+    c: 1000,
+    um: 'open',
+    ...overrides,
+  });
+
+  it("passes the teacher's new name, description and unlock mode on to the copy", async () => {
+    const imported = await importLineageFirstTime(coursePayload({ course: course(), lessons: [lessonOne()] }));
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({
+        rv: 2,
+        course: course({ n: 'Biology A', d: 'Revised', um: 'linear' }),
+        lessons: [lessonOne()],
+      }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'Biology A',
+      description: 'Revised',
+      unlockMode: 'linear',
+    });
+  });
+
+  it("keeps the learner's own rename while still taking other teacher changes", async () => {
+    const imported = await importLineageFirstTime(coursePayload({ course: course(), lessons: [lessonOne()] }));
+    await db.courses.update(imported.course.id, { name: 'My biology' });
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({ rv: 2, course: course({ n: 'Biology A', d: 'Revised' }), lessons: [lessonOne()] }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'My biology',
+      description: 'Revised',
+    });
   });
 });
 
