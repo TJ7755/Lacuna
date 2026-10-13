@@ -98,13 +98,19 @@ export function CardsPage() {
   const filterCounts = useMemo(() => {
     const counts = {} as Record<CardFilter, number>;
     for (const chip of CARD_FILTER_CHIPS) {
-      counts[chip.value] = filterSessionCardPool(cards ?? [], { filters: [chip.value] }).length;
+      counts[chip.value] = filterSessionCardPool(cards ?? [], {
+        filters: [chip.value],
+        leechThreshold: course?.leechThreshold,
+      }).length;
     }
     return counts;
-  }, [cards]);
+  }, [cards, course?.leechThreshold]);
   const { byLesson, unassigned, lessonsWithCards, shownCount } = useMemo(() => {
     const availableLessons = lessons ?? [];
-    const availableCards = filterSessionCardPool(cards ?? [], { filters: [...filters] });
+    const availableCards = filterSessionCardPool(cards ?? [], {
+      filters: [...filters],
+      leechThreshold: course?.leechThreshold,
+    });
     const lessonIdSet = new Set(availableLessons.map((lesson) => lesson.id));
     const byLesson = new Map<string, Card[]>();
     const unassigned: Card[] = [];
@@ -134,7 +140,7 @@ export function CardsPage() {
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query, filters]);
+  }, [cards, lessons, query, filters, course?.leechThreshold]);
 
   usePageShortcuts({
     '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
@@ -298,7 +304,8 @@ const BUCKET_CLASS =
   'rounded-3xl bg-surface p-4 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-5';
 
 /** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
-const LESSON_SECTION_CLASS = 'pt-2 [div+div>&]:mt-3 [div+div>&]:border-t [div+div>&]:border-line [div+div>&]:pt-5';
+const LESSON_SECTION_CLASS =
+  'pt-2 [div+div>&]:mt-3 [div+div>&]:border-t [div+div>&]:border-line [div+div>&]:pt-5';
 
 interface AssignableLesson {
   id: string;

@@ -3,7 +3,14 @@
 import { startOfDay } from '../../utils/datetime';
 import { isLeech } from '../../fsrs/leech';
 import { progressValue } from '../../fsrs/objective';
-import type { Card, Lesson, ReviewLog, SchedulerConfig, SessionHistoryEntry } from '../../db/types';
+import type {
+  Card,
+  Course,
+  Lesson,
+  ReviewLog,
+  SchedulerConfig,
+  SessionHistoryEntry,
+} from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 
 /** DST-safe day offset: add/subtract whole days from a local-midnight epoch. */
@@ -230,11 +237,16 @@ export interface LeechCount {
 }
 
 /** Leech counts per course, sorted descending. */
-export function leechCountByCourse(cards: Card[], courseMap: Map<string, string>): LeechCount[] {
+export function leechCountByCourse(
+  cards: Card[],
+  courseMap: Map<string, Pick<Course, 'name' | 'leechThreshold'>>,
+): LeechCount[] {
   const counts = new Map<string, number>();
   for (const card of cards) {
-    if (!card.courseId || !isLeech(card)) continue;
-    const courseName = courseMap.get(card.courseId) ?? 'Unknown';
+    if (!card.courseId) continue;
+    const course = courseMap.get(card.courseId);
+    if (!isLeech(card, course?.leechThreshold)) continue;
+    const courseName = course?.name ?? 'Unknown';
     counts.set(courseName, (counts.get(courseName) ?? 0) + 1);
   }
   return [...counts.entries()]

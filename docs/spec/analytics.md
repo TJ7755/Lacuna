@@ -45,8 +45,10 @@
   Card filters and expanded list. The shell restores scroll; returning input focus
   does not scroll away from that position. Search remains offline and introduces no
   stored learner-data format.
-- **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
-  the search filter, but scheduling is never changed automatically.
+- **Leech** = a card whose `lapses` reach its Course's leech threshold (default 8,
+  `src/fsrs/leech.ts`); surfaced via a badge, the search and Cards filters and Progress
+  counts, which all apply the same per-Course threshold. Scheduling is never changed
+  automatically.
 
 ### Dashboard signals (`src/fsrs/stats.ts`, `StudySignals`)
 
@@ -145,8 +147,11 @@ aggregating across every course:
   since that card's first review. The chart reports the observed recall rate for
   each age bucket and exposes its sample count (`n`) in the tooltip; it is not a
   current-state retention estimate or forecast.
-- **Leech count by course** — horizontal bar chart of leeches per course.
-- **Stability profile** — distribution of cards by stability range.
+- **Leech count by course** — horizontal bar chart of leeches per course, explaining that
+  rewording or splitting helps more than further review, with **Show leech cards** opening
+  full-page search on the Leeches filter.
+- **Stability profile** — distribution of cards by stability range: the days until a card's
+  predicted recall falls to 90%, with new cards (no estimate yet) shown apart.
 
 Charts are wrapped in `ChartCard` (a consistent titled frame with an empty
 state and keyboard-accessible **View data** tables for the plotted values and units), in a `lg:grid-cols-2` grid. `FadeInView` triggers the entrance

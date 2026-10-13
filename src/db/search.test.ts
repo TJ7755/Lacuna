@@ -167,6 +167,17 @@ describe('searchCards', () => {
     ]);
   });
 
+  it("applies the owning Course's leech threshold", () => {
+    const cards = [card('three', { lapses: 3 }), card('two', { lapses: 2 })];
+    const scope = { cards, courses: [{ ...course, leechThreshold: 3 }], lessons: [lesson] };
+    expect(searchCardsInScope('', scope, { filters: ['leech'] }).map((r) => r.card.id)).toEqual([
+      'three',
+    ]);
+    expect(
+      filterSessionCardPool(cards, { filters: ['leech'], leechThreshold: 3 }).map((c) => c.id),
+    ).toEqual(['three']);
+  });
+
   it('combines multiple filters with AND', () => {
     const cards = [
       card('both', { flagged: true, lapses: DEFAULT_LEECH_LAPSE_THRESHOLD }),

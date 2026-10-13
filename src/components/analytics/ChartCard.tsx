@@ -43,6 +43,7 @@ export function ChartCard({
   children,
   className,
   compactEmpty = false,
+  action,
 }: {
   title: string;
   data?: { columns: string[]; rows: (string | number)[][] };
@@ -58,6 +59,8 @@ export function ChartCard({
   className?: string;
   /** Use for explanatory empty states that do not need to reserve chart height. */
   compactEmpty?: boolean;
+  /** A route to the affected cards, shown under a populated chart. */
+  action?: ReactNode;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -114,8 +117,9 @@ export function ChartCard({
           <RevealContext.Provider value={revealed}>{children}</RevealContext.Provider>
         </motion.div>
       )}
+      {!empty && action && <div className="mt-3 text-sm">{action}</div>}
       {!empty && data && data.rows.length > 0 && (
-        <details className="mt-3 text-sm">
+        <details className={cn('text-sm', action ? 'mt-1' : 'mt-3')}>
           <summary className="-ml-3 inline-flex min-h-11 w-fit cursor-pointer items-center rounded-full px-3 text-ink-soft hover:bg-ink/[0.05] focus-visible:outline-2 focus-visible:outline-accent">
             View data
           </summary>
