@@ -98,6 +98,11 @@ Specific motion (current state of the app):
   surfaces dip as gently as pills. It animates the standalone `scale` property, so it
   composes with a control's own transform. Controls that animate their own press carry
   `data-press` to opt out.
+- **Typing feedback (`typingFeedback.ts`):** typing in a text field, textarea or editable
+  region gives a soft accent glow round the field that fades back to its resting style. Only
+  the box shadow animates, so text, caret and layout stay still; a burst of typing shares one
+  glow. It follows the motion-speed setting, and fields carry `data-no-typing-feedback` to
+  opt out.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a
