@@ -119,9 +119,17 @@ export function selectQuestionSession(
   if (limit === 0) return [];
 
   const dueIds = new Set(due.map((item) => item.question.id));
+  // A shown Question with no schedule (abandoned, undone or ungraded) is still new, so it
+  // returns after the unseen ones rather than never.
   const unseen = ranked
-    .filter((item) => item.exposureCount === 0 && !dueIds.has(item.question.id))
+    .filter(
+      (item) =>
+        (item.exposureCount === 0 || item.question.due === null) && !dueIds.has(item.question.id),
+    )
     .sort((left, right) => {
+      if (left.exposureCount !== right.exposureCount) {
+        return left.exposureCount - right.exposureCount;
+      }
       if (left.question.kind !== right.question.kind)
         return left.question.kind === 'fixed' ? -1 : 1;
       return left.question.id.localeCompare(right.question.id);
