@@ -549,7 +549,9 @@ export function SequenceEditor() {
       <div
         role="region"
         aria-label="Sequence editor actions"
-        className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
+        // Bleeds to exactly the page frame's padding at each width (PAGE_FRAME), so it never
+        // overhangs the page when that padding is fixed and the text is enlarged.
+        className="pointer-events-none sticky bottom-0 z-30 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10"
       >
         <div className="pointer-events-auto ml-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-3">
           {saveError ? (
@@ -564,7 +566,12 @@ export function SequenceEditor() {
           <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleSave} disabled={saving}>
+          <Button
+            variant="primary"
+            onClick={handleSave}
+            disabled={saving}
+            className="whitespace-nowrap"
+          >
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>
