@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Fflate from 'fflate';
 
 vi.mock('fflate', async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const actual = (await importOriginal()) as typeof import('fflate');
+  const actual = await importOriginal<typeof Fflate>();
   return {
     ...actual,
     unzipSync: vi.fn((...args: Parameters<typeof actual.unzipSync>) => actual.unzipSync(...args)),
