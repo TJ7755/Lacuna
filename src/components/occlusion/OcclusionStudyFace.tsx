@@ -27,13 +27,14 @@ export function OcclusionStudyFace({
   className?: string;
 }) {
   const face = resolveOcclusionFace(occlusion, card.occlusionRegionId);
+  const hasFace = Boolean(face);
   // Tri-state: undefined while resolving (renders nothing, avoiding a fallback-text
   // flash before the — typically near-instant, IndexedDB-backed — asset resolves), null
   // once resolution confirms the asset is missing.
   const [assetUrl, setAssetUrl] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    if (!face) return;
+    if (!hasFace) return;
     let cancelled = false;
     setAssetUrl(undefined);
     void resolveAssetUrl(occlusion.assetHash).then((url) => {
@@ -44,10 +45,9 @@ export function OcclusionStudyFace({
     };
     // `face` is recomputed fresh every render (a plain object, not memoised) — depending
     // on it directly would re-run this effect (and reset assetUrl) on every render.
-    // Depending on the region id instead captures the same "does this card's region
-    // still resolve" condition without that churn.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [occlusion.assetHash, card.occlusionRegionId]);
+    // Depending on whether it resolves, and on the region id, captures the same "does
+    // this card's region still resolve" condition without that churn.
+  }, [occlusion.assetHash, card.occlusionRegionId, hasFace]);
 
   const fallback = (
     <MarkdownView source={side === 'front' ? card.front : card.back} className={className} />
