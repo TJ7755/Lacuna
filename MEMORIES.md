@@ -45,6 +45,12 @@ Parallel Node validation exhausted the prompter's laptop memory in October 2026.
 Use hosted GitHub Actions for full build, lint and browser gates. Any necessary local
 check must run alone; do not overlap it with agent runners or development servers.
 
+## CI runs only against master
+
+`ci.yml` and `security.yml` trigger on pull requests into `master`/`main` alone. A pull request
+into a feature branch such as `redesign/direction-c` shows only the Vercel check, so green there
+proves nothing: run lint, the touched tests and any affected e2e locally before merging.
+
 ## Windows dependency installation
 
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.

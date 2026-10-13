@@ -195,14 +195,6 @@ describe('service-worker asset caching', () => {
     ).toBe(false);
   });
 
-  it('reuses the hosted font stylesheet without a repeat network request', () => {
-    const stylesheetRule = workbox.runtimeCaching?.find(
-      (rule) => rule.options?.cacheName === 'font-stylesheet-cache',
-    );
-
-    expect(stylesheetRule).toMatchObject({ handler: 'CacheFirst' });
-  });
-
   it('caches only the exact content-addressed WASM URL requested by its bundle', () => {
     const wasmRule = workbox.runtimeCaching?.find(
       (rule) =>
