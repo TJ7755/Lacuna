@@ -1,0 +1,1 @@
+- The concurrent-review sync e2e now expects the fuzzed schedule that merge replay produces since #485, so it no longer fails on every run
