@@ -125,6 +125,57 @@ describe('StudySheet', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
   });
 
+  it('offers to add cards when the course is empty', () => {
+    Object.assign(mockFlows.chem, { decision: { kind: 'empty' } });
+    renderSheet('chem');
+    fireEvent.click(screen.getByRole('button', { name: 'Add cards' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/chem/cards/new');
+  });
+
+  it('does not offer to add cards to a locked copy', () => {
+    Object.assign(mockFlows.chem, {
+      course: { ...chemistry, distributedCopy: { locked: true } },
+      decision: { kind: 'empty' },
+    });
+    renderSheet('chem');
+    expect(screen.getByText('This course has no cards yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add cards' })).not.toBeInTheDocument();
+  });
+
+  it('names the locked lesson and what unlocks it', () => {
+    Object.assign(mockFlows.chem, {
+      course: { ...chemistry, unlockMode: 'semi-linear' },
+      decision: { kind: 'blocked', reason: 'curriculum-locked' },
+      snapshot: {
+        ...mockFlows.chem.snapshot,
+        nodes: [
+          {
+            id: 'l1',
+            nodeType: 'lesson',
+            status: 'completed',
+            lesson: { id: 'l1', name: 'Atoms', orderIndex: 0 },
+          },
+          {
+            id: 'l2',
+            nodeType: 'lesson',
+            status: 'locked',
+            lesson: { id: 'l2', name: 'Bonding', orderIndex: 1 },
+          },
+        ],
+      },
+    });
+    renderSheet('chem');
+    expect(
+      screen.getByText(/is locked\. Unlocks once the lesson before it is complete\./),
+    ).toHaveTextContent('Bonding is locked.');
+  });
+
+  it('says an archived course must be restored rather than calling it locked', () => {
+    Object.assign(mockFlows.chem, { decision: { kind: 'blocked', reason: 'archived' } });
+    renderSheet('chem');
+    expect(screen.getByText('This course is archived. Restore it to study.')).toBeInTheDocument();
+  });
+
   it('crossfades from the course picker to that course\'s options', async () => {
     renderSheet();
     expect(screen.getByRole('heading', { name: 'Which course?' })).toBeInTheDocument();

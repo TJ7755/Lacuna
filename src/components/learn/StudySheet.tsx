@@ -25,6 +25,9 @@ import { StepSwap } from '../ui/StepSwap';
 import { ArrowRightIcon, ChevronLeftIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { planStudySession } from '../../course/studySessionPlan';
+import { canEditLessons } from '../../course/lessonViewMode';
+import { lessonEffectiveReleaseDates } from '../../course/path';
+import { lockHintFor } from '../course/lockHint';
 import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 export function StudySheet({
@@ -322,13 +325,7 @@ function CourseStudyOptions({
           </Button>
         </>
       ) : (
-        <p className="py-1 text-sm text-ink-soft">
-          {flow.decision.kind === 'empty'
-            ? 'This course has no cards yet.'
-            : flow.decision.kind === 'blocked'
-              ? 'The next lesson is locked until earlier work is complete.'
-              : 'Everything here is finished for now.'}
-        </p>
+        <NothingToStudy flow={flow} onAddCards={() => navigate(`/course/${courseId}/cards/new`)} />
       )}
 
       {otherWays && (canReviewDueCards || assessments.length > 0 || (course && !course.archived)) && (
@@ -367,6 +364,66 @@ function CourseStudyOptions({
       </Button>
     </>
   );
+}
+
+/**
+ * Why there is no session, naming the actual blocker, with the authoring route when
+ * the course has nothing in it and the reader may add to it.
+ */
+function NothingToStudy({
+  flow,
+  onAddCards,
+}: {
+  flow: NonNullable<ReturnType<typeof useCourseStudyFlow>>;
+  onAddCards: () => void;
+}) {
+  const { decision, course, snapshot } = flow;
+  if (decision.kind === 'empty') {
+    return (
+      <>
+        <p className="py-1 text-sm text-ink-soft">This course has no cards yet.</p>
+        {canEditLessons(course) && (
+          <Button variant="primary" size="lg" onClick={onAddCards}>
+            Add cards
+          </Button>
+        )}
+      </>
+    );
+  }
+  if (decision.kind === 'blocked') {
+    if (decision.reason === 'archived') {
+      return (
+        <p className="py-1 text-sm text-ink-soft">This course is archived. Restore it to study.</p>
+      );
+    }
+    const lessons = snapshot.nodes.flatMap((node) => (node.nodeType === 'lesson' ? [node] : []));
+    const next = lessons.find((node) => node.status === 'locked');
+    const hint =
+      next &&
+      lockHintFor(
+        course,
+        next.id,
+        lessonEffectiveReleaseDates(
+          course,
+          lessons.map((node) => node.lesson),
+        ),
+      );
+    return (
+      <p className="py-1 text-sm text-ink-soft">
+        {next ? (
+          <>
+            <span className="font-semibold text-ink [overflow-wrap:anywhere]">
+              {next.lesson.name}
+            </span>
+            {` is locked. ${hint ?? 'It unlocks once earlier work is complete'}.`}
+          </>
+        ) : (
+          'The next lesson is locked until earlier work is complete.'
+        )}
+      </p>
+    );
+  }
+  return <p className="py-1 text-sm text-ink-soft">Everything here is finished for now.</p>;
 }
 
 function AllCoursesButton({ onClick }: { onClick: () => void }) {

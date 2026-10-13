@@ -304,6 +304,11 @@ export function Menu({
                     }}
                     type="button"
                     role="menuitem"
+                    // The label alone names the action; the description supports it.
+                    aria-label={item.description ? item.label : undefined}
+                    aria-describedby={
+                      item.description ? `${menuId}-${index}-description` : undefined
+                    }
                     disabled={item.disabled}
                     tabIndex={index === activeIndex ? 0 : -1}
                     onClick={() => {
@@ -322,7 +327,12 @@ export function Menu({
                     {item.description ? (
                       <span className="flex flex-col">
                         <strong className="font-bold">{item.label}</strong>
-                        <span className="text-[13px] text-ink-faint">{item.description}</span>
+                        <span
+                          id={`${menuId}-${index}-description`}
+                          className="text-[13px] text-ink-faint"
+                        >
+                          {item.description}
+                        </span>
                       </span>
                     ) : (
                       item.label

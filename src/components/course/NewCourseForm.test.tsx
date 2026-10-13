@@ -93,7 +93,9 @@ describe('NewCourseForm', () => {
       }),
     );
     expect(mocks.createLesson).toHaveBeenCalledWith('new-course', 'Lesson 1');
-    expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course');
+    expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course', {
+      state: { focusNewCard: true },
+    });
   });
 
   it('creates a steady-retention course without fabricating an exam date', async () => {

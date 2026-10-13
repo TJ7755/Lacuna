@@ -66,7 +66,7 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
       );
       await createLesson(course.id, 'Lesson 1');
       onClose();
-      void navigate(`/course/${course.id}`);
+      void navigate(`/course/${course.id}`, { state: { focusNewCard: true } });
     } catch (err) {
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not create the course.', 'negative');

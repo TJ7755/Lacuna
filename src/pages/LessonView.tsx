@@ -18,7 +18,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { m as motion } from 'motion/react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { db } from '../db/schema';
 import {
   useCourse,
@@ -107,6 +107,9 @@ export function LessonView({
   const isInline = courseIdProp !== undefined;
 
   const navigate = useNavigate();
+  // Set by NewCourseForm, so a fresh course opens ready for its first card.
+  const focusNewCard =
+    (useLocation().state as { focusNewCard?: boolean } | null)?.focusNewCard === true;
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const motionMultiplier = speedMultiplier(motionSpeed);
@@ -404,6 +407,7 @@ export function LessonView({
                 editable={viewMode === 'edit'}
                 onNavigate={navigate}
                 onSwitchToEdit={switchToEdit}
+                focusNewCard={focusNewCard && lessonCards.length === 0}
                 className="flex-[2_1_340px]"
                 footer={
                   !archived && !isInline ? (

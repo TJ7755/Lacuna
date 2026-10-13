@@ -7,10 +7,25 @@ import { expandingActionSpring } from '../ui/motion';
 export type CourseAddKind = 'lesson' | 'practice' | 'question-set' | 'checkpoint';
 
 const options = [
-  { kind: 'lesson', name: 'Lesson', Icon: FileTextIcon },
-  { kind: 'practice', name: 'Card practice', Icon: CardsIcon },
-  { kind: 'question-set', name: 'Practice questions', Icon: HelpIcon },
-  { kind: 'checkpoint', name: 'Checkpoint', Icon: FlagIcon },
+  { kind: 'lesson', name: 'Lesson', description: 'Learn new cards', Icon: FileTextIcon },
+  {
+    kind: 'practice',
+    name: 'Card practice',
+    description: 'Revise earlier lessons',
+    Icon: CardsIcon,
+  },
+  {
+    kind: 'question-set',
+    name: 'Practice questions',
+    description: 'Answer exam-style questions',
+    Icon: HelpIcon,
+  },
+  {
+    kind: 'checkpoint',
+    name: 'Checkpoint',
+    description: 'A dated test to prepare for',
+    Icon: FlagIcon,
+  },
 ] as const;
 
 /** The shared action surface expands from the button's own corner. */
@@ -27,8 +42,9 @@ export function AddCourseControl({
   return (
     <Menu
       label="Add"
-      items={visible.map(({ kind, name, Icon }) => ({
+      items={visible.map(({ kind, name, description, Icon }) => ({
         label: name,
+        description,
         icon: <Icon width={17} height={17} />,
         onSelect: () => onAdd(kind),
       }))}

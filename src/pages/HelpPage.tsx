@@ -186,15 +186,15 @@ export function HelpPage() {
         content: (
           <div className="space-y-4">
             <p className="text-base text-ink-soft">
-              Lacuna offers several ways to study your cards. Each mode is designed for a different
-              purpose. You can start a session from a lesson or the course path, or choose{' '}
-              <strong>Review today</strong> for a session across every course.
+              Choose <strong>Study</strong> on Today or a course page to see that course&rsquo;s
+              plan, then <strong>Start session</strong>. <strong>Other ways</strong> in the same
+              sheet offers the alternatives below.
             </p>
             <div className="grid gap-3">
               <ModeCard
-                title="Study all cards"
-                description="The default study mode. Uses the FSRS algorithm to schedule cards based on when you are likely to forget them, weighted towards your exam date."
-                whatItDoes="Shows cards that are due for review, plus a limited number of new cards each day. The algorithm tracks your performance and schedules each card at the optimal interval to maximise retention while minimising workload."
+                title="Start session"
+                description="The default session. Uses the FSRS algorithm to schedule cards based on when you are likely to forget them, weighted towards your exam date."
+                whatItDoes="Follows the course path: the next lesson or Card practice first, then the cards due for review. The algorithm tracks your performance and schedules each card at the interval that best balances retention against workload."
                 whenToUse="Use this for your day-to-day studying. It is the most efficient mode for long-term retention."
                 tip="If you have an exam date set, the algorithm prioritises cards that will be weakest on exam day. The progress bar shows how many cards are 'secured' (predicted retrievability above 90%)."
               />
@@ -350,8 +350,14 @@ export function HelpPage() {
             <p className="text-base text-ink-soft">
               All shortcuts can be customised in Settings &rarr; Keyboard shortcuts.
             </p>
-            <div className="overflow-hidden rounded-xl border border-line">
-              <table className="w-full text-sm">
+            {/* Scrolls within itself on narrow screens or enlarged text, so no column is clipped. */}
+            <div
+              role="region"
+              aria-label="Keyboard shortcuts table"
+              tabIndex={0}
+              className="overflow-x-auto rounded-xl border border-line focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+            >
+              <table className="w-full min-w-max text-sm">
                 <thead>
                   <tr className="border-b border-line bg-surface-raised">
                     <th className="px-4 py-3 text-left font-medium text-ink">Action</th>
@@ -841,7 +847,7 @@ export function HelpPage() {
                 </Link>
                 <Link to="/analytics" className={FOOTER_LINK_CLASS}>
                   <ChartIcon width={16} height={16} />
-                  Analytics
+                  Progress
                 </Link>
                 <Link to="/method" className={FOOTER_LINK_CLASS}>
                   <SparklesIcon width={16} height={16} />
