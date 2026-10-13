@@ -77,11 +77,13 @@ function toShareLessonInput(lesson: Extract<Awaited<ReturnType<typeof decodeShar
       if (!note.oi) throw new McpToolException({ kind: 'validation', message: 'Lineage payload note is missing its originating id.' });
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards.map((card): ShareCardInput => {
-      if (!card.id) throw new McpToolException({ kind: 'validation', message: 'Lineage payload card is missing its originating id.' });
-      return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g };
-    }),
+    cards: lesson.cards.map(toShareCardInput),
   };
+}
+
+function toShareCardInput(card: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number]['cards'][number]): ShareCardInput {
+  if (!card.id) throw new McpToolException({ kind: 'validation', message: 'Lineage payload card is missing its originating id.' });
+  return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g };
 }
 
 function toExistingLesson(lesson: Lesson): ExistingLesson {
@@ -103,7 +105,7 @@ function toExistingNote(note: Note): ExistingNote {
 }
 
 function toExistingCard(card: Card): ExistingCard {
-  return { id: card.id, type: card.type, front: card.front, back: card.back, tags: card.tags };
+  return { id: card.id, lessonId: card.primaryLessonId ?? null, type: card.type, front: card.front, back: card.back, tags: card.tags };
 }
 
 /** Empty membership/snapshot registry for a lineage this course has not merged before —
@@ -206,7 +208,10 @@ const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
 
     const diffInput: LineageDiffInput = {
-      incoming: { lessons: payload.lessons.map(toShareLessonInput) },
+      incoming: {
+        lessons: payload.lessons.map(toShareLessonInput),
+        bankCards: (payload.bankCards ?? []).map(toShareCardInput),
+      },
       existing: {
         lessons: existingLessons.map(toExistingLesson),
         notes: existingNotes.map(toExistingNote),
