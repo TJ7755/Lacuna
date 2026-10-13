@@ -1,0 +1,1 @@
+- Diagram authoring keeps focus after deleting a region, lifts focused fields clear of the action bar, keeps that bar inside the page at narrow widths, and names region roles as Label and Feature instead of lbl and ftr.

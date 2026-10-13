@@ -27,6 +27,9 @@
   move it, Shift and arrows to resize it, and Escape to cancel a draft. In Select mode,
   the same arrows position the selected region. Region buttons announce their names
   and selected state. The name field follows normal Tab order; Ctrl/Cmd+Enter saves.
+  Deleting a region moves focus to the region that takes its place, else the one before,
+  else the canvas. A focused field is scrolled clear of the sticky action bar, which
+  stays inside the page frame at narrow widths.
 - Generated sharing links and codes receive focus when they replace the focused action,
   without taking focus away from a different control chosen whilst work is pending.
 - Ending an inline lesson rename returns focus to its opening control after Enter or

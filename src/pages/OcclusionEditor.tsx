@@ -127,6 +127,8 @@ export function OcclusionEditor() {
   const labelCount = regions.filter((r) => r.role === 'label').length;
   const featureCount = regions.length - labelCount;
   const saveRef = useRef<HTMLButtonElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   const nameId = useId();
   const editorKeys = useEditorKeys({
     onCancel: returnTo.goBack,
@@ -203,6 +205,18 @@ export function OcclusionEditor() {
     setRegions((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }
 
+  // Focus scrolling ignores the sticky action bar, so lift a field it would cover.
+  function keepClearOfDock(target: HTMLElement) {
+    const dock = dockRef.current;
+    if (!dock || dock.contains(target)) return;
+    const overlap = target.getBoundingClientRect().bottom + 12 - dock.getBoundingClientRect().top;
+    if (overlap > 0) target.closest('main')?.scrollBy({ top: overlap });
+  }
+
+  function focusCanvas() {
+    gridRef.current?.querySelector<HTMLElement>('[data-testid="occlusion-canvas"]')?.focus();
+  }
+
   function deleteRegion(id: string) {
     // Clear any feature region's pairing that pointed at the region being removed —
     // mirrors updateOcclusion's server-side cleanup, applied here too since a region
@@ -268,7 +282,11 @@ export function OcclusionEditor() {
   }
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
+    <div
+      className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}
+      {...editorKeys}
+      onFocus={(event) => keepClearOfDock(event.target)}
+    >
       <div>
         <header className="relative mb-8">
           <div className="relative">
@@ -301,7 +319,9 @@ export function OcclusionEditor() {
             />
           </div>
 
-          <div className="grid grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]">
+          <div
+            ref={gridRef}
+            className="grid grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]">
             <OcclusionCanvas
               assetUrl={assetUrl}
               alt={name.trim() || 'Diagram'}
@@ -324,6 +344,7 @@ export function OcclusionEditor() {
               onSelect={setSelectedRegionId}
               onDelete={deleteRegion}
               onUpdate={updateRegion}
+              onEmptied={focusCanvas}
             />
           </div>
 
@@ -357,9 +378,9 @@ export function OcclusionEditor() {
       <div
         role="region"
         aria-label="Occlusion editor actions"
-        className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
+        className="pointer-events-none sticky bottom-0 z-30 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10"
       >
-        <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
+        <div ref={dockRef} className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
           <Button variant="ghost" onClick={returnTo.goBack}>
             Cancel
           </Button>
@@ -368,6 +389,7 @@ export function OcclusionEditor() {
             variant="primary"
             onClick={handleSave}
             disabled={!canSave || saving}
+            className="whitespace-nowrap"
           >
             {editing ? 'Save changes' : 'Add occlusion'}
           </Button>
