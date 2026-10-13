@@ -63,8 +63,10 @@ it.each(['replace', 'merge'] as const)(
   },
 );
 
-// Rolling back 2,000 fake IndexedDB writes can exceed the default five seconds
-// on a contended runner; the assertions verify atomicity, not elapsed time.
+// fake-indexeddb rolls back each write with a linear scan of every index, so undoing a
+// full 2,000-row batch takes ten seconds idle and over a minute under load. The first
+// batch writes a slice of its rows: that still leaves committed-looking review writes,
+// and the cleared tables, for the abort to undo.
 it('rolls back the whole replacement when a later review batch fails', async () => {
   const backup = await largeBackup();
   const previous = await createCourse('Existing local data');
@@ -72,11 +74,11 @@ it('rolls back the whole replacement when a later review batch fails', async () 
   let batches = 0;
   vi.spyOn(db.reviewHistory, 'bulkAdd').mockImplementation((async (rows: ReviewHistoryEntry[]) => {
     if (++batches === 2) throw new Error('Storage write failed');
-    return add(rows);
+    return add(rows.slice(0, 100));
   }) as typeof db.reviewHistory.bulkAdd);
 
   await expect(importBackup(backup, 'replace')).rejects.toThrow('Storage write failed');
   expect(batches).toBe(2);
   expect(await db.courses.get(previous.id)).toBeDefined();
   expect(await db.reviewHistory.count()).toBe(0);
-}, 15_000);
+});
