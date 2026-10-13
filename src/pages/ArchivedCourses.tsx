@@ -1,6 +1,6 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { updateCourse } from '../db/courseRepository';
 import { useCourses } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';
@@ -15,6 +15,7 @@ import {
 export function ArchivedCourses() {
   const courses = useCourses();
   const { notify } = useToast();
+  const navigate = useNavigate();
   const heading = useRef<HTMLHeadingElement>(null);
   const restoreButtons = useRef<Record<string, HTMLButtonElement | null>>({});
   const focusReturn = useRef<{
@@ -58,6 +59,12 @@ export function ArchivedCourses() {
           <p className="mt-3 text-sm text-ink-soft">
             Courses you archive from Today wait here, ready to restore.
           </p>
+          <Link
+            to="/"
+            className="mt-5 inline-flex min-h-11 items-center rounded-full bg-ink/[0.06] px-4 text-sm font-semibold text-ink transition-colors hover:bg-ink/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          >
+            Back to Today
+          </Link>
         </div>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -93,7 +100,13 @@ export function ArchivedCourses() {
                     course.examDate !== undefined && course.examDate < Date.now();
                   if (passedFinalExam) markFinalExamHandled(course.id, course.examDate!);
                   void updateCourse(course.id, { archived: false })
-                    .then(() => notify(`${course.name} restored`, 'positive'))
+                    // An action rather than a jump, so focus stays with the next restore.
+                    .then(() =>
+                      notify(`${course.name} restored`, 'positive', {
+                        actionLabel: 'Open',
+                        onAction: () => void navigate(`/course/${course.id}`),
+                      }),
+                    )
                     .catch(() => {
                       if (focusReturn.current?.courseId === course.id) focusReturn.current = null;
                       if (passedFinalExam) {

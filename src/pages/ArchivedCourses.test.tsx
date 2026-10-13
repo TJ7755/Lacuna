@@ -38,6 +38,7 @@ describe('ArchivedCourses', () => {
     const empty = screen.getByRole('heading', { name: 'No archived courses' }).parentElement;
     expect(empty).toHaveClass('rounded-3xl', 'bg-surface');
     expect(empty).not.toHaveClass('border-t');
+    expect(screen.getByRole('link', { name: 'Back to Today' })).toHaveAttribute('href', '/');
   });
 
   it('moves focus to the next restoration action when a restored course disappears', async () => {
@@ -88,6 +89,12 @@ describe('ArchivedCourses', () => {
     expect(JSON.parse(localStorage.getItem('lacuna.handledFinalExams')!)).toEqual({
       'course-1': archived.examDate,
     });
+    await waitFor(() =>
+      expect(mockNotify).toHaveBeenCalledWith('Finished biology restored', 'positive', {
+        actionLabel: 'Open',
+        onAction: expect.any(Function),
+      }),
+    );
   });
 
   it('does not suppress lifecycle handling when restoration fails', async () => {

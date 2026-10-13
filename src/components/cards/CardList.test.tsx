@@ -611,6 +611,28 @@ describe('CardList', () => {
     );
   });
 
+  it('enters the tag field and returns focus to Select once the cards are tagged', async () => {
+    const { addTagToCards } = await import('../../db/cardRepository');
+    vi.mocked(addTagToCards).mockResolvedValueOnce(undefined);
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onNewCard={vi.fn()}
+        onEditCard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Tag…'));
+    const field = screen.getByPlaceholderText('Type a tag…');
+    expect(field).toHaveFocus();
+    fireEvent.change(field, { target: { value: 'exam' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(addTagToCards).toHaveBeenCalledWith([mockCard.id], 'exam'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Select' })).toHaveFocus());
+  });
+
   describe('generated cards', () => {
     const sequence: Sequence = {
       id: 'sequence-1',

@@ -1,0 +1,1 @@
+- Cards and Archived: Tag… now focuses its tag field, and a finished bulk action returns focus to Select instead of dropping it; restoring an archived course offers Open in its confirmation without navigating, and the empty Archived page offers Back to Today (#455).

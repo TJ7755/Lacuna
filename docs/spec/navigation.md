@@ -147,7 +147,9 @@ not a separate Dashboard "Study all" button. Empty state invites creating the fi
 transitions between these regions are coordinated by `LayoutGroup` so adding or reordering
 courses does not stutter. Archived courses are excluded from the active grid and normal sidebar
 course list. The sidebar's fixed **Archived** destination (`/archived`) sits beneath the
-**Courses** heading outside the active-course scroll region. Its cards open the existing course
+**Courses** heading outside the active-course scroll region. Restoring a course confirms it with
+an **Open** action rather than navigating, so focus stays with the next restore; the empty page
+offers **Back to Today**. Its cards open the existing course
 path in an explicit read-only state; every lesson and course analytics remain inspectable, while
 a central route guard returns direct study, authoring or mutation URLs to that overview. A separate
 **Unarchive** action restores study and authoring controls. A course card's context menu (right-click,
