@@ -1,0 +1,1 @@
+- Tag chips and tag suggestions now take a 44px touch target without taller rows: the whole chip removes its tag, and the e2e target probe covers both.
