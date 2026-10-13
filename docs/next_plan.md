@@ -32,10 +32,9 @@ migration regression suite and checking upgrades from the previous published rel
 
 ## Direction C follow-up brief
 
-The prompter requested a [next-session brief](plans/direction-c-next-session.md)
-on 6 October 2026. First fix the stretched lesson creation controls, then assess
-discoverable lesson management, context menus and existing desktop menu commands.
-The brief records priorities, the decisions taken and their outcome.
+The 6 October 2026 next-session brief is complete. Its lasting rules now live in
+[visual design](spec/visual-design.md) and [accessibility](spec/accessibility.md); its
+history is in the changelog.
 
 ## Feature freeze
 
