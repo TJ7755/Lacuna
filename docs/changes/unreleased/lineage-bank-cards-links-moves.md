@@ -1,0 +1,2 @@
+- Importing a published course now keeps its linked bank cards and lesson-card links, and course updates add, change or remove them as the teacher did
+- Accepting a course update now moves a note or card to the lesson the teacher moved it to

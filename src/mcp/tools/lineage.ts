@@ -44,7 +44,7 @@ import {
   type ShareLessonInput,
   type ShareNoteInput,
 } from '../../db/lineageDiff';
-import type { Card, Lesson, LineageIdMapping, Note } from '../../db/types';
+import type { Card, ItemPayload, Lesson, LineageIdMapping, Note } from '../../db/types';
 import { applyLineageUpdateContract, diffLineageUpdateContract } from '../contracts/lineage';
 import { McpToolException, type ToolDefinition, type ToolResult } from '../types';
 
@@ -73,15 +73,19 @@ function toShareLessonInput(lesson: Extract<Awaited<ReturnType<typeof decodeShar
     ed: lesson.ed,
     tz: lesson.tz,
     sf: lesson.sf,
+    am: lesson.am,
     notes: lesson.notes.map((note): ShareNoteInput => {
       if (!note.oi) throw new McpToolException({ kind: 'validation', message: 'Lineage payload note is missing its originating id.' });
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards.map((card): ShareCardInput => {
-      if (!card.id) throw new McpToolException({ kind: 'validation', message: 'Lineage payload card is missing its originating id.' });
-      return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g };
-    }),
+    // Sequence- and occlusion-generated cards are regenerated, never diffed (as in mergeImport.ts).
+    cards: lesson.cards.filter((card) => card.si === undefined && card.oc === undefined).map(toShareCardInput),
   };
+}
+
+function toShareCardInput(card: Extract<Awaited<ReturnType<typeof decodeShare>>, { v: 2 }>['lessons'][number]['cards'][number]): ShareCardInput {
+  if (!card.id) throw new McpToolException({ kind: 'validation', message: 'Lineage payload card is missing its originating id.' });
+  return { i: card.id, k: card.k, f: card.f, b: card.b, g: card.g, p: card.p as ItemPayload | undefined, am: card.am };
 }
 
 function toExistingLesson(lesson: Lesson): ExistingLesson {
@@ -94,6 +98,7 @@ function toExistingLesson(lesson: Lesson): ExistingLesson {
     examDate: lesson.examDate,
     timeZone: lesson.timeZone,
     sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
+    answerMode: lesson.answerMode,
     orderIndex: lesson.orderIndex,
   };
 }
@@ -103,7 +108,16 @@ function toExistingNote(note: Note): ExistingNote {
 }
 
 function toExistingCard(card: Card): ExistingCard {
-  return { id: card.id, type: card.type, front: card.front, back: card.back, tags: card.tags };
+  return {
+    id: card.id,
+    lessonId: card.primaryLessonId ?? null,
+    type: card.type,
+    front: card.front,
+    back: card.back,
+    tags: card.tags,
+    payload: card.payload,
+    answerMode: card.answerMode,
+  };
 }
 
 /** Empty membership/snapshot registry for a lineage this course has not merged before —
@@ -206,11 +220,16 @@ const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
 
     const diffInput: LineageDiffInput = {
-      incoming: { lessons: payload.lessons.map(toShareLessonInput) },
+      incoming: {
+        lessons: payload.lessons.map(toShareLessonInput),
+        bankCards: (payload.bankCards ?? []).map(toShareCardInput),
+      },
       existing: {
         lessons: existingLessons.map(toExistingLesson),
         notes: existingNotes.map(toExistingNote),
-        cards: courseCards.map(toExistingCard),
+        cards: courseCards
+          .filter((card) => !card.sequenceItemId && !card.occlusionRegionId)
+          .map(toExistingCard),
       },
       mapping: {
         id: mapping.id,

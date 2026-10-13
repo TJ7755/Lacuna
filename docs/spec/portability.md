@@ -424,6 +424,13 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      `sequenceItemId`/`occlusionRegionId`. Without that skip the merge both adopted the
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
+  5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
+     diffed like lesson cards, with no lesson. Lesson-card `links` take a deterministic
+     `lineage-link:` id and are made to match the payload on every import, never queued:
+     they are display-only, and only links carrying that id prefix are touched. A note's or
+     card's lesson membership counts as content, so a teacher moving one to another lesson
+     is an update; a card move goes through `assignCardsToLesson` so its backing deck
+     follows.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
      learner-owned scheduling preferences, including **Learn first**, are preserved.
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content
