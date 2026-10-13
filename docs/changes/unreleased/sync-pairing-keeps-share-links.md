@@ -1,0 +1,1 @@
+- Setting up, joining, unpairing or deleting a sync channel keeps a teacher's share-link write credentials, so published courses can still be republished from this device
