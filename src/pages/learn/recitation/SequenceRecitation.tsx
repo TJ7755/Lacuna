@@ -119,7 +119,23 @@ export function SequenceRecitation({
     if (phase === 'recall' && !checking) recallStart.current = performance.now();
     const focusable = rootRef.current?.querySelector<HTMLElement>('textarea, [data-autofocus]');
     focusable?.focus();
+    focusable?.scrollIntoView?.({ block: 'nearest' });
   }, [phase, checking, step]);
+
+  // Lines appear, hide and reflow as steps change; keep the active answer in view through
+  // each resize rather than only at the moment it was focused.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && root.contains(active)) {
+        active.scrollIntoView?.({ block: 'nearest' });
+      }
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
 
   if (step.kind === 'done' && !review) return null;
 
