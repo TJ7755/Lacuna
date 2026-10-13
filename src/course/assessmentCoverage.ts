@@ -123,6 +123,11 @@ export function resolveAssessmentCoverage(
             referenceId: lessonId,
             message: `Covered lesson ${lessonId} is positioned after the assessment.`,
           });
+          // Invalid coverage schedules nothing: revision planning throws on any
+          // issue, so practice pools and exam-date targeting must not serve
+          // these lessons either. The issue above keeps the lesson visible for
+          // author correction.
+          continue;
         }
         coveredLessons.push(lesson);
       }

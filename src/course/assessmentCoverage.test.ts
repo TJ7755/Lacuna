@@ -89,13 +89,16 @@ describe('resolveAssessmentCoverage', () => {
     const result = resolveAssessmentCoverage(
       assessment({ coverageMode: 'custom', lessonIds: ['three'] }),
       lessons,
-      [],
+      [card('after-card', 'three')],
       [],
     );
 
     expect(result.validation.issues).toContainEqual(
       expect.objectContaining({ code: 'custom-lesson-after-assessment', referenceId: 'three' }),
     );
+    expect(result.validation.valid).toBe(false);
+    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual([]);
+    expect(result.cards).toEqual([]);
   });
 
   it('uses linked membership, deduplicates cards and applies exclusions', () => {

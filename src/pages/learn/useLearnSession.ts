@@ -922,7 +922,9 @@ export function useLearnSession({
         performanceByDeck: perfRef.current,
       });
       const next =
-        allocation.mode === 'practice-fallback' ? allocation.cards[0] : allocation.selected?.card;
+        allocation.mode === 'practice-fallback'
+          ? allocation.cards[0]
+          : (allocation.selected?.card ?? allocation.fallbackCards[0]);
       if (!next) {
         for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
         finish(true);

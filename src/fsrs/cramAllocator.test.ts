@@ -73,6 +73,7 @@ interface TestCoefficients {
   standardDeviation?: number;
   productiveDelay?: Record<string, number>;
   validationReason?: Exclude<MemoryModelFallbackReason, 'missing'>;
+  validationByCard?: Record<string, Exclude<MemoryModelFallbackReason, 'missing'>>;
 }
 
 function testModel(coefficients: TestCoefficients) {
@@ -85,10 +86,10 @@ function testModel(coefficients: TestCoefficients) {
   });
   const model: CramMemoryModel = {
     version: 'explicit-test-coefficients',
-    validate: () =>
-      coefficients.validationReason
-        ? { valid: false, reason: coefficients.validationReason }
-        : { valid: true },
+    validate: ({ card: value }) => {
+      const reason = coefficients.validationByCard?.[value.id] ?? coefficients.validationReason;
+      return reason ? { valid: false, reason } : { valid: true };
+    },
     predictRecall: ({ card: value, at }) =>
       prediction(
         at === ASSESSMENT
@@ -401,6 +402,40 @@ describe('expected-gain allocator', () => {
       mode: 'practice-fallback',
       fallbackReason: 'corrupt',
     });
+  });
+
+  it('ranks model-supported cards while still serving cards the model cannot score', () => {
+    const { model } = testModel({
+      successNow: { ranked: 0.5, corrupt: 1.1 },
+      examNow: { ranked: 0.4, corrupt: 0.4 },
+      after: {
+        ranked: { 1: 0.5, 2: 0.8, 3: 0.8, 4: 0.8 },
+        corrupt: { 1: 0.5, 2: 0.8, 3: 0.8, 4: 0.8 },
+      },
+      productiveDelay: { unproductive: Number.NaN },
+      validationByCard: { unsupported: 'unsupported' },
+    });
+    const result = allocateCramReview(
+      allocationInput(
+        [
+          card('ranked'),
+          card('unsupported', { stability: null, lastReviewed: null, history: [] }),
+          card('unproductive'),
+          card('corrupt'),
+        ],
+        model,
+      ),
+    );
+
+    expect(result.mode).toBe('memory-model');
+    if (result.mode !== 'memory-model') return;
+    expect(result.selected?.card.id).toBe('ranked');
+    expect(result.ranked.map((entry) => entry.card.id)).toEqual(['ranked']);
+    expect(result.fallbackCards.map((value) => value.id).sort()).toEqual([
+      'corrupt',
+      'unproductive',
+      'unsupported',
+    ]);
   });
 
   it('never leaks cards outside the eligible, reached and available pool', () => {

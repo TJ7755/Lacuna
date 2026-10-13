@@ -56,6 +56,11 @@ proves nothing: run lint, the touched tests and any affected e2e locally before 
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.
 A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired this checkout.
 Do not regenerate lockfiles to compensate for an incomplete local installation.
+
+`spawnSync('bun', ...)` needs a real `bun` executable on `PATH`. The WinGet shim exposes
+Bun in interactive shells but not to child processes, so `scripts/typecheck.test.ts` fails
+with `spawnSync bun ENOENT` here while the typecheck itself passes. That failure is
+environmental; do not rework the test to accommodate a shim-only Bun.
 Keep a fresh install cache under `node_modules` or outside the checkout: Vite scans package
 tests in caches under `artifacts` as application source and attempts to resolve their dependencies.
 
@@ -98,6 +103,12 @@ that object must be carried over there, or republishing wipes it (this already
 bit `shareId`). Teacher share write tokens live in sync state, never on the
 course row, so they stay out of backups and course files.
 
+Reversible-pair (`k: 2`) share entries never carry ids in any encoder version:
+`packCards` only spreads identity onto unfolded cards, so legacy folded pairs are
+anonymous by construction. A `cardIdMap` miss for a pair id is unreachable from real
+payloads, not a decode bug; current exports keep mirrors distinct (`preserveIds`)
+precisely so exclusions can target either id.
+
 ## Recovery is not peer sync
 
 Backup validation must accept missing mutation timestamps and Concept identities in
@@ -108,7 +119,12 @@ Earlier v21 scheduling projections may also lack `createdAt`; the legacy adapter
 Replace-import deliberately preserves `db.backups`; exports deliberately omit it, so a
 pre-replacement restore point survives. Recovery merge and peer merge use different conflict
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
-must cover candidate snapshotting and merging as well as import.
+must cover candidate snapshotting and merging as well as import. Recovery merge deliberately
+keeps the local row when both sides share a creation time (`portability.test.ts` keeps a
+locally edited note over an incoming backup with the same `createdAt`); do not "fix" those
+comparisons to `updatedAt`, and do not "fix" the card rule that prefers the local copy or the
+deliberate tombstone restoration — that conservatism is the tested recovery contract, while
+newest-wins lives in peer merge (`mergeSnapshots`).
 
 ## Question-set backup compatibility
 

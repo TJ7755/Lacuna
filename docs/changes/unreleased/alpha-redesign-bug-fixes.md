@@ -1,0 +1,3 @@
+- Revision sessions keep memory-model ranking when a window includes cards the model cannot score yet: supported cards stay ranked by expected gain while exposed-but-unreviewed cards follow in objective order, instead of the whole pool falling back to objective ordering.
+- An assessment whose custom coverage names a lesson taught after it no longer schedules those cards for practice or retargets their exam dates; the coverage issue remains visible for author correction.
+- Opening a shared landing link such as `#landing-product` for the first time now stays on the landing page instead of booting the study dashboard.

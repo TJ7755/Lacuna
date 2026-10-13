@@ -238,6 +238,9 @@ export type CramAllocation =
       selected: AllocatedCard | null;
       ranked: AllocatedCard[];
       deferredCardIds: string[];
+      /** Eligible cards the memory model cannot score, in objective order. The
+       * session serves these once no ranked card fits the remaining window. */
+      fallbackCards: Card[];
       stopReason?: 'budget-exhausted' | 'no-positive-value' | 'future-window-spacing';
     };
 
@@ -282,13 +285,22 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
   ) {
     return fallback(pool, input.context, input.now, 'corrupt');
   }
+  // Per-card scoring problems demote the card, never the pool: revision-plan
+  // scope deliberately includes exposed-but-never-reviewed cards the model
+  // cannot score, and those cards still need serving in objective order.
+  const validCards: Card[] = [];
+  const unscorable: { card: Card; reason: Exclude<MemoryModelFallbackReason, 'missing'> }[] = [];
   for (const card of pool) {
     const validation = input.model.validate({
       card,
       now: input.now,
       assessmentAt: input.assessmentAt,
     });
-    if (!validation.valid) return fallback(pool, input.context, input.now, validation.reason);
+    if (validation.valid) validCards.push(card);
+    else unscorable.push({ card, reason: validation.reason });
+  }
+  if (pool.length > 0 && validCards.length === 0) {
+    return fallback(pool, input.context, input.now, unscorable[0].reason);
   }
 
   if (!Number.isFinite(input.remainingWindowSeconds) || input.remainingWindowSeconds <= 0) {
@@ -298,6 +310,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       selected: null,
       ranked: [],
       deferredCardIds: [],
+      fallbackCards: [],
       stopReason: 'budget-exhausted',
     };
   }
@@ -307,7 +320,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
   );
   const deferredCardIds: string[] = [];
   const ranked: AllocatedCard[] = [];
-  for (const card of pool) {
+  for (const card of validCards) {
     const lastReview = lastObservedReview(card);
     if (
       hasFutureWindow &&
@@ -323,7 +336,8 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       assessmentAt: input.assessmentAt,
     });
     if (productiveAt !== null && (!Number.isFinite(productiveAt) || productiveAt < 0)) {
-      return fallback(pool, input.context, input.now, 'unsupported');
+      unscorable.push({ card, reason: 'unsupported' });
+      continue;
     }
     if (productiveAt === null || productiveAt > input.assessmentAt) continue;
     if (productiveAt > input.now) {
@@ -339,7 +353,10 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       input.now,
       input.assessmentAt,
     );
-    if (!simulation) return fallback(pool, input.context, input.now, 'corrupt');
+    if (!simulation) {
+      unscorable.push({ card, reason: 'corrupt' });
+      continue;
+    }
     if (
       input.context.objective === 'securedTopics' &&
       simulation.currentAssessmentRecall.probability >= MASTERY_R
@@ -393,6 +410,14 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       left.card.id.localeCompare(right.card.id)
     );
   });
+  const fallbackCards = sortByObjective(
+    unscorable.map(({ card }) => card),
+    input.context,
+    input.now,
+  ).map(({ card }) => card);
+  if (pool.length > 0 && unscorable.length === pool.length) {
+    return fallback(pool, input.context, input.now, unscorable[0].reason);
+  }
   const selected = ranked.find(
     (candidate) => candidate.expectedReviewSeconds <= input.remainingWindowSeconds,
   );
@@ -409,6 +434,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
     selected: selected ?? null,
     ranked,
     deferredCardIds,
+    fallbackCards,
     ...(stopReason ? { stopReason } : {}),
   };
 }

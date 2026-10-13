@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import {
+  installSimpleAnalytics,
+  registerProductionServiceWorker,
+  shouldHydrateLanding,
+} from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
   it('does not attempt service-worker registration from a packaged app origin', async () => {
@@ -59,5 +63,33 @@ describe('Simple Analytics bootstrap', () => {
     expect(html).toMatch(/script-src[^;]*https:\/\/scripts.simpleanalyticscdn.com/);
     expect(html).toMatch(/connect-src[^;]*https:\/\/queue.simpleanalyticscdn.com/);
     expect(html).toMatch(/img-src[^;]*https:\/\/queue.simpleanalyticscdn.com/);
+  });
+});
+
+describe('landing hydration decision', () => {
+  const firstVisit = {
+    hash: '',
+    isElectron: false,
+    seedFlagPresent: false,
+    landingMarkupPresent: true,
+  };
+
+  it('hydrates the prerendered landing page on a first visit', () => {
+    expect(shouldHydrateLanding(firstVisit)).toBe(true);
+  });
+
+  it('keeps in-page anchors such as #landing-product on the landing page', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#landing-product' })).toBe(true);
+  });
+
+  it('boots the study app for hash routes', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/cards' })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/' })).toBe(false);
+  });
+
+  it('boots the study app for Electron, seeded browsers and missing markup', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, isElectron: true })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, seedFlagPresent: true })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, landingMarkupPresent: false })).toBe(false);
   });
 });

@@ -148,4 +148,22 @@ describe('assessment Practice resolution', () => {
 
     expect(pool.map((item) => item.id)).toEqual(['c1']);
   });
+
+  it('excludes custom-covered lessons positioned after the assessment from practice', () => {
+    const target: CourseAssessment = {
+      ...assessment('paper', NOW + 2 * MS_PER_DAY, ['l1', 'l3']),
+      afterLessonId: 'l1',
+    };
+    const pool = assessmentPracticePool(target, {
+      course: course(),
+      lessons,
+      cards,
+      links: [],
+      exposures,
+      reachedLessonIds: new Set(['l1', 'l2', 'l3']),
+      now: NOW,
+    });
+
+    expect(pool.map((item) => item.id)).toEqual(['c1']);
+  });
 });
