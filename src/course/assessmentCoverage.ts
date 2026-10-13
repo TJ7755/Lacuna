@@ -123,6 +123,9 @@ export function resolveAssessmentCoverage(
             referenceId: lessonId,
             message: `Covered lesson ${lessonId} is positioned after the assessment.`,
           });
+          // Saves reject this order, but reordering lessons can still produce it.
+          // Its cards must not reach practice or exam-date targeting meanwhile.
+          continue;
         }
         coveredLessons.push(lesson);
       }

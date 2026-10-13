@@ -922,7 +922,10 @@ export function useLearnSession({
         performanceByDeck: perfRef.current,
       });
       const next =
-        allocation.mode === 'practice-fallback' ? allocation.cards[0] : allocation.selected?.card;
+        allocation.mode === 'practice-fallback'
+          ? allocation.cards[0]
+          : (allocation.selected?.card ??
+            (allocation.stopReason ? undefined : allocation.fallbackCards[0]));
       if (!next) {
         for (const cardId of revisionRetryAt.current.keys()) revisionParked.current.add(cardId);
         finish(true);
@@ -1115,13 +1118,17 @@ export function useLearnSession({
         const effectiveDates = standaloneSimple
           ? new Map<string, number>()
           : lessonEffectiveReleaseDates(course, courseLessons);
-        const reachedLessonIds: Set<string> = standaloneSimple ? new Set<string>() : requestScopeLessonIds
-          ? new Set<string>(requestScopeLessonIds)
-          : new Set(
-              courseLessons
-                .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, courseLessons))
-                .map((lesson) => lesson.id),
-            );
+        const reachedLessonIds: Set<string> = standaloneSimple
+          ? new Set<string>()
+          : requestScopeLessonIds
+            ? new Set<string>(requestScopeLessonIds)
+            : new Set(
+                courseLessons
+                  .filter((lesson) =>
+                    isLessonUnlocked(course, lesson, effectiveDates, courseLessons),
+                  )
+                  .map((lesson) => lesson.id),
+              );
         const practiceNode = practiceNodeKeyParam
           ? manualNodes.find((node) => node.id === practiceNodeKeyParam)
           : undefined;
@@ -1162,21 +1169,23 @@ export function useLearnSession({
           );
         }
         // Optional passes need scheduling context, but no curricular eligibility planning.
-        const fullScope = standaloneSimple ? allCards : selectedAssessment
-          ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
-              .cards
-          : practiceCardScope(
-              allCards,
-              courseLinks,
-              courseExposures,
-              {
-                reachedLessonIds,
-                practiceNode,
-                requireExposure: course.learnFirst !== false,
-              },
-              Date.now(),
-              course.leechThreshold,
-            );
+        const fullScope = standaloneSimple
+          ? allCards
+          : selectedAssessment
+            ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
+                .cards
+            : practiceCardScope(
+                allCards,
+                courseLinks,
+                courseExposures,
+                {
+                  reachedLessonIds,
+                  practiceNode,
+                  requireExposure: course.learnFirst !== false,
+                },
+                Date.now(),
+                course.leechThreshold,
+              );
         const examDateContext = selectedAssessment
           ? {
               courseExamDate: selectedAssessment.examDate,
@@ -1190,7 +1199,9 @@ export function useLearnSession({
             : allCards
           : selectedAssessment
             ? activeRevisionPlan
-              ? allCards.filter((card) => activeRevisionPlan.scope.eligibleCardIds.includes(card.id))
+              ? allCards.filter((card) =>
+                  activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
+                )
               : assessmentPracticePool(selectedAssessment, {
                   course,
                   lessons: courseLessons,
@@ -1281,12 +1292,12 @@ export function useLearnSession({
       ctxRef.current = ctx;
       cardsRef.current = cards;
       const answerLessonIds = [
-        ...new Set(cards.flatMap((card) => card.primaryLessonId ? [card.primaryLessonId] : [])),
+        ...new Set(cards.flatMap((card) => (card.primaryLessonId ? [card.primaryLessonId] : []))),
       ];
       if (lessonId && !answerLessonIds.includes(lessonId)) answerLessonIds.push(lessonId);
       const answerLessons = await db.lessons.bulkGet(answerLessonIds);
       answerModeLessonsRef.current = new Map(
-        answerLessons.flatMap((lesson) => lesson ? [[lesson.id, lesson]] : []),
+        answerLessons.flatMap((lesson) => (lesson ? [[lesson.id, lesson]] : [])),
       );
       try {
         linesModeMapRef.current = await linesModeSequencesByCard(cards);
@@ -1405,9 +1416,7 @@ export function useLearnSession({
       progressBefore.current = initialProgress;
       if (!isSimpleMode) {
         const cardUnitIds = new Set(serveableCards.map((card) => card.schedulingUnitId));
-        const activeUnits = isGlobal
-          ? units.filter((unit) => cardUnitIds.has(unit.id))
-          : units;
+        const activeUnits = isGlobal ? units.filter((unit) => cardUnitIds.has(unit.id)) : units;
         const hasReached = (setting: 'maxReviewsPerDay' | 'dailyReviewGoal') =>
           activeUnits.some((unit) => {
             const config = isGlobal ? unit : schedulingConfigRef.current;
@@ -1570,9 +1579,7 @@ export function useLearnSession({
       );
       if (nextPerf) perfRef.current.set(deck.id, nextPerf);
       const updated = result.card;
-      cardsRef.current = cardsRef.current.map((card) =>
-        card.id === updated.id ? updated : card,
-      );
+      cardsRef.current = cardsRef.current.map((card) => (card.id === updated.id ? updated : card));
       simpleQueue.current = simpleQueue.current.map((card) =>
         card.id === updated.id ? updated : card,
       );
@@ -1607,9 +1614,7 @@ export function useLearnSession({
       persistSimpleResume(nextSimple.outcomes);
       pendingReviewEventId.current = null;
 
-      const remaining = simpleQueue.current.filter(
-        (c) => !simpleMastered.current.has(c.id),
-      ).length;
+      const remaining = simpleQueue.current.filter((c) => !simpleMastered.current.has(c.id)).length;
       if (remaining === 0) {
         finish(!updated.suspended);
       } else {
@@ -1685,13 +1690,13 @@ export function useLearnSession({
       for (const { itemId, correct } of results) {
         const card = cards.get(itemId);
         const deck = card && answerUnit(card);
-          if (!card || !deck) continue;
-          // The bar follows each manual check, including retries; scheduling still
-          // records only the first recall and mastery waits for a completed chunk.
-          outcomes.set(card.id, correct ? 'correct' : 'wrong');
-          if (correct) simpleWrong.current.delete(card.id);
-          else simpleWrong.current.add(card.id);
-          if (events.current.some((event) => event.cardId === card.id)) continue;
+        if (!card || !deck) continue;
+        // The bar follows each manual check, including retries; scheduling still
+        // records only the first recall and mastery waits for a completed chunk.
+        outcomes.set(card.id, correct ? 'correct' : 'wrong');
+        if (correct) simpleWrong.current.delete(card.id);
+        else simpleWrong.current.add(card.id);
+        if (events.current.some((event) => event.cardId === card.id)) continue;
         const grade: Grade = correct ? 3 : 1;
         // Recitation is not timed per line, so it leaves speed calibration untouched.
         const { result } = await persistAnswer(
@@ -1733,7 +1738,14 @@ export function useLearnSession({
       persistSimpleResume(outcomes);
       if ([...cards.values()].every((card) => simpleMastered.current.has(card.id))) serveNext();
     },
-    [answerUnit, isSimpleMode, persistSimpleResume, recitationSequence, reviewSessionKind, serveNext],
+    [
+      answerUnit,
+      isSimpleMode,
+      persistSimpleResume,
+      recitationSequence,
+      reviewSessionKind,
+      serveNext,
+    ],
   );
 
   /**
@@ -2185,9 +2197,10 @@ export function useLearnSession({
     setSessionCardIds,
     sessionCardOutcomes,
     schedulerProgress,
-    predictedRecall: !isSimpleMode && !plannedRevision && ctxRef.current
-      ? cachedSessionProgress(cardsRef.current, ctxRef.current)
-      : 0,
+    predictedRecall:
+      !isSimpleMode && !plannedRevision && ctxRef.current
+        ? cachedSessionProgress(cardsRef.current, ctxRef.current)
+        : 0,
     simpleProgress,
     revisionSecondsRemaining,
     revisionWindowBudgetSeconds,
