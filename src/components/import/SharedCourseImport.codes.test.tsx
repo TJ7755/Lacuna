@@ -208,14 +208,25 @@ describe('SharedCourseImport with course codes and files', () => {
     fireEvent.change(input, { target: { files: [new File(['contents'], 'Biology.lacuna')] } });
     await screen.findByText('Ready to import');
     fireEvent.change(input, { target: { files: [new File(['bad data'], 'Biology.lacuna')] } });
-    await waitFor(() =>
-      expect(mockNotify).toHaveBeenCalledWith(
-        'The course file contains corrupt media.',
-        'negative',
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The course file contains corrupt media.',
     );
+    expect(mockNotify).not.toHaveBeenCalledWith(expect.anything(), 'negative');
     expect(screen.queryByText('Ready to import')).not.toBeInTheDocument();
     expect(importSharePayload).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unreadable code beside the field until it is edited', async () => {
+    vi.mocked(decodeShare).mockRejectedValueOnce(new Error('This share code is incomplete.'));
+    render(<SharedCourseImport />);
+    const field = screen.getByPlaceholderText('Paste a share link or code');
+    fireEvent.change(field, { target: { value: 'LAC2-broken' } });
+    fireEvent.click(screen.getByText('Read code'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('This share code is incomplete.');
+    expect(field).toHaveValue('LAC2-broken');
+    expect(mockNotify).not.toHaveBeenCalled();
+    fireEvent.change(field, { target: { value: 'LAC2-fixed' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('shows import section with textarea', () => {

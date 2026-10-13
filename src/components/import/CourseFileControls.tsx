@@ -53,15 +53,17 @@ export function CourseFileExportButton({
 export function CourseFileImportButton({
   onInspect,
   onReadStart,
+  onError,
   disabled,
 }: {
   onInspect: (file: CourseFile, generation: number) => Promise<void>;
   onReadStart: () => number;
+  /** Reports a file that cannot be read, beside the task that chose it. */
+  onError: (message: string, generation: number) => void;
   disabled: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
-  const { notify } = useToast();
 
   async function inspect(file: File, generation: number) {
     setReading(true);
@@ -70,9 +72,9 @@ export function CourseFileImportButton({
         throw new Error('The course file exceeds the 100 MB limit.');
       await onInspect(await decodeCourseFile(await file.text()), generation);
     } catch (error) {
-      notify(
+      onError(
         error instanceof Error ? error.message : 'Could not read the course file.',
-        'negative',
+        generation,
       );
     } finally {
       setReading(false);

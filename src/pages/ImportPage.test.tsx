@@ -241,3 +241,15 @@ it('Escape returns to the source list only while nothing has been typed', () => 
   fireEvent.keyDown(screen.getByLabelText('Paste your cards'), { key: 'Escape' });
   expect(screen.getByRole('button', { name: /Text or spreadsheet/ })).toBeInTheDocument();
 });
+
+it('keeps pasted text after going back to All sources and returning', async () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  fireEvent.change(screen.getByLabelText('Paste your cards'), {
+    target: { value: 'bonjour\thello\nmerci\tthanks' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
+  await waitFor(() => expect(screen.queryByLabelText('Paste your cards')).not.toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
+  expect(screen.getByLabelText('Paste your cards')).toHaveValue('bonjour\thello\nmerci\tthanks');
+});
