@@ -56,6 +56,13 @@ origin, channel id, write token and channel key; the mint secret is never persis
 Recovery passphrases must contain at least 16 characters. The default relay
 (`https://relay.getlacuna.app`) mints without a mint secret (rate-limited 10/hour/IP, 429);
 a private relay still requires its `RELAY_MINT_SECRET` behind the Advanced disclosure. Settings
+groups the custom relay URL, mint secret and administration guidance in that disclosure;
+ordinary setup and manual joining use the default origin without asking for transport details.
+Recovery-passphrase guidance stays with the learner's fields. Pairing and unlock errors persist
+beside the relevant field (with an accessible description), or beside the retry action for network
+failures. Corrections clear superseded feedback without discarding entered values. Cancelling a
+form returns focus to the setup choices; success focuses Show pairing QR after setup or Sync now
+after joining, rather than the removal action. Settings
 exposes last successful sync, encrypted/plaintext snapshot sizes, the last error, a deliberate Sync
 now action, local unpairing and a separately confirmed channel purge. The dashboard shows a
 `Synced … · Open sync` pill polling the same state.

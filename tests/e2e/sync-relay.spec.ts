@@ -65,6 +65,7 @@ test('first-device sync setup completes against a stubbed relay', async ({ page 
   await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
 
   await page.getByRole('dialog').getByRole('button', { name: 'Set up sync' }).click();
+  await page.getByRole('button', { name: 'Advanced: use a private relay' }).click();
   await page.getByLabel('Relay URL', { exact: true }).fill(relayBase);
   await page
     .getByLabel('Relay mint secret (private relays only)', { exact: true })

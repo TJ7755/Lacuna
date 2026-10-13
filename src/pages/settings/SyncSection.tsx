@@ -22,6 +22,7 @@ import { allowRelayConnect } from '../../sync/csp';
 import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
 import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
+import { useSyncFeedback } from './useSyncFeedback';
 
 const loadSyncPairingFlow = () =>
   import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow }));
@@ -94,6 +95,11 @@ export function SyncSection() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionPassphrase, setActionPassphrase] = useState('');
   const qrPanelRef = useRef<HTMLDivElement>(null);
+  const feedback = useSyncFeedback(busy, pairOpen);
+
+  useEffect(() => {
+    if (pairOpen && mode === 'idle') document.getElementById('sync-begin-setup')?.focus();
+  }, [pairOpen, mode]);
 
   useEffect(() => {
     let active = true;
@@ -195,48 +201,54 @@ export function SyncSection() {
   }
 
   async function handleSetup(relayUrl: string, mintSecret: string, passphrase: string) {
+    feedback.begin();
     setBusy('setup');
     try {
       const { setupFirstDevice } = await loadSyncPairing();
       allowRelayConnect(relayUrl);
       const session = await setupFirstDevice(relayUrl, mintSecret, passphrase);
       applySession(session);
+      feedback.complete('sync-show-qr');
       notify('Sync is ready. Pair another device with the QR code.', 'positive');
     } catch (error) {
       await refreshState().catch(() => undefined);
-      notify(errorMessage(error, 'Could not set up sync.'), 'negative');
+      throw error;
     } finally {
       setBusy(null);
     }
   }
 
   async function handleManualJoin(relayUrl: string, channelId: string, passphrase: string) {
+    feedback.begin();
     setBusy('join');
     try {
       const { joinWithPassphrase } = await loadSyncPairing();
       allowRelayConnect(relayUrl);
       const session = await joinWithPassphrase(relayUrl, channelId, passphrase);
       applySession(session);
+      feedback.complete('sync-now');
       notify('This device is now paired.', 'positive');
     } catch (error) {
       await refreshState().catch(() => undefined);
-      notify(errorMessage(error, 'Could not join the sync channel.'), 'negative');
+      throw error;
     } finally {
       setBusy(null);
     }
   }
 
   async function handleQrJoin(payload: PairingPayload, passphrase: string) {
+    feedback.begin();
     setBusy('join');
     try {
       const { joinFromPairingCode } = await loadSyncPairing();
       allowRelayConnect(payload.relayUrl);
       const session = await joinFromPairingCode(payload, passphrase);
       applySession(session);
+      feedback.complete('sync-now');
       notify('This device is now paired.', 'positive');
     } catch (error) {
       await refreshState().catch(() => undefined);
-      notify(errorMessage(error, 'Could not join from this QR code.'), 'negative');
+      throw error;
     } finally {
       setBusy(null);
     }
@@ -244,6 +256,7 @@ export function SyncSection() {
 
   async function handleSync() {
     if (!syncState) return;
+    feedback.begin();
     const isUnlocked =
       unlocked !== null &&
       syncState.channelId === unlocked.channelId &&
@@ -266,7 +279,7 @@ export function SyncSection() {
     }
     const passphraseError = validateRecoveryPassphrase(actionPassphrase);
     if (passphraseError) {
-      notify(passphraseError, 'negative');
+      feedback.fail(new Error(passphraseError), 'Enter a recovery passphrase.');
       return;
     }
     setBusy('sync');
@@ -278,7 +291,7 @@ export function SyncSection() {
       notify(session.result.pushed ? 'Sync complete.' : 'Already up to date.', 'positive');
     } catch (error) {
       await refreshState().catch(() => undefined);
-      notify(errorMessage(error, 'Sync could not be completed.'), 'negative');
+      feedback.fail(error, 'Sync could not be completed. Try again.');
     } finally {
       setBusy(null);
     }
@@ -286,10 +299,11 @@ export function SyncSection() {
 
   async function handleRevealQr() {
     if (!syncState) return;
+    feedback.begin();
     if (!unlocked) {
       const passphraseError = validateRecoveryPassphrase(actionPassphrase);
       if (passphraseError) {
-        notify(passphraseError, 'negative');
+        feedback.fail(new Error(passphraseError), 'Enter a recovery passphrase.');
         return;
       }
     }
@@ -301,7 +315,7 @@ export function SyncSection() {
       setQrValue(encodePairingCode(credentials));
       setShowQr(true);
     } catch (error) {
-      notify(errorMessage(error, 'Could not unlock the pairing QR code.'), 'negative');
+      feedback.fail(error, 'Could not unlock the pairing QR code. Try again.');
     }
   }
 
@@ -404,6 +418,7 @@ export function SyncSection() {
             />
           ) : (
             <Button
+              key="remove"
               variant="secondary"
               size="sm"
               onClick={() => setConfirmUnpair(true)}
@@ -414,6 +429,7 @@ export function SyncSection() {
           )
         ) : (
           <Button
+            key="pair"
             variant="secondary"
             size="sm"
             onClick={() => setPairOpen(true)}
@@ -431,6 +447,7 @@ export function SyncSection() {
           <StatusPanel state={syncState} />
           <div className="flex flex-wrap gap-2">
             <Button
+              id="sync-now"
               variant="primary"
               onClick={() => void handleSync()}
               onPointerEnter={preparePairingActions}
@@ -442,6 +459,7 @@ export function SyncSection() {
               {busy === 'sync' ? 'Syncing…' : 'Sync now'}
             </Button>
             <Button
+              id="sync-show-qr"
               variant="secondary"
               onClick={() => void handleRevealQr()}
               onPointerEnter={prepareQr}
@@ -474,7 +492,15 @@ export function SyncSection() {
                 id="sync-action-passphrase"
                 label="Recovery passphrase"
                 value={actionPassphrase}
-                onChange={setActionPassphrase}
+                onChange={(value) => {
+                  setActionPassphrase(value);
+                  feedback.clear();
+                }}
+                error={
+                  feedback.feedback?.field === 'sync-action-passphrase'
+                    ? feedback.feedback.message
+                    : undefined
+                }
                 type="password"
                 autoComplete="current-password"
                 placeholder="Needed to sync, show the QR or delete the channel"
@@ -483,6 +509,12 @@ export function SyncSection() {
                 This is used locally to open the encrypted recovery key. It is never sent to Lacuna.
               </p>
             </div>
+          )}
+
+          {feedback.feedback && !feedback.feedback.field && (
+            <p role="alert" className="text-sm text-negative">
+              {feedback.feedback.message}
+            </p>
           )}
 
           {showQr && qrValue && (
@@ -534,19 +566,15 @@ export function SyncSection() {
             <SyncPairingFlow
               mode={mode}
               busy={pairingBusy}
-              onSetup={(relayUrl, mintSecret, passphrase) =>
-                void handleSetup(relayUrl, mintSecret, passphrase)
-              }
-              onManualJoin={(relayUrl, channelId, passphrase) =>
-                void handleManualJoin(relayUrl, channelId, passphrase)
-              }
-              onQrJoin={(payload, passphrase) => void handleQrJoin(payload, passphrase)}
+              onSetup={handleSetup}
+              onManualJoin={handleManualJoin}
+              onQrJoin={handleQrJoin}
               onCancel={cancelFlow}
             />
           </Suspense>
         ) : (
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={beginSetup}>
+            <Button id="sync-begin-setup" variant="primary" onClick={beginSetup}>
               <ShareIcon width={18} height={18} />
               Set up sync
             </Button>

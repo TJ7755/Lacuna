@@ -53,6 +53,7 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await page.goto('/#/settings#settings-sync');
   await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Set up sync' }).click();
+  await page.getByRole('button', { name: 'Advanced: use a private relay' }).click();
   await page.getByLabel('Relay URL', { exact: true }).fill(syncRelay.relayBase);
   await page
     .getByLabel('Relay mint secret (private relays only)', { exact: true })
@@ -68,9 +69,13 @@ test('preserves AI across peer sync and revokes it after full replacement', asyn
   await peerPage.goto('/');
   await peerPage.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await peerPage.goto('/#/settings#settings-sync');
-  await peerPage.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
+  await peerPage
+    .locator('#settings-sync')
+    .getByRole('button', { name: 'Pair', exact: true })
+    .click();
   await peerPage.getByRole('dialog').getByRole('button', { name: 'Join another device' }).click();
-  await peerPage.getByRole('tab', { name: 'Enter details' }).click();
+  await peerPage.getByRole('radio', { name: 'Enter details' }).click();
+  await peerPage.getByRole('button', { name: 'Advanced: use a private relay' }).click();
   await peerPage.getByLabel('Relay URL', { exact: true }).fill(syncRelay.relayBase);
   await peerPage.getByLabel('Channel id', { exact: true }).fill(SYNC_CHANNEL_ID);
   await peerPage.getByLabel('Recovery passphrase', { exact: true }).fill(SYNC_PASSPHRASE);

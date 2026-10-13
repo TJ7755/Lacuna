@@ -27,11 +27,7 @@ interface TombstoneRow {
   deletedAt: number;
 }
 
-async function preparePeers(
-  browser: Browser,
-  page: Page,
-  initialFront?: string,
-) {
+async function preparePeers(browser: Browser, page: Page, initialFront?: string) {
   test.setTimeout(120_000);
   await enterFreshLacuna(page);
   await createCourse(page, 'Concurrent revision');
@@ -44,6 +40,7 @@ async function preparePeers(
   await page.goto('/#/settings');
   await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Set up sync' }).click();
+  await page.getByRole('button', { name: 'Advanced: use a private relay' }).click();
   await page.getByLabel('Relay URL', { exact: true }).fill(relay.relayBase);
   await page
     .getByLabel('Relay mint secret (private relays only)', { exact: true })
@@ -66,7 +63,8 @@ async function preparePeers(
   await peer.goto('/#/settings');
   await peer.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await peer.getByRole('dialog').getByRole('button', { name: 'Join another device' }).click();
-  await peer.getByRole('tab', { name: 'Enter details' }).click();
+  await peer.getByRole('radio', { name: 'Enter details' }).click();
+  await peer.getByRole('button', { name: 'Advanced: use a private relay' }).click();
   await peer.getByLabel('Relay URL', { exact: true }).fill(relay.relayBase);
   await peer.getByLabel('Channel id', { exact: true }).fill(SYNC_CHANNEL_ID);
   await peer.getByLabel('Recovery passphrase', { exact: true }).fill(SYNC_PASSPHRASE);

@@ -1,5 +1,4 @@
-const INPUT_CLASS =
-  'min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/30';
+import { fieldLabelClassName, Input } from '../../components/ui/Field';
 
 export function SyncField({
   id,
@@ -9,6 +8,7 @@ export function SyncField({
   type = 'text',
   placeholder,
   autoComplete,
+  error,
 }: {
   id: string;
   label: string;
@@ -17,19 +17,29 @@ export function SyncField({
   type?: 'text' | 'password';
   placeholder?: string;
   autoComplete?: string;
+  error?: string;
 }) {
   return (
-    <label className="block" htmlFor={id}>
-      <span className="mb-1.5 block text-sm text-ink">{label}</span>
-      <input
+    <div>
+      <label className={fieldLabelClassName} htmlFor={id}>
+        {label}
+      </label>
+      <Input
         id={id}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        className={INPUT_CLASS}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className="min-h-11 text-sm placeholder:text-ink-faint"
       />
-    </label>
+      {error && (
+        <p id={`${id}-error`} role="alert" className="mt-1 text-sm text-negative">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
