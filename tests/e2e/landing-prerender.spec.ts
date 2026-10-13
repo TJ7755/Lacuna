@@ -18,3 +18,13 @@ test(
     await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
   },
 );
+
+// A shared link to an in-page anchor is still a first visit: it must hydrate
+// the landing page, not boot the study app. Only `#/` fragments are app routes.
+test('a first visit to a landing anchor stays on the landing page', async ({ page }) => {
+  await page.goto('/#landing-product');
+  const hero = page.getByRole('region', { name: 'Revision around your exam' });
+  await expect(hero.getByRole('link', { name: 'Start revising' })).toBeVisible();
+  await expect(page).toHaveURL(/#landing-product$/);
+  await expect(page.getByRole('heading', { name: 'Courses' })).toHaveCount(0);
+});
