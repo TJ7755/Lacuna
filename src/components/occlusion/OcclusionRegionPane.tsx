@@ -3,6 +3,7 @@
 // role/answer text/back note. Region names default to "Box 1…n" (labels) and
 // "Region 1…n" (features) so the list stays navigable without typing.
 
+import { useLayoutEffect, useRef } from 'react';
 import { cn } from '../ui/cn';
 import { CloseIcon } from '../ui/icons';
 import type { OcclusionRegion } from '../../db/types';
@@ -31,6 +32,8 @@ interface OcclusionRegionPaneProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, patch: Partial<OcclusionRegion>) => void;
+  /** Takes focus when the last region is deleted, so it never falls to the page. */
+  onEmptied: () => void;
 }
 
 export function OcclusionRegionPane({
@@ -39,10 +42,25 @@ export function OcclusionRegionPane({
   onSelect,
   onDelete,
   onUpdate,
+  onEmptied,
 }: OcclusionRegionPaneProps) {
   const names = occlusionRegionNames(regions);
   const selected = regions.find((r) => r.id === selectedRegionId) ?? null;
   const labelRegions = regions.filter((r) => r.role === 'label');
+  const listRef = useRef<HTMLUListElement>(null);
+  const deletedIndex = useRef<number | null>(null);
+
+  // A deleted region's button unmounts with it, so focus moves to the region that
+  // took its place, else the one before, else back to the canvas.
+  useLayoutEffect(() => {
+    const index = deletedIndex.current;
+    if (index === null) return;
+    deletedIndex.current = null;
+    const buttons = listRef.current?.querySelectorAll<HTMLElement>('[data-region-delete]');
+    const next = buttons?.[Math.min(index, buttons.length - 1)];
+    if (next) next.focus();
+    else onEmptied();
+  }, [regions, onEmptied]);
 
   return (
     <div className="flex min-w-0 flex-col border-t border-line min-[760px]:border-l min-[760px]:border-t-0">
@@ -54,8 +72,8 @@ export function OcclusionRegionPane({
       {regions.length === 0 ? (
         <p className="px-3 py-4 text-sm text-ink-faint">Draw a box on the diagram to add a region.</p>
       ) : (
-        <ul className="flex max-h-56 flex-col gap-0.5 overflow-y-auto p-1.5">
-          {regions.map((region) => {
+        <ul ref={listRef} className="flex max-h-56 flex-col gap-0.5 overflow-y-auto p-1.5">
+          {regions.map((region, index) => {
             const name = names.get(region.id)!;
             const pairedName = region.pairedRegionId ? names.get(region.pairedRegionId) : undefined;
             const current = region.id === selectedRegionId;
@@ -71,7 +89,7 @@ export function OcclusionRegionPane({
                   )}
                 >
                   <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 text-xs text-ink-faint">
-                    {region.role === 'label' ? 'lbl' : 'ftr'}
+                    {region.role === 'label' ? 'Label' : 'Feature'}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
                     {name}
@@ -80,7 +98,11 @@ export function OcclusionRegionPane({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDelete(region.id)}
+                  data-region-delete=""
+                  onClick={() => {
+                    deletedIndex.current = index;
+                    onDelete(region.id);
+                  }}
                   aria-label={`Delete ${name}`}
                   className="hit-target shrink-0 rounded-full p-1.5 text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
                 >
