@@ -115,6 +115,24 @@ export function ReviewHeatmap({
   );
   const [tooltipLeft, setTooltipLeft] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [labelStride, setLabelStride] = useState(days > 7 ? 5 : 1);
+
+  // Date labels thin out as columns narrow or text grows, so neighbours never collide.
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (!compact || !grid) return;
+    const measure = () => {
+      const column = grid.clientWidth / days;
+      if (column <= 0) return;
+      // A label such as "13 Sept" is under five ems of extra-small text, plus a gap.
+      const em = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.75;
+      setLabelStride(Math.max(days > 7 ? 5 : 1, Math.ceil((em * 5 + 6) / column)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(grid);
+    return () => observer.disconnect();
+  }, [compact, days]);
   const tooltipRef = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
@@ -193,8 +211,9 @@ export function ReviewHeatmap({
           {compact &&
             navigableCells.map(({ cell }, index) => {
               const last = index === days - 1;
-              // Every fifth day, plus today; a fifth day too near today would collide with it.
-              if (days > 7 && !last && (index % 5 !== 0 || index > days - 7)) return null;
+              // Every few days, plus today; a label too near today would collide with it.
+              if (!last && (index % labelStride !== 0 || index > days - 1 - labelStride))
+                return null;
               const date = new Date(cell.day);
               return (
                 <span

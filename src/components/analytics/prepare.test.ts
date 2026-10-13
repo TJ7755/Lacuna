@@ -304,6 +304,7 @@ describe('globalTrajectorySeries', () => {
     ];
     const [point] = globalTrajectorySeries(history);
     expect(point.retrievability).toBe(75);
+    expect(point.courses).toBe(2);
   });
 });
 

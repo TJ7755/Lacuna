@@ -65,7 +65,8 @@ Pure aggregates over stored history, in local time:
   7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity
   bands. The header carries the matching count and day range. Seven- and 30-day
   periods use a full-width daily strip with weekday or date labels and compact
-  fixed-height cells. Longer periods use a **month-name row** above the cells, with a short month label on
+  fixed-height cells; their date labels thin out as the strip narrows or text grows,
+  so neighbouring labels never collide. Longer periods use a **month-name row** above the cells, with a short month label on
   the first column of each new month so the calendar is readable without a
   separate legend. Weekday labels (Mon/Thu/Sun) line up exactly with their cells.
   One calendar date enters the tab order; horizontal arrows follow consecutive dates
@@ -133,7 +134,10 @@ aggregating across every course:
 - **Forecast** — cards due and new cards scheduled per day for the next 30
   days.
 - **Predicted exam-day score** — average predicted retrievability across all
-  courses over time.
+  courses over time. Each point is a study day averaging the latest snapshot of
+  each course studied that day; the data table lists how many courses each point
+  covers. A single study day shows its value and asks for another day of study
+  instead of the empty state.
 - **Prediction accuracy** — Brier score for predicted vs actual recall.
 - **Review volume** and **Study time** — daily counts and minutes over the past
   30 days.

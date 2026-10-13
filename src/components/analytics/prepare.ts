@@ -38,6 +38,8 @@ export interface TrajectoryPoint {
   day: number;
   label: string;
   retrievability: number;
+  /** Courses averaged into this point; the cross-course series only. */
+  courses?: number;
 }
 
 export interface StabilityBucket {
@@ -273,6 +275,7 @@ export function globalTrajectorySeries(history: SessionHistoryEntry[]): Trajecto
           month: 'short',
         }),
         retrievability: Number.isFinite(avg) ? Math.round(avg * 100) : 0,
+        courses: values.length,
       };
     });
 }

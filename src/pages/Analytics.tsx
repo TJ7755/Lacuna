@@ -204,13 +204,22 @@ export function Analytics() {
         <FadeInView y={12} className={CELL}>
           <ChartCard
             title="Predicted exam-day score"
+            description="Each point is a day you studied, averaging the courses studied that day."
             data={{
-              columns: ['Date', 'Predicted score (%)'],
-              rows: trajectory.map((point) => [point.label, point.retrievability]),
+              columns: ['Date', 'Predicted score (%)', 'Courses'],
+              rows: trajectory.map((point) => [
+                point.label,
+                point.retrievability,
+                point.courses ?? 1,
+              ]),
             }}
             emptyDrawing="prediction"
             empty={trajectory.length < 2}
-            emptyMessage="Complete reviews to plot a trajectory."
+            emptyMessage={
+              trajectory.length === 1
+                ? `Predicted ${trajectory[0].retrievability}% on ${trajectory[0].label}. Study on another day to see a trend.`
+                : 'Complete reviews to plot a trajectory.'
+            }
           >
             <AreaTrend
               data={trajectory}
