@@ -479,6 +479,27 @@ describe('buildPath', () => {
 // buildPath — practice-node placement (addendum 2 §H, §K)
 // ---------------------------------------------------------------------------
 
+describe('buildPath — tied lesson order', () => {
+  it('places a checkpoint directly after its anchor when lessons share an orderIndex', () => {
+    // Merging lessons added on two devices can leave equal orderIndex values. The path
+    // must break ties the same way assessment coverage does (createdAt, then id).
+    const course = makeCourse({ id: 'c1' });
+    const lessons = [
+      makeLesson({ id: 'lb', courseId: 'c1', orderIndex: 0, createdAt: 5 }),
+      makeLesson({ id: 'la', courseId: 'c1', orderIndex: 0, createdAt: 1 }),
+      makeLesson({ id: 'lc', courseId: 'c1', orderIndex: 1, createdAt: 0 }),
+    ];
+    const checkpoint = makeExamDate({ id: 'cp', courseId: 'c1', afterLessonId: 'lb' });
+
+    const ids = buildPath(course, lessons, [checkpoint], new Map(), [], 0, 0, 0).map(
+      (node) => node.id,
+    );
+
+    expect(ids.filter((id) => id !== 'cp')).toEqual(['la', 'lb', 'lc']);
+    expect(ids[ids.indexOf('cp') - 1]).toBe('lb');
+  });
+});
+
 describe('buildPath — practice nodes', () => {
   const lessons = [
     { id: 'l1', courseId: 'c1', orderIndex: 0 },

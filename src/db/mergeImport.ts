@@ -19,8 +19,9 @@
  * create case: `db.sequences.put` on an id with no existing row is an insert, and its
  * internal diff against zero existing cards is all-creates.
  *
- * Question-bank cards remain outside lineage tracking. Published assessment
- * identities are adopted with Question Sets so their links survive updates.
+ * Linked bank cards are adopted and diffed like lesson cards, with no lesson; lesson-card
+ * links take deterministic ids and follow the payload on every import. Published
+ * assessment identities are adopted with Question Sets so their links survive updates.
  *
  * This module uses Dexie directly (never edits `src/db/repository.ts`, owned by a
  * concurrent Arc 7 task) but does import its existing, unmodified exports for creates,
@@ -29,8 +30,10 @@
  * path.
  */
 
+import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
 import {
+  assignCardsToLesson,
   createCourse,
   deleteCards,
   deleteLesson,
@@ -40,24 +43,31 @@ import {
   updateNote,
   updateSequence,
 } from './repository';
-import { ensureLessonBackingDeck, syncCourseSchedulingUnits } from './backingDecks';
-import { clearTombstone, stampUpdatedAt } from './mutationStamp';
+import {
+  ensureCourseBankBackingDeck,
+  ensureLessonBackingDeck,
+  syncCourseSchedulingUnits,
+} from './backingDecks';
+import { clearTombstone, clearTombstones, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { updateOcclusion } from './occlusionRepository';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
+  CardUpdate,
   CreateCardPayload,
   CreateLessonPayload,
   CreateNotePayload,
   ExistingCard,
   ExistingLesson,
   ExistingNote,
+  LineageConflict,
   LineageDiffInput,
   ShareCardInput,
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
+import { importSharePayload } from './share';
 import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type {
   Card,
@@ -65,6 +75,7 @@ import type {
   Course,
   CourseRecord,
   Lesson,
+  LessonCardLink,
   LineageCardSnapshot,
   LineageIdMapping,
   LineageLessonSnapshot,
@@ -82,6 +93,7 @@ import type {
   QuestionScheduleState,
 } from '../questions/types';
 import { emptyQuestionSchedule } from '../questions/scheduler';
+import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes } from '../questions/questionSetLineage';
 import { applyLineageAssessments } from './assessmentLineage';
@@ -92,6 +104,8 @@ type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | ShareP
   li: string;
   rv: number;
 };
+
+type ShareCard = LineagePayload['lessons'][number]['cards'][number];
 
 /** Type guard: a decoded payload actually carries a lineage (`li`/`rv`, §7.2). */
 export function isLineagePayload(payload: SharePayload): payload is LineagePayload {
@@ -144,7 +158,7 @@ function lineageCardConceptId(sourceCardId: string): string {
  * `applySequences`/`applyOcclusions` recreate them from their owning entity, so diffing
  * them as well adopts a second, stale copy under the payload's own card id.
  */
-function isGeneratedShareCard(card: LineagePayload['lessons'][number]['cards'][number]): boolean {
+function isGeneratedShareCard(card: ShareCard): boolean {
   return card.si !== undefined || card.oc !== undefined;
 }
 
@@ -164,20 +178,20 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
       if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
       return { i: note.oi, n: note.n, c: note.c };
     }),
-    cards: lesson.cards
-      .filter((card) => !isGeneratedShareCard(card))
-      .map((card): ShareCardInput => {
-        if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
-        return {
-          i: card.id,
-          k: card.k,
-          f: card.f,
-          b: card.b,
-          g: card.g,
-          p: card.p as ItemPayload | undefined,
-          am: card.am,
-        };
-      }),
+    cards: lesson.cards.filter((card) => !isGeneratedShareCard(card)).map(toShareCardInput),
+  };
+}
+
+function toShareCardInput(card: ShareCard): ShareCardInput {
+  if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
+  return {
+    i: card.id,
+    k: card.k,
+    f: card.f,
+    b: card.b,
+    g: card.g,
+    p: card.p as ItemPayload | undefined,
+    am: card.am,
   };
 }
 
@@ -209,6 +223,7 @@ function toExistingNote(note: Note): ExistingNote {
 function toExistingCard(card: Card): ExistingCard {
   return {
     id: card.id,
+    lessonId: card.primaryLessonId ?? null,
     type: card.type,
     front: card.front,
     back: card.back,
@@ -434,12 +449,10 @@ async function upsertLineageConcepts(
 function incomingCardConceptIds(payload: LineagePayload): Map<string, string> {
   const result = new Map<string, string>();
   if (payload.v === 2) return result;
-  for (const lesson of payload.lessons) {
-    for (const card of lesson.cards) {
-      if (!card.id || !card.co || isGeneratedShareCard(card)) continue;
-      result.set(card.id, card.co);
-      if (card.k === 2) result.set(reverseCardId(card.id), card.co);
-    }
+  for (const card of [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])]) {
+    if (!card.id || !card.co || isGeneratedShareCard(card)) continue;
+    result.set(card.id, card.co);
+    if (card.k === 2) result.set(reverseCardId(card.id), card.co);
   }
   return result;
 }
@@ -771,7 +784,9 @@ async function applyCreates(
   const newCards: Card[] = [];
   const newConcepts: Concept[] = [];
   for (const c of creates.cards) {
-    const deckId = await ensureLessonBackingDeck(courseId, c.lessonId);
+    const deckId = c.lessonId
+      ? await ensureLessonBackingDeck(courseId, c.lessonId)
+      : await ensureCourseBankBackingDeck(courseId);
     const conceptId = conceptIdByCard ? conceptIdByCard.get(c.id) : lineageCardConceptId(c.id);
     if (!conceptId) throw new Error(`A shared Card references a missing Concept: ${c.id}.`);
     if (!conceptIdByCard) {
@@ -791,7 +806,7 @@ async function applyCreates(
       deckId,
       courseId,
       primaryLessonId: c.lessonId,
-      schedulingUnitId: c.lessonId,
+      schedulingUnitId: deckId,
       type: c.type,
       front: c.front,
       back: c.back,
@@ -833,6 +848,77 @@ async function applyCreates(
   return { lessons: newLessons, notes: newNotes, cards: newCards };
 }
 
+/** Apply a card update, routing a lesson move through `assignCardsToLesson` so the
+ *  backing deck, scheduling unit and review history follow the card. */
+async function applyCardUpdate(courseId: string, update: CardUpdate): Promise<void> {
+  const { id, primaryLessonId, ...changes } = update;
+  if (primaryLessonId !== undefined) await assignCardsToLesson([id], courseId, primaryLessonId);
+  if (Object.keys(changes).length > 0) await updateCard(id, changes);
+}
+
+/** Deterministic, so every device that imports the lineage converges on one row. */
+function lineageLinkId(lessonId: string, cardId: string): string {
+  return `lineage-link:${encodeURIComponent(lessonId)}:${encodeURIComponent(cardId)}`;
+}
+
+/**
+ * Make the course's lineage-owned lesson-card links match the payload's. Links are
+ * display-only (the card's primary lesson is unchanged), so they are applied directly
+ * rather than queued for review. Only links with a lineage id are touched.
+ */
+async function syncLineageLinks(
+  tx: Transaction,
+  payload: LineagePayload,
+  courseId: string,
+): Promise<void> {
+  const lessonIds = (await db.lessons.where('courseId').equals(courseId).primaryKeys()) as string[];
+  const lessonIdSet = new Set(lessonIds);
+  const current = lessonIds.length
+    ? (await db.lessonCards.where('lessonId').anyOf(lessonIds).toArray()).filter((link) =>
+        link.id.startsWith('lineage-link:'),
+      )
+    : [];
+  const currentIds = new Set(current.map((link) => link.id));
+  const links = payload.links ?? [];
+  const cards = await db.cards.bulkGet(links.map((link) => link.c));
+  const now = Date.now();
+  const wanted = new Set<string>();
+  const added: LessonCardLink[] = [];
+  links.forEach((link, index) => {
+    const lessonId = payload.lessons[link.l]?.i;
+    if (!lessonId || !lessonIdSet.has(lessonId) || cards[index]?.courseId !== courseId) return;
+    const id = lineageLinkId(lessonId, link.c);
+    if (wanted.has(id)) return;
+    wanted.add(id);
+    if (!currentIds.has(id)) {
+      added.push({ id, lessonId, cardId: link.c, createdAt: now, updatedAt: now });
+    }
+  });
+  const removed = current.filter((link) => !wanted.has(link.id)).map((link) => link.id);
+  if (removed.length > 0) {
+    await db.lessonCards.bulkDelete(removed);
+    await recordTombstones(tx, 'lessonCards', removed);
+  }
+  if (added.length > 0) {
+    await db.lessonCards.bulkAdd(added);
+    await clearTombstones(tx, 'lessonCards', added.map((link) => link.id));
+  }
+}
+
+async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
+  const lessonIds = payload.lessons.flatMap((lesson) => (lesson.i ? [lesson.i] : []));
+  const noteIds = payload.lessons.flatMap((lesson) => lesson.notes.flatMap((note) => (note.oi ? [note.oi] : [])));
+  const cardIds = [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])]
+    .filter((card) => !isGeneratedShareCard(card))
+    .flatMap((card) => (card.id ? [card.id] : []));
+  const [lessons, notes, cards] = await Promise.all([
+    db.lessons.bulkGet(lessonIds),
+    db.notes.bulkGet(noteIds),
+    db.cards.bulkGet(cardIds),
+  ]);
+  return [...lessons, ...notes, ...cards].some((row) => row !== undefined);
+}
+
 /**
  * First import of a published lineage (§7.1/§7.2/§7.9 Task 5). Diverges from
  * `importCourseSharePayload` (`share.ts:1083`) precisely in id handling: every
@@ -844,13 +930,31 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
+  // A detached copy (or the teacher's own course) already holds these ids, and
+  // adoption cannot reuse them, so fall back to a plain, untracked import.
+  if (await lineageIdsInUse(payload)) {
+    const { courseIds } = await importSharePayload(payload);
+    const course = await db.courses.get(courseIds[0]);
+    if (!course) throw new Error('Course not found.');
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    return { course: hydrateCourse(course, finalAssessmentForCourse(course.id, assessments)) };
+  }
 
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await createCourse(payload.course.n || 'Shared course', {
       description: payload.course.d ?? '',
       examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
       createdAt: payload.course.c,
-      examDate: payload.course.e,
+      schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
+      ...(payload.course.e === undefined ? {} : { examDate: payload.course.e }),
+      // Seeded from the teacher like a plain share import; the learner owns them after.
+      fsrsParameters: {
+        ...defaultFsrsParameters(),
+        ...(typeof payload.course.r === 'number'
+          ? { requestRetention: clampRequestRetention(payload.course.r) }
+          : {}),
+      },
+      ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
       unlockMode: payload.course.um,
       ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
       lessonViewMode: 'study',
@@ -914,13 +1018,21 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
 
     const newCards: Card[] = [];
     const newConcepts: Concept[] = [];
-    for (let lessonIndex = 0; lessonIndex < payload.lessons.length; lessonIndex++) {
-      const shareLesson = payload.lessons[lessonIndex];
-      const lessonId = newLessons[lessonIndex].id;
-      if (shareLesson.cards.every(isGeneratedShareCard)) continue;
-      const deckId = await ensureLessonBackingDeck(course.id, lessonId);
+    // Linked bank cards are adopted like lesson cards, with no lesson.
+    const cardGroups: Array<{ lessonId: string | null; cards: ShareCard[] }> = [
+      ...payload.lessons.map((shareLesson, lessonIndex) => ({
+        lessonId: newLessons[lessonIndex].id,
+        cards: shareLesson.cards,
+      })),
+      { lessonId: null, cards: payload.bankCards ?? [] },
+    ];
+    for (const { lessonId, cards } of cardGroups) {
+      if (cards.every(isGeneratedShareCard)) continue;
+      const deckId = lessonId
+        ? await ensureLessonBackingDeck(course.id, lessonId)
+        : await ensureCourseBankBackingDeck(course.id);
       let cardCreatedAt = createdAt;
-      for (const shareCard of shareLesson.cards) {
+      for (const shareCard of cards) {
         if (isGeneratedShareCard(shareCard)) continue;
         if (!shareCard.id) throw new Error('Lineage payload card is missing its originating id.');
         const type = shareCardKindToType(shareCard.k);
@@ -945,7 +1057,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
           deckId,
           courseId: course.id,
           primaryLessonId: lessonId,
-          schedulingUnitId: lessonId,
+          schedulingUnitId: deckId,
           stability: null,
           difficulty: null,
           lastReviewed: null,
@@ -1008,6 +1120,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     const lessonIdByIndex = (index: number) => newLessons[index]?.id ?? null;
     await applySequences(payload, course.id, lessonIdByIndex, mapping);
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
+    await syncLineageLinks(tx, payload, course.id);
     await applyLineageQuestions(payload, course.id, mapping);
     if (payload.v === 4 || payload.v === 5) await applyLineageAssessments(payload, course.id, mapping, true);
     if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, course.id, mapping);
@@ -1051,7 +1164,7 @@ export async function mergeLineageUpdate(
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
 
-  return db.transaction('rw', MERGE_TABLES, async () => {
+  return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await db.courses.get(courseId);
     if (!course) throw new Error('Course not found.');
     const dc = course.distributedCopy;
@@ -1076,7 +1189,10 @@ export async function mergeLineageUpdate(
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
 
     const diffInput: LineageDiffInput = {
-      incoming: { lessons: payload.lessons.map(toShareLessonInput) },
+      incoming: {
+        lessons: payload.lessons.map(toShareLessonInput),
+        bankCards: (payload.bankCards ?? []).map(toShareCardInput),
+      },
       existing: {
         lessons: existingLessons.map(toExistingLesson),
         notes: existingNotes.map(toExistingNote),
@@ -1149,8 +1265,7 @@ export async function mergeLineageUpdate(
         appliedUpdates++;
       }
       for (const update of diff.updates.cards) {
-        const { id, ...changes } = update;
-        await updateCard(id, changes);
+        await applyCardUpdate(courseId, update);
         appliedUpdates++;
       }
       for (const id of removalLessonIds) {
@@ -1215,6 +1330,7 @@ export async function mergeLineageUpdate(
     };
     await applySequences(payload, courseId, lessonIdByIndex, mapping);
     await applyOcclusions(payload, courseId, lessonIdByIndex, mapping);
+    await syncLineageLinks(tx, payload, courseId);
     if (conceptIdByCard) {
       for (const [cardId, conceptId] of conceptIdByCard) {
         const card = await db.cards.get(cardId);
@@ -1414,8 +1530,7 @@ async function applyQueuedUpdate(
     const { id: _id, ...changes } = update as PendingDiff['updates']['notes'][number];
     await updateNote(id, changes);
   } else {
-    const { id: _id, ...changes } = update as PendingDiff['updates']['cards'][number];
-    await updateCard(id, changes);
+    await applyCardUpdate(mapping.courseId, update as PendingDiff['updates']['cards'][number]);
   }
   await refreshSnapshot(kind, id, mapping);
 }
@@ -1427,7 +1542,7 @@ async function applyQueuedUpdate(
 async function takeIncomingConflict(
   kind: MergeReviewItemKind,
   entityId: string,
-  incoming: ShareLessonInput | ShareNoteInput | ShareCardInput,
+  { incoming, lessonId }: LineageConflict,
   mapping: LineageIdMapping,
 ): Promise<void> {
   if (kind === 'lesson') {
@@ -1444,9 +1559,15 @@ async function takeIncomingConflict(
     });
   } else if (kind === 'note') {
     const inc = incoming as ShareNoteInput;
-    await updateNote(entityId, { name: inc.n.trim() || 'Untitled note', content: inc.c });
+    await updateNote(entityId, {
+      name: inc.n.trim() || 'Untitled note',
+      content: inc.c,
+      ...(lessonId ? { lessonId } : {}),
+    });
   } else {
     const inc = incoming as ShareCardInput;
+    // Conflicts queued before lesson membership was diffed carry no lessonId.
+    if (lessonId !== undefined) await assignCardsToLesson([entityId], mapping.courseId, lessonId);
     await updateCard(entityId, {
       type: shareCardKindToType(inc.k),
       front: inc.f,
@@ -1489,7 +1610,7 @@ async function resolveOne(
     const [conflict] = diff.conflicts.splice(cIdx, 1);
     if (accept) {
       if (conflict.incoming === null) await deleteAdoptedEntity(ref.kind, ref.entityId, mapping);
-      else await takeIncomingConflict(ref.kind, ref.entityId, conflict.incoming, mapping);
+      else await takeIncomingConflict(ref.kind, ref.entityId, conflict, mapping);
     }
     return;
   }

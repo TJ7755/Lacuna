@@ -102,7 +102,7 @@ export function SyncSection() {
     void readSyncState()
       .then((state) => {
         if (!active) return;
-        setSyncState(state ?? null);
+        setSyncState(pairedState(state));
         setUnlocked(readRememberedCredentials(state ?? undefined));
         setLoaded(true);
       })
@@ -140,8 +140,9 @@ export function SyncSection() {
 
   async function refreshState(): Promise<SyncState | null> {
     const next = await readSyncState();
-    setSyncState(next ?? null);
-    return next ?? null;
+    const paired = pairedState(next);
+    setSyncState(paired);
+    return paired;
   }
 
   function beginSetup() {
@@ -597,4 +598,9 @@ export function SyncSection() {
       )}
     </SectionCard>
   );
+}
+
+/** The same row also holds teacher share-link credentials; only a channel means sync is set up. */
+function pairedState(state: SyncState | undefined): SyncState | null {
+  return state?.channelId ? state : null;
 }

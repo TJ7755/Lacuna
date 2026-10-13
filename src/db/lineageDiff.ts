@@ -86,6 +86,8 @@ export interface ExistingNote {
 export interface ExistingCard {
   answerMode?: 'reveal' | 'type';
   id: string;
+  /** Primary lesson, or null for a course bank card. */
+  lessonId: string | null;
   type: CardType;
   front: string;
   back: string;
@@ -110,7 +112,8 @@ export interface LineageIdMapping {
 }
 
 export interface LineageDiffInput {
-  incoming: { lessons: ShareLessonInput[] };
+  /** `bankCards` are the course's lesson-less cards that some lesson links to. */
+  incoming: { lessons: ShareLessonInput[]; bankCards?: ShareCardInput[] };
   existing: { lessons: ExistingLesson[]; notes: ExistingNote[]; cards: ExistingCard[] };
   mapping: LineageIdMapping;
   /** Local ids the student has touched since the last merge (§7.5's apply/queue split
@@ -152,8 +155,9 @@ export interface CreateNotePayload {
 export interface CreateCardPayload {
   answerMode?: 'reveal' | 'type';
   id: string;
-  /** The adopted id of the lesson this card belongs to (may itself be a fresh create). */
-  lessonId: string;
+  /** The adopted id of the lesson this card belongs to (may itself be a fresh create),
+   *  or null for a bank card. */
+  lessonId: string | null;
   type: CardType;
   front: string;
   back: string;
@@ -176,6 +180,8 @@ export interface LessonUpdate {
 
 export interface NoteUpdate {
   id: string;
+  /** Set when the teacher moved the note to another lesson. */
+  lessonId?: string;
   name?: string;
   content?: string;
   orderIndex?: number;
@@ -187,6 +193,9 @@ export interface NoteUpdate {
 export interface CardUpdate {
   answerMode?: 'reveal' | 'type';
   id: string;
+  /** Set when the teacher moved the card to another lesson (null: the course bank). Must
+   *  go through `assignCardsToLesson`, which keeps the backing deck in step. */
+  primaryLessonId?: string | null;
   type?: CardType;
   front?: string;
   back?: string;
@@ -200,6 +209,8 @@ export interface LineageConflict {
   /** The incoming (teacher's) version, attached for review; the student's local version
    *  is left untouched by this module and by the caller (§7.5's conflicts bullet). */
   incoming: ShareLessonInput | ShareNoteInput | ShareCardInput;
+  /** The incoming lesson membership of a note or card (null: a bank card). */
+  lessonId?: string | null;
 }
 
 export interface LineageDiffResult {
@@ -298,9 +309,18 @@ function diffLesson(incoming: ShareLessonInput, existing: ExistingLesson, orderI
   return changed ? update : undefined;
 }
 
-function diffNote(incoming: ShareNoteInput, existing: ExistingNote, orderIndex: number): NoteUpdate | undefined {
+function diffNote(
+  incoming: ShareNoteInput,
+  existing: ExistingNote,
+  orderIndex: number,
+  lessonId: string,
+): NoteUpdate | undefined {
   const update: NoteUpdate = { id: existing.id };
   let changed = false;
+  if (existing.lessonId !== lessonId) {
+    update.lessonId = lessonId;
+    changed = true;
+  }
   if (existing.name !== incoming.n) {
     update.name = incoming.n;
     changed = true;
@@ -316,9 +336,17 @@ function diffNote(incoming: ShareNoteInput, existing: ExistingNote, orderIndex: 
   return changed ? update : undefined;
 }
 
-function diffCard(incoming: ShareCardInput, existing: ExistingCard): CardUpdate | undefined {
+function diffCard(
+  incoming: ShareCardInput,
+  existing: ExistingCard,
+  lessonId: string | null,
+): CardUpdate | undefined {
   const update: CardUpdate = { id: existing.id };
   let changed = false;
+  if (existing.lessonId !== lessonId) {
+    update.primaryLessonId = lessonId;
+    changed = true;
+  }
   const incomingType = shareCardKindToType(incoming.k);
   if (existing.type !== incomingType) {
     update.type = incomingType;
@@ -362,6 +390,10 @@ function diffCard(incoming: ShareCardInput, existing: ExistingCard): CardUpdate 
  *    payload that never touched a student-edited entity, has nothing to reconcile)
  *  - id only in existing (present locally, absent incoming)   -> removals
  *
+ * "Content" for a note or card includes its lesson membership, so a teacher moving one
+ * to another lesson is an update. Bank cards are diffed like lesson cards, with a null
+ * lesson.
+ *
  * Sequences are entirely out of scope — see the module doc comment.
  */
 export function diffLineage(input: LineageDiffInput): LineageDiffResult {
@@ -383,6 +415,33 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
   const seenLessonIds = new Set<string>();
   const seenNoteIds = new Set<string>();
   const seenCardIds = new Set<string>();
+
+  const diffIncomingCard = (incomingCard: ShareCardInput, lessonId: string | null) => {
+    seenCardIds.add(incomingCard.i);
+    const isKnownCard = cardIdSet.has(incomingCard.i);
+    const existingCard = existingCardsById.get(incomingCard.i);
+
+    if (!isKnownCard || !existingCard) {
+      creates.cards.push({
+        id: incomingCard.i,
+        lessonId,
+        type: shareCardKindToType(incomingCard.k),
+        front: incomingCard.f,
+        back: incomingCard.b ?? '',
+        tags: incomingCard.g,
+        payload: incomingCard.p,
+        answerMode: incomingCard.am,
+      });
+      return;
+    }
+    const update = diffCard(incomingCard, existingCard, lessonId);
+    if (!update) return;
+    if (studentEdits.has(incomingCard.i)) {
+      conflicts.push({ entityId: incomingCard.i, kind: 'card', incoming: incomingCard, lessonId });
+    } else {
+      updates.cards.push(update);
+    }
+  };
 
   incoming.lessons.forEach((incomingLesson, lessonOrderIndex) => {
     seenLessonIds.add(incomingLesson.i);
@@ -427,10 +486,15 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
           orderIndex: noteOrderIndex,
         });
       } else {
-        const update = diffNote(incomingNote, existingNote, noteOrderIndex);
+        const update = diffNote(incomingNote, existingNote, noteOrderIndex, incomingLesson.i);
         if (update) {
           if (studentEdits.has(incomingNote.i)) {
-            conflicts.push({ entityId: incomingNote.i, kind: 'note', incoming: incomingNote });
+            conflicts.push({
+              entityId: incomingNote.i,
+              kind: 'note',
+              incoming: incomingNote,
+              lessonId: incomingLesson.i,
+            });
           } else {
             updates.notes.push(update);
           }
@@ -438,34 +502,9 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
       }
     });
 
-    incomingLesson.cards.forEach((incomingCard) => {
-      seenCardIds.add(incomingCard.i);
-      const isKnownCard = cardIdSet.has(incomingCard.i);
-      const existingCard = existingCardsById.get(incomingCard.i);
-
-      if (!isKnownCard || !existingCard) {
-        creates.cards.push({
-          id: incomingCard.i,
-          lessonId: incomingLesson.i,
-          type: shareCardKindToType(incomingCard.k),
-          front: incomingCard.f,
-          back: incomingCard.b ?? '',
-          tags: incomingCard.g,
-          payload: incomingCard.p,
-          answerMode: incomingCard.am,
-        });
-      } else {
-        const update = diffCard(incomingCard, existingCard);
-        if (update) {
-          if (studentEdits.has(incomingCard.i)) {
-            conflicts.push({ entityId: incomingCard.i, kind: 'card', incoming: incomingCard });
-          } else {
-            updates.cards.push(update);
-          }
-        }
-      }
-    });
+    incomingLesson.cards.forEach((incomingCard) => diffIncomingCard(incomingCard, incomingLesson.i));
   });
+  (incoming.bankCards ?? []).forEach((incomingCard) => diffIncomingCard(incomingCard, null));
 
   // Only mapped rows came from the lineage; anything else is the student's own content.
   for (const lesson of existing.lessons) {

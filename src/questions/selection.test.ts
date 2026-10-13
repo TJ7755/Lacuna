@@ -171,6 +171,20 @@ describe('selectQuestionSession', () => {
     ).toEqual(['unseen']);
   });
 
+  it('offers a shown but never-scheduled Question again, after unseen ones', () => {
+    const questions = [question('abandoned'), question('unseen')];
+    const sets = questions.map((item, index) => conceptSet(item.id, `concept-${index}`));
+    const abandoned: QuestionAttempt = {
+      ...exposure('abandoned', NOW - 1_000),
+      status: 'abandoned',
+      abandonedAt: NOW - 500,
+    } as QuestionAttempt;
+
+    expect(
+      selectQuestionSession(questions, sets, [abandoned], { now: NOW }).map((item) => item.id),
+    ).toEqual(['unseen', 'abandoned']);
+  });
+
   it('excludes generated Questions this client cannot resolve', () => {
     const supportedGenerator = questionGeneratorRegistry.list()[0];
     const unsupportedGeneratorVersion =

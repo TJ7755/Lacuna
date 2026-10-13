@@ -1,0 +1,1 @@
+- A first visit to a link to one of the landing page's sections, such as `#landing-product`, now opens the landing page at that section instead of starting the study app; only `#/` fragments count as app routes

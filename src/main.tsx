@@ -1,6 +1,11 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import { installHostedFontLinks, installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import {
+  installHostedFontLinks,
+  installSimpleAnalytics,
+  isAppHashRoute,
+  registerProductionServiceWorker,
+} from './webBootstrap';
 import { renderApp } from './appRoot';
 
 // Mirrors the private FLAG_KEY in src/db/seed.ts. Kept as a literal so the
@@ -30,11 +35,12 @@ async function clearDevelopmentPwaState(): Promise<void> {
   }
 }
 
-/** First-visit browsers hydrate the prerendered landing page; the packaged app,
- * in-app hash routes and returning browsers boot the study app directly. */
+/** First-visit browsers hydrate the prerendered landing page, including links to
+ * its in-page anchors; the packaged app, in-app hash routes and returning
+ * browsers boot the study app directly. */
 function shouldHydrateLanding(): boolean {
   if (window.electronAPI?.isElectron) return false;
-  if (window.location.hash.length > 1) return false;
+  if (isAppHashRoute(window.location.hash)) return false;
   try {
     // A previous start seeded the example course, so this browser already knows
     // the app: skip the marketing flash and go straight to the dashboard.

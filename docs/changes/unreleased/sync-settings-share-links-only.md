@@ -1,0 +1,1 @@
+- Sync settings no longer show a teacher's share-link credentials as a configured sync channel; only a paired channel counts
