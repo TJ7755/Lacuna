@@ -178,6 +178,11 @@ export const course = object({
     locked: flag,
     autoAcceptUpdates: flag,
     sourceLabel: text.optional(),
+    source: object({
+      name: text,
+      description: text,
+      unlockMode: z.enum(['linear', 'semi-linear', 'open']),
+    }).optional(),
   }).optional(),
 });
 export const assessment = object({
