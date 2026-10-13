@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import { m as motion } from 'motion/react';
 import type { Note } from '../../db/types';
 import { LessonNotesStudyView } from '../notes/LessonNotesStudyView';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
 import { PomodoroTimer } from './PomodoroTimer';
+import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 
 interface LessonNotesIntroProps {
   lessonName: string;
@@ -21,6 +23,9 @@ export function LessonNotesIntro({
   onContinue,
   motionMultiplier,
 }: LessonNotesIntroProps) {
+  // Starting the session removed the control that held focus; Enter now continues.
+  const continueRef = useRef<HTMLDivElement>(null);
+  useUnclaimedFocus(continueRef);
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -57,7 +62,7 @@ export function LessonNotesIntro({
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col pt-8 pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(2rem,env(safe-area-inset-bottom))]">
         <LessonNotesStudyView notes={notes} />
-        <div className="mt-8 flex justify-center">
+        <div ref={continueRef} className="mt-8 flex justify-center">
           <Button variant="primary" size="lg" className="w-full max-w-sm" onClick={onContinue}>
             Continue
           </Button>

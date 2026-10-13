@@ -53,6 +53,37 @@ function renderTransition(
 }
 
 describe('StudyStepTransition', () => {
+  it('hands the keyboard to the primary action once the next step is planned', () => {
+    const { rerender } = renderTransition({ planningNextStep: true });
+    expect(document.body).toHaveFocus();
+    rerender(
+      <StudyStepTransition
+        completedLabel="The blood"
+        nextLabel="Practice"
+        summary={summary(true)}
+        canReviewDueCards
+        breakPending={false}
+        planningNextStep={false}
+        {...callbacks()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /^Continue/ })).toHaveFocus();
+  });
+
+  it('offers the break first when one is due', () => {
+    renderTransition({ breakPending: true });
+    expect(screen.getByRole('button', { name: 'Take a break' })).toHaveFocus();
+  });
+
+  it('keeps focus on a control the learner already chose', () => {
+    const other = document.createElement('button');
+    document.body.append(other);
+    other.focus();
+    renderTransition();
+    expect(other).toHaveFocus();
+    other.remove();
+  });
+
   it('presents the freshly planned next step and delegates every available action', () => {
     const actions = callbacks();
     render(
