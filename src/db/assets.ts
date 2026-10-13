@@ -381,10 +381,17 @@ let gcTimeout: ReturnType<typeof setTimeout> | null = null;
 let gcRunning = false;
 
 /**
- * Scan every card's Markdown and remove assets whose hash is not referenced anywhere.
- * Safe to call at any time: it only deletes truly unreferenced rows.
+ * How long a stored asset is exempt from collection. Editors store an upload before the
+ * card, note or question that references it is saved, so a sweep scheduled by anything
+ * else in that window would otherwise delete the media out from under the author.
  */
-export async function collectOrphanedAssets(): Promise<number> {
+export const ASSET_GC_GRACE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Scan every card's Markdown and remove assets whose hash is not referenced anywhere.
+ * Safe to call at any time: it only deletes unreferenced rows older than the grace period.
+ */
+export async function collectOrphanedAssets(now: number = Date.now()): Promise<number> {
   if (gcRunning) return 0;
   gcRunning = true;
   try {
@@ -480,10 +487,17 @@ export async function collectOrphanedAssets(): Promise<number> {
           referenced.add(hash),
         );
 
+        // Rows without createdAt fall outside the index and so remain collectable.
+        const recent = new Set(
+          await db.assets
+            .where('createdAt')
+            .aboveOrEqual(now - ASSET_GC_GRACE_MS)
+            .primaryKeys(),
+        );
         // Stream asset keys and collect orphans without loading all keys at once.
         const orphans: string[] = [];
         await db.assets.toCollection().eachPrimaryKey((hash) => {
-          if (!referenced.has(hash)) orphans.push(hash);
+          if (!referenced.has(hash) && !recent.has(hash)) orphans.push(hash);
         });
         if (orphans.length > 0) {
           await db.assets.bulkDelete(orphans);

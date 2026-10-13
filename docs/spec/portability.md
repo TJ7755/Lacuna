@@ -149,7 +149,8 @@ A single, reusable export UI offering multiple output formats:
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Authored sets are scanned by backup export, sync accounting and
-  orphan-media collection. Older backups are normalised through the pure v24 converter;
+  orphan-media collection, which spares media stored in the last 24 hours so an upload whose
+  Card, Note or Question is not yet saved survives a sweep. Older backups are normalised through the pure v24 converter;
   legacy `courseExamDates` remains an import-only compatibility field.
 - **Record validation:** JSON files and direct imports share a Zod schema for every
   represented collection and its nested records. Invalid fields report the collection,
