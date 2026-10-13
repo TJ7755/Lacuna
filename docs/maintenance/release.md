@@ -176,10 +176,10 @@ That required gate checks `app:` launch, IndexedDB course persistence after relo
 seeded study answer. It uses the host architecture and does not replace signing or notarisation.
 
 These Electron specs skip on Linux, and CI runs them only for pull requests into `master`.
-To run them for any branch, tag or commit, including branches CI does not cover, dispatch the
-`Electron e2e` workflow (Actions, or `gh workflow run electron-e2e.yml -f ref=<ref>`). It runs
-`test:e2e:electron-ai` on Windows and macOS and the packaged macOS smoke gate, and uploads
-`test-results/` from each.
+To run them for another branch or tag, including branches CI does not cover, dispatch the
+`Electron e2e` workflow on it (Actions, or `gh workflow run electron-e2e.yml --ref <branch>`).
+The branch must already contain the workflow file. It runs `test:e2e:electron-ai` on Windows
+and macOS and the packaged macOS smoke gate, and uploads `test-results/` from each.
 
 On the exact release commit, the macOS operator runs:
 
