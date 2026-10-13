@@ -93,10 +93,14 @@ for (const width of [320, 390, 768, 1063, 1440]) {
           ['add', add],
           ['cancel', actions.getByRole('button', { name: 'Done' })],
         ] as const) {
-          const after = await bounds(control);
+          // Poll each target: a sibling's press or hover spring can still be settling here.
           for (const axis of ['x', 'y', 'width', 'height'] as const)
-            expect(Math.abs(after[axis] - before[name][axis]), `${name} ${axis}`).toBeLessThan(1.5);
-          expect(after.height).toBeGreaterThanOrEqual(44);
+            await expect
+              .poll(async () => Math.abs((await bounds(control))[axis] - before[name][axis]), {
+                message: `${name} ${axis}`,
+              })
+              .toBeLessThan(1.5);
+          expect((await bounds(control)).height).toBeGreaterThanOrEqual(44);
         }
 
         const answer = page.getByRole('combobox', { name: 'Card answer mode' });
