@@ -18,9 +18,9 @@
   server-side imports do not preload them. KaTeX and highlight.js styles imported globally; the restricted expression
   parser uses the number-only `mathjs/number` entry point.
 - **Charts:** Recharts.
-- **Fonts:** locally bundled Instrument Sans (body and headings), Fraunces (brand),
-  JetBrains Mono (code and the timer/tabular figures). `webBootstrap.ts` adds hosted
-  Fraunces and JetBrains Mono stylesheets on HTTP(S).
+- **Fonts:** locally bundled Instrument Sans (body), Space Grotesk (display and brand) and
+  JetBrains Mono (code and the timer/tabular figures), all in `public/fonts/` and precached by
+  the service worker. No font is fetched from a third party.
 - **Testing:** Vitest 5 with `fake-indexeddb` for the data and FSRS layers, `@testing-library/react`
   and `happy-dom` for UI component and hook tests. `test:coverage` retains the critical-domain
   gate; `test:coverage:recovery` separately measures persistence, sync merge, quota warnings,
