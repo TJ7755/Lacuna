@@ -46,6 +46,7 @@ export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1
 
   useEffect(() => {
     if (!ready) return;
+    const ids = sectionIds.split('|');
     const intersecting = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
@@ -53,17 +54,16 @@ export function useSectionRail(sections: SectionRailItem[], motionMultiplier = 1
           if (entry.isIntersecting) intersecting.add(entry.target.id);
           else intersecting.delete(entry.target.id);
         });
-        const top = sections.find((section) => intersecting.has(section.id));
-        if (top) setActiveSection(top.id);
+        const top = ids.find((id) => intersecting.has(id));
+        if (top) setActiveSection(top);
       },
       { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
     );
-    sections.forEach((section) => {
-      const element = document.getElementById(section.id);
+    ids.forEach((id) => {
+      const element = document.getElementById(id);
       if (element) observer.observe(element);
     });
     return () => observer.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionIds, ready]);
 
   const goToSection = useCallback(

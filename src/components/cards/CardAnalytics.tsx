@@ -134,7 +134,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
   };
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div>
       <div className="mb-6">
         <h4 className="mb-2 font-display text-lg tracking-tight">Forgetting curve</h4>
         {hasData ? (

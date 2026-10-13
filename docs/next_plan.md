@@ -71,6 +71,11 @@ work is signing/notarisation before wider rollout and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
 and review date.
 
+Advisory triage, 13 October 2026: `bun audit` reports no high or critical findings in the root,
+relay or handwriting packages. The one remaining root finding, moderate `sprintf-js`
+(GHSA-hp3w-g68c-fv3c), reaches only Electron's build-time download agent and has no patched
+release; the maintainer owns it, for review at the next beta release.
+
 **Exit:** audits and all existing quality gates pass, with remaining advisories explicitly triaged.
 
 ### 2. Data durability and desktop evidence

@@ -1,0 +1,1 @@
+- Patch updates: Zod 4.6.7, Vitest and `@vitest/coverage-v8` 5.0.4, Vite 8.3.4 and Electron 44.7.0. Root, relay and handwriting audits report no high or critical advisories; the remaining moderate root advisory is triaged in the roadmap.
