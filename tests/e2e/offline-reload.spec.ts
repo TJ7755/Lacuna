@@ -41,6 +41,7 @@ async function expectCardsRouteCached(page: Page) {
       expect.arrayContaining([
         '/fonts/InstrumentSans-Variable.ttf',
         '/fonts/SpaceGrotesk-Variable.ttf',
+        '/fonts/JetBrainsMono-Variable.ttf',
         expect.stringMatching(/^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/),
         expect.stringMatching(/^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/),
       ]),

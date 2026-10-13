@@ -317,42 +317,6 @@ function createWindow(): void {
     mainWindow?.webContents.send('window:maximizedChange', false);
   });
 
-  // Inject local font-face overrides so the app works fully offline.
-  mainWindow.webContents.on('did-finish-load', () => {
-    try {
-      const baseDir = path.join(__dirname, '..');
-      const fontsCssPath = path.join(baseDir, 'fonts.css');
-      let css = fs.readFileSync(fontsCssPath, 'utf-8');
-
-      // Inline font files as base64 data URLs so they resolve regardless of
-      // whether the app is running from a real directory or inside an asar.
-      const fontUrlRegex = /url\('\.\.\/assets\/fonts\/([^']+)'\)/g;
-      const fontsDir = path.join(baseDir, 'assets', 'fonts');
-
-      css = css.replace(fontUrlRegex, (match, fontFile) => {
-        const fontPath = path.join(fontsDir, fontFile);
-        try {
-          const fontData = fs.readFileSync(fontPath);
-          const ext = path.extname(fontPath).toLowerCase();
-          const mimeType: Record<string, string> = {
-            '.woff2': 'font/woff2',
-            '.woff': 'font/woff',
-            '.ttf': 'font/ttf',
-            '.otf': 'font/otf',
-          };
-          const type = mimeType[ext] || 'application/octet-stream';
-          return `url('data:${type};base64,${fontData.toString('base64')}')`;
-        } catch {
-          return match; // Fallback to original if file is missing.
-        }
-      });
-
-      void mainWindow?.webContents.insertCSS(css);
-    } catch {
-      // fonts.css may not exist in dev mode; this is fine.
-    }
-  });
-
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

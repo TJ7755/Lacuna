@@ -19,6 +19,15 @@
   font-display: swap;
 }
 
+/* Code and tabular figures use JetBrains Mono, also bundled so no font request leaves the app. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
 
