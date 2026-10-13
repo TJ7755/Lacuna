@@ -192,6 +192,8 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
     .click();
   await expect(page).toHaveURL(/\/course\/[^/]+\/settings$/);
   const bar = page.locator('[data-course-page-navigation]');
+  // Settings loads after the URL changes; scrolling an unloaded page has nowhere to go.
+  await expect(page.locator('#course-settings-content')).toBeVisible();
   const main = page.locator('main');
   await main.evaluate((element) => element.scrollTo({ top: 900, behavior: 'instant' }));
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThanOrEqual(900);
