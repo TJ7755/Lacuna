@@ -491,7 +491,7 @@ export async function collectOrphanedAssets(now: number = Date.now()): Promise<n
         const recent = new Set(
           await db.assets
             .where('createdAt')
-            .aboveOrEqual(now - ASSET_GC_GRACE_MS)
+            .above(now - ASSET_GC_GRACE_MS)
             .primaryKeys(),
         );
         // Stream asset keys and collect orphans without loading all keys at once.

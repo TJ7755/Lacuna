@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from './assets';
 import { createCard, createCourse, deleteCards, updateCard } from './repository';
@@ -48,6 +48,21 @@ describe('asset garbage collection', () => {
 
     expect(await collectOrphanedAssets()).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
+
+  it('collects an orphan exactly one grace period after it was stored', async () => {
+    const storedAt = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(storedAt);
+    const asset = await storeImageBlob(
+      new Blob(['expired'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    vi.restoreAllMocks();
+
+    expect(await collectOrphanedAssets(storedAt + ASSET_GC_GRACE_MS)).toBe(1);
+    expect(await db.assets.get(asset.hash)).toBeUndefined();
   });
 
   it('retains an asset referenced only by a local Question Set draft', async () => {
