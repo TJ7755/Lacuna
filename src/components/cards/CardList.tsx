@@ -1,5 +1,5 @@
 import { Input } from '../ui/Field';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Button } from '../ui/Button';
@@ -227,6 +227,13 @@ export function CardList({
     });
   }
 
+  // A finished bulk action closes the bar it was chosen from; focus returns to Select.
+  const selectButton = useRef<HTMLButtonElement>(null);
+  function finishBulk() {
+    exitSelect();
+    requestAnimationFrame(() => selectButton.current?.focus({ preventScroll: true }));
+  }
+
   function exitSelect() {
     setSelectMode(false);
     setSelected(new Set());
@@ -249,7 +256,7 @@ export function CardList({
     try {
       const snapshot = await snapshotCards(ids);
       await apply(ids);
-      exitSelect();
+      finishBulk();
       notify(message, 'neutral', { actionLabel: 'Undo', onAction: () => undoRestore(snapshot) });
     } catch {
       // Selection stays intact so the learner can retry.
@@ -299,7 +306,7 @@ export function CardList({
     try {
       const snapshot = await snapshotCards(ids);
       await deleteCards(ids);
-      exitSelect();
+      finishBulk();
       notify(`${ids.length} card${ids.length === 1 ? '' : 's'} deleted.`, 'neutral', {
         actionLabel: 'Undo',
         onAction: () => undoRestore(snapshot),
@@ -335,7 +342,7 @@ export function CardList({
     const snapshot = await snapshotCards(ids);
     const lessonId = assignTarget || null;
     await assignCardsToLesson(ids, courseId, lessonId);
-    exitSelect();
+    finishBulk();
     const lessonName = lessonId
       ? (assignableLessons?.find((l) => l.id === lessonId)?.name ?? 'lesson')
       : 'Unassigned';
@@ -493,6 +500,7 @@ export function CardList({
         >
           {selectableCards.length > 0 && (
             <Button
+              ref={selectButton}
               variant={selectMode ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => {
@@ -552,6 +560,7 @@ export function CardList({
                       <label className="block text-sm text-ink-soft">
                         Tag for {countOf(selected.size, 'card')}
                         <Input
+                          autoFocus
                           list="bulk-tag-suggestions"
                           value={tagValue}
                           onChange={(e) => setTagValue(e.target.value)}
