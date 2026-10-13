@@ -45,12 +45,17 @@ export function AddLessonControl({
   const nameInput = useRef<HTMLInputElement>(null);
   const previouslyOpen = useRef(open);
   useEffect(() => {
-    if (open && !importingCards) nameInput.current?.focus();
+    // Selected, so typing replaces the suggested name.
+    if (open && !importingCards) {
+      nameInput.current?.focus();
+      nameInput.current?.select();
+    }
     if (!open && previouslyOpen.current) trigger.current?.focus();
     previouslyOpen.current = open;
   }, [open, importingCards]);
 
   function startAdd() {
+    addedHere.current = 0;
     setName(defaultLessonName(lessonCount));
     setOpen(true);
   }
@@ -58,16 +63,28 @@ export function AddLessonControl({
   function cancel() {
     if (saving) return;
     setOpen(false);
+    addedHere.current = 0;
     setName(defaultLessonName(lessonCount));
     onCancel?.();
   }
 
-  async function save() {
+  // Lessons this form has created since it last closed: the live count lags a creation.
+  const addedHere = useRef(0);
+
+  /** `another` keeps the form open with the next name, for building an outline. */
+  async function save(another = false) {
     const trimmed = name.trim();
     if (saving || !trimmed) return;
     setSaving(true);
     try {
       const lesson = await createLesson(courseId, trimmed);
+      if (another) {
+        addedHere.current += 1;
+        setName(defaultLessonName(lessonCount + addedHere.current));
+        requestAnimationFrame(() => nameInput.current?.select());
+        return;
+      }
+      addedHere.current = 0;
       setOpen(false);
       onCreated?.(lesson);
     } catch (err) {
@@ -102,11 +119,20 @@ export function AddLessonControl({
       <div className="contents" inert={!open} aria-hidden={!open || undefined}>
         <AnimatedDisclosure open={open}>
           <div
-            onKeyDown={dialogKeyDown({
-              onCancel: cancel,
-              onSubmit: () => void save(),
-              enterSubmits: true,
-            })}
+            onKeyDown={(event) => {
+              // As in the card editor, Ctrl/Cmd+Enter creates and readies the next one.
+              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                event.stopPropagation();
+                void save(true);
+                return;
+              }
+              dialogKeyDown({
+                onCancel: cancel,
+                onSubmit: () => void save(),
+                enterSubmits: true,
+              })(event);
+            }}
             className="flex w-full flex-col gap-3 rounded-3xl bg-surface px-4 py-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
           >
             <Field label="Lesson name">
@@ -128,6 +154,15 @@ export function AddLessonControl({
                 disabled={saving || !name.trim()}
               >
                 {saving ? 'Creating…' : 'Create lesson'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void save(true)}
+                disabled={saving || !name.trim()}
+                title="Create and add another (Ctrl/Cmd+Enter)"
+              >
+                Create &amp; add another
               </Button>
               <Button
                 variant="secondary"

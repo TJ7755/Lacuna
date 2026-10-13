@@ -59,7 +59,13 @@ function card(id: string, lessonId: string, front: string): Card {
 
 const cards = [card('c1', 'l1', 'What is a proton?'), card('c2', 'l2', 'What is a bond?')];
 
-function Harness({ initial = emptyAssessmentDraft(lessons) }: { initial?: AssessmentDraft }) {
+function Harness({
+  initial = emptyAssessmentDraft(lessons),
+  cardList = cards,
+}: {
+  initial?: AssessmentDraft;
+  cardList?: Card[];
+}) {
   const [draft, setDraft] = useState(initial);
   return (
     <AssessmentEditor
@@ -68,7 +74,7 @@ function Harness({ initial = emptyAssessmentDraft(lessons) }: { initial?: Assess
       draft={draft}
       onChange={setDraft}
       lessons={lessons}
-      cards={cards}
+      cards={cardList}
       links={[]}
     />
   );
@@ -131,6 +137,12 @@ describe('AssessmentEditor', () => {
     expect(screen.queryByText('What is a bond?')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('What is a proton?'));
     expect(screen.getByText(/2 lessons · 1 card/)).toBeInTheDocument();
+  });
+
+  it('lists exclusion choices as readable text rather than raw markup', () => {
+    render(<Harness cardList={[card('c3', 'l1', 'The {{c1::nucleus}} holds **$p^+$**')]} />);
+    expect(screen.getByText('The nucleus holds p^+')).toBeInTheDocument();
+    expect(screen.queryByText(/\{\{c1::/)).not.toBeInTheDocument();
   });
 
   it('requires explicit confirmation for a repaired stale assessment', () => {

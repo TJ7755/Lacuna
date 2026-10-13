@@ -117,6 +117,27 @@ describe('QuestionSetPathEditor', () => {
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
   });
 
+  it('submits on Ctrl+Enter from a choice once the form is complete', async () => {
+    const { course, firstLesson, set } = await fixture();
+    const onClose = vi.fn();
+    render(
+      <QuestionSetPathEditor
+        courseId={course.id}
+        afterLessonId={firstLesson.id}
+        onClose={onClose}
+      />,
+    );
+    const choice = await screen.findByRole('radio', { name: 'Cell structure' });
+    fireEvent.keyDown(choice, { key: 'Enter', ctrlKey: true });
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+    fireEvent.click(choice);
+    fireEvent.keyDown(choice, { key: 'Enter', ctrlKey: true });
+    await waitFor(() =>
+      expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(course.id, set.id, firstLesson.id),
+    );
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it('keeps the set when removal is cancelled and saves edits to the lesson anchor', async () => {
     const { course, firstLesson, secondLesson, set } = await fixture();
     const node = activity(course.id, set.id, firstLesson.id);
