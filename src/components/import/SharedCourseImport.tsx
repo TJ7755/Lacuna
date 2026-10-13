@@ -128,6 +128,8 @@ export function SharedCourseImport({
   const [pending, setPending] = useState<PendingShareImport | null>(null);
   const inspectionGeneration = useRef(0);
   const [importing, setImporting] = useState(false);
+  // Stays beside the task until the next attempt, rather than as a passing toast.
+  const [error, setError] = useState('');
   const [motionSpeed] = useMotionSpeed();
 
   const {
@@ -152,7 +154,7 @@ export function SharedCourseImport({
       if (generation === inspectionGeneration.current) setPending(next);
     } catch (error) {
       if (generation === inspectionGeneration.current)
-        notify(error instanceof Error ? error.message : 'Invalid QR code.', 'negative');
+        setError(error instanceof Error ? error.message : 'Invalid QR code.');
     }
   });
 
@@ -173,18 +175,16 @@ export function SharedCourseImport({
           setPending({ ...next, file });
       } catch (error) {
         if (!cancelled && generation === inspectionGeneration.current)
-          notify(
-            error instanceof Error ? error.message : 'Could not read the course file.',
-            'negative',
-          );
+          setError(error instanceof Error ? error.message : 'Could not read the course file.');
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [initialFile, notify]);
+  }, [initialFile]);
   function beginInspection() {
     setPending(null);
+    setError('');
     return ++inspectionGeneration.current;
   }
 
@@ -205,13 +205,14 @@ export function SharedCourseImport({
       if (generation === inspectionGeneration.current) setPending(next);
     } catch (err) {
       if (generation === inspectionGeneration.current)
-        notify(err instanceof Error ? err.message : 'Invalid share code.', 'negative');
+        setError(err instanceof Error ? err.message : 'Invalid share code.');
     }
   }
 
   async function handleImport() {
     if (!pending || pending.merge?.stale || importing) return;
     setImporting(true);
+    setError('');
     onBusyChange?.(true);
     let importedCourseId: string | undefined;
     try {
@@ -241,9 +242,8 @@ export function SharedCourseImport({
       setInput('');
       if (importedCourseId) onImported?.(importedCourseId);
     } catch (err) {
-      notify(
+      setError(
         err instanceof Error ? err.message : 'Import failed — the shared course may be corrupted.',
-        'negative',
       );
     } finally {
       setImporting(false);
@@ -271,6 +271,9 @@ export function SharedCourseImport({
       <CourseFileImportButton
         disabled={importing}
         onReadStart={beginInspection}
+        onError={(message, generation) => {
+          if (generation === inspectionGeneration.current) setError(message);
+        }}
         onInspect={async (file, generation) => {
           const next = await resolvePending(file.payload, '');
           if (generation === inspectionGeneration.current) setPending({ ...next, file });
@@ -306,9 +309,9 @@ export function SharedCourseImport({
         </Button>
       </div>
 
-      {scanError && (
+      {(error || scanError) && (
         <p role="alert" className="mt-3 text-sm text-negative">
-          {scanError}
+          {error || scanError}
         </p>
       )}
       {/* QR scanner */}

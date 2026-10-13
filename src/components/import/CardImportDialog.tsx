@@ -34,6 +34,9 @@ export interface CardImportDialogProps {
   titleLabel?: 'Course title' | 'Lesson title';
   targetName?: string;
   schedulingUnitId?: string;
+  /** Pasted text kept by the caller across this form's unmount. */
+  initialText?: string;
+  onTextChange?: (text: string) => void;
   onCancel: () => void;
   onImport: (content: CardImportContent, title: string) => Promise<void>;
 }
@@ -49,10 +52,12 @@ export function CardImportDialog({
   titleLabel,
   targetName,
   schedulingUnitId,
+  initialText,
+  onTextChange,
   onCancel,
   onImport,
 }: CardImportDialogProps) {
-  const source = useCardImportSource();
+  const source = useCardImportSource(initialText, onTextChange);
   const loadedFile = useRef<File | undefined>(undefined);
   useEffect(() => {
     if (initialFile && loadedFile.current !== initialFile) {

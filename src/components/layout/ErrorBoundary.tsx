@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, createRef, type ErrorInfo, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../ui/Button';
 import {
@@ -26,6 +26,7 @@ interface State {
   counts: DiagnosticBundle['data'] | null;
   includeContent: boolean;
   copied: boolean;
+  copyFailed: boolean;
 }
 
 /**
@@ -41,12 +42,20 @@ export class ErrorBoundary extends Component<Props, State> {
     counts: null,
     includeContent: false,
     copied: false,
+    copyFailed: false,
   };
 
   private _mounted = false;
+  private heading = createRef<HTMLHeadingElement>();
+
+  componentDidUpdate(_: Props, previous: State) {
+    // Arriving at the error moves focus to its explanation, so the recovery action is next.
+    if (this.state.error && !previous.error) this.heading.current?.focus({ preventScroll: true });
+  }
 
   componentDidMount() {
     this._mounted = true;
+    if (this.state.error) this.heading.current?.focus({ preventScroll: true });
   }
 
   componentWillUnmount() {
@@ -83,6 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
       counts: null,
       includeContent: false,
       copied: false,
+      copyFailed: false,
     });
     this.props.onReset();
   };
@@ -110,10 +120,11 @@ export class ErrorBoundary extends Component<Props, State> {
     const text = formatDiagnostics(await this.buildBundle());
     try {
       await navigator.clipboard.writeText(text);
-      this.setState({ copied: true });
-      window.setTimeout(() => this.setState({ copied: false }), 2000);
+      this.setState({ copied: true, copyFailed: false });
+      window.setTimeout(() => this._mounted && this.setState({ copied: false }), 2000);
     } catch {
-      // Clipboard may be unavailable; the download path remains.
+      // Clipboard may be unavailable; say so, and the download path remains.
+      this.setState({ copied: false, copyFailed: true });
     }
   };
 
@@ -143,9 +154,11 @@ export class ErrorBoundary extends Component<Props, State> {
           className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center"
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={m > 0 ? { scale: 0.9, opacity: 0 } : false}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 320, damping: 24, delay: 0.05 }}
+            transition={
+              m > 0 ? { type: 'spring', stiffness: 320, damping: 24, delay: 0.05 * m } : undefined
+            }
             className="mb-2 grid h-16 w-16 place-items-center rounded-2xl bg-negative/10 text-negative"
           >
             <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -155,75 +168,58 @@ export class ErrorBoundary extends Component<Props, State> {
             </svg>
           </motion.div>
 
-          <motion.h2
-            initial={{ y: 8, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.1 * m }}
-            className="font-display text-2xl"
-          >
+          <h2 ref={this.heading} tabIndex={-1} className="font-display text-2xl outline-none">
             Something went wrong
-          </motion.h2>
-          <motion.p
-            initial={{ y: 8, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.15 * m }}
-            className="max-w-md text-ink-soft"
-          >
+          </h2>
+          <p className="max-w-md text-ink-soft">
             {this.props.label
               ? `An error occurred in ${this.props.label}.`
               : 'An unexpected error occurred.'}{' '}
             Your data is saved locally and is safe.
-          </motion.p>
+          </p>
+          <Button variant="primary" onClick={this.handleReset}>
+            Try again
+          </Button>
 
-          <motion.pre
-            initial={{ y: 8, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.2 * m }}
-            className="max-w-md overflow-x-auto rounded-lg border border-line bg-ink/5 px-3 py-2 text-left text-xs text-ink-faint"
-          >
-            {this.state.error.message}
-          </motion.pre>
-
-          <motion.div
-            initial={{ y: 8, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.25 * m }}
-            className="flex flex-wrap items-center justify-center gap-2"
-          >
-            <Button variant="primary" onClick={this.handleReset}>
-              Try again
-            </Button>
-            <Button variant="secondary" onClick={this.handleCopy}>
-              {this.state.copied ? 'Copied' : 'Copy diagnostic details'}
-            </Button>
-            <Button variant="secondary" onClick={this.handleDownload}>
-              Download diagnostic bundle
-            </Button>
-          </motion.div>
-
-          <motion.label
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.35 * m }}
-            className="flex items-center gap-2 text-xs text-ink-faint"
-          >
-            <input
-              type="checkbox"
-              checked={this.state.includeContent}
-              onChange={(e) => this.setState({ includeContent: e.target.checked })}
-              className="accent-accent"
-            />
-            Include a small sample of card content (only if needed to reproduce the fault)
-          </motion.label>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.24 * m, delay: 0.4 * m }}
-            className="max-w-md text-xs text-ink-faint"
-          >
-            Diagnostics stay on your device. Nothing is sent anywhere; the bundle is yours
-            to share in a bug report.
-          </motion.p>
+          {/* Diagnostics are for a bug report, so they wait behind the recovery action. */}
+          <details className="w-full max-w-md text-left">
+            <summary className="mx-auto flex min-h-11 w-fit cursor-pointer items-center rounded-full px-3 text-sm text-ink-soft hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink">
+              Technical details
+            </summary>
+            <div className="mt-2 flex flex-col items-center gap-3 text-center">
+              <pre className="w-full overflow-x-auto rounded-lg border border-line bg-ink/5 px-3 py-2 text-left text-xs text-ink-faint">
+                {this.state.error.message}
+              </pre>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button variant="secondary" onClick={this.handleCopy}>
+                  {this.state.copied ? 'Copied' : 'Copy diagnostic details'}
+                </Button>
+                <Button variant="secondary" onClick={this.handleDownload}>
+                  Download diagnostic bundle
+                </Button>
+              </div>
+              <p role="status" className="text-xs text-ink-soft empty:hidden">
+                {this.state.copied
+                  ? 'Diagnostic details copied.'
+                  : this.state.copyFailed
+                    ? 'Could not copy. Download the bundle instead.'
+                    : ''}
+              </p>
+              <label className="flex items-center gap-2 text-xs text-ink-faint">
+                <input
+                  type="checkbox"
+                  checked={this.state.includeContent}
+                  onChange={(e) => this.setState({ includeContent: e.target.checked })}
+                  className="accent-accent"
+                />
+                Include a small sample of card content (only if needed to reproduce the fault)
+              </label>
+              <p className="text-xs text-ink-faint">
+                Diagnostics stay on your device. Nothing is sent anywhere; the bundle is yours
+                to share in a bug report.
+              </p>
+            </div>
+          </details>
         </motion.div>
       );
     }

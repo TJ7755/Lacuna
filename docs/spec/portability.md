@@ -92,6 +92,9 @@ drag and drop, automatic format detection and a manual format override.
   initial Lesson 1 with their imported cards.
 - Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
   and course-bank imports display their destination without renaming it.
+- Going back to **All sources** keeps pasted text, which returns when Text or spreadsheet is
+  chosen again. Shared-course import keeps unreadable codes, course files and failed imports as
+  an inline alert beside the task until the next attempt or edit.
 - **Undo** on the review step means return to Add content. It preserves the title,
   text/file, manual format and reverse setting. It does not mutate or delete records.
 - **Also create reverse** applies only to non-empty, plain front/back cards without

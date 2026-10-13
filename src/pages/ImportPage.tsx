@@ -34,6 +34,7 @@ export function ImportPage() {
   const [source, setSource] = useState<Source | null>(null);
   const [file, setFile] = useState<File>();
   const [dragging, setDragging] = useState(false);
+  const [pastedText, setPastedText] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const pageRoot = useRef<HTMLDivElement>(null);
   const sourceButtons = useRef<Partial<Record<Source, HTMLButtonElement | null>>>({});
@@ -183,6 +184,9 @@ export function ImportPage() {
           <CardImportDialog
             presentation="page"
             initialFile={file}
+            // Pasted text outlives a trip back to All sources.
+            initialText={source === 'text' && !file ? pastedText : undefined}
+            onTextChange={source === 'text' ? setPastedText : undefined}
             preferPackage={source === 'anki'}
             onBusyChange={setBusy}
             onCancel={reset}
