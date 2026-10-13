@@ -950,10 +950,18 @@ export interface Card {
   /** Current position within the (re)learning steps (= ts-fsrs `learning_steps`). */
   learningSteps: number;
   history: ReviewLog[];
+  /**
+   * Manual reschedules and resets since the last reset, oldest first. Sync replays
+   * them between reviews so a merge cannot undo them. Absent when there are none.
+   */
+  scheduleEdits?: ScheduleEdit[];
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt or lastReviewed. */
   updatedAt: number;
 }
+
+/** A manual schedule change at `at`: back to New, or a chosen due date. */
+export type ScheduleEdit = { at: number; kind: 'reset' } | { at: number; kind: 'due'; due: number };
 
 /** A sampled snapshot of a deck's predicted exam-day retrievability for historical charts. */
 export interface SessionHistoryEntry {

@@ -369,7 +369,11 @@ sidebar entry exposes a Deck or Folder.
 `id, deckId, courseId?, primaryLessonId?, conceptId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
 reverseCardId?, sequenceItemId?, occlusionRegionId?, due|null, scheduledDays, learningSteps,
-history[], createdAt`
+history[], scheduleEdits?, createdAt`
+
+- `scheduleEdits` logs manual reschedules (`{ at, kind: 'due', due }`) and resets to New
+  (`{ at, kind: 'reset' }`) from the latest reset onwards. Sync unions both devices' logs and
+  replays them between reviews in time order, so a merge never undoes a manual change.
 
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.
