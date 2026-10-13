@@ -11,6 +11,7 @@ import {
 } from './mergeImport';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { recordReview } from './repository';
+import { detachCourse } from './courseRepository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 import { deleteQuestionSet } from '../questions/questionSetRepository';
@@ -186,6 +187,20 @@ describe('mergeImport: first import of a lineage', () => {
     expect(stored?.fsrsParameters.requestRetention).toBe(0.8);
     expect(stored?.newCardsPerDay).toBe(7);
     expect(course.schedulingMode).toBe('steady');
+  });
+
+  it('imports a plain, untracked copy when the lineage ids are already in use (detached copy)', async () => {
+    const payload = coursePayload({ lessons: [lessonOne()] });
+    const first = await importLineageFirstTime(payload);
+    await detachCourse(first.course.id);
+
+    const second = await importLineageFirstTime(payload);
+    expect(second.course.id).not.toBe(first.course.id);
+    expect(second.course.distributedCopy).toBeUndefined();
+    expect(await db.lessons.where('courseId').equals(second.course.id).count()).toBe(1);
+    expect(await db.cards.where('courseId').equals(second.course.id).count()).toBe(1);
+    // The detached copy is untouched.
+    expect((await db.lessons.get('lesson-1'))?.courseId).toBe(first.course.id);
   });
 
   it('keeps a first lineage import empty in both review-history stores', async () => {

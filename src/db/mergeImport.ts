@@ -67,6 +67,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
+import { importSharePayload } from './share';
 import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type {
   Card,
@@ -904,6 +905,20 @@ async function syncLineageLinks(
   }
 }
 
+async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
+  const lessonIds = payload.lessons.flatMap((lesson) => (lesson.i ? [lesson.i] : []));
+  const noteIds = payload.lessons.flatMap((lesson) => lesson.notes.flatMap((note) => (note.oi ? [note.oi] : [])));
+  const cardIds = [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])]
+    .filter((card) => !isGeneratedShareCard(card))
+    .flatMap((card) => (card.id ? [card.id] : []));
+  const [lessons, notes, cards] = await Promise.all([
+    db.lessons.bulkGet(lessonIds),
+    db.notes.bulkGet(noteIds),
+    db.cards.bulkGet(cardIds),
+  ]);
+  return [...lessons, ...notes, ...cards].some((row) => row !== undefined);
+}
+
 /**
  * First import of a published lineage (§7.1/§7.2/§7.9 Task 5). Diverges from
  * `importCourseSharePayload` (`share.ts:1083`) precisely in id handling: every
@@ -914,6 +929,15 @@ async function syncLineageLinks(
 export async function importLineageFirstTime(payload: SharePayload): Promise<{ course: Course }> {
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
+  }
+  // A detached copy (or the teacher's own course) already holds these ids, and
+  // adoption cannot reuse them, so fall back to a plain, untracked import.
+  if (await lineageIdsInUse(payload)) {
+    const { courseIds } = await importSharePayload(payload);
+    const course = await db.courses.get(courseIds[0]);
+    if (!course) throw new Error('Course not found.');
+    const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
+    return { course: hydrateCourse(course, finalAssessmentForCourse(course.id, assessments)) };
   }
 
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
