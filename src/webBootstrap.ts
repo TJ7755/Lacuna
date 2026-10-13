@@ -1,6 +1,11 @@
 const GOOGLE_FONTS_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap';
 
+/** In-app hash routes start with `#/`; any other fragment is an in-page anchor. */
+export function isAppHashRoute(hash: string): boolean {
+  return hash.startsWith('#/');
+}
+
 function isHostedWebProtocol(protocol: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
 }

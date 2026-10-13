@@ -1,8 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { installSimpleAnalytics, installHostedFontLinks, registerProductionServiceWorker } from './webBootstrap';
+import {
+  installSimpleAnalytics,
+  installHostedFontLinks,
+  isAppHashRoute,
+  registerProductionServiceWorker,
+} from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
+  it('treats only #/ fragments as study-app routes', () => {
+    expect(isAppHashRoute('#/')).toBe(true);
+    expect(isAppHashRoute('#/course/abc')).toBe(true);
+    expect(isAppHashRoute('#landing-product')).toBe(false);
+    expect(isAppHashRoute('')).toBe(false);
+  });
+
   it('does not request hosted fonts from a packaged app origin', () => {
     const { document, links } = fakeDocument();
 
