@@ -207,3 +207,18 @@ it('hides a typed answer that matches apart from case and punctuation', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Check' }));
   expect(screen.queryByText(/You wrote/)).not.toBeInTheDocument();
 });
+
+it('brings the focused answer into view when recall begins', async () => {
+  const scroll = vi.fn();
+  const original = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    renderRecitation();
+    fireEvent.click(await screen.findByRole('button', { name: 'Recite' }));
+    const answer = screen.getByRole('textbox', { name: 'line 1' });
+    await waitFor(() => expect(answer).toHaveFocus());
+    expect(scroll.mock.contexts).toContain(answer);
+  } finally {
+    HTMLElement.prototype.scrollIntoView = original;
+  }
+});

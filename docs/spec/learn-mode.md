@@ -365,7 +365,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   method (`recitationFlow.ts`). The sequence is split into chunks: `Sequence.recitationChunkSize`
   mine lines (2-8) when set, otherwise its stanzas (`SequenceItem.chunkIndex`), otherwise 4.
   Each new line is presented once, then every unlocked line of the chunk is recalled with the
-  source hidden. Other speakers' lines stay visible as cues. Once a chunk is complete, all
+  source hidden. Other speakers' lines stay visible as cues; the cues leading into a mine line
+  belong to its chunk and are presented with it, never with the line before. The focused answer
+  is kept in view as lines appear and reflow. Once a chunk is complete, all
   chunks so far are recited once from the top; an error there returns to the chunk holding
   the first error, fully unlocked. A failed check retries the same lines without unlocking more.
 - Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'

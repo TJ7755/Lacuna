@@ -59,8 +59,11 @@ export function recitationPlan(sequence: Sequence): RecitationPlan {
       ? mineInCurrent > 0 && item.chunkIndex !== sequence.items[index - 1].chunkIndex
       : mine && mineInCurrent === size;
     if (startsNew) {
-      chunks.push(current);
-      current = [];
+      // Cue lines since the last mine line lead into this one, so they move with it.
+      let split = current.length;
+      while (!byStanza && split > 0 && !lines[current[split - 1]].mine) split -= 1;
+      chunks.push(current.slice(0, split));
+      current = current.slice(split);
       mineInCurrent = 0;
     }
     current.push(index);
@@ -129,7 +132,11 @@ export function targetLines(plan: RecitationPlan, step: RecitationStep): number[
   let mine = 0;
   for (const index of indices) {
     if (plan.lines[index].mine) {
-      if (mine === step.unlocked) break;
+      if (mine === step.unlocked) {
+        // Cues leading into a line still locked belong to that line, not this step.
+        while (result.length > 0 && !plan.lines[result[result.length - 1]].mine) result.pop();
+        break;
+      }
       mine += 1;
     }
     result.push(index);
@@ -141,9 +148,11 @@ export function targetLines(plan: RecitationPlan, step: RecitationStep): number[
 export function presentedLines(plan: RecitationPlan, step: RecitationStep): number[] {
   if (step.kind !== 'build') return [];
   const target = targetLines(plan, step);
-  let start = target.length - 1;
+  let end = target.length - 1;
+  while (end > 0 && !plan.lines[target[end]].mine) end -= 1;
+  let start = end;
   while (start > 0 && !plan.lines[target[start - 1]].mine) start -= 1;
-  return target.slice(start);
+  return target.slice(start, end + 1);
 }
 
 export interface RecitationOutcome {
