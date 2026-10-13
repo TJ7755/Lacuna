@@ -1,89 +1,26 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
-import {
-  cardEditPath,
-  plainPreview,
-  questionEditPath,
-  searchCardsInScope,
-  searchCourseContent,
-  searchQuestionsInScope,
-  type CourseContentHit,
-  type ScopedSearchResult,
-} from '../../db/search';
-import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
-import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
+import { searchCardsInScope, searchCourseContent, searchQuestionsInScope } from '../../db/search';
+import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
+import { SearchResultContent } from './SearchResultContent';
+import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
 /** A single ordered list of navigation, Card and Question hits. */
-type PaletteHit = ScopedSearchResult | CourseContentHit;
+type PaletteHit = SearchHit;
 
 function PaletteResults(props: HTMLMotionProps<'ul'>) {
   const present = useIsPresent();
   return <motion.ul {...props} inert={!present} aria-hidden={!present || undefined} />;
 }
 
-/** Where a palette hit deep-links to. */
-function hitPath(hit: PaletteHit): string {
-  switch (hit.kind) {
-    case 'card':
-      return cardEditPath(hit.card);
-    case 'question':
-      return questionEditPath(hit.question);
-    case 'course':
-      return `/course/${hit.course.id}`;
-    case 'lesson':
-    case 'note':
-      return `/course/${hit.course.id}/lesson/${hit.lesson.id}`;
-  }
-}
-
-/** Icon and label for a course/lesson/note hit row. */
-function courseHitMeta(hit: CourseContentHit) {
-  switch (hit.kind) {
-    case 'course':
-      return { icon: GridIcon, title: hit.course.name, subtitle: 'Course' };
-    case 'lesson':
-      return { icon: FolderIcon, title: hit.lesson.name, subtitle: hit.course.name };
-    case 'note':
-      return {
-        icon: FileTextIcon,
-        title: hit.note.name,
-        subtitle: `${hit.course.name} · ${hit.lesson.name}`,
-      };
-  }
-}
-
 const MAX_RESULTS = 40;
 const HINTS_SEEN_KEY = 'lacuna.quickSearchHintsSeen';
-
-/** Highlight every substring in `text` that matches `query` (case-insensitive). */
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  const parts = text.split(new RegExp(`(${escapeRegExp(query.trim())})`, 'gi'));
-  return (
-    <>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.trim().toLowerCase() ? (
-          // No side padding: it would open a gap inside the matched word.
-          <mark key={i} className="rounded-sm bg-accent/15 text-accent-ink">
-            {part}
-          </mark>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-}
-
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /** Quick search: a keyboard-summoned overlay for jumping straight to content. */
 export function CommandPalette({
@@ -141,10 +78,10 @@ function CommandPaletteDialog({
     }
   }, []);
 
-  // Course/lesson/note hits are listed ahead of card hits, then both are capped
+  // Course/lesson/note hits are listed ahead of Question and Card hits, then capped
   // together so the palette never grows unbounded on a broad query. Deferring
   // the search keeps input updates urgent without imposing a fixed delay.
-  const results = useMemo((): PaletteHit[] => {
+  const allResults = useMemo((): PaletteHit[] => {
     const courseHits = searchCourseContent(
       deferredQuery,
       courses ?? [],
@@ -161,9 +98,19 @@ function CommandPaletteDialog({
       courses: courses ?? [],
       lessons: lessons ?? [],
     });
-    return [...courseHits, ...questionHits, ...cardHits].slice(0, MAX_RESULTS);
+    return [...courseHits, ...questionHits, ...cardHits];
   }, [deferredQuery, cards, courses, lessons, notes, questions]);
+  const results = allResults.slice(0, MAX_RESULTS);
   const hasVisibleResults = query.trim() !== '' && results.length > 0;
+  const resultList = useRef<HTMLUListElement>(null);
+  const selectionChanged = useRef(false);
+  useEffect(() => {
+    if (!selectionChanged.current) return;
+    resultList.current
+      ?.querySelector<HTMLElement>(`#palette-option-${active}`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    selectionChanged.current = false;
+  }, [active]);
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
@@ -185,12 +132,18 @@ function CommandPaletteDialog({
     [],
   );
 
-  useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
+  useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query, deferredQuery]);
+
+  function closeForNavigation() {
+    // The destination owns focus; dismissal alone returns it to the opener.
+    returnFocusRef.current = null;
+    onClose();
+  }
 
   function go(index: number) {
     const hit = results[index];
     if (!hit) return;
-    onClose();
+    closeForNavigation();
     void navigate(hitPath(hit));
   }
 
@@ -198,15 +151,19 @@ function CommandPaletteDialog({
     if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === 'Escape') {
       onClose();
+    } else if (e.target !== inputRef.current) {
+      return;
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
+      selectionChanged.current = true;
       setActive((a) => (results.length > 0 ? Math.min(a + 1, results.length - 1) : -1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      selectionChanged.current = true;
       setActive((a) => (results.length > 0 ? Math.max(a - 1, 0) : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      go(active);
+      if (hasVisibleResults && query === deferredQuery) go(active);
     }
   }
 
@@ -259,7 +216,7 @@ function CommandPaletteDialog({
                 ? 'Type to search'
                 : results.length === 0
                   ? `No results for ${deferredQuery}`
-                  : `${results.length} ${results.length === 1 ? 'result' : 'results'} available`}
+                  : `${results.length < allResults.length ? `${results.length} of ` : ''}${allResults.length} ${allResults.length === 1 ? 'result' : 'results'} available`}
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto">
@@ -288,6 +245,7 @@ function CommandPaletteDialog({
                   </motion.p>
                 ) : (
                   <PaletteResults
+                    ref={resultList}
                     key="results"
                     id="palette-listbox"
                     role="listbox"
@@ -300,19 +258,9 @@ function CommandPaletteDialog({
                     className="p-1.5"
                   >
                     {results.map((hit, i) => {
-                      const key =
-                        hit.kind === 'card'
-                          ? hit.card.id
-                          : hit.kind === 'question'
-                            ? hit.question.id
-                            : hit.kind === 'course'
-                              ? hit.course.id
-                              : hit.kind === 'lesson'
-                                ? hit.lesson.id
-                                : hit.note.id;
                       return (
                         <motion.li
-                          key={`${hit.kind}-${key}`}
+                          key={hitKey(hit)}
                           role="presentation"
                           initial={{ opacity: 0, x: -8 }}
                           animate={{ opacity: 1, x: 0 }}
@@ -324,81 +272,14 @@ function CommandPaletteDialog({
                             id={`palette-option-${i}`}
                             aria-selected={i === active}
                             onMouseEnter={() => setActive(i)}
+                            onFocus={() => setActive(i)}
                             onClick={() => go(i)}
                             className={
-                              'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-all duration-150 ' +
+                              'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-all duration-150 ' +
                               (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
                             }
                           >
-                            {hit.kind === 'card' ? (
-                              <span className="flex min-w-0 flex-col gap-0.5">
-                                <span className="truncate text-sm text-ink">
-                                  <HighlightedText
-                                    text={plainPreview(hit.card.front, 90) || '(empty front)'}
-                                    query={query}
-                                  />
-                                </span>
-                                <span className="flex items-center gap-2 text-xs text-ink-faint">
-                                  <span className="truncate">{hit.contextName}</span>
-                                  {(hit.card.tags ?? []).length > 0 && (
-                                    <span className="truncate">· {hit.card.tags!.join(', ')}</span>
-                                  )}
-                                  {hit.card.sequenceItemId !== null &&
-                                    hit.card.sequenceItemId !== undefined && (
-                                      <GeneratedCardBadge kind="sequence" />
-                                    )}
-                                  {hit.card.occlusionRegionId !== null &&
-                                    hit.card.occlusionRegionId !== undefined && (
-                                      <GeneratedCardBadge kind="occlusion" />
-                                    )}
-                                </span>
-                              </span>
-                            ) : hit.kind === 'question' ? (
-                              <>
-                                <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
-                                  <FileTextIcon width={14} height={14} />
-                                </span>
-                                <span className="flex min-w-0 flex-col gap-0.5">
-                                  <span className="truncate text-sm text-ink">
-                                    <HighlightedText
-                                      text={
-                                        hit.question.kind === 'fixed'
-                                          ? plainPreview(hit.question.prompt, 90) ||
-                                            hit.question.name
-                                          : hit.question.name
-                                      }
-                                      query={query}
-                                    />
-                                  </span>
-                                  <span className="flex items-center gap-2 text-xs text-ink-faint">
-                                    <span className="truncate">{hit.contextName}</span>
-                                    <span>· Question</span>
-                                    {hit.question.kind === 'generated' && (
-                                      <span>· Generated family</span>
-                                    )}
-                                  </span>
-                                </span>
-                              </>
-                            ) : (
-                              (() => {
-                                const { icon: HitIcon, title, subtitle } = courseHitMeta(hit);
-                                return (
-                                  <>
-                                    <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent-ink">
-                                      <HitIcon width={14} height={14} />
-                                    </span>
-                                    <span className="flex min-w-0 flex-col gap-0.5">
-                                      <span className="truncate text-sm text-ink">
-                                        <HighlightedText text={title} query={query} />
-                                      </span>
-                                      <span className="truncate text-xs text-ink-faint">
-                                        {subtitle}
-                                      </span>
-                                    </span>
-                                  </>
-                                );
-                              })()
-                            )}
+                            <SearchResultContent hit={hit} query={deferredQuery} compact />
                           </button>
                         </motion.li>
                       );
@@ -407,6 +288,21 @@ function CommandPaletteDialog({
                 )}
               </AnimatePresence>
             </div>
+
+            {hasVisibleResults && allResults.length > MAX_RESULTS && (
+              <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
+                <span>
+                  {results.length} of {allResults.length} results
+                </span>
+                <Link
+                  to={`/search?${new URLSearchParams({ q: query })}`}
+                  onClick={closeForNavigation}
+                  className="inline-flex min-h-11 items-center rounded-full px-3 text-sm text-accent-ink"
+                >
+                  See all results
+                </Link>
+              </div>
+            )}
 
             {/* Footer shortcuts */}
             {showHints && (

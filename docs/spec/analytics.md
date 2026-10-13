@@ -30,6 +30,21 @@
   search field and filters without repeating typing instructions in another panel.
   Its outer frame aligns with Share and Archived; the inner reading column remains
   capped at `max-w-3xl`.
+- Both search fields use Up/Down to select results and Enter to open them without
+  tabbing through filters. Selected rows remain visible; full-page filters retain
+  their ordinary Tab order, and Escape returns from a result to editing the query.
+  Matching text uses the core's case/diacritic folding. Bounded excerpts reveal
+  matches in long answers, descriptions and note bodies, alongside ownership and
+  generated-card badges. Polite count announcements change with the result set,
+  without announcing each arrow movement as a new count.
+- Quick search shows at most 40 mixed results, reports shown/total counts from the
+  already computed matches, and offers **See all results** with the same query.
+  Full-page search defers matching and initially renders 80 rows; **Show more results**
+  or arrowing beyond the shown rows extends the list. Its `q`, repeated `filter` and
+  expanded `shown` count live in the URL, so browser Back restores the same query,
+  Card filters and expanded list. The shell restores scroll; returning input focus
+  does not scroll away from that position. Search remains offline and introduces no
+  stored learner-data format.
 - **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
   the search filter, but scheduling is never changed automatically.
 

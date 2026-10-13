@@ -1,7 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { SearchPage } from './SearchPage';
+import { useRef } from 'react';
+import { useScrollMemory } from '../components/layout/scrollMemory';
+import { Outlet } from 'react-router-dom';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../db/types';
 import type { FixedQuestionDefinition, QuestionDefinition } from '../questions/types';
 
@@ -109,14 +112,140 @@ const dataHooks = vi.hoisted(() => ({
   })),
 }));
 
+function SearchShell() {
+  const main = useRef<HTMLElement>(null);
+  useScrollMemory(main);
+  return (
+    <main ref={main}>
+      <Outlet />
+    </main>
+  );
+}
+
 vi.mock('../state/useSearchData', () => ({
   useSearchData: dataHooks.useSearchData,
 }));
 
 describe('SearchPage', () => {
+  it('navigates highlighted results from the field whilst leaving filters in normal keyboard access', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard, { ...mockCard, id: 'card-2', front: 'Palatine second' }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search'],
+    });
+    render(<RouterProvider router={router} />);
+    const input = screen.getByPlaceholderText(/search courses/i);
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    expect(input).toHaveAttribute('role', 'combobox');
+    expect(screen.getByRole('listbox')).toHaveAttribute('id', input.getAttribute('aria-controls'));
+    const options = screen.getAllByRole('option');
+    expect(options[0].querySelector('mark')).toHaveTextContent('Palatine');
+    expect(screen.getByRole('status')).toHaveTextContent('2 results');
+    expect(screen.getByRole('button', { name: 'Due now' })).not.toHaveAttribute('tabindex', '-1');
+    const scroll = vi.spyOn(options[1], 'scrollIntoView').mockImplementation(() => {});
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input).toHaveFocus();
+    expect(options[1]).toHaveAttribute('aria-selected', 'true');
+    expect(input).toHaveAttribute('aria-activedescendant', options[1].id);
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/course/course-1/cards/card-2/edit');
+    scroll.mockRestore();
+  });
+
+  it('preserves query and card filters when returning from a result and Escape edits the query', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, flagged: true }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const router = createMemoryRouter(
+      [
+        {
+          element: <SearchShell />,
+          children: [
+            { path: '/search', element: <SearchPage /> },
+            { path: '*', element: <p>Editor</p> },
+          ],
+        },
+      ],
+      { initialEntries: ['/search?q=Palatine&filter=flagged'] },
+    );
+    render(<RouterProvider router={router} />);
+    expect(screen.getByPlaceholderText(/search courses/i)).toHaveValue('Palatine');
+    expect(screen.getByRole('button', { name: 'Flagged' })).toHaveAttribute('aria-pressed', 'true');
+    const option = screen.getByRole('option');
+    option.focus();
+    fireEvent.keyDown(option, { key: 'Escape' });
+    expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();
+    const main = screen.getByRole('main');
+    main.scrollTo = ((options: ScrollToOptions) => {
+      main.scrollTop = options.top ?? 0;
+    }) as typeof main.scrollTo;
+    main.scrollTop = 320;
+    fireEvent.scroll(main);
+    fireEvent.click(option);
+    expect(screen.getByText('Editor')).toBeInTheDocument();
+    expect(main.scrollTop).toBe(0);
+    await act(() => router.navigate(-1));
+    expect(main.scrollTop).toBe(320);
+    expect(screen.getByPlaceholderText(/search courses/i)).toHaveValue('Palatine');
+    expect(screen.getByRole('button', { name: 'Flagged' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('option')).toBeInTheDocument();
+  });
+
+  it('bounds a broad list and extends it when the keyboard reaches the shown results', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 100 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<SearchPage />, { wrapper: MemoryRouter });
+    const input = screen.getByPlaceholderText(/search courses/i);
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    expect(screen.getAllByRole('option')).toHaveLength(80);
+    expect(screen.getByRole('status')).toHaveTextContent('80 of 100 results');
+    for (let i = 0; i < 80; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(screen.getAllByRole('option')).toHaveLength(100);
+    expect(screen.getAllByRole('option')[80]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.change(input, { target: { value: 'missing' } });
+    expect(screen.getByRole('status')).toHaveTextContent('No results');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+  }, 15_000);
+
+  it('shows a diacritic-insensitive match beyond the beginning of a long answer', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, back: `${'Long explanation. '.repeat(30)}Résumé conclusion.` }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<SearchPage />, { wrapper: MemoryRouter });
+    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+      target: { value: 'resume' },
+    });
+    const result = screen.getByRole('option');
+    expect(result.querySelector('mark')).toHaveTextContent('Résumé');
+    expect(result).toHaveTextContent('conclusion.');
+  });
+
   it('names the search field and avoids repeating its heading and typing instructions', () => {
     render(<SearchPage />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('textbox', { name: 'Search content' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveFocus();
     expect(screen.queryByRole('heading', { name: 'Search everything' })).not.toBeInTheDocument();
   });
 
@@ -126,7 +255,7 @@ describe('SearchPage', () => {
     const clear = screen.getByRole('button', { name: 'Clear' });
     clear.focus();
     fireEvent.click(clear);
-    expect(screen.getByRole('textbox')).toHaveFocus();
+    expect(screen.getByRole('combobox')).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Due now' })).toHaveAttribute(
       'aria-pressed',
       'false',
@@ -213,7 +342,7 @@ describe('SearchPage', () => {
     });
 
     expect(screen.getByText('Question')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /calculate the final velocity/i }));
+    fireEvent.click(screen.getByRole('option', { name: /calculate the final velocity/i }));
     expect(router.state.location.pathname).toBe('/course/course-1/questions/question-1/edit');
   });
 
@@ -234,6 +363,8 @@ describe('SearchPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
       target: { value: 'final velocity' },
     });
-    expect(screen.getByText('Calculate the final velocity.')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Calculate the final velocity/ })).toHaveTextContent(
+      'Calculate the final velocity.',
+    );
   });
 });

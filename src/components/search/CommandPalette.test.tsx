@@ -126,6 +126,69 @@ afterAll(() => {
 });
 
 describe('CommandPalette', () => {
+  it('shows the capped mixed count and continues to full search with the same query', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 45 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [{ ...mockCourse, name: 'Palatine course' }],
+      lessons: [],
+      notes: [],
+      questions: [{ ...mockQuestion, prompt: 'Palatine question' }],
+    });
+    const onClose = vi.fn();
+    const router = createMemoryRouter([
+      { path: '*', element: <CommandPalette open onClose={onClose} /> },
+    ]);
+    render(<RouterProvider router={router} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Palatine' } });
+    expect(await screen.findAllByRole('option')).toHaveLength(40);
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('40 of 47 results');
+    fireEvent.click(screen.getByRole('link', { name: 'See all results' }));
+    expect(router.state.location.pathname).toBe('/search');
+    expect(new URLSearchParams(router.state.location.search).get('q')).toBe('Palatine');
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the active result visible when arrowing through the list', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 40 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    const options = await screen.findAllByRole('option');
+    const scroll = vi.spyOn(options[39], 'scrollIntoView').mockImplementation(() => {});
+    for (let i = 0; i < 39; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(options[39]).toHaveAttribute('aria-selected', 'true');
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' });
+    expect(input).toHaveFocus();
+    scroll.mockRestore();
+  });
+
+  it('shows matching answer text rather than an unrelated front-only preview', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, back: `${'Long explanation. '.repeat(30)}Résumé conclusion.` }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'resume' } });
+    expect((await screen.findByRole('option')).querySelector('mark')).toHaveTextContent('Résumé');
+  });
+
   it.each([{ isComposing: true }, { keyCode: 229 }])(
     'does not navigate or close whilst composing: %j',
     async (composition) => {
