@@ -92,6 +92,7 @@ import type {
   QuestionScheduleState,
 } from '../questions/types';
 import { emptyQuestionSchedule } from '../questions/scheduler';
+import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes } from '../questions/questionSetLineage';
 import { applyLineageAssessments } from './assessmentLineage';
@@ -920,7 +921,16 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       description: payload.course.d ?? '',
       examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
       createdAt: payload.course.c,
-      examDate: payload.course.e,
+      schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
+      ...(payload.course.e === undefined ? {} : { examDate: payload.course.e }),
+      // Seeded from the teacher like a plain share import; the learner owns them after.
+      fsrsParameters: {
+        ...defaultFsrsParameters(),
+        ...(typeof payload.course.r === 'number'
+          ? { requestRetention: clampRequestRetention(payload.course.r) }
+          : {}),
+      },
+      ...(payload.course.p && payload.course.p > 0 ? { newCardsPerDay: payload.course.p } : {}),
       unlockMode: payload.course.um,
       ...(payload.course.lf === 0 ? { learnFirst: false } : {}),
       lessonViewMode: 'study',

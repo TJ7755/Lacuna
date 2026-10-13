@@ -175,6 +175,19 @@ describe('mergeImport: first import of a lineage', () => {
     expect((await db.cards.get('card-1'))?.answerMode).toBeUndefined();
   });
 
+  it("carries the teacher's retention, new-card limit and steady scheduling into the copy", async () => {
+    const { course } = await importLineageFirstTime(
+      coursePayload({
+        course: { n: 'Biology', o: 0, c: 1000, um: 'open', r: 0.8, p: 7, sm: 1 },
+        lessons: [lessonOne()],
+      }),
+    );
+    const stored = await db.courses.get(course.id);
+    expect(stored?.fsrsParameters.requestRetention).toBe(0.8);
+    expect(stored?.newCardsPerDay).toBe(7);
+    expect(course.schedulingMode).toBe('steady');
+  });
+
   it('keeps a first lineage import empty in both review-history stores', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     const card = (await db.cards.get('card-1'))!;
