@@ -53,7 +53,9 @@
   deliberately selected whilst a write is pending. Resumption restores the saved choice.
   Blank-answer confirmation and dirty notes, corrections and reflection remain protected;
   manual marks always require an explicit learner decision.
-- Step-completion actions are visible and usable during their entrance sequence. Departing
+- Step-completion actions are visible and usable during their entrance sequence. The notes
+  screen and step-completion screen focus their primary action when focus has nowhere else
+  to be, so Enter continues; a control the learner has already chosen keeps focus. Departing
   course pages are inert and hidden from assistive technology while the next page enters.
 - Closing shared dialogs and inline disclosures become inert and hidden immediately;
   departing focus traps leave Tab alone.
