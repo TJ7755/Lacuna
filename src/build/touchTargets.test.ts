@@ -21,6 +21,7 @@ const CONTROL_FILES = [
   'src/components/occlusion/OcclusionRegionPane.tsx',
   'src/components/occlusion/OcclusionCanvas.tsx',
   'src/components/import/MergeReviewPanel.tsx',
+  'src/components/import/MergeReviewRow.tsx',
   'src/pages/settings/AppearanceSection.tsx',
 ];
 

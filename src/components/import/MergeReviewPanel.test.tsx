@@ -1,10 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act, waitFor } from '@testing-library/react';
 import * as React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Card, Course, Lesson, Note, PendingMergeReview } from '../../db/types';
 import { MergeReviewPanel } from './MergeReviewPanel';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['off'],
+  speedMultiplier: () => 0,
+}));
 
 const mockNavigate = vi.fn();
 const mockAcceptItems = vi.fn().mockResolvedValue(undefined);
@@ -233,5 +238,135 @@ describe('MergeReviewPanel', () => {
     const section = updatesHeading.closest('section') as HTMLElement;
     expect(within(section).getAllByText('Old front').length).toBeGreaterThan(0);
     expect(within(section).getByText('New front')).toBeTruthy();
+  });
+
+  it('labels both versions and exposes changed card backs alongside unchanged fronts', () => {
+    mockReview!.diff.updates.cards = [{ id: 'card-2', back: '**New back**' }];
+    renderPanel();
+    const row = screen.getByRole('button', { name: 'Accept' }).closest('li')!;
+    expect(within(row).getByText('Current')).toBeInTheDocument();
+    expect(within(row).getByText('Incoming')).toBeInTheDocument();
+    fireEvent.click(within(row).getByRole('button', { name: 'Expand detail' }));
+    expect(within(row).getByText('Front · Unchanged')).toBeInTheDocument();
+    expect(within(row).getByText('Back · Changed')).toBeInTheDocument();
+    expect(within(row).getByText('**New back**')).toBeInTheDocument();
+  });
+
+  it('compares every changed conflict field and labels added and removed content', () => {
+    mockReview!.diff.conflicts = [
+      {
+        kind: 'card',
+        entityId: 'card-2',
+        incoming: { i: 'card-2', k: 0, f: 'Old front', b: '' },
+      },
+    ];
+    mockReview!.diff.updates.notes = [{ id: 'note-1', name: 'New name', content: '' }];
+    mockReview!.diff.updates.lessons = [{ id: 'lesson-1', description: 'New description' }];
+    renderPanel();
+    for (const button of screen.getAllByRole('button', { name: 'Expand detail' }))
+      fireEvent.click(button);
+    const conflicts = screen.getByText('Conflicts').closest('section')!;
+    expect(within(conflicts).getByText('Back · Removed')).toBeInTheDocument();
+    expect(within(conflicts).getByText('Old back')).toBeInTheDocument();
+    expect(screen.getByText('Description · Added')).toBeInTheDocument();
+    expect(screen.getByText('Name · Changed')).toBeInTheDocument();
+    expect(screen.getByText('Content · Removed')).toBeInTheDocument();
+  });
+
+  it('moves decision focus to the next row then a completion target, announcing each result', async () => {
+    const { rerender } = renderPanel();
+    const accept = screen.getByRole('button', { name: 'Accept' });
+    accept.focus();
+    fireEvent.click(accept);
+    await act(async () => {
+      await mockAcceptItems.mock.results[0].value;
+    });
+    mockReview!.diff.updates.cards = [];
+    mockReview = { ...mockReview! };
+    rerender(
+      <MemoryRouter>
+        <MergeReviewPanel />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Remove' })).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent('Accepted. 2 changes remaining.');
+
+    const keep = screen.getByRole('button', { name: 'Keep' });
+    keep.focus();
+    fireEvent.click(keep);
+    await act(async () => {
+      await mockRejectItems.mock.results[0].value;
+    });
+    mockReview!.diff.removals.cardIds = [];
+    mockReview = { ...mockReview! };
+    rerender(
+      <MemoryRouter>
+        <MergeReviewPanel />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Keep mine' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep mine' }));
+    await act(async () => {
+      await mockRejectItems.mock.results[1].value;
+    });
+    mockReview = null;
+    rerender(
+      <MemoryRouter>
+        <MergeReviewPanel />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Back to course' })).toHaveFocus();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Kept your version. All changes reviewed.',
+    );
+  });
+
+  it('moves backwards when the last row resolves and leaves deliberately moved focus alone', async () => {
+    const { rerender } = renderPanel();
+    const take = screen.getByRole('button', { name: 'Take theirs' });
+    take.focus();
+    fireEvent.click(take);
+    await act(async () => {
+      await mockAcceptItems.mock.results[0].value;
+    });
+    mockReview!.diff.conflicts = [];
+    mockReview = { ...mockReview! };
+    rerender(
+      <MemoryRouter>
+        <MergeReviewPanel />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Remove' })).toHaveFocus();
+    const remove = screen.getByRole('button', { name: 'Remove' });
+    fireEvent.click(remove);
+    screen.getByRole('link', { name: 'Back to course' }).focus();
+    await act(async () => {
+      await mockAcceptItems.mock.results[1].value;
+    });
+    mockReview!.diff.removals.cardIds = [];
+    mockReview = { ...mockReview! };
+    rerender(
+      <MemoryRouter>
+        <MergeReviewPanel />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Back to course' })).toHaveFocus();
+  });
+
+  it('keeps failed decisions available for retry and explains the recovery', async () => {
+    mockAcceptItems.mockRejectedValueOnce(new Error('Storage full'));
+    renderPanel();
+    const accept = screen.getByRole('button', { name: 'Accept' });
+    accept.focus();
+    fireEvent.click(accept);
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Could not apply this decision. Try again.',
+      ),
+    );
+    expect(accept).toHaveFocus();
+    expect(accept).toBeEnabled();
+    fireEvent.click(accept);
+    await waitFor(() => expect(mockAcceptItems).toHaveBeenCalledTimes(2));
   });
 });

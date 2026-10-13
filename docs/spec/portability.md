@@ -477,10 +477,23 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   available"** badge on the course's row on Today (`TodayQueue.tsx`) and a **"Review
   updates"** entry point in the `CoursePath` header, both shown iff a `pendingMergeReviews`
   row exists for the course. Renders three sections — Updates, Removals, Conflicts — each
-  row offering the accept/reject action pair, plus a bottom bar with a bulk **Accept all**.
+  row offering the accept/reject action pair, plus an in-flow, wrapping footer with a bulk
+  **Accept all**, clear of the mobile course navigation and its safe area. Collapsed rows
+  label Current and Incoming and name changed fields; expanded comparisons label additions,
+  removals and unchanged context, keeping original Markdown and assets readable and selectable.
+  The shared disclosure animates below the row's controls without moving the active target.
+  Local consequence text explains replacement versus retention. Decisions remain explicit;
+  keeping an upstream removal is emphasised as the safe choice.
   Conflict rows flip the emphasis: **"Keep mine"** (reject) is the emphasised default
   action and **"Take theirs"** (accept) the secondary one, matching the student-wins policy
   above.
+  Resolving a row announces the result and remaining count, moves keyboard focus to the next
+  row's primary action (or the previous row when resolving the last one), and returns it to
+  **Back to course** on completion. Focus deliberately moved elsewhere whilst applying stays
+  there. Failed writes leave the queue and choices available, announce retry guidance and
+  return focus to the initiating action when appropriate. Pending decisions cannot overlap.
+  **Accept all** explains that conflicts remain for individual decisions, and is disabled
+  when only conflicts remain. All resolution still uses the existing atomic repository path.
 - **Resolution functions (`src/db/mergeImport.ts`)** — `acceptMergeReviewItems`/
   `rejectMergeReviewItems(reviewId, refs)` resolve a specific set of items; `acceptAllMergeReview`/
   `rejectAllMergeReview(reviewId)` resolve everything outstanding. All four route through the
