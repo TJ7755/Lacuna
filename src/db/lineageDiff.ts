@@ -467,14 +467,17 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
     });
   });
 
+  // Only mapped rows came from the lineage; anything else is the student's own content.
   for (const lesson of existing.lessons) {
-    if (!seenLessonIds.has(lesson.id)) removals.lessonIds.push(lesson.id);
+    if (lessonIdSet.has(lesson.id) && !seenLessonIds.has(lesson.id)) {
+      removals.lessonIds.push(lesson.id);
+    }
   }
   for (const note of existing.notes) {
-    if (!seenNoteIds.has(note.id)) removals.noteIds.push(note.id);
+    if (noteIdSet.has(note.id) && !seenNoteIds.has(note.id)) removals.noteIds.push(note.id);
   }
   for (const card of existing.cards) {
-    if (!seenCardIds.has(card.id)) removals.cardIds.push(card.id);
+    if (cardIdSet.has(card.id) && !seenCardIds.has(card.id)) removals.cardIds.push(card.id);
   }
 
   return { creates, updates, removals, conflicts };
