@@ -85,6 +85,32 @@ describe('AddLessonControl', () => {
     fireEvent.keyDown(cancel, { key: 'Escape' });
     expect(screen.getByRole('button', { name: 'Add lesson' })).toHaveFocus();
   });
+  it('selects the suggested name so typing replaces it', () => {
+    render(<AddLessonControl courseId="course-1" lessonCount={1} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Lesson name' });
+    expect(input).toHaveFocus();
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 'Lesson 2'.length]);
+  });
+
+  it('creates and readies the next lesson on Ctrl+Enter without leaving the course', async () => {
+    const onCreated = vi.fn();
+    render(<AddLessonControl courseId="course-1" lessonCount={1} onCreated={onCreated} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }));
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Lesson name' });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    });
+    expect(createLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
+    expect(onCreated).not.toHaveBeenCalled();
+    expect(input).toHaveValue('Lesson 3');
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create & add another' }));
+    });
+    expect(createLesson).toHaveBeenLastCalledWith('course-1', 'Lesson 3');
+    expect(input).toHaveValue('Lesson 4');
+  });
+
   it('creates a lesson and calls onCreated', async () => {
     const onCreated = vi.fn();
     render(<AddLessonControl courseId="course-1" lessonCount={1} onCreated={onCreated} />);

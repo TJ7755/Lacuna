@@ -96,6 +96,39 @@ describe('LessonManagementSection', () => {
     expect(updateLesson).not.toHaveBeenCalled();
   });
 
+  it('selects the name on rename and saves once on Enter then blur', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    const input = screen.getByRole<HTMLInputElement>('textbox', { name: 'Lesson name' });
+    fireEvent.focus(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, 'Lesson one'.length]);
+    fireEvent.change(input, { target: { value: 'Atoms' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+      fireEvent.blur(input);
+    });
+    expect(updateLesson).toHaveBeenCalledOnce();
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', { name: 'Atoms' });
+  });
+
+  it('keeps the field open after a failed rename and skips unchanged names', async () => {
+    render(<LessonManagementSection courseId="course-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    let input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(updateLesson).not.toHaveBeenCalled();
+
+    updateLesson.mockRejectedValueOnce(new Error('Disk full'));
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Lesson one' }));
+    input = screen.getByRole('textbox', { name: 'Lesson name' });
+    fireEvent.change(input, { target: { value: 'Atoms' } });
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'Enter' });
+    });
+    expect(notify).toHaveBeenCalledWith('Disk full', 'negative');
+    expect(screen.getByRole('textbox', { name: 'Lesson name' })).toHaveValue('Atoms');
+  });
+
   it('deletes a lesson after confirmation', async () => {
     render(<LessonManagementSection courseId="course-1" />);
     fireEvent.click(screen.getByLabelText('Delete Lesson one'));

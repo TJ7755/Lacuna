@@ -10,6 +10,7 @@ import {
   deleteQuestionSetPracticeNode,
 } from '../../db/practiceNodeRepository';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
@@ -43,6 +44,7 @@ export function QuestionSetPathEditor({
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
+  const canSave = !busy && !!setId && !!lessonId && !confirm;
   const run = async (remove = false) => {
     if (busy) return;
     setBusy(true);
@@ -64,12 +66,14 @@ export function QuestionSetPathEditor({
       role="dialog"
       aria-modal="true"
       aria-label={node ? 'Edit practice questions' : 'Add practice questions'}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && !busy) {
-          event.stopPropagation();
-          onClose();
-        }
-      }}
+      onKeyDown={dialogKeyDown({
+        onCancel: () => {
+          if (!busy) onClose();
+        },
+        onSubmit: () => {
+          if (canSave) void run();
+        },
+      })}
     >
       <ModalBackdrop
         onClick={() => {
@@ -122,7 +126,7 @@ export function QuestionSetPathEditor({
           <Button variant="ghost" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
-          <Button disabled={busy || !setId || !lessonId || confirm} onClick={() => void run()}>
+          <Button disabled={!canSave} onClick={() => void run()}>
             {busy ? 'Saving…' : node ? 'Save' : 'Add to path'}
           </Button>
         </footer>

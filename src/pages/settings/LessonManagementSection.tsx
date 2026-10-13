@@ -44,15 +44,24 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
     setNameDraft(currentName);
   }
 
+  // As in the lesson header: a blank or unchanged name cancels, a failed save keeps the
+  // field open, and Enter followed by the unmount's blur saves once.
+  const renaming = useRef(false);
   async function commitRename() {
+    if (renaming.current || !editingId) return;
+    const name = nameDraft.trim();
+    if (!name || name === lessons?.find((lesson) => lesson.id === editingId)?.name) {
+      setEditingId(null);
+      return;
+    }
+    renaming.current = true;
     try {
-      if (editingId) {
-        const name = nameDraft.trim();
-        if (name) await updateLesson(editingId, { name });
-      }
+      await updateLesson(editingId, { name });
       setEditingId(null);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not rename the lesson.', 'negative');
+    } finally {
+      renaming.current = false;
     }
   }
 
@@ -121,6 +130,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                   autoFocus
                   aria-label="Lesson name"
                   value={nameDraft}
+                  onFocus={(e) => e.currentTarget.select()}
                   onChange={(e) => setNameDraft(e.target.value)}
                   onBlur={() => void commitRename()}
                   onKeyDown={(e) => {

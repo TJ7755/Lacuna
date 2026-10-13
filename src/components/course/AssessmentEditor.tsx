@@ -18,6 +18,7 @@ import {
   inputFrameClassName,
 } from '../ui/Field';
 import { choiceChipClass } from '../ui/choiceChip';
+import { plainFront } from '../cards/lessonCardRow';
 
 export interface AssessmentDraft {
   name: string;
@@ -278,7 +279,9 @@ export function AssessmentEditor({
                           checked={draft.excludedCardIds.includes(card.id)}
                           onChange={() => toggleExcludedCard(card.id)}
                         />
-                        <span className="truncate text-ink">{card.front}</span>
+                        <span className="truncate text-ink" title={plainFront(card)}>
+                          {plainFront(card)}
+                        </span>
                       </label>
                     ))}
                   </div>

@@ -9,6 +9,8 @@
 | Desktop app            | `F1` / `Cmd+Shift+/` | Open Lacuna Help                    |
 | Path or lesson (Edit)  | `Shift+F10`        | Lesson actions menu                   |
 | Path (Edit)            | `Alt+Up` / `Alt+Down` | Move a lesson                      |
+| Add lesson             | `Enter` / `Ctrl/Cmd+Enter` | Create and open / create and add another |
+| Add practice questions | `Ctrl/Cmd+Enter`   | Add to path                           |
 | Card editor            | `Ctrl/Cmd+Enter`   | Save (and add another, for new cards) |
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
 | Question-set attempt   | `Ctrl/Cmd+Enter`    | Primary action; progress explicit manual marking |
