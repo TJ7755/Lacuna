@@ -1,0 +1,1 @@
+- Progress date labels no longer collide on narrow screens with larger text, and the exam-day score explains how it averages courses and shows a single day's value instead of an empty state.

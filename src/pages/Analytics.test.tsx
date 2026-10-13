@@ -95,6 +95,26 @@ describe('Analytics', () => {
     }
   });
 
+  it('shows a single day of predictions and explains how the trajectory averages courses', () => {
+    live.courses = [{ id: 'c', name: 'Course' }];
+    live.history = [
+      { timestamp: Date.now(), deckId: 'd', courseId: 'c', averagePredictedRetrievability: 0.73 },
+    ];
+    try {
+      render(<Analytics />);
+      const chart = screen.getByRole('region', { name: 'Predicted exam-day score' });
+      expect(chart).toHaveTextContent(
+        /Predicted 73% on .+\. Study on another day to see a trend\./,
+      );
+      expect(chart).toHaveTextContent(
+        'Each point is a day you studied, averaging the courses studied that day.',
+      );
+    } finally {
+      live.courses = [];
+      live.history = [];
+    }
+  });
+
   it('uses chart titles without redundant explanatory subtitles', () => {
     render(<Analytics />);
 
