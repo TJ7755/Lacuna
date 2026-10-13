@@ -39,6 +39,7 @@ import {
   deleteLesson,
   deleteNote,
   updateCard,
+  updateCourse,
   updateLesson,
   updateNote,
   updateSequence,
@@ -73,6 +74,7 @@ import type {
   Card,
   CardType,
   Course,
+  CourseDistributedCopy,
   CourseRecord,
   Lesson,
   LessonCardLink,
@@ -856,6 +858,15 @@ async function applyCardUpdate(courseId: string, update: CardUpdate): Promise<vo
   if (Object.keys(changes).length > 0) await updateCard(id, changes);
 }
 
+/** The teacher's course details as first import writes them. */
+function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCopy['source']> {
+  return {
+    name: payload.course.n || 'Shared course',
+    description: payload.course.d ?? '',
+    unlockMode: payload.course.um,
+  };
+}
+
 /** Deterministic, so every device that imports the lineage converges on one row. */
 function lineageLinkId(lessonId: string, cardId: string): string {
   return `lineage-link:${encodeURIComponent(lessonId)}:${encodeURIComponent(cardId)}`;
@@ -964,6 +975,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         revision: payload.rv,
         locked: true,
         autoAcceptUpdates: false,
+        source: courseSource(payload),
         ...(payload.by ? { sourceLabel: payload.by } : {}),
       },
     });
@@ -1348,11 +1360,20 @@ export async function mergeLineageUpdate(
     if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
-    // 6. Revision + mapping bookkeeping.
-    await db.courses.update(
-      courseId,
-      stampUpdatedAt({ distributedCopy: { ...dc, revision: payload.rv } }),
-    );
+    // 6. Course details, revision + mapping bookkeeping. A detail the learner changed
+    // since the last import (it no longer matches `dc.source`) is theirs to keep.
+    const source = courseSource(payload);
+    const detailChanges: Partial<CourseRecord> = {};
+    const local = { name: course.name, description: course.description ?? '', unlockMode: course.unlockMode };
+    for (const key of ['name', 'description', 'unlockMode'] as const) {
+      if (local[key] !== source[key] && (!dc.source || local[key] === dc.source[key])) {
+        Object.assign(detailChanges, { [key]: source[key] });
+      }
+    }
+    await updateCourse(courseId, {
+      ...detailChanges,
+      distributedCopy: { ...dc, revision: payload.rv, source },
+    });
     await db.lineageIdMappings.put(mapping);
 
     // Queue whatever remains unresolved, superseding any previous pending row for this

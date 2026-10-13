@@ -21,8 +21,7 @@ export interface RecallPrediction {
 }
 
 export type MemoryModelValidation =
-  | { valid: true }
-  | { valid: false; reason: Exclude<MemoryModelFallbackReason, 'missing'> };
+  { valid: true } | { valid: false; reason: Exclude<MemoryModelFallbackReason, 'missing'> };
 
 export interface MemoryModelCardInput {
   card: Card;
@@ -238,6 +237,9 @@ export type CramAllocation =
       selected: AllocatedCard | null;
       ranked: AllocatedCard[];
       deferredCardIds: string[];
+      /** Eligible cards the model cannot score, in objective order. Served when
+       * nothing is selected and no stop reason applies. */
+      fallbackCards: Card[];
       stopReason?: 'budget-exhausted' | 'no-positive-value' | 'future-window-spacing';
     };
 
@@ -282,13 +284,25 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
   ) {
     return fallback(pool, input.context, input.now, 'corrupt');
   }
+  // An unscorable card (for example, exposed but never reviewed) is served in
+  // objective order rather than demoting the whole pool to practice fallback.
+  const scorable: Card[] = [];
+  const unscorable: Card[] = [];
+  let unscorableReason: MemoryModelFallbackReason | undefined;
   for (const card of pool) {
     const validation = input.model.validate({
       card,
       now: input.now,
       assessmentAt: input.assessmentAt,
     });
-    if (!validation.valid) return fallback(pool, input.context, input.now, validation.reason);
+    if (validation.valid) scorable.push(card);
+    else {
+      unscorable.push(card);
+      unscorableReason ??= validation.reason;
+    }
+  }
+  if (unscorableReason && scorable.length === 0) {
+    return fallback(pool, input.context, input.now, unscorableReason);
   }
 
   if (!Number.isFinite(input.remainingWindowSeconds) || input.remainingWindowSeconds <= 0) {
@@ -298,6 +312,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       selected: null,
       ranked: [],
       deferredCardIds: [],
+      fallbackCards: [],
       stopReason: 'budget-exhausted',
     };
   }
@@ -307,7 +322,7 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
   );
   const deferredCardIds: string[] = [];
   const ranked: AllocatedCard[] = [];
-  for (const card of pool) {
+  for (const card of scorable) {
     const lastReview = lastObservedReview(card);
     if (
       hasFutureWindow &&
@@ -323,7 +338,9 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       assessmentAt: input.assessmentAt,
     });
     if (productiveAt !== null && (!Number.isFinite(productiveAt) || productiveAt < 0)) {
-      return fallback(pool, input.context, input.now, 'unsupported');
+      unscorable.push(card);
+      unscorableReason ??= 'unsupported';
+      continue;
     }
     if (productiveAt === null || productiveAt > input.assessmentAt) continue;
     if (productiveAt > input.now) {
@@ -339,7 +356,11 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
       input.now,
       input.assessmentAt,
     );
-    if (!simulation) return fallback(pool, input.context, input.now, 'corrupt');
+    if (!simulation) {
+      unscorable.push(card);
+      unscorableReason ??= 'corrupt';
+      continue;
+    }
     if (
       input.context.objective === 'securedTopics' &&
       simulation.currentAssessmentRecall.probability >= MASTERY_R
@@ -383,6 +404,12 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
     }
   }
 
+  if (unscorableReason && unscorable.length === pool.length) {
+    return fallback(pool, input.context, input.now, unscorableReason);
+  }
+  const fallbackCards = sortByObjective(unscorable, input.context, input.now).map(
+    ({ card }) => card,
+  );
   ranked.sort((left, right) => {
     if (input.context.objective === 'securedTopics') {
       const crossing = right.simulation.secureProbability - left.simulation.secureProbability;
@@ -400,15 +427,18 @@ export function allocateCramReview(input: CramAllocatorInput): CramAllocation {
     ? undefined
     : ranked.length > 0
       ? 'budget-exhausted'
-      : deferredCardIds.length > 0
-        ? 'future-window-spacing'
-        : 'no-positive-value';
+      : fallbackCards.length > 0
+        ? undefined
+        : deferredCardIds.length > 0
+          ? 'future-window-spacing'
+          : 'no-positive-value';
   return {
     mode: 'memory-model',
     modelVersion: input.model.version,
     selected: selected ?? null,
     ranked,
     deferredCardIds,
+    fallbackCards,
     ...(stopReason ? { stopReason } : {}),
   };
 }
