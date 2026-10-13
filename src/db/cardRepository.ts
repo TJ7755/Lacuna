@@ -20,8 +20,17 @@ import {
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
 } from './reviewHistory';
+import { applyScheduleEdit, mergeScheduleEdits } from './scheduleEdits';
 import { db, makeId } from './schema';
-import type { AnswerMode, Card, CardType, ItemPayload, LessonCardExposure, LessonCardLink } from './types';
+import type {
+  AnswerMode,
+  Card,
+  CardType,
+  ItemPayload,
+  LessonCardExposure,
+  LessonCardLink,
+  ScheduleEdit,
+} from './types';
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
@@ -689,28 +698,19 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
     throw new Error('Reschedule requires either reset: true or a due date.');
   }
   const now = Date.now();
+  const edit: ScheduleEdit =
+    options.due !== undefined ? { at: now, kind: 'due', due: options.due } : { at: now, kind: 'reset' };
   await db.transaction('rw', db.cards, async () => {
-    if (options.due !== undefined) {
-      await db.cards
-        .where('id')
-        .anyOf(ids)
-        .modify(stampUpdatedAt({ due: options.due, buriedUntil: null }, now));
-    } else if (options.reset) {
-      await db.cards
-        .where('id')
-        .anyOf(ids)
-        .modify((card) => {
-          card.state = 0;
-          card.stability = null;
-          card.difficulty = null;
-          card.due = null;
-          card.scheduledDays = 0;
-          card.learningSteps = 0;
-          card.lastReviewed = null;
-          card.buriedUntil = null;
-          card.updatedAt = stampUpdatedAt(card, now).updatedAt;
+    await db.cards
+      .where('id')
+      .anyOf(ids)
+      .modify((card) => {
+        Object.assign(card, applyScheduleEdit(card, edit), {
+          buriedUntil: null,
+          scheduleEdits: mergeScheduleEdits(card.scheduleEdits, [edit]),
         });
-    }
+        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
+      });
   });
 }
 
