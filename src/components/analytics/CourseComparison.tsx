@@ -46,8 +46,8 @@ function computeMetrics(
   const totalReviewsA = historyA.length;
   const totalReviewsB = historyB.length;
 
-  const leechesA = cardsA.filter(isLeech).length;
-  const leechesB = cardsB.filter(isLeech).length;
+  const leechesA = cardsA.filter((card) => isLeech(card, courseA.leechThreshold)).length;
+  const leechesB = cardsB.filter((card) => isLeech(card, courseB.leechThreshold)).length;
 
   const avgStabilityA =
     cardsA.length > 0 ? cardsA.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsA.length : 0;

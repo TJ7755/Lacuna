@@ -86,7 +86,7 @@ export function Analytics() {
   );
 
   const courseMap = useMemo(
-    () => new Map(activeCourses.map((course) => [course.id, course.name])),
+    () => new Map(activeCourses.map((course) => [course.id, course])),
     [activeCourses],
   );
 

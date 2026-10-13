@@ -45,8 +45,10 @@
   Card filters and expanded list. The shell restores scroll; returning input focus
   does not scroll away from that position. Search remains offline and introduces no
   stored learner-data format.
-- **Leech** = a card with `lapses >= 8` (`src/fsrs/leech.ts`); surfaced via a badge and
-  the search filter, but scheduling is never changed automatically.
+- **Leech** = a card whose `lapses` reach its Course's leech threshold (default 8,
+  `src/fsrs/leech.ts`); surfaced via a badge, the search and Cards filters and Progress
+  counts, which all apply the same per-Course threshold. Scheduling is never changed
+  automatically.
 
 ### Dashboard signals (`src/fsrs/stats.ts`, `StudySignals`)
 
