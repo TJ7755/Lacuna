@@ -181,11 +181,17 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
-  // Position through the session, not the card's index: queues serve cards in their own order.
+  // Simple Learn names the card's place in the pip bar, as its announcement does. Other
+  // modes count progress through the session: their queues serve cards in their own order.
   const sessionTotal = sessionCardIds.length;
+  const pipIndex = mode === 'simple' ? sessionCardIds.indexOf(currentCardIds[0]) : -1;
   const cardPosition =
     currentCardIds.length > 0 && sessionTotal > 0 && !plannedRevision
-      ? `${Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)} of ${sessionTotal}`
+      ? `${
+          pipIndex >= 0
+            ? pipIndex + 1
+            : Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)
+        } of ${sessionTotal}`
       : null;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 

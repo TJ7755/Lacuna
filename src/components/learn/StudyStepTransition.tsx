@@ -1,9 +1,10 @@
-import { type CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon } from '../ui/icons';
 import { PomodoroTimer } from './PomodoroTimer';
 import type { SessionSummary } from './types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 import './StudyStepTransition.css';
 
 interface StudyStepTransitionProps {
@@ -46,6 +47,9 @@ export function StudyStepTransition({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const incomplete = !summary.reachedGoal;
+  // The finished step's controls are gone; hand the keyboard to the primary action.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useUnclaimedFocus(actionsRef, !planningNextStep);
 
   const hasNext = !incomplete && Boolean(nextLabel) && !summary.revision?.nextWindowDay;
   const destination = summary.revision?.nextWindowDay
@@ -125,7 +129,7 @@ export function StudyStepTransition({
             <h2>{destination}</h2>
           </div>
         )}
-        <div className="study-transition-actions">
+        <div ref={actionsRef} className="study-transition-actions">
           {breakPending && (
             <Button variant="primary" size="lg" onClick={onTakeBreak}>
               Take a break
