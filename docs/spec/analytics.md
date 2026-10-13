@@ -147,8 +147,11 @@ aggregating across every course:
   since that card's first review. The chart reports the observed recall rate for
   each age bucket and exposes its sample count (`n`) in the tooltip; it is not a
   current-state retention estimate or forecast.
-- **Leech count by course** — horizontal bar chart of leeches per course.
-- **Stability profile** — distribution of cards by stability range.
+- **Leech count by course** — horizontal bar chart of leeches per course, explaining that
+  rewording or splitting helps more than further review, with **Show leech cards** opening
+  full-page search on the Leeches filter.
+- **Stability profile** — distribution of cards by stability range: the days until a card's
+  predicted recall falls to 90%, with new cards (no estimate yet) shown apart.
 
 Charts are wrapped in `ChartCard` (a consistent titled frame with an empty
 state and keyboard-accessible **View data** tables for the plotted values and units), in a `lg:grid-cols-2` grid. `FadeInView` triggers the entrance
