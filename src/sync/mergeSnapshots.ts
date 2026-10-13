@@ -720,8 +720,9 @@ function replayCards(
     let current: Card = { ...card, ...NEVER_REVIEWED };
     if (events.length === 0) return current;
     const params = parametersForCard(card, unitById, courseById);
-    // Fuzz is non-deterministic. Commutativity depends on this being false.
-    const engine = makeEngine({ ...params, enable_fuzz: false });
+    // Use the live parameters, fuzz included: ts-fsrs seeds fuzz from the review time
+    // and memory state, so replay stays deterministic and matches the live schedule.
+    const engine = makeEngine(params);
     for (const event of events) {
       const { memory } = applyReview(engine, current, event.grade, event.timestamp);
       current = { ...current, ...memory };
