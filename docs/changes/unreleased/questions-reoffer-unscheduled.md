@@ -1,0 +1,1 @@
+- A Question that was shown but never graded (abandoned, undone or left unanswered) returns in later Question sessions after the unseen ones, instead of never being offered again
