@@ -1,1 +1,1 @@
-- Typing in a text field now gives a soft accent glow that fades as you type, without moving text or caret.
+- Typing in a text field now gives a soft accent glow that fades as you type, without moving text or caret. (#437, #478)

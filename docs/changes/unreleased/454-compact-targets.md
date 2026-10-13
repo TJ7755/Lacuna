@@ -1,1 +1,1 @@
-- Give the AI header's Disconnect and Sign out link a 44px pointer target without changing its look. The merge review expander and image occlusion role buttons already met the standard.
+- Give the AI header's Disconnect and Sign out link a 44px pointer target without changing its look. The merge review expander and image occlusion role buttons already met the standard. (#454, #473)
