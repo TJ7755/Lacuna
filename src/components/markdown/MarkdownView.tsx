@@ -122,8 +122,16 @@ const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];
 
+/**
+ * Authors often leave alt text out, and raw HTML images may omit the attribute entirely,
+ * which makes a screen reader read the file name and leaves a linked image's link unnamed.
+ */
+const IMAGE_FALLBACK_ALT = 'Image';
+
 const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
-  img: ({ node: _node, ...props }) => <img {...props} loading="lazy" decoding="async" />,
+  img: ({ node: _node, ...props }) => (
+    <img {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
+  ),
   table: ({ node: _node, ...props }) => (
     <div className="lacuna-table-wrap">
       <table {...props} />
@@ -135,14 +143,15 @@ const ENLARGE_COMPONENTS: MarkdownProps['components'] = {
   ...MARKDOWN_COMPONENTS,
   img: ({ node, ...props }) =>
     (node?.data as { linkedImage?: boolean } | undefined)?.linkedImage ? (
-      <img {...props} loading="lazy" decoding="async" />
+      <img {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
     ) : (
       <button
         type="button"
         data-enlarge-image=""
         aria-label={props.alt ? `Enlarge image: ${props.alt}` : 'Enlarge image'}
       >
-        <img {...props} loading="lazy" decoding="async" />
+        {/* The button names the image, so an absent alt stays empty rather than a file name. */}
+        <img {...props} alt={props.alt ?? ''} loading="lazy" decoding="async" />
       </button>
     ),
 };

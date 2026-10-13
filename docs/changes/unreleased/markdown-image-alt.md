@@ -1,0 +1,1 @@
+- Markdown images without alt text are named "Image" instead of announcing their file name, so a linked image's link always has a name; an enlargeable image's button already names it. A test now covers opening and closing the image viewer from the keyboard.
