@@ -4,7 +4,9 @@ on:
   push:
     branches: [master, main]
   pull_request:
-    branches: [master, main]
+    # Long-lived redesign branches collect stacked work before it reaches master; their
+    # pull requests need the same gates or regressions surface only on the final merge.
+    branches: [master, main, 'redesign/**']
     # Retargeting a stacked pull request onto master, or marking a draft ready, must
     # produce the required checks. `edited` also fires on title and body edits; those
     # rerun the suite rather than skip it, because skipped jobs would satisfy the
