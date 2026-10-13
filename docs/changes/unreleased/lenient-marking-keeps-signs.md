@@ -1,0 +1,1 @@
+- Lenient answer marking keeps a minus sign before a number, so typing 5 for -5 is no longer shown as correct; a typographic minus matches a hyphen

@@ -36,9 +36,14 @@ const DEFAULT_OPTIONS: Required<AnswerComparisonOptions> = {
   ignorePunctuation: true,
 };
 
-/** Strip leading/trailing punctuation from a word, leaving internal punctuation intact. */
+/**
+ * Strip leading/trailing punctuation from a word, leaving internal punctuation intact. A minus
+ * sign directly before a number is kept, since it changes the answer.
+ */
 function stripPunctuation(word: string): string {
-  return word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+  const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
+  const leading = /^[^\p{L}\p{M}\p{N}]*/u.exec(word)?.[0] ?? '';
+  return /[-\u2212]$/u.test(leading) && /^\p{N}/u.test(core) ? `-${core}` : core;
 }
 
 function normaliseWord(word: string, options: Required<AnswerComparisonOptions>): string {
