@@ -60,9 +60,11 @@ test('Add returns to its own corner without enlarging its disappearing text', as
     const rect = () => {
       const button = document.querySelector('[role="menu"][aria-label="Add"] [role="menuitem"]');
       if (!button) return null;
-      const text = [...button.childNodes].find(
-        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+      // The option's label, wherever it sits inside the item's layout.
+      const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT, (node) =>
+        node.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
       );
+      const text = walker.nextNode();
       if (!text) throw new Error('Missing option text');
       const range = document.createRange();
       range.selectNodeContents(text);
@@ -134,9 +136,9 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
   });
   expect(samples).toContain(216);
   expect(samples.at(-1)).toBe(closed);
-  expect(
-    samples.every((width) => Math.abs(width - closed) < 1 || Math.abs(width - 216) < 1),
-  ).toBe(true);
+  expect(samples.every((width) => Math.abs(width - closed) < 1 || Math.abs(width - 216) < 1)).toBe(
+    true,
+  );
 });
 
 test('practice editing keeps an unobstructed 44px touch target with a long name', async ({

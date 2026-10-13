@@ -12,7 +12,8 @@ async function sampleButtonHeights(page: Page, frames: number) {
     for (let frame = 0; frame < count; frame += 1) {
       await new Promise(requestAnimationFrame);
       heights.push(
-        [...(group?.querySelectorAll('button') ?? [])]
+        // The closing menu's two-line options are not toolbar controls.
+        [...(group?.querySelectorAll('button:not([role="menuitem"])') ?? [])]
           .filter((button) => button.getBoundingClientRect().width > 0)
           .map((button) => button.getBoundingClientRect().height),
       );

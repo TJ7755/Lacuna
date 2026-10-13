@@ -5,10 +5,11 @@ for (const fontScale of [1, 1.35]) {
   test(`merge decisions stay reachable above course navigation at text scale ${fontScale}`, async ({
     page,
   }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
+    // The course list is only in the sidebar at desktop width.
     await createCourse(page, 'Merge layout');
+    await page.setViewportSize({ width: 390, height: 844 });
     const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
     await page.evaluate(
       async ({ courseId, fontScale }) => {
@@ -65,6 +66,8 @@ for (const fontScale of [1, 1.35]) {
       { courseId, fontScale },
     );
     await page.goto(`/#/course/${courseId}/updates`);
+    // Dexie's live queries do not see raw IndexedDB writes, so load the seeded review afresh.
+    await page.reload();
     const acceptAll = page.getByRole('button', { name: 'Accept all', exact: true });
     await acceptAll.scrollIntoViewIfNeeded();
     const nav = page.getByRole('navigation', { name: 'Course sections' });
@@ -78,7 +81,7 @@ for (const fontScale of [1, 1.35]) {
     const detail = page.getByRole('button', { name: 'Expand detail' });
     await detail.focus();
     await detail.press('Enter');
-    await expect(detail).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Collapse detail' })).toBeFocused();
     await expect(page.getByText('Description · Added')).toBeVisible();
     await expect(page.getByRole('img', { name: 'Diagram' })).toBeVisible();
     expect(
@@ -88,7 +91,9 @@ for (const fontScale of [1, 1.35]) {
     await accept.focus();
     await accept.press('Enter');
     await expect(page.getByRole('link', { name: 'Back to course' })).toBeFocused();
-    await expect(page.getByRole('status')).toHaveText('Accepted. All changes reviewed.');
+    await expect(page.getByRole('status').filter({ hasText: 'Accepted' })).toHaveText(
+      'Accepted. All changes reviewed.',
+    );
     await expect
       .poll(() =>
         page.evaluate(
