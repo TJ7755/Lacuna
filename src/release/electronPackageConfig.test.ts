@@ -63,7 +63,9 @@ describe('Electron package boundary', () => {
   });
 
   it('packages runtime assets while excluding build artefacts and retaining licence files', () => {
-    expect(builderConfig).toContain('  - electron/assets/fonts/**/*');
+    // Renderer fonts ship in dist/fonts; Electron no longer injects its own copies.
+    expect(builderConfig).not.toContain('electron/assets/fonts');
+    expect(builderConfig).not.toContain('electron/fonts.css');
     expect(builderConfig).not.toContain('  - electron/assets/**/*');
     expect(builderConfig).toContain("  - '!**/*.map'");
     expect(builderConfig).toContain("  - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'");

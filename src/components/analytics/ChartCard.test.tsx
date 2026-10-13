@@ -26,4 +26,19 @@ describe('ChartCard data access', () => {
     );
     expect(screen.queryByText('View data')).not.toBeInTheDocument();
   });
+
+  it('offers its action only once the chart has data', () => {
+    const { rerender } = render(
+      <ChartCard title="Leeches" action={<a href="/search?filter=leech">Show leech cards</a>}>
+        Chart
+      </ChartCard>,
+    );
+    expect(screen.getByRole('link', { name: 'Show leech cards' })).toBeInTheDocument();
+    rerender(
+      <ChartCard title="Leeches" empty action={<a href="/search?filter=leech">Show leech cards</a>}>
+        Chart
+      </ChartCard>,
+    );
+    expect(screen.queryByRole('link', { name: 'Show leech cards' })).not.toBeInTheDocument();
+  });
 });

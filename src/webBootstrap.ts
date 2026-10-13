@@ -1,31 +1,5 @@
-const GOOGLE_FONTS_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap';
-
 function isHostedWebProtocol(protocol: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
-}
-
-/** Add remote font resources only where the web CSP and network model permit them. */
-export function installHostedFontLinks(
-  targetDocument: Document = document,
-  protocol: string = window.location.protocol,
-): void {
-  if (!isHostedWebProtocol(protocol)) return;
-
-  const googlePreconnect = targetDocument.createElement('link');
-  googlePreconnect.rel = 'preconnect';
-  googlePreconnect.href = 'https://fonts.googleapis.com';
-
-  const staticPreconnect = targetDocument.createElement('link');
-  staticPreconnect.rel = 'preconnect';
-  staticPreconnect.href = 'https://fonts.gstatic.com';
-  staticPreconnect.crossOrigin = 'anonymous';
-
-  const stylesheet = targetDocument.createElement('link');
-  stylesheet.rel = 'stylesheet';
-  stylesheet.href = GOOGLE_FONTS_STYLESHEET;
-
-  targetDocument.head.append(googlePreconnect, staticPreconnect, stylesheet);
 }
 
 export interface ServiceWorkerRegistrationOptions {

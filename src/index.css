@@ -19,6 +19,15 @@
   font-display: swap;
 }
 
+/* Code and tabular figures use JetBrains Mono, also bundled so no font request leaves the app. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -100,6 +109,12 @@
   --negative: 3 70% 40%;
   --warning: 28 90% 36%;
   --warning-fg: 28 80% 30%;
+  /* Categorical chart series after the accent, distinct in hue and readable on the surface. */
+  --series-1: 205 100% 35%;
+  --series-2: 18 85% 45%;
+  --series-3: 290 45% 45%;
+  --series-4: 180 70% 28%;
+  --series-5: 38 95% 38%;
   --grain-opacity: 0;
 }
 
@@ -122,6 +137,11 @@
   --negative: 7 100% 75%;
   --warning: 35 100% 71%;
   --warning-fg: 35 100% 76%;
+  --series-1: 205 85% 70%;
+  --series-2: 18 95% 68%;
+  --series-3: 290 60% 75%;
+  --series-4: 175 60% 55%;
+  --series-5: 42 95% 62%;
   --grain-opacity: 0;
 }
 

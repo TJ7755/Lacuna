@@ -1,0 +1,1 @@
+- Leech counts on Progress, the course comparison and the search and Cards filters now all respect each course's own leech threshold; the comparison no longer counted cards by list position.

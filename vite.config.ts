@@ -62,17 +62,6 @@ export const workbox = {
       },
     },
     {
-      // Keep the hosted stylesheet so the full Google Fonts language coverage
-      // remains intact without another third-party request on repeat launches.
-      urlPattern: ({ url }: { url: URL }) => url.origin === 'https://fonts.googleapis.com',
-      handler: 'CacheFirst' as const,
-      options: {
-        cacheName: 'font-stylesheet-cache',
-        expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 365 },
-        cacheableResponse: { statuses: [0, 200] },
-      },
-    },
-    {
       urlPattern: /^.*\.wasm$/i,
       // Vite emits content-hashed WASM filenames, so a cached response can only
       // belong to the JavaScript bundle that requested that exact URL.

@@ -1,13 +1,12 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import { installHostedFontLinks, installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
 import { renderApp } from './appRoot';
 // Flags only: the landing decision below never pulls the database into the initial graph.
 import { SEED_FLAG_KEY } from './db/seedFlags';
 
 
 installStaleChunkRecovery();
-installHostedFontLinks();
 installSimpleAnalytics();
 void registerProductionServiceWorker();
 

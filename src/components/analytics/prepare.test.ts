@@ -142,8 +142,8 @@ describe('lessonBreakdown', () => {
 describe('leechCountByCourse', () => {
   it('groups leeches by course name and ignores cards without a courseId', () => {
     const courseMap = new Map([
-      ['c1', 'Biology'],
-      ['c2', 'Chemistry'],
+      ['c1', { name: 'Biology' }],
+      ['c2', { name: 'Chemistry' }],
     ]);
     const cards = [
       makeCard({
@@ -162,6 +162,12 @@ describe('leechCountByCourse', () => {
       { name: 'Biology', count: 1 },
       { name: 'Chemistry', count: 1 },
     ]);
+  });
+
+  it("uses each course's own leech threshold", () => {
+    const courseMap = new Map([['c1', { name: 'Biology', leechThreshold: 3 }]]);
+    const cards = [makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', lapses: 3, reps: 5 })];
+    expect(leechCountByCourse(cards, courseMap)).toEqual([{ name: 'Biology', count: 1 }]);
   });
 });
 

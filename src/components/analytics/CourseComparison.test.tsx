@@ -1,8 +1,9 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { CourseComparison } from './CourseComparison';
 import type { Course, Card } from '../../db/types';
+import { defaultFsrsParameters } from '../../fsrs/params';
 
 vi.mock('./useChartColours', () => ({
   useChartColours: () => ({
@@ -47,5 +48,31 @@ describe('CourseComparison', () => {
       'href',
       '/course/course-b/analytics',
     );
+  });
+
+  it('counts leeches against each course threshold, not the card position', () => {
+    const fresh = { id: 'fresh', courseId: 'course-a', lapses: 0, history: [] } as unknown as Card;
+    const lapsed = {
+      id: 'lapsed',
+      courseId: 'course-b',
+      lapses: 3,
+      history: [],
+    } as unknown as Card;
+    render(
+      <CourseComparison
+        courses={[
+          { ...courses[0], fsrsParameters: defaultFsrsParameters() },
+          { ...courses[1], fsrsParameters: defaultFsrsParameters(), leechThreshold: 3 },
+        ]}
+        cards={[fresh, lapsed]}
+      />,
+      { wrapper: MemoryRouter },
+    );
+
+    fireEvent.change(screen.getByLabelText('First course'), { target: { value: 'course-a' } });
+    fireEvent.change(screen.getByLabelText('Second course'), { target: { value: 'course-b' } });
+
+    const row = screen.getByText('Leech cards').parentElement!;
+    expect(within(row).getByLabelText('Course A leads')).toBeInTheDocument();
   });
 });

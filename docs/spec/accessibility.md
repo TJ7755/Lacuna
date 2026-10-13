@@ -12,7 +12,10 @@
   Apple HIG), and touch-interactive elements carry explicit **active states** so
   presses are visible without `:hover`. A control that stays visually compact, such as
   the AI header's Disconnect or Sign out link, uses the `hit-target` utility, which
-  extends its pointer area to 44px without changing its appearance.
+  extends its pointer area to 44px without changing its appearance. Compact chips
+  (tags, suggestions) likewise keep their row height and extend only their hit area.
+  The phone hit-area probe in `tests/e2e/direction-c-audit.spec.ts` checks every control
+  on the routes it visits from the element's own hit point, so a widened pseudo-element counts.
 - Copy is **British English** throughout; **no emojis** in product copy or UI.
 
 - Keyboard and assistive-technology clicks receive the same press acknowledgement as
@@ -30,6 +33,11 @@
   Deleting a region moves focus to the region that takes its place, else the one before,
   else the canvas. A focused field is scrolled clear of the sticky action bar, which
   stays inside the page frame at narrow widths.
+- Custom context menus (lesson actions, Today's course menu) open from right-click, the
+  context-menu key or Shift+F10, never over text fields or selections, so ordinary editing
+  menus stay intact. Each menu also has a visible trigger for touch and discoverability.
+- Text never scales during an animation, and no surface clips or overflows the page at phone
+  widths or with enlarged text.
 - Generated sharing links and codes receive focus when they replace the focused action,
   without taking focus away from a different control chosen whilst work is pending.
 - Ending an inline lesson rename returns focus to its opening control after Enter or

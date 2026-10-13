@@ -17,8 +17,14 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   restrained green tint; warning colours retain their semantic role.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
   (orange) for on-track, failure and behind-target states.
+- **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where
+  lines stand for things rather than states (the exam-day forecast's courses), with separate
+  light and dark values.
 - **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
   never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
+  Large buttons are 48px, level with a full-size menu, and link-styled buttons share
+  `buttonClassName`; squared buttons are caught by `src/designRules.test.ts`. Opening an inline
+  form never stretches its sibling buttons: closed actions keep their height throughout.
   Segmented controls are a pill track with a white pill that slides between options; when the
   options cannot sit side by side (a narrow screen or enlarged text), the track stacks them
   vertically at full width rather than overflowing its card. Choice chips wrap. The
@@ -37,7 +43,15 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   number to a sentence. Nothing in the app is set in capitals or letter-spaced, and no
   eyebrow label sits above a heading: the heading names the screen on its own
   (`src/designRules.test.ts` enforces the capitals rule).
+- One name per action: **Study** always opens the session plan, a lesson page's direct action is
+  **Study lesson**, and path practice kinds are **Card practice** and **Practice questions**.
+  Counts pluralise ("1 card").
 - A global font-scale control multiplies all text (see §15).
+
+Choice architecture follows *Nudge*: a reversible default, the same mapping for the same
+action everywhere, and an empty panel offers its next action (an empty lesson leads with
+New card; controls with nothing to manage are hidden). Charts plot daily counts as bars and
+continuous measures as lines, and never draw counts against a percentage axis.
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
@@ -98,6 +112,11 @@ Specific motion (current state of the app):
   surfaces dip as gently as pills. It animates the standalone `scale` property, so it
   composes with a control's own transform. Controls that animate their own press carry
   `data-press` to opt out.
+- **Typing feedback (`typingFeedback.ts`):** typing in a text field, textarea or editable
+  region gives a soft accent glow round the field that fades back to its resting style. Only
+  the box shadow animates, so text, caret and layout stay still; a burst of typing shares one
+  glow. It follows the motion-speed setting, and fields carry `data-no-typing-feedback` to
+  opt out.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
 - **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a

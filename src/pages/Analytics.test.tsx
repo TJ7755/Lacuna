@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { Analytics } from './Analytics';
 
@@ -10,10 +11,11 @@ const live = vi.hoisted(() => ({
     averagePredictedRetrievability: number;
   }[],
   courses: [] as { id: string; name: string; archived?: boolean }[],
+  cards: [] as Record<string, unknown>[],
 }));
 
 vi.mock('../state/useData', () => ({
-  useAllCards: () => [],
+  useAllCards: () => live.cards,
   useAllReviewHistory: () => [],
   useAllSessionHistory: () => live.history,
 }));
@@ -38,16 +40,21 @@ vi.mock('../components/analytics/ChartCard', () => ({
     description,
     emptyMessage,
     data,
+    empty,
+    action,
   }: {
     title: string;
     description?: string;
     emptyMessage?: string;
     data?: { rows: unknown[] };
+    empty?: boolean;
+    action?: React.ReactNode;
   }) => (
     <section aria-label={title} data-rows={data?.rows.length}>
       <h2>{title}</h2>
       {description && <p>{description}</p>}
       {emptyMessage && <p>{emptyMessage}</p>}
+      {!empty && action}
     </section>
   ),
 }));
@@ -165,5 +172,27 @@ describe('Analytics', () => {
     expect(
       screen.getByRole('grid', { name: 'Review activity over the last 30 days' }),
     ).toBeInTheDocument();
+  });
+
+  it('explains stability and leeches and links leeches to the affected cards', () => {
+    live.courses = [{ id: 'c', name: 'Biology' }];
+    live.cards = [
+      { id: 'leech', courseId: 'c', lapses: 8, stability: 2, history: [] },
+      { id: 'steady', courseId: 'c', lapses: 0, stability: 40, history: [] },
+    ];
+    try {
+      render(<Analytics />, { wrapper: MemoryRouter });
+      const stability = screen.getByRole('region', { name: 'Stability profile' });
+      expect(stability).toHaveTextContent("Days until each card's recall is likely to fall to 90%");
+      const leeches = screen.getByRole('region', { name: 'Leech count by course' });
+      expect(leeches).toHaveTextContent('Cards you keep forgetting.');
+      expect(within(leeches).getByRole('link', { name: 'Show leech cards' })).toHaveAttribute(
+        'href',
+        '/search?filter=leech',
+      );
+    } finally {
+      live.courses = [];
+      live.cards = [];
+    }
   });
 });

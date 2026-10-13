@@ -52,6 +52,8 @@ unstudied course reads 0%. The chart traces that figure back over the chosen win
 (`examDayHistory`): on each past day a card's stability is the `stabilityAfter` its latest
 review by then recorded, and from its latest stored review onwards the card's own state, so the
 line ends exactly on today's figure. The window (Settings → Dashboard → Forecast range: 14, 30 or
-90 days) puts today 60% across; the remainder holds only exam markers.
+90 days) puts today 60% across; the remainder holds only exam markers. Each course's line takes
+its own colour (`accent-ink`, then `--series-1` to `--series-5`), and the legend states whether
+it is on track or behind, so status never relies on colour alone.
 
 [Specification index](../SPEC.md)
