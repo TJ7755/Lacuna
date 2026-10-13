@@ -178,6 +178,15 @@ describe('searchCards', () => {
     ).toEqual(['three']);
   });
 
+  it('orders equally ranked cards naturally by front', () => {
+    const cards = ['Item 10', 'Item 2', 'item 1'].map((front) => card(front, { front }));
+    expect(searchCards('item', cards).map((r) => r.card.front)).toEqual([
+      'item 1',
+      'Item 2',
+      'Item 10',
+    ]);
+  });
+
   it('combines multiple filters with AND', () => {
     const cards = [
       card('both', { flagged: true, lapses: DEFAULT_LEECH_LAPSE_THRESHOLD }),
@@ -214,10 +223,11 @@ describe('searchCardsInScope', () => {
       lessons: [lesson],
     });
 
+    // Equal matches read in front-text order.
     expect(results).toEqual([
+      expect.objectContaining({ card: bankCard, course, contextName: 'Ancient Rome' }),
       expect.objectContaining({ card: courseCard, course, contextName: 'Ancient Rome' }),
       expect.objectContaining({ card: lessonCard, course, lesson, contextName: 'The Republic' }),
-      expect.objectContaining({ card: bankCard, course, contextName: 'Ancient Rome' }),
     ]);
   });
 });

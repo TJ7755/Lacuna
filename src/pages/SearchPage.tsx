@@ -85,9 +85,11 @@ export function SearchPage() {
   useEffect(() => {
     // Returning restores the shell's scroll position; only an explicit arrow moves it.
     if (!selectionChanged.current) return;
-    resultList.current
-      ?.querySelector<HTMLElement>(`#search-option-${active}`)
-      ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    const option = resultList.current?.querySelector<HTMLElement>(`#search-option-${active}`);
+    // Arrowing past the shown rows extends the URL's limit, which renders a little later;
+    // keep the request until that row exists.
+    if (!option) return;
+    option.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     selectionChanged.current = false;
   }, [active, limit]);
 

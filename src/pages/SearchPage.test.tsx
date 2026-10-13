@@ -218,9 +218,18 @@ describe('SearchPage', () => {
     fireEvent.change(input, { target: { value: 'Palatine' } });
     expect(screen.getAllByRole('option')).toHaveLength(80);
     expect(screen.getByRole('status')).toHaveTextContent('80 of 100 results');
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, 'scrollIntoView')
+      .mockImplementation(function (this: Element) {
+        scrolled.push(this);
+      });
     for (let i = 0; i < 80; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(screen.getAllByRole('option')).toHaveLength(100);
     expect(screen.getAllByRole('option')[80]).toHaveAttribute('aria-selected', 'true');
+    // The newly shown row is scrolled to once it renders, not skipped.
+    expect(scrolled.at(-1)).toBe(screen.getAllByRole('option')[80]);
+    scrollIntoView.mockRestore();
     fireEvent.change(input, { target: { value: 'missing' } });
     expect(screen.getByRole('status')).toHaveTextContent('No results');
     expect(input).not.toHaveAttribute('aria-activedescendant');

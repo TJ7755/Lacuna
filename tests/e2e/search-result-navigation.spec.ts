@@ -65,7 +65,7 @@ for (const width of [390, 1440]) {
       await expect(input).toHaveValue('Palatine');
       await expect(input).toBeFocused();
       await expect(page.getByRole('option')).toHaveCount(80);
-      await expect(page.getByRole('status')).toHaveText('80 of 100 results');
+      await expect(page.getByRole('status').filter({ hasText: 'results' })).toHaveText('80 of 100 results');
       // Filters remain ordinary Tab controls, outside the result-navigation arrows.
       await input.press('Tab');
       await expect(page.getByRole('button', { name: 'Due now' })).toBeFocused();
