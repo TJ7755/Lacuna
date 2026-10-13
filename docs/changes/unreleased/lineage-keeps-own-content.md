@@ -1,0 +1,1 @@
+- Accepting a course update no longer deletes lessons, notes or cards the learner created in that course; only content the update came with can be removed
