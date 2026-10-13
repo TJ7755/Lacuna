@@ -118,6 +118,13 @@ working scheme, and worked explanation. A generated family selects a supported g
 typed configuration. Changing Question form during editing is prohibited: it would be a new
 definition, not a cosmetic edit.
 
+Content leads: the prompt, answer and worked explanation (or the generator configuration) come
+before name, lesson and Concepts, and a new fixed Question opens with focus in the prompt.
+Ctrl/Cmd+Enter saves; for a new Question it is **Save & add another**, which keeps the form, lesson,
+Concept, answer type and tags and starts the next prompt. Escape leaves only while nothing has been
+changed. A save with missing fields reports each at its field, keeps every input and focuses the
+first in page order, without a toast.
+
 Question authoring uses the same local draft store as Card authoring through a typed, generic
 storage boundary. Fixed, working and generated state — including invalid raw working source,
 fixtures and uncommitted Concept text — is isolated by Course and Question identity. Autosave begins

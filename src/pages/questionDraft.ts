@@ -212,6 +212,17 @@ export function useQuestionDraft(key: string) {
     setDraftPrompt(false);
   }, []);
 
+  /** After a save, begin the next Question from `next` as a clean, unguarded baseline. */
+  const startAnother = useCallback(
+    (next: QuestionAuthoringState) => {
+      finish();
+      baselineRef.current = next;
+      stateRef.current = next;
+      setState(next);
+    },
+    [finish],
+  );
+
   useEffect(() => {
     if (!loaded || !dirty || draftPrompt) return;
     window.clearTimeout(timerRef.current);
@@ -234,6 +245,7 @@ export function useQuestionDraft(key: string) {
     discardDraft,
     flushDraft: persist,
     finish,
+    startAnother,
     shouldBlock,
   };
 }
