@@ -1,0 +1,1 @@
+- A course checkpoint now always follows the lesson it was placed after, even when two lessons share a position after a sync merge; the path orders tied lessons the same way assessment coverage does
