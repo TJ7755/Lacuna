@@ -299,7 +299,9 @@ function replayReviews(card: Card, reviews: ReviewHistoryEntry[]): Card {
     learningSteps: 0,
     history: [],
   };
-  const engine = makeEngine({ ...defaultFsrsParameters(), enable_fuzz: false });
+  // The merge replays with the live parameters, fuzz included (#485); fuzz is seeded
+  // deterministically, so the expected schedule must use them too.
+  const engine = makeEngine(defaultFsrsParameters());
   for (const review of [...reviews].sort((a, b) => {
     if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
     return (a.eventId ?? a.id).localeCompare(b.eventId ?? b.id);
