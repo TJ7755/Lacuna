@@ -188,6 +188,27 @@ describe('diffLineage', () => {
     expect(result.conflicts).toEqual([]);
   });
 
+  it('never removes local lessons, notes or cards that the mapping does not track', () => {
+    // Content the student created after import is absent from every payload. It is
+    // not the teacher's to remove, so only mapped rows can become removals.
+    const input: LineageDiffInput = {
+      incoming: { lessons: [baseLesson()] },
+      existing: {
+        lessons: [
+          existingLesson(),
+          existingLesson({ id: 'own-lesson', name: 'Mine', orderIndex: 1 }),
+        ],
+        notes: [
+          { id: 'own-note', lessonId: 'lesson-1', name: 'Mine', content: 'mine', orderIndex: 0 },
+        ],
+        cards: [{ id: 'own-card', type: 'front_back', front: 'mine', back: 'mine' }],
+      },
+      mapping: mapping({ lessonIds: ['lesson-1'] }),
+      studentEdits: new Set(),
+    };
+    expect(diffLineage(input).removals).toEqual({ lessonIds: [], noteIds: [], cardIds: [] });
+  });
+
   it('classifies note and card creates/updates/removals nested under a lesson', () => {
     const input: LineageDiffInput = {
       incoming: {
