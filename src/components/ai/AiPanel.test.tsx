@@ -378,9 +378,11 @@ describe('AiPanel', () => {
     });
     render(<AiPanel session={session} onClose={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { name: 'Approve this action?' })).toBeInTheDocument();
-    expect(screen.getByText('lacuna.delete_course')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Delete course' })).toBeInTheDocument();
     expect(screen.getByText('Mechanics')).toBeInTheDocument();
+    expect(screen.getByText('Approves this change only.')).toBeInTheDocument();
+    expect(screen.queryByText('Permission required')).toBeNull();
+    expect(screen.getByText('lacuna.delete_course').closest('details')).not.toHaveAttribute('open');
     const reject = screen.getByRole('button', { name: 'Reject' });
     await waitFor(() => expect(reject).toHaveFocus());
     fireEvent.click(reject);

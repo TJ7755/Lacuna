@@ -186,7 +186,10 @@ mounting are visible immediately even if their change event preceded the subscri
   live scope resolution, repository execution and Undo capture have one implementation. Reads are
   implicit. Course-scoped writes require a connection/course grant; course creation uses a
   one-shot `write_call` approval bound to the exact call and validated-input digest; destructive
-  calls use a consumed exact approval. Stable `callId` replay returns the recorded result and
+  calls use a consumed exact approval. The approval card leads with the proposed action
+  ("Delete course", or "Allow AI to make changes" for a grant), its target and its
+  consequence; the raw tool name sits under Technical details, and Reject takes focus first.
+  Stable `callId` replay returns the recorded result and
   receipt without repeating the mutation. A resumed approved call ignores an older response for
   that same `callId` until the browser has acknowledged the terminal revision containing the retry.
   Successful Course, Lesson, Card, fixed Question and assessment writes return selectable receipts
