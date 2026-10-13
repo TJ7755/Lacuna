@@ -59,14 +59,15 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-            className="inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2 py-0.5 text-xs text-accent-ink"
+            className="relative inline-flex min-w-11 items-center rounded-lg bg-accent-soft py-0.5 pl-2 pr-5 text-xs text-accent-ink"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
               aria-label={`Remove ${tag}`}
-              className="transition-opacity hover:opacity-70 active:opacity-70"
+              // The whole chip, 44px tall, removes the tag; the row keeps its compact height.
+              className="absolute inset-0 flex items-center justify-end pr-1.5 transition-opacity before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:opacity-70 active:opacity-70"
             >
               <CloseIcon width={11} height={11} />
             </button>
@@ -83,7 +84,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
         />
       </div>
       {available.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {available.map((s) => (
             <motion.button
               key={s}
@@ -91,7 +92,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
               onClick={() => addTag(s)}
               data-press=""
               whileTap={{ scale: 0.92 }}
-              className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent-ink active:border-accent active:text-accent-ink"
+              className="relative min-w-11 rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:border-accent hover:text-accent-ink active:border-accent active:text-accent-ink"
             >
               {s}
             </motion.button>

@@ -121,6 +121,22 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
     await page.goto(`/#${route}`);
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(500);
+    if (route.endsWith('/cards/new')) {
+      // A saved tag returns as a suggestion beside a fresh chip, so both are probed.
+      const tagField = page.getByRole('textbox', { name: 'Add tags' });
+      await page.getByRole('textbox', { name: 'Front' }).fill('Target probe');
+      await page.getByRole('textbox', { name: 'Back' }).fill('Answer');
+      await tagField.fill('saved');
+      await tagField.press('Enter');
+      await page.getByRole('button', { name: 'Save & add another' }).click();
+      await expect(page.getByRole('textbox', { name: 'Front' })).toHaveText('');
+      // The next card keeps the tag; removing it turns the tag into a suggestion.
+      await page.getByRole('button', { name: 'Remove saved' }).click();
+      await tagField.fill('fresh');
+      await tagField.press('Enter');
+      await expect(page.getByRole('button', { name: 'Remove fresh' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'saved', exact: true })).toBeVisible();
+    }
     const found = await page.evaluate(() => {
       const out: string[] = [];
       const controls = document.querySelectorAll<HTMLElement>(
