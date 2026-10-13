@@ -26,6 +26,11 @@ import {
 import { selectNextCard, type CooldownMap } from './cooldown';
 import { studyPool, availableCards, dueCards, isAvailable } from './eligibility';
 import { schedulingHorizon } from './horizon';
+import {
+  courseBudgetedStudyPool,
+  courseNewCardBudget,
+  type CourseNewCardBudget,
+} from './courseNewCardBudget';
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
@@ -266,59 +271,6 @@ export function sessionServePool(
   return sessionServePoolFromIndex(indexSessionCards(cards, ctx), ctx, now);
 }
 
-/** Session cards grouped by course, with each course's admitted new cards memoised by cap. */
-interface CourseNewCardBudget {
-  cardsByCourse: Map<string, Card[]>;
-  admittedNew: Map<string, Set<string>>;
-}
-
-function courseNewCardBudget(index: SessionCardIndex): CourseNewCardBudget {
-  const cardsByCourse = new Map<string, Card[]>();
-  const seen = new Set<string>();
-  for (const unitCards of index.byUnit.values()) {
-    for (const card of unitCards) {
-      if (!card.courseId || seen.has(card.id)) continue;
-      seen.add(card.id);
-      const courseCards = cardsByCourse.get(card.courseId);
-      if (courseCards) courseCards.push(card);
-      else cardsByCourse.set(card.courseId, [card]);
-    }
-  }
-  return { cardsByCourse, admittedNew: new Map() };
-}
-
-/** studyPool, but a course's lesson units share one daily new-card budget: each unit
- *  admits only the new cards the course as a whole would admit, so a session over N
- *  lessons introduces at most the course cap rather than N times it. */
-function courseBudgetedStudyPool(
-  cards: Card[],
-  deck: SchedulerConfig,
-  now: number,
-  budget: CourseNewCardBudget,
-): Card[] {
-  const unitPool = studyPool(cards, deck, now);
-  const cap = Math.floor(deck.newCardsPerDay ?? 0);
-  if (cap <= 0) return unitPool;
-  const admittedFor = (courseId: string): Set<string> => {
-    const key = `${courseId}:${cap}`;
-    let admitted = budget.admittedNew.get(key);
-    if (!admitted) {
-      admitted = new Set(
-        studyPool(budget.cardsByCourse.get(courseId) ?? [], deck, now)
-          .filter((card) => card.state === 0)
-          .map((card) => card.id),
-      );
-      budget.admittedNew.set(key, admitted);
-    }
-    return admitted;
-  };
-  const unitAdmitted = new Set(unitPool.map((card) => card.id));
-  return availableCards(cards, now).filter((card) => {
-    if (card.state !== 0) return true;
-    return card.courseId ? admittedFor(card.courseId).has(card.id) : unitAdmitted.has(card.id);
-  });
-}
-
 function sessionServePoolFromIndex(
   index: SessionCardIndex,
   ctx: SessionContext,
@@ -326,7 +278,7 @@ function sessionServePoolFromIndex(
 ): Card[] {
   const seen = new Set<string>();
   const pool: Card[] = [];
-  const courseBudget = courseNewCardBudget(index);
+  const courseBudget = courseNewCardBudget(index.byUnit.values());
   for (const { deck, scope } of ctx.decks.values()) {
     const deckCards = index.byUnit.get(unitKey(scope)) ?? [];
     const eligible = unitServePool(deckCards, deck, ctx, now, courseBudget);
@@ -461,7 +413,7 @@ export function sessionComplete(
     return served.length > 0 && isObjectiveComplete(served, unit.oc, now);
   }
   const index = indexSessionCards(cards, ctx);
-  const courseBudget = courseNewCardBudget(index);
+  const courseBudget = courseNewCardBudget(index.byUnit.values());
   let anyPoolNonEmpty = false;
   for (const { deck, scope, oc } of ctx.decks.values()) {
     const served = unitServePool(
