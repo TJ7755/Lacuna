@@ -201,6 +201,66 @@ describe('due review sessions', () => {
   });
 });
 
+describe('course new-card budget', () => {
+  it("shares one course cap across that course's lesson units in a multi-unit session", () => {
+    const lessonA = { ...course('lesson-a', 10), newCardsPerDay: 1 };
+    const lessonB = { ...course('lesson-b', 10), newCardsPerDay: 1 };
+    const cards = [
+      card('a-new', lessonA.id, { courseId: 'course-1', createdAt: 1 }),
+      card('b-new', lessonB.id, { courseId: 'course-1', createdAt: 2 }),
+      card('other-new', 'lesson-c', { courseId: 'course-2', createdAt: 3 }),
+    ];
+    const lessonC = { ...course('lesson-c', 10), newCardsPerDay: 1 };
+
+    const pool = sessionServePool(cards, makeSessionContext([lessonA, lessonB, lessonC]), NOW);
+
+    expect(pool.map((entry) => entry.id).sort()).toEqual(['a-new', 'other-new']);
+  });
+
+  it('completes once the shared course budget is spent, not once per lesson', () => {
+    const lessonA = {
+      ...course('lesson-a', 10),
+      examObjective: 'securedTopics' as const,
+      newCardsPerDay: 1,
+    };
+    const lessonB = {
+      ...course('lesson-b', 10),
+      examObjective: 'securedTopics' as const,
+      newCardsPerDay: 1,
+    };
+    const introduced = card('a-new', lessonA.id, {
+      courseId: 'course-1',
+      createdAt: 1,
+      state: 2,
+      stability: 100,
+      difficulty: 5,
+      lastReviewed: NOW,
+      due: NOW + 100 * MS_PER_DAY,
+      reps: 1,
+      history: [
+        {
+          eventId: 'intro',
+          sessionId: 'session',
+          timestamp: NOW,
+          grade: 3,
+          responseTimeSec: 2,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 100,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    const cards = [introduced, card('b-new', lessonB.id, { courseId: 'course-1', createdAt: 2 })];
+    const ctx = makeSessionContext([lessonA, lessonB]);
+
+    expect(sessionServePool(cards, ctx, NOW + 60_000)).toEqual([introduced]);
+    expect(sessionComplete(cards, ctx, NOW + 60_000)).toBe(true);
+  });
+});
+
 describe('cram sessions', () => {
   it('bypasses the new-card cap while excluding suspended and buried cards', () => {
     const capped = { ...deck('capped', 1), newCardsPerDay: 1 };

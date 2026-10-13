@@ -1,0 +1,1 @@
+- A study session across several lessons of one course now introduces at most that course's daily new-card limit, rather than the limit once per lesson, matching the Today count

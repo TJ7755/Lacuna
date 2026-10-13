@@ -26,6 +26,11 @@ import {
 import { selectNextCard, type CooldownMap } from './cooldown';
 import { studyPool, availableCards, dueCards, isAvailable } from './eligibility';
 import { schedulingHorizon } from './horizon';
+import {
+  courseBudgetedStudyPool,
+  courseNewCardBudget,
+  type CourseNewCardBudget,
+} from './courseNewCardBudget';
 import { cramScore } from './cram';
 import type { ExamDateContext } from './examDate';
 import { daysUntil } from '../utils/datetime';
@@ -205,12 +210,17 @@ function unitServePool(
   deck: SchedulerConfig,
   ctx: SessionContext,
   now: number,
+  courseBudget?: CourseNewCardBudget,
 ): Card[] {
   const { mode } = ctx;
   if (deck.archived) return [];
   const pool = mode === 'due'
     ? dueCards(cards, now)
-    : mode === 'cram' ? availableCards(cards, now) : studyPool(cards, deck, now);
+    : mode === 'cram'
+      ? availableCards(cards, now)
+      : courseBudget
+        ? courseBudgetedStudyPool(cards, deck, now, courseBudget)
+        : studyPool(cards, deck, now);
   const initialReviewCounts = ctx.initialReviewCounts;
   if (!initialReviewCounts || mode === 'cram') return pool;
   return pool.filter((card) => {
@@ -268,9 +278,10 @@ function sessionServePoolFromIndex(
 ): Card[] {
   const seen = new Set<string>();
   const pool: Card[] = [];
+  const courseBudget = courseNewCardBudget(index.byUnit.values());
   for (const { deck, scope } of ctx.decks.values()) {
     const deckCards = index.byUnit.get(unitKey(scope)) ?? [];
-    const eligible = unitServePool(deckCards, deck, ctx, now);
+    const eligible = unitServePool(deckCards, deck, ctx, now, courseBudget);
     for (const c of eligible) {
       if (seen.has(c.id)) continue;
       seen.add(c.id);
@@ -402,6 +413,7 @@ export function sessionComplete(
     return served.length > 0 && isObjectiveComplete(served, unit.oc, now);
   }
   const index = indexSessionCards(cards, ctx);
+  const courseBudget = courseNewCardBudget(index.byUnit.values());
   let anyPoolNonEmpty = false;
   for (const { deck, scope, oc } of ctx.decks.values()) {
     const served = unitServePool(
@@ -409,6 +421,7 @@ export function sessionComplete(
       deck,
       ctx,
       now,
+      courseBudget,
     );
     if (served.length > 0) anyPoolNonEmpty = true;
     if (!isObjectiveComplete(served, oc, now)) return false;
