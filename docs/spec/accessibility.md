@@ -10,7 +10,9 @@
 - Tabular numerals for figures; balanced text wrapping for headings.
 - Every interactive element meets a **44px minimum target** (per WCAG 2.5.5 /
   Apple HIG), and touch-interactive elements carry explicit **active states** so
-  presses are visible without `:hover`.
+  presses are visible without `:hover`. A control that stays visually compact, such as
+  the AI header's Disconnect or Sign out link, uses the `hit-target` utility, which
+  extends its pointer area to 44px without changing its appearance.
 - Copy is **British English** throughout; **no emojis** in product copy or UI.
 
 - Keyboard and assistive-technology clicks receive the same press acknowledgement as

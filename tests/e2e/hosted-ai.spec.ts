@@ -185,3 +185,23 @@ test('another browser tab cannot own the same hosted conversation', async ({ pag
   await expect(second.getByRole('textbox', { name: 'Message AI' })).toBeDisabled();
   await second.close();
 });
+
+test('Sign out keeps a 44px pointer target inside the AI header', async ({ page }) => {
+  await openHostedAi(page);
+  const signOut = page.getByRole('button', { name: 'Sign out of built-in AI' });
+  const report = await signOut.evaluate((button) => {
+    const box = button.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const hits = (px: number, py: number) => button.contains(document.elementFromPoint(px, py));
+    return {
+      height: box.height,
+      above: hits(x, y - 21),
+      below: hits(x, y + 21),
+      left: hits(box.left + 1, y),
+      right: hits(box.right - 1, y),
+    };
+  });
+  expect(report.height).toBeLessThan(44);
+  expect(report).toMatchObject({ above: true, below: true, left: true, right: true });
+});
