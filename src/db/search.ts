@@ -177,6 +177,8 @@ export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOpt
   });
 }
 
+const FRONT_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 /**
  * Find cards in a Course/Lesson-aware scope.
  */
@@ -238,8 +240,11 @@ export function searchCardsInScope(
     ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score });
   }
 
-  // With a query, rank by match quality; filter-only results keep their input order.
-  ranked.sort((a, b) => a.score - b.score);
+  // Rank by match quality, then by front text so equal matches read in a stable, natural
+  // order ("Item 9" before "Item 10") rather than the storage order of random ids.
+  ranked.sort(
+    (a, b) => a.score - b.score || FRONT_ORDER.compare(a.result.card.front, b.result.card.front),
+  );
   return ranked.map(({ result }) => result);
 }
 

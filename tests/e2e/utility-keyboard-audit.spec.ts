@@ -42,7 +42,7 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
 }, testInfo) => {
   await enterFreshLacuna(page);
   await page.goto('/#/search');
-  const search = page.getByRole('textbox', { name: 'Search content', exact: true });
+  const search = page.getByRole('combobox', { name: 'Search content', exact: true });
   await expect(search).toBeFocused();
   await expect(page.getByRole('heading', { name: 'Search everything' })).toHaveCount(0);
   await search.press('Tab');
@@ -64,7 +64,7 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
   await search.fill('Welcome to Lacuna');
   const course = page
     .locator('main')
-    .getByRole('button', { name: /^Welcome to Lacuna/ })
+    .getByRole('option', { name: /^Welcome to Lacuna/ })
     .first();
   await expect(course).toBeVisible();
   await expect.poll(() => course.evaluate((element) => getComputedStyle(element).opacity)).toBe('1');
