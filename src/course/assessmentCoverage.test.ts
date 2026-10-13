@@ -87,15 +87,17 @@ describe('resolveAssessmentCoverage', () => {
 
   it('rejects a custom lesson positioned after the assessment', () => {
     const result = resolveAssessmentCoverage(
-      assessment({ coverageMode: 'custom', lessonIds: ['three'] }),
+      assessment({ coverageMode: 'custom', lessonIds: ['one', 'three'] }),
       lessons,
-      [],
+      [card('before', 'one'), card('after', 'three')],
       [],
     );
 
     expect(result.validation.issues).toContainEqual(
       expect.objectContaining({ code: 'custom-lesson-after-assessment', referenceId: 'three' }),
     );
+    expect(result.coveredLessons.map((lesson) => lesson.id)).toEqual(['one']);
+    expect(result.cards.map((value) => value.id)).toEqual(['before']);
   });
 
   it('uses linked membership, deduplicates cards and applies exclusions', () => {
