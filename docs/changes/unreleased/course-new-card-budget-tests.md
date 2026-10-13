@@ -1,0 +1,1 @@
+- Unit-test the course-wide daily new-card budget shared by lesson units, which had no direct coverage.
