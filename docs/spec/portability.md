@@ -136,6 +136,9 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 
+- Exports read represented records and their referenced media within one readonly database
+  transaction, so simultaneous reviews, edits or deletions cannot produce a partial restore point.
+  Media byte encoding runs after the read transaction closes.
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
@@ -194,6 +197,8 @@ A single, reusable export UI offering multiple output formats:
 
 ### Automatic restore points & migration safety
 
+- Ordinary restore-point attempts are throttled for five minutes; a failed export or local
+  snapshot write releases that attempt's throttle so an immediate retry can protect the data.
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
   automatically on open, **at most once a day** (`autoBackupIfStale`), and never
   blocks the UI.
