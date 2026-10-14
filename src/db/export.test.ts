@@ -144,9 +144,7 @@ describe('card exporters: course/lesson naming', () => {
       'timestamp,event_id,session_id,session_kind,revision_plan_id,revision_window_id',
     );
     expect(csv).toContain('retrievability_at_review,fsrs_weights_fingerprint');
-    expect(csv).toContain(
-      '1725123456789,event-1,session-1,revision-plan,plan-1,window-1',
-    );
+    expect(csv).toContain('1725123456789,event-1,session-1,revision-plan,plan-1,window-1');
     expect(csv).toContain('0.75,w1:3f2a91c4');
 
     const [json] = JSON.parse(await exportReviewHistoryJson());
@@ -169,7 +167,6 @@ describe('card exporters: course/lesson naming', () => {
     );
   });
 });
-
 
 describe('export field escaping', () => {
   beforeEach(reset);
@@ -202,7 +199,6 @@ describe('export field escaping', () => {
     },
   );
 });
-
 
 describe('full Card export re-import', () => {
   beforeEach(reset);
@@ -251,6 +247,45 @@ describe('full Card export re-import', () => {
   );
 });
 
+describe('spreadsheet formula guard', () => {
+  beforeEach(reset);
+
+  it.each(['csv', 'tsv'] as const)(
+    'neutralises formula cells in %s and re-imports them unchanged',
+    async (format) => {
+      const course = await createCourse('=HYPERLINK("x")');
+      await createCourseCard(course.id, 'front_back', '=1+1', '@SUM(A1)', ['-tag', '+other']);
+      const text = format === 'csv' ? await exportCardsCsv() : await exportCardsTsv();
+      const delimiter = format === 'csv' ? ',' : '\t';
+      const cells = text.split('\r\n')[1]!.split(delimiter);
+
+      expect(cells[0]).toBe(`"'=HYPERLINK(""x"")"`);
+      expect(cells.slice(2, 5)).toEqual(["'=1+1", "'@SUM(A1)", "'-tag;+other"]);
+      expect(parseImportAuto(text, { format }).cards).toEqual([
+        { type: 'front_back', front: '=1+1', back: '@SUM(A1)', tags: ['-tag', '+other'] },
+      ]);
+    },
+  );
+
+  it('guards review history cells', async () => {
+    const course = await createCourse('Guard');
+    const card = await createCourseCard(course.id, 'front_back', '-x', 'A');
+    const review = {
+      timestamp: 1,
+      grade: 3 as const,
+      responseTimeSec: 5,
+      distracted: false,
+      stabilityBefore: null,
+      stabilityAfter: 1,
+      difficultyBefore: null,
+      difficultyAfter: 5,
+      retrievabilityAtReview: null,
+    };
+    await db.reviewHistory.put(reviewHistoryEntryForCard({ ...card, history: [review] }, review));
+
+    expect(await exportReviewHistoryCsv()).toContain(",'-x,");
+  });
+});
 
 describe('Markdown export backslash escaping', () => {
   beforeEach(reset);

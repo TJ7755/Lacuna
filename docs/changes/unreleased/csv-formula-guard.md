@@ -1,0 +1,1 @@
+- CSV and TSV exports now prefix cells starting with `=`, `+`, `-`, `@`, a tab or a carriage return with an apostrophe, so spreadsheets show them as text instead of running them as formulas. Re-importing a Lacuna export strips the apostrophe again.
