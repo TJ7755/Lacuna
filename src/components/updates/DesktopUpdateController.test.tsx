@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DesktopUpdateController } from './DesktopUpdateController';
 import type { DesktopUpdateState } from '../../electron/updateTypes';
@@ -67,7 +67,8 @@ describe('DesktopUpdateController', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Update ready' });
     expect(screen.queryByRole('button', { name: 'What’s new' })).not.toBeInTheDocument();
     const install = screen.getByRole('button', { name: 'Restart Lacuna' });
-    expect(install).toHaveFocus();
+    // The focus trap focuses in a passive effect, which can flush after the dialog appears.
+    await waitFor(() => expect(install).toHaveFocus());
     fireEvent.keyDown(install, { key: 'Tab' });
     expect(screen.getByRole('button', { name: 'Later' })).toHaveFocus();
     fireEvent.keyDown(dialog, { key: 'Escape' });
