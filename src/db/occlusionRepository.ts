@@ -13,6 +13,7 @@ import type { Concept } from '../questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { scheduleAssetGc } from './assets';
+import { replaceReviewHistoryForCards } from './cardRepository';
 import {
   stampUpdatedAt,
   recordTombstone,
@@ -428,7 +429,10 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
-        await db.reviewHistory.bulkPut(reviewHistoryToRestore);
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await clearTombstone(tx, 'occlusions', snapshot.occlusion.id);
         await clearGeneratedCardCascade(
           tx,
