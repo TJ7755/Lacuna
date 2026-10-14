@@ -1,0 +1,1 @@
+- The relay no longer reflects any browser `Origin` in its CORS headers. Only the Lacuna web app, the beta deployment, the desktop app and loopback development servers may read its responses; `RELAY_ALLOWED_ORIGINS` adds more. Clients that send no `Origin` are unaffected.

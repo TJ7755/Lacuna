@@ -25,8 +25,15 @@ export function companionConnectionFilePath(userDataPath: string): string {
   return path.join(companionStateDirectory(userDataPath), 'connection.json');
 }
 
+const UNIX_SOCKET_PATH_LIMIT = 104;
+
 export function companionEndpoint(userDataPath: string, platform = process.platform): string {
   if (platform === 'win32') return `\\\\.\\pipe\\LOCAL\\lacuna-${randomBytes(16).toString('hex')}`;
+  // The owner-only state directory stops other local users squatting the path, which they
+  // can do in a shared /tmp. Unix socket paths are limited to 104 bytes on macOS (108 on
+  // Linux), so a very long profile path falls back to the per-user name in the temp folder.
+  const owned = path.join(companionStateDirectory(userDataPath), 'companion.sock');
+  if (Buffer.byteLength(owned) < UNIX_SOCKET_PATH_LIMIT) return owned;
   const digest = createHash('sha256').update(userDataPath).digest('hex').slice(0, 20);
   return path.join(os.tmpdir(), `lacuna-mcp-${process.getuid?.() ?? 'user'}-${digest}.sock`);
 }

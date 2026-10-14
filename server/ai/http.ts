@@ -7,6 +7,18 @@ export function allowedOrigin(request: Request): string | null | false {
   return false;
 }
 
+/**
+ * The caller's address for rate limiting. On Vercel only its edge-set header is trusted,
+ * as in relay/src/rateLimit.ts; elsewhere the operator's front proxy sets X-Forwarded-For.
+ */
+export function clientAddress(request: Request): string {
+  const first = (value: string | null) => value?.split(',')[0]?.trim().toLowerCase() || null;
+  const vercel = first(request.headers.get('x-vercel-forwarded-for'));
+  if (vercel) return vercel;
+  if (process.env.VERCEL) return 'unknown';
+  return first(request.headers.get('x-forwarded-for')) ?? request.headers.get('x-real-ip')?.trim() ?? 'unknown';
+}
+
 export function aiHeaders(origin: string | null): Headers {
   const headers = new Headers({ 'Cache-Control': 'no-store', Vary: 'Origin' });
   if (origin) {

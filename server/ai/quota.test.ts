@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createAiQuotaStore } from './quota';
+import { createAiQuotaStore, createSessionExchangeLimiter, SESSION_EXCHANGE_LIMITS } from './quota';
 
 describe('hosted AI quota admission', () => {
   it('uses one atomic reservation across user and global limits and releases it once', async () => {
@@ -32,5 +32,26 @@ describe('hosted AI quota admission', () => {
       vi.fn(async () => new Response('error', { status: 503 })) as typeof fetch);
     await expect(failed.reserve('learner_1')).rejects.toThrow('unavailable');
     expect(() => createAiQuotaStore('http://quota.example', 'server-secret')).toThrow();
+  });
+});
+
+describe('session exchange rate limit', () => {
+  it('counts attempts per hashed address against minute and day windows', async () => {
+    const commands: unknown[][] = [];
+    const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      commands.push(JSON.parse(String(init?.body)) as unknown[]);
+      return Response.json({ result: commands.length === 1 ? 1 : 0 });
+    }) as unknown as typeof fetch;
+    const limiter = createSessionExchangeLimiter('https://quota.example', 'server-secret', fetcher,
+      () => Date.UTC(2026, 8, 25, 12));
+
+    expect(await limiter.allow('203.0.113.7')).toBe(true);
+    expect(await limiter.allow('203.0.113.7')).toBe(false);
+    const [, , keyCount, minuteKey, dayKey, perMinute, perDay] = commands[0]!;
+    expect(keyCount).toBe(2);
+    expect(minuteKey).toMatch(/^lacuna:ai:session:minute:[a-f0-9]{64}:\d+$/);
+    expect(dayKey).toMatch(/^lacuna:ai:session:day:[a-f0-9]{64}:2026-09-25$/);
+    expect(JSON.stringify(commands)).not.toContain('203.0.113.7');
+    expect([perMinute, perDay]).toEqual([SESSION_EXCHANGE_LIMITS.perMinute, SESSION_EXCHANGE_LIMITS.perDay]);
   });
 });

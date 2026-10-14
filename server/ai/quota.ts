@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 const RESERVE_SCRIPT = `
 redis.call('ZREMRANGEBYSCORE', KEYS[5], '-inf', ARGV[2])
@@ -27,6 +27,15 @@ redis.call('ZREM', KEYS[2], ARGV[1])
 return 1
 `;
 
+const ATTEMPT_SCRIPT = `
+local minute = redis.call('INCR', KEYS[1])
+if minute == 1 then redis.call('EXPIRE', KEYS[1], 120) end
+local day = redis.call('INCR', KEYS[2])
+if day == 1 then redis.call('EXPIRE', KEYS[2], 172800) end
+if minute > tonumber(ARGV[1]) or day > tonumber(ARGV[2]) then return 0 end
+return 1
+`;
+
 export interface AiQuotaLimits {
   userDaily: number;
   userMonthly: number;
@@ -45,6 +54,58 @@ export const DEFAULT_AI_QUOTA_LIMITS: AiQuotaLimits = {
   globalConcurrent: 12,
 };
 
+function quotaCommand(
+  url: string,
+  token: string,
+  fetcher: typeof fetch,
+): (parts: readonly (string | number)[]) => Promise<unknown> {
+  if (!/^https:\/\//.test(url) || !token) throw new Error('A secure quota store is required.');
+  return async (parts) => {
+    const response = await fetcher(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(parts),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) throw new Error('AI quota store is unavailable.');
+    const body = await response.json() as { result?: unknown; error?: unknown };
+    if (body.error !== undefined) throw new Error('AI quota store rejected the operation.');
+    return body.result;
+  };
+}
+
+/** Access-code exchanges allowed per client address; real clients exchange about once an hour. */
+export const SESSION_EXCHANGE_LIMITS = { perMinute: 10, perDay: 100 };
+
+export interface SessionExchangeLimiter {
+  allow(clientAddress: string): Promise<boolean>;
+}
+
+export function createSessionExchangeLimiter(
+  url: string,
+  token: string,
+  fetcher: typeof fetch = fetch,
+  now: () => number = Date.now,
+): SessionExchangeLimiter {
+  const command = quotaCommand(url, token, fetcher);
+  return {
+    async allow(clientAddress) {
+      const timestamp = now();
+      const day = new Date(timestamp).toISOString().slice(0, 10);
+      const minute = Math.floor(timestamp / 60_000);
+      // Hash the address so the store never holds learners' IP addresses.
+      const address = createHash('sha256').update(`lacuna-ai-session-ip-v1\0${clientAddress}`).digest('hex');
+      const granted = await command([
+        'EVAL', ATTEMPT_SCRIPT, 2,
+        `lacuna:ai:session:minute:${address}:${minute}`,
+        `lacuna:ai:session:day:${address}:${day}`,
+        SESSION_EXCHANGE_LIMITS.perMinute, SESSION_EXCHANGE_LIMITS.perDay,
+      ]);
+      return granted === 1;
+    },
+  };
+}
+
 export interface AiQuotaStore {
   reserve(credentialId: string): Promise<(() => Promise<void>) | null>;
 }
@@ -56,20 +117,7 @@ export function createAiQuotaStore(
   fetcher: typeof fetch = fetch,
   now: () => number = Date.now,
 ): AiQuotaStore {
-  if (!/^https:\/\//.test(url) || !token) throw new Error('A secure quota store is required.');
-
-  async function command(parts: readonly (string | number)[]): Promise<unknown> {
-    const response = await fetcher(url, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(parts),
-      signal: AbortSignal.timeout(5_000),
-    });
-    if (!response.ok) throw new Error('AI quota store is unavailable.');
-    const body = await response.json() as { result?: unknown; error?: unknown };
-    if (body.error !== undefined) throw new Error('AI quota store rejected the operation.');
-    return body.result;
-  }
+  const command = quotaCommand(url, token, fetcher);
 
   return {
     async reserve(credentialId) {

@@ -81,3 +81,11 @@ describe('Electron package boundary', () => {
     expect(builderConfig).toMatch(/electronLanguages:\n {2}- en-GB\n {2}- en-US(?:\n|$)/);
   });
 });
+
+describe('Electron fuses', () => {
+  it('drops file:// privileges but keeps RunAsNode for the AI companion', () => {
+    expect(builderConfig).toContain(
+      'electronFuses:\n  runAsNode: true\n  grantFileProtocolExtraPrivileges: false\n',
+    );
+  });
+});

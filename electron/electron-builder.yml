@@ -12,6 +12,14 @@ files:
   - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'
   - '!**/*.{test,spec}.{js,cjs,mjs,ts,tsx,cts,mts,jsx}'
   - '!**/{README*,CHANGELOG*,CHANGES*,HISTORY*,CONTRIBUTING*,CODE_OF_CONDUCT*,SECURITY*}.{md,markdown,txt}'
+# RunAsNode stays on: the AI companion launches with ELECTRON_RUN_AS_NODE. While it is on,
+# disabling NODE_OPTIONS or --inspect adds little, and the installed-upgrade CI probe needs
+# --inspect. ASAR integrity, app.asar-only loading and cookie encryption are left at Electron's
+# defaults until a packaged build on each platform has verified them.
+electronFuses:
+  runAsNode: true
+  grantFileProtocolExtraPrivileges: false
+  resetAdHocDarwinSignature: true
 electronLanguages:
   - en-GB
   - en-US
