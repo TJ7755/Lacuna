@@ -48,7 +48,11 @@ async function restoreRememberedCredentials(): Promise<void> {
 
 async function triggerSync(reason: string): Promise<void> {
   const now = Date.now();
-  if (now - lastTriggerAt < MIN_INTERVAL_MS) return;
+  const remaining = MIN_INTERVAL_MS - (now - lastTriggerAt);
+  if (remaining > 0) {
+    scheduleTrigger(reason, remaining);
+    return;
+  }
   const state = await readSyncState().catch(() => null);
   if (!state?.channelId || !state?.wrappedKeyMaterial) return;
   const credentials = currentCredentials;
@@ -67,12 +71,12 @@ async function triggerSync(reason: string): Promise<void> {
   }
 }
 
-function scheduleTrigger(reason: string): void {
+function scheduleTrigger(reason: string, delay = DEBOUNCE_MS): void {
   if (debounceTimer !== null) window.clearTimeout(debounceTimer);
   debounceTimer = window.setTimeout(() => {
     debounceTimer = null;
     void triggerSync(reason);
-  }, DEBOUNCE_MS);
+  }, delay);
 }
 
 export function installSyncTriggers(): () => void {

@@ -121,6 +121,55 @@ describe('remembered sync trigger credentials', () => {
     }
   });
 
+  it('syncs study changes after the throttle expires instead of dropping the final trigger', async () => {
+    vi.useFakeTimers();
+    publishUnlockedCredentials(credentials);
+    const dispose = installSyncTriggers();
+
+    try {
+      window.dispatchEvent(new Event('focus'));
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('lacuna:study-session-end'));
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('focus'));
+
+      await vi.advanceTimersByTimeAsync(3499);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(2);
+    } finally {
+      dispose();
+    }
+  });
+
+  it.each(['disposed', 'locked'])('cancels a throttled sync when triggers are %s', async (action) => {
+    vi.useFakeTimers();
+    publishUnlockedCredentials(credentials);
+    const dispose = installSyncTriggers();
+
+    try {
+      window.dispatchEvent(new Event('focus'));
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
+
+      window.dispatchEvent(new Event('lacuna:study-session-end'));
+      await vi.advanceTimersByTimeAsync(1500);
+      if (action === 'disposed') dispose();
+      else clearUnlockedCredentials();
+      await vi.advanceTimersByTimeAsync(5000);
+
+      expect(syncWithCredentialsMock).toHaveBeenCalledTimes(1);
+    } finally {
+      dispose();
+    }
+  });
+
   it('warns when an automatic sync fails', async () => {
     vi.useFakeTimers();
     const error = new Error('relay unavailable');
