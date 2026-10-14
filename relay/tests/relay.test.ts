@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHANNEL_TTL_MS, EMPTY_SLOT_ETAG, MAX_BODY_BYTES, createHandler } from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
-const ORIGIN = 'https://app.example';
+const ORIGIN = 'https://getlacuna.app';
 const MINT_SECRET = 'test-relay-mint-secret';
 
 beforeEach(() => {
@@ -307,6 +307,29 @@ describe('relay', () => {
 
     expect((await ctx.handle(getRequest(ctx.channelId, 'state'))).status).toBe(404);
     expect((await ctx.handle(getRequest(ctx.channelId, 'keybag'))).status).toBe(404);
+  });
+
+  it('lets only listed browser origins read relay responses', async () => {
+    const ctx = await minted();
+    const preflight = (origin: string) =>
+      ctx.handle(
+        new Request(`http://relay.test/c/${ctx.channelId}/state`, {
+          method: 'OPTIONS',
+          headers: { Origin: origin, 'Access-Control-Request-Method': 'PUT' },
+        }),
+      );
+    const allowOrigin = async (origin: string) =>
+      (await preflight(origin)).headers.get('Access-Control-Allow-Origin');
+
+    expect(await allowOrigin('https://evil.example')).toBeNull();
+    expect(await allowOrigin('https://getlacuna.app.evil.example')).toBeNull();
+    expect(await allowOrigin('http://localhost.evil.example')).toBeNull();
+    expect(await allowOrigin('app://.')).toBe('app://.');
+    expect(await allowOrigin('http://localhost:5173')).toBe('http://localhost:5173');
+    vi.stubEnv('RELAY_ALLOWED_ORIGINS', 'https://preview.example, https://school.example');
+    expect(await allowOrigin('https://school.example')).toBe('https://school.example');
+    const noOrigin = await ctx.handle(new Request(`http://relay.test/c/${ctx.channelId}/state`));
+    expect(noOrigin.headers.get('Access-Control-Allow-Origin')).toBe('*');
   });
 
   it('adds CORS headers to OPTIONS, 401, 404 and 412', async () => {

@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
+import { relayCorsHeaders } from './cors.js';
 
 /**
  * Teacher-published course snapshots behind a stable link. A share is an
@@ -384,16 +385,7 @@ function quoteShareEtag(etag: string): string {
 }
 
 function shareCorsHeaders(request: Request): Headers {
-  const origin = request.headers.get('Origin');
-  return new Headers({
-    'Access-Control-Allow-Origin': origin && origin !== '' ? origin : '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
-    'Access-Control-Expose-Headers': 'ETag',
-    'Access-Control-Max-Age': '86400',
-    'Cross-Origin-Resource-Policy': 'cross-origin',
-    Vary: 'Origin',
-  });
+  return relayCorsHeaders(request, 'ETag');
 }
 
 function shareJson(

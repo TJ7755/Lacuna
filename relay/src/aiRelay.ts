@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decodeAiSessionMetadata, type AiSessionMetadata } from './aiSessionMetadata.js';
 import { canonicalEtag, type BlobStore } from './store.js';
+import { relayCorsHeaders } from './cors.js';
 
 export const AI_PAIRING_TTL_MS = 10 * 60 * 1000;
 export const AI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -509,16 +510,7 @@ function sessionPrefix(id: string): string {
 }
 
 function corsHeaders(request: Request): Headers {
-  const origin = request.headers.get('Origin');
-  return new Headers({
-    'Access-Control-Allow-Origin': origin && origin !== '' ? origin : '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
-    'Access-Control-Expose-Headers': `ETag, ${GENERATION_HEADER}`,
-    'Access-Control-Max-Age': '86400',
-    'Cross-Origin-Resource-Policy': 'cross-origin',
-    Vary: 'Origin',
-  });
+  return relayCorsHeaders(request, `ETag, ${GENERATION_HEADER}`);
 }
 
 function json(status: number, request: Request, body: Record<string, unknown>): Response {

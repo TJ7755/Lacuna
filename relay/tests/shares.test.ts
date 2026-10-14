@@ -8,7 +8,7 @@ import {
 import { cleanupExpiredShares } from '../src/shares.js';
 import { MemoryStore, type PutOptions } from '../src/store.js';
 
-const ORIGIN = 'https://app.example';
+const ORIGIN = 'https://getlacuna.app';
 const MINT_SECRET = 'test-relay-mint-secret';
 
 beforeEach(() => {
