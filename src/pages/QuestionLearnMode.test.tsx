@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import {
   createMemoryRouter,
   MemoryRouter,
@@ -390,6 +390,105 @@ describe('QuestionLearnMode', () => {
 
     await waitFor(() => expect(mocks.abandon).toHaveBeenCalledWith(startInput!.attemptId));
     expect(mocks.abandon).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps a pending presentation answerable when live data rehydrates the same Question', async () => {
+    let resolveStart: ((attempt: QuestionAttempt) => void) | undefined;
+    const pendingStart = new Promise<QuestionAttempt>((resolve) => {
+      resolveStart = resolve;
+    });
+    mocks.start.mockReturnValue(pendingStart);
+    const session = (
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    const rendered = render(session);
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
+    const startInput = mocks.start.mock.calls[0][0];
+
+    // Attempt writes refresh the live query and hydrate new Question objects.
+    mocks.data = {
+      ...mocks.data!,
+      questions: mocks.data!.questions.map((definition) => ({ ...definition })),
+    };
+    rendered.rerender(
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await act(async () => resolveStart!(shownAttempt(startInput)));
+
+    expect(await screen.findByText('Solve', { exact: false })).toBeInTheDocument();
+    expect(mocks.abandon).not.toHaveBeenCalled();
+    expect(mocks.start).toHaveBeenCalledOnce();
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show worked feedback' }));
+
+    expect(await screen.findByText('Full marks')).toBeInTheDocument();
+    expect(mocks.answer).toHaveBeenCalledWith(
+      expect.objectContaining({ attemptId: startInput.attemptId, submittedAnswer: '4' }),
+    );
+    expect(mocks.abandon).not.toHaveBeenCalled();
+  });
+
+  it('retains the generated receipt when its definition changes during startup', async () => {
+    const generatorConfig = {
+      minimumRootMagnitude: 1,
+      maximumRootMagnitude: 5,
+      maximumLeadingCoefficient: 2,
+      allowRepeatedRoots: false,
+    };
+    const generated: QuestionDefinition = {
+      ...question(),
+      kind: 'generated',
+      generatorKey: 'integer-root-quadratic',
+      generatorVersion: 1,
+      generatorConfig,
+    };
+    mocks.data = { ...mocks.data!, questions: [generated] };
+    const resolveGenerator = vi.spyOn(questionGeneratorRegistry, 'resolve');
+    let resolveStart: ((attempt: QuestionAttempt) => void) | undefined;
+    const pendingStart = new Promise<QuestionAttempt>((resolve) => {
+      resolveStart = resolve;
+    });
+    mocks.start.mockReturnValue(pendingStart);
+    const renderSession = () => (
+      <MemoryRouter initialEntries={['/course/course-1/questions/learn']}>
+        <Routes>
+          <Route path="/course/:courseId/questions/learn" element={<QuestionLearnMode />} />
+        </Routes>
+      </MemoryRouter>
+    );
+    const rendered = render(renderSession());
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledOnce());
+    const startInput = mocks.start.mock.calls[0][0];
+    mocks.data = {
+      ...mocks.data!,
+      questions: [
+        {
+          ...generated,
+          generatorConfig: { ...generatorConfig, maximumRootMagnitude: 10 },
+          contentVersion: 2,
+          contentRevisionId: 'revision-2',
+        },
+      ],
+    };
+    rendered.rerender(renderSession());
+    await act(async () => resolveStart!({ ...shownAttempt(startInput), ...startInput.instance }));
+
+    expect(await screen.findByText(/Enter each distinct real root/)).toBeInTheDocument();
+    expect(resolveGenerator).toHaveBeenCalledOnce();
+    expect(resolveGenerator).toHaveBeenCalledWith(
+      expect.objectContaining({ configuration: generated.generatorConfig }),
+    );
+    expect(mocks.start).toHaveBeenCalledOnce();
+    expect(mocks.abandon).not.toHaveBeenCalled();
   });
 
   it('offers inline retry and exit controls when a Question cannot start', async () => {

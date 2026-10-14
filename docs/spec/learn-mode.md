@@ -43,6 +43,9 @@ and abandons only the current presentation. Reload and window close use the brow
 decision. Loading, lesson notes, empty, failed-start and completed states do not manufacture a
 warning when no work can be lost. A Question attempt becomes owned by the unload handler as soon
 as its start resolves, before React effects run, so an immediate departure still abandons it.
+Question startup belongs to the current presentation and explicit Retry. Reactive data refreshes
+retain a pending start and its captured generator definition, so they cannot abandon the receipt
+that the learner is about to answer or resolve a replacement variant.
 
 For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
