@@ -126,6 +126,18 @@ describe('cumulative recitation', () => {
     });
   });
 
+  it('presents the new dialogue line even when another speaker follows it', () => {
+    const script = recitationPlan(
+      sequence(
+        [{ speaker: 'B' }, { speaker: 'A' }, { speaker: 'B' }, { speaker: 'A' }, { speaker: 'B' }],
+        { mySpeaker: 'A' },
+      ),
+    );
+    const initial = initialRecitationState(script);
+    expect(ids(script, presentedLines(script, initial.step))).toEqual(['i0', 'i1']);
+    const next = check(script, initial).state;
+    expect(ids(script, presentedLines(script, next.step))).toEqual(['i2', 'i3']);
+  });
   it('presents the cue lines leading into a new line of dialogue', () => {
     const script = recitationPlan(
       sequence([{ speaker: 'A' }, { speaker: 'B' }, { speaker: 'B' }, { speaker: 'A' }], {
@@ -138,11 +150,15 @@ describe('cumulative recitation', () => {
 });
 
 describe('inRecitationOrder', () => {
-  it('gathers a sequence\'s line cards in poem order at its first card', () => {
+  it("gathers a sequence's line cards in poem order at its first card", () => {
     const poem = sequence([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
     const card = (id: string, sequenceItemId?: string) => ({ id, sequenceItemId }) as Card;
     const cards = [card('x'), card('c3', 'c'), card('y'), card('a1', 'a'), card('b2', 'b')];
-    const map = new Map([['a1', poem], ['b2', poem], ['c3', poem]]);
+    const map = new Map([
+      ['a1', poem],
+      ['b2', poem],
+      ['c3', poem],
+    ]);
     expect(inRecitationOrder(cards, map).map((c) => c.id)).toEqual(['x', 'a1', 'b2', 'c3', 'y']);
   });
 });
@@ -151,7 +167,9 @@ describe('isRecitationStateFor', () => {
   const plan = recitationPlan(sequence([{}, {}, {}], { recitationChunkSize: 2 }));
   it('accepts a step that fits the plan', () => {
     expect(isRecitationStateFor(plan, initialRecitationState(plan))).toBe(true);
-    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 1 }, phase: 'recall' })).toBe(true);
+    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 1 }, phase: 'recall' })).toBe(
+      true,
+    );
   });
   it('rejects a step an edited sequence no longer fits', () => {
     const build = (chunk: number, unlocked: number) => ({
@@ -160,7 +178,9 @@ describe('isRecitationStateFor', () => {
     });
     expect(isRecitationStateFor(plan, build(2, 1))).toBe(false);
     expect(isRecitationStateFor(plan, build(1, 2))).toBe(false);
-    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 0 }, phase: 'recall' })).toBe(false);
+    expect(isRecitationStateFor(plan, { step: { kind: 'join', upTo: 0 }, phase: 'recall' })).toBe(
+      false,
+    );
     expect(isRecitationStateFor(plan, { step: { kind: 'done' }, phase: 'recall' })).toBe(false);
     expect(isRecitationStateFor(plan, null)).toBe(false);
   });

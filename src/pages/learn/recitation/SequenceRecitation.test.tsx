@@ -181,3 +181,31 @@ it('keeps the sequence title and position available only to screen readers', asy
   expect(screen.getByText('Verse 1 of 2, line 1 of 2')).toHaveClass('sr-only');
   expect(await screen.findByText('Alpha line')).toBeVisible();
 });
+
+it('shows the learner their new script line before reciting when another speaker follows', async () => {
+  const onFocusLines = vi.fn();
+  render(
+    <SequenceRecitation
+      sequence={{
+        ...sequence,
+        mySpeaker: 'A',
+        items: [
+          { id: 'cue-before', value: 'Leading cue', speaker: 'B' },
+          { id: 'mine', value: 'My new line', speaker: 'A' },
+          { id: 'cue-after', value: 'Following cue', speaker: 'B' },
+        ],
+      }}
+      masteredItemIds={new Set()}
+      onCheck={vi.fn().mockResolvedValue(undefined)}
+      onFocusLines={onFocusLines}
+    />,
+  );
+
+  expect(await screen.findByText('My new line')).toBeInTheDocument();
+  expect(screen.getByText('Leading cue')).toBeInTheDocument();
+  expect(screen.queryByText('Following cue')).not.toBeInTheDocument();
+  expect(onFocusLines).toHaveBeenLastCalledWith(['mine']);
+  fireEvent.click(screen.getByRole('button', { name: 'Recite' }));
+  expect(screen.queryByText('My new line')).not.toBeInTheDocument();
+  expect(screen.getAllByRole('textbox')).toHaveLength(1);
+});

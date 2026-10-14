@@ -1,0 +1,1 @@
+- Present each new script line with its preceding speaker cues before recall, even when another speaker follows the learner's line.
