@@ -367,7 +367,7 @@ describe('QuestionEditor', () => {
     mocks.locked = true;
     renderEditor();
     fireEvent.change(await screen.findByPlaceholderText('A single piece of knowledge'), { target: { value: 'Published skill' } });
-    const add = screen.getByRole('button', { name: 'Add', exact: true });
+    const add = screen.getByRole('button', { name: /^Add$/ });
     expect(add).toBeDisabled();
     fireEvent.click(add);
     expect(mocks.createConcept).not.toHaveBeenCalled();
