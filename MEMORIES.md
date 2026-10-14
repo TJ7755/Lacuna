@@ -32,6 +32,9 @@ risk and the separate Vitest-isolation issue with symlinks.
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.
 A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired this checkout.
 Do not regenerate lockfiles to compensate for an incomplete local installation.
+Bun's cache can still contain NTFS junction aliases when installed packages use --backend copyfile.
+Keep that cache outside disposable worktrees, or unlink its junction entries without following
+them before removing a worktree with older Git.
 
 ## Database history and transactions
 
