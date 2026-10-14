@@ -147,19 +147,23 @@ export function buildLacunaCard(
   ankiCard: AnkiCard,
   mapping: NoteMapping,
   revlogs: AnkiRevlog[],
+  collectionCreatedMs?: number,
 ): ApkgCardDraft | null {
   const now = Date.now();
 
   // Convert Anki state to Lacuna FSRS state.
   const state: 0 | 1 | 2 | 3 = clampState(ankiCard.type);
 
-  // Convert Anki due to epoch ms.
-  // Anki due is: days since creation for reviews, or a Unix timestamp for learning.
-  // For simplicity, we treat it as days for review cards and use today + days for new.
+  // Convert Anki due to epoch ms. Learning cards carry a Unix timestamp in seconds;
+  // review and day-learning cards carry a day number counted from the collection's
+  // creation day, so it must not be offset from today.
+  const lastReview = revlogs.reduce((latest, r) => Math.max(latest, r.id), 0);
   const due =
     ankiCard.due > 1000000000
-      ? ankiCard.due * 1000 // Unix timestamp
-      : now + ankiCard.due * 86400_000; // Days offset
+      ? ankiCard.due * 1000
+      : collectionCreatedMs !== undefined
+        ? collectionCreatedMs + ankiCard.due * 86400_000
+        : (lastReview > 0 ? lastReview : now) + Math.max(ankiCard.ivl, 0) * 86400_000;
 
   // Convert review logs.
   const history: ReviewLog[] = revlogs
