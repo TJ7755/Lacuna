@@ -175,6 +175,39 @@ describe('cumulative recitation', () => {
 });
 
 describe('inRecitationOrder', () => {
+  it('orders a large sequence without repeatedly scanning its full item list', () => {
+    const size = 1_000;
+    let itemIdReads = 0;
+    const poem = sequence(Array.from({ length: size }, (_, index) => ({ id: `item-${index}` })));
+    for (const item of poem.items) {
+      const id = item.id;
+      Object.defineProperty(item, 'id', {
+        get: () => {
+          itemIdReads += 1;
+          return id;
+        },
+      });
+    }
+    const cards = Array.from(
+      { length: size },
+      (_, index) =>
+        ({
+          id: `card-${size - index - 1}`,
+          sequenceItemId: `item-${size - index - 1}`,
+        }) as Card,
+    );
+    const byCard = new Map(cards.map((card) => [card.id, poem]));
+    const originalIds = cards.map((card) => card.id);
+
+    const ordered = inRecitationOrder(cards, byCard);
+
+    expect(ordered.map((card) => card.id)).toEqual(
+      Array.from({ length: size }, (_, index) => `card-${index}`),
+    );
+    expect(cards.map((card) => card.id)).toEqual(originalIds);
+    expect(itemIdReads).toBeLessThanOrEqual(size * 20);
+  });
+
   it("gathers a sequence's line cards in poem order at its first card", () => {
     const poem = sequence([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
     const card = (id: string, sequenceItemId?: string) => ({ id, sequenceItemId }) as Card;

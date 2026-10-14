@@ -238,15 +238,28 @@ export function reviewLines(plan: RecitationPlan, itemId: string): number[] {
  * the position of its first card, in poem order, so the progress bar follows the
  * recitation. Other cards keep their places.
  */
-export function inRecitationOrder(cards: Card[], sequenceByCard: ReadonlyMap<string, Sequence>): Card[] {
+export function inRecitationOrder(
+  cards: Card[],
+  sequenceByCard: ReadonlyMap<string, Sequence>,
+): Card[] {
   const groups = new Map<string, Card[]>();
+  const positionsBySequence = new Map<string, ReadonlyMap<string, number>>();
   for (const card of cards) {
     const sequence = sequenceByCard.get(card.id);
     if (!sequence || !card.sequenceItemId) continue;
-    groups.set(sequence.id, [...(groups.get(sequence.id) ?? []), card]);
+    let group = groups.get(sequence.id);
+    if (!group) {
+      group = [];
+      groups.set(sequence.id, group);
+      positionsBySequence.set(
+        sequence.id,
+        new Map(sequence.items.map((item, index) => [item.id, index])),
+      );
+    }
+    group.push(card);
   }
   const position = (card: Card) =>
-    sequenceByCard.get(card.id)!.items.findIndex((item) => item.id === card.sequenceItemId);
+    positionsBySequence.get(sequenceByCard.get(card.id)!.id)!.get(card.sequenceItemId!) ?? -1;
   const placed = new Set<string>();
   return cards.flatMap((card) => {
     const sequence = sequenceByCard.get(card.id);
