@@ -117,10 +117,15 @@ export function computeStudyStats(
 
   const newCardsAllowed = new Set<string>();
   if (schedulingBySource) {
+    const cardsBySource = new Map<string | undefined, Card[]>();
+    for (const card of cards) {
+      const sourceId = card.courseId ?? card.schedulingUnitId;
+      const sourceCards = cardsBySource.get(sourceId);
+      if (sourceCards) sourceCards.push(card);
+      else cardsBySource.set(sourceId, [card]);
+    }
     for (const [sourceId, config] of schedulingBySource) {
-      const sourceCards = cards.filter(
-        (card) => (card.courseId ?? card.schedulingUnitId) === sourceId,
-      );
+      const sourceCards = cardsBySource.get(sourceId) ?? [];
       for (const card of studyPool(sourceCards, config, now, activity, sourceCards)) {
         if (card.state === 0) newCardsAllowed.add(card.id);
       }
