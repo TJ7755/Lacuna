@@ -38,12 +38,15 @@ const DEFAULT_OPTIONS: Required<AnswerComparisonOptions> = {
 
 /**
  * Strip leading/trailing punctuation from a word, leaving internal punctuation intact. A minus
- * sign directly before a number is kept, since it changes the answer.
+ * sign or decimal point directly before a number is kept, since it changes the answer.
  */
 function stripPunctuation(word: string): string {
   const core = word.replace(/^[^\p{L}\p{M}\p{N}]+|[^\p{L}\p{M}\p{N}]+$/gu, '');
   const leading = /^[^\p{L}\p{M}\p{N}]*/u.exec(word)?.[0] ?? '';
-  return /[-\u2212]$/u.test(leading) && /^\p{N}/u.test(core) ? `-${core}` : core;
+  const numericPrefix = /(?:[-\u2212]?\.|[-\u2212])$/u.exec(leading)?.[0];
+  return numericPrefix && /^\p{N}/u.test(core)
+    ? `${numericPrefix.replace('\u2212', '-')}${core}`
+    : core;
 }
 
 function normaliseWord(word: string, options: Required<AnswerComparisonOptions>): string {
