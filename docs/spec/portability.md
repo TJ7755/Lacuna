@@ -479,6 +479,9 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   Card, Sequence, Occlusion and individual Question editors also block create/update
   actions for locked copies, including direct routes and keyboard saves; destructive
   editor actions and Concept creation remain unavailable until the copy is detached.
+  Generic Card deletion checks the same lock inside its cleanup transaction and rejects
+  an entire mixed batch before changing content, review history, lesson links or deletion
+  receipts. Teacher lineage removals retain their existing automatic and reviewed paths.
   An ordinary Course in Study mode remains editable through its existing editor routes.
 - **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
   hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears

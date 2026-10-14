@@ -1289,7 +1289,7 @@ export async function mergeLineageUpdate(
         appliedRemovals++;
       }
       if (removalCardIds.length > 0) {
-        await deleteCards(removalCardIds);
+        await deleteCards(removalCardIds, { source: 'lineage-update' });
         appliedRemovals += removalCardIds.length;
       }
       queuedUpdates.lessons = [];
@@ -1509,7 +1509,7 @@ async function deleteAdoptedEntity(
     mapping.noteIds = mapping.noteIds.filter((x) => x !== entityId);
     delete mapping.noteSnapshots[entityId];
   } else {
-    await deleteCards([entityId]);
+    await deleteCards([entityId], { source: 'lineage-update' });
     mapping.cardIds = mapping.cardIds.filter((x) => x !== entityId);
     delete mapping.cardSnapshots[entityId];
   }

@@ -372,14 +372,18 @@ export function CardList({ cards, context, onNewCard, onNewSequence, onNewOcclus
   // One-click delete from a card's hover actions, with the same snapshot/undo flow
   // as the bulk selection delete.
   const handleDeleteOne = useCallback(async (id: string) => {
-    const snapshot = await snapshotCards([id]);
-    await deleteCards([id]);
-    notify('Card deleted.', 'neutral', {
-      actionLabel: 'Undo',
-      onAction: () => {
-        void restoreCards(snapshot);
-      },
-    });
+    try {
+      const snapshot = await snapshotCards([id]);
+      await deleteCards([id]);
+      notify('Card deleted.', 'neutral', {
+        actionLabel: 'Undo',
+        onAction: () => {
+          void restoreCards(snapshot);
+        },
+      });
+    } catch {
+      notify('Could not delete the card.', 'negative');
+    }
   }, [notify]);
 
   // Everything except "New card". Built from the callbacks the caller actually supplied, so a

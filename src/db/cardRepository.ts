@@ -7,6 +7,7 @@ import {
   conceptNameForCard,
 } from '../questions/concepts';
 import { scheduleAssetGc } from './assets';
+import { canEditLessons } from '../course/lessonViewMode';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import {
@@ -520,13 +521,25 @@ async function assertNoGeneratedCards(ids: string[]): Promise<void> {
   }
 }
 
-export async function deleteCards(ids: string[]): Promise<void> {
+export async function deleteCards(
+  ids: string[],
+  options?: { source: 'lineage-update' },
+): Promise<void> {
   if (ids.length === 0) return;
   await db.transaction(
     'rw',
-    [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+    [db.courses, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
     async (tx) => {
       await assertNoGeneratedCards(ids);
+      // Teacher removals use the same cleanup after the lineage merge has authorised them.
+      if (options?.source !== 'lineage-update') {
+        const cards = await db.cards.bulkGet(ids);
+        const courseIds = [...new Set(cards.flatMap((card) => card?.courseId ? [card.courseId] : []))];
+        const courses = await db.courses.bulkGet(courseIds);
+        if (courses.some((course) => course && !canEditLessons(course))) {
+          throw new Error('This published course is locked.');
+        }
+      }
       const [lessonCards, exposures] = await Promise.all([
         db.lessonCards.where('cardId').anyOf(ids).toArray(),
         db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
