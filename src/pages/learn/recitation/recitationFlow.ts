@@ -59,8 +59,12 @@ export function recitationPlan(sequence: Sequence): RecitationPlan {
       ? mineInCurrent > 0 && item.chunkIndex !== sequence.items[index - 1].chunkIndex
       : mine && mineInCurrent === size;
     if (startsNew) {
-      chunks.push(current);
-      current = [];
+      let nextStart = current.length;
+      if (!byStanza) {
+        while (nextStart > 0 && !lines[current[nextStart - 1]].mine) nextStart -= 1;
+      }
+      chunks.push(current.slice(0, nextStart));
+      current = current.slice(nextStart);
       mineInCurrent = 0;
     }
     current.push(index);

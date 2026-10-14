@@ -58,6 +58,31 @@ describe('recitationPlan', () => {
     ]);
   });
 
+  it('keeps leading speaker cues with the first learner line of the next chunk', () => {
+    const script = recitationPlan(
+      sequence(
+        [
+          { speaker: 'B' },
+          { speaker: 'A' },
+          { speaker: 'B' },
+          { speaker: 'A' },
+          { speaker: 'B' },
+          { speaker: 'A' },
+          { speaker: 'B' },
+        ],
+        { mySpeaker: 'A', recitationChunkSize: 2 },
+      ),
+    );
+
+    expect(script.chunks).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6],
+    ]);
+    const first = initialRecitationState(script);
+    const secondLine = check(script, first).state;
+    const nextChunk = check(script, secondLine).state;
+    expect(ids(script, presentedLines(script, nextChunk.step))).toEqual(['i4', 'i5']);
+  });
   it('counts only mine lines towards a chunk and keeps cues with the next line', () => {
     const items = [
       { speaker: 'B' },
