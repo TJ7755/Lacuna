@@ -53,11 +53,17 @@ async function triggerSync(reason: string): Promise<void> {
     scheduleTrigger(reason, remaining);
     return;
   }
+  const generation = credentialGeneration;
   const state = await readSyncState().catch(() => null);
   if (!state?.channelId || !state?.wrappedKeyMaterial) return;
   const credentials = currentCredentials;
-  const generation = credentialGeneration;
-  if (!credentials || credentials.channelId !== state.channelId) return;
+  if (
+    credentialGeneration !== generation ||
+    !credentials ||
+    credentials.channelId !== state.channelId
+  ) {
+    return;
+  }
   lastTriggerAt = now;
   try {
     const { syncWithCredentials } = await loadSyncPairing();
@@ -94,7 +100,11 @@ export function installSyncTriggers(): () => void {
   document.addEventListener('visibilitychange', handleVisibility);
   window.addEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);
 
+  let disposed = false;
   return () => {
+    if (disposed) return;
+    disposed = true;
+    credentialGeneration += 1;
     window.removeEventListener('focus', handleFocus);
     document.removeEventListener('visibilitychange', handleVisibility);
     window.removeEventListener('lacuna:study-session-end', handleStudyEnd as EventListener);

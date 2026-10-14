@@ -97,6 +97,23 @@ describe('remembered sync trigger credentials', () => {
     dispose();
   });
 
+  it('does not publish a pending credential restore after its triggers are disposed', async () => {
+    let resolveRead!: (value: SyncState) => void;
+    readSyncStateMock.mockReturnValue(
+      new Promise<SyncState>((resolve) => {
+        resolveRead = resolve;
+      }),
+    );
+    const dispose = installSyncTriggers();
+
+    dispose();
+    resolveRead(state);
+    await vi.waitFor(() => expect(readRememberedCredentialsMock).toHaveBeenCalled());
+
+    expect(getUnlockedCredentials()).toBeNull();
+    expect(allowRelayConnectMock).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['focus', () => window.dispatchEvent(new Event('focus'))],
     ['study session completion', () => window.dispatchEvent(new Event('lacuna:study-session-end'))],
