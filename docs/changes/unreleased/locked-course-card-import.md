@@ -1,1 +1,1 @@
-- Card imports respect published-course authoring locks: locked courses are excluded from destination choices, and text and Anki imports recheck the lock atomically before adding cards or lessons. Ordinary and detached courses remain editable.
+- Card imports respect published-course authoring locks: locked courses are excluded from destination choices, and text and Anki imports, including Course-bank and Lesson card-list imports, recheck the lock atomically before adding cards or lessons. Ordinary and detached courses remain editable.

@@ -1,8 +1,7 @@
-import { createImportedCards } from '../../db/cardImport';
+import { importCardsToDestination } from '../../db/cardImport';
 import type { ApkgImportResult } from '../../db/apkgImport';
 import type { ParsedCard } from '../../db/import';
-import { importApkgResult } from '../../db/apkgImport';
-import { createCards, restoreCards, type CardSnapshot } from '../../db/cardRepository';
+import { restoreCards, type CardSnapshot } from '../../db/cardRepository';
 import type { SchedulerConfig } from '../../db/types';
 
 /** A destination available to an explicitly legacy card-move action. */
@@ -31,8 +30,6 @@ export interface CardListContext {
 /** Build the shared adapter used by Course and Lesson card-management surfaces. */
 export function courseCardListContext({
   schedulingConfig,
-  courseId,
-  primaryLessonId,
   importTargetName,
 }: {
   schedulingConfig: SchedulerConfig;
@@ -40,19 +37,16 @@ export function courseCardListContext({
   primaryLessonId: string | null;
   importTargetName: string;
 }): CardListContext {
+  const destination = { kind: 'existing' as const, schedulingUnitId: schedulingConfig.id };
   return {
     schedulingConfig,
     importTargetId: schedulingConfig.id,
     importTargetName,
-    onImport: async (cards, reverse) => {
-      if (reverse) {
-        await createImportedCards(schedulingConfig.id, cards, true);
-        return;
-      }
-      await createCards(schedulingConfig.id, cards, { courseId, primaryLessonId });
+    onImport: async (cards, reverse = false) => {
+      await importCardsToDestination(destination, { kind: 'text', cards, reverse });
     },
     onApkgImport: async (result) => {
-      await importApkgResult(result, schedulingConfig.id);
+      await importCardsToDestination(destination, { kind: 'apkg', result });
     },
     onRestore: restoreCards,
   };
