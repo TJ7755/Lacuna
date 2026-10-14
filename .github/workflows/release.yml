@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - "v*"
+  # The Release tag workflow dispatches this on the tag it creates, because a tag pushed
+  # with GITHUB_TOKEN does not start push workflows.
+  workflow_dispatch:
 
 permissions:
   actions: read
@@ -103,8 +106,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force baseline | Out-Null
-          gh release download v0.2.13 --pattern Lacuna-Setup-0.2.13.exe --dir baseline
-          node scripts/windows-release-upgrade.mjs baseline/Lacuna-Setup-0.2.13.exe
+          $baseline = node -p "require('./scripts/windows-release-baseline.json').version"
+          gh release download "v$baseline" --pattern "Lacuna-Setup-$baseline.exe" --dir baseline
+          node scripts/windows-release-upgrade.mjs "baseline/Lacuna-Setup-$baseline.exe"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve Windows package test evidence
@@ -272,3 +276,46 @@ jobs:
           gh release upload "$GITHUB_REF_NAME" "${assets[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --clobber
+
+  publish:
+    needs: publish-draft
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Find release notes
+        id: notes
+        shell: bash
+        run: |
+          notes="docs/releases/${GITHUB_REF_NAME#v}.md"
+          if [[ -s "$notes" ]]; then
+            echo "file=$notes" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$notes is missing, so the draft waits for manual publication."
+          fi
+
+      - if: steps.notes.outputs.file
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - if: steps.notes.outputs.file
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - if: steps.notes.outputs.file
+        run: bun install --frozen-lockfile
+
+      - name: Verify and publish the beta
+        if: steps.notes.outputs.file
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTES: ${{ steps.notes.outputs.file }}
+        shell: bash
+        run: bun run release publish "${GITHUB_REF_NAME#v}" --windows-linux-only --notes "$NOTES"

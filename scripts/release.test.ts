@@ -114,6 +114,13 @@ describe('release orchestration gates', () => {
       expect(state([{ ...run, ...change }])).toBe('pending');
     }
   });
+  it('accepts dispatched release builds only where asked', () => {
+    const dispatched = [{ ...run, event: 'workflow_dispatch' }];
+    expect(state(dispatched)).toBe('pending');
+    expect(
+      workflowState(dispatched, run.path, 'abc', ['master'], ['push', 'workflow_dispatch']).state,
+    ).toBe('success');
+  });
   it('does not reuse old success while the newest run is pending or failed', () => {
     expect(state([run, { ...run, id: 2, status: 'in_progress' }])).toBe('pending');
     expect(state([run, { ...run, id: 2, conclusion: 'failure' }])).toBe('failed');
@@ -233,6 +240,15 @@ describe('release command orchestration', () => {
     expect(readFileSync(edit![edit!.indexOf('--notes-file') + 1], 'utf8')).toContain(
       'no macOS package',
     );
+  });
+  it('publishes from inside the release workflow without waiting for its own run', async () => {
+    const f = commands();
+    const env = {
+      GITHUB_WORKFLOW_REF: 'TJ7755/Lacuna/.github/workflows/release.yml@refs/tags/v0.2.11',
+    };
+    await main(f.publishArgs, { ...f.dependencies, env });
+    expect(f.calls.filter((args) => args.includes('--paginate'))).toHaveLength(1);
+    expect(f.calls.some((args) => args[1] === 'edit')).toBe(true);
   });
   it.each([{ failAttestation: true }, { replaceAsset: true }])(
     'never publishes when verification fails: %j',

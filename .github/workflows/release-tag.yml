@@ -1,0 +1,64 @@
+name: Release tag
+
+# Merging a package.json version bump into master is the release decision. Once CI and
+# Security pass for that commit, this tags it and dispatches the release build, which
+# publishes the beta when docs/releases/<version>.md exists.
+on:
+  workflow_run:
+    workflows: [CI, Security]
+    types: [completed]
+    branches: [master, main]
+
+permissions: {}
+
+concurrency:
+  group: release-tag-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    steps:
+      - name: Tag an untagged version once CI and Security pass
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          version="$(
+            gh api "repos/${GITHUB_REPOSITORY}/contents/package.json?ref=${SHA}" --jq .content \
+              | base64 -d | jq -r .version
+          )"
+          tag="v${version}"
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" > /dev/null 2>&1; then
+            echo "${tag} already exists; nothing to release."
+            exit 0
+          fi
+          workflow_runs="$(
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&status=completed&per_page=100"
+          )"
+          for workflow in CI Security; do
+            if ! jq -e --arg workflow "$workflow" '
+              .workflow_runs
+              | any(
+                  .name == $workflow
+                  and .event == "push"
+                  and (.head_branch == "master" or .head_branch == "main")
+                  and .conclusion == "success"
+                )
+            ' <<<"$workflow_runs" > /dev/null; then
+              echo "Waiting for $workflow to pass on ${SHA}."
+              exit 0
+            fi
+          done
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            -f ref="refs/tags/${tag}" -f sha="${SHA}" > /dev/null
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$tag"
+          echo "Tagged ${tag} at ${SHA} and started the release build."

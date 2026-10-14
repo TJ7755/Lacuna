@@ -11,13 +11,14 @@ import { launchInstalledElectron } from './installed-electron-probe.mjs';
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 const baseline = path.resolve(process.argv[2]);
-assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'),
-  'f619d0cc31957547b39501916c1f275d3c5ef6182d6a464cc9d610ffda8008bc');
+// Pinned by `bun run release:prepare`, which records the previous release's installer digest.
+const pinned = JSON.parse(await readFile(new URL('./windows-release-baseline.json', import.meta.url), 'utf8'));
+assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'), pinned.sha256);
 const root = await mkdtemp(path.join(tmpdir(), 'lacuna-release-upgrade-'));
 const directory = path.join(root, 'application');
 const profile = path.join(root, 'profile');
 const executablePath = path.join(directory, 'Lacuna.exe');
-const report = { baseline: '0.2.13', target: version, stages: [] };
+const report = { baseline: pinned.version, target: version, stages: [] };
 let application;
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
@@ -54,7 +55,7 @@ async function open(expectedVersion) {
   application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
-  if (expectedVersion === '0.2.13') {
+  if (expectedVersion === pinned.version) {
     await application.evaluate(({ app }, url) => {
       const { createRequire } = process.getBuiltinModule('node:module');
       const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
@@ -97,7 +98,7 @@ async function snapshot(page) {
 try {
   await install(baseline);
   await pointInstalledUpdaterAtFeed();
-  let page = await open('0.2.13');
+  let page = await open(pinned.version);
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
   await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
     { timeout: 180_000 }).toBe('downloaded');

@@ -169,7 +169,9 @@ Each GitHub platform job first requires every file class in its explicit distrib
 allowlist, then uploads and creates GitHub build-provenance attestations for those exact files with
 `actions/attest@v4`. One publisher, gated on both native builds, combines the named workflow
 artefacts, writes and separately attests `SHA256SUMS-github.txt`, then creates or refreshes a GitHub
-pre-release draft. Only that publisher can write release contents; build jobs receive only
+pre-release draft. When `docs/releases/<version>.md` exists, a final job downloads every asset,
+verifies it and its attestation, and publishes the beta with those notes. Only those two jobs can
+write release contents; build jobs receive only
 repository-read, OIDC-token, attestation and artifact-metadata permissions. Attestations identify
 the workflow and commit behind a digest; they are not application code signing or notarisation.
 
