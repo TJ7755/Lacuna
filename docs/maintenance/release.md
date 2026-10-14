@@ -26,6 +26,32 @@ Release` run; an existing tag is never moved. To restart from scratch on an exis
 `gh workflow run release.yml --ref v<version>`. A tag pushed by hand still triggers the same
 workflow, and the maintainer commands below remain for inspection and manual publication.
 
+## Weekly release
+
+`.github/workflows/weekly-release.yml` does the routine release above every Thursday at 07:53 UTC
+(or when dispatched). `scripts/weekly-release.mjs` skips the week unless the current version is
+already tagged, the diff since that tag touches shipped paths (`src/`, `electron/`, `public/`,
+`index.html`, `package.json`, `bun.lock`, `vite.config.ts`) and changelog entries are pending.
+Otherwise it bumps the patch, runs `release:prepare` and writes `docs/releases/<version>.md` from
+the pending changelog bullets. The workflow opens `release/<version>` as a pull request and enables
+squash auto-merge, so the normal required checks gate it. An open `release/*` pull request also
+skips the week; edit its notes there before the checks finish if they need rewording.
+
+It authenticates as a GitHub App, because pull requests and pushes made with `GITHUB_TOKEN` start
+no workflows: CI would never run and the merge would not start the Release tag workflow. One-time
+setup:
+
+1. Create a GitHub App owned by the maintainer account (Settings, Developer settings, GitHub Apps,
+   New GitHub App). Any name and homepage URL; untick Webhook. Repository permissions: Contents
+   read and write, Pull requests read and write. Install it only on this repository.
+2. Generate a private key on the App's page and note its App ID.
+3. In this repository's Actions secrets, add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` (the
+   whole `.pem` file).
+4. In the repository's general settings, enable "Allow auto-merge".
+
+Without the secrets the workflow only warns. The macOS packages remain a local step after each
+release (below); skipping them leaves Mac users on the previous manual-update package.
+
 ## Maintainer commands
 
 Use Node 24, the pinned Bun version and an authenticated GitHub CLI (`gh auth login`, or an
