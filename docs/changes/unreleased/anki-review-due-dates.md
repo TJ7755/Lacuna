@@ -1,1 +1,0 @@
-- Fixed Anki `.apkg` import scheduling review cards from today instead of from the collection's creation day, which pushed imported cards hundreds of days into the future; review due dates now count from the collection's `crt`, falling back to last review plus interval when it is absent

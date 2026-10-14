@@ -1,1 +1,0 @@
-- Preserve elapsed Pomodoro time and pending breaks when closing the page, use the latest saved break duration, and display fractional-minute timers as whole seconds.

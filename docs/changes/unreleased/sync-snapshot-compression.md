@@ -1,1 +1,0 @@
-- Compress sync snapshots with gzip before encryption, so libraries well past the relay's 4.4 MB request limit sync again (text-heavy snapshots shrink roughly five- to tenfold; images shrink by about a quarter). Uncompressed snapshots from earlier versions still open, but devices on earlier versions cannot read a compressed snapshot until they update.

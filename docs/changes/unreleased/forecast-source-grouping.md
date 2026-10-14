@@ -1,1 +1,0 @@
-- Dashboard and navigation forecasts group cards by scheduling source once, avoiding a full card scan for every course while preserving study limits and forecast totals.

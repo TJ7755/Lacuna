@@ -1,1 +1,0 @@
-- Importing a published course now keeps the teacher's retention target, daily new-card limit and steady scheduling, as a plain course import already did

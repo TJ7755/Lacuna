@@ -1,1 +1,0 @@
-- Cancel superseded deferred revision replans when assessment edits are reverted, and describe only the changes still waiting to apply.

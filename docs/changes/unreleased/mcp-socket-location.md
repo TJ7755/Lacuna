@@ -1,1 +1,0 @@
-- On macOS and Linux the desktop app's local MCP socket now lives in its owner-only profile folder instead of the shared temporary folder, so another user on the same machine can no longer occupy the path and stop the companion starting.

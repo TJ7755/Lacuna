@@ -1,1 +1,0 @@
-- Keep media uploaded in the last 24 hours out of orphan collection, so an image or audio clip added to a card that is not yet saved is no longer deleted when an unrelated edit or the daily backup schedules a sweep (#505).

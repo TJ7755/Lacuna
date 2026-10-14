@@ -1,1 +1,0 @@
-- Course updates now pass on the teacher's new course name, description and unlock mode, unless the learner has changed that detail themselves

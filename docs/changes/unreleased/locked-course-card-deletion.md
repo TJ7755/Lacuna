@@ -1,1 +1,0 @@
-- Card deletion respects published-course authoring locks across row, bulk and MCP actions. Mixed batches containing a locked Card are rejected atomically, while ordinary, detached and legacy Cards and teacher lineage removals retain their existing behaviour.

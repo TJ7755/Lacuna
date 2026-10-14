@@ -1,1 +1,0 @@
-- Include padding and borders when resizing virtualised card rows, preventing overlaps.

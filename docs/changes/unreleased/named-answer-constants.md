@@ -1,1 +1,0 @@
-- Fixed working-answer marking so equations beginning with the constants `pi` or `e` cannot earn a value mark merely by copying the expected answer onto the right-hand side.

@@ -1,1 +1,0 @@
-- Honour the configured help shortcut in the shell and Learn mode, refresh shortcut labels when reopening help, and keep consumed closing keys from reopening the overlay.

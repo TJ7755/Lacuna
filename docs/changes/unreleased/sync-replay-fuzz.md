@@ -1,1 +1,0 @@
-- Syncing two devices no longer pulls review due dates forward by a few days: the merge replays reviews with the same interval fuzz the live review used, so an unchanged card keeps its schedule

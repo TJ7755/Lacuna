@@ -1,1 +1,0 @@
-- Consume browser install prompts once, including on dismissal, so repeated clicks cannot reuse an expired prompt.

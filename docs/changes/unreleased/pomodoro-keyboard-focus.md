@@ -1,1 +1,0 @@
-- Keep keyboard focus inside the expanded Pomodoro timer and return it to the timer button on Escape.

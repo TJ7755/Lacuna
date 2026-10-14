@@ -1,1 +1,0 @@
-- Avoid repeated full-sequence scans and growing array copies when ordering large recitation sessions, while retaining the source line order and ordinary card positions.

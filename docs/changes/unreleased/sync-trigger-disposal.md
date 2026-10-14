@@ -1,1 +1,0 @@
-- Disposing automatic device-sync triggers now invalidates pending credential restores and module loads, preventing background sync from starting after its installation has closed.

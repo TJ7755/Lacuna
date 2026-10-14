@@ -1,1 +1,0 @@
-- Failed Card-row deletions now show an error notification instead of raising an unhandled rejection.

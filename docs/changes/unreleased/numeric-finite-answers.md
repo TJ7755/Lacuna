@@ -1,1 +1,0 @@
-- Reject numeric answer specifications that cannot evaluate to finite real numbers, preventing Questions with impossible-to-match answers.

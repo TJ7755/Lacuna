@@ -1,1 +1,0 @@
-- Test how an oversized sync snapshot names its largest courses when cards, reviews, sessions and assets reach a course indirectly.

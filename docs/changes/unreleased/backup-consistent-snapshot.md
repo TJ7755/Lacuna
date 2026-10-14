@@ -1,1 +1,0 @@
-- Backups and device-sync exports now capture records and referenced media in one database snapshot, preventing concurrent deletion or study writes from producing inconsistent restore data.

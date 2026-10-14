@@ -1,1 +1,0 @@
-- Fix blank-line CSV/TSV row separators on Windows and old-Mac text so multiline cards remain separate without rewriting their content.

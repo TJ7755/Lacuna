@@ -1,1 +1,0 @@
-- Re-importing a published course after detaching it (or importing your own published course) now adds a plain copy instead of failing with a database error

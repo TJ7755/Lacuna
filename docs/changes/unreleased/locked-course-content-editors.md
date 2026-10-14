@@ -1,1 +1,0 @@
-- Locked published Course copies now prevent Card, Sequence, Occlusion and individual Question editor writes, including direct routes, keyboard saves, deletion and Concept creation. Ordinary Study-mode Courses remain editable.

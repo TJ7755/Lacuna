@@ -1,1 +1,0 @@
-- Prevent browser shortcuts, IME composition and focused select controls from revealing, hiding or grading study cards.
