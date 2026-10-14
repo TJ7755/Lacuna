@@ -476,6 +476,10 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   remain editable. Lesson authoring and Card-import destinations reuse this gate.
   Locked copies are excluded from import choices. Text and Anki imports recheck it inside
   the persistence transaction before adding Cards or Lessons, including the Course bank.
+  Card, Sequence, Occlusion and individual Question editors also block create/update
+  actions for locked copies, including direct routes and keyboard saves; destructive
+  editor actions and Concept creation remain unavailable until the copy is detached.
+  An ordinary Course in Study mode remains editable through its existing editor routes.
 - **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
   hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears
   `Course.distributedCopy` entirely, unlocking the course and severing lineage tracking in

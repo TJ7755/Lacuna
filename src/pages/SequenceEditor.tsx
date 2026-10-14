@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
+import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
 import { Select } from '../components/ui/Select';
@@ -230,6 +231,7 @@ export function SequenceEditor() {
     );
   }
 
+  const editable = Boolean(course && canEditLessons(course));
   const canSave =
     name.trim().length > 0 &&
     items.length > 0 &&
@@ -331,7 +333,7 @@ export function SequenceEditor() {
   }
 
   async function handleSave() {
-    if (saving || !courseId) return;
+    if (!editable || saving || !courseId) return;
 
     const emptyItemIds = new Set(items.filter((item) => !item.value.trim()).map((item) => item.id));
     const missingName = name.trim().length === 0;
@@ -725,13 +727,15 @@ export function SequenceEditor() {
             )}
           </div>
 
-          {editing && sequence && (
+          {editable && editing && sequence && (
             <DangerZoneSection
               entityLabel="sequence"
               entityName={sequence.name}
               description="Deletes this sequence and every card it generated."
               snapshot={() => snapshotSequence(sequence.id)}
-              onDelete={() => deleteSequence(sequence.id)}
+              onDelete={async () => {
+                if (editable) await deleteSequence(sequence.id);
+              }}
               onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
               onDeleted={() => navigate(backPath)}
             />
@@ -757,7 +761,7 @@ export function SequenceEditor() {
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
+            disabled={!editable || saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
           >
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
