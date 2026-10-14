@@ -2,15 +2,23 @@ import { hasCloze } from '../utils/cloze';
 import type { ImportParseResult, ParsedCard } from './import';
 
 /** Recognise Lacuna's existing human-readable CSV/TSV layout without guessing other headers. */
-export function parseCardExportRows(rows: string[][]): ImportParseResult | null {
-  const headerIndex = rows.findIndex(
-    (row) =>
+export function findCardExportHeaderIndex(rows: Iterable<string[]>): number {
+  let index = 0;
+  for (const row of rows) {
+    if (
       row.some((cell) => cell.trim()) &&
-      !row[0]?.startsWith('# WARNING: This is a human-readable export'),
-  );
+      !row[0]?.startsWith('# WARNING: This is a human-readable export')
+    ) {
+      return row.slice(0, 6).join(',') === 'deck_name,deck_colour,front,back,tags,type' ? index : -1;
+    }
+    index++;
+  }
+  return -1;
+}
+
+export function parseCardExportRows(rows: string[][]): ImportParseResult | null {
+  const headerIndex = findCardExportHeaderIndex(rows);
   if (headerIndex < 0) return null;
-  const header = rows[headerIndex];
-  if (header.slice(0, 6).join(',') !== 'deck_name,deck_colour,front,back,tags,type') return null;
 
   const cards: ParsedCard[] = [];
   let skipped = 0;

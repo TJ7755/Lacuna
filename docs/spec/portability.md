@@ -9,15 +9,17 @@ A single, format-detecting import engine that powers all import locations in the
 app:
 
 - **Auto-detection** (`detectFormat`): examines input text and returns a
-  `DetectedFormat` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
+  `FormatDetection` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
-  short-circuits at 100K characters to keep large files responsive.
+  is bounded by the import interface's 500,000-character input limit.
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
     A single CSV/TSV row is detected too. Lacuna full exports use their existing header
     to locate question, answer and semicolon-separated tag columns; the warning and header
-    are skipped. Quoted multi-line fields stay intact in the plain-text Anki path as well.
+    are skipped. Automatic detection recognises this header before Markdown inside quoted
+    Card content, preserving the original fields. Quoted multi-line fields stay intact in the
+    plain-text Anki path as well.
     Leading empty TSV columns are preserved, so a row without a question is
     skipped rather than shifting its answer and tags into question/answer columns.
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
@@ -44,9 +46,9 @@ app:
     separated plain-text blocks use the first line as the front and all remaining lines as the back.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
-- **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects
-  the format and delegates to the appropriate parser. Returns
-  `{ cards, skipped, format }`.
+- **`parseImportAuto(text, options?)`** — the main entry point. Detects the format
+  unless `options.format` overrides it, and accepts optional `fieldSeparator` and
+  `rowSeparator` values. Returns `{ cards, skipped }`; detection is available separately.
 - **Legacy parser** (`parseImport` in `src/db/import.ts`): the quote-aware
   delimited parser continues to exist for backward compatibility and is used as
   the CSV/TSV backend. Defaults: **tab** field separator, **newline** row
@@ -471,9 +473,13 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
 - **Lock enforcement — `canEditLessons(course)` (`src/course/lessonViewMode.ts`).** Returns
   `false` iff `course.distributedCopy?.locked === true`; an absent `distributedCopy` (every
   ordinary course, including all pre-v18 courses) or a detached copy (`locked: false`) both
-  remain editable. This is the single gate every lesson/note/card-CRUD call site already
-  routes through (`resolveLessonViewMode`, `isLessonAuthoringMode`), so locking a
-  distributed copy needed no new call sites — only this function's body changed.
+  remain editable. Lesson authoring and Card-import destinations reuse this gate.
+  Locked copies are excluded from import choices. Text and Anki imports recheck it inside
+  the persistence transaction before adding Cards or Lessons, including the Course bank.
+  Card, Sequence, Occlusion and individual Question editors also block create/update
+  actions for locked copies, including direct routes and keyboard saves; destructive
+  editor actions and Concept creation remain unavailable until the copy is detached.
+  An ordinary Course in Study mode remains editable through its existing editor routes.
 - **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
   hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears
   `Course.distributedCopy` entirely, unlocking the course and severing lineage tracking in

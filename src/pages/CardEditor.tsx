@@ -13,7 +13,7 @@ import {
   useOcclusions,
   useSequences,
 } from '../state/useCourseData';
-import { isLessonAuthoringMode } from '../course/lessonViewMode';
+import { canEditLessons, isLessonAuthoringMode } from '../course/lessonViewMode';
 import { CardAnswerModeField } from '../components/cards/AnswerModeControl';
 import { Button } from '../components/ui/Button';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
@@ -552,9 +552,11 @@ export function CardEditor() {
   const frontValid = front.trim().length > 0 && (!isAudio || isAudioCardFront(front));
   const backValid = isCloze || isStructured || back.trim().length > 0;
   const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
-  const canSave = frontValid && backValid && clozeValid && numericValid && workingValid;
+  const editable = Boolean(course && canEditLessons(course));
+  const canSave = editable && frontValid && backValid && clozeValid && numericValid && workingValid;
 
   async function handleSave(andAnother = false) {
+    if (!editable) return;
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.

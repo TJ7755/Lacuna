@@ -31,6 +31,7 @@ import {
 } from '../questions/repository';
 import type { QuestionPayload } from '../questions/types';
 import { useCourse, useLessons } from '../state/useCourseData';
+import { canEditLessons } from '../course/lessonViewMode';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import {
   newQuestionState,
@@ -50,6 +51,7 @@ export function QuestionEditor() {
   const navigate = useNavigate();
   const { notify } = useToast();
   const course = useCourse(courseId);
+  const editable = Boolean(course && canEditLessons(course));
   const lessons = useLessons(courseId);
   const data = useCourseQuestionData(courseId);
   const record = useQuestionRecord(questionId);
@@ -94,6 +96,7 @@ export function QuestionEditor() {
   }, [data, draft, editing, record]);
 
   const save = async () => {
+    if (!editable) return;
     if (!courseId || !targetConceptId || !name.trim()) {
       notify('Add a name and choose the primary skill practised.', 'negative');
       return;
@@ -157,7 +160,7 @@ export function QuestionEditor() {
   };
 
   const addConcept = async () => {
-    if (!courseId || !newConceptName.trim()) return;
+    if (!editable || !courseId || !newConceptName.trim()) return;
     try {
       const concept = await createConcept(courseId, newConceptName);
       draft.update({ targetConceptId: concept.id, newConceptName: '' });
@@ -168,7 +171,7 @@ export function QuestionEditor() {
   };
 
   const remove = async () => {
-    if (!questionId || !courseId) return;
+    if (!editable || !questionId || !courseId) return;
     await deleteQuestion(questionId);
     draft.finish();
     notify('Question deleted.', 'positive');
@@ -331,7 +334,7 @@ export function QuestionEditor() {
               <Button
                 type="button"
                 onClick={() => void addConcept()}
-                disabled={!newConceptName.trim()}
+                disabled={!editable || !newConceptName.trim()}
               >
                 <PlusIcon width={16} height={16} />
                 Add
@@ -465,7 +468,7 @@ export function QuestionEditor() {
 
       <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
-          {editing ? (
+          {editable && editing ? (
             <ConfirmInlineSwap
               active={confirmingDelete}
               message="Delete this Question definition? Its attempt evidence will be retained."
@@ -485,7 +488,7 @@ export function QuestionEditor() {
             type="button"
             variant="primary"
             onClick={() => void save()}
-            disabled={saving}
+            disabled={!editable || saving}
             aria-label={saveLabel}
           >
             <AnimatePresence initial={false} mode="popLayout">

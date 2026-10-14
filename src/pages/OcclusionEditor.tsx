@@ -11,6 +11,7 @@ import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
+import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
@@ -166,7 +167,8 @@ export function OcclusionEditor() {
     );
   }
 
-  const canSave = name.trim().length > 0 && assetHash !== null && regions.length > 0;
+  const editable = Boolean(course && canEditLessons(course));
+  const canSave = editable && name.trim().length > 0 && assetHash !== null && regions.length > 0;
 
   function addRegion(rect: DrawnRegionRect) {
     const region: OcclusionRegion = {
@@ -234,6 +236,7 @@ export function OcclusionEditor() {
   }
 
   async function handleSave() {
+    if (!editable) return;
     if (!canSave || !courseId || !assetHash) return;
     setSaving(true);
     try {
@@ -334,13 +337,15 @@ export function OcclusionEditor() {
             )}
           </div>
 
-          {editing && occlusion && (
+          {editable && editing && occlusion && (
             <DangerZoneSection
               entityLabel="occlusion"
               entityName={occlusion.name}
               description="Deletes this occlusion and every card it generated."
               snapshot={() => snapshotOcclusion(occlusion.id)}
-              onDelete={() => deleteOcclusion(occlusion.id)}
+              onDelete={async () => {
+                if (editable) await deleteOcclusion(occlusion.id);
+              }}
               onRestore={(snap) => restoreOcclusion(snap as OcclusionSnapshot)}
               onDeleted={() => navigate(backPath)}
             />

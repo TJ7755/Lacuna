@@ -1,0 +1,1 @@
+- Keep Question practice startup and generated receipts stable across reactive data refreshes, preventing an outstanding presentation from being abandoned before the learner answers it.

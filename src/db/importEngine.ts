@@ -8,6 +8,7 @@
 
 import { hasCloze } from '../utils/cloze';
 import { parseImport, splitDelimited, type ParsedCard, type ImportParseResult } from './import';
+import { findCardExportHeaderIndex } from './importCardExport';
 import { isMarkdownTableSeparator, parseMarkdownTable } from './importMarkdownTable';
 import { parseMarkdownList } from './importMarkdownList';
 import { parsePlainTextQA } from './importPlainTextQA';
@@ -83,6 +84,16 @@ export function detectFormat(input: string): FormatDetection {
 
   const lines = trimmed.split('\n');
   const nonBlankLines = lines.filter((l) => l.trim().length > 0);
+
+  // The export header identifies delimited files even when quoted fields contain Markdown.
+  function* headerRows(separator: string) {
+    for (const line of nonBlankLines) yield splitDelimited(line, separator, '\n')[0];
+  }
+  for (const [format, separator] of [['csv', ','], ['tsv', '\t']] as const) {
+    if (findCardExportHeaderIndex(headerRows(separator)) >= 0) {
+      return { format, confidence: 1 };
+    }
+  }
 
   // A delimiter row identifies a GFM table even when outer pipes are omitted.
   const separatorIndex = nonBlankLines.findIndex((line) =>

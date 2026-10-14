@@ -4,6 +4,7 @@ import type { CardImportDestination } from '../../db/cardImport';
 import type { CourseSchedulingMode } from '../../db/types';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
+import { canEditLessons } from '../../course/lessonViewMode';
 
 export function useImportDestination() {
   const [courseId, setCourseId] = useState('');
@@ -15,7 +16,9 @@ export function useImportDestination() {
   const [timeZone] = useState(getLocalTimeZone);
   const courses = useCourses();
   const lessons = useLessons(courseId || undefined);
-  const courseExists = courses?.some((course) => course.id === courseId && !course.archived);
+  const courseExists = courses?.some(
+    (course) => course.id === courseId && !course.archived && canEditLessons(course),
+  );
   const lessonExists = lessons?.some((lesson) => lesson.id === lessonId);
   const destination: CardImportDestination | null = courseId
     ? !courseExists
@@ -70,7 +73,7 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
         >
           <option value="">New course</option>
           {draft.courses
-            ?.filter((course) => !course.archived)
+            ?.filter((course) => !course.archived && canEditLessons(course))
             .map((course) => (
               <option key={course.id} value={course.id}>
                 {course.name}
