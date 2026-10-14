@@ -264,6 +264,22 @@ describe('isLessonUnlocked', () => {
     expect(isLessonUnlocked(course, l3, dates, lessons)).toBe(true); // ratcheted
   });
 
+  it.each([
+    { firstCreatedAt: 1, secondCreatedAt: 5 },
+    { firstCreatedAt: 5, secondCreatedAt: 5 },
+  ])('semi-linear agrees with path order for tied lessons: %j', ({ firstCreatedAt, secondCreatedAt }) => {
+    const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
+    const first = makeLesson({ id: 'la', courseId: 'c1', orderIndex: 0, createdAt: firstCreatedAt });
+    const second = makeLesson({ id: 'lb', courseId: 'c1', orderIndex: 0, createdAt: secondCreatedAt });
+    const lessons = [second, first];
+    const dates = lessonEffectiveReleaseDates(course, lessons);
+    const path = buildPath(course, lessons, [], new Map(), [], 0, 0, 0);
+
+    expect(path.filter((node) => node.nodeType === 'lesson' && node.status === 'available').map((node) => node.id)).toEqual([first.id]);
+    expect(isLessonUnlocked(course, first, dates, lessons, 0)).toBe(true);
+    expect(isLessonUnlocked(course, second, dates, lessons, 0)).toBe(false);
+    expect(isLessonUnlocked(course, first, dates, [...lessons].reverse(), 0)).toBe(true);
+  });
   it('semi-linear: the first core lesson is the lowest-orderIndex non-extension lesson', () => {
     const course = makeCourse({ id: 'c1', unlockMode: 'semi-linear' });
     // An extension lesson has the lowest orderIndex but must not count as "first core".

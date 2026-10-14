@@ -1,0 +1,1 @@
+- Resolve tied lesson positions consistently when choosing the first semi-linear lesson, keeping lesson access and revision scope aligned with the course path after device merges.
