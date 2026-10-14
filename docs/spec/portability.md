@@ -9,9 +9,9 @@ A single, format-detecting import engine that powers all import locations in the
 app:
 
 - **Auto-detection** (`detectFormat`): examines input text and returns a
-  `DetectedFormat` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
+  `FormatDetection` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
-  short-circuits at 100K characters to keep large files responsive.
+  is bounded by the import interface's 500,000-character input limit.
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
@@ -46,9 +46,9 @@ app:
     separated plain-text blocks use the first line as the front and all remaining lines as the back.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
-- **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects
-  the format and delegates to the appropriate parser. Returns
-  `{ cards, skipped, format }`.
+- **`parseImportAuto(text, options?)`** — the main entry point. Detects the format
+  unless `options.format` overrides it, and accepts optional `fieldSeparator` and
+  `rowSeparator` values. Returns `{ cards, skipped }`; detection is available separately.
 - **Legacy parser** (`parseImport` in `src/db/import.ts`): the quote-aware
   delimited parser continues to exist for backward compatibility and is used as
   the CSV/TSV backend. Defaults: **tab** field separator, **newline** row
