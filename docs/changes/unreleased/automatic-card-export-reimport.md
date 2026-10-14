@@ -1,0 +1,1 @@
+- Automatic CSV and TSV re-import recognises Lacuna's export header before Markdown inside quoted Card content, preserving the complete question and answer.

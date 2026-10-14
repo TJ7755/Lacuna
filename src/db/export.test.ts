@@ -208,6 +208,22 @@ describe('full Card export re-import', () => {
   beforeEach(reset);
 
   it.each(['csv', 'tsv'] as const)(
+    'automatically re-imports %s Cards containing a Markdown table',
+    async (format) => {
+      const course = await createCourse('Export');
+      const front = 'Compare outputs';
+      const back = 'Reference\n| Front | Back |\n| --- | --- |\n| Nested Q | Nested A |\nEnd';
+      await createCourseCard(course.id, 'front_back', front, back);
+      const text = format === 'csv' ? await exportCardsCsv() : await exportCardsTsv();
+
+      expect(parseImportAuto(text)).toEqual({
+        cards: [{ type: 'front_back', front, back }],
+        skipped: 0,
+      });
+    },
+  );
+
+  it.each(['csv', 'tsv'] as const)(
     're-imports %s content instead of deck names and header rows',
     async (format) => {
       const course = await createCourse('Biology', { colour: 'green' });
