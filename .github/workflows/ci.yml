@@ -408,6 +408,8 @@ jobs:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile
       - run: bun run electron:build:win
+      # The release build enforces the same budget; checking here catches growth before a tag.
+      - run: bun run perf:check:electron-package
       - name: Download the verified v0.2.7 installer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
