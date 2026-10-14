@@ -8,7 +8,7 @@ The authenticated GitHub REST API reported:
 - The repository has no rulesets.
 - `TJ7755` is the only collaborator with write access, with administrator permission.
 - None of the eight environments has a required-reviewer rule. The desktop release workflow
-  creates a draft and does not publish it; it does not reference a protected release environment.
+  created a draft and did not publish it; it does not reference a protected release environment.
 - Workflow tokens default to read access and cannot approve pull requests.
 - All 18 check runs on starting commit `988505975b21e86f278187d5499242b5634073f2` passed.
 
@@ -38,9 +38,11 @@ and CODEOWNER review required. Do not add an unconfirmed account to CODEOWNERS.
 
 ## Release review
 
-The existing workflow's final output is a draft; publishing remains a maintainer action after
-artefact inspection. This is a manual release policy, not an independently enforced second-person
-approval. A protected environment on draft creation would gate draft preparation, not prevent an
+The maintainer asked on 14 October 2026 for releases to run automatically. Merging a version bump
+with its `docs/releases/<version>.md` notes into `master` is now the release approval: the workflow
+tags the commit once CI and Security pass, builds, verifies every asset and its attestation, and
+publishes the beta. Without the notes file it stops at a draft for manual publication. This is a
+single-maintainer release policy, not an independently enforced second-person approval. A protected environment on draft creation would gate draft preparation, not prevent an
 administrator from publishing a release through another route.
 
 The maintainer decided on 6 September 2026 to permit unsigned limited beta releases and require
