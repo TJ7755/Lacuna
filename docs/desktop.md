@@ -37,6 +37,8 @@ or network is unavailable. Messages and selected tool content travel over HTTPS 
 provider; the local transcript, study database, tool execution and write approvals stay on the
 device. The access code is stored locally, outside backups and sync. Free providers may retain or
 use submitted content under their own terms. Switching modes starts a separate conversation.
+Built-in AI restores the latest 100 transcript items, trimming older replies further when the
+saved session reaches its storage budget; the draft and tool ledger are retained.
 
 ### Handing out beta access codes
 
