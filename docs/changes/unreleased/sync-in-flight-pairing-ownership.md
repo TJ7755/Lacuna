@@ -1,0 +1,1 @@
+- Sync cycles stop admitting delayed data and status updates after their pairing changes, preventing an old success or failure from recreating an unpaired device or overwriting a new pairing.
