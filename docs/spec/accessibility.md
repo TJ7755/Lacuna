@@ -2,6 +2,8 @@
 
 - Honours `prefers-reduced-motion: reduce` (all animation/transition durations
   collapse) and the per-user **motion-speed** setting.
+- Modal editor shortcut handlers leave Tab available to focus trapping and
+  field-specific navigation.
 - Focus-visible rings on interactive controls; `aria-label`/`title` on icon
   buttons; `aria-pressed` on toggles and chips; `role="progressbar"` with value
   attributes on the bar.
