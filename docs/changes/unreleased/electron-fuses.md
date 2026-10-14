@@ -1,0 +1,1 @@
+- Packaged desktop builds now set Electron fuses: pages loaded from `file://` lose their extra privileges, and `RunAsNode` stays on explicitly because the AI companion depends on it. ASAR integrity, app.asar-only loading and cookie encryption stay at Electron's defaults until verified on packaged builds.
