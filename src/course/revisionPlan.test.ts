@@ -57,6 +57,60 @@ function extendDeadline(plan: RevisionPlan): ResolvedRevisionPlanInput {
 }
 
 describe('revision plan replanning', () => {
+  it('reports only changes that still apply when part of a deferred replan is reverted', () => {
+    const plan = makePlan();
+    plan.windows[0] = { ...plan.windows[0], status: 'active', startedAt: now + 10 };
+    const extended = extendDeadline(plan);
+    const pending = applyRevisionPlanInput(
+      plan,
+      {
+        ...extended,
+        input: { ...extended.input, coverageVersion: 'coverage-2' },
+      },
+      now + 20,
+    );
+    expect(pending.pendingReplan?.reasons).toEqual([
+      'assessment-coverage-changed',
+      'assessment-deadline-changed',
+    ]);
+
+    const reverted = applyRevisionPlanInput(pending, extended, now + 30);
+    expect(reverted.pendingReplan?.reasons).toEqual(['assessment-deadline-changed']);
+    expect(reverted.pendingReplan?.input.coverageVersion).toBe(plan.input.coverageVersion);
+    expect(reverted.pendingReplan?.input.deadlineAt).toBe(extended.input.deadlineAt);
+  });
+  it('discards a deferred replan when the assessment change is reverted', () => {
+    const plan = makePlan();
+    plan.windows[0] = { ...plan.windows[0], status: 'active', startedAt: now + 10 };
+    const pending = applyRevisionPlanInput(plan, extendDeadline(plan), now + 20);
+    expect(pending.pendingReplan?.input.deadlineAt).toBe(Date.parse('2026-07-20T12:00:00Z'));
+
+    const reverted = applyRevisionPlanInput(
+      pending,
+      {
+        input: plan.input,
+        scope: plan.scope,
+        cardStates: plan.cardStates,
+      },
+      now + 30,
+    );
+    expect(reverted.pendingReplan).toBeUndefined();
+    expect(reverted.input).toEqual(plan.input);
+    expect(reverted.windows).toEqual(plan.windows);
+    expect(reverted.revision).toBe(plan.revision);
+
+    const completed = {
+      ...reverted,
+      windows: reverted.windows.map((window, index) =>
+        index === 0 ? { ...window, status: 'completed' as const, completedAt: now + 40 } : window,
+      ),
+    };
+    const applied = applyPendingRevisionPlanInput(completed, now + 40);
+    expect(applied.input.deadlineAt).toBe(plan.input.deadlineAt);
+    expect(applied.windows.some((window) => window.day === '2026-07-20')).toBe(false);
+    expect(applied.revision).toBe(1);
+  });
+
   it.each(['immediate', 'deferred'] as const)(
     'keeps a completed day closed after an %s replan',
     (mode) => {

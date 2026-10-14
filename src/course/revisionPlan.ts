@@ -305,15 +305,14 @@ export function applyRevisionPlanInput(
   now: number,
 ): RevisionPlan {
   const reasons = revisionReplanReasons(plan.input, resolved.input);
-  if (reasons.length === 0) return plan;
+  if (reasons.length === 0) {
+    return plan.pendingReplan ? { ...plan, pendingReplan: undefined, updatedAt: now } : plan;
+  }
   if (plan.windows.some((window) => window.status === 'active')) {
-    const pendingReasons = REPLAN_ORDER.filter(
-      (reason) => reasons.includes(reason) || plan.pendingReplan?.reasons.includes(reason),
-    );
     return {
       ...plan,
       pendingReplan: {
-        reasons: pendingReasons,
+        reasons,
         requestedAt: now,
         ...resolved,
       },
