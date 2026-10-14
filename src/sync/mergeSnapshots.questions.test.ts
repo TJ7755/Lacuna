@@ -213,6 +213,101 @@ function setAttempt(overrides: Partial<QuestionSetAttemptRecord> = {}): Question
 }
 
 describe('Question peer merge', () => {
+  it('honours attempt deletion receipts even when a newer Course edit survives', () => {
+    const attempt = setAttempt();
+    const deletion = { table: 'questionSetAttempts', recordId: attempt.id, deletedAt: 30 };
+    const deleted = backup({
+      courses: [],
+      concepts: [],
+      questions: [],
+      questionConcepts: [],
+      tombstones: [deletion, { table: 'courses', recordId: 'course-1', deletedAt: 30 }],
+    });
+    const edited = backup({ courses: [course({ updatedAt: 40 })], questionSetAttempts: [attempt] });
+
+    const merged = mergeSnapshots(deleted, edited);
+
+    expect(merged.courses).toHaveLength(1);
+    expect(merged.questionSetAttempts).toEqual([]);
+    expect(merged.tombstones).toContainEqual(deletion);
+    expect(mergeSnapshots(edited, deleted)).toEqual(merged);
+    expect(mergeSnapshots(merged, edited)).toEqual(merged);
+  });
+
+  it('keeps an attempt update newer than its deletion receipt', () => {
+    const attempt = setAttempt({ updatedAt: 40 });
+    const deletion = { table: 'questionSetAttempts', recordId: attempt.id, deletedAt: 30 };
+    const merged = mergeSnapshots(
+      backup({ tombstones: [deletion] }),
+      backup({ questionSetAttempts: [attempt] }),
+    );
+
+    expect(merged.questionSetAttempts).toEqual([attempt]);
+    expect(merged.tombstones).toContainEqual(deletion);
+  });
+
+  it('discards deleted attempts before checking conflicting submitted responses', () => {
+    const submitted = (text: string, at: number) =>
+      setAttempt({
+        revisionId: `response-${text}`,
+        updatedAt: at,
+        responses: [
+          {
+            nodeId: 'set-question-1',
+            draft: { kind: 'written', text },
+            submitted: { kind: 'written', text },
+            submittedAt: at,
+          },
+        ],
+      });
+    const deletion = { table: 'questionSetAttempts', recordId: 'set-attempt-1', deletedAt: 30 };
+    const left = backup({ questionSetAttempts: [submitted('One', 21)], tombstones: [deletion] });
+    const right = backup({ questionSetAttempts: [submitted('Two', 22)] });
+
+    const merged = mergeSnapshots(left, right);
+
+    expect(merged.questionSetAttempts).toEqual([]);
+    expect(merged.tombstones).toContainEqual(deletion);
+    expect(mergeSnapshots(right, left)).toEqual(merged);
+
+    const restored = submitted('Two', 40);
+    const restoredBackup = backup({ questionSetAttempts: [restored] });
+    const resurrected = mergeSnapshots(left, restoredBackup);
+    expect(resurrected.questionSetAttempts).toEqual([restored]);
+    expect(resurrected.tombstones).toContainEqual(deletion);
+    expect(mergeSnapshots(restoredBackup, left)).toEqual(resurrected);
+  });
+
+  it('keeps deleted submitted evidence out of repeated merges with a restored attempt', () => {
+    const deletion = { table: 'questionSetAttempts', recordId: 'set-attempt-1', deletedAt: 30 };
+    const restored = setAttempt({ revisionId: 'restored-answering', updatedAt: 40 });
+    const stalePeer = backup({
+      tombstones: [deletion],
+      questionSetAttempts: [
+        setAttempt({
+          revisionId: 'deleted-submission',
+          updatedAt: 22,
+          responses: [
+            {
+              nodeId: 'set-question-1',
+              draft: { kind: 'written', text: 'Old response' },
+              submitted: { kind: 'written', text: 'Old response' },
+              submittedAt: 22,
+            },
+          ],
+        }),
+      ],
+    });
+    const restoredBackup = backup({ questionSetAttempts: [restored] });
+    const merged = mergeSnapshots(restoredBackup, stalePeer);
+    const receiptFreePeer = { ...stalePeer, tombstones: [] };
+
+    expect(merged.questionSetAttempts).toEqual([restored]);
+    expect(mergeSnapshots(merged, receiptFreePeer).questionSetAttempts).toEqual([restored]);
+    expect(mergeSnapshots(receiptFreePeer, merged).questionSetAttempts).toEqual([restored]);
+    expect(mergeSnapshots(stalePeer, restoredBackup)).toEqual(merged);
+  });
+
   it('selects the coherent authored bundle without letting a newer schedule revert content', () => {
     const oldQuestion = question('old', 10, {
       prompt: 'Old prompt',

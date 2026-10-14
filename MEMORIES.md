@@ -84,6 +84,14 @@ pre-replacement restore point survives. Recovery merge and peer merge use differ
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
 
+## Deleted evidence must be filtered before conflict checks
+
+Peer merge must discard revisions covered by deletion receipts before checking immutable
+evidence conflicts. Filtering only the merged result lets already-deleted submissions block
+sync, or conflict with a valid later restoration of the same attempt.
+Keep Question Set attempt receipts alongside restored rows until normal retention expiry;
+evidence merge unions older submissions, so dropping the receipt lets a stale peer reintroduce them.
+
 ## Question-set backup compatibility
 
 Older readers accept unfamiliar numeric backup versions. V12 therefore uses the `lacuna-v12`

@@ -1869,6 +1869,26 @@ describe('detachCourse', () => {
 describe('setCourseAutoAcceptUpdates', () => {
   beforeEach(reset);
 
+  it('does not restore the shared-copy lock when detaching concurrently', async () => {
+    const course = await createCourse('Concurrent auto-accept detach');
+    await updateCourse(course.id, {
+      distributedCopy: {
+        lineageId: 'lineage-concurrent-detach',
+        revision: 2,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    });
+
+    const results = await Promise.allSettled([
+      setCourseAutoAcceptUpdates(course.id, true),
+      detachCourse(course.id),
+    ]);
+
+    expect(results[1].status).toBe('fulfilled');
+    expect((await db.courses.get(course.id))?.distributedCopy).toBeUndefined();
+  });
+
   it('updates autoAcceptUpdates while leaving the rest of distributedCopy untouched', async () => {
     const course = await createCourse('Auto-accept test');
     await updateCourse(course.id, {

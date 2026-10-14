@@ -299,15 +299,17 @@ export async function setCourseAutoAcceptUpdates(
   autoAcceptUpdates: boolean,
 ): Promise<void> {
   try {
-    const course = await db.courses.get(courseId);
-    if (!course) throw new Error('The course could not be found.');
-    if (!course.distributedCopy) throw new Error('This course is not a shared copy.');
-    await db.courses.update(
-      courseId,
-      stampUpdatedAt({
-        distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
-      }),
-    );
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      if (!course.distributedCopy) throw new Error('This course is not a shared copy.');
+      await db.courses.update(
+        courseId,
+        stampUpdatedAt({
+          distributedCopy: { ...course.distributedCopy, autoAcceptUpdates },
+        }),
+      );
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }

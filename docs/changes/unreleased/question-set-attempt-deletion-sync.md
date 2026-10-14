@@ -1,0 +1,1 @@
+- Device combination and sync now honour Question Set attempt deletion receipts even when a newer edit keeps the parent Course, preventing deleted attempts and their submitted evidence from returning in later merges.

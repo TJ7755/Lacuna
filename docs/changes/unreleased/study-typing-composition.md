@@ -1,0 +1,1 @@
+- Keep typed study questions open when Enter confirms an input-method candidate; ordinary Enter still reveals the expected answer.

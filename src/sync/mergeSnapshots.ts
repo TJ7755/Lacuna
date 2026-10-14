@@ -246,8 +246,13 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     ...tombstones.values(),
   ]).filter((set) => courses.some((course) => course.id === set.courseId));
   const questionSetAttempts = mergeQuestionSetAttempts(
-    left.questionSetAttempts,
-    right.questionSetAttempts,
+    applyTombstones(
+      'questionSetAttempts',
+      [...left.questionSetAttempts, ...right.questionSetAttempts],
+      idOf,
+      updatedAtOf,
+      tombstones,
+    ),
   ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
   assertQuestionSetReferences(
     questionSets,
@@ -323,7 +328,12 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
-    .filter((row) => !liveKeys.has(tombstoneKey(row.table, row.recordId)))
+    // Attempt merging unions evidence from older revisions. Keep its deletion
+    // boundary even after resurrection so later peers cannot restore discarded evidence.
+    .filter(
+      (row) =>
+        row.table === 'questionSetAttempts' || !liveKeys.has(tombstoneKey(row.table, row.recordId)),
+    )
     .sort(compareTombstones);
 
   return {
@@ -873,11 +883,10 @@ function referencedHashes(
 }
 
 function mergeQuestionSetAttempts(
-  left: QuestionSetAttemptRecord[],
-  right: QuestionSetAttemptRecord[],
+  attempts: QuestionSetAttemptRecord[],
 ): QuestionSetAttemptRecord[] {
   const merged = new Map<string, QuestionSetAttemptRecord>();
-  for (const incoming of [...left, ...right]) {
+  for (const incoming of attempts) {
     const existing = merged.get(incoming.id);
     if (!existing) {
       merged.set(incoming.id, incoming);

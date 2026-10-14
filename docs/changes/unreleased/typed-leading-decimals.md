@@ -1,0 +1,1 @@
+- Preserve leading decimal points and their minus signs in lenient typed-answer comparison, so `.5`, `-.5` and `5` cannot be marked as the same answer.

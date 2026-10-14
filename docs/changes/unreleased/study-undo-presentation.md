@@ -1,0 +1,1 @@
+- Clear the following card's typed answer and hints when Undo restores the previous study question, preventing stale answers and hint penalties from carrying into its retry.

@@ -1,0 +1,1 @@
+- Automatic device sync now delays study-end triggers received just after another sync until the minimum interval expires, rather than dropping the final study changes.
