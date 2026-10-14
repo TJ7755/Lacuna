@@ -17,7 +17,9 @@ app:
     Defaults: tab field separator, newline row separator; both customisable.
     A single CSV/TSV row is detected too. Lacuna full exports use their existing header
     to locate question, answer and semicolon-separated tag columns; the warning and header
-    are skipped. Quoted multi-line fields stay intact in the plain-text Anki path as well.
+    are skipped. Automatic detection recognises this header before Markdown inside quoted
+    Card content, preserving the original fields. Quoted multi-line fields stay intact in the
+    plain-text Anki path as well.
     Leading empty TSV columns are preserved, so a row without a question is
     skipped rather than shifting its answer and tags into question/answer columns.
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
@@ -471,9 +473,9 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
 - **Lock enforcement — `canEditLessons(course)` (`src/course/lessonViewMode.ts`).** Returns
   `false` iff `course.distributedCopy?.locked === true`; an absent `distributedCopy` (every
   ordinary course, including all pre-v18 courses) or a detached copy (`locked: false`) both
-  remain editable. This is the single gate every lesson/note/card-CRUD call site already
-  routes through (`resolveLessonViewMode`, `isLessonAuthoringMode`), so locking a
-  distributed copy needed no new call sites — only this function's body changed.
+  remain editable. Lesson authoring and Card-import destinations reuse this gate.
+  Locked copies are excluded from import choices. Text and Anki imports recheck it inside
+  the persistence transaction before adding Cards or Lessons, including the Course bank.
 - **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
   hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears
   `Course.distributedCopy` entirely, unlocking the course and severing lineage tracking in
