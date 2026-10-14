@@ -5,12 +5,14 @@ import {
   aiBridgeErrorSchema,
   aiEntityReferenceSchema,
 } from '../protocol';
+import { MAX_AI_RELAY_MAILBOX_ENTRIES } from '../relayProtocol';
 import { restoreState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiConversationItem } from './types';
 
 export const HOSTED_SESSION_STORAGE_KEY = 'lacuna-ai-hosted-session-v1';
 const MAX_STORED_BYTES = 300_000;
+const MAX_STORED_ITEMS = 100;
 const identifier = z.string().min(1).max(100);
 const timestamp = z.number().int().nonnegative();
 const itemSchema = z.discriminatedUnion('kind', [
@@ -29,7 +31,8 @@ const itemSchema = z.discriminatedUnion('kind', [
 const storedSchema = z.object({
   version: z.literal(1),
   conversationId: identifier.nullable(),
-  items: z.array(itemSchema).max(100),
+  // Older writers saved the full bounded in-memory transcript.
+  items: z.array(itemSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
   draft: z.string().max(12_000),
   queuedFollowUp: z.string().max(12_000).nullable(),
   approval: aiApprovalStateSchema.nullable(),
@@ -57,7 +60,7 @@ export function loadHostedState(storage: HostedSessionStorage): HostedStoredStat
     if (!raw) return null;
     if (raw.length > MAX_STORED_BYTES) throw new Error('Stored AI session is too large.');
     const parsed = storedSchema.parse(JSON.parse(raw) as unknown);
-    const items = parsed.items.map((item) => {
+    const items = parsed.items.slice(-MAX_STORED_ITEMS).map((item) => {
       if (item.kind === 'assistant' && item.progress === 'streaming') {
         return { ...item, progress: 'interrupted' as const };
       }
@@ -82,10 +85,20 @@ export function loadHostedState(storage: HostedSessionStorage): HostedStoredStat
 
 export function saveHostedState(storage: HostedSessionStorage, state: HostedStoredState): void {
   try {
-    let items = state.items;
+    let items = state.items.slice(-MAX_STORED_ITEMS);
     let encoded = JSON.stringify({ version: 1, ...state, items });
-    while (encoded.length > MAX_STORED_BYTES && items.length > 0) {
-      items = items.slice(1);
+    if (encoded.length > MAX_STORED_BYTES) {
+      // Find the largest recent suffix that fits without serialising every
+      // intermediate transcript on the main thread.
+      let lower = 0;
+      let upper = items.length;
+      while (lower < upper) {
+        const middle = Math.ceil((lower + upper) / 2);
+        const candidate = JSON.stringify({ version: 1, ...state, items: items.slice(-middle) });
+        if (candidate.length <= MAX_STORED_BYTES) lower = middle;
+        else upper = middle - 1;
+      }
+      items = lower === 0 ? [] : items.slice(-lower);
       encoded = JSON.stringify({ version: 1, ...state, items });
     }
     if (encoded.length <= MAX_STORED_BYTES) storage.setItem(HOSTED_SESSION_STORAGE_KEY, encoded);

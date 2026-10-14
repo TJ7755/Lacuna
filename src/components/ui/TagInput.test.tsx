@@ -3,6 +3,20 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { TagInput } from './TagInput';
 
 describe('TagInput', () => {
+  it.each(['Enter', ',', 'Backspace'])('leaves %s to the input method during composition', (key) => {
+    const onChange = vi.fn();
+    render(<TagInput tags={['existing']} onChange={onChange} />);
+    const input = screen.getByRole('textbox');
+    if (key !== 'Backspace') {
+      fireEvent.change(input, { target: { value: 'unfinished' } });
+    }
+
+    fireEvent.keyDown(input, { key, isComposing: true });
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(input).toHaveValue(key === 'Backspace' ? '' : 'unfinished');
+  });
+
   it('renders with an empty state', () => {
     render(<TagInput tags={[]} onChange={vi.fn()} placeholder="Add tags" />);
     expect(screen.getByPlaceholderText('Add tags')).toBeInTheDocument();

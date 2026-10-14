@@ -1,0 +1,1 @@
+- Keep keyboard focus inside editor dialogs when their shortcut handlers isolate keyboard events; retain field-specific Tab navigation.

@@ -288,6 +288,25 @@ describe('Question backup portability', () => {
     expect(mergeSnapshots(exported, exported).questionSets).toEqual([restored]);
   });
 
+  it.each([false, true])('remaps recovered Question Sets to the retained local final Assessment (existing set: %s)', async (existingSet) => {
+    await db.courses.add(COURSE);
+    await db.courseAssessments.add(FINAL_ASSESSMENT);
+    await db.concepts.add(CONCEPT);
+    if (existingSet) await db.questionSets.add(QUESTION_SET);
+    const backup = await exportDatabase();
+    const incomingFinalId = 'incoming-final';
+    backup.courseAssessments = [{ ...FINAL_ASSESSMENT, id: incomingFinalId }];
+    backup.questionSets = [{ ...QUESTION_SET, assessmentIds: [incomingFinalId] }];
+
+    await importBackup(backup, 'merge');
+
+    const recovered = await db.questionSets.get(QUESTION_SET.id);
+    expect(recovered?.assessmentIds).toEqual([FINAL_ASSESSMENT.id]);
+    expect(await db.courseAssessments.count()).toBe(1);
+    const exported = await exportDatabase();
+    expect(mergeSnapshots(exported, exported).questionSets).toEqual([recovered]);
+    await expect(importBackup(exported, 'replace')).resolves.toBeUndefined();
+  });
   it('rejects a malformed Question Set graph before replacement starts', async () => {
     await db.courses.add(COURSE);
     await db.courseAssessments.add(FINAL_ASSESSMENT);

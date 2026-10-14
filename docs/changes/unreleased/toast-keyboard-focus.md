@@ -1,0 +1,1 @@
+- Keep undo and other notification actions available while keyboard focus remains inside the notification, including after the pointer leaves it.

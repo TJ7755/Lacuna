@@ -1,0 +1,1 @@
+- Keep another speaker's leading cues with the learner's next script chunk, so crossing a recitation chunk boundary retains the dialogue context.

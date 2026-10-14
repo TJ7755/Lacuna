@@ -195,15 +195,16 @@ export function isLessonUnlocked(
   lessons: Lesson[],
   now: number = Date.now(),
 ): boolean {
-  let firstCoreLessonId: string | undefined;
-  let firstCoreOrder = Infinity;
+  let firstCoreLesson: Lesson | undefined;
   for (const candidate of lessons) {
-    if (!candidate.isExtension && candidate.orderIndex < firstCoreOrder) {
-      firstCoreOrder = candidate.orderIndex;
-      firstCoreLessonId = candidate.id;
+    if (
+      !candidate.isExtension &&
+      (!firstCoreLesson || lessonOrder(candidate, firstCoreLesson) < 0)
+    ) {
+      firstCoreLesson = candidate;
     }
   }
-  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLessonId, now);
+  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLesson?.id, now);
 }
 
 function isLessonUnlockedWithFirstCore(

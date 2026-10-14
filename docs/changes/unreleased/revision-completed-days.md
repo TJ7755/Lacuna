@@ -1,0 +1,1 @@
+- Keep completed revision days closed when assessment changes replan the remaining schedule, preventing duplicate windows and incorrect next-day suggestions.

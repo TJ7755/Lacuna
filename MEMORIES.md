@@ -45,6 +45,10 @@ load can outlive the transaction and leave earlier writes committed. Per-card as
 validation awaits inside a transaction can also commit prematurely, even with no payload;
 validate once before the transaction and skip re-validation within it.
 
+Legacy media rows can contain Blob values whose byte conversion outlives a Dexie transaction.
+Capture those rows with the backup's records, then encode their bytes after the read transaction
+closes; awaiting Blob conversion inside it can split or expire the snapshot.
+
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
 

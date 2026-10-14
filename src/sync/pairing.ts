@@ -326,6 +326,8 @@ async function runWithCredentials(
     provider: createProvider(credentials, fetchImpl),
     channelId: credentials.channelId,
     channelKey: credentials.channelKey,
+    relayUrl: credentials.relayUrl,
+    writeToken: credentials.writeToken,
     now,
   });
 }

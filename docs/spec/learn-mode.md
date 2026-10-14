@@ -88,7 +88,8 @@ repository is not a compatibility barrel for this interface.
 The planner stores daily time budgets rather than a fixed queue. Edits to assessment coverage,
 deadline or time zone, reached/exposed/available scope, review evidence or the selected model
 produce deterministic, explained replans. An active window retains its captured revision until
-completion. Passed assessments archive their plan read-only and ordinary per-card horizon
+completion. Replanning preserves each completed day without adding another window for it.
+Passed assessments archive their plan read-only and ordinary per-card horizon
 resolution moves on to the next applicable assessment.
 
 The runtime uses the frozen `half-life-logistic-v3-routed` global fit (coefficients unchanged from

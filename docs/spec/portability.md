@@ -1,6 +1,6 @@
 # 13. Import, export & backups (`src/db/importEngine.ts`,
 
-`src/db/portability.ts`, `src/db/import.ts`, `src/db/export.ts`,
+`src/db/portability.ts`, `src/db/backupSnapshot.ts`, `src/db/import.ts`, `src/db/export.ts`,
 `src/db/backups.ts`, `src/sync/mergeSnapshots.ts`, `src/sync/manualMerge.ts`)
 
 ### Unified import engine (`src/db/importEngine.ts`)
@@ -136,6 +136,9 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 
+- Exports read represented records and their referenced media within one readonly database
+  transaction, so simultaneous reviews, edits or deletions cannot produce a partial restore point.
+  Media byte encoding runs after the read transaction closes.
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
@@ -173,7 +176,9 @@ A single, reusable export UI offering multiple output formats:
     confirmation. Incoming rows are added when absent; conflicting decks/cards and course records
     use their table-specific recency rules, review-history rows are deduplicated, and local rows
     absent from the backup are never deleted. Question authoring merges as one coherent definition
-    and relationship bundle; Attempts union by identity, immutable receipt collisions fail, and
+    and relationship bundle; authored Question Set assessment assignments and revision plans
+    follow the retained local final Assessment when a backup uses a different id.
+    Attempts union by identity, immutable receipt collisions fail, and
     answered lifecycle state wins over shown or abandoned state. The Question schedule is replayed
     from eligible Attempt evidence after merge. The other course tables, `sequences`, `occlusions`
     and `revisionPlans` follow their existing additive per-table merge boundary. Old backups keep
@@ -192,8 +197,19 @@ A single, reusable export UI offering multiple output formats:
     restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
 
+An automatic sync checks that its relay capabilities still match a stored pairing before
+starting transport, then retains that pairing identity. If unpairing or
+re-pairing changes it while network or encryption work is pending, the old cycle stops
+before admitting a delayed snapshot, applying its candidate or issuing its next push.
+The pre-apply check precedes import preprocessing; it does not cancel a replacement after that
+check has passed. Completion and failure metadata are written only while the same pairing still owns the
+atomic state update. This does not roll back a database replacement or relay push that
+has already committed.
+
 ### Automatic restore points & migration safety
 
+- Ordinary restore-point attempts are throttled for five minutes; a failed export or local
+  snapshot write releases that attempt's throttle so an immediate retry can protect the data.
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
   automatically on open, **at most once a day** (`autoBackupIfStale`), and never
   blocks the UI.

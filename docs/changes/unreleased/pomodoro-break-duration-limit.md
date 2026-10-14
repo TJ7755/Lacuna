@@ -1,0 +1,1 @@
+- Keep Pomodoro break durations within the timer's supported 60-minute maximum so Settings and the countdown agree.

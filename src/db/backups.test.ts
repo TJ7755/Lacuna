@@ -222,6 +222,145 @@ describe('backups', () => {
     expect(await db.backups.count()).toBe(2);
   });
 
+  it('retries immediately after a restore-point write fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const add = vi.spyOn(db.backups, 'add').mockRejectedValueOnce(new Error('storage unavailable'));
+
+    await expect(takeAutoBackup()).rejects.toThrow('storage unavailable');
+    expect(await db.backups.count()).toBe(0);
+
+    const payload = await takeAutoBackup();
+
+    expect(payload).toBeDefined();
+    expect(add).toHaveBeenCalledTimes(2);
+    expect(await db.backups.count()).toBe(1);
+  });
+  it('takes the first backup even when the clock is inside the first five minutes', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1);
+
+    expect(await takeAutoBackup()).toBeDefined();
+    expect(await db.backups.count()).toBe(1);
+  });
+
+  it('preserves a newer forced backup throttle when an earlier pending write fails', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    let rejectFirst!: (error: Error) => void;
+    let signalFirst!: () => void;
+    const firstStarted = new Promise<void>((resolve) => { signalFirst = resolve; });
+    vi.spyOn(db.backups, 'add').mockImplementationOnce(() => new Promise((_resolve, reject) => {
+      rejectFirst = reject;
+      signalFirst();
+    }) as ReturnType<typeof db.backups.add>);
+    const firstFailure = expect(takeAutoBackup()).rejects.toThrow('storage unavailable');
+    await firstStarted;
+
+    await takeAutoBackup(true);
+    rejectFirst(new Error('storage unavailable'));
+    await firstFailure;
+
+    expect(await takeAutoBackup()).toBeUndefined();
+    expect(await db.backups.count()).toBe(1);
+  });
+  it.each([false, true])('retries after overlapping ordinary and forced writes both fail (prior backup: %s)', async (priorBackup) => {
+    let now = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    if (priorBackup) {
+      await takeAutoBackup();
+      now += 5 * 60 * 1000;
+    }
+    let rejectOrdinary!: (error: Error) => void;
+    let rejectForced!: (error: Error) => void;
+    let signalOrdinary!: () => void;
+    let signalForced!: () => void;
+    const ordinaryStarted = new Promise<void>((resolve) => { signalOrdinary = resolve; });
+    const forcedStarted = new Promise<void>((resolve) => { signalForced = resolve; });
+    const add = vi.spyOn(db.backups, 'add')
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectOrdinary = reject;
+        signalOrdinary();
+      }) as ReturnType<typeof db.backups.add>)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectForced = reject;
+        signalForced();
+      }) as ReturnType<typeof db.backups.add>);
+    const ordinaryFailure = expect(takeAutoBackup()).rejects.toThrow('ordinary storage unavailable');
+    await ordinaryStarted;
+    const forcedFailure = expect(takeAutoBackup(true)).rejects.toThrow('forced storage unavailable');
+    await forcedStarted;
+
+    rejectOrdinary(new Error('ordinary storage unavailable'));
+    await ordinaryFailure;
+    rejectForced(new Error('forced storage unavailable'));
+    await forcedFailure;
+
+    expect(await takeAutoBackup()).toBeDefined();
+    expect(add).toHaveBeenCalledTimes(3);
+    expect(await db.backups.count()).toBe(priorBackup ? 2 : 1);
+  });
+
+  it('retains the previous successful throttle when two overlapping forced writes fail', async () => {
+    let now = 1_000_000;
+    vi.spyOn(Date, 'now').mockImplementation(() => now);
+    await takeAutoBackup();
+    const lastSuccess = now;
+    now += 10;
+    let rejectFirst!: (error: Error) => void;
+    let rejectSecond!: (error: Error) => void;
+    let signalFirst!: () => void;
+    let signalSecond!: () => void;
+    const firstStarted = new Promise<void>((resolve) => { signalFirst = resolve; });
+    const secondStarted = new Promise<void>((resolve) => { signalSecond = resolve; });
+    vi.spyOn(db.backups, 'add')
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectFirst = reject;
+        signalFirst();
+      }) as ReturnType<typeof db.backups.add>)
+      .mockImplementationOnce(() => new Promise((_resolve, reject) => {
+        rejectSecond = reject;
+        signalSecond();
+      }) as ReturnType<typeof db.backups.add>);
+    const firstFailure = expect(takeAutoBackup(true)).rejects.toThrow('first storage unavailable');
+    await firstStarted;
+    now += 10;
+    const secondFailure = expect(takeAutoBackup(true)).rejects.toThrow('second storage unavailable');
+    await secondStarted;
+    rejectFirst(new Error('first storage unavailable'));
+    await firstFailure;
+    rejectSecond(new Error('second storage unavailable'));
+    await secondFailure;
+
+    expect(await takeAutoBackup()).toBeUndefined();
+    now = lastSuccess + 5 * 60 * 1000 - 1;
+    expect(await takeAutoBackup()).toBeUndefined();
+    now += 1;
+    expect(await takeAutoBackup()).toBeDefined();
+    expect(await db.backups.count()).toBe(2);
+  });
+  it('coalesces ordinary backups while an earlier restore-point write is pending', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const writeSnapshot = db.backups.add.bind(db.backups);
+    let releaseWrite!: () => void;
+    let signalStarted!: () => void;
+    const started = new Promise<void>((resolve) => { signalStarted = resolve; });
+    const add = vi.spyOn(db.backups, 'add').mockImplementationOnce((snapshot) =>
+      new Promise<void>((resolve) => {
+        releaseWrite = resolve;
+        signalStarted();
+      }).then(() => writeSnapshot(snapshot)) as ReturnType<typeof db.backups.add>,
+    );
+    const pending = takeAutoBackup();
+    await started;
+
+    expect(await takeAutoBackup()).toBeUndefined();
+    expect(add).toHaveBeenCalledOnce();
+    expect(await db.backups.count()).toBe(0);
+
+    releaseWrite();
+    expect(await pending).toBeDefined();
+    expect(await db.backups.count()).toBe(1);
+    expect(await takeAutoBackup()).toBeUndefined();
+    expect(add).toHaveBeenCalledOnce();
+  });
   it('allows forced backups inside the five-minute throttle window', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 

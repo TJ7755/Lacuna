@@ -36,7 +36,7 @@ mounting are visible immediately even if their change event preceded the subscri
   hover-only affordances for always-visible ones. Persisted to `localStorage`.
   Switching to touch mode from the default font scale automatically sets the font
   scale to Large (1.15); switching back to keyboard never clobbers an explicit choice.
-- **Pomodoro** (v0.0.2): work / short break / long break minutes and
+- **Pomodoro** (v0.0.2): work minutes (1–120), short and long break minutes (1–60), and
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
 - **Study behaviour:** **Manual four-point grading** toggle (off by default ->

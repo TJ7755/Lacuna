@@ -73,7 +73,8 @@ ordinary `front_back` cards to the scheduler.
   visible field label (for example, Front or Back) unless its caller supplies a more specific
   `ariaLabel`. Undo records typing, paste and other input changes; it captures pending
   edits immediately, and editing after undo replaces the redo branch.
-- **Tags** input with deck-wide suggestions.
+- **Tags** input with deck-wide suggestions. Composition keystrokes are left to
+  the input method, without committing text or removing tags.
 - **Images** are downscaled to <= 1280 px, re-encoded (~0.8 quality), stored as a
   `Uint8Array` in the `assets` table (deduplicated by SHA-256 hash), and referenced
   from the Markdown as `lacuna-asset://<hash>` — **not** base64 data URIs. The render

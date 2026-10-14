@@ -348,6 +348,11 @@ const MISSING_ASSET_SVG =
 export async function assetsForBackup(hashes: string[]): Promise<BackupAsset[]> {
   if (hashes.length === 0) return [];
   const assets = await db.assets.where('hash').anyOf(hashes).toArray();
+  return encodeBackupAssets(assets);
+}
+
+/** Encode captured media rows without additional database reads. */
+export async function encodeBackupAssets(assets: MediaAsset[]): Promise<BackupAsset[]> {
   return Promise.all(
     assets.map(async (asset) => ({
       hash: asset.hash,

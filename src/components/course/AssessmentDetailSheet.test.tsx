@@ -52,6 +52,29 @@ const assessment: CourseAssessment = {
 };
 
 describe('checkpoint assessment details', () => {
+  it('wraps focus within the sheet in both directions', () => {
+    render(
+      <MemoryRouter>
+        <AssessmentDetailSheet
+          assessment={{ ...assessment, excludedCardIds: [] }}
+          lessons={[lesson]}
+          cards={[card]}
+          links={[]}
+          onClose={vi.fn()}
+          onRevise={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    const close = screen.getByRole('button', { name: 'Close assessment details' });
+    const revise = screen.getByRole('button', { name: 'Revise for Paper 1' });
+    expect(revise).toBeEnabled();
+    revise.focus();
+    fireEvent.keyDown(revise, { key: 'Tab' });
+    expect(document.activeElement).toBe(close);
+    close.focus();
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(revise);
+  });
   it('scales sheet motion and disables durations for reduced motion', () => {
     expect(assessmentSheetTiming(1.4).sheet.duration).toBeCloseTo(0.336);
     expect(assessmentSheetTiming(0.6).backdrop.duration).toBeCloseTo(0.096);

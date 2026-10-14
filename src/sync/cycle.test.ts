@@ -127,7 +127,7 @@ function provider(overrides: Partial<RelayProvider> = {}): RelayProvider & {
 beforeEach(() => {
   __resetSyncFlightForTests();
   exportDatabaseMock.mockReset();
-  readSyncStateMock.mockReset().mockResolvedValue(undefined);
+  readSyncStateMock.mockReset().mockResolvedValue({ channelId: CHANNEL_ID });
   updateSyncStateMock.mockReset().mockImplementation(async (update) => {
     const current = await readSyncStateMock();
     const next = update(current);
@@ -353,7 +353,7 @@ describe('syncCycle', () => {
     const first = syncCycle(options(relay));
     const second = syncCycle(options(relay));
     expect(second).toBe(first);
-    expect(relay.pull).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(1));
 
     releasePull?.(null);
     await expect(first).resolves.toMatchObject({ pushed: true });
@@ -373,7 +373,7 @@ describe('syncCycle', () => {
     const first = syncCycle(options(relay));
     const second = syncCycle(options(relay, { channelId: 'ffffffffffffffffffffffffffffffff' }));
     await expect(second).rejects.toThrow('different channel');
-    expect(relay.pull).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(1));
 
     releasePull?.(null);
     await expect(first).resolves.toMatchObject({ pushed: true });

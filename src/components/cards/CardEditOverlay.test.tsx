@@ -9,10 +9,6 @@ vi.mock('../../db/cardRepository', () => ({
   updateCard: (...args: unknown[]) => mockUpdateCard(...args),
 }));
 
-vi.mock('../../hooks/useFocusTrap', () => ({
-  useFocusTrap: () => ({ current: null }),
-}));
-
 vi.mock('../markdown/MarkdownEditor', () => ({
   MarkdownEditor: ({
     inputRef,
@@ -96,6 +92,20 @@ afterEach(() => {
 });
 
 describe('CardEditOverlay draft scope', () => {
+  it('wraps focus between the save and close controls', () => {
+    const { getByRole } = render(
+      <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const close = getByRole('button', { name: 'Close editor' });
+    const save = getByRole('button', { name: 'Save changes' });
+    save.focus();
+    fireEvent.keyDown(save, { key: 'Tab' });
+    expect(document.activeElement).toBe(close);
+    close.focus();
+    fireEvent.keyDown(close, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(save);
+  });
+
   it('uses the explicit Course/Lesson scope instead of the card Deck', async () => {
     render(
       <CardEditOverlay card={card} draftScope="lesson-1" onSaved={vi.fn()} onCancel={vi.fn()} />,

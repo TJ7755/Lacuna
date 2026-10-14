@@ -1,0 +1,1 @@
+- Reject obsolete sync capabilities before transport starts, including cross-tab unpairing and same-channel relay or key replacements; callers with different relay capabilities cannot share an in-flight result.

@@ -52,6 +52,7 @@ export function AssessmentDetailSheet({
       exit={multiplier > 0 ? { opacity: 0 } : undefined}
       transition={transition.backdrop}
       onKeyDown={(event) => {
+        if (event.key === 'Tab') return;
         event.stopPropagation();
         if (event.key === 'Escape') onClose();
       }}

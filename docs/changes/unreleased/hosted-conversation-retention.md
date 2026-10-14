@@ -1,0 +1,2 @@
+- Preserve the latest 100 built-in AI conversation messages and draft when a long conversation is restored, instead of discarding the entire saved session.
+- Reduce main-thread transcript serialisation when oversized built-in AI conversations are trimmed, keeping the largest recent suffix within the existing storage budget.

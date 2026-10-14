@@ -2,6 +2,8 @@
 
 - Honours `prefers-reduced-motion: reduce` (all animation/transition durations
   collapse) and the per-user **motion-speed** setting.
+- Modal editor shortcut handlers leave Tab available to focus trapping and
+  field-specific navigation.
 - Focus-visible rings on interactive controls; `aria-label`/`title` on icon
   buttons; `aria-pressed` on toggles and chips; `role="progressbar"` with value
   attributes on the bar.
@@ -22,6 +24,8 @@
   change or editor dismissal removes the previous control; typed questions focus their input.
 - Step-completion actions are visible and usable during their entrance sequence. Departing
   course pages are inert and hidden from assistive technology while the next page enters.
+- Notification dismissal pauses while hovered or while keyboard focus remains
+  inside the notification.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
 
 [Specification index](../SPEC.md)
