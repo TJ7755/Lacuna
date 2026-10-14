@@ -37,6 +37,9 @@ export interface SyncCycleOptions {
   provider: RelayProvider;
   channelId: string;
   channelKey: Uint8Array;
+  /** Expected HTTP relay capabilities, checked against the persisted pairing. */
+  relayUrl?: string;
+  writeToken?: string;
   /** Injectable clock for deterministic state and test assertions. */
   now?: () => number;
   /** Defaults to one retry after a 412, as required by the relay contract. */
@@ -78,7 +81,18 @@ export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
   const promise = readSyncState()
     .then((state) => {
       const startingOwner = capturePairingOwner(state);
-      if (startingOwner.channelId !== undefined && startingOwner.channelId !== options.channelId) {
+      if (
+        startingOwner.channelId !== options.channelId ||
+        (options.relayUrl !== undefined && startingOwner.relayUrl !== options.relayUrl) ||
+        (startingOwner.channelKeyHex !== undefined &&
+          startingOwner.channelKeyHex !==
+            Array.from(options.channelKey, (byte) => byte.toString(16).padStart(2, '0')).join(
+              '',
+            )) ||
+        (options.writeToken !== undefined &&
+          startingOwner.writeToken !== undefined &&
+          startingOwner.writeToken !== options.writeToken)
+      ) {
         throw pairingChanged();
       }
       owner = startingOwner;
@@ -106,7 +120,12 @@ export function __resetSyncFlightForTests(): void {
 }
 
 function sameChannel(left: SyncCycleOptions, right: SyncCycleOptions): boolean {
-  if (left.channelId !== right.channelId) return false;
+  if (
+    left.channelId !== right.channelId ||
+    left.relayUrl !== right.relayUrl ||
+    left.writeToken !== right.writeToken
+  )
+    return false;
   const leftKey = left.channelKey;
   const rightKey = right.channelKey;
   if (leftKey.length !== rightKey.length) return false;
@@ -128,7 +147,11 @@ async function executeSync(options: SyncCycleOptions, owner: PairingOwner): Prom
   throw new Error('Sync ended without a result.');
 }
 
-async function executeAttempt(options: SyncCycleOptions, attempt: number, owner: PairingOwner): Promise<SyncResult> {
+async function executeAttempt(
+  options: SyncCycleOptions,
+  attempt: number,
+  owner: PairingOwner,
+): Promise<SyncResult> {
   const remote = await options.provider.pull('state');
   await assertCurrentPairing(owner);
   if (!remote) {
@@ -249,11 +272,13 @@ function capturePairingOwner(state: SyncState | undefined) {
 type PairingOwner = ReturnType<typeof capturePairingOwner>;
 
 function pairingMatches(state: SyncState | undefined, owner: PairingOwner): boolean {
-  return owner.channelId === state?.channelId &&
+  return (
+    owner.channelId === state?.channelId &&
     owner.relayUrl === state?.relayUrl &&
     owner.wrappedKeyMaterial === state?.wrappedKeyMaterial &&
     owner.channelKeyHex === state?.remembered?.channelKeyHex &&
-    owner.writeToken === state?.remembered?.writeToken;
+    owner.writeToken === state?.remembered?.writeToken
+  );
 }
 
 function pairingChanged(): Error {
@@ -288,7 +313,11 @@ async function recordSuccess(
   if (!recorded) throw pairingChanged();
 }
 
-async function recordFailure(options: SyncCycleOptions, error: unknown, owner: PairingOwner): Promise<void> {
+async function recordFailure(
+  options: SyncCycleOptions,
+  error: unknown,
+  owner: PairingOwner,
+): Promise<void> {
   const size = error instanceof SyncSnapshotTooLargeError ? error.report : undefined;
   await updateSyncState((previous) => {
     if (!pairingMatches(previous, owner)) return undefined;

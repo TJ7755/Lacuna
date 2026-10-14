@@ -278,4 +278,81 @@ describe('stale pairing status', () => {
     expect(relay.push).not.toHaveBeenCalled();
     expect(writeSyncStateMock).not.toHaveBeenCalled();
   });
+  it.each([undefined, { shareLinks: {} }])(
+    'refuses stale capabilities when no pairing remains',
+    async (current) => {
+      readSyncStateMock.mockResolvedValue(current);
+      const relay = provider();
+
+      await expect(syncCycle(options(relay))).rejects.toThrow('sync pairing changed');
+
+      expect(relay.pull).not.toHaveBeenCalled();
+      expect(relay.push).not.toHaveBeenCalled();
+      expect(manualMergeMock).not.toHaveBeenCalled();
+      expect(writeSyncStateMock).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['relay', 'token', 'key'] as const)(
+    'refuses obsolete %s capabilities for a stored pairing',
+    async (changed) => {
+      readSyncStateMock.mockResolvedValue({
+        channelId: CHANNEL_ID,
+        relayUrl: 'https://current-relay.example',
+        remembered: {
+          writeToken: 'current-token',
+          channelKeyHex: Array.from(CHANNEL_KEY, (byte) => byte.toString(16).padStart(2, '0')).join(
+            '',
+          ),
+        },
+      });
+      const relay = provider();
+      const capabilityOptions = {
+        ...options(relay),
+        relayUrl:
+          changed === 'relay' ? 'https://old-relay.example' : 'https://current-relay.example',
+        writeToken: changed === 'token' ? 'old-token' : 'current-token',
+        channelKey: changed === 'key' ? new Uint8Array(32) : CHANNEL_KEY,
+      };
+
+      await expect(syncCycle(capabilityOptions)).rejects.toThrow('sync pairing changed');
+
+      expect(relay.pull).not.toHaveBeenCalled();
+      expect(relay.push).not.toHaveBeenCalled();
+      expect(writeSyncStateMock).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['relay', 'token'] as const)(
+    'does not share an in-flight result with a different %s capability',
+    async (changed) => {
+      readSyncStateMock.mockResolvedValue({
+        channelId: CHANNEL_ID,
+        relayUrl: 'https://current-relay.example',
+      });
+      let releasePull!: (value: null) => void;
+      const relay = provider({
+        pull: vi.fn(
+          () =>
+            new Promise<null>((resolve) => {
+              releasePull = resolve;
+            }),
+        ),
+      });
+      const firstOptions = {
+        ...options(relay),
+        relayUrl: 'https://current-relay.example',
+        writeToken: 'current-token',
+      };
+      const first = syncCycle(firstOptions);
+      const second = syncCycle({
+        ...firstOptions,
+        relayUrl: changed === 'relay' ? 'https://different-relay.example' : firstOptions.relayUrl,
+        writeToken: changed === 'token' ? 'different-token' : firstOptions.writeToken,
+      });
+      const rejected = expect(second).rejects.toThrow('different channel');
+      await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledOnce());
+      releasePull(null);
+      await first;
+      await rejected;
+    },
+  );
 });

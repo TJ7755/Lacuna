@@ -127,7 +127,7 @@ function provider(overrides: Partial<RelayProvider> = {}): RelayProvider & {
 beforeEach(() => {
   __resetSyncFlightForTests();
   exportDatabaseMock.mockReset();
-  readSyncStateMock.mockReset().mockResolvedValue(undefined);
+  readSyncStateMock.mockReset().mockResolvedValue({ channelId: CHANNEL_ID });
   updateSyncStateMock.mockReset().mockImplementation(async (update) => {
     const current = await readSyncStateMock();
     const next = update(current);
