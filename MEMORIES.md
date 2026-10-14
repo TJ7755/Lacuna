@@ -345,4 +345,3 @@ Matching typed text must not skip confirmation; ordinary typed and maths checker
 Live queries can rehydrate a Question when unrelated observed rows change, including its own
 attempt receipt. Key asynchronous presentation ownership to the Question/session identity;
 using the hydrated object as an effect dependency can cancel and abandon the same attempt.
-
