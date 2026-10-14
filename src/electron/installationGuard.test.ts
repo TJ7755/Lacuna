@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -62,13 +62,13 @@ describe('Windows installation process guard', () => {
     const directory = await profileDirectory();
     const marker = path.join(directory, INSTALLATION_MARKER_FILENAME);
     await writeFile(marker, '4127', 'utf8');
+    // Pin the marker age instead of racing the clock: filesystem timestamp
+    // granularity can report a just-written marker as newer than Date.now(),
+    // which a one-millisecond margin beyond the window cannot survive.
+    const aged = new Date(Date.now() - (60 * 60 * 1_000 + 60_000));
+    await utimes(marker, aged, aged);
 
-    expect(
-      shouldExitForInstallation(directory, {
-        processIsRunning: () => true,
-        now: () => Date.now() + 60 * 60 * 1_000 + 1,
-      }),
-    ).toBe(false);
+    expect(shouldExitForInstallation(directory, { processIsRunning: () => true })).toBe(false);
     await expect(readFile(marker, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });
