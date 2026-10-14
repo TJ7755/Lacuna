@@ -197,13 +197,15 @@ A single, reusable export UI offering multiple output formats:
     restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
 
-An automatic sync retains the pairing identity with which it started. If unpairing or
+An automatic sync checks that its relay capabilities still match a stored pairing before
+starting transport, then retains that pairing identity. If unpairing or
 re-pairing changes it while network or encryption work is pending, the old cycle stops
 before admitting a delayed snapshot, applying its candidate or issuing its next push.
 The pre-apply check precedes import preprocessing; it does not cancel a replacement after that
 check has passed. Completion and failure metadata are written only while the same pairing still owns the
 atomic state update. This does not roll back a database replacement or relay push that
 has already committed.
+
 ### Automatic restore points & migration safety
 
 - Ordinary restore-point attempts are throttled for five minutes; a failed export or local

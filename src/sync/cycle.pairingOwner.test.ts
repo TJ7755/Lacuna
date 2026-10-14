@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile, SyncState } from '../db/types';
 import type * as DbPortability from '../db/portability';
+import type * as SyncManualMerge from './manualMerge';
 import { __resetSyncFlightForTests, syncCycle, type SyncCycleOptions } from './cycle';
 import { sealState } from './crypto';
 import { encodeSnapshot } from './snapshot';
@@ -33,7 +34,7 @@ vi.mock('../db/replacementLifecycle', () => ({
   },
 }));
 vi.mock('./manualMerge', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./manualMerge')>()),
+  ...(await importOriginal<typeof SyncManualMerge>()),
   manualMerge: manualMergeMock,
 }));
 
