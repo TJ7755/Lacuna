@@ -1,0 +1,1 @@
+- Failed automatic restore-point exports and writes no longer suppress an immediate retry; a newer successful backup retains its throttle.
