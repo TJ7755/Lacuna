@@ -1,0 +1,1 @@
+- Keep the Windows installed-upgrade probe on the locally built release now that a newer GitHub release exists, and dismiss the update dialog whenever it appears.

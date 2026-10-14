@@ -42,6 +42,14 @@ async function install(installer) {
   assert.equal(code, 0);
 }
 
+// The baseline's startup update check must reach this build, not the newest
+// GitHub release, or the probe would install the published release instead.
+async function pointInstalledUpdaterAtFeed() {
+  const file = path.join(directory, 'resources', 'app-update.yml');
+  const cache = (await readFile(file, 'utf8')).match(/^updaterCacheDirName:.*$/m)?.[0];
+  await writeFile(file, ['provider: generic', `url: ${feed}`, cache].filter(Boolean).join('\n') + '\n');
+}
+
 async function open(expectedVersion) {
   application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
@@ -54,6 +62,11 @@ async function open(expectedVersion) {
     }, feed);
   }
   const page = await application.firstWindow();
+  // The startup check can finish downloading at any point and raise this
+  // modal over whatever the probe is clicking.
+  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Update ready' }), async dialog => {
+    await dialog.getByRole('button', { name: 'Later' }).click();
+  });
   const start = page.getByRole('region', { name: 'Revision around your exam', exact: true }).getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
   await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
@@ -83,12 +96,12 @@ async function snapshot(page) {
 
 try {
   await install(baseline);
+  await pointInstalledUpdaterAtFeed();
   let page = await open('0.2.12');
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
   await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
     { timeout: 180_000 }).toBe('downloaded');
   assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
-  await page.getByRole('dialog', { name: 'Update ready' }).getByRole('button', { name: 'Later' }).click();
   await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
   await page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Welcome to Lacuna' }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
