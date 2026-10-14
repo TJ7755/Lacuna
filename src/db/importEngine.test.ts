@@ -68,6 +68,12 @@ describe('detectFormat', () => {
     expect(detectFormat(input).format).toBe('csv');
   });
 
+  it('detects CSV near the input limit without spreading every row as an argument', () => {
+    const input = 'q,\n'.repeat(166_666);
+    expect(input.length).toBeLessThan(500_000);
+    expect(detectFormat(input)).toEqual({ format: 'csv', confidence: 0.75 });
+  });
+
   it('detects Q:/A: plain text', () => {
     const input = 'Q: What is 2+2?\nA: 4\nQ: Capital of France?\nA: Paris';
     expect(detectFormat(input).format).toBe('plain-text');

@@ -1,0 +1,1 @@
+- Prevent CSV format detection from crashing on permitted inputs with many short rows and remove redundant column splitting.

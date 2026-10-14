@@ -11,7 +11,8 @@ app:
 - **Auto-detection** (`detectFormat`): examines input text and returns a
   `FormatDetection` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
-  is bounded by the import interface's 500,000-character input limit.
+  is bounded by the import interface's 500,000-character input limit. CSV detection
+  handles inputs with many short rows without exceeding the JavaScript argument limit.
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.

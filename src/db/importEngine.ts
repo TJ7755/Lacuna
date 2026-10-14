@@ -141,14 +141,10 @@ export function detectFormat(input: string): FormatDetection {
     return { format: 'plain-text', confidence: 0.8 };
   }
 
-  // CSV: most non-blank lines contain commas in a consistent column count.
+  // CSV: most non-blank lines contain commas, so each has at least two columns.
   const commaLines = nonBlankLines.filter((l) => l.includes(','));
   if (commaLines.length >= 1 && commaLines.length >= nonBlankLines.length * 0.5) {
-    const counts = commaLines.map((l) => l.split(',').length);
-    const maxCount = Math.max(...counts);
-    if (maxCount >= 2) {
-      return { format: 'csv', confidence: 0.75 };
-    }
+    return { format: 'csv', confidence: 0.75 };
   }
 
   if (qaLines.length >= 2) {
