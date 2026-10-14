@@ -70,6 +70,10 @@ for (const width of [320, 390, 768, 1063, 1440]) {
         expect((await bounds(cancel)).height).toBeLessThanOrEqual(64);
         if (mode === 'touch') expect((await bounds(actions)).height).toBeLessThan(200);
 
+        // From lg the actions sit in a sticky column, whose page offset follows the scroll
+        // position, so compare both measurements from the top of the page.
+        const scrollToTop = () => page.locator('main').evaluate((main) => main.scrollTo(0, 0));
+        await scrollToTop();
         const before = {
           repeat: await bounds(repeat),
           add: await bounds(add),
@@ -82,7 +86,7 @@ for (const width of [320, 390, 768, 1063, 1440]) {
           await front.fill(`Question ${entry + 1}`);
           await back.fill(`Answer ${entry + 1}`);
         }
-        await actions.scrollIntoViewIfNeeded();
+        await scrollToTop();
         // Compare settled targets rather than the shared Button's deliberate hover scale.
         await page.mouse.move(0, 0);
         await expect
