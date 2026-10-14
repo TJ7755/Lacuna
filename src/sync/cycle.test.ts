@@ -102,7 +102,9 @@ function options(
 
 async function remoteBlob(snapshot: BackupFile, generation = '"generation-1"') {
   return {
-    bytes: await sealState(CHANNEL_KEY, encodeSnapshot(snapshot), { channelId: CHANNEL_ID }),
+    bytes: await sealState(CHANNEL_KEY, (await encodeSnapshot(snapshot)).payload, {
+      channelId: CHANNEL_ID,
+    }),
     generation,
   };
 }
@@ -167,7 +169,7 @@ describe('syncCycle', () => {
     expect(relay.push).toHaveBeenCalledWith('state', expect.any(Uint8Array), EMPTY_GENERATION);
     const pushedBytes = relay.push.mock.calls[0]![1] as Uint8Array;
     const opened = await openState(CHANNEL_KEY, pushedBytes, { channelId: CHANNEL_ID });
-    expect(decodeSnapshot(opened)).toEqual(local);
+    expect(await decodeSnapshot(opened)).toEqual(local);
     expect(result).toMatchObject({
       attempts: 1,
       pulled: false,

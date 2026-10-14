@@ -52,7 +52,7 @@ export interface SyncResult {
   pushed: boolean;
   /** Encrypted state size, including the AES-GCM envelope. */
   snapshotBytes: number;
-  /** JSON size before encryption, useful when explaining a size failure. */
+  /** Uncompressed JSON size, useful when explaining a size failure. */
   snapshotPlaintextBytes: number;
   generation: string;
   mergeSummary: ManualMergeSummary | null;
@@ -179,11 +179,11 @@ async function executeAttempt(
         // for measurement only: importBackup normalises the candidate in
         // place after this hook returns, so the push payload is sealed again
         // below from the state that was actually applied.
-        const plaintext = encodeSnapshot(candidate);
-        const bytes = await sealState(options.channelKey, plaintext, {
+        const encoded = await encodeSnapshot(candidate);
+        const bytes = await sealState(options.channelKey, encoded.payload, {
           channelId: options.channelId,
         });
-        assertSnapshotSize(candidate, bytes.byteLength, plaintext.byteLength);
+        assertSnapshotSize(candidate, bytes.byteLength, encoded.jsonBytes);
         await assertCurrentPairing(owner);
       },
     });
@@ -217,9 +217,11 @@ async function prepareSnapshot(
   snapshot: BackupFile,
   options: SyncCycleOptions,
 ): Promise<PreparedSnapshot> {
-  const plaintext = encodeSnapshot(snapshot);
-  const bytes = await sealState(options.channelKey, plaintext, { channelId: options.channelId });
-  const size = assertSnapshotSize(snapshot, bytes.byteLength, plaintext.byteLength);
+  const encoded = await encodeSnapshot(snapshot);
+  const bytes = await sealState(options.channelKey, encoded.payload, {
+    channelId: options.channelId,
+  });
+  const size = assertSnapshotSize(snapshot, bytes.byteLength, encoded.jsonBytes);
   return { bytes, size };
 }
 
@@ -230,7 +232,7 @@ async function openRemoteSnapshot(
   const plaintext = await openState(options.channelKey, remote.bytes, {
     channelId: options.channelId,
   });
-  return decodeSnapshot(plaintext);
+  return await decodeSnapshot(plaintext);
 }
 
 function resultFor(

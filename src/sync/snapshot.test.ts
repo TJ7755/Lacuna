@@ -19,6 +19,7 @@ import {
   snapshotsEquivalent,
   SyncPayloadError,
   SyncSnapshotTooLargeError,
+  SYNC_PLATFORM_BODY_LIMIT_BYTES,
 } from './snapshot';
 
 function backup(overrides: Partial<BackupFile> = {}): BackupFile {
@@ -35,27 +36,52 @@ function backup(overrides: Partial<BackupFile> = {}): BackupFile {
 }
 
 describe('snapshot wire helpers', () => {
-  it('round-trips a valid backup through UTF-8 JSON', () => {
+  it('round-trips a valid backup through compressed UTF-8 JSON', async () => {
     const value = backup({ exportedAt: 42 });
 
-    expect(decodeSnapshot(encodeSnapshot(value))).toEqual(value);
+    expect(await decodeSnapshot((await encodeSnapshot(value)).payload)).toEqual(value);
   });
 
-  it('rejects malformed, undecodable, and non-Lacuna payloads', () => {
-    expect(() => decodeSnapshot(new TextEncoder().encode('{'))).toThrow(SyncPayloadError);
-    expect(() => decodeSnapshot(new Uint8Array([0xff]))).toThrow(SyncPayloadError);
-    expect(() =>
+  it('compresses a library past the platform limit to well under it', async () => {
+    const cards = Array.from({ length: 25_000 }, (_, index) => ({
+      id: `card-${index}`,
+      schedulingUnitId: 'unit-1',
+      front: `What is the oxidation state of element ${index % 90} in its common oxide?`,
+      back: `It is usually +${index % 7}, because of its outer-shell configuration.`,
+    })) as unknown as Card[];
+    const encoded = await encodeSnapshot(backup({ cards }));
+
+    expect(encoded.jsonBytes).toBeGreaterThan(4_400_000);
+    expect(encoded.payload.byteLength * 5).toBeLessThan(encoded.jsonBytes);
+    expect(encoded.payload.byteLength).toBeLessThan(SYNC_PLATFORM_BODY_LIMIT_BYTES);
+  });
+
+  it('still reads uncompressed snapshots written by earlier versions', async () => {
+    const value = backup({ exportedAt: 7 });
+
+    expect(await decodeSnapshot(new TextEncoder().encode(JSON.stringify(value)))).toEqual(value);
+  });
+
+  it('rejects malformed, undecodable, and non-Lacuna payloads', async () => {
+    await expect(decodeSnapshot(new TextEncoder().encode('{'))).rejects.toThrow(SyncPayloadError);
+    await expect(decodeSnapshot(new Uint8Array([0xff]))).rejects.toThrow(SyncPayloadError);
+    await expect(decodeSnapshot(new Uint8Array([0x1f, 0x8b, 0x00]))).rejects.toThrow(
+      SyncPayloadError,
+    );
+    await expect(
       decodeSnapshot(new TextEncoder().encode(JSON.stringify({ app: 'other' }))),
-    ).toThrow(SyncPayloadError);
+    ).rejects.toThrow(SyncPayloadError);
   });
 
-  it('rejects pre-v22 backups with the compatibility message', () => {
+  it('rejects pre-v22 backups with the compatibility message', async () => {
     const preV22 = backup({
       version: 21,
       decks: [{ id: 'deck-1', name: 'Legacy deck' }],
     } as unknown as Partial<BackupFile>);
 
-    expect(() => decodeSnapshot(encodeSnapshot(preV22))).toThrow(PRE_V22_BACKUP_MESSAGE);
+    await expect(decodeSnapshot((await encodeSnapshot(preV22)).payload)).rejects.toThrow(
+      PRE_V22_BACKUP_MESSAGE,
+    );
   });
 
   it('treats export time, object order, array order, and absent optional tables as non-state', () => {

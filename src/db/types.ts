@@ -1188,7 +1188,7 @@ export interface SyncState {
   lastSuccessfulSyncAt?: number;
   /** Last encrypted snapshot size, retained for the Settings sync status panel. */
   lastSnapshotBytes?: number;
-  /** Last JSON snapshot size before encryption. */
+  /** Last uncompressed JSON snapshot size. */
   lastSnapshotPlaintextBytes?: number;
   lastError?: string | null;
 }
