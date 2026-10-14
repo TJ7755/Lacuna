@@ -1,0 +1,1 @@
+- Sequence undo restores the captured canonical review history, clearing later reviews even when the snapshot has no events, so restored scheduling state and analytics agree.

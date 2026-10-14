@@ -8,12 +8,14 @@ import {
   createSequence,
   deleteSequence,
   listSequences,
+  recordReview,
   restoreSequence,
   snapshotSequence,
   updateSequence,
 } from './repository';
 import type { FsrsCardState, Sequence, SequenceItem } from './types';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 async function reset() {
   await Promise.all([
@@ -25,6 +27,7 @@ async function reset() {
     db.sessionHistory.clear(),
     db.sequences.clear(),
     db.concepts.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
@@ -315,6 +318,43 @@ describe('listSequences', () => {
 
 describe('snapshotSequence / restoreSequence', () => {
   beforeEach(reset);
+
+  it.each([false, true])(
+    'replaces later canonical reviews when restoring a snapshot (reviewed: %s)',
+    async (reviewed) => {
+      const course = await createCourse('Sequence history boundary');
+      const sequence = await createSequence(course.id, null, 'Halogens', items('F'));
+      const [card] = await cardsForSequence(sequence);
+      const review = (eventId: string) =>
+        recordReview({
+          card,
+          eventId,
+          sessionId: 'sequence-history-boundary',
+          sessionKind: 'lesson',
+          deck: course,
+          kind: 'course',
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          correct: true,
+        });
+      if (reviewed) await review('sequence-before-snapshot');
+      const snapshot = await snapshotSequence(sequence.id);
+      await review('sequence-after-snapshot');
+
+      await restoreSequence(snapshot!);
+
+      const restored = (await db.cards.get(card.id))!;
+      const [hydrated] = await hydrateCardsWithHistory([restored]);
+      expect(await db.reviewHistory.where('cardId').equals(card.id).toArray()).toEqual(
+        snapshot!.reviewHistory,
+      );
+      expect(hydrated.history.map((entry) => entry.eventId)).toEqual(
+        reviewed ? ['sequence-before-snapshot'] : [],
+      );
+      expect(restored.reps).toBe(snapshot!.cards[0].reps);
+    },
+  );
 
   it('round-trips the sequence and its cards, preserving FSRS state', async () => {
     const course = await createCourse('Chemistry');
