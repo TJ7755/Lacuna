@@ -493,6 +493,28 @@ describe('CardList', () => {
     );
   });
 
+  it('reports a rejected row deletion without an unhandled rejection or success toast', async () => {
+    const { deleteCards } = await import('../../db/cardRepository');
+    vi.mocked(deleteCards).mockRejectedValueOnce(new Error('This published course is locked.'));
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      render(<CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />);
+      fireEvent.click(screen.getByTitle('Delete card'));
+
+      await waitFor(() =>
+        expect(mockNotify).toHaveBeenCalledWith('Could not delete the card.', 'negative'),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(mockNotify).not.toHaveBeenCalledWith(
+        'Card deleted.', 'neutral', expect.anything(),
+      );
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
+
   it('reports a failed bulk delete, keeps select mode and raises no unhandled rejection', async () => {
     const { deleteCards } = await import('../../db/cardRepository');
     vi.mocked(deleteCards).mockRejectedValueOnce(new Error('write failed'));
