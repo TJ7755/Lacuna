@@ -149,7 +149,8 @@ A single, reusable export UI offering multiple output formats:
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Authored sets are scanned by backup export, sync accounting and
-  orphan-media collection. Older backups are normalised through the pure v24 converter;
+  orphan-media collection, which spares media stored in the last 24 hours so an upload whose
+  Card, Note or Question is not yet saved survives a sweep. Older backups are normalised through the pure v24 converter;
   legacy `courseExamDates` remains an import-only compatibility field.
 - **Record validation:** JSON files and direct imports share a Zod schema for every
   represented collection and its nested records. Invalid fields report the collection,
@@ -372,7 +373,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   card id once a lineage is present, so cards are the one entity type with nothing added.
   All three are populated only when `li` is present.
 - **Student side — `Course.distributedCopy?: CourseDistributedCopy`
-  (`{ lineageId, revision, locked, autoAcceptUpdates, sourceLabel? }`).** Set on first
+  (`{ lineageId, revision, locked, autoAcceptUpdates, sourceLabel?, source? }`).** Set on first
   import of a published course (`importLineageFirstTime`, `src/db/mergeImport.ts`), which
   diverges from the ordinary import path in exactly one way: every lesson/note/card
   **adopts its incoming originating id directly as its local id** instead of remapping
@@ -431,6 +432,10 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      card's lesson membership counts as content, so a teacher moving one to another lesson
      is an update; a card move goes through `assignCardsToLesson` so its backing deck
      follows.
+  5b. **Course details.** The teacher's course name, description and unlock mode are
+     applied directly (never queued), except a detail the learner has changed since the
+     last import: `distributedCopy.source` records the teacher's values as last imported,
+     and a local value that no longer matches it is kept.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
      learner-owned scheduling preferences, including **Learn first**, are preserved.
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content

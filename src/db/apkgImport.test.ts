@@ -396,10 +396,11 @@ describe('parseApkg zip bomb guards', () => {
     const unzipSync = vi.mocked(fflate.unzipSync);
     unzipSync.mockClear();
     // 10 × 11 MiB zeros compress to a few kilobytes but declare 110 MiB uncompressed.
+    // Building the archive takes seconds, so use the fastest level and a longer timeout.
     const chunk = new Uint8Array(11 * 1024 * 1024);
     const entries: Record<string, Uint8Array> = {};
     for (let i = 0; i < 10; i++) entries[`bomb-${i}.bin`] = chunk;
-    const zipped = fflate.zipSync(entries, { level: 9 });
+    const zipped = fflate.zipSync(entries, { level: 1 });
     expect(zipped.length).toBeLessThan(MAX_APKG_SIZE_BYTES);
     const buf = zipped.buffer.slice(
       zipped.byteOffset,
@@ -409,7 +410,7 @@ describe('parseApkg zip bomb guards', () => {
     await expect(parseApkgBuffer(buf)).rejects.toThrow(/uncompressed size too large/);
     // Central-directory check should reject before any entry is inflated.
     expect(unzipSync).not.toHaveBeenCalled();
-  });
+  }, 20_000);
 
   it('rejects mismatched EOCD entry counts before inflating', async () => {
     const zipped = fflate.zipSync({ placeholder: new Uint8Array() });

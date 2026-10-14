@@ -26,12 +26,14 @@ has **no short-term memory model** of its own. Lacuna composes the benchmark-sel
 conservatively retreated — no-regression gate passes only against the fractional-day FSRS-6 the
 runtime uses) with FSRS-6 for assessment revision (§10); FSRS still owns every
 real long-term state transition. Invalid model data falls back explicitly to ordinary Practice and
-the UI makes no short-horizon confidence claim in fallback.
+the UI makes no short-horizon confidence claim in fallback. A single card the model cannot score
+(for example, exposed but never reviewed) does not demote the pool: scorable cards are still
+ranked, and unscorable ones are served in objective order once no ranked card is selected.
 
 **Primed answers.** An answer recorded within 10 minutes of an earlier answer to the same card in
 the same session is stored with `primed: true` (`src/fsrs/primedReview.ts`). It still updates FSRS
 as normal. A card whose every answer after its first is primed has not cleared a spaced retest, so
-the short-term predictor treats it as unsupported and takes the same fallback until it does.
+the short-term predictor treats it as unsupported and is served by the same fallback until it does.
 Legacy history without the flag counts as unprimed.
 
 

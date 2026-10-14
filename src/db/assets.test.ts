@@ -5,6 +5,7 @@ import {
   assetUrl,
   backupAssetToMediaAsset,
   blobToArrayBuffer,
+  ASSET_GC_GRACE_MS,
   collectOrphanedAssets,
   extractMarkdownAssets,
   referencedAssetHashes,
@@ -19,6 +20,9 @@ import {
 import { compressImageBlob } from '../utils/compressImage';
 import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
+
+/** A sweep after the grace period, so fresh test assets are eligible for collection. */
+const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
 
 vi.mock('../utils/compressImage', () => ({
   compressImageBlob: vi.fn(async (blob: Blob) => ({ blob, width: 0, height: 0 })),
@@ -267,7 +271,7 @@ describe('image assets', () => {
     const kept = await storeImageBlob(new Blob(['kept'], { type: 'image/png' }), 'image/png', 1, 1);
     await createCard(course.id, 'front_back', `![kept](${assetUrl(kept.hash)})`, 'answer');
 
-    expect(await collectOrphanedAssets()).toBe(1);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(1);
     expect(await db.assets.get(orphan.hash)).toBeUndefined();
     expect(await db.assets.get(kept.hash)).toBeDefined();
   });
@@ -288,7 +292,7 @@ describe('image assets', () => {
       value: { content: { questions: [{ prompt: embed(draft.hash) }] } },
     } as never);
 
-    expect(await collectOrphanedAssets()).toBe(1);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(1);
     expect(await db.assets.get(orphan.hash)).toBeUndefined();
     for (const kept of [question, attempt, set, draft])
       expect(await db.assets.get(kept.hash)).toBeDefined();
@@ -296,8 +300,9 @@ describe('image assets', () => {
 
   it('runs one deferred orphan sweep after rapid rescheduling', async () => {
     const orphan = await storeImageBlob(new Blob(['deferred']), 'image/png', 1, 1);
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
+      vi.setSystemTime(afterGrace());
       scheduleAssetGc(100);
       await vi.advanceTimersByTimeAsync(50);
       scheduleAssetGc(100);
