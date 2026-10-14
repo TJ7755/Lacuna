@@ -475,6 +475,36 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.courses.bulkPut(mergedCourses);
       }
 
+      const assessmentIdRemap = new Map<string, string>();
+      if (courseAssessments.length > 0) {
+        const localAssessments = await db.courseAssessments.toArray();
+        const existingCourseAssessments = new Map(
+          localAssessments.map((assessment) => [assessment.id, assessment]),
+        );
+        const existingFinalsByCourse = new Map(
+          localAssessments
+            .filter((assessment) => assessment.kind === 'final')
+            .map((assessment) => [assessment.courseId, assessment]),
+        );
+        const mergedCourseAssessments: CourseAssessment[] = [];
+        for (const incoming of courseAssessments) {
+          const existing =
+            incoming.kind === 'final'
+              ? existingFinalsByCourse.get(incoming.courseId)
+              : existingCourseAssessments.get(incoming.id);
+          if (!existing) {
+            mergedCourseAssessments.push(incoming);
+          } else {
+            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
+            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
+            mergedCourseAssessments.push(
+              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
+            );
+          }
+        }
+        await db.courseAssessments.bulkPut(mergedCourseAssessments);
+      }
+
       const localQuestionState = {
         concepts: await db.concepts.toArray(),
         questions: await db.questions.toArray(),
@@ -509,7 +539,12 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       }
       const mergedQuestionSets = mergeQuestionSetRecords(
         await db.questionSets.toArray(),
-        incomingQuestionSets,
+        // Final Assessments merge by Course identity while retaining the local id.
+        // Keep authored set assignments pointing at that retained Assessment too.
+        incomingQuestionSets.map((record) => ({
+          ...record,
+          assessmentIds: [...new Set(record.assessmentIds.map((id) => assessmentIdRemap.get(id) ?? id))],
+        })),
         // Recovery merge deliberately restores rows and does not apply deletion receipts.
         // Peer merge applies them in mergeSnapshots instead.
         [],
@@ -648,36 +683,6 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           return incoming.updatedAt > existing.updatedAt ? incoming : existing;
         });
         await db.practiceMilestones.bulkPut(mergedMilestones);
-      }
-
-      const assessmentIdRemap = new Map<string, string>();
-      if (courseAssessments.length > 0) {
-        const localAssessments = await db.courseAssessments.toArray();
-        const existingCourseAssessments = new Map(
-          localAssessments.map((assessment) => [assessment.id, assessment]),
-        );
-        const existingFinalsByCourse = new Map(
-          localAssessments
-            .filter((assessment) => assessment.kind === 'final')
-            .map((assessment) => [assessment.courseId, assessment]),
-        );
-        const mergedCourseAssessments: CourseAssessment[] = [];
-        for (const incoming of courseAssessments) {
-          const existing =
-            incoming.kind === 'final'
-              ? existingFinalsByCourse.get(incoming.courseId)
-              : existingCourseAssessments.get(incoming.id);
-          if (!existing) {
-            mergedCourseAssessments.push(incoming);
-          } else {
-            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
-            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
-            mergedCourseAssessments.push(
-              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
-            );
-          }
-        }
-        await db.courseAssessments.bulkPut(mergedCourseAssessments);
       }
 
       if (backup.sequences && backup.sequences.length > 0) {

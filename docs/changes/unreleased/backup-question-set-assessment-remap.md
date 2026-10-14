@@ -1,0 +1,1 @@
+- Adding a backup now keeps Question Sets assigned to the retained local final Assessment when the backup uses a different Assessment id, so recovered sets remain usable and restorable.
