@@ -20,12 +20,14 @@ export {
 const MAX_RESTORE_POINTS = 10;
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-let lastBackup: { at: number } | null = null;
+let lastSuccessfulBackupAt: number | null = null;
+const pendingBackups = new Set<{ at: number }>();
 const MIN_BACKUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 /** Reset the backup throttle so tests can call `takeAutoBackup` repeatedly. */
 export function __resetBackupThrottleForTests(): void {
-  lastBackup = null;
+  lastSuccessfulBackupAt = null;
+  pendingBackups.clear();
 }
 
 /** Capture a full snapshot as a restore point, prune to the cap, and mirror if configured.
@@ -34,11 +36,14 @@ export function __resetBackupThrottleForTests(): void {
  *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
 export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
   const now = Date.now();
-  if (!force && lastBackup && now - lastBackup.at < MIN_BACKUP_INTERVAL) return;
-  const previousBackup = lastBackup;
+  if (!force) {
+    if (lastSuccessfulBackupAt !== null && now - lastSuccessfulBackupAt < MIN_BACKUP_INTERVAL) return;
+    for (const pending of pendingBackups) {
+      if (now - pending.at < MIN_BACKUP_INTERVAL) return;
+    }
+  }
   const reservation = { at: now };
-  lastBackup = reservation;
-
+  pendingBackups.add(reservation);
   let payload: BackupFile;
   try {
     payload = await exportDatabase();
@@ -49,11 +54,12 @@ export async function takeAutoBackup(force = false): Promise<BackupFile | undefi
       payload,
     };
     await db.backups.add(snapshot);
-  } catch (error) {
-    // A failed attempt made no restore point. Release its reservation without
-    // undoing the throttle of a newer forced backup that completed meanwhile.
-    if (lastBackup === reservation) lastBackup = previousBackup;
-    throw error;
+    // An older in-flight success must not replace the time of a newer success.
+    lastSuccessfulBackupAt = Math.max(lastSuccessfulBackupAt ?? -Infinity, reservation.at);
+  } finally {
+    // Failed attempts release only their own reservation. The remaining pending
+    // work and the last successful restore point retain their independent throttles.
+    pendingBackups.delete(reservation);
   }
   // Keep only the most recent restore points. Pre-migration snapshots are exempt:
   // they are the safety net for a botched upgrade and must not be pruned away.
