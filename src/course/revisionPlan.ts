@@ -262,6 +262,7 @@ function reconcileWindows(
   now: number,
 ): RevisionPlanWindow[] {
   const retained = plan.windows.filter((window) => window.status !== 'scheduled');
+  const retainedDays = new Set(retained.map((window) => window.day));
   const currentScheduled = new Map(
     plan.windows
       .filter((window) => window.status === 'scheduled')
@@ -271,18 +272,20 @@ function reconcileWindows(
     plan.windows.find((window) => window.status === 'scheduled')?.budgetMinutes ??
     plan.windows[plan.windows.length - 1]?.budgetMinutes ??
     1;
-  const scheduled = revisionPlanDays(now, input.deadlineAt, input.timeZone).map((day) => {
-    const existing = currentScheduled.get(day);
-    return (
-      existing ?? {
-        id: `${plan.id}:${day}`,
-        day,
-        budgetMinutes: inheritedBudget,
-        status: 'scheduled' as const,
-        planRevision: plan.revision + 1,
-      }
-    );
-  });
+  const scheduled = revisionPlanDays(now, input.deadlineAt, input.timeZone)
+    .filter((day) => !retainedDays.has(day))
+    .map((day) => {
+      const existing = currentScheduled.get(day);
+      return (
+        existing ?? {
+          id: `${plan.id}:${day}`,
+          day,
+          budgetMinutes: inheritedBudget,
+          status: 'scheduled' as const,
+          planRevision: plan.revision + 1,
+        }
+      );
+    });
   return [...retained, ...scheduled].sort(
     (left, right) => left.day.localeCompare(right.day) || left.id.localeCompare(right.id),
   );
