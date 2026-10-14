@@ -329,7 +329,8 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   review histories with the captured events, including an explicitly empty history.
 - **Diagram upload** (`src/db/occlusionImage.ts`) uses its own 2560px longest-edge ceiling
   rather than `compressImage.ts`'s 1280px default, so small printed labels survive
-  compression legibly. Otherwise identical to the ordinary image path.
+  compression legibly. Otherwise identical to the ordinary image path. PNG, WebP and GIF
+  uploads are encoded as PNG to preserve transparency; JPEG uploads retain JPEG compression.
 - **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
   ordinary reveal and grade row. Hidden labels use opaque neutral masks; the active label
   uses an opaque accent-soft fill and a contrasting Fraunces question mark. Revealed labels retain

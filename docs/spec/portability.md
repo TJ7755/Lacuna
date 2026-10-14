@@ -11,7 +11,8 @@ app:
 - **Auto-detection** (`detectFormat`): examines input text and returns a
   `FormatDetection` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
-  is bounded by the import interface's 500,000-character input limit.
+  is bounded by the import interface's 500,000-character input limit. CSV detection
+  handles inputs with many short rows without exceeding the JavaScript argument limit.
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
@@ -39,6 +40,9 @@ app:
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
+    Whitespace-only content is skipped; populated aliases may follow blank fields.
+    Arbitrary-key fallback applies only when recognised content keys are absent, so
+    metadata cannot replace a blank question or answer. Authored whitespace is retained.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
     leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
     precedence over commas within answers during format detection. Prefixed answers retain
