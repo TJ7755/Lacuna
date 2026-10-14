@@ -40,6 +40,9 @@ app:
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
+    Whitespace-only content is skipped; populated aliases may follow blank fields.
+    Arbitrary-key fallback applies only when recognised content keys are absent, so
+    metadata cannot replace a blank question or answer. Authored whitespace is retained.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
     leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
     precedence over commas within answers during format detection. Prefixed answers retain

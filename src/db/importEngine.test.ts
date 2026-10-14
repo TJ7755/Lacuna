@@ -174,6 +174,34 @@ Paris`;
 // ---------------------------------------------------------------------------
 
 describe('parseJsonImport', () => {
+  it('skips whitespace-only questions and answers, including arbitrary JSON fields', () => {
+    const input = JSON.stringify([
+      { front: ' \t\n', back: 'Answer' },
+      { front: 'Question', back: ' \t\n' },
+      { de: ' \t\n', en: 'Answer' },
+      { de: 'Question', en: ' \t\n' },
+      { front: ' ', back: ' ', tags: 'metadata', type: 'front_back' },
+      { front: 'Valid question', back: 'Valid answer' },
+    ]);
+    expect(parseJsonImport(input)).toEqual({
+      cards: [{ type: 'front_back', front: 'Valid question', back: 'Valid answer' }],
+      skipped: 5,
+    });
+  });
+
+  it('uses populated aliases after blank fields while preserving authored whitespace', () => {
+    expect(parseJsonImport(JSON.stringify([
+      { front: '  ', question: '  Question\ncontinued  ', back: '\t', answer: '  Answer  ' },
+      { front: '  {{c1::Answer}}  ', back: '' },
+    ]))).toEqual({
+      cards: [
+        { type: 'front_back', front: '  Question\ncontinued  ', back: '  Answer  ' },
+        { type: 'cloze', front: '  {{c1::Answer}}  ', back: '' },
+      ],
+      skipped: 0,
+    });
+  });
+
   it('parses a JSON array of objects', () => {
     const input = JSON.stringify([
       { front: 'Q1', back: 'A1' },
