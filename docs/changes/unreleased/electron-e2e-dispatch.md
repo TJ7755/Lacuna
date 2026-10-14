@@ -1,0 +1,1 @@
+- A manually dispatched `Electron e2e` workflow runs the Electron AI specs on Windows and macOS and the packaged macOS smoke gate on the branch or tag it is dispatched on, covering branches that CI does not test
