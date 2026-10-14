@@ -1,0 +1,1 @@
+- Preserve transparency when uploading WebP and GIF images into cards, Question Sets and occlusion diagrams instead of flattening them into JPEG.

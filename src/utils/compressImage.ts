@@ -66,8 +66,9 @@ export async function compressImageBlob(
   if (!ctx) throw new Error('Could not process the image.');
   ctx.drawImage(bitmap, 0, 0, width, height);
 
-  const isPng = blob.type === 'image/png';
-  const mimeType = isPng ? 'image/png' : 'image/jpeg';
+  // JPEG discards alpha; other supported transparent raster formats need PNG too.
+  const preservesTransparency = ['image/png', 'image/webp', 'image/gif'].includes(blob.type);
+  const mimeType = preservesTransparency ? 'image/png' : 'image/jpeg';
   const compressed = await canvasToBlob(canvas, mimeType);
   return { blob: compressed, width, height };
 }

@@ -34,9 +34,10 @@ describe('compressImageBlob', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
       this: HTMLCanvasElement,
       callback: BlobCallback,
+      mimeType?: string,
     ) {
       canvasDims = { width: this.width, height: this.height };
-      callback(new Blob(['x'], { type: 'image/jpeg' }));
+      callback(new Blob(['x'], { type: mimeType }));
     });
   });
 
@@ -65,6 +66,24 @@ describe('compressImageBlob', () => {
     const result = await compressImageBlob(new Blob(['x'], { type: 'image/png' }));
     expect(result.width).toBe(800);
     expect(result.height).toBe(600);
+  });
+
+  it.each(['image/png', 'image/webp', 'image/gif'])(
+    'uses a transparency-preserving encoding for %s uploads',
+    async (mimeType) => {
+      setSourceDimensions(800, 600);
+      const result = await compressImageBlob(new Blob(['x'], { type: mimeType }));
+      expect(HTMLCanvasElement.prototype.toBlob).toHaveBeenCalledWith(
+        expect.any(Function), 'image/png', 0.8,
+      );
+      expect(result.blob.type).toBe('image/png');
+    },
+  );
+
+  it('retains JPEG compression for opaque JPEG uploads', async () => {
+    setSourceDimensions(800, 600);
+    const result = await compressImageBlob(new Blob(['x'], { type: 'image/jpeg' }));
+    expect(result.blob.type).toBe('image/jpeg');
   });
 
   it.each([
