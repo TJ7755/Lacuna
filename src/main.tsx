@@ -1,9 +1,11 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
+import {
+  installSimpleAnalytics,
+  registerProductionServiceWorker,
+  shouldHydrateLanding,
+} from './webBootstrap';
 import { renderApp } from './appRoot';
-// Flags only: the landing decision below never pulls the database into the initial graph.
-import { SEED_FLAG_KEY } from './db/seedFlags';
 
 
 installStaleChunkRecovery();
@@ -26,21 +28,6 @@ async function clearDevelopmentPwaState(): Promise<void> {
   } catch {
     // Cache cleanup is best-effort; a browser policy must not prevent development startup.
   }
-}
-
-/** First-visit browsers hydrate the prerendered landing page; the packaged app,
- * in-app hash routes and returning browsers boot the study app directly. */
-function shouldHydrateLanding(): boolean {
-  if (window.electronAPI?.isElectron) return false;
-  if (window.location.hash.length > 1) return false;
-  try {
-    // A previous start seeded the example course, so this browser already knows
-    // the app: skip the marketing flash and go straight to the dashboard.
-    if (localStorage.getItem(SEED_FLAG_KEY)) return false;
-  } catch {
-    // Storage may be unavailable; fall through to the prerender check.
-  }
-  return !!document.getElementById('root')?.querySelector('.landing-page');
 }
 
 function start(): void {

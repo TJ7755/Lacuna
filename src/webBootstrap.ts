@@ -1,3 +1,5 @@
+import { SEED_FLAG_KEY } from './db/seedFlags';
+
 function isHostedWebProtocol(protocol: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
 }
@@ -33,6 +35,40 @@ export async function registerProductionServiceWorker(
   }
 }
 
+
+export interface LandingHydrationOptions {
+  hash?: string;
+  isElectron?: boolean;
+  seedFlagPresent?: boolean;
+  landingMarkupPresent?: boolean;
+}
+
+function readSeedFlag(): boolean {
+  try {
+    return localStorage.getItem(SEED_FLAG_KEY) !== null;
+  } catch {
+    // Storage may be unavailable; fall through to the prerender check.
+    return false;
+  }
+}
+
+/** First-visit browsers hydrate the prerendered landing page; the packaged app,
+ * in-app hash routes and returning browsers boot the study app directly. */
+export function shouldHydrateLanding({
+  hash = window.location.hash,
+  isElectron = window.electronAPI?.isElectron === true,
+  seedFlagPresent = readSeedFlag(),
+  landingMarkupPresent = !!document.getElementById('root')?.querySelector('.landing-page'),
+}: LandingHydrationOptions = {}): boolean {
+  if (isElectron) return false;
+  // In-page anchors (for example #landing-product) stay on the landing page.
+  // Anything addressing the study app through its hash routes boots the full app.
+  if (hash.startsWith('#/')) return false;
+  // A previous start seeded the example course, so this browser already knows
+  // the app: skip the marketing flash and go straight to the dashboard.
+  if (seedFlagPresent) return false;
+  return landingMarkupPresent;
+}
 
 /** Keep website analytics out of desktop, development and preview sessions. */
 export function installSimpleAnalytics({
