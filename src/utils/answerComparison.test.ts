@@ -51,6 +51,14 @@ describe('compareAnswer', () => {
     ).toBe(false);
   });
 
+  it('keeps the sign of a number when ignoring punctuation', () => {
+    expect(compareAnswer('5', '-5').correct).toBe(false);
+    expect(compareAnswer('-5', '+5').correct).toBe(false);
+    expect(compareAnswer('-5.', '(-5)').correct).toBe(true);
+    expect(compareAnswer('-5', '\u22125').correct).toBe(true);
+    expect(compareAnswer('well-known', '-well-known').correct).toBe(true);
+  });
+
   it('marks a symbol-only answer with its punctuation kept', () => {
     const result = compareAnswer('%', '%');
     expect(result.correct).toBe(true);
