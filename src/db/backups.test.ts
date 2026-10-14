@@ -336,6 +336,31 @@ describe('backups', () => {
     expect(await takeAutoBackup()).toBeDefined();
     expect(await db.backups.count()).toBe(2);
   });
+  it('coalesces ordinary backups while an earlier restore-point write is pending', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    const writeSnapshot = db.backups.add.bind(db.backups);
+    let releaseWrite!: () => void;
+    let signalStarted!: () => void;
+    const started = new Promise<void>((resolve) => { signalStarted = resolve; });
+    const add = vi.spyOn(db.backups, 'add').mockImplementationOnce((snapshot) =>
+      new Promise<void>((resolve) => {
+        releaseWrite = resolve;
+        signalStarted();
+      }).then(() => writeSnapshot(snapshot)) as ReturnType<typeof db.backups.add>,
+    );
+    const pending = takeAutoBackup();
+    await started;
+
+    expect(await takeAutoBackup()).toBeUndefined();
+    expect(add).toHaveBeenCalledOnce();
+    expect(await db.backups.count()).toBe(0);
+
+    releaseWrite();
+    expect(await pending).toBeDefined();
+    expect(await db.backups.count()).toBe(1);
+    expect(await takeAutoBackup()).toBeUndefined();
+    expect(add).toHaveBeenCalledOnce();
+  });
   it('allows forced backups inside the five-minute throttle window', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 
