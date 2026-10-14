@@ -122,7 +122,10 @@ export async function exportDatabase(): Promise<BackupFile> {
         questionSetAttempts,
       ).forEach((hash) => referencedHashes.add(hash));
       const mediaAssets = referencedHashes.size
-        ? await db.assets.where('hash').anyOf([...referencedHashes]).toArray()
+        ? await db.assets
+            .where('hash')
+            .anyOf([...referencedHashes])
+            .toArray()
         : [];
       return {
         app: 'lacuna-v14' as const,

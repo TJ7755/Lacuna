@@ -15,8 +15,18 @@ afterEach(() => vi.restoreAllMocks());
 
 it('exports one restorable snapshot when deletion queues between record and media reads', async () => {
   const course = await createCourse('Concurrent course');
-  const asset = await storeImageBlob(new Blob(['diagram'], { type: 'image/png' }), 'image/png', 1, 1);
-  const card = await createCard(course.id, 'front_back', `![Diagram](lacuna-asset://${asset.hash})`, 'Answer');
+  const asset = await storeImageBlob(
+    new Blob(['diagram'], { type: 'image/png' }),
+    'image/png',
+    1,
+    1,
+  );
+  const card = await createCard(
+    course.id,
+    'front_back',
+    `![Diagram](lacuna-asset://${asset.hash})`,
+    'Answer',
+  );
   const readConcepts = db.concepts.toArray.bind(db.concepts);
   let deletion: Promise<unknown> | undefined;
   vi.spyOn(db.concepts, 'toArray').mockImplementationOnce(() => {
