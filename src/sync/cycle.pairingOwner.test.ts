@@ -65,7 +65,9 @@ function options(relay: RelayProvider): SyncCycleOptions {
 }
 async function remoteBlob(snapshot: BackupFile) {
   return {
-    bytes: await sealState(CHANNEL_KEY, encodeSnapshot(snapshot), { channelId: CHANNEL_ID }),
+    bytes: await sealState(CHANNEL_KEY, (await encodeSnapshot(snapshot)).payload, {
+      channelId: CHANNEL_ID,
+    }),
     generation: '"generation-1"',
   };
 }

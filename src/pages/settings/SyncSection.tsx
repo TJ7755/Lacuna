@@ -68,7 +68,7 @@ function StatusPanel({ state }: { state: SyncState }) {
       {(encrypted || plaintext) && (
         <p className="mt-2 text-xs text-ink-faint">
           Last snapshot: {encrypted ? `${encrypted} encrypted` : 'encrypted size unknown'}
-          {plaintext ? ` · ${plaintext} before encryption` : ''}
+          {plaintext ? ` · ${plaintext} uncompressed` : ''}
         </p>
       )}
       {state.lastError && (
