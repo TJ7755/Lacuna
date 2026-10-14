@@ -183,7 +183,11 @@ A single, reusable export UI offering multiple output formats:
     (`takeAutoBackup(true)`), reuses that snapshot, runs `mergeSnapshots(local, remote)`,
     then applies the result with `importBackup(merged, 'replace')`. The resting copy states
     that Cards, Questions and evidence from either side are kept and that a deletion on either is
-    removed; confirmation is the existing inline prompt naming the file's date and card count. The toast
+    removed. Question Set attempt deletion receipts also apply when the parent Course survives
+    through a newer edit; only an attempt update newer than its own deletion restores it.
+    The attempt's receipt is retained alongside a restored row so repeated merges cannot
+    reintroduce submissions from a deleted revision.
+    Confirmation is the existing inline prompt naming the file's date and card count. The toast
     reports cards kept, added and removed, plus reviews when those counts change, and that a
     restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
@@ -491,6 +495,8 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   settings section (`DetachCourseSection.tsx`, above the detach control), labelled "Apply
   updates automatically". The toggle only changes future merge behaviour — it does not
   touch any already-queued `pendingMergeReviews` row.
+  Preference writes serialise with course detachment, so a concurrent toggle cannot restore
+  the shared-copy lock or lineage metadata.
 - **Decode-time merge routing (`SharePage.tsx`, `UnifiedImportPanel.tsx`)** — decoding a
   share code now checks `isLineagePayload(payload)` and, if `li` is present, calls
   `findCourseForLineage(payload.li)` to see whether the payload's lineage matches a course

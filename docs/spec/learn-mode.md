@@ -155,11 +155,14 @@ Lesson sessions use the active lesson's default (including linked cards); course
 and daily reviews use the card's primary lesson. An explicit card override wins in every
 session. Numeric/working items retain their own inputs; occlusions require answer text.
 
-Typing shows an input and **Check answer**. Enter reveals the expected answer with
+Typing shows an input and **Check answer**. Enter confirms an active input-method
+composition without revealing; otherwise it reveals the expected answer with
 word-by-word comparison against the learner's answer. Yes/No or manual four-point
 self-grading still decides the result; there is no AI request or automatic marking.
 Canonically equivalent Unicode letters compare equally; accents remain significant, and
-feedback preserves the original spelling. Comparison strictness remains a per-user setting
+feedback preserves the original spelling. Lenient comparison retains leading decimal points and
+numeric minus signs, so `.5`, `-.5` and `5` remain distinct answers.
+Comparison strictness remains a per-user setting
 in Settings (`src/state/answerStrictness.ts`).
 The former global typing switch no longer controls study sessions.
 
@@ -442,7 +445,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   on.
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
-  events list, and deletes the written `SessionHistory` row. Every recorded FSRS answer exposes
+  events list, and deletes the written `SessionHistory` row. The restored question clears
+  the following card's typed answer and hint state before starting its new response timer.
+  Every recorded FSRS answer exposes
   this through a short-lived grade-and-interval notification with an **Undo** action as well as the
   `U` shortcut while the session remains active. An answer that finalises the session exposes no
   stale Undo action: completion has already closed the single-answer reversal boundary while
