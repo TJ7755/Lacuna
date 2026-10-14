@@ -382,6 +382,12 @@ describe('release configuration', () => {
     ).toHaveLength(3);
   });
 
+  it('runs CI on pull requests into master and long-lived redesign branches', () => {
+    expect(ciWorkflow).toMatch(
+      /^ {2}pull_request:\n(?: {4}#.*\n)* {4}branches: \[master, main, 'redesign\/\*\*'\]$/m,
+    );
+  });
+
   it('retains required first-party action sources throughout CI and release workflows', () => {
     for (const workflow of [ciWorkflow, releaseWorkflow, securityWorkflow]) {
       expect(workflow).toMatch(/actions\/checkout@[a-f0-9]{40} # v7\.\d+\.\d+/);

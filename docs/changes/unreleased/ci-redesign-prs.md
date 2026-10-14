@@ -1,0 +1,1 @@
+- Run CI on pull requests into long-lived `redesign/**` branches, not only master, so stacked redesign work is tested before it lands.
