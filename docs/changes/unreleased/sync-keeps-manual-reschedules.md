@@ -1,1 +1,0 @@
-- A manual reschedule or reset to New now survives sync: both devices' changes are kept and replayed between reviews in time order, instead of being lost when the other device's copy of the card won the merge

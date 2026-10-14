@@ -1,1 +1,0 @@
-- Keep Mermaid source readable if the SVG sanitiser factory cannot bind to the browser.

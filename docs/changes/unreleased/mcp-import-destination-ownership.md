@@ -1,1 +1,0 @@
-- Reject cross-Course MCP import destinations before any Cards are written, including preview validation.

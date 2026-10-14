@@ -1,1 +1,0 @@
-- Recover the newest built-in AI transcript items and draft from long conversations saved before the item limit was enforced, instead of deleting the stored session on reload.

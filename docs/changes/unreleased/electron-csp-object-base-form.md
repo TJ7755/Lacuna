@@ -1,1 +1,0 @@
-- The desktop renderer's Content-Security-Policy now sets `object-src 'none'`, `base-uri 'self'` and `form-action 'self'`, matching the hosted web policy and closing plugin-embed, `<base>` and form-post routes for injected markup.

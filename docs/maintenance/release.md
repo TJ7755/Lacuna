@@ -13,27 +13,27 @@ existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on P
 the maintainer's existing credentials; the helper does not store credentials or change remotes.
 
 1. On a release preparation branch, run
-   `npm version 0.2.13 --no-git-tag-version --ignore-scripts --package-lock=false`, run
-   `bun run changelog:release 0.2.13 "short release title"` to fold the fragments in
+   `npm version 0.2.14 --no-git-tag-version --ignore-scripts --package-lock=false`, run
+   `bun run changelog:release 0.2.14 "short release title"` to fold the fragments in
    `docs/changes/unreleased/`, and any bullets still under "Unreleased", into a new
-   `## 0.2.13 beta — short release title` section of `docs/CHANGES.md` (it bumps the title
+   `## 0.2.14 beta — short release title` section of `docs/CHANGES.md` (it bumps the title
    version, leaves "Unreleased" empty and deletes the fragments; the title is optional), and
    merge the PR through normal required checks.
    Substitute the intended version throughout. `package.json` is the only version to edit;
    release configuration tests no longer duplicate it.
-2. Run `bun run release draft 0.2.13`. This resolves the canonical repository's default branch,
+2. Run `bun run release draft 0.2.14`. This resolves the canonical repository's default branch,
    checks its version, waits for successful **exact-commit** CI and Security push runs, pushes
    the version tag, waits for the native builds, and prints the draft URL. It never publishes.
    The local checkout may remain on a feature branch; no checkout, reset or stash is performed.
 3. Inspect the notes and platform evidence. For Windows/Linux only, run
-   `bun run release publish 0.2.13 --windows-linux-only --notes path/to/release-notes.md`.
+   `bun run release publish 0.2.14 --windows-linux-only --notes path/to/release-notes.md`.
    This freshly downloads and verifies the eight official assets before publishing the beta,
    and appends the unsigned/platform/update scope to the notes. It refuses extra assets, so a
    draft containing macOS packages must follow the manual platform verification below.
 
-For inspection without publication, use `bun run release verify 0.2.13`. This works on drafts
+For inspection without publication, use `bun run release verify 0.2.14`. This works on drafts
 and published releases. Reports and downloaded assets remain in ignored
-`artifacts/releases/v0.2.13/verification-*` directories. Each report records the commit, SHA-256
+`artifacts/releases/v0.2.14/verification-*` directories. Each report records the commit, SHA-256
 checks, updater sizes and SHA-512 hashes, Windows block-map structure and provenance result.
 Attestations must match this repository's release workflow, exact tag and commit. Publication
 repeats verification rather than trusting an old report, and rejects asset replacements observed
@@ -71,7 +71,7 @@ Windows AI companion shutdown issue must also be considered when testing install
 
 The release workflow runs the existing normal-motion packaged interaction test on Windows before
 attestation/upload and retains its `test-results` artefact. It checks the real packaged app, clean
-shutdown and renderer errors. A separate native Windows gate installs the hash-pinned 0.2.12
+shutdown and renderer errors. A separate native Windows gate installs the hash-pinned 0.2.13
 baseline, records a study answer in an isolated profile, downloads the release through the installed
 updater using a loopback feed, silently installs it, and checks
 that course, lesson, card and review records survive unchanged and automatic update mode remains enabled.

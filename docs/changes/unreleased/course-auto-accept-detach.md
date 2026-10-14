@@ -1,1 +1,0 @@
-- Changing a shared course's automatic-update preference concurrently with detaching it no longer restores its shared-copy lock or lineage metadata.

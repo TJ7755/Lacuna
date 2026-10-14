@@ -1,1 +1,0 @@
-- Keep OpenCode workflow security-policy tests valid on Windows CRLF checkouts without changing their assertions.

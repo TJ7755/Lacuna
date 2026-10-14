@@ -1,1 +1,0 @@
-- Storage-full errors raised inside a database transaction now show the plain "browser storage is full" message; Dexie re-wraps the quota error there, which the translation previously missed

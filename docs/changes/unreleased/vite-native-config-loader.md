@@ -1,1 +1,0 @@
-- Use JSON default import and explicit TypeScript extensions in Vite config for native loader compatibility.

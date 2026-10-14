@@ -1,1 +1,0 @@
-- Show readable Markdown link labels in search previews without their destinations or formatting syntax.

@@ -1,1 +1,0 @@
-- The AI preview of a published course update now shows answer-mode and structured-content changes, and no longer lists sequence or occlusion cards

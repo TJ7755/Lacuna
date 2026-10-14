@@ -1,1 +1,0 @@
-- The hosted AI access-code exchange (`/api/ai/session`) now allows 10 attempts a minute and 100 a day from each client address, returning 429 beyond that, so access codes cannot be guessed at speed. It now needs the Upstash quota store, as inference already did.

@@ -1,1 +1,0 @@
-- Risk coverage now includes dedicated note-repository and pre-migration snapshot tests, covering note ordering, annotation ranges, error wrapping and the folder-mirror failure handler; both files' floors rise to 100%

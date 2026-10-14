@@ -1,1 +1,0 @@
-- Keep tag text and existing tags intact when Enter, comma or Backspace is used by an input method during composition.

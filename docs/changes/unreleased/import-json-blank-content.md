@@ -1,1 +1,0 @@
-- Skip JSON card imports with whitespace-only questions or answers, use populated aliases after blank fields and keep metadata from replacing blank content.

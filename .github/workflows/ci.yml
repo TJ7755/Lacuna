@@ -423,8 +423,8 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force baseline | Out-Null
-          gh release download v0.2.12 --pattern Lacuna-Setup-0.2.12.exe --dir baseline
-          node scripts/windows-release-upgrade.mjs baseline/Lacuna-Setup-0.2.12.exe
+          gh release download v0.2.13 --pattern Lacuna-Setup-0.2.13.exe --dir baseline
+          node scripts/windows-release-upgrade.mjs baseline/Lacuna-Setup-0.2.13.exe
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve installed upgrade evidence
