@@ -115,4 +115,29 @@ describe('hosted conversation persistence', () => {
     expect(loadHostedState(storage)?.items.at(-1)?.id).toBe('reply-99');
     expect(serialisedCharacters).toBeLessThan(stringify(state).length * 4);
   });
+  it('recovers an existing long transcript saved before the writer honoured the item limit', () => {
+    let saved: string | null = JSON.stringify({
+      version: 1, conversationId: 'conversation-1',
+      items: Array.from({ length: 101 }, (_, index) => ({
+        kind: 'assistant', id: `reply-${index}`, content: 'Short reply',
+        createdAt: index, sources: [], progress: 'completed',
+      })),
+      draft: 'Existing draft', queuedFollowUp: null, approval: null,
+      toolState: { grants: [], approvals: [], ledger: [] },
+    });
+    const storage: HostedSessionStorage = {
+      getItem: () => saved,
+      setItem: (_key, value) => { saved = value; },
+      removeItem: () => { saved = null; },
+    };
+
+    const restored = loadHostedState(storage);
+
+    expect(restored).not.toBeNull();
+    expect(restored?.items).toHaveLength(100);
+    expect(restored?.items[0]?.id).toBe('reply-1');
+    expect(restored?.items.at(-1)?.id).toBe('reply-100');
+    expect(restored?.draft).toBe('Existing draft');
+    expect(saved).not.toBeNull();
+  });
 });

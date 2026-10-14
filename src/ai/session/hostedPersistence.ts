@@ -5,6 +5,7 @@ import {
   aiBridgeErrorSchema,
   aiEntityReferenceSchema,
 } from '../protocol';
+import { MAX_AI_RELAY_MAILBOX_ENTRIES } from '../relayProtocol';
 import { restoreState } from '../toolSession/state';
 import type { AiToolSessionState } from '../toolSession';
 import type { AiConversationItem } from './types';
@@ -30,7 +31,8 @@ const itemSchema = z.discriminatedUnion('kind', [
 const storedSchema = z.object({
   version: z.literal(1),
   conversationId: identifier.nullable(),
-  items: z.array(itemSchema).max(MAX_STORED_ITEMS),
+  // Older writers saved the full bounded in-memory transcript.
+  items: z.array(itemSchema).max(MAX_AI_RELAY_MAILBOX_ENTRIES),
   draft: z.string().max(12_000),
   queuedFollowUp: z.string().max(12_000).nullable(),
   approval: aiApprovalStateSchema.nullable(),
@@ -58,7 +60,7 @@ export function loadHostedState(storage: HostedSessionStorage): HostedStoredStat
     if (!raw) return null;
     if (raw.length > MAX_STORED_BYTES) throw new Error('Stored AI session is too large.');
     const parsed = storedSchema.parse(JSON.parse(raw) as unknown);
-    const items = parsed.items.map((item) => {
+    const items = parsed.items.slice(-MAX_STORED_ITEMS).map((item) => {
       if (item.kind === 'assistant' && item.progress === 'streaming') {
         return { ...item, progress: 'interrupted' as const };
       }
