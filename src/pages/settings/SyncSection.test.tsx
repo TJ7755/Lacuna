@@ -344,10 +344,13 @@ describe('SyncSection', () => {
     } satisfies SyncState);
     render(<SyncSection />);
 
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    const pair = await screen.findByRole('button', { name: 'Pair' });
+    expect(screen.queryByText('Paired to a sync channel')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).not.toBeInTheDocument();
+    fireEvent.click(pair);
+    expect(await screen.findByRole('dialog', { name: 'Pair this device' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set up sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
   });
 
   it('sets up the first device after confirming a strong passphrase', async () => {
