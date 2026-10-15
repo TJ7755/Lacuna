@@ -7,14 +7,14 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 - **Light:** pale green paper (`--paper`), near-white surfaces (`--surface`), green-black ink. The
   sidebar sits on a slightly darker `--chrome` ground.
-- **Dark (default):** green charcoal paper and chrome, dark olive surfaces, pale green ink.
+- **Dark (default):** near-black paper and chrome ground, with the Volt neon foreground retained so icons and banner edges stay defined, pale green ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
   is **Volt lime**; the user may pick **amber, red, rose, pink, violet, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and
   dark recipes so each accent reads correctly in both themes.
   Use `accent` for filled actions and decorative highlights, `accent-fg` for their labels,
-  and `accent-ink` for readable text, charts and keyboard focus. Neutral dividers carry a
-  restrained green tint; warning colours retain their semantic role.
+  and `accent-ink` for readable text, charts and keyboard focus. Neutral dividers carry only
+  a faint green tint; warning colours retain their semantic role.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
   (orange) for on-track, failure and behind-target states.
 - **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where

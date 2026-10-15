@@ -82,9 +82,9 @@
 }
 
 /*
- * Volt: pale green paper in light mode; green charcoal in dark mode.
+ * Volt: pale green paper in light mode; near-black ground in dark mode.
  * `--chrome` is the slightly darker ground behind the sidebar.
- * Lime marks actions; accent-ink keeps text and fine strokes legible in both themes.
+ * Volt neon foreground is retained; accent-ink keeps text and fine strokes legible in both themes.
  * Defined as raw custom properties so they can switch with the `.dark` class, then
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
@@ -120,10 +120,10 @@
 
 .dark {
   color-scheme: dark;
-  --paper: 93 23% 8%;
+  --paper: 90 10% 4%;
   --surface: 90 22% 12%;
   --surface-raised: 90 20% 16%;
-  --chrome: 93 24% 6%;
+  --chrome: 90 10% 3%;
   --ink: 81 75% 93%;
   --ink-soft: 80 18% 80%;
   --ink-faint: 80 15% 71%;

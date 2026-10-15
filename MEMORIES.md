@@ -398,6 +398,13 @@ An SVG shown through `<img>` cannot read the app's CSS, but in Chromium its
 `prefers-color-scheme` follows the page's `color-scheme`, which `src/index.css` sets per theme.
 The Welcome course's seed drawings rely on this; keep `color-scheme` on `:root` and `.dark`.
 
+## Volt palette duplicates
+
+Volt dark values are duplicated outside `src/index.css`: `index.html` and `public/manifest.json`
+carry `--paper` as hex, `AccentContext` carries `--accent` as the Volt swatch, `seedArtwork.ts`
+carries the dark ink-faint and accent strokes, and `volt-appearance.spec.ts` pins the dark
+`theme-color`. Change them together; a single-file palette edit leaves stale neon behind.
+
 ## Upgrades must not rewrite records
 
 CI's `windows-installed-upgrade` installs the last release, upgrades and asserts that courses,

@@ -57,7 +57,7 @@ for (const theme of ['light', 'dark']) {
       .map((face) => `${face.family}:${face.status}`).sort()),
     ).toEqual(['Instrument Sans:loaded', 'Space Grotesk:loaded']);
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content',
-      theme === 'dark' ? 'hsl(93 23% 8%)' : 'hsl(82 30% 94%)');
+      theme === 'dark' ? 'hsl(90 10% 4%)' : 'hsl(82 30% 94%)');
   });
 }
 
