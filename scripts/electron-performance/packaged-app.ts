@@ -274,6 +274,7 @@ export async function launchPackagedApp(
       (await context.waitForEvent('page', {
         timeout: STARTUP_TIMEOUT_MS,
       }));
+    page.setDefaultTimeout(STARTUP_TIMEOUT_MS);
     page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
     page.on('console', (message) => {
       if (message.type() === 'error') errors.push(`console: ${message.text()}`);
