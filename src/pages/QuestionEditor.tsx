@@ -388,6 +388,7 @@ export function QuestionEditor() {
           lessons={lessons}
           concepts={data.concepts}
           onAddConcept={() => void addConcept()}
+          editable={editable}
           errors={errors}
           nameRef={nameRef}
           conceptRef={conceptRef}

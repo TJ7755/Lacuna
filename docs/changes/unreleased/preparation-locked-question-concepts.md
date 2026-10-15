@@ -1,0 +1,1 @@
+- Keep the redesigned Question editor's Add Concept action disabled for a locked published course, preserving the authoring guard when integrating master.

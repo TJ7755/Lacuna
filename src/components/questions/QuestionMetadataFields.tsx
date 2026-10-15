@@ -36,6 +36,7 @@ export function QuestionMetadataFields({
   lessons,
   concepts,
   onAddConcept,
+  editable,
   errors,
   nameRef,
   conceptRef,
@@ -45,6 +46,7 @@ export function QuestionMetadataFields({
   lessons: Lesson[];
   concepts: Concept[];
   onAddConcept: () => void;
+  editable: boolean;
   errors: { name?: string; concept?: string };
   nameRef: Ref<HTMLInputElement>;
   conceptRef: Ref<HTMLSelectElement>;
@@ -117,7 +119,7 @@ export function QuestionMetadataFields({
             placeholder="A single piece of knowledge"
             className={questionInputClass}
           />
-          <Button type="button" onClick={onAddConcept} disabled={!newConceptName.trim()}>
+          <Button type="button" onClick={onAddConcept} disabled={!editable || !newConceptName.trim()}>
             <PlusIcon width={16} height={16} />
             Add
           </Button>
