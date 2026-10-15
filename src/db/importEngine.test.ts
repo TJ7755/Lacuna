@@ -68,6 +68,12 @@ describe('detectFormat', () => {
     expect(detectFormat(input).format).toBe('csv');
   });
 
+  it('detects CSV near the input limit without spreading every row as an argument', () => {
+    const input = 'q,\n'.repeat(166_666);
+    expect(input.length).toBeLessThan(500_000);
+    expect(detectFormat(input)).toEqual({ format: 'csv', confidence: 0.75 });
+  });
+
   it('detects Q:/A: plain text', () => {
     const input = 'Q: What is 2+2?\nA: 4\nQ: Capital of France?\nA: Paris';
     expect(detectFormat(input).format).toBe('plain-text');
@@ -168,6 +174,34 @@ Paris`;
 // ---------------------------------------------------------------------------
 
 describe('parseJsonImport', () => {
+  it('skips whitespace-only questions and answers, including arbitrary JSON fields', () => {
+    const input = JSON.stringify([
+      { front: ' \t\n', back: 'Answer' },
+      { front: 'Question', back: ' \t\n' },
+      { de: ' \t\n', en: 'Answer' },
+      { de: 'Question', en: ' \t\n' },
+      { front: ' ', back: ' ', tags: 'metadata', type: 'front_back' },
+      { front: 'Valid question', back: 'Valid answer' },
+    ]);
+    expect(parseJsonImport(input)).toEqual({
+      cards: [{ type: 'front_back', front: 'Valid question', back: 'Valid answer' }],
+      skipped: 5,
+    });
+  });
+
+  it('uses populated aliases after blank fields while preserving authored whitespace', () => {
+    expect(parseJsonImport(JSON.stringify([
+      { front: '  ', question: '  Question\ncontinued  ', back: '\t', answer: '  Answer  ' },
+      { front: '  {{c1::Answer}}  ', back: '' },
+    ]))).toEqual({
+      cards: [
+        { type: 'front_back', front: '  Question\ncontinued  ', back: '  Answer  ' },
+        { type: 'cloze', front: '  {{c1::Answer}}  ', back: '' },
+      ],
+      skipped: 0,
+    });
+  });
+
   it('parses a JSON array of objects', () => {
     const input = JSON.stringify([
       { front: 'Q1', back: 'A1' },

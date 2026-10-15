@@ -7,6 +7,15 @@ virtualisation, with normal study animation timings preserved.
 The [6 September heavy-data report](performance/2026-09-06/README.md) covers 10,000 Cards,
 200,000 reviews, Mac CPU throttling and disposable 4/8 GiB Linux VMs.
 
+## Desktop package budget for diagrams (14 October 2026)
+
+The 0.2.14 release build failed the Windows package check at 17,545,226 archive bytes and
+637 payload files against 14 MB and 600. Locally bundled Mermaid, added for note diagrams,
+accounts for about 4.1 MB across 52 lazily loaded chunks, including its built-in ELK layout
+engine (1.46 MB). The budget is now 19 MB and 700 files, about 8% headroom, and CI's
+`windows-installed-upgrade` job runs the same check on every pull request so growth is caught
+before a release tag rather than by it.
+
 ## Worker, query and desktop package cleanup (5 September 2026)
 
 Compared with merge-base `62b539ab` (the merged landing/dead-font cleanup), using the

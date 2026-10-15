@@ -1,1 +1,0 @@
-- Search and Quick search previews now show multiline cloze answers without exposing cloze markup or hints.

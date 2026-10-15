@@ -467,6 +467,9 @@ describe('release configuration', () => {
     expect(securityWorkflow).toContain('pull_request:');
     expect(securityWorkflow).toContain('schedule:');
     expect(securityWorkflow).toContain('branches: [master, main]');
+    expect(securityWorkflow).toMatch(
+      /^ {2}pull_request:\n {4}branches: \[master, main, 'redesign\/\*\*'\]$/m,
+    );
     expect(securityWorkflow).toContain("cron: '31 3 * * 1'");
     expect(securityWorkflow).toMatch(/^permissions:\n {2}contents: read/m);
 

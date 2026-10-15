@@ -1,1 +1,0 @@
-- Avoid false duplicate warnings when colons occur at different positions in Card questions and answers.

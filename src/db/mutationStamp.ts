@@ -116,6 +116,14 @@ export async function updateSyncState(
   });
 }
 
+/** Forget this device's sync pairing, keeping any teacher share-link credentials in the same row. */
 export async function clearSyncState(): Promise<void> {
-  await db.appState.delete(SYNC_STATE_KEY);
+  await db.transaction('rw', db.appState, async () => {
+    const shareLinks = (await readSyncState())?.shareLinks;
+    if (shareLinks && Object.keys(shareLinks).length > 0) {
+      await writeSyncState({ shareLinks });
+    } else {
+      await db.appState.delete(SYNC_STATE_KEY);
+    }
+  });
 }

@@ -29,16 +29,19 @@ export function PomodoroSection() {
       <div className="grid grid-cols-3 gap-4">
         <DurationInput
           label="Focus"
+          max={120}
           value={settings.workMinutes}
           onChange={(value) => update({ ...settings, workMinutes: value })}
         />
         <DurationInput
           label="Short break"
+          max={60}
           value={settings.shortBreakMinutes}
           onChange={(value) => update({ ...settings, shortBreakMinutes: value })}
         />
         <DurationInput
           label="Long break"
+          max={60}
           value={settings.longBreakMinutes}
           onChange={(value) => update({ ...settings, longBreakMinutes: value })}
         />
@@ -60,10 +63,12 @@ export function PomodoroSection() {
 function DurationInput({
   label,
   value,
+  max,
   onChange,
 }: {
   label: string;
   value: number;
+  max: number;
   onChange: (value: number) => void;
 }) {
   return (
@@ -73,7 +78,7 @@ function DurationInput({
       value={value}
       suffix="min"
       min={1}
-      max={120}
+      max={max}
       onCommit={onChange}
     />
   );

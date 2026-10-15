@@ -1,1 +1,0 @@
-- The visual design spec now forbids small uppercase eyebrow labels in favour of real headings and sentence-case context

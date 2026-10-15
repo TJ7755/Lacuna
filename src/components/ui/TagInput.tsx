@@ -30,6 +30,7 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.nativeEvent.isComposing) return;
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
       addTag(draft);

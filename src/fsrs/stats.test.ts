@@ -105,6 +105,78 @@ describe('computeStudyStats — reviewed today', () => {
 });
 
 describe('computeStudyStats — 7-day time forecast', () => {
+  it('groups scheduling sources without rescanning every card for every source', () => {
+    const sourceCount = 100;
+    const cardsPerSource = 100;
+    const sources = Array.from({ length: sourceCount }, (_, index) => `source-${index}`);
+    const scheduling = new Map(
+      sources.map((id) => [
+        id,
+        Object.freeze({ id, newCardsPerDay: 3, maxReviewsPerDay: 3 }) as SchedulerConfig,
+      ]),
+    );
+    const deckSeconds = new Map(sources.map((id) => [id, 30]));
+    const activity = new Map<string, readonly number[]>();
+    const records = sources.flatMap((sourceId, sourceIndex) =>
+      Array.from({ length: cardsPerSource }, (_, index) => {
+        const id = `${sourceId}-card-${index}`;
+        if (index === 0) activity.set(id, Object.freeze([NOW - 1_000]));
+        return card({
+          id,
+          courseId: sourceIndex % 2 === 0 ? sourceId : null,
+          schedulingUnitId: sourceIndex % 2 === 0 ? `unit-${sourceIndex}` : sourceId,
+          due: index < 2 ? NOW : null,
+          lastReviewed: index < 2 ? NOW : null,
+          state: index < 2 ? 2 : 0,
+          reps: index < 2 ? 1 : 0,
+          createdAt: NOW + index,
+          suspended: index === 2,
+          buriedUntil: index === 3 ? NOW + MS_PER_DAY : null,
+        });
+      }),
+    );
+    const originalRecords = structuredClone(records);
+    const originalScheduling = structuredClone(scheduling);
+    const originalDeckSeconds = structuredClone(deckSeconds);
+    const originalActivity = structuredClone(activity);
+    let sourceReads = 0;
+    const cards = records.map((record) => {
+      Object.freeze(record.history);
+      Object.freeze(record);
+      return new Proxy(record, {
+        get(target, property, receiver) {
+          if (property === 'courseId' || property === 'schedulingUnitId') sourceReads += 1;
+          return Reflect.get(target, property, receiver);
+        },
+      });
+    });
+    Object.freeze(cards);
+
+    const stats = computeStudyStats(cards, deckSeconds, NOW, undefined, activity, scheduling);
+    const measuredSourceReads = sourceReads;
+
+    expect(stats).toEqual({
+      streak: 1,
+      reviewedToday: sourceCount,
+      forecast: Array.from({ length: FORECAST_DAYS }, (_, index) => ({
+        dayStart: TODAY + index * MS_PER_DAY,
+        dueCount: index === 0 ? sourceCount * 2 : 0,
+        newCount: index === 0 ? sourceCount : 0,
+        minutes: index === 0 ? sourceCount * 1.5 : 0,
+        byDeck:
+          index === 0
+            ? sources.map((sourceId) => ({ sourceId, dueCount: 2, newCount: 1, minutes: 1.5 }))
+            : [],
+      })),
+    });
+    expect(cards).toEqual(originalRecords);
+    expect(scheduling).toEqual(originalScheduling);
+    expect(deckSeconds).toEqual(originalDeckSeconds);
+    expect(activity).toEqual(originalActivity);
+    // Count actual source reads rather than relying on machine-dependent timings.
+    expect(measuredSourceReads).toBeLessThanOrEqual(cards.length * 8);
+  });
+
   it('respects each course daily new-card and review limits', () => {
     const cards = [
       ...Array.from({ length: 4 }, (_, index) =>

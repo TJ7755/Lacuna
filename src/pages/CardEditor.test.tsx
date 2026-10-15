@@ -976,3 +976,27 @@ describe('CardEditor — saved-card return', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
+
+describe('CardEditor — published-course lock', () => {
+  it.each([false, true])('blocks saving a locked copy, including the keyboard shortcut (editing: %s)', async (editing) => {
+    mockCourse = { ...course, distributedCopy: { lineageId: 'published-course', revision: 1, locked: true, autoAcceptUpdates: false } };
+    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
+    if (editing) renderEditing();
+    else renderNew();
+    const fields = screen.getAllByRole('textbox');
+    fireEvent.change(fields[0], { target: { value: 'Changed question' } });
+    fireEvent.change(fields[1], { target: { value: 'Changed answer' } });
+    expect(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' })).toBeDisabled();
+    await act(async () => { fireEvent.keyDown(fields[0], { key: 'Enter', ctrlKey: true }); });
+    expect(updateCard).not.toHaveBeenCalled();
+    expect(createCourseCard).not.toHaveBeenCalled();
+  });
+
+  it('keeps ordinary Study-mode cards editable', async () => {
+    mockCourse = { ...course, lessonViewMode: 'study' };
+    mockCard = { ...generatedCard, sequenceItemId: undefined };
+    renderEditing();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    expect(updateCard).toHaveBeenCalledWith('card-1', expect.any(Object));
+  });
+});

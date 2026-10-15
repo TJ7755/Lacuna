@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useEditorKeys } from '../hooks/dialogKeys';
 import { Link, useParams } from 'react-router-dom';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
+import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -259,8 +260,10 @@ export function SequenceEditor() {
     );
   }
 
+  const editable = Boolean(course && canEditLessons(course));
+
   async function handleSave() {
-    if (saving || !courseId) return;
+    if (!editable || saving || !courseId) return;
 
     const missingName = name.trim().length === 0;
     const missingSpeaker = usesSpeakers && mySpeaker.trim().length === 0;
@@ -532,7 +535,7 @@ export function SequenceEditor() {
           )}
         </Disclosure>
 
-        {editing && sequence && (
+        {editable && editing && sequence && (
           <DangerZoneSection
             entityLabel="sequence"
             entityName={sequence.name}
@@ -569,7 +572,7 @@ export function SequenceEditor() {
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={saving}
+            disabled={!editable || saving}
             className="whitespace-nowrap"
           >
             {editing ? 'Save changes' : 'Add sequence'}

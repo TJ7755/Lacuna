@@ -1,1 +1,0 @@
-- Ignore malformed saved keyboard bindings instead of crashing study shortcuts, while retaining valid custom keys.

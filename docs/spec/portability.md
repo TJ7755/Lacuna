@@ -1,6 +1,6 @@
 # 13. Import, export & backups (`src/db/importEngine.ts`,
 
-`src/db/portability.ts`, `src/db/import.ts`, `src/db/export.ts`,
+`src/db/portability.ts`, `src/db/backupSnapshot.ts`, `src/db/import.ts`, `src/db/export.ts`,
 `src/db/backups.ts`, `src/sync/mergeSnapshots.ts`, `src/sync/manualMerge.ts`)
 
 ### Unified import engine (`src/db/importEngine.ts`)
@@ -9,15 +9,18 @@ A single, format-detecting import engine that powers all import locations in the
 app:
 
 - **Auto-detection** (`detectFormat`): examines input text and returns a
-  `DetectedFormat` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
+  `FormatDetection` (confidence-scored) choosing from: `share-code`, `csv`, `tsv`,
   `markdown-table`, `markdown-list`, `json`, `plain-text`, or `unknown`. Detection
-  short-circuits at 100K characters to keep large files responsive.
+  is bounded by the import interface's 500,000-character input limit. CSV detection
+  handles inputs with many short rows without exceeding the JavaScript argument limit.
 - **Supported formats:**
   - **CSV/TSV** — quote-aware delimited parser (`parseImport` from `import.ts`).
     Defaults: tab field separator, newline row separator; both customisable.
     A single CSV/TSV row is detected too. Lacuna full exports use their existing header
     to locate question, answer and semicolon-separated tag columns; the warning and header
-    are skipped. Quoted multi-line fields stay intact in the plain-text Anki path as well.
+    are skipped. Automatic detection recognises this header before Markdown inside quoted
+    Card content, preserving the original fields. Quoted multi-line fields stay intact in the
+    plain-text Anki path as well.
     Leading empty TSV columns are preserved, so a row without a question is
     skipped rather than shifting its answer and tags into question/answer columns.
   - **Markdown table** — GFM tables with `|` separators. Column header mapping:
@@ -37,6 +40,9 @@ app:
   - **JSON** — array of objects, or object with a `cards`/`data`/`items`/
     `entries`/`notes` key containing an array. Each object maps
     `front`/`question`/`term`/`q` -> front, `back`/`answer`/`definition`/`a` -> back.
+    Whitespace-only content is skipped; populated aliases may follow blank fields.
+    Arbitrary-key fallback applies only when recognised content keys are absent, so
+    metadata cannot replace a blank question or answer. Authored whitespace is retained.
   - **Plain text Q/A** — tab, pipe, em-dash, or en-dash separated Q/A pairs. A
     leading `Q:`/`Q.`/`Question:` prefix is stripped. Explicit question/answer prefixes take
     precedence over commas within answers during format detection. Prefixed answers retain
@@ -44,9 +50,9 @@ app:
     separated plain-text blocks use the first line as the front and all remaining lines as the back.
   - **Share codes** — `LAC0`/`LAC1` prefixed base64 or `LAC2`/`LAC3` prefixed Base45
     codes, decoded via `decodeShareCode`.
-- **`parseImportAuto(text, fieldSep?, rowSep?)`** — the main entry point. Detects
-  the format and delegates to the appropriate parser. Returns
-  `{ cards, skipped, format }`.
+- **`parseImportAuto(text, options?)`** — the main entry point. Detects the format
+  unless `options.format` overrides it, and accepts optional `fieldSeparator` and
+  `rowSeparator` values. Returns `{ cards, skipped }`; detection is available separately.
 - **Legacy parser** (`parseImport` in `src/db/import.ts`): the quote-aware
   delimited parser continues to exist for backward compatibility and is used as
   the CSV/TSV backend. Defaults: **tab** field separator, **newline** row
@@ -144,6 +150,9 @@ A single, reusable export UI offering multiple output formats:
 
 ### Backup file import/export
 
+- Exports read represented records and their referenced media within one readonly database
+  transaction, so simultaneous reviews, edits or deletions cannot produce a partial restore point.
+  Media byte encoding runs after the read transaction closes.
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
@@ -157,7 +166,8 @@ A single, reusable export UI offering multiple output formats:
   occlusion's diagram is gathered explicitly from `Occlusion.assetHash`, since it is referenced
   by no Card Markdown. Question definitions and retained Attempt receipts are also scanned for
   `lacuna-asset://` references. Authored sets are scanned by backup export, sync accounting and
-  orphan-media collection. Older backups are normalised through the pure v24 converter;
+  orphan-media collection, which spares media stored in the last 24 hours so an upload whose
+  Card, Note or Question is not yet saved survives a sweep. Older backups are normalised through the pure v24 converter;
   legacy `courseExamDates` remains an import-only compatibility field.
 - **Record validation:** JSON files and direct imports share a Zod schema for every
   represented collection and its nested records. Invalid fields report the collection,
@@ -180,7 +190,9 @@ A single, reusable export UI offering multiple output formats:
     confirmation. Incoming rows are added when absent; conflicting decks/cards and course records
     use their table-specific recency rules, review-history rows are deduplicated, and local rows
     absent from the backup are never deleted. Question authoring merges as one coherent definition
-    and relationship bundle; Attempts union by identity, immutable receipt collisions fail, and
+    and relationship bundle; authored Question Set assessment assignments and revision plans
+    follow the retained local final Assessment when a backup uses a different id.
+    Attempts union by identity, immutable receipt collisions fail, and
     answered lifecycle state wins over shown or abandoned state. The Question schedule is replayed
     from eligible Attempt evidence after merge. The other course tables, `sequences`, `occlusions`
     and `revisionPlans` follow their existing additive per-table merge boundary. Old backups keep
@@ -190,13 +202,28 @@ A single, reusable export UI offering multiple output formats:
     (`takeAutoBackup(true)`), reuses that snapshot, runs `mergeSnapshots(local, remote)`,
     then applies the result with `importBackup(merged, 'replace')`. The resting copy states
     that Cards, Questions and evidence from either side are kept and that a deletion on either is
-    removed; confirmation is the existing inline prompt naming the file's date and card count. The toast
+    removed. Question Set attempt deletion receipts also apply when the parent Course survives
+    through a newer edit; only an attempt update newer than its own deletion restores it.
+    The attempt's receipt is retained alongside a restored row so repeated merges cannot
+    reintroduce submissions from a deleted revision.
+    Confirmation is the existing inline prompt naming the file's date and card count. The toast
     reports cards kept, added and removed, plus reviews when those counts change, and that a
     restore point was saved. A file that fails `validateBackup` is rejected before any write; a
     failed safety backup aborts without applying.
 
+An automatic sync checks that its relay capabilities still match a stored pairing before
+starting transport, then retains that pairing identity. If unpairing or
+re-pairing changes it while network or encryption work is pending, the old cycle stops
+before admitting a delayed snapshot, applying its candidate or issuing its next push.
+The pre-apply check precedes import preprocessing; it does not cancel a replacement after that
+check has passed. Completion and failure metadata are written only while the same pairing still owns the
+atomic state update. This does not roll back a database replacement or relay push that
+has already committed.
+
 ### Automatic restore points & migration safety
 
+- Ordinary restore-point attempts are throttled for five minutes; a failed export or local
+  snapshot write releases that attempt's throttle so an immediate retry can protect the data.
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
   automatically on open, **at most once a day** (`autoBackupIfStale`), and never
   blocks the UI.
@@ -398,7 +425,7 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   card id once a lineage is present, so cards are the one entity type with nothing added.
   All three are populated only when `li` is present.
 - **Student side — `Course.distributedCopy?: CourseDistributedCopy`
-  (`{ lineageId, revision, locked, autoAcceptUpdates, sourceLabel? }`).** Set on first
+  (`{ lineageId, revision, locked, autoAcceptUpdates, sourceLabel?, source? }`).** Set on first
   import of a published course (`importLineageFirstTime`, `src/db/mergeImport.ts`), which
   diverges from the ordinary import path in exactly one way: every lesson/note/card
   **adopts its incoming originating id directly as its local id** instead of remapping
@@ -450,6 +477,17 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      `sequenceItemId`/`occlusionRegionId`. Without that skip the merge both adopted the
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
+  5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
+     diffed like lesson cards, with no lesson. Lesson-card `links` take a deterministic
+     `lineage-link:` id and are made to match the payload on every import, never queued:
+     they are display-only, and only links carrying that id prefix are touched. A note's or
+     card's lesson membership counts as content, so a teacher moving one to another lesson
+     is an update; a card move goes through `assignCardsToLesson` so its backing deck
+     follows.
+  5b. **Course details.** The teacher's course name, description and unlock mode are
+     applied directly (never queued), except a detail the learner has changed since the
+     last import: `distributedCopy.source` records the teacher's values as last imported,
+     and a local value that no longer matches it is kept.
   6. On completion, `distributedCopy.revision` is set to the incoming revision and
      learner-owned scheduling preferences, including **Learn first**, are preserved.
      `lineageIdMappings` is updated with any newly adopted ids and refreshed content
@@ -465,9 +503,16 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
 - **Lock enforcement — `canEditLessons(course)` (`src/course/lessonViewMode.ts`).** Returns
   `false` iff `course.distributedCopy?.locked === true`; an absent `distributedCopy` (every
   ordinary course, including all pre-v18 courses) or a detached copy (`locked: false`) both
-  remain editable. This is the single gate every lesson/note/card-CRUD call site already
-  routes through (`resolveLessonViewMode`, `isLessonAuthoringMode`), so locking a
-  distributed copy needed no new call sites — only this function's body changed.
+  remain editable. Lesson authoring and Card-import destinations reuse this gate.
+  Locked copies are excluded from import choices. Text and Anki imports recheck it inside
+  the persistence transaction before adding Cards or Lessons, including the Course bank.
+  Card, Sequence, Occlusion and individual Question editors also block create/update
+  actions for locked copies, including direct routes and keyboard saves; destructive
+  editor actions and Concept creation remain unavailable until the copy is detached.
+  Generic Card deletion checks the same lock inside its cleanup transaction and rejects
+  an entire mixed batch before changing content, review history, lesson links or deletion
+  receipts. Teacher lineage removals retain their existing automatic and reviewed paths.
+  An ordinary Course in Study mode remains editable through its existing editor routes.
 - **Detach (`detachCourse`, `src/db/repository.ts`)** — a one-way, student-initiated escape
   hatch (confirm dialog via `ConfirmInline`, destructive framing) that clears
   `Course.distributedCopy` entirely, unlocking the course and severing lineage tracking in
@@ -518,6 +563,8 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   settings section (`DetachCourseSection.tsx`, above the detach control), labelled "Apply
   updates automatically". The toggle only changes future merge behaviour — it does not
   touch any already-queued `pendingMergeReviews` row.
+  Preference writes serialise with course detachment, so a concurrent toggle cannot restore
+  the shared-copy lock or lineage metadata.
 - **Decode-time merge routing (`SharePage.tsx`, `UnifiedImportPanel.tsx`)** — decoding a
   share code now checks `isLineagePayload(payload)` and, if `li` is present, calls
   `findCourseForLineage(payload.li)` to see whether the payload's lineage matches a course

@@ -9,13 +9,13 @@ import { releaseAssets, verifyAssets } from './release-assets.mjs';
 const repository = 'TJ7755/Lacuna';
 const root = resolve(import.meta.dirname, '..');
 
-export function workflowState(runs, path, sha, branches) {
+export function workflowState(runs, path, sha, branches, events = ['push']) {
   const run = runs
     .filter(
       (item) =>
         item.path === path &&
         item.head_sha === sha &&
-        item.event === 'push' &&
+        events.includes(item.event) &&
         branches.includes(item.head_branch),
     )
     .sort((a, b) => b.id - a.id)[0];
@@ -40,7 +40,7 @@ export function releaseIdentity(release) {
   };
 }
 
-export async function main(args, { execute, reportDirectory } = {}) {
+export async function main(args, { execute, reportDirectory, env = process.env } = {}) {
   const [command, version, ...options] = args;
   if (command === '--help' || !command) {
     console.log(
@@ -102,13 +102,13 @@ export async function main(args, { execute, reportDirectory } = {}) {
         `repos/${repository}/actions/runs?head_sha=${sha}&per_page=100`,
       ),
     ).flatMap((page) => page.workflow_runs);
-  async function waitFor(workflows, branches) {
+  async function waitFor(workflows, branches, events) {
     const deadline = Date.now() + 45 * 60_000;
     let previous = '';
     while (Date.now() < deadline) {
       const current = runs();
       const states = workflows.map((path) =>
-        workflowState(current, `.github/workflows/${path}.yml`, sha, branches),
+        workflowState(current, `.github/workflows/${path}.yml`, sha, branches, events),
       );
       const message = states
         .map((state, index) => `${workflows[index]}: ${state.state} ${state.url ?? ''}`)
@@ -131,6 +131,11 @@ export async function main(args, { execute, reportDirectory } = {}) {
   const branch = api('').default_branch;
   assert(['master', 'main'].includes(branch), 'Unsupported default branch');
   const remote = `https://github.com/${repository}.git`;
+  // The Release tag workflow dispatches builds for the tags it creates.
+  const releaseEvents = ['push', 'workflow_dispatch'];
+  const insideRelease = (env.GITHUB_WORKFLOW_REF ?? '').startsWith(
+    `${repository}/.github/workflows/release.yml@`,
+  );
   let sha;
   if (command === 'draft') {
     git('fetch', '--no-tags', remote, `refs/heads/${branch}`);
@@ -160,7 +165,7 @@ export async function main(args, { execute, reportDirectory } = {}) {
         git('update-ref', '-d', ref);
       }
     }
-    await waitFor(['release'], [tag]);
+    await waitFor(['release'], [tag], releaseEvents);
     const draft = release();
     assert(draft.isDraft, 'Release is already published; refusing to change it');
     console.log(`Draft ready: ${draft.url}\nNext: bun run release verify ${version}`);
@@ -175,7 +180,8 @@ export async function main(args, { execute, reportDirectory } = {}) {
     'Tag/package version mismatch',
   );
   await waitFor(['ci', 'security'], [branch]);
-  await waitFor(['release'], [tag]);
+  // Inside the release workflow its own run is still in progress; job ordering covers the builds.
+  if (!insideRelease) await waitFor(['release'], [tag], releaseEvents);
   const before = release();
   assert.equal(before.tagName, tag);
   if (command === 'publish') {

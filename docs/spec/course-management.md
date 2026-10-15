@@ -34,7 +34,8 @@
   here.
 - **Questions** (`/course/:courseId/questions`) lists fixed Questions and generated families with
   their primary Concept, exposure and due state. It launches a ten-Question default session or an
-  All due session. Due Questions come first, then unseen Questions; alternative primary Concepts
+  All due session. Due Questions come first, then unseen Questions, then Questions shown but never
+  scheduled (abandoned or ungraded); alternative primary Concepts
   are interleaved when available. This pool never consults the Card pool.
 - **Card list** (`CardList`) shows each card as one row: up to two lines of question, one line
   of answer, and when it next comes up (New, Due, Later today, Tomorrow, In N days, Suspended

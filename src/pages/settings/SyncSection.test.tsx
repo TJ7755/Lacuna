@@ -336,6 +336,23 @@ describe('SyncSection', () => {
     expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
   });
 
+  it('treats share-link credentials alone as no sync channel', async () => {
+    readSyncStateMock.mockResolvedValue({
+      shareLinks: {
+        ['f'.repeat(32)]: { relayUrl: 'https://relay.example', writeToken: 'a'.repeat(64) },
+      },
+    } satisfies SyncState);
+    render(<SyncSection />);
+
+    const pair = await screen.findByRole('button', { name: 'Pair' });
+    expect(screen.queryByText('Paired to a sync channel')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).not.toBeInTheDocument();
+    fireEvent.click(pair);
+    expect(await screen.findByRole('dialog', { name: 'Pair this device' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Set up sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
+  });
+
   it('sets up the first device after confirming a strong passphrase', async () => {
     render(<SyncSection />);
     fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));

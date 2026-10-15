@@ -2,6 +2,8 @@
 
 - Honours `prefers-reduced-motion: reduce` (all animation/transition durations
   collapse) and the per-user **motion-speed** setting.
+- Modal editor shortcut handlers leave Tab available to focus trapping and
+  field-specific navigation.
 - Focus-visible rings on interactive controls; `aria-label`/`title` on icon
   buttons; `aria-pressed` on toggles and chips; `role="progressbar"` with value
   attributes on the bar.
@@ -69,6 +71,9 @@
   departing focus traps leave Tab alone.
   Sharing alternatives follow the same rule when switching or collapsing panels;
   quickly reopening a retained panel restores its active state without losing selector focus.
+
+- Notification dismissal pauses while hovered or while keyboard focus remains
+  inside the notification.
 - Secondary text meets 4.5:1 against paper, surface and raised surface in both themes.
 - Volt uses darker green for accent text and keyboard focus in light mode; lime-filled
   actions use dark labels. Keyboard rings use the readable accent ink at full opacity.

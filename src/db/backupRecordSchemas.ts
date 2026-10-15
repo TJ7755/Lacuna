@@ -121,6 +121,14 @@ export const card = cardContent
     reverseCardId: id.nullable().optional(),
     sequenceItemId: id.optional(),
     occlusionRegionId: id.optional(),
+    scheduleEdits: z
+      .array(
+        z.union([
+          object({ at: number, kind: z.literal('reset') }),
+          object({ at: number, kind: z.literal('due'), due: number }),
+        ]),
+      )
+      .optional(),
   })
   .refine(
     (row) => row.payload === undefined || row.type === 'front_back',
@@ -178,6 +186,11 @@ export const course = object({
     locked: flag,
     autoAcceptUpdates: flag,
     sourceLabel: text.optional(),
+    source: object({
+      name: text,
+      description: text,
+      unlockMode: z.enum(['linear', 'semi-linear', 'open']),
+    }).optional(),
   }).optional(),
 });
 export const assessment = object({

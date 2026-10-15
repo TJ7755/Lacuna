@@ -74,8 +74,17 @@ test('plays stored audio while authoring and studying in the production build', 
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
 
+  // Poll the whole study surface so a failure shows what was rendered instead.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.querySelector('[data-study-face]')?.closest('main')?.outerHTML ??
+          document.body.innerText,
+      ),
+    )
+    .toMatch(/data-study-face="front"[^]*<audio src="blob:/);
   const studyPlayer = page.locator('[data-study-face="front"] audio');
-  await expect(studyPlayer).toHaveAttribute('src', /^blob:/);
   const studied = await playsThrough(studyPlayer);
   expect(studied.error).toBeNull();
   expect(studied.currentTime).toBeGreaterThan(0);

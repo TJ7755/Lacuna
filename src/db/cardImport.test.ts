@@ -2,8 +2,14 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCourse } from './courseRepository';
+import { createLesson } from './lessonRepository';
 import { createCards } from './cardRepository';
-import { createImportedCards, importCardsToDestination } from './cardImport';
+import {
+  createImportedCards,
+  importCardsToDestination,
+  type CardImportContent,
+  type CardImportDestination,
+} from './cardImport';
 
 beforeEach(async () => {
   await db.delete();
@@ -13,6 +19,119 @@ const drafts = [
   { type: 'front_back' as const, front: 'bonjour', back: 'hello', tags: ['French'] },
   { type: 'cloze' as const, front: '{{c1::Paris}} is in France', back: '' },
 ];
+
+const importContents: CardImportContent[] = [
+  { kind: 'text', cards: [drafts[0]], reverse: true },
+  {
+    kind: 'apkg',
+    result: {
+      deckName: 'Source',
+      cards: [
+        {
+          id: 'source',
+          type: 'front_back',
+          front: 'Q',
+          back: 'A',
+          stability: 5,
+          difficulty: 3,
+          state: 2,
+          reps: 4,
+          lapses: 1,
+          lastReviewed: 1000,
+          due: 2000,
+          scheduledDays: 5,
+          learningSteps: 0,
+          history: [],
+          schedulingUnitId: 'source',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      media: new Map(),
+      skippedCards: 0,
+      skippedNotes: 0,
+    },
+  },
+];
+
+describe('published-course import lock', () => {
+  for (const content of importContents) {
+    it.each(['existing lesson', 'new lesson', 'bank'] as const)(
+      `rejects ${content.kind} imports into a locked %s without changing content`,
+      async (target) => {
+        const course = await createCourse('Published French', { schedulingMode: 'steady' });
+        const lesson = await createLesson(course.id, 'Greetings');
+        await createCards(lesson.id, [drafts[0]]);
+        await db.courses.update(course.id, {
+          distributedCopy: {
+            lineageId: 'published-french',
+            revision: 1,
+            locked: true,
+            autoAcceptUpdates: false,
+          },
+        });
+        const before = {
+          cards: await db.cards.toArray(),
+          concepts: await db.concepts.toArray(),
+          lessons: await db.lessons.toArray(),
+          units: await db.schedulingUnits.toArray(),
+          history: await db.reviewHistory.toArray(),
+        };
+        const destination: CardImportDestination =
+          target === 'new lesson'
+            ? { kind: 'lesson', courseId: course.id, title: 'Imported lesson' }
+            : {
+                kind: 'existing',
+                schedulingUnitId: target === 'bank' ? course.id : lesson.id,
+              };
+
+        await expect(importCardsToDestination(destination, content)).rejects.toThrow(
+          /locked/i,
+        );
+        expect(await db.cards.toArray()).toEqual(before.cards);
+        expect(await db.concepts.toArray()).toEqual(before.concepts);
+        expect(await db.lessons.toArray()).toEqual(before.lessons);
+        expect(await db.schedulingUnits.toArray()).toEqual(before.units);
+        expect(await db.reviewHistory.toArray()).toEqual(before.history);
+      },
+    );
+
+    it.each(['ordinary', 'detached'] as const)(
+      `allows ${content.kind} imports into an editable %s course and its bank`,
+      async (copy) => {
+        const course = await createCourse('French', { schedulingMode: 'steady' });
+        if (copy === 'detached') {
+          await db.courses.update(course.id, {
+            distributedCopy: {
+              lineageId: 'published-french',
+              revision: 1,
+              locked: false,
+              autoAcceptUpdates: false,
+            },
+          });
+        }
+        const imported = await importCardsToDestination(
+          { kind: 'lesson', courseId: course.id, title: 'Imported lesson' },
+          content,
+        );
+        await importCardsToDestination(
+          { kind: 'existing', schedulingUnitId: imported.lesson!.id },
+          content,
+        );
+        await importCardsToDestination(
+          { kind: 'existing', schedulingUnitId: course.id },
+          content,
+        );
+        const cards = await db.cards.toArray();
+        expect(cards).toHaveLength(imported.count * 3);
+        expect(cards.filter((card) => card.primaryLessonId === imported.lesson!.id)).toHaveLength(
+          imported.count * 2,
+        );
+        expect(cards.filter((card) => !card.primaryLessonId)).toHaveLength(imported.count);
+      },
+    );
+  }
+});
 
 describe('card import destinations', () => {
   it('creates a named course and lesson with independent reverses sharing the original concept', async () => {

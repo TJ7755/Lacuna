@@ -255,6 +255,8 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   `snapshotSequence`/`restoreSequence` for the standard undo pattern (a `SequenceSnapshot`
   captures the sequence and its generated cards together). `createSequence` and
   `updateSequence` generate/regenerate cards in the same transaction as the sequence write.
+  Undo replaces each restored card's canonical review history with the captured events;
+  an explicitly empty snapshot clears later events as well as restoring scheduling state.
 - **Portability**: sequences ride through backup export/import (replace and merge, by the
   same per-table semantics as the other course-architecture tables), diagnostics bundles
   (`sequences` count), and course share codes as an **additive v2 field** (§13) — older v2
@@ -323,10 +325,12 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   standard undo pattern. Creates and regenerations happen in the same transaction as the
   occlusion write. `updateOcclusion` clears a `pairedRegionId` left dangling by a removed
   label region, so the surviving feature card regenerates against its own `answerText` rather
-  than pointing at a region that no longer exists.
+  than pointing at a region that no longer exists. Undo replaces restored cards' canonical
+  review histories with the captured events, including an explicitly empty history.
 - **Diagram upload** (`src/db/occlusionImage.ts`) uses its own 2560px longest-edge ceiling
   rather than `compressImage.ts`'s 1280px default, so small printed labels survive
-  compression legibly. Otherwise identical to the ordinary image path.
+  compression legibly. Otherwise identical to the ordinary image path. PNG, WebP and GIF
+  uploads are encoded as PNG to preserve transparency; JPEG uploads retain JPEG compression.
 - **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
   ordinary reveal and grade row. Hidden labels use opaque neutral masks; the active label
   uses an opaque accent-soft fill and a contrasting brand-face question mark. Revealed labels retain
@@ -369,7 +373,11 @@ sidebar entry exposes a Deck or Folder.
 `id, deckId, courseId?, primaryLessonId?, conceptId, type, front, back, payload?, stability|null, difficulty|null,
 lastReviewed|null, reps, lapses, state, tags?, suspended?, flagged?, buriedUntil?,
 reverseCardId?, sequenceItemId?, occlusionRegionId?, due|null, scheduledDays, learningSteps,
-history[], createdAt`
+history[], scheduleEdits?, createdAt`
+
+- `scheduleEdits` logs manual reschedules (`{ at, kind: 'due', due }`) and resets to New
+  (`{ at, kind: 'reset' }`) from the latest reset onwards. Sync unions both devices' logs and
+  replays them between reviews in time order, so a merge never undoes a manual change.
 
 - `front`/`back` are Markdown source. **Cloze** source lives entirely in `front`
   (`{{cN::...}}`); `back` is empty.

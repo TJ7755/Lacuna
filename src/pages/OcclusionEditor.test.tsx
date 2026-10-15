@@ -415,3 +415,46 @@ describe('OcclusionEditor', () => {
     expect(container.querySelector('.overflow-x-auto')).toBeNull();
   });
 });
+
+describe('OcclusionEditor — published-course lock', () => {
+  it.each([false, true])('blocks saving when the course becomes locked (editing: %s)', async (editing) => {
+    mockCourse = course;
+    mockOcclusion = editing ? {
+      id: 'occ-1', courseId: 'course-1', primaryLessonId: null, name: 'Published diagram', assetHash: 'hash-1',
+      regions: [{ id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 }], createdAt: 0, updatedAt: 1,
+    } : undefined;
+    const view = editing ? renderEdit() : renderNew();
+    if (editing) await screen.findByRole('img');
+    else { await uploadDiagram(); drawBox(view.container, [40, 30], [200, 180]); }
+    fireEvent.change(screen.getByPlaceholderText('e.g. The plant cell'), { target: { value: 'Changed diagram' } });
+    expect(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add occlusion' })).toBeEnabled();
+    mockCourse = { ...course, distributedCopy: { lineageId: 'published-course', revision: 1, locked: true, autoAcceptUpdates: false } };
+    view.rerender(
+      <MemoryRouter initialEntries={[editing ? '/course/course-1/occlusion/occ-1/edit' : '/course/course-1/occlusion/new']}>
+        <Routes>
+          <Route path="/course/:courseId/occlusion/:occlusionId/edit" element={<OcclusionEditor />} />
+          <Route path="/course/:courseId/occlusion/new" element={<OcclusionEditor />} />
+          <Route path="/course/:courseId/cards" element={<p>Cards</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const save = screen.getByRole('button', { name: editing ? 'Save changes' : 'Add occlusion' });
+    expect(save).toBeDisabled();
+    await act(async () => { fireEvent.click(save); });
+    expect(createOcclusion).not.toHaveBeenCalled();
+    expect(updateOcclusion).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Delete occlusion' })).not.toBeInTheDocument();
+  });
+
+  it('keeps ordinary Study-mode occlusions editable', async () => {
+    mockCourse = { ...course, lessonViewMode: 'study' };
+    mockOcclusion = {
+      id: 'occ-1', courseId: 'course-1', primaryLessonId: null, name: 'My diagram', assetHash: 'hash-1',
+      regions: [{ id: 'r1', role: 'label', shape: 'rectangle', x: 0.1, y: 0.1, w: 0.2, h: 0.2 }], createdAt: 0, updatedAt: 1,
+    };
+    renderEdit();
+    await screen.findByRole('img');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    expect(updateOcclusion).toHaveBeenCalledWith(expect.objectContaining({ id: 'occ-1' }));
+  });
+});

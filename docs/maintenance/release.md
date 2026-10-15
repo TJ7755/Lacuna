@@ -1,53 +1,96 @@
 # Release maintenance
 
-The tag-triggered workflow in `.github/workflows/release.yml` verifies, builds the Windows and Linux
-packages and prepares one GitHub pre-release draft. The unsigned macOS arm64 package is built and
-tested separately on the maintainer's Apple Silicon device, then uploaded to that draft. Neither
-path publishes the draft. Publishing remains a deliberate maintainer action after every artefact
-has been inspected. Windows/Linux-only betas are supported; macOS is not an implicit blocker.
+Merging a version bump into master is the release decision; everything after it is automatic.
+Once CI and Security pass on that commit, `.github/workflows/release-tag.yml` tags it and dispatches
+`.github/workflows/release.yml`, which verifies, builds the Windows and Linux packages, prepares a
+GitHub pre-release draft and, when `docs/releases/<version>.md` exists, verifies every asset afresh
+and publishes the beta with those notes. The unsigned macOS arm64 package is still built and tested
+separately on the maintainer's Apple Silicon device (see below); Windows/Linux-only betas are
+supported, so macOS is not an implicit blocker.
 
-## Routine release commands
+## Routine release
+
+1. On a release preparation branch, run `bun run release:prepare <version> "short release title"`.
+   It sets `package.json` (the only version to edit), folds the fragments in
+   `docs/changes/unreleased/` and any bullets still under "Unreleased" into a new
+   `## <version> beta — short release title` section of `docs/CHANGES.md`, and pins the Windows
+   upgrade gate in `scripts/windows-release-baseline.json` to the release being replaced, using
+   the installer digest GitHub recorded for it.
+2. Write the user-facing notes in `docs/releases/<version>.md`. The publisher appends the
+   unsigned/platform/update scope. Without this file the draft waits for manual publication.
+3. Merge the PR through normal required checks. CI on the pull request runs the installed-upgrade
+   gate against the new baseline.
+
+Nothing else is needed. If the build or verification fails, fix it and rerun the failed `Build &
+Release` run; an existing tag is never moved. To restart from scratch on an existing tag, run
+`gh workflow run release.yml --ref v<version>`. A tag pushed by hand still triggers the same
+workflow, and the maintainer commands below remain for inspection and manual publication.
+
+## Weekly release
+
+`.github/workflows/weekly-release.yml` does the routine release above every Thursday at 07:53 UTC
+(or when dispatched). `scripts/weekly-release.mjs` skips the week unless the current version is
+already tagged, the diff since that tag touches shipped paths (`src/`, `electron/`, `public/`,
+`index.html`, `package.json`, `bun.lock`, `vite.config.ts`) and changelog entries are pending.
+Otherwise it bumps the patch, runs `release:prepare` and writes `docs/releases/<version>.md` from
+the pending changelog bullets. The workflow opens `release/<version>` as a pull request and enables
+squash auto-merge, so the normal required checks gate it. An open `release/*` pull request also
+skips the week; edit its notes there before the checks finish if they need rewording.
+
+It authenticates as a GitHub App, because pull requests and pushes made with `GITHUB_TOKEN` start
+no workflows: CI would never run and the merge would not start the Release tag workflow. One-time
+setup:
+
+1. Create a GitHub App owned by the maintainer account (Settings, Developer settings, GitHub Apps,
+   New GitHub App). Any name and homepage URL; untick Webhook. Repository permissions: Contents
+   read and write, Pull requests read and write. Install it only on this repository.
+2. Generate a private key on the App's page and note its App ID.
+3. In this repository's Actions secrets, add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` (the
+   whole `.pem` file).
+4. In the repository's general settings, enable "Allow auto-merge".
+
+Without the secrets the workflow only warns. The macOS packages remain a local step after each
+release (below); skipping them leaves Mac users on the previous manual-update package.
+
+## Maintainer commands
+
+For pre-merge package evidence without tagging or publishing, dispatch `electron-e2e.yml` on
+the preparation branch. It builds unsigned Windows, Linux and macOS packages, runs the packaged
+interaction suite on each, and checks native AI on Windows/macOS plus the macOS study smoke.
+These hosted checks do not replace the physical managed-device or signing/notarisation matrix.
 
 Use Node 24, the pinned Bun version and an authenticated GitHub CLI (`gh auth login`, or an
 existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on PATH. Git uses
 the maintainer's existing credentials; the helper does not store credentials or change remotes.
 
-1. On a release preparation branch, run
-   `npm version 0.2.13 --no-git-tag-version --ignore-scripts --package-lock=false`, run
-   `bun run changelog:release 0.2.13 "short release title"` to fold the fragments in
-   `docs/changes/unreleased/`, and any bullets still under "Unreleased", into a new
-   `## 0.2.13 beta — short release title` section of `docs/CHANGES.md` (it bumps the title
-   version, leaves "Unreleased" empty and deletes the fragments; the title is optional), and
-   merge the PR through normal required checks.
-   Substitute the intended version throughout. `package.json` is the only version to edit;
-   release configuration tests no longer duplicate it.
-2. Run `bun run release draft 0.2.13`. This resolves the canonical repository's default branch,
-   checks its version, waits for successful **exact-commit** CI and Security push runs, pushes
-   the version tag, waits for the native builds, and prints the draft URL. It never publishes.
-   The local checkout may remain on a feature branch; no checkout, reset or stash is performed.
-3. Inspect the notes and platform evidence. For Windows/Linux only, run
-   `bun run release publish 0.2.13 --windows-linux-only --notes path/to/release-notes.md`.
-   This freshly downloads and verifies the eight official assets before publishing the beta,
-   and appends the unsigned/platform/update scope to the notes. It refuses extra assets, so a
-   draft containing macOS packages must follow the manual platform verification below.
+- `bun run release draft <version>` resolves the canonical repository's default branch, checks its
+  version, waits for successful **exact-commit** CI and Security push runs, pushes the version tag
+  if it does not exist, waits for the native builds, and prints the draft URL. It never publishes.
+  The local checkout may remain on a feature branch; no checkout, reset or stash is performed.
+- `bun run release publish <version> --windows-linux-only --notes path/to/release-notes.md`
+  freshly downloads and verifies the eight official assets before publishing the beta, and
+  appends the unsigned/platform/update scope to the notes. It refuses extra assets, so a draft
+  containing macOS packages must follow the manual platform verification below. The release
+  workflow runs this same command.
+- `bun run release verify <version>` inspects without publishing. It works on drafts and
+  published releases. Reports and downloaded assets remain in ignored
+  `artifacts/releases/v<version>/verification-*` directories.
 
-For inspection without publication, use `bun run release verify 0.2.13`. This works on drafts
-and published releases. Reports and downloaded assets remain in ignored
-`artifacts/releases/v0.2.13/verification-*` directories. Each report records the commit, SHA-256
-checks, updater sizes and SHA-512 hashes, Windows block-map structure and provenance result.
-Attestations must match this repository's release workflow, exact tag and commit. Publication
-repeats verification rather than trusting an old report, and rejects asset replacements observed
-during verification. No command runs an installer or touches an installed user profile.
+Each report records the commit, SHA-256 checks, updater sizes and SHA-512 hashes, Windows
+block-map structure and provenance result. Attestations must match this repository's release
+workflow, exact tag and commit. Publication repeats verification rather than trusting an old
+report, and rejects asset replacements observed during verification. No command runs an installer
+or touches an installed user profile.
 
 The commands stop on failed workflows and wait at most 45 minutes per gate. Fix or rerun the
 failed workflow in Actions, then repeat the command. An existing remote tag is reused only when
-it names the expected commit; tags are never moved. Run `draft` before the default branch moves
-beyond the intended release commit. If a tag push succeeds but Actions never starts, inspect the
-Actions event before retrying; the helper does not bypass missing workflow evidence.
+it names the expected commit; tags are never moved.
 
-The tag is pushed with maintainer credentials, rather than from a workflow using `GITHUB_TOKEN`:
-[GitHub does not trigger another push workflow from that token](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
-No new secret, scheduled watcher or repository permission is needed.
+A tag created with `GITHUB_TOKEN` does not start push workflows
+([GitHub documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)),
+so the Release tag workflow starts the build with `workflow_dispatch` on the new tag, which that
+token may trigger. The dispatched run's `GITHUB_REF` is the tag, so trigger integrity and
+attestation source refs are unchanged. No new secret or scheduled watcher is needed.
 
 ### Updating action pins
 
@@ -71,8 +114,8 @@ Windows AI companion shutdown issue must also be considered when testing install
 
 The release workflow runs the existing normal-motion packaged interaction test on Windows before
 attestation/upload and retains its `test-results` artefact. It checks the real packaged app, clean
-shutdown and renderer errors. A separate native Windows gate installs the hash-pinned 0.2.12
-baseline, records a study answer in an isolated profile, downloads the release through the installed
+shutdown and renderer errors. A separate native Windows gate installs the hash-pinned previous
+release from `scripts/windows-release-baseline.json`, records a study answer in an isolated profile, downloads the release through the installed
 updater using a loopback feed, silently installs it, and checks
 that course, lesson, card and review records survive unchanged and automatic update mode remains enabled.
 Ordinary CI also tests upgrading 0.2.7 with a long-running AI companion.
@@ -162,7 +205,7 @@ Before building release packages, the tag workflow requires successful ordinary 
 `Security` push workflows for the exact tagged commit on `master` or `main`. A tag created before
 those workflows finish fails closed and must be rerun after both succeed. The asset-budget check inside the release workflow is not a substitute for those completed workflows.
 
-After both GitHub package jobs pass, the publisher downloads their named workflow artefacts and
+After both GitHub package jobs pass, the draft publisher downloads their named workflow artefacts and
 writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately before adding it to
 the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
 It does not sign the application with an Apple or Microsoft identity.
@@ -174,6 +217,12 @@ the port must be free so a development server cannot stand in for that build.
 CI first packages an unsigned macOS app and runs `test:e2e:electron-macos-smoke` against it.
 That required gate checks `app:` launch, IndexedDB course persistence after reload and a
 seeded study answer. It uses the host architecture and does not replace signing or notarisation.
+
+These Electron specs skip on Linux, and CI runs them only for pull requests into `master`.
+To run them for another branch or tag, including branches CI does not cover, dispatch the
+`Electron e2e` workflow on it (Actions, or `gh workflow run electron-e2e.yml --ref <branch>`).
+The branch must already contain the workflow file. It runs `test:e2e:electron-ai` on Windows
+and macOS and the packaged macOS smoke gate, and uploads `test-results/` from each.
 
 On the exact release commit, the macOS operator runs:
 

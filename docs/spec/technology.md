@@ -76,7 +76,9 @@ web share URLs use the current origin, including preview deployments.
 P7 makes sync automatic without re-asking the passphrase. `src/sync/triggers.ts`
 (`installSyncTriggers` from `src/App.tsx`) debounces and single-flights a pull on window focus /
 visibility to visible and a push after a study session ends (`lacuna:study-session-end` from
-`src/pages/LearnMode.tsx`). Pairing, joining and every successful passphrase unlock also persist
+`src/pages/LearnMode.tsx`). Triggers inside the five-second minimum interval are coalesced into
+one delayed sync, so study changes made just after a focus sync are still sent. Pairing, joining
+and every successful passphrase unlock also persist
 the unwrapped credentials as `SyncState.remembered`; the triggers restore that copy at install, so
 sync works across page reloads without the passphrase. The Settings Lock action clears only the
 remembered copy — the wrapped recovery keybag stays for pairing fresh devices — returning the
@@ -85,11 +87,14 @@ plaintext on device, so remembering the key is the convenience default on a trus
 device. While remembered credentials exist, an IndexedDB reader can also decrypt newer peer data
 and write or purge the relay channel. Lock removes that capability copy; the remaining wrapped
 keybag protects the channel key and write token from an IndexedDB reader without the passphrase.
+Disposing an automatic-trigger installation invalidates pending credential reads and pairing
+module loads; an old disposer cannot cancel a later installation.
 
 The relay's opaque ETag is a compare-and-swap generation, not a freshness clock. No phase claims
-rollback protection against replay of an older valid ciphertext. Outgoing encrypted state is gated
-below the measured platform ceiling at 4.4 MB (nominal Vercel limit 4.5 MB, measured failure at
-4.49 MB); failures record the transport and plaintext sizes and name the contributing courses in
+rollback protection against replay of an older valid ciphertext. The snapshot JSON is gzip-compressed
+before sealing; readers recognise the gzip magic bytes and still accept uncompressed JSON from
+earlier versions. Outgoing encrypted state is gated below the measured platform ceiling at 4.4 MB (nominal Vercel limit 4.5 MB, measured failure at
+4.49 MB); failures record the transport and uncompressed sizes and name the contributing courses in
 `syncState`. The real two- then three-device P9 pass against the live relay was completed on
 28 August 2026; no sync implementation or verification phase remains outstanding. The web UI still
 remains usable without a relay or network.

@@ -8,6 +8,7 @@
 
 import { hasCloze } from '../utils/cloze';
 import { parseImport, splitDelimited, type ParsedCard, type ImportParseResult } from './import';
+import { findCardExportHeaderIndex } from './importCardExport';
 import { isMarkdownTableSeparator, parseMarkdownTable } from './importMarkdownTable';
 import { parseMarkdownList } from './importMarkdownList';
 import { parsePlainTextQA } from './importPlainTextQA';
@@ -84,6 +85,16 @@ export function detectFormat(input: string): FormatDetection {
   const lines = trimmed.split('\n');
   const nonBlankLines = lines.filter((l) => l.trim().length > 0);
 
+  // The export header identifies delimited files even when quoted fields contain Markdown.
+  function* headerRows(separator: string) {
+    for (const line of nonBlankLines) yield splitDelimited(line, separator, '\n')[0];
+  }
+  for (const [format, separator] of [['csv', ','], ['tsv', '\t']] as const) {
+    if (findCardExportHeaderIndex(headerRows(separator)) >= 0) {
+      return { format, confidence: 1 };
+    }
+  }
+
   // A delimiter row identifies a GFM table even when outer pipes are omitted.
   const separatorIndex = nonBlankLines.findIndex((line) =>
     line.includes('|') && isMarkdownTableSeparator(line),
@@ -130,14 +141,10 @@ export function detectFormat(input: string): FormatDetection {
     return { format: 'plain-text', confidence: 0.8 };
   }
 
-  // CSV: most non-blank lines contain commas in a consistent column count.
+  // CSV: most non-blank lines contain commas, so each has at least two columns.
   const commaLines = nonBlankLines.filter((l) => l.includes(','));
   if (commaLines.length >= 1 && commaLines.length >= nonBlankLines.length * 0.5) {
-    const counts = commaLines.map((l) => l.split(',').length);
-    const maxCount = Math.max(...counts);
-    if (maxCount >= 2) {
-      return { format: 'csv', confidence: 0.75 };
-    }
+    return { format: 'csv', confidence: 0.75 };
   }
 
   if (qaLines.length >= 2) {
@@ -205,13 +212,13 @@ export function parseJsonImport(input: string): ImportParseResult {
     let tags: string[] | undefined;
 
     for (const key of frontKeys) {
-      if (typeof obj[key] === 'string' && obj[key]) {
+      if (typeof obj[key] === 'string' && obj[key].trim()) {
         front = obj[key] as string;
         break;
       }
     }
     for (const key of backKeys) {
-      if (typeof obj[key] === 'string' && obj[key]) {
+      if (typeof obj[key] === 'string' && obj[key].trim()) {
         back = obj[key] as string;
         break;
       }
@@ -225,11 +232,11 @@ export function parseJsonImport(input: string): ImportParseResult {
       }
     }
 
-    // Fallback: if no recognised keys were matched on either side, use the
-    // first two string values as front/back so arbitrary key-value JSON still works.
-    if (!front && !back) {
+    // Arbitrary key-value JSON may use its first two non-blank string values.
+    // Recognised content keys remain authoritative even when their values are blank.
+    if (!front && !back && ![...frontKeys, ...backKeys].some((key) => key in obj)) {
       const stringValues = Object.values(obj).filter(
-        (v): v is string => typeof v === 'string' && v.length > 0,
+        (v): v is string => typeof v === 'string' && v.trim().length > 0,
       );
       if (stringValues.length >= 2) {
         front = stringValues[0];

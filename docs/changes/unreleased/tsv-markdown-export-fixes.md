@@ -1,2 +1,0 @@
-- Preserve quotation marks when exporting Cards as TSV, including simple Anki-compatible exports.
-- Keep Windows and old-Mac line endings within Markdown table cells from splitting Card rows.

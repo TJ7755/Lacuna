@@ -1,12 +1,7 @@
 // P6 pairing helpers. The UI owns when secrets are shown or requested; this module
 // owns validation, relay minting, keybag handling and the common sync hand-off.
 
-import {
-  clearSyncState,
-  readSyncState,
-  updateSyncState,
-  writeSyncState,
-} from '../db/mutationStamp';
+import { clearSyncState, readSyncState, updateSyncState } from '../db/mutationStamp';
 import type { RememberedSyncCredentials, SyncState } from '../db/types';
 import { SyncCryptoPassphraseError, generateChannelKey, unwrapKeybag, wrapKeybag } from './crypto';
 import { syncCycle, type SyncResult } from './cycle';
@@ -304,13 +299,15 @@ async function mintChannel(
 }
 
 async function persistPairing(credentials: SyncCredentials, keybag: Uint8Array): Promise<void> {
-  await writeSyncState({
+  // Keep teacher share-link credentials, which share this row but not the pairing.
+  await updateSyncState((current) => ({
+    ...(current?.shareLinks ? { shareLinks: current.shareLinks } : {}),
     relayUrl: credentials.relayUrl,
     channelId: credentials.channelId,
     wrappedKeyMaterial: bytesToHex(keybag),
     remembered: serialiseRememberedCredentials(credentials),
     lastError: null,
-  });
+  }));
 }
 
 function serialiseRememberedCredentials(credentials: SyncCredentials): RememberedSyncCredentials {
@@ -329,6 +326,8 @@ async function runWithCredentials(
     provider: createProvider(credentials, fetchImpl),
     channelId: credentials.channelId,
     channelKey: credentials.channelKey,
+    relayUrl: credentials.relayUrl,
+    writeToken: credentials.writeToken,
     now,
   });
 }

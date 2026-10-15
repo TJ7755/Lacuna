@@ -5,7 +5,7 @@ import { createLesson } from '../db/lessonRepository';
 import { deleteCourse, restoreCourse, snapshotCourse } from '../db/courseRepository';
 import { db } from '../db/schema';
 import { exportDatabase, importBackup } from '../db/portability';
-import { assetUrl, collectOrphanedAssets, storeImageBlob } from '../db/assets';
+import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from '../db/assets';
 import { createConcept } from './repository';
 import { createQuestionSet, deleteQuestionSet, updateQuestionSet } from './questionSetRepository';
 import {
@@ -23,6 +23,9 @@ import {
 import { feedbackAvailable } from './questionSetAttempts';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
 import type { QuestionSet } from './questionSets';
+
+/** A sweep after the grace period, so fresh test assets are eligible for collection. */
+const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
 
 async function setFixture(): Promise<Awaited<ReturnType<typeof createQuestionSet>>> {
   const course = await createCourse('Biology');
@@ -341,7 +344,7 @@ describe('Question Set attempt repository', () => {
     });
     await startQuestionSetAttempt(revised.id, 'practice', 200);
     await deleteQuestionSet(revised.id, 220);
-    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(image.hash)).toBeDefined();
   });
 

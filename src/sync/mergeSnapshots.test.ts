@@ -239,7 +239,7 @@ describe('mergeSnapshots', () => {
     expect(merged.cards[0].front).toBe('zeta');
   });
 
-  it('unions reviews from both devices and replays FSRS with fuzz off', () => {
+  it('unions reviews from both devices and replays FSRS with the live parameters', () => {
     const first = review({ eventId: 'e1', timestamp: 1_000, grade: 3 });
     const second = review({ eventId: 'e2', timestamp: 2_000, grade: 4 });
     const a = backup({
@@ -258,7 +258,7 @@ describe('mergeSnapshots', () => {
     });
 
     let expected = card('c1');
-    const engine = makeEngine({ ...PARAMS, enable_fuzz: false });
+    const engine = makeEngine(PARAMS);
     expected = { ...expected, ...applyReview(engine, expected, 3, 1_000).memory };
     expected = { ...expected, ...applyReview(engine, expected, 4, 2_000).memory };
 
@@ -270,6 +270,95 @@ describe('mergeSnapshots', () => {
     expect(merged.cards[0].state).toBe(expected.state);
     expect(merged.cards[0].lastReviewed).toBe(expected.lastReviewed);
     expect(merged.cards[0].history).toEqual([]);
+  });
+
+  it('reproduces the live fuzzed schedule when merging a snapshot with itself', () => {
+    // Live reviews use the unit's parameters, fuzz included. ts-fsrs seeds fuzz from the
+    // review time and memory state, so replaying the same events must give the same due date.
+    const engine = makeEngine(PARAMS);
+    let live = card('c1');
+    const entries: ReviewHistoryEntry[] = [];
+    let now = 1_700_000_000_000;
+    for (let index = 0; index < 4; index++) {
+      const log = review({ eventId: `e${index}`, timestamp: now, grade: 3 });
+      const { memory: next } = applyReview(engine, live, 3, now);
+      live = { ...live, ...next, updatedAt: now };
+      entries.push(historyEntry('c1', log));
+      now = next.due;
+    }
+    const snapshot = backup({
+      courses: [course('course-1')],
+      cards: [live],
+      reviewHistory: entries,
+    });
+
+    const merged = expectPeerProperties(snapshot, snapshot);
+    expect(merged.cards[0].due).toBe(live.due);
+    expect(merged.cards[0].scheduledDays).toBe(live.scheduledDays);
+  });
+
+  it('keeps a manual reset over earlier reviews from either device', () => {
+    const first = review({ eventId: 'e1', timestamp: 1_000, grade: 3 });
+    const unseen = review({ eventId: 'e2', timestamp: 2_000, grade: 4 });
+    const a = backup({
+      courses: [course('course-1')],
+      cards: [
+        card('c1', {
+          updatedAt: 3_000,
+          reps: 1,
+          scheduleEdits: [{ at: 3_000, kind: 'reset' }],
+        }),
+      ],
+      reviewHistory: [historyEntry('c1', first)],
+    });
+    const b = backup({
+      courses: [course('course-1')],
+      cards: [card('c1', { front: 'edited later', updatedAt: 4_000, stability: 8, reps: 1 })],
+      reviewHistory: [historyEntry('c1', first), historyEntry('c1', unseen)],
+    });
+
+    const merged = expectPeerProperties(a, b);
+    expect(merged.cards[0]).toMatchObject({
+      front: 'edited later',
+      state: 0,
+      stability: null,
+      due: null,
+      lastReviewed: null,
+      reps: 2,
+      scheduleEdits: [{ at: 3_000, kind: 'reset' }],
+    });
+  });
+
+  it('keeps a manual due date and replays later reviews on top of it', () => {
+    const first = review({ eventId: 'e1', timestamp: 1_000, grade: 3 });
+    const later = review({ eventId: 'e2', timestamp: 5_000_000, grade: 3 });
+    const edit = { at: 2_000, kind: 'due' as const, due: 4_000_000 };
+    const a = backup({
+      courses: [course('course-1')],
+      cards: [card('c1', { updatedAt: 2_000, scheduleEdits: [edit] })],
+      reviewHistory: [historyEntry('c1', first)],
+    });
+    const b = backup({
+      courses: [course('course-1')],
+      cards: [card('c1', { updatedAt: 5_000_000 })],
+      reviewHistory: [historyEntry('c1', first), historyEntry('c1', later)],
+    });
+
+    const engine = makeEngine(PARAMS);
+    let expected = card('c1');
+    expected = { ...expected, ...applyReview(engine, expected, 3, 1_000).memory, due: edit.due };
+    expected = { ...expected, ...applyReview(engine, expected, 3, 5_000_000).memory };
+
+    const merged = expectPeerProperties(a, b);
+    expect(merged.cards[0].due).toBe(expected.due);
+    expect(merged.cards[0].stability).toBe(expected.stability);
+    expect(merged.cards[0].scheduleEdits).toEqual([edit]);
+
+    const editOnly = expectPeerProperties(
+      a,
+      backup({ ...b, reviewHistory: [historyEntry('c1', first)] }),
+    );
+    expect(editOnly.cards[0].due).toBe(edit.due);
   });
 
   it('honours a delete when the other device has not touched the row', () => {

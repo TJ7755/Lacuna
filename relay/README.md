@@ -22,6 +22,11 @@ Name.com DNS (configured 27 September 2026, TTL 300):
 Vercel provisions HTTPS for each domain. Use the current project Domains settings
 as the authority if Vercel changes these DNS targets.
 
+Browsers may read relay responses only from `https://getlacuna.app`, `https://lacuna-beta-one.vercel.app`,
+the desktop app (`app://.`) and loopback development servers. Set `RELAY_ALLOWED_ORIGINS` to a
+comma-separated list to add others, such as a preview or self-hosted web build. Requests without an
+`Origin` header, such as the terminal companion's, are unaffected.
+
 Knowledge of the channel id is the read capability. Writes need the bearer
 token minted with the channel. Creating a channel needs a separate shared
 secret (`RELAY_MINT_SECRET`). `ETag` / `If-Match` is what stops two devices

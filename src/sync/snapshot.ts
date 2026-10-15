@@ -41,14 +41,50 @@ export class SyncSnapshotTooLargeError extends Error {
   }
 }
 
-export function encodeSnapshot(snapshot: BackupFile): Uint8Array {
-  return new TextEncoder().encode(JSON.stringify(snapshot));
+// gzip's two-byte magic. A JSON snapshot always starts with `{`, so the
+// first bytes tell compressed snapshots apart from those written before
+// compression without a version field inside the sealed plaintext.
+const GZIP_MAGIC = [0x1f, 0x8b] as const;
+
+/**
+ * Upper bound on an inflated snapshot. The plaintext is authenticated before
+ * it reaches here, so this only stops a paired device's bug from exhausting
+ * memory; it sits far above any library the app can hold comfortably.
+ */
+export const SNAPSHOT_MAX_INFLATED_BYTES = 512 * 1024 * 1024;
+
+export interface EncodedSnapshot {
+  /** Bytes to seal: gzip-compressed JSON when the platform can compress. */
+  payload: Uint8Array;
+  /** UTF-8 JSON size before compression. */
+  jsonBytes: number;
 }
 
-export function decodeSnapshot(bytes: Uint8Array): BackupFile {
+export async function encodeSnapshot(snapshot: BackupFile): Promise<EncodedSnapshot> {
+  const json = new TextEncoder().encode(JSON.stringify(snapshot));
+  const payload =
+    typeof CompressionStream === 'undefined'
+      ? json
+      : await pipeThrough(json, new CompressionStream('gzip'));
+  return { payload, jsonBytes: json.byteLength };
+}
+
+export async function decodeSnapshot(bytes: Uint8Array): Promise<BackupFile> {
+  let json = bytes;
+  if (bytes[0] === GZIP_MAGIC[0] && bytes[1] === GZIP_MAGIC[1]) {
+    if (typeof DecompressionStream === 'undefined') {
+      throw new SyncPayloadError('Update this browser to read compressed sync snapshots.');
+    }
+    try {
+      json = await pipeThrough(bytes, new DecompressionStream('gzip'), SNAPSHOT_MAX_INFLATED_BYTES);
+    } catch {
+      throw new SyncPayloadError('The relay returned an unreadable sync snapshot.');
+    }
+  }
+
   let text: string;
   try {
-    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    text = new TextDecoder('utf-8', { fatal: true }).decode(json);
   } catch {
     throw new SyncPayloadError('The relay returned an unreadable sync snapshot.');
   }
@@ -66,6 +102,38 @@ export function decodeSnapshot(bytes: Uint8Array): BackupFile {
     throw new SyncPayloadError('The relay returned an invalid Lacuna snapshot.');
   }
   return parsed;
+}
+
+async function pipeThrough(
+  bytes: Uint8Array,
+  stream: TransformStream<BufferSource, Uint8Array>,
+  maxBytes = Infinity,
+): Promise<Uint8Array> {
+  const writer = stream.writable.getWriter();
+  // Write and close without awaiting: the readable side must be drained
+  // concurrently or backpressure stalls the writer on large inputs.
+  writer.write(bytes as BufferSource).catch(() => undefined);
+  writer.close().catch(() => undefined);
+  const reader = stream.readable.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new SyncPayloadError('This sync snapshot is too large to open.');
+    }
+    chunks.push(value);
+  }
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return result;
 }
 
 export function assertSnapshotSize(

@@ -1,1 +1,0 @@
-- Scope the mobile Question editor footer test to its inline confirmation, preserving actionability checks while the outgoing Delete trigger is still mounted.

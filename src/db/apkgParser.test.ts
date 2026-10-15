@@ -74,4 +74,32 @@ describe('Anki SQLite parsing', () => {
     const fresh = await parseApkgBuffer(archive.buffer as ArrayBuffer, { importScheduling: false });
     expect(fresh.cards.every((card) => card.history.length === 0)).toBe(true);
   });
+
+  it('dates review cards from the collection creation day, not from today', async () => {
+    const SQL = await initSqlJs({
+      wasmBinary: new Uint8Array(readFileSync(require.resolve('sql.js/dist/sql-wasm.wasm'))).buffer,
+    });
+    const collection = new SQL.Database();
+    let archive: Uint8Array;
+    try {
+      collection.run(`
+        CREATE TABLE col (id, crt);
+        CREATE TABLE notetypes (id, name, type, flds, tmpl);
+        CREATE TABLE decks (id, name);
+        CREATE TABLE notes (id, mid, flds, tags, sfld);
+        CREATE TABLE cards (id, nid, did, ord, type, queue, due, ivl, factor, reps, lapses, left, odue, odid, flags);
+        CREATE TABLE revlog (id, cid, usn, ease, ivl, lastIvl, factor, time, type);
+        INSERT INTO col VALUES (1, 1600000000);
+        INSERT INTO notetypes VALUES (1, 'Basic', 0, '[]', '[]');
+        INSERT INTO decks VALUES (1, 'Biology');
+        INSERT INTO notes VALUES (10, 1, 'Cell' || char(31) || 'Unit', '', 'Cell');
+        INSERT INTO cards VALUES (100, 10, 1, 0, 2, 2, 1500, 12, 2500, 3, 1, 0, 0, 0, 0);
+      `);
+      archive = zipSync({ 'collection.anki2': collection.export(), media: strToU8('{}') });
+    } finally {
+      collection.close();
+    }
+    const parsed = await parseApkgBuffer(archive.buffer as ArrayBuffer);
+    expect(parsed.cards[0].due).toBe(1_600_000_000_000 + 1500 * 86_400_000);
+  });
 });

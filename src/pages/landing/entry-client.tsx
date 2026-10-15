@@ -1,7 +1,7 @@
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { LandingRoot } from './LandingRoot';
 import { markLandingHandover } from '../../landingHandover';
-import { installSimpleAnalytics } from '../../webBootstrap';
+import { installSimpleAnalytics, isAppHashRoute } from '../../webBootstrap';
 import '../../index.css';
 
 let landingRoot: Root | null = null;
@@ -12,7 +12,7 @@ let prefetched = false;
 function onUrlChange(): void {
   // In-page anchors (for example #landing-product) stay on the landing page.
   // Anything addressing the study app through its hash routes boots the full app.
-  if (!window.location.hash.startsWith('#/')) return;
+  if (!isAppHashRoute(window.location.hash)) return;
   void upgradeToApp();
 }
 

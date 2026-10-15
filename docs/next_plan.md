@@ -1,6 +1,6 @@
 # Lacuna roadmap
 
-Reviewed 20 September 2026.
+Reviewed 15 October 2026.
 
 This is the current decision surface: what Lacuna is now, what maintenance follows, and what is
 deliberately frozen. Detailed specifications, implementation diaries and completed arcs belong in
@@ -8,12 +8,14 @@ deliberately frozen. Detailed specifications, implementation diaries and complet
 
 ## Current state
 
-### v0.2.9 beta
+### v0.2.14 beta
 
 **Status:** delivered.
 
-The current public release is **v0.2.9**, verified against GitHub on 20 September. Lacuna is a
-local-first web/PWA and Electron learning application. Study data remains on-device; optional device sync and browser AI
+The current public release is **v0.2.14**, published on 14 October and verified against GitHub
+on 15 October. Its official assets cover Windows and Linux; macOS remains a separate manual build.
+Lacuna is a local-first web/PWA and Electron learning application. Study data remains on-device;
+optional device sync and browser AI
 use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
 Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
 behaviour. The release workflow attests Windows and Linux artefacts; locally
@@ -30,7 +32,18 @@ Preserve existing study data and treat desktop upgrades as live-user operations.
 study, authoring, backup, restore and sync on the intended devices, retaining the established
 migration regression suite and checking upgrades from the previous published release.
 
-## Direction C follow-up brief
+## Direction C integration
+
+**Status:** in progress. The prompter has explicitly withheld approval to merge the redesign
+into `master` (15 October). Preparation head `b6d25b4b` passed full CI and Security; its native
+source also passed the six-job Windows/Linux/macOS matrix. The prompter has authorised merging
+preparation PR #536 from `codex/direction-c-release-preparation` into `redesign/direction-c`.
+Keep both the redesign PR and publication open for a later product decision.
+
+Reconcile current `master`, run full CI and Security on the combined head, and record historical
+profile, recovery, sync and native-package evidence in
+[the preparation record](maintenance/direction-c-preparation.md). Physical managed devices,
+real peer devices, signing and human UX acceptance remain distinct gates.
 
 The 6 October 2026 next-session brief is complete. Its lasting rules now live in
 [visual design](spec/visual-design.md) and [accessibility](spec/accessibility.md); its
@@ -77,11 +90,16 @@ work is signing/notarisation before wider rollout and the
 complete managed-device matrix; every critical or high finding still needs a fix or a named owner
 and review date.
 
+Advisory triage, 13 October 2026: `bun audit` reports no high or critical findings in the root,
+relay or handwriting packages. The one remaining root finding, moderate `sprintf-js`
+(GHSA-hp3w-g68c-fv3c), reaches only Electron's build-time download agent and has no patched
+release; the maintainer owns it, for review at the next beta release.
+
 **Exit:** audits and all existing quality gates pass, with remaining advisories explicitly triaged.
 
 ### 2. Data durability and desktop evidence
 
-**Status:** in progress; current schema v27. Further migrations require an evidenced data-integrity need.
+**Status:** in progress; current schema v29. Further migrations require an evidenced data-integrity need.
 
 Media-bearing full-backup round trips, replace and merge restore points, and quota/persistence-denial
 recovery are delivered. v1/v8 migration, JSON export, clean restore and reopen now preserve reviews,
@@ -95,10 +113,8 @@ sync convergence, native AI evidence,
 locked-down Windows installed/portable/update checks, the clean-account macOS matrix, and
 signed/notarised artefacts before wider rollout.
 
-Local checks on 5 September: 137 targeted migration, backup and sync tests; web/desktop typechecks;
-lint; Chromium full-backup recovery, first-device pairing and forced concurrent-write convergence;
-Electron companion transport and video embeds. These are development-checkout checks, not an
-exact-release or clean-account certification. The companion harness does not prove model-authored AI.
+Current integration and platform evidence is recorded in [the preparation record](maintenance/direction-c-preparation.md).
+Hosted automation remains distinct from exact-release, physical-device and model-authored AI acceptance.
 
 **Exit:** no known path silently loses data and every advertised desktop artefact has reproducible
 evidence.
@@ -112,7 +128,8 @@ release-provenance workflow and repository policy files are delivered. On 6 Sept
 `master` protection was configured and independently read back: 13 CI/security checks, an up-to-date
 PR, resolved conversations, administrator enforcement, and no force pushes or deletion. Mandatory
 human/CODEOWNER approval is deliberately deferred while the maintainer is the only writer. Release
-publication remains a manual maintainer action; it is not second-person enforced approval. See
+publication now follows a version-bump merge, exact-commit CI/Security and the automated release
+workflows; see [release maintenance](maintenance/release.md). It is not second-person enforced approval. See
 [the governance record](maintenance/governance.md).
 
 **Exit:** a red check means broken, not merely noisy.

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import { assetUrl, collectOrphanedAssets, storeImageBlob } from './assets';
+import { assetUrl, ASSET_GC_GRACE_MS, collectOrphanedAssets, storeImageBlob } from './assets';
 import { createCard, createCourse, deleteCards, updateCard } from './repository';
 import { createOcclusion, deleteOcclusion } from './occlusionRepository';
 import type { OcclusionRegion } from './types';
@@ -11,6 +11,9 @@ import {
   deleteQuestion,
   startQuestionAttempt,
 } from '../questions/repository';
+
+/** A sweep after the grace period, so fresh test assets are eligible for collection. */
+const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
 
 async function reset() {
   await Promise.all([
@@ -33,6 +36,35 @@ async function reset() {
 describe('asset garbage collection', () => {
   beforeEach(reset);
 
+  it('keeps a freshly stored asset that an open editor has not saved yet', async () => {
+    // Uploading stores the asset before the card that references it is saved; a sweep
+    // scheduled by anything else in that window must not delete it.
+    const asset = await storeImageBlob(
+      new Blob(['unsaved'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+
+    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await db.assets.get(asset.hash)).toBeDefined();
+  });
+
+  it('collects an orphan exactly one grace period after it was stored', async () => {
+    const storedAt = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(storedAt);
+    const asset = await storeImageBlob(
+      new Blob(['expired'], { type: 'image/png' }),
+      'image/png',
+      4,
+      3,
+    );
+    vi.restoreAllMocks();
+
+    expect(await collectOrphanedAssets(storedAt + ASSET_GC_GRACE_MS)).toBe(1);
+    expect(await db.assets.get(asset.hash)).toBeUndefined();
+  });
+
   it('retains an asset referenced only by a local Question Set draft', async () => {
     const asset = await storeImageBlob(
       new Blob(['draft'], { type: 'image/png' }),
@@ -45,7 +77,7 @@ describe('asset garbage collection', () => {
       value: { content: { title: `![draft](${assetUrl(asset.hash)})` } },
     });
 
-    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 
@@ -65,7 +97,7 @@ describe('asset garbage collection', () => {
     );
 
     await deleteCards([card.id]);
-    const removed = await collectOrphanedAssets();
+    const removed = await collectOrphanedAssets(afterGrace());
     expect(removed).toBe(1);
     expect(await db.assets.count()).toBe(0);
   });
@@ -82,12 +114,12 @@ describe('asset garbage collection', () => {
     const c2 = await createCard(deck.id, 'front_back', `![pic](${assetUrl(asset.hash)})`, 'b');
 
     await deleteCards([c1.id]);
-    const removed = await collectOrphanedAssets();
+    const removed = await collectOrphanedAssets(afterGrace());
     expect(removed).toBe(0);
     expect(await db.assets.count()).toBe(1);
 
     await deleteCards([c2.id]);
-    const removed2 = await collectOrphanedAssets();
+    const removed2 = await collectOrphanedAssets(afterGrace());
     expect(removed2).toBe(1);
     expect(await db.assets.count()).toBe(0);
   });
@@ -108,7 +140,7 @@ describe('asset garbage collection', () => {
     );
 
     await updateCard(card.id, { front: 'No image here.' });
-    const removed = await collectOrphanedAssets();
+    const removed = await collectOrphanedAssets(afterGrace());
     expect(removed).toBe(1);
     expect(await db.assets.count()).toBe(0);
   });
@@ -125,7 +157,7 @@ describe('asset garbage collection', () => {
 
     const { deleteCourse } = await import('./repository');
     await deleteCourse(deck.id);
-    const removed = await collectOrphanedAssets();
+    const removed = await collectOrphanedAssets(afterGrace());
     expect(removed).toBe(1);
     expect(await db.assets.count()).toBe(0);
   });
@@ -147,7 +179,7 @@ describe('asset garbage collection', () => {
       updatedAt: 1,
     });
 
-    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 
@@ -170,7 +202,7 @@ describe('asset garbage collection', () => {
     };
     await createOcclusion(course.id, null, 'Cell diagram', asset.hash, [region]);
 
-    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 
@@ -194,7 +226,7 @@ describe('asset garbage collection', () => {
     const occlusion = await createOcclusion(course.id, null, 'Cell diagram', asset.hash, [region]);
 
     await deleteOcclusion(occlusion.id);
-    const removed = await collectOrphanedAssets();
+    const removed = await collectOrphanedAssets(afterGrace());
     expect(removed).toBe(1);
     expect(await db.assets.get(asset.hash)).toBeUndefined();
   });
@@ -219,7 +251,7 @@ describe('asset garbage collection', () => {
     await startQuestionAttempt({ questionId: question.id, sessionId: 'session-1' });
     await deleteQuestion(question.id);
 
-    expect(await collectOrphanedAssets()).toBe(0);
+    expect(await collectOrphanedAssets(afterGrace())).toBe(0);
     expect(await db.assets.get(asset.hash)).toBeDefined();
   });
 });

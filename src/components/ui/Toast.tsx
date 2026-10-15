@@ -130,6 +130,8 @@ function ToastBar({
   const barRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
+  const hoveredRef = useRef(false);
+  const focusedRef = useRef(false);
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
   const onDismissRef = useRef(onDismiss);
   const isPersistent = toast.duration === Infinity;
@@ -142,7 +144,8 @@ function ToastBar({
   const { onDismiss: onDismissProp, duration: toastDuration } = toast;
 
   const resume = useCallback(() => {
-    if (isPersistent) return;
+    if (isPersistent || hoveredRef.current || focusedRef.current) return;
+    cancelAnimationFrame(rafRef.current);
     startRef.current = performance.now();
     const duration = toastDuration;
 
@@ -165,7 +168,9 @@ function ToastBar({
   }, [toastDuration, isPersistent, onDismissProp]);
 
   const pause = useCallback(() => {
+    if (!rafRef.current) return;
     cancelAnimationFrame(rafRef.current);
+    rafRef.current = 0;
     const elapsed = performance.now() - startRef.current;
     remainingRef.current = Math.max(0, remainingRef.current - elapsed);
   }, []);
@@ -208,8 +213,23 @@ function ToastBar({
         'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',
         toneClasses[toast.tone],
       )}
-      onMouseEnter={pause}
-      onMouseLeave={resume}
+      onMouseEnter={() => {
+        hoveredRef.current = true;
+        pause();
+      }}
+      onMouseLeave={() => {
+        hoveredRef.current = false;
+        resume();
+      }}
+      onFocus={() => {
+        focusedRef.current = true;
+        pause();
+      }}
+      onBlur={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        focusedRef.current = false;
+        resume();
+      }}
     >
       {/* Dismiss timer progress bar — hidden for persistent toasts */}
       {!isPersistent && (

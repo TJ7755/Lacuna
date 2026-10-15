@@ -1,0 +1,1 @@
+- Configure the Linux runner's packaged Chromium sandbox helper before native interaction checks, keeping the application sandbox enabled during pre-merge verification.

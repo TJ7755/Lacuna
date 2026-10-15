@@ -26,6 +26,20 @@ describe('companion connection metadata', () => {
     expect(second).not.toBe(first);
   });
 
+  it('keeps the Unix socket in the owner-only state directory, not shared /tmp', () => {
+    const userData = path.join(path.sep, 'home', 'student', '.config', 'Lacuna');
+
+    expect(companionEndpoint(userData, 'linux')).toBe(path.join(userData, 'mcp', 'companion.sock'));
+  });
+
+  it('falls back to a per-user temporary socket when the profile path is too long', () => {
+    const userData = path.join(path.sep, 'home', 'x'.repeat(100), 'Lacuna');
+
+    expect(companionEndpoint(userData, 'darwin')).toMatch(
+      new RegExp(`^${os.tmpdir().replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')}.lacuna-mcp-`),
+    );
+  });
+
   it('writes a newly rotated 256-bit hexadecimal token', async () => {
     const directory = await mkdtemp(path.join(os.tmpdir(), 'lacuna-connection-test-'));
     temporaryDirectories.push(directory);

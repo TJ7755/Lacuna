@@ -1,1 +1,0 @@
-- Preserve escaped pipes at the end of Markdown table cells when the row omits its closing separator.

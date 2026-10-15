@@ -1,1 +1,0 @@
-- Keep unrecognised is: search terms in the text query instead of silently returning a broader set of cards.

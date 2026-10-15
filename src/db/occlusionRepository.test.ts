@@ -10,8 +10,9 @@ import {
   snapshotOcclusion,
   updateOcclusion,
 } from './occlusionRepository';
-import { createCourse, createLesson, deleteCards } from './repository';
+import { createCourse, createLesson, deleteCards, recordReview } from './repository';
 import type { Occlusion, OcclusionRegion } from './types';
+import { hydrateCardsWithHistory } from './reviewHistoryRead';
 
 async function reset() {
   await Promise.all([
@@ -25,6 +26,7 @@ async function reset() {
     db.lessonCards.clear(),
     db.lessonCardExposures.clear(),
     db.concepts.clear(),
+    db.reviewHistory.clear(),
   ]);
 }
 
@@ -224,6 +226,45 @@ describe('listOcclusions', () => {
 
 describe('snapshotOcclusion / restoreOcclusion', () => {
   beforeEach(reset);
+
+  it.each([false, true])(
+    'replaces later canonical reviews when restoring a snapshot (reviewed: %s)',
+    async (reviewed) => {
+      const course = await createCourse('Occlusion history boundary');
+      const occlusion = await createOcclusion(course.id, null, 'Plant cell', 'hash-1', [
+        labelRegion('r1'),
+      ]);
+      const [card] = await cardsForOcclusion(occlusion);
+      const review = (eventId: string) =>
+        recordReview({
+          card,
+          eventId,
+          sessionId: 'occlusion-history-boundary',
+          sessionKind: 'lesson',
+          deck: course,
+          kind: 'course',
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          correct: true,
+        });
+      if (reviewed) await review('occlusion-before-snapshot');
+      const snapshot = await snapshotOcclusion(occlusion.id);
+      await review('occlusion-after-snapshot');
+
+      await restoreOcclusion(snapshot!);
+
+      const restored = (await db.cards.get(card.id))!;
+      const [hydrated] = await hydrateCardsWithHistory([restored]);
+      expect(await db.reviewHistory.where('cardId').equals(card.id).toArray()).toEqual(
+        snapshot!.reviewHistory,
+      );
+      expect(hydrated.history.map((entry) => entry.eventId)).toEqual(
+        reviewed ? ['occlusion-before-snapshot'] : [],
+      );
+      expect(restored.reps).toBe(snapshot!.cards[0].reps);
+    },
+  );
 
   it('round-trips the occlusion and its cards, preserving FSRS state', async () => {
     const course = await createCourse('Biology');

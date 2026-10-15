@@ -1,5 +1,10 @@
 import { SEED_FLAG_KEY } from './db/seedFlags';
 
+/** In-app hash routes start with `#/`; any other fragment is an in-page anchor. */
+export function isAppHashRoute(hash: string): boolean {
+  return hash.startsWith('#/');
+}
+
 function isHostedWebProtocol(protocol: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
 }

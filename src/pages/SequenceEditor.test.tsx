@@ -449,3 +449,34 @@ describe('SequenceEditor', () => {
     });
   });
 });
+
+describe('SequenceEditor — published-course lock', () => {
+  it.each([false, true])('blocks saving locked sequences (editing: %s)', async (editing) => {
+    mockCourse = { ...course, distributedCopy: { lineageId: 'published-course', revision: 1, locked: true, autoAcceptUpdates: false } };
+    mockSequence = editing ? {
+      id: 'seq-1', courseId: 'course-1', primaryLessonId: null, name: 'Published sequence',
+      items: [{ id: 'item-1', value: 'First item' }], cueWindow: 2, createdAt: 0, updatedAt: 1,
+    } : undefined;
+    if (editing) renderEdit();
+    else renderNew();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Sequence name' }), { target: { value: 'Changed sequence' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item 1 content' }), { target: { value: 'Changed item' } });
+    const save = screen.getByRole('button', { name: editing ? 'Save changes' : 'Add sequence' });
+    expect(save).toBeDisabled();
+    await act(async () => { fireEvent.click(save); });
+    expect(createSequence).not.toHaveBeenCalled();
+    expect(updateSequence).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Delete sequence' })).not.toBeInTheDocument();
+  });
+
+  it('keeps ordinary Study-mode sequences editable', async () => {
+    mockCourse = { ...course, lessonViewMode: 'study' };
+    mockSequence = {
+      id: 'seq-1', courseId: 'course-1', primaryLessonId: null, name: 'My sequence',
+      items: [{ id: 'item-1', value: 'First item' }], cueWindow: 2, createdAt: 0, updatedAt: 1,
+    };
+    renderEdit();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    expect(updateSequence).toHaveBeenCalledWith(expect.objectContaining({ id: 'seq-1' }));
+  });
+});

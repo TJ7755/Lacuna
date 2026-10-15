@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { DialogHeader, DialogPanel } from './DialogPanel';
 import { AnimatePresence, domAnimation, LazyMotion } from 'motion/react';
 
@@ -67,6 +68,47 @@ describe('DialogPanel', () => {
     expect(input.closest('[inert]')).toBeNull();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
   });
+
+  it('keeps Tab available to its trap when the caller isolates dialog shortcuts', () => {
+    function TrappedDialog() {
+      const trapRef = useFocusTrap(true);
+      return (
+        <DialogPanel
+          label="Trapped editor"
+          trapRef={trapRef}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            event.nativeEvent.stopImmediatePropagation();
+          }}
+        >
+          <button>First control</button>
+          <textarea
+            aria-label="Editor"
+            onKeyDown={(event) => {
+              if (event.key !== 'Tab' || event.shiftKey) return;
+              event.preventDefault();
+              (event.currentTarget.nextElementSibling as HTMLButtonElement).focus();
+            }}
+          />
+          <button>Last control</button>
+        </DialogPanel>
+      );
+    }
+    render(<TrappedDialog />);
+    const first = screen.getByRole('button', { name: 'First control' });
+    const last = screen.getByRole('button', { name: 'Last control' });
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+    first.focus();
+    fireEvent.keyDown(first, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+    const editor = screen.getByRole('textbox', { name: 'Editor' });
+    editor.focus();
+    fireEvent.keyDown(editor, { key: 'Tab' });
+    expect(document.activeElement).toBe(last);
+  });
+
   it('renders a labelled modal panel inside the trapped overlay', () => {
     const { trapRef } = renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Edit card' });

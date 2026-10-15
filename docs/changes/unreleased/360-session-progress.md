@@ -1,1 +1,0 @@
-- The Learn header's completion bar no longer moves backwards when a failed card's retry falls due: a card counts as cleared once it has been answered in the session, whatever the grade, or once it leaves study. The recall figure beside it is labelled as a forecast with its horizon ("at the exam", or "in 7 days" with no exam ahead) (#360)

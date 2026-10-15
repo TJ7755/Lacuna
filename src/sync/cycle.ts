@@ -2,8 +2,8 @@
 // owns only opaque byte transport, while manualMerge remains the one database
 // apply path for a peer merge.
 
-import type { BackupFile } from '../db/types';
-import { updateSyncState } from '../db/mutationStamp';
+import type { BackupFile, SyncState } from '../db/types';
+import { readSyncState, updateSyncState } from '../db/mutationStamp';
 import { exportDatabase } from '../db/portability';
 import { ManualMergeError, manualMerge, type ManualMergeSummary } from './manualMerge';
 import { openState, sealState } from './crypto';
@@ -37,6 +37,9 @@ export interface SyncCycleOptions {
   provider: RelayProvider;
   channelId: string;
   channelKey: Uint8Array;
+  /** Expected HTTP relay capabilities, checked against the persisted pairing. */
+  relayUrl?: string;
+  writeToken?: string;
   /** Injectable clock for deterministic state and test assertions. */
   now?: () => number;
   /** Defaults to one retry after a 412, as required by the relay contract. */
@@ -49,7 +52,7 @@ export interface SyncResult {
   pushed: boolean;
   /** Encrypted state size, including the AES-GCM envelope. */
   snapshotBytes: number;
-  /** JSON size before encryption, useful when explaining a size failure. */
+  /** Uncompressed JSON size, useful when explaining a size failure. */
   snapshotPlaintextBytes: number;
   generation: string;
   mergeSummary: ManualMergeSummary | null;
@@ -74,9 +77,29 @@ export function syncCycle(options: SyncCycleOptions): Promise<SyncResult> {
     return inFlight;
   }
 
-  const promise = executeSync(options)
+  let owner: PairingOwner | undefined;
+  const promise = readSyncState()
+    .then((state) => {
+      const startingOwner = capturePairingOwner(state);
+      if (
+        startingOwner.channelId !== options.channelId ||
+        (options.relayUrl !== undefined && startingOwner.relayUrl !== options.relayUrl) ||
+        (startingOwner.channelKeyHex !== undefined &&
+          startingOwner.channelKeyHex !==
+            Array.from(options.channelKey, (byte) => byte.toString(16).padStart(2, '0')).join(
+              '',
+            )) ||
+        (options.writeToken !== undefined &&
+          startingOwner.writeToken !== undefined &&
+          startingOwner.writeToken !== options.writeToken)
+      ) {
+        throw pairingChanged();
+      }
+      owner = startingOwner;
+      return executeSync(options, owner);
+    })
     .catch(async (error: unknown) => {
-      await recordFailure(options, error);
+      if (owner) await recordFailure(options, error, owner);
       throw error;
     })
     .finally(() => {
@@ -97,7 +120,12 @@ export function __resetSyncFlightForTests(): void {
 }
 
 function sameChannel(left: SyncCycleOptions, right: SyncCycleOptions): boolean {
-  if (left.channelId !== right.channelId) return false;
+  if (
+    left.channelId !== right.channelId ||
+    left.relayUrl !== right.relayUrl ||
+    left.writeToken !== right.writeToken
+  )
+    return false;
   const leftKey = left.channelKey;
   const rightKey = right.channelKey;
   if (leftKey.length !== rightKey.length) return false;
@@ -107,11 +135,11 @@ function sameChannel(left: SyncCycleOptions, right: SyncCycleOptions): boolean {
   return true;
 }
 
-async function executeSync(options: SyncCycleOptions): Promise<SyncResult> {
+async function executeSync(options: SyncCycleOptions, owner: PairingOwner): Promise<SyncResult> {
   const maxAttempts = normaliseAttempts(options.maxAttempts);
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await executeAttempt(options, attempt);
+      return await executeAttempt(options, attempt, owner);
     } catch (error) {
       if (!(error instanceof StaleGenerationError) || attempt === maxAttempts) throw error;
     }
@@ -119,19 +147,26 @@ async function executeSync(options: SyncCycleOptions): Promise<SyncResult> {
   throw new Error('Sync ended without a result.');
 }
 
-async function executeAttempt(options: SyncCycleOptions, attempt: number): Promise<SyncResult> {
+async function executeAttempt(
+  options: SyncCycleOptions,
+  attempt: number,
+  owner: PairingOwner,
+): Promise<SyncResult> {
   const remote = await options.provider.pull('state');
+  await assertCurrentPairing(owner);
   if (!remote) {
     const sealed = await replacementLifecycle.replace('peer', async () => {
       const local = await exportDatabase();
       return prepareSnapshot(local, options);
     });
+    await assertCurrentPairing(owner);
     const pushed = await options.provider.push('state', sealed.bytes, EMPTY_GENERATION);
-    await recordSuccess(options, pushed.generation, sealed);
+    await recordSuccess(options, pushed.generation, sealed, owner);
     return resultFor(attempt, false, true, sealed, pushed.generation, null);
   }
 
   const remoteSnapshot = await openRemoteSnapshot(remote, options);
+  await assertCurrentPairing(owner);
   let mergedSnapshot: BackupFile | undefined;
   let mergeSummary: ManualMergeSummary;
 
@@ -144,11 +179,12 @@ async function executeAttempt(options: SyncCycleOptions, attempt: number): Promi
         // for measurement only: importBackup normalises the candidate in
         // place after this hook returns, so the push payload is sealed again
         // below from the state that was actually applied.
-        const plaintext = encodeSnapshot(candidate);
-        const bytes = await sealState(options.channelKey, plaintext, {
+        const encoded = await encodeSnapshot(candidate);
+        const bytes = await sealState(options.channelKey, encoded.payload, {
           channelId: options.channelId,
         });
-        assertSnapshotSize(candidate, bytes.byteLength, plaintext.byteLength);
+        assertSnapshotSize(candidate, bytes.byteLength, encoded.jsonBytes);
+        await assertCurrentPairing(owner);
       },
     });
   } catch (error) {
@@ -160,14 +196,15 @@ async function executeAttempt(options: SyncCycleOptions, attempt: number): Promi
   }
 
   const sealed = await prepareSnapshot(mergedSnapshot, options);
+  await assertCurrentPairing(owner);
 
   if (snapshotsEquivalent(mergedSnapshot, remoteSnapshot)) {
-    await recordSuccess(options, remote.generation, sealed);
+    await recordSuccess(options, remote.generation, sealed, owner);
     return resultFor(attempt, true, false, sealed, remote.generation, mergeSummary);
   }
 
   const pushed = await options.provider.push('state', sealed.bytes, remote.generation);
-  await recordSuccess(options, pushed.generation, sealed);
+  await recordSuccess(options, pushed.generation, sealed, owner);
   return resultFor(attempt, true, true, sealed, pushed.generation, mergeSummary);
 }
 
@@ -180,9 +217,11 @@ async function prepareSnapshot(
   snapshot: BackupFile,
   options: SyncCycleOptions,
 ): Promise<PreparedSnapshot> {
-  const plaintext = encodeSnapshot(snapshot);
-  const bytes = await sealState(options.channelKey, plaintext, { channelId: options.channelId });
-  const size = assertSnapshotSize(snapshot, bytes.byteLength, plaintext.byteLength);
+  const encoded = await encodeSnapshot(snapshot);
+  const bytes = await sealState(options.channelKey, encoded.payload, {
+    channelId: options.channelId,
+  });
+  const size = assertSnapshotSize(snapshot, bytes.byteLength, encoded.jsonBytes);
   return { bytes, size };
 }
 
@@ -193,7 +232,7 @@ async function openRemoteSnapshot(
   const plaintext = await openState(options.channelKey, remote.bytes, {
     channelId: options.channelId,
   });
-  return decodeSnapshot(plaintext);
+  return await decodeSnapshot(plaintext);
 }
 
 function resultFor(
@@ -223,37 +262,80 @@ function unwrapManualMergeError(error: unknown): unknown {
   return error;
 }
 
+function capturePairingOwner(state: SyncState | undefined) {
+  return {
+    channelId: state?.channelId,
+    relayUrl: state?.relayUrl,
+    wrappedKeyMaterial: state?.wrappedKeyMaterial,
+    channelKeyHex: state?.remembered?.channelKeyHex,
+    writeToken: state?.remembered?.writeToken,
+  };
+}
+type PairingOwner = ReturnType<typeof capturePairingOwner>;
+
+function pairingMatches(state: SyncState | undefined, owner: PairingOwner): boolean {
+  return (
+    owner.channelId === state?.channelId &&
+    owner.relayUrl === state?.relayUrl &&
+    owner.wrappedKeyMaterial === state?.wrappedKeyMaterial &&
+    owner.channelKeyHex === state?.remembered?.channelKeyHex &&
+    owner.writeToken === state?.remembered?.writeToken
+  );
+}
+
+function pairingChanged(): Error {
+  return new Error('The sync pairing changed while this sync was in progress.');
+}
+
+async function assertCurrentPairing(owner: PairingOwner): Promise<void> {
+  if (!pairingMatches(await readSyncState(), owner)) throw pairingChanged();
+}
+
 async function recordSuccess(
   options: SyncCycleOptions,
   generation: string,
   prepared: PreparedSnapshot,
+  owner: PairingOwner,
 ): Promise<void> {
-  await updateSyncState((previous) => ({
-    ...previous,
-    channelId: options.channelId,
-    lastPushedGeneration: generation,
-    lastSuccessfulSyncAt: options.now?.() ?? Date.now(),
-    lastSnapshotBytes: prepared.bytes.byteLength,
-    lastSnapshotPlaintextBytes: prepared.size.plaintextBytes,
-    lastError: null,
-  }));
+  let recorded = false;
+  await updateSyncState((previous) => {
+    // Compare inside the read-modify-write transaction, not before opening it.
+    if (!pairingMatches(previous, owner)) return undefined;
+    recorded = true;
+    return {
+      ...previous,
+      channelId: options.channelId,
+      lastPushedGeneration: generation,
+      lastSuccessfulSyncAt: options.now?.() ?? Date.now(),
+      lastSnapshotBytes: prepared.bytes.byteLength,
+      lastSnapshotPlaintextBytes: prepared.size.plaintextBytes,
+      lastError: null,
+    };
+  });
+  if (!recorded) throw pairingChanged();
 }
 
-async function recordFailure(options: SyncCycleOptions, error: unknown): Promise<void> {
+async function recordFailure(
+  options: SyncCycleOptions,
+  error: unknown,
+  owner: PairingOwner,
+): Promise<void> {
   const size = error instanceof SyncSnapshotTooLargeError ? error.report : undefined;
-  await updateSyncState((previous) => ({
-    ...previous,
-    channelId: options.channelId,
-    ...(size
-      ? {
-          lastSnapshotBytes: size.transportBytes,
-          lastSnapshotPlaintextBytes: size.plaintextBytes,
-        }
-      : {}),
-    lastError: errorMessage(error),
-  })).catch(() => undefined);
+  await updateSyncState((previous) => {
+    if (!pairingMatches(previous, owner)) return undefined;
+    return {
+      ...previous,
+      channelId: options.channelId,
+      ...(size
+        ? {
+            lastSnapshotBytes: size.transportBytes,
+            lastSnapshotPlaintextBytes: size.plaintextBytes,
+          }
+        : {}),
+      lastError: errorMessage(error),
+    };
+  }).catch(() => undefined);
 }
-
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

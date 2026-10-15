@@ -7,6 +7,7 @@ import {
   conceptNameForCard,
 } from '../questions/concepts';
 import { scheduleAssetGc } from './assets';
+import { canEditLessons } from '../course/lessonViewMode';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
 import {
@@ -20,8 +21,17 @@ import {
   reviewHistoryEntriesForCard,
   type ReviewHistoryEntry,
 } from './reviewHistory';
+import { applyScheduleEdit, mergeScheduleEdits } from './scheduleEdits';
 import { db, makeId } from './schema';
-import type { AnswerMode, Card, CardType, ItemPayload, LessonCardExposure, LessonCardLink } from './types';
+import type {
+  AnswerMode,
+  Card,
+  CardType,
+  ItemPayload,
+  LessonCardExposure,
+  LessonCardLink,
+  ScheduleEdit,
+} from './types';
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
@@ -511,13 +521,25 @@ async function assertNoGeneratedCards(ids: string[]): Promise<void> {
   }
 }
 
-export async function deleteCards(ids: string[]): Promise<void> {
+export async function deleteCards(
+  ids: string[],
+  options?: { source: 'lineage-update' },
+): Promise<void> {
   if (ids.length === 0) return;
   await db.transaction(
     'rw',
-    [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
+    [db.courses, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
     async (tx) => {
       await assertNoGeneratedCards(ids);
+      // Teacher removals use the same cleanup after the lineage merge has authorised them.
+      if (options?.source !== 'lineage-update') {
+        const cards = await db.cards.bulkGet(ids);
+        const courseIds = [...new Set(cards.flatMap((card) => card?.courseId ? [card.courseId] : []))];
+        const courses = await db.courses.bulkGet(courseIds);
+        if (courses.some((course) => course && !canEditLessons(course))) {
+          throw new Error('This published course is locked.');
+        }
+      }
       const [lessonCards, exposures] = await Promise.all([
         db.lessonCards.where('cardId').anyOf(ids).toArray(),
         db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
@@ -689,28 +711,19 @@ export async function rescheduleCards(ids: string[], options: RescheduleOptions)
     throw new Error('Reschedule requires either reset: true or a due date.');
   }
   const now = Date.now();
+  const edit: ScheduleEdit =
+    options.due !== undefined ? { at: now, kind: 'due', due: options.due } : { at: now, kind: 'reset' };
   await db.transaction('rw', db.cards, async () => {
-    if (options.due !== undefined) {
-      await db.cards
-        .where('id')
-        .anyOf(ids)
-        .modify(stampUpdatedAt({ due: options.due, buriedUntil: null }, now));
-    } else if (options.reset) {
-      await db.cards
-        .where('id')
-        .anyOf(ids)
-        .modify((card) => {
-          card.state = 0;
-          card.stability = null;
-          card.difficulty = null;
-          card.due = null;
-          card.scheduledDays = 0;
-          card.learningSteps = 0;
-          card.lastReviewed = null;
-          card.buriedUntil = null;
-          card.updatedAt = stampUpdatedAt(card, now).updatedAt;
+    await db.cards
+      .where('id')
+      .anyOf(ids)
+      .modify((card) => {
+        Object.assign(card, applyScheduleEdit(card, edit), {
+          buriedUntil: null,
+          scheduleEdits: mergeScheduleEdits(card.scheduleEdits, [edit]),
         });
-    }
+        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
+      });
   });
 }
 

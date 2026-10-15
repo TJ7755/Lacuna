@@ -27,6 +27,7 @@ import {
   type GeneratedCardPayload,
 } from './sequenceGeneration';
 import { friendlyDbError } from './dbErrors';
+import { replaceReviewHistoryForCards } from './cardRepository';
 import {
   stampUpdatedAt,
   recordTombstone,
@@ -395,7 +396,10 @@ export async function restoreSequence(snapshot: SequenceSnapshot): Promise<void>
         await db.cards.bulkPut(cardsToRestore);
         await db.lessonCards.bulkPut(snapshot.lessonCards);
         await db.lessonCardExposures.bulkPut(snapshot.lessonCardExposures);
-        await db.reviewHistory.bulkPut(reviewHistoryToRestore);
+        await replaceReviewHistoryForCards(
+          cardsToRestore.map((card) => card.id),
+          reviewHistoryToRestore,
+        );
         await clearTombstone(tx, 'sequences', snapshot.sequence.id);
         await clearTombstones(
           tx,

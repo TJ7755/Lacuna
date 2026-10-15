@@ -1,5 +1,6 @@
 import { exchangeCredential, loadAccessConfiguration } from '../../server/ai/access.js';
-import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
+import { aiHeaders, allowedOrigin, clientAddress, readBoundedBody } from '../../server/ai/http.js';
+import { createSessionExchangeLimiter } from '../../server/ai/quota.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -10,7 +11,17 @@ export default {
     if (request.method !== 'POST') return new Response('Method not allowed.', { status: 405, headers });
     if (process.env.AI_SERVICE_DISABLED === '1') return new Response('AI is unavailable.', { status: 503, headers });
     const configuration = loadAccessConfiguration(process.env);
-    if (!configuration) return new Response('AI is unavailable.', { status: 503, headers });
+    if (!configuration || !process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+      return new Response('AI is unavailable.', { status: 503, headers });
+    }
+    const limiter = createSessionExchangeLimiter(process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN);
+    let allowed: boolean;
+    try {
+      allowed = await limiter.allow(clientAddress(request));
+    } catch {
+      return new Response('AI is unavailable.', { status: 503, headers });
+    }
+    if (!allowed) return new Response('Too many attempts. Try again later.', { status: 429, headers });
     const body = await readBoundedBody(request);
     if (body === null) return new Response('AI request is too large.', { status: 413, headers });
     let credential: unknown;

@@ -414,6 +414,10 @@ export interface CourseDistributedCopy {
   autoAcceptUpdates: boolean;
   /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
   sourceLabel?: string;
+  /** The teacher's course details as last imported. A later update applies a changed
+   *  detail only where the local value still matches this, so a learner's own rename
+   *  survives. Absent on copies imported before course details were updated. */
+  source?: { name: string; description: string; unlockMode: UnlockMode };
 }
 
 /**
@@ -950,10 +954,18 @@ export interface Card {
   /** Current position within the (re)learning steps (= ts-fsrs `learning_steps`). */
   learningSteps: number;
   history: ReviewLog[];
+  /**
+   * Manual reschedules and resets since the last reset, oldest first. Sync replays
+   * them between reviews so a merge cannot undo them. Absent when there are none.
+   */
+  scheduleEdits?: ScheduleEdit[];
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt or lastReviewed. */
   updatedAt: number;
 }
+
+/** A manual schedule change at `at`: back to New, or a chosen due date. */
+export type ScheduleEdit = { at: number; kind: 'reset' } | { at: number; kind: 'due'; due: number };
 
 /** A sampled snapshot of a deck's predicted exam-day retrievability for historical charts. */
 export interface SessionHistoryEntry {
@@ -1176,7 +1188,7 @@ export interface SyncState {
   lastSuccessfulSyncAt?: number;
   /** Last encrypted snapshot size, retained for the Settings sync status panel. */
   lastSnapshotBytes?: number;
-  /** Last JSON snapshot size before encryption. */
+  /** Last uncompressed JSON snapshot size. */
   lastSnapshotPlaintextBytes?: number;
   lastError?: string | null;
 }

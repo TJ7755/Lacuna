@@ -108,7 +108,7 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
           return dialog !== null && input === document.activeElement;
         }
         if (measuredScenario === 'settings') return headingExists(1, 'Settings');
-        return headingExists(2, 'Course');
+        return headingExists(1, 'Welcome to Lacuna');
       };
       const check = () => {
         if (state.inputAt === null) return;
@@ -152,10 +152,7 @@ async function installBrowserProbe(page: Page, scenario: InteractionScenario): P
 
 async function performInteraction(page: Page, scenario: InteractionScenario): Promise<void> {
   if (scenario === 'search') {
-    await page
-      .getByRole('button', { name: /^Search/ })
-      .first()
-      .click();
+    await page.keyboard.press('ControlOrMeta+k');
     return;
   }
   if (scenario === 'settings') {
@@ -163,8 +160,8 @@ async function performInteraction(page: Page, scenario: InteractionScenario): Pr
     return;
   }
   await page
-    .locator('main')
-    .getByRole('button', { name: /Welcome to Lacuna/ })
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .click();
 }
