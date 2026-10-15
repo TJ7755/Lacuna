@@ -1,0 +1,1 @@
+- Dark mode uses near-black surfaces with a restrained lime accent, reducing the green cast while keeping light mode unchanged (#537)

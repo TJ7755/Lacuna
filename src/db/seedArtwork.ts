@@ -11,9 +11,9 @@ const STYLE = `<style>
     .label { fill: hsl(95 15% 29%); font-family: system-ui, sans-serif; }
     .accent { stroke: hsl(90 52% 19%); }
     @media (prefers-color-scheme: dark) {
-      .axis { stroke: hsl(80 15% 71%); }
-      .label { fill: hsl(80 15% 71%); }
-      .accent { stroke: hsl(73 100% 62%); }
+      .axis { stroke: hsl(80 8% 68%); }
+      .label { fill: hsl(80 8% 68%); }
+      .accent { stroke: hsl(74 85% 58%); }
     }
   </style>`;
 

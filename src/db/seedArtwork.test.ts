@@ -33,7 +33,7 @@ describe('Welcome seed artwork', () => {
       expect(svg).toContain('prefers-color-scheme: dark');
       expect(svg).not.toContain('#1c1917');
       expect(svg).toContain('.accent { stroke: hsl(90 52% 19%); }');
-      expect(svg).toContain('.accent { stroke: hsl(73 100% 62%); }');
+      expect(svg).toContain('.accent { stroke: hsl(74 85% 58%); }');
     }
     expect(seedArtworkFor('0'.repeat(64))).toBeUndefined();
   });
