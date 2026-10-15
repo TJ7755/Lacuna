@@ -1,7 +1,8 @@
 # Direction C preparation
 
 Reviewed 15 October 2026. This records preparation evidence, not product acceptance or permission
-to merge the redesign. The prompter has explicitly reserved that decision.
+to merge the redesign into master. The prompter authorised merging preparation PR #536 into
+`redesign/direction-c` on 15 October; redesign acceptance and publication remain reserved.
 
 ## Integration scope
 
@@ -17,9 +18,16 @@ Local validation runs sequentially; full gates run on hosted Actions to respect 
 
 ## Verification evidence
 
-[Draft PR #536](https://github.com/TJ7755/Lacuna/pull/536) targets the redesign branch;
+[Preparation PR #536](https://github.com/TJ7755/Lacuna/pull/536) targets the redesign branch;
 its [checks](https://github.com/TJ7755/Lacuna/pull/536/checks) identify the latest tested head.
-No auto-merge is enabled. Both parent branches remain unchanged by this preparation.
+No auto-merge is enabled. Its authorised destination is the redesign branch; master remains
+outside this merge's scope.
+
+Final preparation head `b6d25b4b` passed [full CI](https://github.com/TJ7755/Lacuna/actions/runs/38699136907)
+and [Security](https://github.com/TJ7755/Lacuna/actions/runs/38699137019), verified on 15 October.
+All 23 CI jobs passed, including both Chromium shards, mobile WebKit, recovery/risk coverage,
+Windows installed upgrades, native AI and packaged macOS study. There were no review comments
+or submitted reviews. The prompter subsequently authorised the preparation merge in chat.
 
 Local focused verification passed 90 tests across the Card editor, Question editor, Pomodoro
 and sync settings suites. Nine other conflict-focused suites passed in the preceding run.

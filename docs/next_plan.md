@@ -35,8 +35,9 @@ migration regression suite and checking upgrades from the previous published rel
 ## Direction C integration
 
 **Status:** in progress. The prompter has explicitly withheld approval to merge the redesign
-into `master` (15 October). Prepare the integration and verification on
-`codex/direction-c-release-preparation`, with its pull request based on `redesign/direction-c`.
+into `master` (15 October). Preparation head `b6d25b4b` passed full CI and Security; its native
+source also passed the six-job Windows/Linux/macOS matrix. The prompter has authorised merging
+preparation PR #536 from `codex/direction-c-release-preparation` into `redesign/direction-c`.
 Keep both the redesign PR and publication open for a later product decision.
 
 Reconcile current `master`, run full CI and Security on the combined head, and record historical
