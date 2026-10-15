@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
 async function importedCards(page: Page) {
   return page.evaluate(async () => {
@@ -37,7 +37,7 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await enterFreshLacuna(page);
     const before = (await importedCards(page)).length;
-    await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+    await openImport(page);
     await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
     const importer = page.locator('.card-import-page');
     await importer

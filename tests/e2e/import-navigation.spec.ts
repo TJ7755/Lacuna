@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
 for (const width of [1280, 390]) {
   test(`keeps the import heading and content aligned through navigation at ${width}px`, async ({
@@ -7,7 +7,7 @@ for (const width of [1280, 390]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await enterFreshLacuna(page);
-    await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+    await openImport(page);
     const title = page.getByRole('heading', { name: 'Import', exact: true });
     const header = page.locator('.import-page > header');
     await expect(title).toBeVisible();
