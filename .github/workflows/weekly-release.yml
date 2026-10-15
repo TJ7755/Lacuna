@@ -1,0 +1,96 @@
+name: Weekly release
+
+# Every Thursday, when shipped code on master has changelog entries since the last release,
+# bump the patch version and open the release pull request. It uses the release bot app's
+# token because pushes and pull requests made with GITHUB_TOKEN start no workflows, so CI
+# could never pass. Auto-merge lands it once the required checks pass, and the Release tag
+# workflow then tags, builds and publishes. Only master is ever read or released.
+on:
+  schedule:
+    - cron: '53 7 * * 4'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: weekly-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the release bot app is configured
+        id: configured
+        env:
+          APP_ID: ${{ secrets.RELEASE_APP_ID }}
+        run: |
+          if [ -z "$APP_ID" ]; then
+            echo "::warning::RELEASE_APP_ID is not set; see docs/maintenance/release.md."
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: app
+        if: steps.configured.outputs.ok
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - if: steps.configured.outputs.ok
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+
+      - if: steps.configured.outputs.ok
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - if: steps.configured.outputs.ok
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+
+      # release-assets.mjs reads updater metadata with electron-updater's YAML parser.
+      - if: steps.configured.outputs.ok
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Prepare the release
+        id: prepare
+        if: steps.configured.outputs.ok
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          open="$(
+            gh pr list --repo "$GITHUB_REPOSITORY" --state open --json headRefName \
+              --jq '[.[] | select(.headRefName | startswith("release/"))] | length'
+          )"
+          if [ "$open" != 0 ]; then
+            echo "A release pull request is already open; nothing to do."
+            exit 0
+          fi
+          node scripts/weekly-release.mjs
+
+      - name: Open the release pull request
+        if: steps.prepare.outputs.version
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+          VERSION: ${{ steps.prepare.outputs.version }}
+        run: |
+          user_id="$(gh api "/users/${SLUG}[bot]" --jq .id)"
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${user_id}+${SLUG}[bot]@users.noreply.github.com"
+          branch="release/${VERSION}"
+          git switch -c "$branch"
+          git add -A
+          git commit -m "Release ${VERSION}"
+          git push origin "$branch"
+          gh pr create --base master --head "$branch" --title "Release ${VERSION}" \
+            --body "Weekly release. Merging publishes the Windows and Linux beta with docs/releases/${VERSION}.md as its notes."
+          gh pr merge "$branch" --auto --squash

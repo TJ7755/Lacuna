@@ -1,1 +1,0 @@
-- Fix typed-answer feedback rejecting equivalent Unicode accents or accepting a missing accent as punctuation.

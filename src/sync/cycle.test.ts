@@ -102,7 +102,9 @@ function options(
 
 async function remoteBlob(snapshot: BackupFile, generation = '"generation-1"') {
   return {
-    bytes: await sealState(CHANNEL_KEY, encodeSnapshot(snapshot), { channelId: CHANNEL_ID }),
+    bytes: await sealState(CHANNEL_KEY, (await encodeSnapshot(snapshot)).payload, {
+      channelId: CHANNEL_ID,
+    }),
     generation,
   };
 }
@@ -127,7 +129,7 @@ function provider(overrides: Partial<RelayProvider> = {}): RelayProvider & {
 beforeEach(() => {
   __resetSyncFlightForTests();
   exportDatabaseMock.mockReset();
-  readSyncStateMock.mockReset().mockResolvedValue(undefined);
+  readSyncStateMock.mockReset().mockResolvedValue({ channelId: CHANNEL_ID });
   updateSyncStateMock.mockReset().mockImplementation(async (update) => {
     const current = await readSyncStateMock();
     const next = update(current);
@@ -167,7 +169,7 @@ describe('syncCycle', () => {
     expect(relay.push).toHaveBeenCalledWith('state', expect.any(Uint8Array), EMPTY_GENERATION);
     const pushedBytes = relay.push.mock.calls[0]![1] as Uint8Array;
     const opened = await openState(CHANNEL_KEY, pushedBytes, { channelId: CHANNEL_ID });
-    expect(decodeSnapshot(opened)).toEqual(local);
+    expect(await decodeSnapshot(opened)).toEqual(local);
     expect(result).toMatchObject({
       attempts: 1,
       pulled: false,
@@ -353,7 +355,7 @@ describe('syncCycle', () => {
     const first = syncCycle(options(relay));
     const second = syncCycle(options(relay));
     expect(second).toBe(first);
-    expect(relay.pull).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(1));
 
     releasePull?.(null);
     await expect(first).resolves.toMatchObject({ pushed: true });
@@ -373,7 +375,7 @@ describe('syncCycle', () => {
     const first = syncCycle(options(relay));
     const second = syncCycle(options(relay, { channelId: 'ffffffffffffffffffffffffffffffff' }));
     await expect(second).rejects.toThrow('different channel');
-    expect(relay.pull).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(relay.pull).toHaveBeenCalledTimes(1));
 
     releasePull?.(null);
     await expect(first).resolves.toMatchObject({ pushed: true });

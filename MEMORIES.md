@@ -21,9 +21,9 @@ Real beta users depend on Lacuna (confirmed 13 September 2026). Preserve their s
 and upgrade paths. Limited beta releases may be unsigned; wider school rollout requires
 Windows signing and macOS signing/notarisation. See [release policy](docs/maintenance/release.md).
 
-Release tags must be pushed with maintainer credentials: a tag created using Actions'
-`GITHUB_TOKEN` does not trigger the tag build. Use the release helper and exact-commit push
-workflow evidence; successful PR checks alone do not prove the merged release commit.
+The release-tag workflow explicitly dispatches the build after creating its tag, because
+a tag created using Actions' `GITHUB_TOKEN` does not trigger another workflow. The build
+requires exact-commit CI and Security push evidence; PR checks do not replace it.
 
 Some upstream GitHub Action version tags are annotated. Their tag-object SHA is not an
 executable commit pin; use the peeled commit (`refs/tags/<version>^{}`) and keep the
@@ -45,11 +45,11 @@ Parallel Node validation exhausted the prompter's laptop memory in October 2026.
 Use hosted GitHub Actions for full build, lint and browser gates. Any necessary local
 check must run alone; do not overlap it with agent runners or development servers.
 
-## CI runs only against master
+## Check the commit behind CI evidence
 
-`ci.yml` and `security.yml` trigger on pull requests into `master`/`main` alone. A pull request
-into a feature branch such as `redesign/direction-c` shows only the Vercel check, so green there
-proves nothing: run lint, the touched tests and any affected e2e locally before merging.
+CI and Security cover pull requests into `redesign/**` as well as `master`/`main`.
+Inspect the check suite's head and tested merge commit: an older successful run or Vercel
+deployment alone does not certify the current integration.
 
 ## Windows dependency installation
 
@@ -58,6 +58,10 @@ A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired t
 Do not regenerate lockfiles to compensate for an incomplete local installation.
 Keep a fresh install cache under `node_modules` or outside the checkout: Vite scans package
 tests in caches under `artifacts` as application source and attempts to resolve their dependencies.
+
+Bun's cache can still contain NTFS junction aliases when installed packages use --backend copyfile.
+Keep that cache outside disposable worktrees, or unlink its junction entries without following
+them before removing a worktree with older Git.
 
 ## Database history and transactions
 
@@ -70,6 +74,10 @@ Load dynamically imported validators before opening a Dexie transaction: a first
 load can outlive the transaction and leave earlier writes committed. Per-card async
 validation awaits inside a transaction can also commit prematurely, even with no payload;
 validate once before the transaction and skip re-validation within it.
+
+Legacy media rows can contain Blob values whose byte conversion outlives a Dexie transaction.
+Capture those rows with the backup's records, then encode their bytes after the read transaction
+closes; awaiting Blob conversion inside it can split or expire the snapshot.
 
 Nested projection helpers inherit the caller's transaction: include every table they touch.
 Parallel reads in a live query do not share a snapshot unless enclosed in one transaction.
@@ -109,6 +117,14 @@ Replace-import deliberately preserves `db.backups`; exports deliberately omit it
 pre-replacement restore point survives. Recovery merge and peer merge use different conflict
 rules: do not promise that recovery selects the latest `updatedAt`. Replacement exclusion
 must cover candidate snapshotting and merging as well as import.
+
+## Deleted evidence must be filtered before conflict checks
+
+Peer merge must discard revisions covered by deletion receipts before checking immutable
+evidence conflicts. Filtering only the merged result lets already-deleted submissions block
+sync, or conflict with a valid later restoration of the same attempt.
+Keep Question Set attempt receipts alongside restored rows until normal retention expiry;
+evidence merge unions older submissions, so dropping the receipt lets a stale peer reintroduce them.
 
 ## Question-set backup compatibility
 
@@ -455,3 +471,9 @@ longer changes a fresh app's theme. Browser specs that need a theme set `lacuna-
 
 Many source and test files are not Prettier-clean. `prettier --write` on a touched file reformats
 unrelated lines and bloats the diff; format only the lines you changed.
+
+## Presentation ownership follows stable identity
+
+Live queries can rehydrate a Question when unrelated observed rows change, including its own
+attempt receipt. Key asynchronous presentation ownership to the Question/session identity;
+using the hydrated object as an effect dependency can cancel and abandon the same attempt.

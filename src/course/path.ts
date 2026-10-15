@@ -18,7 +18,7 @@ import type {
   PracticeNode,
   QuestionSetPracticeNode,
 } from '../db/types';
-import { resolveAssessmentCoverage } from './assessmentCoverage';
+import { lessonOrder, resolveAssessmentCoverage } from './assessmentCoverage';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { practiceNodeKey } from './studyPools';
@@ -136,7 +136,7 @@ export function lessonEffectiveReleaseDates(
   lessons: Lesson[],
 ): Map<string, number | undefined> {
   const result = new Map<string, number | undefined>();
-  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  const sorted = [...lessons].sort(lessonOrder);
 
   if (!course.linearCadence) {
     // No cadence defined: mark all lessons as unlocked (undefined = no gate).
@@ -195,15 +195,16 @@ export function isLessonUnlocked(
   lessons: Lesson[],
   now: number = Date.now(),
 ): boolean {
-  let firstCoreLessonId: string | undefined;
-  let firstCoreOrder = Infinity;
+  let firstCoreLesson: Lesson | undefined;
   for (const candidate of lessons) {
-    if (!candidate.isExtension && candidate.orderIndex < firstCoreOrder) {
-      firstCoreOrder = candidate.orderIndex;
-      firstCoreLessonId = candidate.id;
+    if (
+      !candidate.isExtension &&
+      (!firstCoreLesson || lessonOrder(candidate, firstCoreLesson) < 0)
+    ) {
+      firstCoreLesson = candidate;
     }
   }
-  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLessonId, now);
+  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLesson?.id, now);
 }
 
 function isLessonUnlockedWithFirstCore(
@@ -367,7 +368,7 @@ export function buildPath(
   progress: PathProgress = EMPTY_PATH_PROGRESS,
   nearestPracticeAssessmentDate?: number,
 ): PathNode[] {
-  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  const sorted = [...lessons].sort(lessonOrder);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
   const firstCoreLessonId = sorted.find((lesson) => !lesson.isExtension)?.id;
@@ -617,7 +618,7 @@ export function manualPracticeGateKeysAfterLesson(
   practiceNodes: PracticeNode[],
   lessonId: string,
 ): string[] {
-  const sorted = [...lessons].sort((a, b) => a.orderIndex - b.orderIndex);
+  const sorted = [...lessons].sort(lessonOrder);
   if (!sorted.some((l) => l.id === lessonId)) return [];
 
   const result: string[] = [];

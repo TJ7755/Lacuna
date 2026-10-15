@@ -1,5 +1,5 @@
 import { Skeleton } from '../components/ui/Skeleton';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { QuestionSessionHeader } from '../components/questions/QuestionSessionHeader';
@@ -105,10 +105,15 @@ export function QuestionLearnMode() {
     const id = questionIds?.[index];
     return id ? data?.questions.find((candidate) => candidate.id === id) : undefined;
   }, [data?.questions, index, questionIds]);
+  const questionId = question?.id;
+  const readQuestion = useEffectEvent(() => question);
 
   useEffect(() => {
-    if (!question || !questionIds || index >= questionIds.length) return;
-    if (attempt?.questionId === question.id) return;
+    if (!questionId) return;
+    // Capture the definition at the presentation boundary. Live-query hydration
+    // must not cancel a pending receipt or resolve another generated variant.
+    const question = readQuestion();
+    if (!question) return;
     let cancelled = false;
     setAttempt(null);
     setStartError(null);
@@ -150,7 +155,7 @@ export function QuestionLearnMode() {
     return () => {
       cancelled = true;
     };
-  }, [abandonAttemptOnce, attempt, index, question, questionIds, rerollCount, sessionId, startVersion]);
+  }, [abandonAttemptOnce, index, questionId, rerollCount, sessionId, startVersion]);
 
   const submit = (answer: CheckedQuestionAnswer) => {
     if (!attempt || answerWriteRef.current) return;

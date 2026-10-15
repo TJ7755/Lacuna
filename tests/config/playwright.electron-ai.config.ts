@@ -5,7 +5,8 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   outputDir: '../../test-results',
   testDir: '../e2e-electron',
-  testIgnore: 'packaged-interactions.spec.ts',
+  // The packaged macOS smoke gate needs a built app and runs under its own config.
+  testIgnore: ['packaged-interactions.spec.ts', 'macos-smoke.spec.ts'],
   fullyParallel: false,
   workers: 1,
   retries: process.env.CI ? 1 : 0,

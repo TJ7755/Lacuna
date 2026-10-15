@@ -12,14 +12,17 @@ const electronPerformanceConfig = readFileSync(
   'utf8',
 );
 const packagedInteractionPattern = /['"]packaged-interactions\.spec\.ts['"]/;
+const aiIgnores = /testIgnore:\s*\[([^\]]*)\]/.exec(electronAiConfig)?.[1] ?? '';
 
 describe('Electron Playwright suite boundaries', () => {
   it('keeps packaged interaction tests out of the unpackaged AI suite', () => {
-    expect(electronAiConfig).toMatch(
-      new RegExp(`testIgnore:\\s*${packagedInteractionPattern.source}`),
-    );
+    expect(aiIgnores).toMatch(packagedInteractionPattern);
     expect(electronPerformanceConfig).toMatch(
       new RegExp(`testMatch:\\s*${packagedInteractionPattern.source}`),
     );
+  });
+
+  it('keeps the packaged macOS smoke gate out of the unpackaged AI suite', () => {
+    expect(aiIgnores).toMatch(/['"]macos-smoke\.spec\.ts['"]/);
   });
 });

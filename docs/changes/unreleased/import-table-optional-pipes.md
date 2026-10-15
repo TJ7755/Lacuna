@@ -1,1 +1,0 @@
-- Recognise and import Markdown table rows with omitted opening pipes instead of dropping their cards.

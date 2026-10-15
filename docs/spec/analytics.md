@@ -61,7 +61,9 @@ Pure aggregates over stored history, in local time:
   day (overdue folds into today, beyond the window is ignored) and weighted by
   its deck's **mean review seconds** (fallback 8 s) to estimate **minutes of
   study per day**, shown as a small bar sparkline with a "minutes to clear"
-  total.
+  total. Course new-card and daily review limits apply, with reviews taking
+  precedence. Cards are grouped by scheduling source once, so looking up each
+  course's study pool does not repeatedly scan every stored card.
 - **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a
   contribution-style calendar of reviews per **local** calendar day over the selected
   7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity

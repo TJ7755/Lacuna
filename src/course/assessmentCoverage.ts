@@ -30,7 +30,8 @@ export interface ResolvedAssessmentCoverage {
   };
 }
 
-function lessonOrder(left: Lesson, right: Lesson): number {
+/** Canonical lesson order: orderIndex, then createdAt, then id, so ties resolve identically everywhere. */
+export function lessonOrder(left: Lesson, right: Lesson): number {
   return (
     left.orderIndex - right.orderIndex ||
     left.createdAt - right.createdAt ||

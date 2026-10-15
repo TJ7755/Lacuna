@@ -42,12 +42,8 @@ import {
   type LegacyCourseRecord,
 } from './assessmentMigration';
 import {
-  assetsForBackup,
   backupAssetToMediaAsset,
   extractMarkdownAssets,
-  referencedAssetHashes,
-  referencedAssetHashesInCards,
-  referencedAssetHashesInValues,
 } from './assets';
 import { mergeRevisionPlans } from '../course/revisionPlan';
 import { adaptLegacyBackup } from './legacyBackupAdapter';
@@ -62,7 +58,8 @@ import {
 } from '../questions/questionSetMerge';
 import { assertQuestionSetPracticeNodeReferences } from './questionSetPracticeNode';
 
-export const BACKUP_VERSION = 14;
+import { exportDatabase } from './backupSnapshot';
+export { BACKUP_VERSION, exportDatabase } from './backupSnapshot';
 export const MAX_BACKUP_FILE_BYTES = 200 * 1024 * 1024;
 
 function withUpdatedAt<T extends { updatedAt?: number }>(
@@ -72,120 +69,6 @@ function withUpdatedAt<T extends { updatedAt?: number }>(
   return typeof row.updatedAt === 'number'
     ? (row as T & { updatedAt: number })
     : { ...row, updatedAt: fallback };
-}
-
-/** Gather the whole database into a single backup object. */
-export async function exportDatabase(): Promise<BackupFile> {
-  const [
-    cards,
-    sessionHistory,
-    courses,
-    lessons,
-    notes,
-    lessonCards,
-    lessonCardExposures,
-    lessonCompletions,
-    practiceNodes,
-    practiceMilestones,
-    courseAssessments,
-    sequences,
-    occlusions,
-    revisionPlans,
-    reviewHistory,
-    schedulingUnits,
-    coursePerformance,
-    schedulingPerformance,
-    tombstones,
-    concepts,
-    questions,
-    questionConcepts,
-    questionAttempts,
-    questionSets,
-    questionSetAttempts,
-    lineageIdMappings,
-    pendingMergeReviews,
-    agentMemories,
-  ] = await Promise.all([
-    db.cards.toArray(),
-    db.sessionHistory.toArray(),
-    db.courses.toArray(),
-    db.lessons.toArray(),
-    db.notes.toArray(),
-    db.lessonCards.toArray(),
-    db.lessonCardExposures.toArray(),
-    db.lessonCompletions.toArray(),
-    db.practiceNodes.toArray(),
-    db.practiceMilestones.toArray(),
-    db.courseAssessments.toArray(),
-    db.sequences.toArray(),
-    db.occlusions.toArray(),
-    db.revisionPlans.toArray(),
-    db.reviewHistory.toArray(),
-    db.schedulingUnits.toArray(),
-    db.coursePerformance.toArray(),
-    db.schedulingPerformance.toArray(),
-    db.tombstones.toArray(),
-    db.concepts.toArray(),
-    db.questions.toArray(),
-    db.questionConcepts.toArray(),
-    db.questionAttempts.toArray(),
-    db.questionSets.toArray(),
-    db.questionSetAttempts.toArray(),
-    db.lineageIdMappings.toArray(),
-    db.pendingMergeReviews.toArray(),
-    db.agentMemories.toArray(),
-  ]);
-  const projectedCards = projectCardsForStorage(cards);
-  const referencedHashes = new Set(referencedAssetHashesInCards(projectedCards));
-  for (const note of notes) {
-    for (const hash of referencedAssetHashes(note.content)) referencedHashes.add(hash);
-  }
-  // An occlusion's diagram is referenced solely by `Occlusion.assetHash` — its generated
-  // cards carry a plain-text fallback, not a Markdown embed — so it must be gathered
-  // explicitly or a backup would restore occlusions with no image (mirrors assets.ts's GC).
-  for (const occlusion of occlusions) referencedHashes.add(occlusion.assetHash);
-  referencedAssetHashesInValues(
-    questions,
-    questionAttempts,
-    questionSets,
-    questionSetAttempts,
-  ).forEach((hash) => referencedHashes.add(hash));
-  const assets = await assetsForBackup([...referencedHashes]);
-  return {
-    app: 'lacuna-v14',
-    version: BACKUP_VERSION,
-    exportedAt: Date.now(),
-    cards: projectedCards,
-    assets,
-    sessionHistory,
-    userPerformance: [],
-    courses,
-    lessons,
-    notes,
-    lessonCards,
-    lessonCardExposures,
-    lessonCompletions,
-    practiceNodes,
-    practiceMilestones,
-    courseAssessments,
-    sequences,
-    occlusions,
-    revisionPlans,
-    reviewHistory,
-    schedulingUnits,
-    coursePerformance,
-    schedulingPerformance,
-    tombstones,
-    concepts,
-    questions,
-    questionConcepts,
-    questionAttempts,
-    questionSets,
-    questionSetAttempts,
-    lineageIdMappings,
-    pendingMergeReviews,
-    agentMemories,
-  };
 }
 
 /** Trigger a browser download of the backup as a timestamped JSON file. */
@@ -592,6 +475,36 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         await db.courses.bulkPut(mergedCourses);
       }
 
+      const assessmentIdRemap = new Map<string, string>();
+      if (courseAssessments.length > 0) {
+        const localAssessments = await db.courseAssessments.toArray();
+        const existingCourseAssessments = new Map(
+          localAssessments.map((assessment) => [assessment.id, assessment]),
+        );
+        const existingFinalsByCourse = new Map(
+          localAssessments
+            .filter((assessment) => assessment.kind === 'final')
+            .map((assessment) => [assessment.courseId, assessment]),
+        );
+        const mergedCourseAssessments: CourseAssessment[] = [];
+        for (const incoming of courseAssessments) {
+          const existing =
+            incoming.kind === 'final'
+              ? existingFinalsByCourse.get(incoming.courseId)
+              : existingCourseAssessments.get(incoming.id);
+          if (!existing) {
+            mergedCourseAssessments.push(incoming);
+          } else {
+            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
+            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
+            mergedCourseAssessments.push(
+              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
+            );
+          }
+        }
+        await db.courseAssessments.bulkPut(mergedCourseAssessments);
+      }
+
       const localQuestionState = {
         concepts: await db.concepts.toArray(),
         questions: await db.questions.toArray(),
@@ -626,7 +539,12 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
       }
       const mergedQuestionSets = mergeQuestionSetRecords(
         await db.questionSets.toArray(),
-        incomingQuestionSets,
+        // Final Assessments merge by Course identity while retaining the local id.
+        // Keep authored set assignments pointing at that retained Assessment too.
+        incomingQuestionSets.map((record) => ({
+          ...record,
+          assessmentIds: [...new Set(record.assessmentIds.map((id) => assessmentIdRemap.get(id) ?? id))],
+        })),
         // Recovery merge deliberately restores rows and does not apply deletion receipts.
         // Peer merge applies them in mergeSnapshots instead.
         [],
@@ -765,36 +683,6 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           return incoming.updatedAt > existing.updatedAt ? incoming : existing;
         });
         await db.practiceMilestones.bulkPut(mergedMilestones);
-      }
-
-      const assessmentIdRemap = new Map<string, string>();
-      if (courseAssessments.length > 0) {
-        const localAssessments = await db.courseAssessments.toArray();
-        const existingCourseAssessments = new Map(
-          localAssessments.map((assessment) => [assessment.id, assessment]),
-        );
-        const existingFinalsByCourse = new Map(
-          localAssessments
-            .filter((assessment) => assessment.kind === 'final')
-            .map((assessment) => [assessment.courseId, assessment]),
-        );
-        const mergedCourseAssessments: CourseAssessment[] = [];
-        for (const incoming of courseAssessments) {
-          const existing =
-            incoming.kind === 'final'
-              ? existingFinalsByCourse.get(incoming.courseId)
-              : existingCourseAssessments.get(incoming.id);
-          if (!existing) {
-            mergedCourseAssessments.push(incoming);
-          } else {
-            const newer = incoming.createdAt > existing.createdAt ? incoming : existing;
-            if (incoming.kind === 'final') assessmentIdRemap.set(incoming.id, existing.id);
-            mergedCourseAssessments.push(
-              incoming.kind === 'final' ? { ...newer, id: existing.id } : newer,
-            );
-          }
-        }
-        await db.courseAssessments.bulkPut(mergedCourseAssessments);
       }
 
       if (backup.sequences && backup.sequences.length > 0) {

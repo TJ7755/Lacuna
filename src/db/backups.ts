@@ -20,12 +20,14 @@ export {
 const MAX_RESTORE_POINTS = 10;
 const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-let lastBackupAt = 0;
+let lastSuccessfulBackupAt: number | null = null;
+const pendingBackups = new Set<{ at: number }>();
 const MIN_BACKUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 /** Reset the backup throttle so tests can call `takeAutoBackup` repeatedly. */
 export function __resetBackupThrottleForTests(): void {
-  lastBackupAt = 0;
+  lastSuccessfulBackupAt = null;
+  pendingBackups.clear();
 }
 
 /** Capture a full snapshot as a restore point, prune to the cap, and mirror if configured.
@@ -33,18 +35,32 @@ export function __resetBackupThrottleForTests(): void {
  *  do not produce N backups per session. Pass `force: true` to bypass the throttle.
  *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
 export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
-  if (!force && Date.now() - lastBackupAt < MIN_BACKUP_INTERVAL) return;
-  lastBackupAt = Date.now();
-
-  const payload = await exportDatabase();
-  const snapshot: BackupSnapshot = {
-    createdAt: payload.exportedAt,
-    deckCount: payload.lessons?.length ?? 0,
-    cardCount: payload.cards.length,
-    payload,
-  };
-  await db.backups.add(snapshot);
-
+  const now = Date.now();
+  if (!force) {
+    if (lastSuccessfulBackupAt !== null && now - lastSuccessfulBackupAt < MIN_BACKUP_INTERVAL) return;
+    for (const pending of pendingBackups) {
+      if (now - pending.at < MIN_BACKUP_INTERVAL) return;
+    }
+  }
+  const reservation = { at: now };
+  pendingBackups.add(reservation);
+  let payload: BackupFile;
+  try {
+    payload = await exportDatabase();
+    const snapshot: BackupSnapshot = {
+      createdAt: payload.exportedAt,
+      deckCount: payload.lessons?.length ?? 0,
+      cardCount: payload.cards.length,
+      payload,
+    };
+    await db.backups.add(snapshot);
+    // An older in-flight success must not replace the time of a newer success.
+    lastSuccessfulBackupAt = Math.max(lastSuccessfulBackupAt ?? -Infinity, reservation.at);
+  } finally {
+    // Failed attempts release only their own reservation. The remaining pending
+    // work and the last successful restore point retain their independent throttles.
+    pendingBackups.delete(reservation);
+  }
   // Keep only the most recent restore points. Pre-migration snapshots are exempt:
   // they are the safety net for a botched upgrade and must not be pruned away.
   const all = await db.backups.orderBy('createdAt').toArray();

@@ -2046,6 +2046,8 @@ export function useLearnSession({
       progressCacheRef.current.dirty = true;
       setCurrent(snap.undo.cardBefore);
       setPhase('question');
+      onCardServedRef.current?.();
+      setHintStep(0);
       pendingReviewEventId.current = null;
       timerStart.current = performance.now();
       distraction.beginCard();

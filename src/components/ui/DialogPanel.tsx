@@ -11,7 +11,7 @@ interface DialogPanelProps {
   label: string;
   /** The focus trap's container ref (from `useFocusTrap`). */
   trapRef: RefObject<HTMLDivElement | null>;
-  /** Key handling for the whole dialog, including Escape; each caller owns its shortcuts. */
+  /** Dialog shortcuts, including Escape. Tab remains with the focus trap and fields. */
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   /** Called when the backdrop is clicked. Omit to keep the dialog open. */
   onBackdropClick?: () => void;
@@ -55,7 +55,10 @@ export function DialogPanel({
       animate={{ opacity: 1 }}
       exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: MOTION_DURATION.feedback * m, ease: MOTION_EASING.standard }}
-      onKeyDown={onKeyDown}
+      onKeyDown={(event) => {
+        // Tab belongs to the focus trap and any field-specific navigation.
+        if (event.key !== 'Tab') onKeyDown(event);
+      }}
     >
       <ModalBackdrop shade={50} {...backdropProps} onClick={onBackdropClick} />
       <motion.div

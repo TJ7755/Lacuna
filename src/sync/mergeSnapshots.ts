@@ -54,6 +54,7 @@ import {
   mergeQuestionSetRecords,
 } from '../questions/questionSetMerge';
 import { assertQuestionSetPracticeNodeReferences } from '../db/questionSetPracticeNode';
+import { applyScheduleEdit, mergeScheduleEdits } from '../db/scheduleEdits';
 
 const ASSET_RE = /lacuna-asset:\/\/([a-f0-9]{64})/gi;
 
@@ -220,12 +221,16 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     updatedAtOf,
     tombstones,
   );
-  const cards = applyTombstones(
-    'cards',
-    newestWins(left.cards, right.cards, idOf, updatedAtOf),
-    idOf,
-    updatedAtOf,
-    tombstones,
+  const cards = withUnionedScheduleEdits(
+    applyTombstones(
+      'cards',
+      newestWins(left.cards, right.cards, idOf, updatedAtOf),
+      idOf,
+      updatedAtOf,
+      tombstones,
+    ),
+    left.cards,
+    right.cards,
   );
   const agentMemories = applyTombstones(
     'agentMemories',
@@ -241,8 +246,13 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     ...tombstones.values(),
   ]).filter((set) => courses.some((course) => course.id === set.courseId));
   const questionSetAttempts = mergeQuestionSetAttempts(
-    left.questionSetAttempts,
-    right.questionSetAttempts,
+    applyTombstones(
+      'questionSetAttempts',
+      [...left.questionSetAttempts, ...right.questionSetAttempts],
+      idOf,
+      updatedAtOf,
+      tombstones,
+    ),
   ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
   assertQuestionSetReferences(
     questionSets,
@@ -318,7 +328,12 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     agentMemories,
   });
   const keptTombstones = [...tombstones.values()]
-    .filter((row) => !liveKeys.has(tombstoneKey(row.table, row.recordId)))
+    // Attempt merging unions evidence from older revisions. Keep its deletion
+    // boundary even after resurrection so later peers cannot restore discarded evidence.
+    .filter(
+      (row) =>
+        row.table === 'questionSetAttempts' || !liveKeys.has(tombstoneKey(row.table, row.recordId)),
+    )
     .sort(compareTombstones);
 
   return {
@@ -718,17 +733,39 @@ function replayCards(
         return reviewEventKey(a).localeCompare(reviewEventKey(b));
       });
     let current: Card = { ...card, ...NEVER_REVIEWED };
-    if (events.length === 0) return current;
+    const edits = card.scheduleEdits ?? [];
+    if (events.length === 0 && edits.length === 0) return current;
     const params = parametersForCard(card, unitById, courseById);
-    // Fuzz is non-deterministic. Commutativity depends on this being false.
-    const engine = makeEngine({ ...params, enable_fuzz: false });
+    // Use the live parameters, fuzz included: ts-fsrs seeds fuzz from the review time
+    // and memory state, so replay stays deterministic and matches the live schedule.
+    const engine = makeEngine(params);
+    // Manual reschedules and resets apply in time order between reviews; one made in
+    // the same millisecond as a review came after it.
+    let nextEdit = 0;
     for (const event of events) {
+      while (nextEdit < edits.length && edits[nextEdit].at < event.timestamp) {
+        current = applyScheduleEdit(current, edits[nextEdit++]);
+      }
       const { memory } = applyReview(engine, current, event.grade, event.timestamp);
       current = { ...current, ...memory };
     }
+    while (nextEdit < edits.length) current = applyScheduleEdit(current, edits[nextEdit++]);
     return current;
   });
   return cardsWithReviewHistory(reset, reviewHistory);
+}
+
+/** Keep every manual schedule edit either device made, whichever card row won. */
+function withUnionedScheduleEdits(cards: Card[], left: Card[], right: Card[]): Card[] {
+  const leftById = new Map(left.map((card) => [card.id, card]));
+  const rightById = new Map(right.map((card) => [card.id, card]));
+  return cards.map((card) => {
+    const edits = mergeScheduleEdits(
+      leftById.get(card.id)?.scheduleEdits,
+      rightById.get(card.id)?.scheduleEdits,
+    );
+    return edits ? { ...card, scheduleEdits: edits } : card;
+  });
 }
 
 function parametersForCard(
@@ -846,11 +883,10 @@ function referencedHashes(
 }
 
 function mergeQuestionSetAttempts(
-  left: QuestionSetAttemptRecord[],
-  right: QuestionSetAttemptRecord[],
+  attempts: QuestionSetAttemptRecord[],
 ): QuestionSetAttemptRecord[] {
   const merged = new Map<string, QuestionSetAttemptRecord>();
-  for (const incoming of [...left, ...right]) {
+  for (const incoming of attempts) {
     const existing = merged.get(incoming.id);
     if (!existing) {
       merged.set(incoming.id, incoming);

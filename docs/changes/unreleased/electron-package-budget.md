@@ -1,0 +1,1 @@
+- The Windows desktop package budget is now 19 MB and 700 files, up from 14 MB and 600, to fit locally bundled Mermaid diagrams. CI's Windows upgrade job now runs the package check on every pull request, so a release build is no longer the first place it can fail.

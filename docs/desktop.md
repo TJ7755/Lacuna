@@ -37,6 +37,8 @@ or network is unavailable. Messages and selected tool content travel over HTTPS 
 provider; the local transcript, study database, tool execution and write approvals stay on the
 device. The access code is stored locally, outside backups and sync. Free providers may retain or
 use submitted content under their own terms. Switching modes starts a separate conversation.
+Built-in AI restores the latest 100 transcript items, trimming older replies further when the
+saved session reaches its storage budget; the draft and tool ledger are retained.
 
 ### Handing out beta access codes
 
@@ -87,7 +89,7 @@ environment variables in Vercel; never use a `VITE_` prefix:
 | --- | --- |
 | `AI_ACCESS_CREDENTIAL_HASHES` | JSON object mapping individual learner IDs to lowercase SHA-256 access-code hashes. Codes must be 32–256 characters. Remove an entry to revoke its sessions. |
 | `AI_SESSION_SIGNING_KEY` | Random secret of at least 32 characters for one-hour session tokens. |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage and concurrent-run admission. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage, concurrent-run admission and the access-code exchange rate limit. Both AI endpoints are unavailable without it. |
 | `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `inclusionai/ling-3.0-flash-fin` and `poolside/laguna-s-2.1-free` are selected, in that order, and only while every live catalogue price field is zero for each route. |
 | `OPENROUTER_API_KEY` | Preferred provider. The pinned `nvidia/nemotron-3-ultra-550b-a55b:free` and `google/gemma-4-31b-it:free` routes precede `openrouter/free`; each is selected only while the live catalogue reports zero pricing and tool support. Free-account rate limits still apply. |
 | `GOOGLE_GENERATIVE_AI_API_KEY`, `AI_GOOGLE_FREE_TIER_CONFIRMED=1` | Optional final fallback through Gemini 2.5 Flash Lite. Set the confirmation only for a project verified to remain on the free tier. |

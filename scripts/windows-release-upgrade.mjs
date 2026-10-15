@@ -11,13 +11,14 @@ import { launchInstalledElectron } from './installed-electron-probe.mjs';
 assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows runner.');
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 const baseline = path.resolve(process.argv[2]);
-assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'),
-  'e2128ecab966808f2674c84e6c7bef67db77cb9aa354fc57ce4c8a52c3ba8a19');
+// Pinned by `bun run release:prepare`, which records the previous release's installer digest.
+const pinned = JSON.parse(await readFile(new URL('./windows-release-baseline.json', import.meta.url), 'utf8'));
+assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'), pinned.sha256);
 const root = await mkdtemp(path.join(tmpdir(), 'lacuna-release-upgrade-'));
 const directory = path.join(root, 'application');
 const profile = path.join(root, 'profile');
 const executablePath = path.join(directory, 'Lacuna.exe');
-const report = { baseline: '0.2.12', target: version, stages: [] };
+const report = { baseline: pinned.version, target: version, stages: [] };
 let application;
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
@@ -42,11 +43,19 @@ async function install(installer) {
   assert.equal(code, 0);
 }
 
+// The baseline's startup update check must reach this build, not the newest
+// GitHub release, or the probe would install the published release instead.
+async function pointInstalledUpdaterAtFeed() {
+  const file = path.join(directory, 'resources', 'app-update.yml');
+  const cache = (await readFile(file, 'utf8')).match(/^updaterCacheDirName:.*$/m)?.[0];
+  await writeFile(file, ['provider: generic', `url: ${feed}`, cache].filter(Boolean).join('\n') + '\n');
+}
+
 async function open(expectedVersion) {
   application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
   assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
-  if (expectedVersion === '0.2.12') {
+  if (expectedVersion === pinned.version) {
     await application.evaluate(({ app }, url) => {
       const { createRequire } = process.getBuiltinModule('node:module');
       const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
@@ -54,6 +63,11 @@ async function open(expectedVersion) {
     }, feed);
   }
   const page = await application.firstWindow();
+  // The startup check can finish downloading at any point and raise this
+  // modal over whatever the probe is clicking.
+  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Update ready' }), async dialog => {
+    await dialog.getByRole('button', { name: 'Later' }).click();
+  });
   const start = page.getByRole('region', { name: 'Revision around your exam', exact: true }).getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
   await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
@@ -83,12 +97,12 @@ async function snapshot(page) {
 
 try {
   await install(baseline);
-  let page = await open('0.2.12');
+  await pointInstalledUpdaterAtFeed();
+  let page = await open(pinned.version);
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
   await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
     { timeout: 180_000 }).toBe('downloaded');
   assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
-  await page.getByRole('dialog', { name: 'Update ready' }).getByRole('button', { name: 'Later' }).click();
   await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
   await page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Welcome to Lacuna' }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();

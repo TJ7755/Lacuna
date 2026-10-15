@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
 import { encodeShareDirect, type SharePayload } from '../../db/share';
-import { importLineageFirstTime } from '../../db/mergeImport';
+import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
 import * as tools from './lineage';
@@ -116,6 +116,51 @@ describe('mcp lineage tools', () => {
       expect(lesson?.name).toBe('Cells');
       expect(await db.pendingMergeReviews.where('courseId').equals(courseId).count()).toBe(0);
       expect((await db.courses.get(courseId))?.distributedCopy?.revision).toBe(1);
+    });
+
+    it('previews answer mode and structured content changes the real merge applies', async () => {
+      const lesson = lessonOne({
+        i: 'lesson-2',
+        am: 'type',
+        notes: [],
+        cards: [
+          {
+            id: 'card-2',
+            k: 0 as const,
+            f: 'x = ?',
+            b: '4',
+            am: 'reveal',
+            p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
+          },
+        ],
+      });
+      const payload = coursePayload({ lessons: [lessonOne(), lesson] });
+      await mergeLineageUpdate(courseId, { ...payload, rv: 2 } as SharePayload);
+      const unchanged = await tools.diffLineageUpdate.handler(
+        { courseId, shareCode: await encodeShareDirect({ ...payload, rv: 3 } as SharePayload) },
+        ctx,
+      );
+      expect(unchanged.data.counts).toMatchObject({ updateLessons: 0, updateCards: 0 });
+
+      const revised = coursePayload({
+        rv: 3,
+        lessons: [
+          lessonOne(),
+          { ...lesson, am: 'reveal', cards: [{ ...lesson.cards[0], am: 'type', p: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' } } }] },
+        ],
+      });
+      const res = await tools.diffLineageUpdate.handler(
+        { courseId, shareCode: await encodeShareDirect(revised) },
+        ctx,
+      );
+      expect(res.data.diff.updates.lessons).toEqual([{ id: 'lesson-2', answerMode: 'reveal' }]);
+      expect(res.data.diff.updates.cards).toEqual([
+        {
+          id: 'card-2',
+          answerMode: 'type',
+          payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '5' } },
+        },
+      ]);
     });
 
     it('reports a conflict when the student has edited an entity the teacher also changed', async () => {

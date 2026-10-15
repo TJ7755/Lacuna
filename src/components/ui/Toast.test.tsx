@@ -26,6 +26,36 @@ function TestComponent() {
 }
 
 describe('ToastProvider', () => {
+  it('keeps an action toast available while keyboard focus is inside it', async () => {
+    const onDismiss = vi.fn();
+    function ActionToast() {
+      const { notify } = useToast();
+      return (
+        <button onClick={() => notify('Undoable change', 'neutral', {
+          actionLabel: 'Undo', onAction: vi.fn(), duration: 150, onDismiss,
+        })}>
+          Show undo toast
+        </button>
+      );
+    }
+    render(<ToastProvider><ActionToast /></ToastProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Show undo toast' }));
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const toast = screen.getByText('Undoable change').closest('.relative') as HTMLElement;
+    fireEvent.mouseEnter(toast);
+    fireEvent.focus(undo);
+    fireEvent.mouseLeave(toast);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 220));
+    });
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    fireEvent.blur(undo, { relatedTarget: screen.getByRole('button', { name: 'Show undo toast' }) });
+    await waitFor(() => expect(onDismiss).toHaveBeenCalledOnce());
+  });
+
   it('renders children', () => {
     render(
       <ToastProvider>

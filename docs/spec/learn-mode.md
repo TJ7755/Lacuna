@@ -43,6 +43,9 @@ and abandons only the current presentation. Reload and window close use the brow
 decision. Loading, lesson notes, empty, failed-start and completed states do not manufacture a
 warning when no work can be lost. A Question attempt becomes owned by the unload handler as soon
 as its start resolves, before React effects run, so an immediate departure still abandons it.
+Question startup belongs to the current presentation and explicit Retry. Reactive data refreshes
+retain a pending start and its captured generator definition, so they cannot abandon the receipt
+that the learner is about to answer or resolve a replacement variant.
 
 For a lesson selected by the course conductor, the lifecycle starts with its notes in order. The
 learner may highlight source text and attach optional free-text annotations before moving to
@@ -89,7 +92,8 @@ repository is not a compatibility barrel for this interface.
 The planner stores daily time budgets rather than a fixed queue. Edits to assessment coverage,
 deadline or time zone, reached/exposed/available scope, review evidence or the selected model
 produce deterministic, explained replans. An active window retains its captured revision until
-completion. Passed assessments archive their plan read-only and ordinary per-card horizon
+completion. Replanning preserves each completed day without adding another window for it.
+Passed assessments archive their plan read-only and ordinary per-card horizon
 resolution moves on to the next applicable assessment.
 
 The runtime uses the frozen `half-life-logistic-v3-routed` global fit (coefficients unchanged from
@@ -156,11 +160,14 @@ Lesson sessions use the active lesson's default (including linked cards); course
 and daily reviews use the card's primary lesson. An explicit card override wins in every
 session. Numeric/working items retain their own inputs; occlusions require answer text.
 
-Typing shows an input and **Check answer**. Enter reveals the expected answer with
+Typing shows an input and **Check answer**. Enter confirms an active input-method
+composition without revealing; otherwise it reveals the expected answer with
 word-by-word comparison against the learner's answer. Yes/No or manual four-point
 self-grading still decides the result; there is no AI request or automatic marking.
 Canonically equivalent Unicode letters compare equally; accents remain significant, and
-feedback preserves the original spelling. Comparison strictness remains a per-user setting
+feedback preserves the original spelling. Lenient comparison retains leading decimal points and
+numeric minus signs, so `.5`, `-.5` and `5` remain distinct answers.
+Comparison strictness remains a per-user setting
 in Settings (`src/state/answerStrictness.ts`).
 The former global typing switch no longer controls study sessions.
 
@@ -445,7 +452,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   on.
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
-  events list, and deletes the written `SessionHistory` row. Every recorded FSRS answer exposes
+  events list, and deletes the written `SessionHistory` row. The restored question clears
+  the following card's typed answer and hint state before starting its new response timer.
+  Every recorded FSRS answer exposes
   this through a short-lived grade-and-interval notification with an **Undo** action as well as the
   `U` shortcut while the session remains active. An answer that finalises the session exposes no
   stale Undo action: completion has already closed the single-answer reversal boundary while

@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { AgentMemory, BackupFile, CourseRecord } from '../db/types';
+import type {
+  AgentMemory,
+  BackupFile,
+  Card,
+  CourseRecord,
+  Lesson,
+  Note,
+  Occlusion,
+  SchedulingUnitRecord,
+  SessionHistoryEntry,
+} from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { PRE_V22_BACKUP_MESSAGE } from '../db/portability';
 import {
   assertSnapshotSize,
@@ -8,6 +19,7 @@ import {
   snapshotsEquivalent,
   SyncPayloadError,
   SyncSnapshotTooLargeError,
+  SYNC_PLATFORM_BODY_LIMIT_BYTES,
 } from './snapshot';
 
 function backup(overrides: Partial<BackupFile> = {}): BackupFile {
@@ -24,27 +36,52 @@ function backup(overrides: Partial<BackupFile> = {}): BackupFile {
 }
 
 describe('snapshot wire helpers', () => {
-  it('round-trips a valid backup through UTF-8 JSON', () => {
+  it('round-trips a valid backup through compressed UTF-8 JSON', async () => {
     const value = backup({ exportedAt: 42 });
 
-    expect(decodeSnapshot(encodeSnapshot(value))).toEqual(value);
+    expect(await decodeSnapshot((await encodeSnapshot(value)).payload)).toEqual(value);
   });
 
-  it('rejects malformed, undecodable, and non-Lacuna payloads', () => {
-    expect(() => decodeSnapshot(new TextEncoder().encode('{'))).toThrow(SyncPayloadError);
-    expect(() => decodeSnapshot(new Uint8Array([0xff]))).toThrow(SyncPayloadError);
-    expect(() =>
+  it('compresses a library past the platform limit to well under it', async () => {
+    const cards = Array.from({ length: 25_000 }, (_, index) => ({
+      id: `card-${index}`,
+      schedulingUnitId: 'unit-1',
+      front: `What is the oxidation state of element ${index % 90} in its common oxide?`,
+      back: `It is usually +${index % 7}, because of its outer-shell configuration.`,
+    })) as unknown as Card[];
+    const encoded = await encodeSnapshot(backup({ cards }));
+
+    expect(encoded.jsonBytes).toBeGreaterThan(4_400_000);
+    expect(encoded.payload.byteLength * 5).toBeLessThan(encoded.jsonBytes);
+    expect(encoded.payload.byteLength).toBeLessThan(SYNC_PLATFORM_BODY_LIMIT_BYTES);
+  });
+
+  it('still reads uncompressed snapshots written by earlier versions', async () => {
+    const value = backup({ exportedAt: 7 });
+
+    expect(await decodeSnapshot(new TextEncoder().encode(JSON.stringify(value)))).toEqual(value);
+  });
+
+  it('rejects malformed, undecodable, and non-Lacuna payloads', async () => {
+    await expect(decodeSnapshot(new TextEncoder().encode('{'))).rejects.toThrow(SyncPayloadError);
+    await expect(decodeSnapshot(new Uint8Array([0xff]))).rejects.toThrow(SyncPayloadError);
+    await expect(decodeSnapshot(new Uint8Array([0x1f, 0x8b, 0x00]))).rejects.toThrow(
+      SyncPayloadError,
+    );
+    await expect(
       decodeSnapshot(new TextEncoder().encode(JSON.stringify({ app: 'other' }))),
-    ).toThrow(SyncPayloadError);
+    ).rejects.toThrow(SyncPayloadError);
   });
 
-  it('rejects pre-v22 backups with the compatibility message', () => {
+  it('rejects pre-v22 backups with the compatibility message', async () => {
     const preV22 = backup({
       version: 21,
       decks: [{ id: 'deck-1', name: 'Legacy deck' }],
     } as unknown as Partial<BackupFile>);
 
-    expect(() => decodeSnapshot(encodeSnapshot(preV22))).toThrow(PRE_V22_BACKUP_MESSAGE);
+    await expect(decodeSnapshot((await encodeSnapshot(preV22)).payload)).rejects.toThrow(
+      PRE_V22_BACKUP_MESSAGE,
+    );
   });
 
   it('treats export time, object order, array order, and absent optional tables as non-state', () => {
@@ -97,6 +134,59 @@ describe('snapshot wire helpers', () => {
           'This sync snapshot is 0.00 MB, above the 0.00 MB limit. Reduce content in: Organic Chemistry.',
       });
     }
+  });
+
+  it('attributes cards, reviews and sessions to a course through their scheduling unit', () => {
+    const snapshot = backup({
+      courses: [
+        { id: 'alpha', name: 'Alpha' } as CourseRecord,
+        { id: 'beta', name: 'Beta', description: 'b'.repeat(2_000) } as unknown as CourseRecord,
+      ],
+      schedulingUnits: [{ id: 'unit-a', courseId: 'alpha' } as unknown as SchedulingUnitRecord],
+      cards: [
+        { id: 'card-a', schedulingUnitId: 'unit-a', front: 'q', back: 'a'.repeat(3_000) },
+      ] as unknown as Card[],
+      reviewHistory: [{ cardId: 'card-a', grade: 3 }] as unknown as ReviewHistoryEntry[],
+      sessionHistory: [
+        // A course id that is not in the snapshot falls back to the scheduling unit.
+        { timestamp: 1, deckId: 'old', courseId: 'gone', schedulingUnitId: 'unit-a' },
+        { timestamp: 2, deckId: 'unit-a' },
+      ] as SessionHistoryEntry[],
+    });
+
+    // Nothing is left over as "other local data", so every row found its course.
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual(['Alpha', 'Beta']);
+  });
+
+  it('charges assets to the courses that reference them and the rest to other data', () => {
+    const hash = (char: string) => char.repeat(64);
+    const asset = (char: string, size: number) => ({
+      hash: hash(char),
+      data: 'x'.repeat(size),
+      mimeType: 'image/png',
+      createdAt: 1,
+    });
+    const snapshot = backup({
+      courses: [
+        { id: 'alpha', name: 'Alpha' } as CourseRecord,
+        { id: 'beta', name: 'Beta', description: 'b'.repeat(2_000) } as unknown as CourseRecord,
+      ],
+      lessons: [{ id: 'lesson-a', courseId: 'alpha' } as Lesson],
+      // Note references are matched case-insensitively.
+      notes: [
+        { id: 'note', lessonId: 'lesson-a', content: `![](lacuna-asset://${hash('A')})` },
+      ] as Note[],
+      occlusions: [{ id: 'occ', courseId: 'beta', assetHash: hash('c') }] as Occlusion[],
+      assets: [asset('a', 5_000), asset('c', 10)],
+    });
+
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual(['Alpha', 'Beta']);
+    snapshot.assets.push(asset('d', 10));
+    expect(assertSnapshotSize(snapshot, 1, 1, 10).courseNames).toEqual([
+      'Alpha',
+      'Beta',
+      'other local data',
+    ]);
   });
 
   it('treats absent memory tables as empty and attributes scoped and global memory bytes', () => {

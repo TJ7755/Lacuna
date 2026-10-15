@@ -8,7 +8,7 @@ import {
 } from '../src/relay.js';
 import { MemoryStore, type BlobStore, type PutOptions } from '../src/store.js';
 
-const ORIGIN = 'https://app.example';
+const ORIGIN = 'https://getlacuna.app';
 const BROWSER_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(1));
 const TERMINAL_PUBLIC_KEY = base64Url(new Uint8Array(65).fill(2));
 

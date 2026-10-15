@@ -1,1 +1,0 @@
-- Leaving Simple Learn no longer discards your progress: the session resumes where you left it, including the exact line of a poem or script being recited, and the exit dialog says so

@@ -1009,6 +1009,7 @@ describe('bulk card actions', () => {
     expect(restored!.lastReviewed).toBeNull();
     expect(restored!.buriedUntil).toBeNull();
     expect(restored!.reps).toBe(3); // history preserved
+    expect(restored!.scheduleEdits).toEqual([{ at: expect.any(Number), kind: 'reset' }]);
   });
 
   it('sets a custom due date on many cards and clears bury', async () => {
@@ -1022,6 +1023,10 @@ describe('bulk card actions', () => {
     expect((await db.cards.get(a.id))!.due).toBe(target);
     expect((await db.cards.get(b.id))!.due).toBe(target);
     expect((await db.cards.get(a.id))!.buriedUntil).toBeNull();
+    // Sync replays the logged edit, so a merge cannot undo it.
+    expect((await db.cards.get(a.id))!.scheduleEdits).toEqual([
+      { at: expect.any(Number), kind: 'due', due: target },
+    ]);
   });
 
   it('rejects reschedule with no options', async () => {

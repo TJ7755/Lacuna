@@ -5,6 +5,7 @@ import { createLesson } from './lessonRepository';
 import { importApkgResult, type ApkgImportResult } from './apkgImport';
 import type { ParsedCard } from './import';
 import type { Lesson } from './types';
+import { canEditLessons } from '../course/lessonViewMode';
 
 export const MAX_IMPORT_CARDS = 5000;
 export const MAX_IMPORT_CHARS = 500_000;
@@ -34,6 +35,13 @@ async function validateDrafts(cards: ParsedCard[]) {
     if (card.payload !== undefined && card.payload !== null)
       assertValidCardPayload(card.type, card.payload);
   }
+}
+
+async function requireEditableCourse(courseId: string) {
+  const course = await db.courses.get(courseId);
+  if (!course) throw new Error('Import course no longer exists.');
+  if (!canEditLessons(course)) throw new Error('This published course is locked.');
+  return course;
 }
 
 /** Extend bulk creation with reverse presentations, preserving each pair's Concept. */
@@ -84,7 +92,7 @@ export async function importCardsToDestination(
     if (destination.kind === 'existing') {
       const unit = await db.schedulingUnits.get(destination.schedulingUnitId);
       if (!unit?.courseId) throw new Error('Import destination no longer exists.');
-      courseId = unit.courseId;
+      courseId = (await requireEditableCourse(unit.courseId)).id;
       return unit.id;
     }
     if (destination.kind === 'course') {
@@ -92,8 +100,7 @@ export async function importCardsToDestination(
       courseId = course.id;
       lesson = await createLesson(course.id, 'Lesson 1');
     } else {
-      const course = await db.courses.get(destination.courseId);
-      if (!course) throw new Error('Import course no longer exists.');
+      const course = await requireEditableCourse(destination.courseId);
       courseId = course.id;
       lesson = await createLesson(course.id, destination.title.trim());
     }

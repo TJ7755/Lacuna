@@ -1,5 +1,6 @@
 import { db } from './schema';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
+import { SPREADSHEET_FORMULA_PREFIX } from './importCardExport';
 
 function escapeCsvCell(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
@@ -19,9 +20,13 @@ function escapeMarkdownPipe(value: string): string {
   return value.replace(/[\\|]/g, '\\$&').replace(/\r\n|\r|\n/g, ' ');
 }
 
+function guardFormula(value: string): string {
+  return SPREADSHEET_FORMULA_PREFIX.test(value) ? `'${value}` : value;
+}
+
 function formatRow(values: string[], delimiter: ',' | '\t'): string {
   const escaper = delimiter === ',' ? escapeCsvCell : escapeTsvCell;
-  return values.map(escaper).join(delimiter);
+  return values.map((value) => escaper(guardFormula(value))).join(delimiter);
 }
 
 async function fetchDecksAndCards() {

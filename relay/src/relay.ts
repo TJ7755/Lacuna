@@ -5,6 +5,7 @@ import { handleAiMaintenanceRoute } from './aiMaintenance.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { handleShareItem, handleShareMint, handleShareSlot, type ShareSlot } from './shares.js';
+import { relayCorsHeaders } from './cors.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 export { CHANNEL_TTL_MS } from './channelMaintenance.js';
@@ -475,17 +476,7 @@ async function sweep(store: BlobStore, id: string): Promise<void> {
 }
 
 function corsHeaders(request: Request): Headers {
-  const origin = request.headers.get('Origin');
-  const headers = new Headers({
-    'Access-Control-Allow-Origin': origin && origin !== '' ? origin : '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
-    'Access-Control-Expose-Headers': 'ETag',
-    'Access-Control-Max-Age': '86400',
-    'Cross-Origin-Resource-Policy': 'cross-origin',
-    Vary: 'Origin',
-  });
-  return headers;
+  return relayCorsHeaders(request, 'ETag');
 }
 
 function json(

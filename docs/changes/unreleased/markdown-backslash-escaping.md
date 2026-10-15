@@ -1,1 +1,0 @@
-- Preserve literal backslashes before pipes when exporting and re-importing Markdown tables.

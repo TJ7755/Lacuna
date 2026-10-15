@@ -110,7 +110,10 @@ export function initialRecitationState(
 }
 
 /** Whether a saved state still fits the plan; an edited sequence can invalidate it. */
-export function isRecitationStateFor(plan: RecitationPlan, value: unknown): value is RecitationState {
+export function isRecitationStateFor(
+  plan: RecitationPlan,
+  value: unknown,
+): value is RecitationState {
   if (typeof value !== 'object' || value === null) return false;
   const { step, phase } = value as Partial<RecitationState>;
   if (phase !== 'present' && phase !== 'recall') return false;
@@ -120,7 +123,9 @@ export function isRecitationStateFor(plan: RecitationPlan, value: unknown): valu
     Number.isInteger(n) && (n as number) >= min && (n as number) <= max;
   if (step.kind === 'join') return phase === 'recall' && index(step.upTo, 1, last);
   if (step.kind !== 'build' || !index(step.chunk, 0, last)) return false;
-  return index(step.unlocked, 1, mineCount(plan, step.chunk)) && index(step.joinTarget, step.chunk, last);
+  return (
+    index(step.unlocked, 1, mineCount(plan, step.chunk)) && index(step.joinTarget, step.chunk, last)
+  );
 }
 
 /** Line indices the learner sees for this step, cue lines included, in order. */
@@ -148,11 +153,11 @@ export function targetLines(plan: RecitationPlan, step: RecitationStep): number[
 export function presentedLines(plan: RecitationPlan, step: RecitationStep): number[] {
   if (step.kind !== 'build') return [];
   const target = targetLines(plan, step);
-  let end = target.length - 1;
-  while (end > 0 && !plan.lines[target[end]].mine) end -= 1;
-  let start = end;
+  let end = target.length;
+  while (end > 0 && !plan.lines[target[end - 1]].mine) end -= 1;
+  let start = end - 1;
   while (start > 0 && !plan.lines[target[start - 1]].mine) start -= 1;
-  return target.slice(start, end + 1);
+  return target.slice(start, end);
 }
 
 export interface RecitationOutcome {
@@ -162,7 +167,10 @@ export interface RecitationOutcome {
 }
 
 function mineIds(plan: RecitationPlan, chunks: number[][]): string[] {
-  return chunks.flat().filter((i) => plan.lines[i].mine).map((i) => plan.lines[i].itemId);
+  return chunks
+    .flat()
+    .filter((i) => plan.lines[i].mine)
+    .map((i) => plan.lines[i].itemId);
 }
 
 /**
@@ -187,7 +195,12 @@ export function advanceRecitation(
     const back = Math.max(0, Math.min(chunk, step.upTo));
     return {
       state: {
-        step: { kind: 'build', chunk: back, unlocked: mineCount(plan, back), joinTarget: step.upTo },
+        step: {
+          kind: 'build',
+          chunk: back,
+          unlocked: mineCount(plan, back),
+          joinTarget: step.upTo,
+        },
         phase: 'recall',
       },
       mastered: [],
@@ -195,16 +208,23 @@ export function advanceRecitation(
   }
 
   if (step.kind === 'build' && step.unlocked < mineCount(plan, step.chunk)) {
-    return { state: { step: { ...step, unlocked: step.unlocked + 1 }, phase: 'present' }, mastered: [] };
+    return {
+      state: { step: { ...step, unlocked: step.unlocked + 1 }, phase: 'present' },
+      mastered: [],
+    };
   }
   if (step.kind === 'build' && step.joinTarget > 0) {
-    return { state: { step: { kind: 'join', upTo: step.joinTarget }, phase: 'recall' }, mastered: [] };
+    return {
+      state: { step: { kind: 'join', upTo: step.joinTarget }, phase: 'recall' },
+      mastered: [],
+    };
   }
   const upTo = step.kind === 'join' ? step.upTo : step.chunk;
   const mastered = mineIds(plan, plan.chunks.slice(0, upTo + 1));
   const next = upTo + 1;
   return {
-    state: next < plan.chunks.length ? startChunk(next) : { step: { kind: 'done' }, phase: 'recall' },
+    state:
+      next < plan.chunks.length ? startChunk(next) : { step: { kind: 'done' }, phase: 'recall' },
     mastered,
   };
 }
@@ -221,15 +241,28 @@ export function reviewLines(plan: RecitationPlan, itemId: string): number[] {
  * the position of its first card, in poem order, so the progress bar follows the
  * recitation. Other cards keep their places.
  */
-export function inRecitationOrder(cards: Card[], sequenceByCard: ReadonlyMap<string, Sequence>): Card[] {
+export function inRecitationOrder(
+  cards: Card[],
+  sequenceByCard: ReadonlyMap<string, Sequence>,
+): Card[] {
   const groups = new Map<string, Card[]>();
+  const positionsBySequence = new Map<string, ReadonlyMap<string, number>>();
   for (const card of cards) {
     const sequence = sequenceByCard.get(card.id);
     if (!sequence || !card.sequenceItemId) continue;
-    groups.set(sequence.id, [...(groups.get(sequence.id) ?? []), card]);
+    let group = groups.get(sequence.id);
+    if (!group) {
+      group = [];
+      groups.set(sequence.id, group);
+      positionsBySequence.set(
+        sequence.id,
+        new Map(sequence.items.map((item, index) => [item.id, index])),
+      );
+    }
+    group.push(card);
   }
   const position = (card: Card) =>
-    sequenceByCard.get(card.id)!.items.findIndex((item) => item.id === card.sequenceItemId);
+    positionsBySequence.get(sequenceByCard.get(card.id)!.id)!.get(card.sequenceItemId!) ?? -1;
   const placed = new Set<string>();
   return cards.flatMap((card) => {
     const sequence = sequenceByCard.get(card.id);

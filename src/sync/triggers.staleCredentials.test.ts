@@ -68,3 +68,51 @@ it.each([
   expect(syncWithCredentialsMock).not.toHaveBeenCalled();
   dispose();
 });
+
+it('does not dispatch a pending automatic sync after its triggers are disposed', async () => {
+  let releaseModule!: (module: { syncWithCredentials: typeof syncWithCredentialsMock }) => void;
+  loadPairingMock.mockReturnValue(
+    new Promise((resolve) => {
+      releaseModule = resolve;
+    }),
+  );
+  publishUnlockedCredentials(credentials);
+  const dispose = installSyncTriggers();
+
+  window.dispatchEvent(new Event('focus'));
+  await vi.advanceTimersByTimeAsync(1500);
+  expect(loadPairingMock).toHaveBeenCalledOnce();
+
+  dispose();
+  releaseModule({ syncWithCredentials: syncWithCredentialsMock });
+  await Promise.resolve();
+
+  expect(syncWithCredentialsMock).not.toHaveBeenCalled();
+});
+
+it('keeps a newer installation active when an older disposer is called twice', async () => {
+  let releaseModule!: (module: { syncWithCredentials: typeof syncWithCredentialsMock }) => void;
+  loadPairingMock.mockReturnValue(
+    new Promise((resolve) => {
+      releaseModule = resolve;
+    }),
+  );
+  publishUnlockedCredentials(credentials);
+  const disposeFirst = installSyncTriggers();
+  disposeFirst();
+  const disposeSecond = installSyncTriggers();
+
+  try {
+    window.dispatchEvent(new Event('focus'));
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(loadPairingMock).toHaveBeenCalledOnce();
+
+    disposeFirst();
+    releaseModule({ syncWithCredentials: syncWithCredentialsMock });
+    await Promise.resolve();
+
+    expect(syncWithCredentialsMock).toHaveBeenCalledWith(credentials);
+  } finally {
+    disposeSecond();
+  }
+});

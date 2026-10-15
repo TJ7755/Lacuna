@@ -119,6 +119,8 @@ function extractFromDatabase(
   // Read notes.
   const notes = readNotes(db);
 
+  const collectionCreatedMs = readCollectionCreatedMs(db);
+
   // Read cards.
   const cards = readCards(db);
   const cardByNid = groupBy(cards, (c) => c.nid);
@@ -152,7 +154,12 @@ function extractFromDatabase(
     }
 
     for (const ankiCard of ankiCards) {
-      const card = buildLacunaCard(ankiCard, mapping, revlogByCid.get(ankiCard.id) ?? []);
+      const card = buildLacunaCard(
+        ankiCard,
+        mapping,
+        revlogByCid.get(ankiCard.id) ?? [],
+        collectionCreatedMs,
+      );
       if (card) {
         lacunaCards.push(card);
       } else {
@@ -182,6 +189,22 @@ function extractFromDatabase(
 // ---------------------------------------------------------------------------
 // SQLite readers
 // ---------------------------------------------------------------------------
+
+/** The collection's creation time in ms; review due days are counted from it. */
+function readCollectionCreatedMs(db: Database): number | undefined {
+  try {
+    const stmt = db.prepare('SELECT crt FROM col LIMIT 1');
+    try {
+      if (!stmt.step()) return undefined;
+      const crt = Number((stmt.getAsObject() as { crt: unknown }).crt);
+      return Number.isFinite(crt) && crt > 0 ? crt * 1000 : undefined;
+    } finally {
+      stmt.free();
+    }
+  } catch {
+    return undefined;
+  }
+}
 
 function readModels(db: Database): AnkiModel[] {
   const stmt = db.prepare('SELECT id, name, type, flds, tmpl FROM notetypes');

@@ -3,9 +3,15 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
 import type { Course } from './types';
-import { findCourseForLineage, importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
+import {
+  acceptAllMergeReview,
+  findCourseForLineage,
+  importLineageFirstTime,
+  mergeLineageUpdate,
+} from './mergeImport';
 import { performanceForCourseBackingDecks, performanceForReviewUnit } from './backingDecks';
 import { recordReview } from './repository';
+import { detachCourse } from './courseRepository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
 import { deleteQuestionSet } from '../questions/questionSetRepository';
@@ -170,6 +176,33 @@ describe('mergeImport: first import of a lineage', () => {
     expect((await db.cards.get('card-1'))?.answerMode).toBeUndefined();
   });
 
+  it("carries the teacher's retention, new-card limit and steady scheduling into the copy", async () => {
+    const { course } = await importLineageFirstTime(
+      coursePayload({
+        course: { n: 'Biology', o: 0, c: 1000, um: 'open', r: 0.8, p: 7, sm: 1 },
+        lessons: [lessonOne()],
+      }),
+    );
+    const stored = await db.courses.get(course.id);
+    expect(stored?.fsrsParameters.requestRetention).toBe(0.8);
+    expect(stored?.newCardsPerDay).toBe(7);
+    expect(course.schedulingMode).toBe('steady');
+  });
+
+  it('imports a plain, untracked copy when the lineage ids are already in use (detached copy)', async () => {
+    const payload = coursePayload({ lessons: [lessonOne()] });
+    const first = await importLineageFirstTime(payload);
+    await detachCourse(first.course.id);
+
+    const second = await importLineageFirstTime(payload);
+    expect(second.course.id).not.toBe(first.course.id);
+    expect(second.course.distributedCopy).toBeUndefined();
+    expect(await db.lessons.where('courseId').equals(second.course.id).count()).toBe(1);
+    expect(await db.cards.where('courseId').equals(second.course.id).count()).toBe(1);
+    // The detached copy is untouched.
+    expect((await db.lessons.get('lesson-1'))?.courseId).toBe(first.course.id);
+  });
+
   it('keeps a first lineage import empty in both review-history stores', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     const card = (await db.cards.get('card-1'))!;
@@ -190,6 +223,7 @@ describe('mergeImport: first import of a lineage', () => {
       locked: true,
       autoAcceptUpdates: false,
       sourceLabel: 'Ms Teacher',
+      source: { name: 'Biology', description: '', unlockMode: 'open' },
     });
 
     const lesson = await db.lessons.get('lesson-1');
@@ -979,6 +1013,7 @@ describe('mergeImport: merge apply', () => {
         entityId: 'note-1',
         kind: 'note',
         incoming: { i: 'note-1', n: 'Intro', c: 'Teacher rewrote this too.' },
+        lessonId: 'lesson-1',
       },
     ]);
   });
@@ -1324,5 +1359,154 @@ describe('mergeImport: merge apply', () => {
     expect(after[0].reps).toBe(4);
     expect(after[0].stability).toBe(12);
     expect((await db.occlusions.get('occ-1'))?.regions[0].y).toBe(0.3);
+  });
+});
+
+describe('mergeImport: course details', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  const course = (overrides: Partial<SharePayloadV2['course']> = {}): SharePayloadV2['course'] => ({
+    n: 'Biology',
+    d: 'Cells and genes',
+    o: 0,
+    c: 1000,
+    um: 'open',
+    ...overrides,
+  });
+
+  it("passes the teacher's new name, description and unlock mode on to the copy", async () => {
+    const imported = await importLineageFirstTime(coursePayload({ course: course(), lessons: [lessonOne()] }));
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({
+        rv: 2,
+        course: course({ n: 'Biology A', d: 'Revised', um: 'linear' }),
+        lessons: [lessonOne()],
+      }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'Biology A',
+      description: 'Revised',
+      unlockMode: 'linear',
+    });
+  });
+
+  it("keeps the learner's own rename while still taking other teacher changes", async () => {
+    const imported = await importLineageFirstTime(coursePayload({ course: course(), lessons: [lessonOne()] }));
+    await db.courses.update(imported.course.id, { name: 'My biology' });
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({ rv: 2, course: course({ n: 'Biology A', d: 'Revised' }), lessons: [lessonOne()] }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'My biology',
+      description: 'Revised',
+    });
+  });
+});
+
+describe('mergeImport: bank cards, lesson links and lesson moves', () => {
+  const bankCard = { id: 'bank-1', k: 0 as const, f: 'Bank front', b: 'Bank back' };
+  const lessonTwo = (overrides: Partial<ShareLesson> = {}) =>
+    lessonOne({ i: 'lesson-2', n: 'Genetics', notes: [], cards: [], ...overrides });
+
+  async function autoAccept(courseId: string) {
+    await db.courses.update(courseId, {
+      distributedCopy: { lineageId: 'lineage-1', revision: 1, locked: true, autoAcceptUpdates: true },
+    });
+  }
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  it('adopts linked bank cards and lesson links on first import', async () => {
+    const { course } = await importLineageFirstTime(
+      coursePayload({
+        lessons: [lessonOne(), lessonTwo()],
+        bankCards: [bankCard],
+        links: [{ l: 0, c: 'bank-1' }, { l: 1, c: 'card-1' }],
+      }),
+    );
+    const card = await db.cards.get('bank-1');
+    expect(card).toMatchObject({ courseId: course.id, primaryLessonId: null, front: 'Bank front' });
+    const links = await db.lessonCards.toArray();
+    expect(links.map(({ lessonId, cardId }) => [lessonId, cardId]).sort()).toEqual([
+      ['lesson-1', 'bank-1'],
+      ['lesson-2', 'card-1'],
+    ]);
+    expect((await db.lineageIdMappings.get('lineage-1'))?.cardIds).toContain('bank-1');
+  });
+
+  it('keeps bank cards and links on an unchanged update, even with auto-accept on', async () => {
+    const payload = coursePayload({
+      lessons: [lessonOne()],
+      bankCards: [bankCard],
+      links: [{ l: 0, c: 'bank-1' }],
+    });
+    const { course } = await importLineageFirstTime(payload);
+    await autoAccept(course.id);
+    const result = await mergeLineageUpdate(course.id, { ...payload, rv: 2 });
+    expect(result).toMatchObject({ appliedUpdates: 0, appliedRemovals: 0, queuedForReview: false });
+    expect(await db.cards.get('bank-1')).toBeDefined();
+    expect(await db.lessonCards.count()).toBe(1);
+  });
+
+  it('applies teacher changes to bank cards and links on update', async () => {
+    const { course } = await importLineageFirstTime(
+      coursePayload({ lessons: [lessonOne(), lessonTwo()], bankCards: [bankCard], links: [{ l: 0, c: 'bank-1' }] }),
+    );
+    await autoAccept(course.id);
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({
+        rv: 2,
+        lessons: [lessonOne(), lessonTwo()],
+        bankCards: [{ ...bankCard, f: 'Bank front (revised)' }, { id: 'bank-2', k: 0, f: 'New', b: 'New' }],
+        links: [{ l: 1, c: 'bank-2' }],
+      }),
+    );
+    expect((await db.cards.get('bank-1'))?.front).toBe('Bank front (revised)');
+    expect(await db.cards.get('bank-2')).toMatchObject({ primaryLessonId: null });
+    const links = await db.lessonCards.toArray();
+    expect(links.map(({ lessonId, cardId }) => [lessonId, cardId])).toEqual([['lesson-2', 'bank-2']]);
+  });
+
+  it('moves a note and a card to the lesson the teacher moved them to', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne(), lessonTwo()] }));
+    await autoAccept(course.id);
+    const moved = lessonOne();
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({
+        rv: 2,
+        lessons: [lessonOne({ notes: [], cards: [] }), lessonTwo({ notes: moved.notes, cards: moved.cards })],
+      }),
+    );
+    expect((await db.notes.get('note-1'))?.lessonId).toBe('lesson-2');
+    expect(await db.cards.get('card-1')).toMatchObject({
+      primaryLessonId: 'lesson-2',
+      deckId: 'lesson-2',
+      schedulingUnitId: 'lesson-2',
+    });
+  });
+
+  it('moves a card when the queued update is accepted later', async () => {
+    const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne(), lessonTwo()] }));
+    await mergeLineageUpdate(
+      course.id,
+      coursePayload({
+        rv: 2,
+        lessons: [lessonOne({ cards: [] }), lessonTwo({ cards: lessonOne().cards })],
+      }),
+    );
+    expect((await db.cards.get('card-1'))?.primaryLessonId).toBe('lesson-1');
+    const review = (await db.pendingMergeReviews.where('courseId').equals(course.id).first())!;
+    await acceptAllMergeReview(review.id);
+    expect((await db.cards.get('card-1'))?.primaryLessonId).toBe('lesson-2');
   });
 });

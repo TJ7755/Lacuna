@@ -51,6 +51,31 @@ describe('compareAnswer', () => {
     ).toBe(false);
   });
 
+  it('keeps the sign of a number when ignoring punctuation', () => {
+    expect(compareAnswer('5', '-5').correct).toBe(false);
+    expect(compareAnswer('-5', '+5').correct).toBe(false);
+    expect(compareAnswer('-5.', '(-5)').correct).toBe(true);
+    expect(compareAnswer('-5', '\u22125').correct).toBe(true);
+    expect(compareAnswer('well-known', '-well-known').correct).toBe(true);
+  });
+
+  it.each([
+    ['.5', '5'],
+    ['5', '.5'],
+    ['-.5', '.5'],
+    ['.5', '\u2212.5'],
+    ['5', '(.5)'],
+  ])('keeps leading decimal points significant for %s against %s', (typed, expected) => {
+    const result = compareAnswer(typed, expected);
+    expect(result.correct).toBe(false);
+    expect(result.words).toEqual([{ text: expected, matched: false }]);
+    expect(result.typedWords).toEqual([{ text: typed, matched: false }]);
+  });
+
+  it('keeps leading-decimal answers equivalent through punctuation and Unicode minus', () => {
+    expect(compareAnswer('-.5', '(\u2212.5)').correct).toBe(true);
+    expect(compareAnswer('.5', '(.5)').correct).toBe(true);
+  });
   it('marks a symbol-only answer with its punctuation kept', () => {
     const result = compareAnswer('%', '%');
     expect(result.correct).toBe(true);
