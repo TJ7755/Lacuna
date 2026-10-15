@@ -121,14 +121,14 @@
 .dark {
   color-scheme: dark;
   --paper: 90 10% 4%;
-  --surface: 90 8% 6%;
-  --surface-raised: 90 7% 9%;
+  --surface: 90 8% 10%;
+  --surface-raised: 90 7% 14%;
   --chrome: 90 10% 3%;
   --ink: 80 12% 92%;
   --ink-soft: 80 10% 78%;
   --ink-faint: 80 8% 68%;
-  --line: 90 8% 16%;
-  --line-strong: 90 8% 24%;
+  --line: 90 8% 20%;
+  --line-strong: 90 8% 30%;
   --accent: 74 85% 58%;
   --accent-soft: 80 30% 14%;
   --accent-ink: 74 85% 72%;

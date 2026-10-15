@@ -23,14 +23,26 @@ function token(block: string, name: string): { hue: number; saturation: number; 
 }
 
 describe('Volt dark palette restraint', () => {
-  it('keeps dark surfaces near black with only a faint green tint', () => {
+  it('keeps the dark ground near black with only a faint green tint', () => {
     const block = darkBlock();
     for (const surface of ['paper', 'surface', 'surface-raised', 'chrome']) {
-      const colour = token(block, surface);
-      expect(colour.lightness, surface).toBeLessThanOrEqual(9);
-      expect(colour.saturation, surface).toBeLessThanOrEqual(10);
+      expect(token(block, surface).saturation, surface).toBeLessThanOrEqual(10);
     }
     expect(token(block, 'paper').lightness).toBeLessThanOrEqual(5);
+    expect(token(block, 'chrome').lightness).toBeLessThanOrEqual(5);
+  });
+
+  it('lifts foreground cards clear of the near-black ground', () => {
+    const block = darkBlock();
+    const paper = token(block, 'paper').lightness;
+    const surface = token(block, 'surface').lightness;
+    const raised = token(block, 'surface-raised').lightness;
+    expect(surface).toBeGreaterThanOrEqual(9);
+    expect(surface).toBeLessThanOrEqual(11);
+    expect(raised).toBeGreaterThanOrEqual(12);
+    expect(raised).toBeLessThanOrEqual(15);
+    expect(surface - paper).toBeGreaterThanOrEqual(5);
+    expect(raised - paper).toBeGreaterThanOrEqual(8);
   });
 
   it('tones the lime accent and neutralises dark ink', () => {
