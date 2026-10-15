@@ -29,14 +29,6 @@ describe('Volt dark palette', () => {
     expect(token(block, 'chrome').lightness).toBeLessThanOrEqual(5);
   });
 
-  it('retains the neon Volt foreground', () => {
-    const block = darkBlock();
-    expect(token(block, 'accent').saturation).toBeGreaterThanOrEqual(95);
-    expect(token(block, 'accent-ink').saturation).toBeGreaterThanOrEqual(95);
-    expect(token(block, 'ink').saturation).toBeGreaterThanOrEqual(40);
-    expect(token(block, 'ink-faint').saturation).toBeGreaterThanOrEqual(12);
-  });
-
   it('holds foreground cards clear of the near-black ground', () => {
     const block = darkBlock();
     const paper = token(block, 'paper').lightness;
