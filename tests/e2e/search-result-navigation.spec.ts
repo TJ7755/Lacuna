@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
 for (const width of [390, 1440]) {
   test.describe(`search result navigation at ${width}px`, () => {
@@ -14,7 +14,7 @@ for (const width of [390, 1440]) {
     }) => {
       await enterFreshLacuna(page);
       // Use the real importer so Cards retain their normal Course/Lesson ownership.
-      await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+      await openImport(page);
       await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
       const importer = page.locator('.card-import-page');
       await importer

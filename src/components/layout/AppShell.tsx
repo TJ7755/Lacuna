@@ -391,6 +391,7 @@ function AppShellLayout() {
                   collapsed={false}
                   onToggleCollapsed={() => setMobileOpen(false)}
                   toggleLabel="Close navigation"
+                  drawer
                 />
               </motion.div>
             </motion.div>
@@ -424,7 +425,7 @@ function AppShellLayout() {
                 src={`${import.meta.env.BASE_URL}icon.svg`}
                 alt=""
                 aria-hidden="true"
-                className="h-[18px] w-[18px] shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-0.5"
+                className="h-[18px] w-[18px] shrink-0"
               />
               <span>Lacuna</span>
             </span>

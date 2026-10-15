@@ -41,6 +41,14 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Review today' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review today' })).not.toBeInTheDocument();
   });
+  it('offers Import only in the phone drawer, where Today hides its button', () => {
+    const { rerender } = render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, {
+      wrapper: MemoryRouter,
+    });
+    expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
+    rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
+    expect(screen.getByRole('link', { name: 'Import' })).toHaveAttribute('href', '/import');
+  });
   it('shades the hidden edges of its scrollbar-less course list', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
     const archived = screen.getByRole('link', { name: 'Archived' });

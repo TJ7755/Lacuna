@@ -194,22 +194,22 @@ export function Dashboard() {
       <h1 ref={heading} tabIndex={-1} className="sr-only focus-visible:shadow-none">
         Today
       </h1>
-      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 text-ink-soft sm:mb-6">
+      <div className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-3 text-ink-soft sm:mb-6 sm:gap-x-6">
         {rows && rows.length > 0 && (
           <p
-            className="flex items-center gap-5 sm:gap-6"
+            className="flex items-center gap-4 sm:gap-6"
             aria-label={`Today: ${totalCards} ${totalCards === 1 ? 'card' : 'cards'}, about ${totalMinutes} ${totalMinutes === 1 ? 'minute' : 'minutes'}`}
           >
             <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <CardsIcon width={20} height={20} />
-              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+              <CardsIcon width={20} height={20} className="max-sm:hidden" />
+              <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
                 <CountUp value={totalCards} multiplier={m} />
               </strong>
               {totalCards === 1 ? 'card' : 'cards'}
             </span>
             <span className="inline-flex items-center gap-2" aria-hidden="true">
-              <ClockIcon width={20} height={20} />
-              <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+              <ClockIcon width={20} height={20} className="max-sm:hidden" />
+              <strong className="font-display text-xl font-semibold tracking-tight text-ink tabular-nums sm:text-2xl">
                 <CountUp value={totalMinutes} multiplier={m} />
               </strong>
               min
@@ -217,7 +217,8 @@ export function Dashboard() {
           </p>
         )}
         <div className="ml-auto flex shrink-0 gap-2">
-          <Button variant="ghost" onClick={() => navigate('/import')}>
+          {/* Phones reach Import from the navigation drawer, which keeps this row to one line. */}
+          <Button variant="ghost" className="max-sm:hidden" onClick={() => navigate('/import')}>
             Import
           </Button>
           <NewCourseControl open={creatingCourse} onOpenChange={setCreatingCourse} />

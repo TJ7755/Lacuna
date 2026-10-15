@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
 
 // Regression for #453: Progress explains leeches and routes to the affected cards.
 test('Leech count links to the leech cards it counts', async ({ page }) => {
   await enterFreshLacuna(page);
-  await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+  await openImport(page);
   await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
   const importer = page.locator('.card-import-page');
   await importer.getByLabel('Paste your cards').fill('Stubborn fact\tanswer\nEasy fact\tanswer');

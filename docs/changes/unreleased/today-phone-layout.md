@@ -1,0 +1,1 @@
+- Today on phones: the card and minute counts share one line with New course, Import moves into the navigation drawer, the exam label centres on its forecast marker, and the top bar's logo no longer sits on a dark tile.

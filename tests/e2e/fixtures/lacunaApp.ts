@@ -17,6 +17,17 @@ export async function enterFreshLacuna(page: Page) {
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
+/** Opens Import from Today, or from the navigation drawer on a phone, where Today hides it. */
+export async function openImport(page: Page) {
+  // Matches Tailwind's sm breakpoint, below which Today hides its Import button.
+  if (page.viewportSize()!.width >= 640) {
+    await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
+  } else {
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('dialog', { name: 'Navigation' }).getByRole('link', { name: 'Import' }).click();
+  }
+}
+
 export async function createCourse(page: Page, courseName: string) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const form = page.getByRole('form', { name: 'New course' });

@@ -87,6 +87,21 @@ test('sidebar course names wrap to a second line instead of truncating', async (
   expect((await name.boundingBox())!.height).toBeGreaterThan(30);
 });
 
+test('Today keeps its counts and New course on one line on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  const main = page.locator('main');
+  await expect(main.getByRole('button', { name: 'Import' })).toBeHidden();
+  const counts = (await main.getByLabel(/^Today: /).boundingBox())!;
+  const create = (await main.getByRole('button', { name: 'New course' }).boundingBox())!;
+  expect(Math.abs(counts.y + counts.height / 2 - (create.y + create.height / 2))).toBeLessThanOrEqual(2);
+  // Import moves to the navigation drawer.
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page.getByRole('dialog', { name: 'Navigation' }).getByRole('link', { name: 'Import' }).click();
+  await expect(page).toHaveURL(/#\/import$/);
+});
+
 test('card row actions meet the 44px target on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
