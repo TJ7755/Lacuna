@@ -1,0 +1,1 @@
+- Preserve the redesigned timer fields' draft editing while enforcing the existing 60-minute break maximum and 120-minute focus maximum.

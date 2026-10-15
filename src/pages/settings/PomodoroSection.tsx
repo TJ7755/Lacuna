@@ -29,7 +29,7 @@ export function PomodoroSection() {
       <div className="grid grid-cols-3 gap-4">
         <DurationInput
           label="Focus"
-          max={max}
+          max={120}
           value={settings.workMinutes}
           onChange={(value) => update({ ...settings, workMinutes: value })}
         />
@@ -78,7 +78,7 @@ function DurationInput({
       value={value}
       suffix="min"
       min={1}
-      max={120}
+      max={max}
       onCommit={onChange}
     />
   );
