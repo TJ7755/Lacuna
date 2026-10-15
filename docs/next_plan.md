@@ -14,8 +14,8 @@ deliberately frozen. Detailed specifications, implementation diaries and complet
 
 The current public release is **v0.2.14**, published on 14 October and verified against GitHub
 on 15 October. Its official assets cover Windows and Linux; macOS remains a separate manual build.
-Lacuna is a
-local-first web/PWA and Electron learning application. Study data remains on-device; optional device sync and browser AI
+Lacuna is a local-first web/PWA and Electron learning application. Study data remains on-device;
+optional device sync and browser AI
 use the hosted relay, while packaged Electron AI uses its separate authenticated local companion.
 Windows, Linux and unsigned macOS desktop packages are beta artefacts with platform-specific update
 behaviour. The release workflow attests Windows and Linux artefacts; locally

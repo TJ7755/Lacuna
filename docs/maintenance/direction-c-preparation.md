@@ -15,6 +15,45 @@ CI and Security both cover pull requests into `redesign/**`. All workflow Bun pi
 the root's Bun 1.4.3 contract, including the manual Electron and newly integrated release jobs.
 Local validation runs sequentially; full gates run on hosted Actions to respect laptop memory.
 
+## Verification evidence
+
+[Draft PR #536](https://github.com/TJ7755/Lacuna/pull/536) targets the redesign branch;
+its [checks](https://github.com/TJ7755/Lacuna/pull/536/checks) identify the latest tested head.
+No auto-merge is enabled. Both parent branches remain unchanged by this preparation.
+
+Local focused verification passed 90 tests across the Card editor, Question editor, Pomodoro
+and sync settings suites. Nine other conflict-focused suites passed in the preceding run.
+The first local run exposed the missing locked-editor disabled state, a miswired timer bound
+and an obsolete sync-panel assertion; the corrected suites passed without weakening the
+locking or persistence assertions. A Card editor worker-start timeout passed on its rerun.
+
+Red-to-green verification used an independent physical dependency copy in a disposable
+worktree at the actual merge-base `a17ddac6`. These unchanged assertions failed there and
+passed on preparation commit `8186ea5d`:
+
+- `QuestionEditor.test.tsx`: blocks adding Concepts from a locked Question editor.
+- `PomodoroSection.test.tsx`: keeps Short break within the timer maximum.
+- `PomodoroSection.test.tsx`: keeps Long break within the timer maximum.
+
+The focused command was `bunx vitest run src/pages/settings/PomodoroSection.test.tsx
+src/pages/QuestionEditor.test.tsx --maxWorkers=1 --testNamePattern='blocks adding Concepts|keeps.*within the timer maximum'`.
+The baseline failed exactly those three assertions; the head passed all three. The workflow
+Bun consistency assertion also passed, and `node scripts/changelog.mjs --check` accepted all
+172 fragments at that checkpoint. The disposable worktree has been archived.
+
+Hosted source verification for `294fde18` is retained in
+[CI](https://github.com/TJ7755/Lacuna/actions/runs/38698053805),
+[Security](https://github.com/TJ7755/Lacuna/actions/runs/38698053776) and
+[the native/package matrix](https://github.com/TJ7755/Lacuna/actions/runs/38698046952).
+Consult those run conclusions and the current PR checks; dispatching a run alone is not a pass.
+Later documentation commits do not change the packaged source tested at this revision.
+
+The first native runs identified runner sandbox ownership and obsolete measurement controls.
+Linux now configures `chrome-sandbox` ownership/mode on the isolated runner and retains the
+application sandbox. The existing interaction suite opens Quick search with Ctrl/Cmd+K and
+the course through its real link, recognising the current course title. This measures a
+keyboard search gesture, so its timing is not directly comparable with the old button gesture.
+
 ## Published baseline
 
 GitHub's published beta is `v0.2.14`, released on 14 October 2026 at 19:45 UTC. The official
