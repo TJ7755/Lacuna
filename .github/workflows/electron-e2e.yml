@@ -41,6 +41,11 @@ jobs:
       - if: runner.os == 'Linux'
         run: bunx playwright install --with-deps chromium
       - run: bun run ${{ matrix.build }}
+      - name: Configure the Linux sandbox helper
+        if: runner.os == 'Linux'
+        run: |
+          sudo chown root:root release/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 release/linux-unpacked/chrome-sandbox
       - if: runner.os == 'Linux'
         run: xvfb-run -a bun run test:e2e:electron-package
       - if: runner.os != 'Linux'
