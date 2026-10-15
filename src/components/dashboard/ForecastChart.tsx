@@ -181,7 +181,9 @@ export function ForecastChart({
       ...new Set(lines.filter((line) => line.forecast.hasExam).map((line) => line.forecast.end)),
     ].sort((a, b) => a - b);
     const inside = exams.filter((at) => at <= stop);
-    // A phone has room for the word alone: the date would collide with Today.
+    // A phone has room for the word alone: the date would collide with Today. The label
+    // centres on its marker unless half of it would run past the chart's edge.
+    const halfLabel = narrow ? 18 : 44;
     for (const at of inside) {
       const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(at)) < (narrow ? 44 : 72));
       if (!tooClose)
@@ -189,7 +191,7 @@ export function ForecastChart({
           at,
           label: narrow ? 'Exam' : `${formatShortDate(at)} · Exam`,
           strong: true,
-          anchor: x(at) > W - RIGHT - 48 ? 'end' : 'middle',
+          anchor: x(at) + halfLabel > W ? 'end' : 'middle',
         });
     }
     const beyond = exams.find((at) => at > stop);

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ForecastChart } from './ForecastChart';
 import type { CourseForecast } from '../../fsrs/courseForecast';
 
@@ -32,6 +32,26 @@ describe('ForecastChart axis', () => {
     expect(Number(dot.getAttribute('cx'))).toBeCloseTo(40 + 0.6 * (width - 56));
     expect(screen.getAllByText('62%')).toHaveLength(1);
     expect(screen.getByText(/· Exam/)).toBeInTheDocument();
+  });
+
+  it('centres the exam label on its marker at phone width', () => {
+    // A 322px plot, as on a 390px phone, where the exam sits within 48px of the right edge.
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private callback: ResizeObserverCallback) {}
+        observe() {
+          this.callback([{ contentRect: { width: 322 } } as ResizeObserverEntry], this as never);
+        }
+        disconnect() {}
+      },
+    );
+    try {
+      renderChart(7);
+      expect(screen.getByText('Exam')).toHaveAttribute('text-anchor', 'middle');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('points to an exam beyond the window from the axis edge', () => {

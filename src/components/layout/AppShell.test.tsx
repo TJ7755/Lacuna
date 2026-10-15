@@ -201,13 +201,14 @@ describe('AppShell mobile navigation', () => {
     expect(main).toHaveFocus();
   });
 
-  it('uses the fixed Lacuna colours for mobile branding', () => {
+  it('sets the mobile brand mark straight on the top bar, without a tile', () => {
     renderShell();
 
     const mark = screen.getByTestId('mobile-brand-mark');
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-[18px]', 'w-[18px]', 'p-0.5', 'bg-[#0a0a0b]');
+    expect(mark).toHaveClass('h-[18px]', 'w-[18px]');
+    expect(mark.className).not.toMatch(/\bbg-|\bp-/);
     expect(mark.parentElement).toHaveTextContent('Lacuna');
   });
 

@@ -16,6 +16,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
+  DownloadIcon,
   FlameIcon,
   HelpIcon,
   MoonIcon,
@@ -39,6 +40,8 @@ interface SidebarProps {
   onToggleCollapsed: () => void;
   toggleLabel?: string;
   collapseControl?: boolean;
+  /** Rendered in the phone drawer, where Today has no room for its Import button. */
+  drawer?: boolean;
   aiAction?: {
     active: boolean;
     onClick: () => void;
@@ -374,6 +377,7 @@ export function Sidebar({
   onToggleCollapsed,
   toggleLabel,
   collapseControl = true,
+  drawer = false,
   aiAction,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -533,6 +537,15 @@ export function Sidebar({
         className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}
       >
         {visibleNav.filter((n) => !FOOTER_NAV.has(n.id)).map(renderNavItem)}
+        {drawer && (
+          <NavItem
+            to="/import"
+            icon={<DownloadIcon />}
+            label="Import"
+            collapsed={collapsed}
+            compact={sidebarSettings.compactMode}
+          />
+        )}
         {aiAction && (
           <div>
             <ActionNavItem
