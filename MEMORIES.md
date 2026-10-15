@@ -366,8 +366,10 @@ destroys the evaluation.
 
 ## Initial JavaScript budget is nearly full
 
-`perf:check` caps first-load JavaScript at 280,000 gzipped bytes; after deferring the seed it
-stood at about 274,300 (7 October 2026). Asset hashes inside chunks move the figure by tens of
+`perf:check` caps first-load JavaScript at 280,000 gzipped bytes; after deferring Today's
+forecast chart it stood at about 277,600 (15 October 2026). The shell imports anything a
+dashboard module exports, so keep small shared helpers (such as `forecastStatus.ts`) apart
+from heavy components that can load on demand. Asset hashes inside chunks move the figure by tens of
 bytes between builds. Prefer CSS utilities in `src/index.css` over hooks or long class strings
 in initial chunks, and add on-demand start-up chunks to the shell precache list.
 

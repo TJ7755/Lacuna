@@ -5,7 +5,7 @@ import { ArrowRightIcon, CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui
 import { Button } from '../ui/Button';
 import { MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
-import { STATUS_COLOUR, type ForecastStatus } from './ForecastChart';
+import { STATUS_COLOUR, type ForecastStatus } from './forecastStatus';
 import { contextMenuHandlers } from '../ui/contextMenu';
 
 /**

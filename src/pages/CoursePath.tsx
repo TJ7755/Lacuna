@@ -35,7 +35,7 @@ import { CourseOverview } from '../components/course/CourseOverview';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { CourseSummaryCard } from '../components/course/CourseSummaryCard';
-import { forecastStatus } from '../components/dashboard/ForecastChart';
+import { forecastStatus } from '../components/dashboard/forecastStatus';
 import { formatShortDate, startOfDay } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';

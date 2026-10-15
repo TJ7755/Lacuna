@@ -1,5 +1,6 @@
 import { useDeferredValue, useMemo } from 'react';
-import { ForecastChart, forecastStatus, type ForecastLine } from '../dashboard/ForecastChart';
+import { ForecastChart, type ForecastLine } from '../dashboard/ForecastChart';
+import { forecastStatus } from '../dashboard/forecastStatus';
 import { dashboardForecastHistories, dashboardForecasts } from '../../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../../state/forecastRange';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';

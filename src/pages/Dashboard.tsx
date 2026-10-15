@@ -8,11 +8,8 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
-import {
-  ForecastChart,
-  forecastStatus,
-  type ForecastLine,
-} from '../components/dashboard/ForecastChart';
+import { forecastStatus } from '../components/dashboard/forecastStatus';
+import type { ForecastLine } from '../components/dashboard/ForecastChart';
 import { WeekPanel } from '../components/dashboard/WeekPanel';
 import { leadStudyRow, queueState, TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
 import { Button } from '../components/ui/Button';
@@ -32,6 +29,12 @@ import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
 // The course actions open on demand, so they stay out of the first-load bundle.
+// The chart waits on review history anyway, so it loads alongside it rather than at start-up.
+const ForecastChart = lazy(() =>
+  import('../components/dashboard/ForecastChart').then((module) => ({
+    default: module.ForecastChart,
+  })),
+);
 const SharingAnnouncement = lazy(() =>
   import('../components/layout/SharingAnnouncement').then((module) => ({
     default: module.SharingAnnouncement,
@@ -239,13 +242,17 @@ export function Dashboard() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}
             >
-              {lines.length > 0 && <ForecastChart
-                  lines={lines}
-                  now={Date.now()}
-                  past={chartWindow.past}
-                  future={chartWindow.future}
-                  multiplier={m}
-                />}
+              {lines.length > 0 && (
+                <Suspense fallback={null}>
+                  <ForecastChart
+                    lines={lines}
+                    now={Date.now()}
+                    past={chartWindow.past}
+                    future={chartWindow.future}
+                    multiplier={m}
+                  />
+                </Suspense>
+              )}
               {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
             </motion.section>
           )}

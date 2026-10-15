@@ -3,8 +3,7 @@ import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
 import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
-
-export type ForecastStatus = 'ahead' | 'behind' | 'steady';
+import { STATUS_LABEL, type ForecastStatus } from './forecastStatus';
 
 export interface ForecastLine {
   id: string;
@@ -15,28 +14,12 @@ export interface ForecastLine {
   history: ForecastPoint[];
 }
 
-export const STATUS_COLOUR: Record<ForecastStatus, string> = {
-  ahead: 'hsl(var(--positive))',
-  behind: 'hsl(var(--warning))',
-  steady: 'hsl(var(--ink-faint))',
-};
-
 /**
  * Lines are told apart by course, not status: four on-track courses would otherwise draw four
  * identical green lines. The first course takes the readable accent; the rest use the chart series.
  */
 export function courseColour(index: number): string {
   return index === 0 ? 'hsl(var(--accent-ink))' : `hsl(var(--series-${((index - 1) % 5) + 1}))`;
-}
-
-const STATUS_LABEL: Partial<Record<ForecastStatus, string>> = {
-  ahead: 'On track',
-  behind: 'Behind',
-};
-
-export function forecastStatus(forecast: CourseForecast): ForecastStatus {
-  if (!forecast.hasExam) return 'steady';
-  return forecast.ifStopped + 0.005 >= forecast.target ? 'ahead' : 'behind';
 }
 
 const WIDE_WIDTH = 640;
@@ -117,13 +100,40 @@ export function smoothPath(points: { x: number; y: number }[]): string {
 const DAY = 86_400_000;
 /** Smallest vertical gap between today's percentage labels. */
 const LABEL_GAP = 22;
+/**
+ * Beyond this many courses the chart spotlights the first few, in the queue's urgency order,
+ * and keeps the rest as quiet context: nine coloured lines and labels read as noise, and
+ * the series palette starts repeating after six.
+ */
+const SPOTLIGHT_LIMIT = 4;
+const SPOTLIGHT = 3;
+const CONTEXT_COLOUR = 'hsl(var(--ink-faint))';
+
+/**
+ * Spreads label centres at least `gap` apart while keeping each as close to its point as it
+ * can and all of them between `top` and `bottom`. Returns positions in the input order.
+ */
+export function spreadLabels(ys: number[], top: number, bottom: number, gap: number): number[] {
+  const order = ys.map((y, index) => ({ y, index })).sort((a, b) => a.y - b.y);
+  const placed = order.map((entry) => Math.min(bottom, Math.max(top, entry.y)));
+  for (let i = 1; i < placed.length; i++) placed[i] = Math.max(placed[i], placed[i - 1] + gap);
+  // Anything pushed past the floor shifts the stack back up from it.
+  for (let i = placed.length - 1; i >= 0; i--) {
+    const limit = i === placed.length - 1 ? bottom : placed[i + 1] - gap;
+    placed[i] = Math.min(placed[i], limit);
+  }
+  const result = new Array<number>(ys.length);
+  order.forEach((entry, i) => (result[entry.index] = placed[i]));
+  return result;
+}
 
 /**
  * Exam-day forecast: how much of each course would be recalled on exam day if study
  * stopped now, traced over recent days up to today against the target. The window runs
  * `past` days back and `future` days ahead; nothing is projected after today, which only
  * holds the exam markers. Lines draw in, today's points land with a small spring, and
- * choosing a course in the legend brings its line forward.
+ * choosing a course in the legend brings its line forward. With many courses only the most
+ * urgent few are coloured and labelled; the rest stay faint until chosen.
  */
 export function ForecastChart({
   lines,
@@ -141,6 +151,10 @@ export function ForecastChart({
   const titleId = useId();
   const { ref, W, H, narrow } = useChartSize();
   const [focus, setFocus] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const spotlit = lines.length <= SPOTLIGHT_LIMIT ? lines.length : SPOTLIGHT;
+  const hidden = lines.length - spotlit;
+  const colour = (index: number) => (index < spotlit ? courseColour(index) : CONTEXT_COLOUR);
   const target = lines[0]?.forecast.target ?? 0.9;
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 
@@ -180,24 +194,56 @@ export function ForecastChart({
     }
     const beyond = exams.find((at) => at > stop);
 
-    // Today's percentages sit beside their points, nudged apart where courses agree and
-    // stacked upwards from the baseline so a figure never sits on the axis.
-    const floor = y(bottom) - LABEL_GAP / 2;
-    const labels = lines
-      .map((line) => ({ id: line.id, y: y(line.forecast.ifStopped) }))
-      .sort((a, b) => b.y - a.y);
-    for (let i = 0; i < labels.length; i++) {
-      labels[i].y = Math.min(labels[i].y, i === 0 ? floor : labels[i - 1].y - LABEL_GAP);
-    }
-    const labelY = new Map(labels.map((label) => [label.id, label.y]));
-
-    return { x, y, ticks, marks, inside, beyond, labelY };
+    return { x, y, ticks, marks, inside, beyond };
   }, [lines, now, past, future, target, W, H, narrow]);
 
-  const { x, y, ticks, marks, inside, beyond, labelY } = geometry;
+  const { x, y, ticks, marks, inside, beyond } = geometry;
   const draw = multiplier > 0;
   const plotTop = y(ticks[0]);
   const plotBottom = y(ticks[ticks.length - 1]);
+
+  // Only spotlit courses, and whichever course is chosen in the legend, carry today's
+  // figure. The figures sit beside their points, nudged apart where courses agree and
+  // kept off the axis.
+  const labelled = lines.filter((line, index) => index < spotlit || line.id === focus);
+  const spread = spreadLabels(
+    labelled.map((line) => y(line.forecast.ifStopped)),
+    plotTop + LABEL_GAP / 2,
+    plotBottom - LABEL_GAP / 2,
+    LABEL_GAP,
+  );
+  const labelY = new Map(labelled.map((line, i) => [line.id, spread[i]]));
+  // Context lines draw first so the spotlit courses stay on top.
+  const drawOrder = lines
+    .map((line, index) => ({ line, index }))
+    .sort((a, b) => Number(a.index < spotlit) - Number(b.index < spotlit));
+
+  const legendItem = (line: ForecastLine, index: number) => (
+    <li key={line.id}>
+      <button
+        type="button"
+        onPointerEnter={() => setFocus(line.id)}
+        onPointerLeave={() => setFocus(null)}
+        onFocus={() => setFocus(line.id)}
+        onBlur={() => setFocus(null)}
+        className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 transition-colors hover:bg-ink/5"
+      >
+        <span
+          aria-hidden="true"
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ background: colour(index) }}
+        />
+        <span className="max-w-[14rem] truncate" title={line.name}>
+          {line.name}
+        </span>
+        {STATUS_LABEL[line.status] && (
+          <span className={line.status === 'behind' ? 'text-warning-fg' : 'text-ink-faint'}>
+            {STATUS_LABEL[line.status]}
+          </span>
+        )}
+      </button>
+    </li>
+  );
 
   return (
     <div className="flex flex-col gap-5">
@@ -208,32 +254,20 @@ export function ForecastChart({
           Exam-day forecast
         </h2>
         <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
-          {lines.map((line, index) => (
-            <li key={line.id}>
+          {lines.slice(0, spotlit).map((line, index) => legendItem(line, index))}
+          {expanded && lines.slice(spotlit).map((line, index) => legendItem(line, spotlit + index))}
+          {hidden > 0 && (
+            <li>
               <button
                 type="button"
-                onPointerEnter={() => setFocus(line.id)}
-                onPointerLeave={() => setFocus(null)}
-                onFocus={() => setFocus(line.id)}
-                onBlur={() => setFocus(null)}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 transition-colors hover:bg-ink/5"
+                aria-expanded={expanded}
+                onClick={() => setExpanded((open) => !open)}
+                className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
               >
-                <span
-                  aria-hidden="true"
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ background: courseColour(index) }}
-                />
-                <span className="max-w-[14rem] truncate" title={line.name}>
-                  {line.name}
-                </span>
-                {STATUS_LABEL[line.status] && (
-                  <span className={line.status === 'behind' ? 'text-warning-fg' : 'text-ink-faint'}>
-                    {STATUS_LABEL[line.status]}
-                  </span>
-                )}
+                {expanded ? 'Fewer' : `${hidden} more`}
               </button>
             </li>
-          ))}
+          )}
           {sharedTarget && (
             <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
               <span aria-hidden="true" className="w-[18px] border-t-[1.5px] border-dashed border-ink" />
@@ -309,34 +343,40 @@ export function ForecastChart({
             strokeOpacity={0.7}
           />
         )}
-        {lines.map((line, index) => {
+        {drawOrder.map(({ line, index }) => {
+          const context = index >= spotlit;
+          const focused = focus === line.id;
+          const stroke = context && focused ? 'hsl(var(--ink))' : colour(index);
           const eased = easeSeries(line.history.map((point) => point.recall));
           const points = line.history.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
           const last = points[points.length - 1];
-          const dimmed = focus !== null && focus !== line.id;
-          const delay = 0.15 + index * 0.12;
+          const dimmed = focus !== null && !focused;
+          const delay = 0.15 + Math.min(index, spotlit) * 0.12;
           return (
             <g
               key={line.id}
-              style={{ opacity: dimmed ? 0.18 : 1, transition: `opacity ${200 * multiplier}ms` }}
+              style={{
+                opacity: dimmed ? 0.18 : context && !focused ? 0.45 : 1,
+                transition: `opacity ${200 * multiplier}ms`,
+              }}
             >
               <motion.path
                 d={smoothPath(points)}
                 fill="none"
-                stroke={courseColour(index)}
-                strokeWidth={focus === line.id ? 4.5 : 3.5}
+                stroke={stroke}
+                strokeWidth={context ? (focused ? 3.5 : 2) : focused ? 4.5 : 3.5}
                 strokeLinecap="round"
                 initial={draw ? { pathLength: 0 } : false}
                 animate={{ pathLength: 1 }}
                 transition={{ duration: 1.1 * multiplier, delay: delay * multiplier, ease: MOTION_EASING.emphasised }}
               />
-              {last && (
+              {last && (!context || focused) && (
                 <>
                   <motion.circle
                     cx={last.x}
                     cy={last.y}
                     r={5}
-                    fill={courseColour(index)}
+                    fill={stroke}
                     initial={draw ? { scale: 0 } : false}
                     animate={{ scale: 1 }}
                     style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
@@ -346,13 +386,13 @@ export function ForecastChart({
                         : { duration: 0 }
                     }
                   />
-                  {draw && (
+                  {draw && !context && (
                     <motion.circle
                       cx={last.x}
                       cy={last.y}
                       r={5}
                       fill="none"
-                      stroke={courseColour(index)}
+                      stroke={stroke}
                       strokeWidth={2}
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                       initial={{ scale: 1, opacity: 0 }}
@@ -364,7 +404,8 @@ export function ForecastChart({
                     x={last.x + 12}
                     y={labelY.get(line.id) ?? last.y}
                     dominantBaseline="central"
-                    className="fill-ink stroke-surface font-display text-xl font-semibold tabular-nums"
+                    fill={stroke}
+                    className="stroke-surface font-display text-xl font-semibold tabular-nums"
                     strokeWidth={6}
                     paintOrder="stroke"
                   >

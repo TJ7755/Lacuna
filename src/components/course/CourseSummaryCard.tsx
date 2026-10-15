@@ -1,5 +1,5 @@
 import { cn } from '../ui/cn';
-import type { ForecastStatus } from '../dashboard/ForecastChart';
+import type { ForecastStatus } from '../dashboard/forecastStatus';
 
 const STATUS_TEXT: Record<ForecastStatus, string> = {
   ahead: 'text-positive',
