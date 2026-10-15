@@ -427,7 +427,7 @@ describe('Dashboard', () => {
     expect(cards).toHaveTextContent('2');
   });
 
-  it('leads with what to study, above the forecast', () => {
+  it('leads with the forecast, above what to study', () => {
     setCourseData([mockCourse], {
       summaries: { 'course-1': summary(3) },
       reviewActivity: new Map([['card-1', [Date.now()]]]),
@@ -437,7 +437,7 @@ describe('Dashboard', () => {
 
     const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(queue.compareDocumentPosition(forecastPanel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
   });
 
