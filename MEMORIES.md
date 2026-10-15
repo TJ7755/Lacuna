@@ -53,6 +53,9 @@ deployment alone does not certify the current integration.
 
 ## Windows dependency installation
 
+Vercel's build-image Bun does not follow the root `packageManager` pin automatically. Keep its
+install and build commands pinned together; older images treat `bun check` as a missing script.
+
 Missing package entry points can be Bun cache corruption, not incompatible dependencies.
 A fresh `BUN_INSTALL_CACHE_DIR` with `--force --backend copyfile` has repaired this checkout.
 Do not regenerate lockfiles to compensate for an incomplete local installation.

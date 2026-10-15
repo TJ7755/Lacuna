@@ -2,12 +2,17 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 describe('Vercel configuration', () => {
-  it('installs from the committed Bun lockfile', async () => {
+  it('pins installation and builds to the Bun release required by web typechecking', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       installCommand?: string;
+      buildCommand?: string;
+    };
+    const manifest = JSON.parse(await readFile('package.json', 'utf8')) as {
+      packageManager: string;
     };
 
-    expect(config.installCommand).toBe('bun install --frozen-lockfile');
+    expect(config.installCommand).toBe(`bunx ${manifest.packageManager} install --frozen-lockfile`);
+    expect(config.buildCommand).toBe(`bunx ${manifest.packageManager} run build`);
   });
 
   it('does not rewrite missing hashed assets to the HTML app shell', async () => {
