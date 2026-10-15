@@ -7,7 +7,7 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
 - **Light:** pale green paper (`--paper`), near-white surfaces (`--surface`), green-black ink. The
   sidebar sits on a slightly darker `--chrome` ground.
-- **Dark (default):** near-black paper and chrome ground, with foreground cards lifted lighter so edges stay defined, pale neutral ink.
+- **Dark (default):** near-black paper and chrome ground, with the Volt neon foreground retained so icons and banner edges stay defined, pale green ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
   is **Volt lime**; the user may pick **amber, red, rose, pink, violet, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and

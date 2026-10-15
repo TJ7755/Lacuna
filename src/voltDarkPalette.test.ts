@@ -22,36 +22,28 @@ function token(block: string, name: string): { hue: number; saturation: number; 
   return parseHsl(match[1]);
 }
 
-describe('Volt dark palette restraint', () => {
-  it('keeps the dark ground near black with only a faint green tint', () => {
+describe('Volt dark palette', () => {
+  it('keeps the dark ground near black', () => {
     const block = darkBlock();
-    for (const surface of ['paper', 'surface', 'surface-raised', 'chrome']) {
-      expect(token(block, surface).saturation, surface).toBeLessThanOrEqual(10);
-    }
     expect(token(block, 'paper').lightness).toBeLessThanOrEqual(5);
     expect(token(block, 'chrome').lightness).toBeLessThanOrEqual(5);
   });
 
-  it('lifts foreground cards clear of the near-black ground', () => {
+  it('retains the neon Volt foreground', () => {
+    const block = darkBlock();
+    expect(token(block, 'accent').saturation).toBeGreaterThanOrEqual(95);
+    expect(token(block, 'accent-ink').saturation).toBeGreaterThanOrEqual(95);
+    expect(token(block, 'ink').saturation).toBeGreaterThanOrEqual(40);
+    expect(token(block, 'ink-faint').saturation).toBeGreaterThanOrEqual(12);
+  });
+
+  it('holds foreground cards clear of the near-black ground', () => {
     const block = darkBlock();
     const paper = token(block, 'paper').lightness;
     const surface = token(block, 'surface').lightness;
     const raised = token(block, 'surface-raised').lightness;
-    expect(surface).toBeGreaterThanOrEqual(9);
-    expect(surface).toBeLessThanOrEqual(11);
-    expect(raised).toBeGreaterThanOrEqual(12);
-    expect(raised).toBeLessThanOrEqual(15);
-    expect(surface - paper).toBeGreaterThanOrEqual(5);
+    expect(surface - paper).toBeGreaterThanOrEqual(6);
     expect(raised - paper).toBeGreaterThanOrEqual(8);
-  });
-
-  it('tones the lime accent and neutralises dark ink', () => {
-    const block = darkBlock();
-    expect(token(block, 'accent').saturation).toBeLessThanOrEqual(90);
-    expect(token(block, 'accent').lightness).toBeLessThanOrEqual(60);
-    expect(token(block, 'accent-ink').saturation).toBeLessThanOrEqual(90);
-    expect(token(block, 'ink').saturation).toBeLessThanOrEqual(15);
-    expect(token(block, 'ink-faint').saturation).toBeLessThanOrEqual(10);
   });
 
   it('leaves the light palette untouched', () => {

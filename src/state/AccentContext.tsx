@@ -24,7 +24,7 @@ export interface Accent {
 
 /** The selectable accents. The first entry is the default. */
 export const ACCENTS: readonly Accent[] = [
-  { key: 'volt', label: 'Volt', swatch: 'hsl(74 85% 58%)' },
+  { key: 'volt', label: 'Volt', swatch: 'hsl(73 100% 62%)' },
   { key: 'amber', label: 'Amber', swatch: 'hsl(32 90% 48%)' },
   { key: 'red', label: 'Red', swatch: 'hsl(6 90% 48%)' },
   { key: 'rose', label: 'Rose', swatch: 'hsl(340 90% 48%)' },

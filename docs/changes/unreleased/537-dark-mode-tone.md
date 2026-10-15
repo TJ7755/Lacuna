@@ -1,1 +1,1 @@
-- Dark mode uses near-black surfaces with a restrained lime accent, reducing the green cast while keeping light mode unchanged; foreground cards sit lighter than the ground so banner edges stay defined (#537)
+- Dark mode keeps the near-black ground with the Volt neon foreground retained, so banner edges and icons stay defined while light mode is unchanged (#537)
