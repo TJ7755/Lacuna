@@ -112,10 +112,8 @@ sync convergence, native AI evidence,
 locked-down Windows installed/portable/update checks, the clean-account macOS matrix, and
 signed/notarised artefacts before wider rollout.
 
-Local checks on 5 September: 137 targeted migration, backup and sync tests; web/desktop typechecks;
-lint; Chromium full-backup recovery, first-device pairing and forced concurrent-write convergence;
-Electron companion transport and video embeds. These are development-checkout checks, not an
-exact-release or clean-account certification. The companion harness does not prove model-authored AI.
+Current integration and platform evidence is recorded in [the preparation record](maintenance/direction-c-preparation.md).
+Hosted automation remains distinct from exact-release, physical-device and model-authored AI acceptance.
 
 **Exit:** no known path silently loses data and every advertised desktop artefact has reproducible
 evidence.

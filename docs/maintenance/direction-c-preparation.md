@@ -48,6 +48,13 @@ Hosted source verification for `294fde18` is retained in
 Consult those run conclusions and the current PR checks; dispatching a run alone is not a pass.
 Later documentation commits do not change the packaged source tested at this revision.
 
+The native matrix at `294fde18` passed all six jobs: Windows/Linux/macOS package builds and
+interactions, Windows/macOS AI, and packaged macOS study smoke. Security also passed on
+documentation head `7121f867`. Its Windows installed-upgrade report confirms v0.2.13 to the
+candidate build preserved one course, four lessons, 30 Cards, one review and five scheduling
+units byte-for-byte. The v0.2.7 upgrade with a live AI companion also passed. These are hosted
+isolated-profile results; they do not certify a school-managed machine or a user's real profile.
+
 The first native runs identified runner sandbox ownership and obsolete measurement controls.
 Linux now configures `chrome-sandbox` ownership/mode on the isolated runner and retains the
 application sandbox. The existing interaction suite opens Quick search with Ctrl/Cmd+K and
