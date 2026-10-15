@@ -3,8 +3,7 @@ import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
 import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
-
-export type ForecastStatus = 'ahead' | 'behind' | 'steady';
+import { STATUS_LABEL, type ForecastStatus } from './forecastStatus';
 
 export interface ForecastLine {
   id: string;
@@ -15,28 +14,12 @@ export interface ForecastLine {
   history: ForecastPoint[];
 }
 
-export const STATUS_COLOUR: Record<ForecastStatus, string> = {
-  ahead: 'hsl(var(--positive))',
-  behind: 'hsl(var(--warning))',
-  steady: 'hsl(var(--ink-faint))',
-};
-
 /**
  * Lines are told apart by course, not status: four on-track courses would otherwise draw four
  * identical green lines. The first course takes the readable accent; the rest use the chart series.
  */
 export function courseColour(index: number): string {
   return index === 0 ? 'hsl(var(--accent-ink))' : `hsl(var(--series-${((index - 1) % 5) + 1}))`;
-}
-
-const STATUS_LABEL: Partial<Record<ForecastStatus, string>> = {
-  ahead: 'On track',
-  behind: 'Behind',
-};
-
-export function forecastStatus(forecast: CourseForecast): ForecastStatus {
-  if (!forecast.hasExam) return 'steady';
-  return forecast.ifStopped + 0.005 >= forecast.target ? 'ahead' : 'behind';
 }
 
 const WIDE_WIDTH = 640;

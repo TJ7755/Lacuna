@@ -385,14 +385,15 @@ describe('Dashboard', () => {
     ]);
   });
 
-  it('shows the exam-day forecast with a legend entry per course', () => {
+  it('shows the exam-day forecast with a legend entry per course', async () => {
     setCourseData([mockCourse, course('course-2', 'Second Course')], {
       summaries: { 'course-1': summary(3), 'course-2': summary(1) },
     });
     mockForecasts = { 'course-1': forecast(0.93), 'course-2': forecast(0.71) };
     render(<Dashboard />);
 
-    expect(screen.getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
+    // The chart loads on demand.
+    expect(await screen.findByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Exam-day forecast' })).toBeInTheDocument();
     const legend = screen.getByRole('list', { name: 'Courses' });
     expect(within(legend).getByRole('button', { name: 'Test Course On track' })).toBeInTheDocument();

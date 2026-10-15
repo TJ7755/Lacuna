@@ -32,7 +32,7 @@ import { prefetchRoute } from '../../routes/prefetch';
 import { calendarDaysUntil, formatDate } from '../../utils/datetime';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 import { CourseGlyph, glyphLoad, type GlyphStatus } from '../course/CourseGlyph';
-import { forecastStatus } from '../dashboard/ForecastChart';
+import { forecastStatus } from '../dashboard/forecastStatus';
 
 interface SidebarProps {
   collapsed: boolean;
