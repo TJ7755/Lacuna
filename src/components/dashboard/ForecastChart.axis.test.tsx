@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ForecastChart } from './ForecastChart';
 import type { CourseForecast } from '../../fsrs/courseForecast';
@@ -60,5 +60,36 @@ describe('ForecastChart axis', () => {
     expect(new Set(strokes).size).toBe(3);
     expect(screen.getByRole('button', { name: 'Biology On track' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Physics Behind' })).toBeInTheDocument();
+  });
+
+  it('spotlights the first three of many courses and keeps the rest quiet until asked', () => {
+    const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.1 * k }));
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+    const { container } = render(
+      <ForecastChart
+        lines={names.map((name, i) => ({
+          id: name,
+          name,
+          status: 'behind' as const,
+          forecast: { ...forecast(7), ifStopped: i / 100 },
+          history,
+        }))}
+        now={NOW}
+        past={18}
+        future={12}
+        multiplier={0}
+      />,
+    );
+    // Only the spotlit courses carry today's figure and a coloured line.
+    expect(container.querySelectorAll('text.font-display')).toHaveLength(3);
+    const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
+    expect(new Set(strokes).size).toBe(4);
+    expect(screen.queryByRole('button', { name: 'D Behind' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '6 more' }));
+    const d = screen.getByRole('button', { name: 'D Behind' });
+    fireEvent.focus(d);
+    expect(container.querySelectorAll('text.font-display')).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Fewer' })).toHaveAttribute('aria-expanded', 'true');
   });
 });

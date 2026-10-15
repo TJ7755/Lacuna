@@ -54,6 +54,10 @@ review by then recorded, and from its latest stored review onwards the card's ow
 line ends exactly on today's figure. The window (Settings → Dashboard → Forecast range: 14, 30 or
 90 days) puts today 60% across; the remainder holds only exam markers. Each course's line takes
 its own colour (`accent-ink`, then `--series-1` to `--series-5`), and the legend states whether
-it is on track or behind, so status never relies on colour alone.
+it is on track or behind, so status never relies on colour alone. With more than four courses,
+only the first three in Today's urgency order are coloured and carry today's figure; the rest
+draw as faint context lines behind a "more" toggle in the legend, and choosing one there brings
+its line and figure forward. Today's figures take their line's colour and are spread apart
+within the plot.
 
 [Specification index](../SPEC.md)
