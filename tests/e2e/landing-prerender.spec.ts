@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test';
 
+test('returning startup reveals the app and later welcome navigation', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('lacuna-seeded', '1'));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.locator('html')).not.toHaveAttribute('data-app-starting');
+  await page.evaluate(() => { window.location.hash = '#/welcome'; });
+  await expect(page.locator('.landing-page')).toBeVisible();
+});
+
 // The site root serves prerendered landing HTML. A first-visit browser hydrates
 // it as a standalone entry, then hands over to the study app on navigation:
 // the explicit entry reaches the seeded dashboard, not the welcome route again.
