@@ -41,6 +41,11 @@
         "inLanguage": "en-GB"
       }
     </script>
+    <style>
+      html[data-app-starting] { background: hsl(82 30% 94%); color-scheme: light; }
+      html.dark[data-app-starting] { background: #0A0B09; color-scheme: dark; }
+      html[data-app-starting] #root { display: none; }
+    </style>
     <script>
       // Apply the stored theme before first paint to avoid a flash of the wrong colour scheme.
       (function () {
@@ -54,6 +59,18 @@
         } catch (e) {
           document.documentElement.classList.add('dark');
         }
+        // Match the study-app startup decision before the prerender can paint.
+        var appStart = window.location.hash.indexOf('#/') === 0 ||
+          window.location.protocol === 'app:' ||
+          window.electronAPI && window.electronAPI.isElectron === true;
+        if (!appStart) {
+          try {
+            appStart = localStorage.getItem('lacuna-seeded') !== null;
+          } catch (e) {
+            // A first visit still shows the landing page when storage is denied.
+          }
+        }
+        if (appStart) document.documentElement.setAttribute('data-app-starting', '');
       })();
     </script>
   </head>

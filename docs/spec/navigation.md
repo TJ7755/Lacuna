@@ -506,6 +506,11 @@ A first-visit browser hydrates that markup as a standalone landing entry without
 initialising or seeding study data; any navigation into an in-app hash route
 hands over to the full study app. Returning browsers (seeded storage), in-app
 hash routes and the packaged desktop app boot the study app directly. The
+head suppresses the prerender before first paint for those app starts, retaining
+the selected theme while modules load. The app discards the old landing tree
+before revealing its root; this startup guard never hides later Welcome navigation.
+First-visit anchors remain visible, including when browser storage is denied;
+app hash routes still suppress the prerender when storage is unavailable. The
 homepage carries canonical, social and website structured-data metadata.
 
 `/compare/quizlet/` is a separate public HTML entry with build-time React rendering,

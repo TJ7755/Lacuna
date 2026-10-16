@@ -12,7 +12,11 @@ const loadMotionFeatures = () => import('./motionFeatures').then((module) => mod
 export function renderApp(): void {
   installPressFeedback();
   installTypingFeedback();
-  createRoot(document.getElementById('root')!).render(
+  const container = document.getElementById('root')!;
+  // React schedules its first commit: discard the prerender before revealing it.
+  container.replaceChildren();
+  document.documentElement.removeAttribute('data-app-starting');
+  createRoot(container).render(
     <StrictMode>
       <LazyMotion features={loadMotionFeatures}>
         <App />

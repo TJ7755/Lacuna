@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import {
   installSimpleAnalytics,
@@ -92,4 +93,27 @@ describe('landing hydration decision', () => {
     expect(shouldHydrateLanding({ ...firstVisit, seedFlagPresent: true })).toBe(false);
     expect(shouldHydrateLanding({ ...firstVisit, landingMarkupPresent: false })).toBe(false);
   });
+
+  it('honours the pre-paint app decision if storage changes before modules load', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, appStartPending: true })).toBe(false);
+  });
 });
+
+it.each(['script', 'SCRIPT'])(
+  'suppresses the packaged app prerender before its preload API is available (%s tags)',
+  (tagName) => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    const html = readFileSync('index.html', 'utf8')
+      .replaceAll('<script>', `<${tagName}>`)
+      .replaceAll('</script>', `</${tagName}>`);
+    const sourceDocument = new DOMParser().parseFromString(html, 'text/html');
+    const script = sourceDocument.querySelector('script:not([type]):not([src])')!.textContent;
+    runInNewContext(script, {
+      document: targetDocument,
+      window: { location: { hash: '', protocol: 'app:' } },
+      localStorage: { getItem() { throw new Error('Storage denied'); } },
+    });
+    expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
+    expect(targetDocument.documentElement.classList.contains('dark')).toBe(true);
+  },
+);
