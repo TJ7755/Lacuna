@@ -116,6 +116,7 @@
   --series-4: 180 70% 28%;
   --series-5: 38 95% 38%;
   --grain-opacity: 0;
+  --card-border: 1px solid hsl(var(--line));
 }
 
 .dark {
@@ -190,6 +191,16 @@
   --font-display: 'Space Grotesk', 'Instrument Sans', sans-serif;
   --font-body: 'Instrument Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Cards and panels share one flat boundary across every accent palette. */
+@utility card-surface {
+  border: var(--card-border);
+}
+
+/* A control that relies on its boundary needs non-text contrast, not a quiet divider. */
+@utility card-surface-control {
+  --card-border: 1px solid hsl(var(--ink-faint));
 }
 
 @layer base {

@@ -66,9 +66,9 @@ import type {
 } from '../db/types';
 import { isAudioCardFront } from '../media/audio';
 
-/** Shared card-surface treatment: white, rounded, softly lifted, never outlined. */
+/** Shared card-surface treatment: rounded, flat, with a theme-token hairline. */
 const CARD_SURFACE =
-  'shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'card-surface';
 
 const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 

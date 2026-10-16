@@ -12,7 +12,7 @@ export const questionInputClass =
   'min-h-12 w-full rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-ink aria-[invalid=true]:border-negative';
 export const questionLabelClass = 'mb-2 block text-sm text-ink-soft';
 export const questionCardClass =
-  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'rounded-3xl bg-surface card-surface';
 
 /** A field's validation message, linked to its control by `id`. */
 export function FieldError({ id, message }: { id: string; message?: string }) {

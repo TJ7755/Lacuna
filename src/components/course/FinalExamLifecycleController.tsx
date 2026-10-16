@@ -110,7 +110,7 @@ function FinalExamDecisionDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="final-exam-decision-title"
-        className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 card-surface"
       >
         <h2 id="final-exam-decision-title" className="font-display text-3xl tracking-tight">
           Final exam passed

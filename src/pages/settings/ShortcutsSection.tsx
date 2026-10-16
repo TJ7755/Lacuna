@@ -156,7 +156,7 @@ function KeyCaptureOverlay({
         aria-labelledby={titleId}
         aria-describedby={instructionsId}
         tabIndex={0}
-        className="rounded-2xl border border-line-strong bg-surface px-8 py-6 shadow-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        className="rounded-2xl border border-line-strong bg-surface px-8 py-6 card-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         onClick={(event) => event.stopPropagation()}
       >
         <SettingsSubsectionHeading id={titleId} className="mb-2 font-display text-lg">

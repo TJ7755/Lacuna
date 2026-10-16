@@ -103,7 +103,8 @@
   width: min(720px, 100%);
   max-height: 88dvh;
   overflow: auto;
-  box-shadow: 0 20px 60px #0003;
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-panel > header {
   display: flex;
@@ -128,7 +129,8 @@
   border-radius: 24px;
   background: hsl(var(--surface));
   font-size: 14px;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-legacy-link span {
   color: hsl(var(--accent-ink));

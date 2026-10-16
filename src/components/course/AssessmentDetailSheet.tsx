@@ -66,7 +66,7 @@ export function AssessmentDetailSheet({
         animate={{ x: 0 }}
         exit={multiplier > 0 ? { x: 32 } : undefined}
         transition={transition.sheet}
-        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-line-strong bg-paper pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] shadow-2xl"
+        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-line-strong bg-paper pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] card-surface"
       >
         <header className="flex items-start justify-between border-b border-line px-6 py-5">
           <div>

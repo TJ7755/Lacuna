@@ -20,8 +20,14 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 - **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where
   lines stand for things rather than states (the exam-day forecast's courses), with separate
   light and dark values.
-- **Surfaces:** cards are borderless white (`rounded-3xl`) with a soft two-layer ink shadow,
-  never an outline or a tinted halo. Buttons are pills; the primary button carries no shadow.
+- **Surfaces:** cards and panels are flat (`rounded-3xl bg-surface card-surface`) with one
+  1px hairline border (`--card-border`, drawn from `--line`) and no drop shadow or tinted
+  halo. The neutral boundary follows light and dark themes across every accent, including
+  Volt, violet and amber. Controls whose only boundary is the card edge add
+  `card-surface-control`, using `--ink-faint` for at least 3:1 non-text contrast against
+  paper, surface and raised surface. Keyboard focus rings remain visible. The study card
+  retains its existing treatment, dimensions and motion. Buttons are pills; the primary
+  button carries no shadow.
   Large buttons are 48px, level with a full-size menu, and link-styled buttons share
   `buttonClassName`; squared buttons are caught by `src/designRules.test.ts`. Opening an inline
   form never stretches its sibling buttons: closed actions keep their height throughout.
@@ -125,7 +131,7 @@ Specific motion (current state of the app):
   tweening height. A collapsible drawer on mobile (§4.1); the drawer overlay and panel
   skip enter/exit when the motion multiplier is 0.
 - **Course cards** (dashboard grid): no arrival stagger (that competed with the shell
-  fade). A `whileHover` lift (`y: -4`) with a smooth shadow/border transition; a
+  fade). A `whileHover` lift (`y: -4`) with a smooth surface-colour transition; a
   `whileTap` scale-down confirms the press. They do not carry swipe gestures — that
   affordance lives on card-list rows instead (below). Hover detail still grows the
   card by height so the grid can follow the pointer.
@@ -220,13 +226,13 @@ keyboard shortcuts on keyboard).
   jumper. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously.
 - Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with a
-  soft layered ink shadow. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
+  single hairline border and no shadow. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
 - Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
   controls (label, hint, error). A label above its control is small semibold ink
   (`fieldLabelClassName`), its hint regular and faint; `Select` and inputs laid out in a row
   share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
   for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, a
-  borderless card-surface panel like Quick search's, and a 44px close button).
+  flat hairline card-surface panel like Quick search's, and a 44px close button).
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.

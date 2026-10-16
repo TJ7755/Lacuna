@@ -113,8 +113,8 @@ describe('DialogPanel', () => {
     const { trapRef } = renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Edit card' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    // The card surface, borderless, as Quick search; not the outlined paper panel.
-    expect(dialog).toHaveClass('rounded-3xl', 'bg-surface', 'max-w-md');
+    // The same flat hairline surface as page cards and Quick search.
+    expect(dialog).toHaveClass('rounded-3xl', 'bg-surface', 'card-surface', 'max-w-md');
     expect(dialog.className).not.toMatch(/\bborder\b|\bbg-paper\b/);
     expect(trapRef.current).toContainElement(dialog);
     expect(screen.getByRole('heading', { name: 'Edit card' })).toBeInTheDocument();

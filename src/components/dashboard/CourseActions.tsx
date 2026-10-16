@@ -57,7 +57,7 @@ export function CourseContextMenu({
       id="dashboard-course-actions"
       role="menu"
       aria-label={`Actions for ${course.name}`}
-      className="fixed z-[70] min-w-40 rounded-[18px] bg-surface-raised p-1.5 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
+      className="fixed z-[70] min-w-40 rounded-[18px] bg-surface-raised p-1.5 card-surface"
       style={{ left: clampedPosition.x, top: clampedPosition.y }}
       onKeyDown={(event) => {
         event.stopPropagation();
@@ -141,7 +141,7 @@ export function ArchiveCourseDialog({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : undefined}
         transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-line-strong bg-paper p-6 shadow-2xl shadow-black/20"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-line-strong bg-paper p-6 card-surface"
       >
         <h2 id="archive-course-title" className="font-display text-2xl">
           Archive {course.name}?

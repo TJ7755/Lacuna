@@ -173,7 +173,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
           aria-modal="true"
           aria-labelledby={titleId}
           aria-describedby={messageId}
-          className="w-full max-w-md rounded-3xl border border-line-strong bg-paper p-6 shadow-2xl shadow-black/20"
+          className="w-full max-w-md rounded-3xl border border-line-strong bg-paper p-6 card-surface"
         >
           <h2 id={titleId} className="font-display text-2xl text-ink">
             {title}

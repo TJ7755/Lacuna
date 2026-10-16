@@ -133,7 +133,7 @@ export function AddLessonControl({
                 enterSubmits: true,
               })(event);
             }}
-            className="flex w-full flex-col gap-3 rounded-3xl bg-surface px-4 py-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]"
+            className="flex w-full flex-col gap-3 rounded-3xl bg-surface px-4 py-3 card-surface"
           >
             <Field label="Lesson name">
               <Input

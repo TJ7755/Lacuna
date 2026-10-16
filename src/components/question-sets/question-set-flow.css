@@ -86,7 +86,8 @@
   background: hsl(var(--surface));
   margin-bottom: 20px;
   overflow: hidden;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-flow-row {
   padding: 22px 24px;

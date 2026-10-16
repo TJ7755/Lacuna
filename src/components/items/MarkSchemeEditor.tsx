@@ -165,7 +165,7 @@ export function MarkSchemeEditor({
               id={suggestionsId}
               role="listbox"
               aria-label="Mark scheme suggestions"
-              className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+              className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-line-strong bg-surface card-surface"
             >
               {suggestions.map((suggestion, index) => (
                 <button

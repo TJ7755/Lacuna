@@ -238,7 +238,7 @@ export function Dashboard() {
           {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
             <motion.section
               aria-label="Forecast and this week"
-              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 card-surface sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
               initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}

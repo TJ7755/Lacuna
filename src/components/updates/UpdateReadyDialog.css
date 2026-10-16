@@ -9,11 +9,11 @@
   width: min(650px, 100%);
   max-height: calc(100dvh - 32px);
   overflow: hidden;
-  border: 1px solid hsl(var(--line));
   border-radius: 20px;
   background: hsl(var(--surface));
   color: hsl(var(--ink));
-  box-shadow: 0 24px 80px #241b1824;
+  border: var(--card-border);
+  box-shadow: none;
 }
 .update-ready-art {
   display: flex;
