@@ -99,14 +99,21 @@ describe('landing hydration decision', () => {
   });
 });
 
-it('suppresses the packaged app prerender before its preload API is available', () => {
-  const targetDocument = document.implementation.createHTMLDocument();
-  const script = readFileSync('index.html', 'utf8').match(/<script>([\s\S]*?)<\/script>/)![1];
-  runInNewContext(script, {
-    document: targetDocument,
-    window: { location: { hash: '', protocol: 'app:' } },
-    localStorage: { getItem() { throw new Error('Storage denied'); } },
-  });
-  expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
-  expect(targetDocument.documentElement.classList.contains('dark')).toBe(true);
-});
+it.each(['script', 'SCRIPT'])(
+  'suppresses the packaged app prerender before its preload API is available (%s tags)',
+  (tagName) => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    const html = readFileSync('index.html', 'utf8')
+      .replaceAll('<script>', `<${tagName}>`)
+      .replaceAll('</script>', `</${tagName}>`);
+    const sourceDocument = new DOMParser().parseFromString(html, 'text/html');
+    const script = sourceDocument.querySelector('script:not([type]):not([src])')!.textContent;
+    runInNewContext(script, {
+      document: targetDocument,
+      window: { location: { hash: '', protocol: 'app:' } },
+      localStorage: { getItem() { throw new Error('Storage denied'); } },
+    });
+    expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
+    expect(targetDocument.documentElement.classList.contains('dark')).toBe(true);
+  },
+);
