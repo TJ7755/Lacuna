@@ -165,6 +165,7 @@ Specific motion (current state of the app):
   Settings, Help and the Course tabs. Batch-authoring workflow tabs use the same continuity.
 - **Reordering and replacement:** lesson rows animate to their new positions; shared inline
   confirmations crossfade and resize while restoring focus to the exact trigger on cancel.
+  Lesson rows reserve their lifted border while resting so their bounds stay fixed during a drag.
 - **Toasts:** slide in from the right with a slight scale.
 - **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
   streak number springs when it changes.

@@ -1,0 +1,1 @@
+- Keep dragged lesson rows aligned with the pointer by reserving their lifted border in the resting state.

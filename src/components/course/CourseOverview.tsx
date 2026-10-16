@@ -264,8 +264,10 @@ export function CourseOverview(props: CourseOverviewProps) {
                         'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
                         'hover:bg-ink/[0.03] disabled:cursor-default',
                         authoring && (lesson || practice) && 'pr-[60px]',
-                        reorder?.lifted &&
-                          'bg-surface card-surface',
+                        // Reserve the lifted border so dragging cannot change the row's bounds.
+                        reorder?.lifted
+                          ? 'bg-surface card-surface'
+                          : 'border border-transparent',
                       )}
                     >
                       <span
