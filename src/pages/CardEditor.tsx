@@ -3,7 +3,8 @@ import { useCardSaveConfirmation } from './useCardSaveConfirmation';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
 import {
@@ -19,7 +20,12 @@ import {
 import { canEditLessons, isLessonAuthoringMode } from '../course/lessonViewMode';
 import { CardAnswerModeField } from '../components/cards/AnswerModeControl';
 import { Button } from '../components/ui/Button';
-import { CardTypePicker, type EditorCardType } from '../components/cards/CardTypePicker';
+import {
+  CardTypePicker,
+  EDITOR_TYPE_ORDER,
+  type EditorCardType,
+} from '../components/cards/CardTypePicker';
+import { CardSources } from '../components/cards/CardSources';
 import { CardPreview, type PreviewSide } from '../components/cards/CardPreview';
 import { CardEditorActions } from '../components/cards/CardEditorActions';
 import { riseIn } from '../components/course/riseIn';
@@ -67,8 +73,7 @@ import type {
 import { isAudioCardFront } from '../media/audio';
 
 /** Shared card-surface treatment: rounded, flat, with a theme-token hairline. */
-const CARD_SURFACE =
-  'card-surface';
+const CARD_SURFACE = 'card-surface';
 
 const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
@@ -89,6 +94,7 @@ export function CardEditor() {
   const lessonMode = Boolean(lessonId);
   const bankMode = !lessonMode;
   const navigate = useNavigate();
+  const location = useLocation();
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -112,6 +118,8 @@ export function CardEditor() {
   const occlusions = useOcclusions(courseId);
 
   const [type, setType] = useState<EditorCardType>('front_back');
+  // Which way the form moves when the type changes: towards the pill that was chosen.
+  const [formDirection, setFormDirection] = useState(0);
   const [answerMode, setAnswerMode] = useState<AnswerMode>();
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
@@ -278,6 +286,7 @@ export function CardEditor() {
   const applyDraft = () => {
     const draft = loadDraft(draftKeyRef.current);
     if (!draft) return;
+    setFormDirection(0);
     setType(
       draft.itemKind === 'numeric' || draft.itemKind === 'working' || draft.itemKind === 'audio'
         ? draft.itemKind
@@ -393,7 +402,8 @@ export function CardEditor() {
     (lessonMode
       ? course === undefined || lesson === undefined || lessonCards === undefined
       : course === undefined) ||
-    (editing && card === undefined && !loaded)
+    // Hold the form until a card's type is seeded, so it does not arrive as a type change.
+    (editing && card !== null && !loaded)
   ) {
     return (
       <DelayedFallback>
@@ -545,6 +555,25 @@ export function CardEditor() {
   const editable = Boolean(course && canEditLessons(course));
   const canSave = editable && frontValid && backValid && clozeValid && numericValid && workingValid;
   const canReverse = !editing && !isCloze && !isBasicReversed && !isStructured && !isAudio;
+  // Front / back and Basic (reversed) share a form; every other type has its own.
+  const formKind = isBasicReversed ? 'front_back' : type;
+
+  // Another kind of authoring takes over from this page; anything typed stays as a draft.
+  function leaveForm(go: () => void) {
+    window.clearTimeout(draftTimer.current);
+    if (loaded && draftDirty && !draftPrompt) persistDraft();
+    go();
+  }
+  // The chosen editor replaces this one, so its Back returns to this page's origin.
+  const openOtherEditor = (kind: 'sequence' | 'occlusion') =>
+    leaveForm(() =>
+      navigate(
+        lessonMode
+          ? `/course/${courseId}/lesson/${lessonId}/${kind}/new`
+          : `/course/${courseId}/${kind}/new`,
+        { replace: true, state: location.state },
+      ),
+    );
 
   async function handleSave(andAnother = false) {
     if (!editable) return;
@@ -762,9 +791,40 @@ export function CardEditor() {
           <CardTypePicker
             value={type}
             onChange={(next) => {
+              setFormDirection(
+                Math.sign(EDITOR_TYPE_ORDER.indexOf(next) - EDITOR_TYPE_ORDER.indexOf(type)),
+              );
               setType(next);
               setDraftDirty(true);
             }}
+            onNewSequence={editing ? undefined : () => openOtherEditor('sequence')}
+            onNewOcclusion={editing ? undefined : () => openOtherEditor('occlusion')}
+            sources={
+              editing
+                ? undefined
+                : (revealed) =>
+                    lessonMode
+                      ? lesson &&
+                        lessonCards && (
+                          <CardSources
+                            courseId={courseId!}
+                            lessonId={lesson.id}
+                            targetName={lesson.name}
+                            lessonCards={lessonCards}
+                            schedulingUnitId={lessonDeck?.id}
+                            showLink={revealed}
+                            onAdded={() => leaveForm(returnTo.goBack)}
+                          />
+                        )
+                      : course && (
+                          <CardSources
+                            courseId={course.id}
+                            targetName={course.name}
+                            schedulingUnitId={bankDeck?.id}
+                            onAdded={() => leaveForm(returnTo.goBack)}
+                          />
+                        )
+            }
           />
         </motion.div>
 
@@ -773,143 +833,155 @@ export function CardEditor() {
             aria-label="Card content"
             className={`flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-5 md:p-7 lg:col-span-3 ${CARD_SURFACE}`}
           >
-            {isCloze ? (
-              <>
-                <div
-                  key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
-                  className={cn(
-                    shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
-                  )}
-                >
-                  <MarkdownEditor
-                    compactToolbar
-                    hidePreview
-                    key={`cloze-${formKey}`}
-                    inputRef={frontRef}
-                    autoFocus={!editing}
-                    label="Text (use the Cloze button to hide answers)"
-                    value={front}
-                    onChange={(value) => modifyDraftField(setFront, value)}
-                    minRows={8}
-                    allowCloze
-                    clozePreview={previewSide === 'back' ? 'back' : 'front'}
-                    placeholder="The chemical symbol for water is {{c1::H2O}}."
-                    onError={(m) => notify(m, 'negative')}
-                    onTabForward={focusSaveButton}
-                  />
-                </div>
-                {!clozeValid && front.trim().length > 0 && (
-                  <p className="text-sm text-negative">
-                    Add at least one cloze deletion using the Cloze button, e.g.{' '}
-                    <code className="font-mono">{'{{c1::answer}}'}</code>.
-                  </p>
-                )}
-              </>
-            ) : isAudio ? (
-              <div
-                key={`audio-${formKey}`}
-                className={cn(shakeField === 'front' || shakeField === 'back' ? 'shake-field' : '')}
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={formKind}
+                initial={m > 0 ? { opacity: 0, x: 16 * formDirection } : false}
+                animate={{ opacity: 1, x: 0 }}
+                transition={scaledSpring(m, 380, 38)}
+                className="flex flex-col gap-5"
               >
-                <AudioCardEditor
-                  front={front}
-                  back={back}
-                  onFrontChange={(value) => modifyDraftField(setFront, value)}
-                  onBackChange={(value) => modifyDraftField(setBack, value)}
-                  onError={(message) => notify(message, 'negative')}
-                />
-              </div>
-            ) : isNumeric || isWorking ? (
-              <>
-                <div
-                  key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                  className={cn(shakeField === 'front' ? 'shake-field' : '')}
-                >
-                  <MarkdownEditor
-                    compactToolbar
-                    hidePreview
-                    key={`structured-front-${formKey}`}
-                    inputRef={frontRef}
-                    autoFocus={!editing}
-                    label="Question"
-                    value={front}
-                    onChange={(value) => modifyDraftField(setFront, value)}
-                    minRows={8}
-                    placeholder="Question or prompt"
-                    onError={(message) => notify(message, 'negative')}
-                  />
-                </div>
-                {isNumeric ? (
+                {isCloze ? (
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
+                      className={cn(
+                        shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
+                      )}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`cloze-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Text (use the Cloze button to hide answers)"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={8}
+                        allowCloze
+                        clozePreview={previewSide === 'back' ? 'back' : 'front'}
+                        placeholder="The chemical symbol for water is {{c1::H2O}}."
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={focusSaveButton}
+                      />
+                    </div>
+                    {!clozeValid && front.trim().length > 0 && (
+                      <p className="text-sm text-negative">
+                        Add at least one cloze deletion using the Cloze button, e.g.{' '}
+                        <code className="font-mono">{'{{c1::answer}}'}</code>.
+                      </p>
+                    )}
+                  </>
+                ) : isAudio ? (
                   <div
-                    key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
-                    className={cn(shakeField === 'answer' ? 'shake-field' : '')}
+                    key={`audio-${formKey}`}
+                    className={cn(
+                      shakeField === 'front' || shakeField === 'back' ? 'shake-field' : '',
+                    )}
                   >
-                    <NumericAnswerEditor
-                      value={numericAnswer}
-                      onChange={(value) => modifyDraftField(setNumericAnswer, value)}
-                      invalid={shakeField === 'answer'}
+                    <AudioCardEditor
+                      front={front}
+                      back={back}
+                      onFrontChange={(value) => modifyDraftField(setFront, value)}
+                      onBackChange={(value) => modifyDraftField(setBack, value)}
+                      onError={(message) => notify(message, 'negative')}
                     />
                   </div>
+                ) : isNumeric || isWorking ? (
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`structured-front-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Question"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={8}
+                        placeholder="Question or prompt"
+                        onError={(message) => notify(message, 'negative')}
+                      />
+                    </div>
+                    {isNumeric ? (
+                      <div
+                        key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
+                        className={cn(shakeField === 'answer' ? 'shake-field' : '')}
+                      >
+                        <NumericAnswerEditor
+                          value={numericAnswer}
+                          onChange={(value) => modifyDraftField(setNumericAnswer, value)}
+                          invalid={shakeField === 'answer'}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
+                        className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
+                      >
+                        <MarkSchemeEditor
+                          value={workingSource}
+                          onChange={(value) => modifyDraftField(setWorkingSource, value)}
+                          fixtures={workingFixtures}
+                          onFixturesChange={(fixtures) => {
+                            setWorkingFixtures(fixtures);
+                            setDraftDirty(true);
+                          }}
+                          onDraftMarkScheme={() => void copyMarkSchemePrompt()}
+                          draftDisabled={!front.trim()}
+                          invalid={shakeField === 'scheme'}
+                        />
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div
-                    key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
-                    className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
-                  >
-                    <MarkSchemeEditor
-                      value={workingSource}
-                      onChange={(value) => modifyDraftField(setWorkingSource, value)}
-                      fixtures={workingFixtures}
-                      onFixturesChange={(fixtures) => {
-                        setWorkingFixtures(fixtures);
-                        setDraftDirty(true);
-                      }}
-                      onDraftMarkScheme={() => void copyMarkSchemePrompt()}
-                      draftDisabled={!front.trim()}
-                      invalid={shakeField === 'scheme'}
-                    />
-                  </div>
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`front-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Front"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={6}
+                        placeholder="Question or prompt"
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={() => backRef.current?.focus()}
+                      />
+                    </div>
+                    <div
+                      key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'back' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        inputRef={backRef}
+                        label="Back"
+                        value={back}
+                        onChange={(value) => modifyDraftField(setBack, value)}
+                        minRows={6}
+                        placeholder="Answer"
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={focusSaveButton}
+                        onTabBackward={() => frontRef.current?.focus()}
+                      />
+                    </div>
+                  </>
                 )}
-              </>
-            ) : (
-              <>
-                <div
-                  key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                  className={cn(shakeField === 'front' ? 'shake-field' : '')}
-                >
-                  <MarkdownEditor
-                    compactToolbar
-                    hidePreview
-                    key={`front-${formKey}`}
-                    inputRef={frontRef}
-                    autoFocus={!editing}
-                    label="Front"
-                    value={front}
-                    onChange={(value) => modifyDraftField(setFront, value)}
-                    minRows={6}
-                    placeholder="Question or prompt"
-                    onError={(m) => notify(m, 'negative')}
-                    onTabForward={() => backRef.current?.focus()}
-                  />
-                </div>
-                <div
-                  key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
-                  className={cn(shakeField === 'back' ? 'shake-field' : '')}
-                >
-                  <MarkdownEditor
-                    compactToolbar
-                    hidePreview
-                    inputRef={backRef}
-                    label="Back"
-                    value={back}
-                    onChange={(value) => modifyDraftField(setBack, value)}
-                    minRows={6}
-                    placeholder="Answer"
-                    onError={(m) => notify(m, 'negative')}
-                    onTabForward={focusSaveButton}
-                    onTabBackward={() => frontRef.current?.focus()}
-                  />
-                </div>
-              </>
-            )}
+              </motion.div>
+            </AnimatePresence>
 
             <div>
               <div className="mb-2 text-sm text-ink-soft">Tags</div>

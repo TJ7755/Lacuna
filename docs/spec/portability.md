@@ -62,21 +62,22 @@ app:
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
 
-### Import screen (`src/pages/ImportPage.tsx`)
+### Import panel (`src/components/import/ImportPanel.tsx`)
 
-**Import** beside **New course** on Courses opens a dedicated screen. Choose a Lacuna
-course (file, share code or QR), an Anki package, or text/spreadsheet cards. Dropping
-or choosing a file selects its import path automatically. The welcome import link
-opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
-the title. Its navigation row stays reserved on the chooser so the heading and content
-do not shift when moving between import paths. New course remains focused on creating an empty course.
+**Import** beside **New course** on Today expands a neutral panel from its button.
+Choose a Lacuna course (file, share code or QR), an Anki package, or text/spreadsheet
+cards. Dropping or choosing a file selects its import path automatically. Existing
+`/import` links redirect to `/?import=1`, opening this same panel, including from the
+phone navigation drawer. There is no separate Import page.
+
 Source changes use the shared step crossfade. Back and an empty-form Escape return
-keyboard focus to the source that opened the form; motion honours the user's speed
-and reduced-motion setting.
-The initial paste or package step uses the full card width; destination choices
-and the preview share a two-column layout only when reviewing the import.
+keyboard focus to the source that opened the form. Close returns focus to the trigger;
+closing is disabled during a write. Text and Anki imports use three compact steps:
+**Add cards → Review cards → Choose destination**. Each step fits the panel without a
+panel scrollbar; long pasted text and card faces retain their own content scrolling. Motion honours the user's speed
+and reduced-motion setting. New course remains focused on creating an empty course.
 
-The screen reuses the card import dialogue's input and review components inline.
+The panel reuses the card import dialogue's input and review components inline.
 After reviewing content, choose a new course (Steady retention unless Exam date is chosen), a new
 lesson in an existing active course, or an existing lesson. Undo retains the content
 and destination settings. Confirmation imports through the existing atomic writer
@@ -94,7 +95,7 @@ The central area scrolls within the available viewport; the header, footer and o
 bounds remain stable between steps. The input supports pasted text, uploaded files,
 drag and drop, automatic format detection and a manual format override.
 
-- The dedicated Import screen configures new courses during review and creates an
+- The Import panel configures new courses in its separate destination step and creates an
   initial Lesson 1 with their imported cards.
 - Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
   and course-bank imports display their destination without renaming it.
@@ -266,13 +267,16 @@ new orphaned assets. Export refuses missing media instead of producing an incomp
 ### The Share page (`SharePage`, `src/components/share/`, `/share`)
 
 The page sends one course. It opens on the requested course (`?courseId=`), else
-one already being shared, else the first active course; a menu beside the title
+one already being shared, else the first active course; a menu beneath the centred title
 switches course when there is more than one. The share link is the default and
 the one primary action, because it carries media and updates in place. A course
 file, share code, QR code and plain text sit under **Other ways**, one open at a
 time; outputs survive switching between them and clear for another course. When
 a link's uploaded revision is behind the course, **Send revision n** becomes the
-primary action. Receiving lives on **Import → Lacuna course**.
+primary action. Course changes clear previous controls immediately and animate the
+link surface's measured height, including asynchronous credential changes, so the
+alternatives move smoothly. Reduced motion removes that interpolation.
+Receiving lives on **Import → Lacuna course**.
 
 This applies the choice-architecture principles of structuring complex choices and
 providing feedback: one recommended route stays prominent, alternatives remain
@@ -477,14 +481,14 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      `sequenceItemId`/`occlusionRegionId`. Without that skip the merge both adopted the
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
-  5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
+     5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
      diffed like lesson cards, with no lesson. Lesson-card `links` take a deterministic
      `lineage-link:` id and are made to match the payload on every import, never queued:
      they are display-only, and only links carrying that id prefix are touched. A note's or
      card's lesson membership counts as content, so a teacher moving one to another lesson
      is an update; a card move goes through `assignCardsToLesson` so its backing deck
      follows.
-  5b. **Course details.** The teacher's course name, description and unlock mode are
+     5b. **Course details.** The teacher's course name, description and unlock mode are
      applied directly (never queued), except a detail the learner has changed since the
      last import: `distributedCopy.source` records the teacher's values as last imported,
      and a local value that no longer matches it is kept.
@@ -608,7 +612,6 @@ Full backups and course shares preserve `Lesson.answerMode` defaults and optiona
 Shared-course updates treat these as authored content, preserving learner review history.
 Standalone JSON card exports include each card's resolved mode; re-import keeps that
 explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
-
 
 ### MCP Card import matching
 

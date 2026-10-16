@@ -52,3 +52,42 @@ it('observes the course title when asynchronous route content arrives', async ()
   act(() => report([{ isIntersecting: true }]));
   expect(result.current).toBe(true);
 });
+
+it('keeps the course identity available for an inline lesson without a course heading', () => {
+  vi.stubGlobal('IntersectionObserver', class {
+    observe() {}
+    disconnect() {}
+  });
+  document.body.innerHTML = '<div data-route-content="/course/c1"><h1>Lesson one</h1></div>';
+  const { result } = renderHook(() => useCourseTitleInView('/course/c1'));
+  expect(result.current).toBe(false);
+});
+
+it('keeps the name out of the bar while an entered Path is still loading', async () => {
+  vi.stubGlobal('IntersectionObserver', class {
+    observe() {}
+    disconnect() {}
+  });
+  document.body.innerHTML = '<div data-route-content="/course/c1"><p>Loading…</p></div>';
+  const { result } = renderHook(() => useCourseTitleInView('/course/c1'));
+  expect(result.current).toBe(true);
+  // An inline single-lesson course settles without a course heading.
+  const lesson = document.createElement('h1');
+  lesson.textContent = 'Lesson one';
+  document.querySelector('[data-route-content]')!.append(lesson);
+  await waitFor(() => expect(result.current).toBe(false));
+});
+
+it('keeps the name in the bar while returning to a loading Path', () => {
+  vi.stubGlobal('IntersectionObserver', class {
+    observe() {}
+    disconnect() {}
+  });
+  document.body.innerHTML = '<div data-route-content="/course/c1/cards"><h1>Cards</h1></div>';
+  const { result, rerender } = renderHook(({ pathname }) => useCourseTitleInView(pathname), {
+    initialProps: { pathname: '/course/c1/cards' },
+  });
+  document.body.innerHTML = '<div data-route-content="/course/c1"><p>Loading…</p></div>';
+  rerender({ pathname: '/course/c1' });
+  expect(result.current).toBe(false);
+});

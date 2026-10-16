@@ -35,6 +35,14 @@
   Deleting a region moves focus to the region that takes its place, else the one before,
   else the canvas. A focused field is scrolled clear of the sticky action bar, which
   stays inside the page frame at narrow widths.
+- The date and time picker focuses its selected date on opening. Day-grid arrows move
+  by day or week across month and year boundaries; Home/End move to Sunday/Saturday.
+  Page Up/Down moves a month, or a year with Shift, retaining the focused day where
+  possible and clamping to the destination month's final day. Enter/Space selects
+  without closing; Done or Escape returns focus to the trigger after valid time
+  drafts are committed. Time fields retain their own keyboard controls and validation.
+  The month/year label sits left of adjacent previous/next buttons. Jump to today
+  retains the chosen time.
 - Custom context menus (lesson actions, Today's course menu) open from right-click, the
   context-menu key or Shift+F10, never over text fields or selections, so ordinary editing
   menus stay intact. Each menu also has a visible trigger for touch and discoverability.
@@ -84,9 +92,17 @@
 - Archiving from Today returns focus to the next course action, or the Today heading
   when the queue becomes empty. Course menus announce their expanded state and close
   on Tab before native navigation continues from their trigger.
-- Settings and Help expose the same native section selector below desktop widths, so
-  their topics remain reachable with a keyboard when the section rail is hidden.
+- Settings groups use native disclosure buttons at every viewport size; closed panels
+  remain mounted but inert and hidden from assistive technology. Deep links open their
+  containing group. Help retains its native section selector below desktop widths.
 
 Course navigation reserves the width of adjacent controls; its tab strip scrolls when enlarged text would otherwise overlap them.
 
 [Specification index](../SPEC.md)
+
+When an input wrapper draws a focus ring or focus shadow, the nested field suppresses
+its own shadow so there is one visible keyboard-focus indicator, not two.
+
+Inline confirmations disable confirmation and cancellation, including Escape, whilst a
+returned action promise or caller-owned disabled state is pending. Cancelling afterwards
+retains the existing focus-return behaviour.

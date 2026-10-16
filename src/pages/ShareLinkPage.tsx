@@ -1,6 +1,7 @@
 import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { Button } from '../components/ui/Button';

@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
@@ -38,7 +39,7 @@ describe('ArchivedCourses', () => {
     const empty = screen.getByRole('heading', { name: 'No archived courses' }).parentElement;
     expect(empty).toHaveClass('rounded-3xl', 'bg-surface');
     expect(empty).not.toHaveClass('border-t');
-    expect(screen.getByRole('link', { name: 'Back to Today' })).toHaveAttribute('href', '/');
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
   });
 
   it('moves focus to the next restoration action when a restored course disappears', async () => {
@@ -76,8 +77,8 @@ describe('ArchivedCourses', () => {
     render(<ArchivedCourses />, { wrapper: MemoryRouter });
     expect(screen.getByText('Finished biology')).toBeInTheDocument();
     expect(screen.queryByText('Active chemistry')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open Finished biology' })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Open Finished biology' }),
       '/course/course-1',
     );
     expect(screen.queryByText('Course library')).not.toBeInTheDocument();

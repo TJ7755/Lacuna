@@ -4,10 +4,7 @@ import { LessonCardsSection } from './LessonCardsSection';
 import type { Card, LegacyDeckRecord, LessonCardLink } from '../../db/types';
 
 let mockLinks: LessonCardLink[] | undefined = [];
-let mockCourseCards: Card[] = [];
-let mockPreparedDeck: LegacyDeckRecord | undefined;
 const mockUnlink = vi.fn();
-const mockEnsureLessonBackingDeck = vi.fn();
 const mockGetExposure = vi.fn();
 const mockNotify = vi.fn();
 const observedContexts: {
@@ -18,18 +15,9 @@ const observedContexts: {
 }[] = [];
 
 vi.mock('../../state/useCourseData', () => ({
-  useCourse: () => ({ id: 'course-1', lessonViewMode: 'edit' }),
-  useLesson: () => lesson,
-  useCourseCards: () => mockCourseCards,
-  useLessonBackingDeck: () => mockPreparedDeck,
   useLessonCardLinks: () => mockLinks,
-  useLessons: () => [lesson],
   useSequences: () => [],
   useOcclusions: () => [],
-}));
-
-vi.mock('../../db/backingDecks', () => ({
-  ensureLessonBackingDeck: (...args: unknown[]) => mockEnsureLessonBackingDeck(...args),
 }));
 
 vi.mock('../../db/schema', () => ({
@@ -50,32 +38,17 @@ vi.mock('../ui/Toast', () => ({
   useToast: () => ({ notify: mockNotify }),
 }));
 
-vi.mock('./LinkCardsDialog', () => ({
-  LinkCardsDialog: ({ cards }: { cards: Card[] }) => (
-    <div role="dialog">
-      Card picker
-      <span data-testid="picker-card-ids">{cards.map((card) => card.id).join(',')}</span>
-    </div>
-  ),
-}));
-
 vi.mock('./AnswerModeControl', () => ({
   LessonAnswerModeControl: () => <p>Answer by</p>,
 }));
 vi.mock('./CardList', () => ({
   CardList: ({
-    initiallyImporting,
-    onLinkExisting,
     linkedCardIds,
     onUnlinkCard,
     context,
-    onNewCard,
   }: {
-    onNewCard?: () => void;
-    onLinkExisting?: () => void;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
-    initiallyImporting?: boolean;
     context?: {
       importTargetName: string;
       onImport: unknown;
@@ -93,15 +66,6 @@ vi.mock('./CardList', () => ({
     }
     return (
       <div>
-        {initiallyImporting && <span data-testid="initially-importing">true</span>}
-        {onNewCard && (
-          <button type="button" onClick={onNewCard}>
-            New card
-          </button>
-        )}
-        <button type="button" onClick={onLinkExisting}>
-          Open linked-card picker
-        </button>
         <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
         <button type="button" onClick={() => onUnlinkCard?.(card)}>
           Remove linked card
@@ -110,17 +74,6 @@ vi.mock('./CardList', () => ({
     );
   },
 }));
-
-const lesson = {
-  id: 'lesson-1',
-  courseId: 'course-1',
-  name: 'Cells',
-  description: '',
-  orderIndex: 0,
-  createdAt: 1,
-  updatedAt: 1,
-  isExtension: false,
-};
 
 const deck: LegacyDeckRecord = {
   id: 'deck-1',
@@ -170,21 +123,17 @@ const card: Card = {
 
 beforeEach(() => {
   mockLinks = [];
-  mockCourseCards = [card];
-  mockPreparedDeck = undefined;
   mockUnlink.mockReset();
-  mockEnsureLessonBackingDeck.mockReset();
   mockNotify.mockReset();
   observedContexts.length = 0;
   mockUnlink.mockResolvedValue(undefined);
   mockGetExposure.mockReset();
   mockGetExposure.mockResolvedValue(undefined);
-  mockEnsureLessonBackingDeck.mockResolvedValue(deck.id);
 });
 
 describe('LessonCardsSection', () => {
-  it('offers only the other ways to add cards while the lesson is empty', () => {
-    const { rerender } = render(
+  it('leaves an empty lesson to its New card, with nothing to manage', () => {
+    const { container, rerender } = render(
       <LessonCardsSection
         courseId="course-1"
         lessonId="lesson-1"
@@ -194,10 +143,7 @@ describe('LessonCardsSection', () => {
         onNavigate={vi.fn()}
       />,
     );
-    expect(screen.getByRole('heading', { name: 'More ways to add cards' })).toBeInTheDocument();
-    expect(screen.queryByText('Answer by')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New sequence' })).toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
 
     rerender(
       <LessonCardsSection
@@ -211,69 +157,11 @@ describe('LessonCardsSection', () => {
     );
     expect(screen.getByRole('heading', { name: 'Manage (1)' })).toBeInTheDocument();
     expect(screen.getByText('Answer by')).toBeInTheDocument();
-    // The lesson's card panel already leads with New card; Manage does not repeat it.
-    expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
+    // Every way to add cards starts from the card panel's New card; Manage only manages.
+    expect(screen.queryByRole('button', { name: /New/ })).not.toBeInTheDocument();
   });
 
-  it('prepares and opens the importer for an empty lesson', async () => {
-    mockPreparedDeck = deck;
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByText('Import cards'));
-    await waitFor(() =>
-      expect(mockEnsureLessonBackingDeck).toHaveBeenCalledWith('course-1', 'lesson-1'),
-    );
-    expect(screen.getByTestId('initially-importing')).toHaveTextContent('true');
-    expect(observedContexts).toEqual([
-      { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
-    ]);
-  });
-
-  it('notifies when preparing an empty import fails', async () => {
-    mockEnsureLessonBackingDeck.mockRejectedValue(new Error('Could not prepare import.'));
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByText('Import cards'));
-    await waitFor(() =>
-      expect(mockNotify).toHaveBeenCalledWith('Could not prepare import.', 'negative'),
-    );
-    expect(screen.queryByTestId('initially-importing')).not.toBeInTheDocument();
-  });
-
-  it('opens the existing-card picker from an empty lesson', () => {
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('Link existing cards'));
-    expect(screen.getByRole('dialog')).toHaveTextContent('Card picker');
-  });
-
-  it('opens the picker from a populated lesson and identifies linked membership', () => {
+  it('identifies linked membership in a populated lesson', () => {
     mockLinks = [
       { id: 'link-1', lessonId: 'lesson-1', cardId: card.id, createdAt: 1, updatedAt: 1 },
     ];
@@ -291,8 +179,6 @@ describe('LessonCardsSection', () => {
     expect(observedContexts).toEqual([
       { importTargetName: 'Cells', hasImport: true, hasApkg: true, hasRestore: true },
     ]);
-    fireEvent.click(screen.getByText('Open linked-card picker'));
-    expect(screen.getByRole('dialog')).toHaveTextContent('Card picker');
   });
 
   it('warns before unlinking a card with lesson-specific teaching progress', async () => {
@@ -341,41 +227,5 @@ describe('LessonCardsSection', () => {
 
     expect(screen.getByLabelText('Loading lesson cards')).toBeInTheDocument();
     expect(screen.queryByText('Remove linked card')).not.toBeInTheDocument();
-  });
-
-  it('excludes generated sequence cards from linking candidates', () => {
-    mockCourseCards = [card, { ...card, id: 'generated-card', sequenceItemId: 'sequence-item-1' }];
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByText('Link existing cards'));
-    expect(screen.getByTestId('picker-card-ids')).toHaveTextContent(card.id);
-    expect(screen.getByTestId('picker-card-ids')).not.toHaveTextContent('generated-card');
-  });
-
-  it('excludes generated occlusion cards from linking candidates', () => {
-    mockCourseCards = [card, { ...card, id: 'generated-card', occlusionRegionId: 'region-1' }];
-    render(
-      <LessonCardsSection
-        courseId="course-1"
-        lessonId="lesson-1"
-        lessonName="Cells"
-        lessonCards={[]}
-        lessonSchedulingConfig={undefined}
-        onNavigate={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByText('Link existing cards'));
-    expect(screen.getByTestId('picker-card-ids')).toHaveTextContent(card.id);
-    expect(screen.getByTestId('picker-card-ids')).not.toHaveTextContent('generated-card');
   });
 });

@@ -35,7 +35,6 @@ import {
   loadSequenceEditor,
   loadSettings,
   loadSharePage,
-  loadImportPage,
   loadShareLinkPage,
   loadLanding,
 } from './loaders';
@@ -46,7 +45,6 @@ import {
 const Settings = lazy(loadSettings);
 const SearchPage = lazy(loadSearchPage);
 const SharePage = lazy(loadSharePage);
-const ImportPage = lazy(loadImportPage);
 const ShareLinkPage = lazy(loadShareLinkPage);
 const Analytics = lazy(loadAnalytics);
 const ArchivedCourses = lazy(loadArchivedCourses);
@@ -103,7 +101,7 @@ export const router = createHashRouter([
           { path: 'search', element: lazyRoute(SearchPage) },
           { path: 'share', element: lazyRoute(SharePage) },
           { path: 's/:code', element: lazyRoute(ShareLinkPage) },
-          { path: 'import', element: lazyRoute(ImportPage) },
+          { path: 'import', element: <Navigate to="/?import=1" replace /> },
           { path: 'analytics', element: lazyRoute(Analytics) },
           { path: 'archived', element: lazyRoute(ArchivedCourses) },
           { path: 'help', element: lazyRoute(HelpPage) },

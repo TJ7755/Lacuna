@@ -1,8 +1,11 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
+import { MemoryRouter as ReactRouterMemory } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StrictMode } from 'react';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { defaultShareCourse, SharePage } from './SharePage';
 import { ShareLinkNeedsReplacementError } from '../shareLinks/publish';
 import { buildCourseShareCode } from '../db/share';
@@ -219,6 +222,41 @@ describe('defaultShareCourse', () => {
 });
 
 describe('SharePage', () => {
+  it('uses the course frame and wrapping header without an inner hero column', () => {
+    given(mockCourse, { ...mockCourse, id: 'other', name: 'Other course' });
+    const { container } = render(<SharePage />);
+    const heading = screen.getByRole('heading', { name: 'Share', level: 1 });
+    expect(container.firstElementChild).toHaveClass(...PAGE_FRAME.split(' '));
+    expect(heading).toHaveClass(...PAGE_TITLE.split(' '));
+    expect(heading.parentElement).toHaveClass(...PAGE_HEADER.split(' '));
+    expect(heading.parentElement?.parentElement).toBe(container.firstElementChild);
+    expect(heading.parentElement).toContainElement(
+      screen.getByRole('button', { name: 'Course to share' }),
+    );
+  });
+
+  it('keeps sharing frames mounted through rapid linked, unlinked and empty course switches', async () => {
+    const shared = linked('e'.repeat(32), 1);
+    const unlinked = { ...mockCourse, id: 'unlinked', name: 'Unlinked course' };
+    const empty = { ...mockCourse, id: 'empty', name: 'Empty course' };
+    given(shared, unlinked, empty);
+    mockSummaries![empty.id] = { ...mockSummary, cardCount: 0, lessonCount: 0 };
+    render(<SharePage />);
+    await expectShareLinkRevision(1);
+    const surface = screen.getByRole('region', { name: 'Share link' }).closest('section');
+    const alternatives = screen.getByRole('region', { name: 'Other ways' });
+    for (const name of ['Unlinked course', 'Empty course', 'Test Course', 'Empty course']) {
+      chooseCourse(name);
+      expect(screen.getByRole('region', { name: 'Other ways' })).toBe(alternatives);
+      expect(screen.getByRole('region', { name: 'Share link' }).closest('section')).toBe(surface);
+      expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+      if (name !== 'Test Course') {
+        expect(screen.getByRole('button', { name: 'Create share link' })).toBeEnabled();
+        expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
+      }
+    }
+  });
+
   it('creates links after StrictMode replays the mount effect', async () => {
     given(mockCourse);
     mockPublishShareLink.mockResolvedValue({ shareId: 'a'.repeat(32), revision: 1 });
@@ -300,12 +338,13 @@ describe('SharePage', () => {
 
   it('points to Today when there is nothing to share', () => {
     given();
-    render(<SharePage />);
-    expect(screen.getByRole('heading', { name: 'Nothing to share yet' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create a course on Today' })).toHaveAttribute(
-      'href',
-      '#/',
+    render(
+      <ReactRouterMemory>
+        <SharePage />
+      </ReactRouterMemory>,
     );
+    expect(screen.getByRole('heading', { name: 'Nothing to share yet' })).toBeInTheDocument();
+    expectAppDestination(screen.getByRole('link', { name: 'Create a course on Today' }), '/');
   });
 
   it('saves the course as a file', async () => {
@@ -391,6 +430,26 @@ describe('SharePage', () => {
     );
   });
 
+  it('clears the previous link and ignores its credentials when switching courses', async () => {
+    const shared = linked('c'.repeat(32), 3);
+    const other = { ...mockCourse, id: 'course-2', name: 'Other Course' };
+    let resolveCredentials!: (value: null) => void;
+    mockReadShareCredentials.mockReturnValueOnce(
+      new Promise((resolve) => (resolveCredentials = resolve)),
+    );
+    given(shared, other);
+    render(<SharePage />);
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+
+    chooseCourse('Other Course');
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create share link' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveFocus();
+    await act(async () => resolveCredentials(null));
+    expect(screen.queryByRole('button', { name: 'Replace link' })).not.toBeInTheDocument();
+    expect(mockPublishShareLink).not.toHaveBeenCalled();
+  });
+
   it('rings link creation from the announcement without publishing', () => {
     given(mockCourse);
     mockSearchParams = new URLSearchParams('highlight=share-link');
@@ -449,7 +508,7 @@ describe('SharePage', () => {
     given(linked(shareId, 1));
     mockPublishShareLink.mockResolvedValue({ shareId, revision: 2, byteSize: 128 });
     render(<SharePage />);
-    fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Update link' }));
     await expectShareLinkRevision(2);
     expect(mockNotify).toHaveBeenCalledWith('Link updated to revision 2.', 'positive');
   });
@@ -460,7 +519,7 @@ describe('SharePage', () => {
     render(<SharePage />);
     await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Stop sharing' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Yes, stop sharing' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop sharing' }));
     await waitFor(() => expect(mockUnpublishShareLink).toHaveBeenCalledWith(mockCourse.id));
     expect(await screen.findByRole('button', { name: 'Create share link' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();

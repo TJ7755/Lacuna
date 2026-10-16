@@ -58,7 +58,13 @@ ordinary `front_back` cards to the scheduler.
 
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
 - **Card type** selector: Basic (front/back), Reversed, Cloze or Audio. Numeric and working
-  application content belongs to the separate Question editor.
+  application content belongs to the separate Question editor. Front / back (the default) and
+  Cloze show first; **More** reveals the rest and, for a new card, **Sequence** and **Image
+  occlusion**, which open their own editors in place of this one (anything typed is kept as a
+  draft). For a new card, **Import cards** is always visible beside More, outside the type
+  selector. It imports into the lesson or, from Cards, the course's unassigned cards.
+  In a lesson, More also reveals **Link existing cards**. Changing
+  type slides the new form in from the side of the chosen pill.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.

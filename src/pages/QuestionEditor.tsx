@@ -1,7 +1,8 @@
 import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import {
   NumericAnswerEditor,
@@ -294,9 +295,7 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className="mb-2 font-display text-base text-ink">
-              Question form
-            </legend>
+            <legend className="mb-2 font-display text-base text-ink">Question form</legend>
             <QuestionSegmented
               label="Question form"
               value={kind}
@@ -327,9 +326,7 @@ export function QuestionEditor() {
                 <FieldError id="question-prompt-error" message={errors.prompt} />
               </div>
               <div>
-                <div className={labelClass}>
-                  Answer type
-                </div>
+                <div className={labelClass}>Answer type</div>
                 <QuestionSegmented
                   label="Answer type"
                   value={answerKind}

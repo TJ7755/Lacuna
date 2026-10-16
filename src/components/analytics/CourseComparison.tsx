@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';

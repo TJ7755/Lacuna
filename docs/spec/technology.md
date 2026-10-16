@@ -53,7 +53,10 @@ key, wraps the key and write token in a recovery keybag and pushes the first sta
 join either by scanning an explicit QR capability (with a copyable `LACUNA-SYNC-1:…` link alongside
 it) or by entering the relay URL, channel id and recovery passphrase. The QR carries the relay
 origin, channel id, write token and channel key; the mint secret is never persisted or included.
-Recovery passphrases must contain at least 16 characters. The default relay
+After scanning, the learner chooses a recovery passphrase for this device’s local keybag and may
+reuse an existing phrase. Manual joining requires the recovery passphrase chosen during
+first-device setup to unlock the relay keybag. Recovery passphrases must contain at least
+16 characters. The default relay
 (`https://relay.getlacuna.app`) mints without a mint secret (rate-limited 10/hour/IP, 429);
 a private relay still requires its `RELAY_MINT_SECRET` behind the Advanced disclosure. Settings
 groups the custom relay URL, mint secret and administration guidance in that disclosure;

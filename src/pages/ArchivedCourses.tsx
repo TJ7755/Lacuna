@@ -1,6 +1,7 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { updateCourse } from '../db/courseRepository';
 import { useCourses } from '../state/useCourseData';
 import { Button } from '../components/ui/Button';

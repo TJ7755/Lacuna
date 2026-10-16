@@ -1,16 +1,15 @@
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { PAGE_FRAME } from '../components/course/coursePageLayout';
-import { OtherShareWays } from '../components/share/OtherShareWays';
-import { ShareLinkPanel } from '../components/share/ShareLinkPanel';
+import { useSearchParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import { ShareCourseContent } from '../components/share/ShareCourseContent';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { FadeInView } from '../components/ui/FadeInView';
 import { Menu } from '../components/ui/Menu';
 import { SectionCard } from '../components/ui/SectionCard';
 import { Skeleton } from '../components/ui/Skeleton';
 import type { Course } from '../db/types';
-import { useCourseCards, useCourses, useCourseSummaries } from '../state/useCourseData';
+import { useCourses, useCourseSummaries } from '../state/useCourseData';
 import { countOf } from '../utils/plural';
 
 /**
@@ -36,14 +35,11 @@ export function SharePage() {
   const [searchParams] = useSearchParams();
   const [chosenId, setChosenId] = useState<string | null>(() => searchParams.get('courseId'));
   const course = courses ? defaultShareCourse(courses, chosenId) : undefined;
-  const cards = useCourseCards(course?.id);
 
   return (
-    // Shares the page frame's left edge but keeps a narrower reading column.
-    <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`}>
-      {/* Top-aligned, so the course picker beside it never pushes the title down. */}
-      <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">Share</h1>
+    <div className={`${PAGE_FRAME} pb-12`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Share</h1>
         {course && courses && courses.length > 1 && (
           <Menu
             label="Course to share"
@@ -59,11 +55,11 @@ export function SharePage() {
               };
             })}
           >
-            <span className="truncate">{course.name}</span>
+            <span className="max-w-[min(28rem,calc(100vw-9rem))] truncate">{course.name}</span>
           </Menu>
         )}
         {course && courses?.length === 1 && (
-          <p className="truncate text-lg text-ink-soft">{course.name}</p>
+          <p className="max-w-full truncate text-lg text-ink-soft">{course.name}</p>
         )}
       </header>
 
@@ -74,21 +70,15 @@ export function SharePage() {
       ) : !course ? (
         <SectionCard className="flex flex-col items-start gap-4">
           <h2 className="font-display text-2xl tracking-tight">Nothing to share yet</h2>
-          <Link
-            to="/"
-            className={buttonClassName('primary')}
-          >
+          <Link to="/" className={buttonClassName('primary')}>
             Create a course on Today
           </Link>
         </SectionCard>
       ) : (
-        <FadeInView key={course.id} y={0}>
-          <ShareLinkPanel
-            course={course}
-            highlight={searchParams.get('highlight') === 'share-link'}
-          />
-          <OtherShareWays course={course} cards={cards} />
-        </FadeInView>
+        <ShareCourseContent
+          course={course}
+          highlight={searchParams.get('highlight') === 'share-link'}
+        />
       )}
     </div>
   );

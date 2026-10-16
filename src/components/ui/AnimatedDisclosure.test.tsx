@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
 import { expandingActionSpring } from './motion';
 import { domAnimation, LazyMotion } from 'motion/react';
@@ -41,6 +41,25 @@ describe('AnimatedDisclosure', () => {
     expect(screen.getByRole('button', { name: 'Optional action' })).toBe(control);
     expect(control.closest('[inert]')).toBeNull();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 200)));
+  });
+  it('retains a closed form draft while making its controls inert', () => {
+    const view = (open: boolean) => (
+      <LazyMotion features={domAnimation}>
+        <AnimatedDisclosure open={open} retainContent>
+          <input aria-label="Draft" defaultValue="Original" />
+        </AnimatedDisclosure>
+      </LazyMotion>
+    );
+    const { rerender } = render(view(false));
+    expect(screen.getByLabelText('Draft')).toBeInTheDocument();
+    rerender(view(true));
+    const input = screen.getByRole('textbox', { name: 'Draft' });
+    fireEvent.input(input, { target: { value: 'Uncommitted' } });
+    rerender(view(false));
+    expect(input.closest('[inert]')).not.toBeNull();
+    rerender(view(true));
+    expect(screen.getByRole('textbox', { name: 'Draft' })).toBe(input);
+    expect(input).toHaveValue('Uncommitted');
   });
   it('renders content only while it is open', () => {
     const { rerender } = render(

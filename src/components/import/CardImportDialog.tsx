@@ -24,7 +24,7 @@ import { countOf } from '../../utils/plural';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
-  presentation?: 'dialog' | 'page';
+  presentation?: 'dialog' | 'page' | 'panel';
   initialFile?: File;
   reviewOptions?: ReactNode;
   canImport?: boolean;
@@ -66,7 +66,12 @@ export function CardImportDialog({
     }
   }, [initialFile, source]);
   const [title, setTitle] = useState(initialTitle);
-  const [step, setStep] = useState<'input' | 'review'>('input');
+  const [step, setStep] = useState<'input' | 'review' | 'destination'>('input');
+  const [direction, setDirection] = useState(1);
+  const panel = presentation === 'panel';
+  const separateDestination = panel && !!reviewOptions;
+  const finalStep = step === (separateDestination ? 'destination' : 'review');
+  const stepNumber = step === 'input' ? 1 : step === 'review' ? 2 : 3;
   const [reverse, setReverse] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -127,10 +132,17 @@ export function CardImportDialog({
     if (!busyRef.current) onCancel();
   }
   async function confirm() {
-    if (!canContinue || busyRef.current || (step === 'review' && !canImport)) return;
+    if (!canContinue || busyRef.current || (finalStep && !canImport)) return;
     if (step === 'input') {
       setError('');
+      setDirection(1);
       setStep('review');
+      return;
+    }
+    if (step === 'review' && separateDestination) {
+      setError('');
+      setDirection(1);
+      setStep('destination');
       return;
     }
     busyRef.current = true;
@@ -151,11 +163,11 @@ export function CardImportDialog({
   }
   const primaryRef = useRef<HTMLButtonElement>(null);
   // As a dialog it owns the keyboard (Escape cancels, Ctrl/Cmd+Enter continues or imports);
-  // as a page it leaves keys to the shell and only cancels while nothing has been entered.
+  // inline it leaves keys to the shell and only cancels while nothing has been entered.
   const dialogKeys = dialogKeyDown({ onCancel: cancel, onSubmit: () => void confirm() });
   const pageKeys = useEditorKeys({ onCancel: cancel, onSubmit: () => void confirm() });
   useEffect(() => {
-    if (presentation !== 'page') return;
+    if (presentation === 'dialog') return;
     trapRef.current
       ?.querySelector<HTMLElement>(titleLabel ? '#card-import-title' : '#card-import-text')
       ?.focus();
@@ -165,9 +177,15 @@ export function CardImportDialog({
   const view = (
     <div
       ref={trapRef}
-      className={presentation === 'dialog' ? 'card-import-overlay' : 'card-import-page'}
-      onInput={presentation === 'page' ? pageKeys.onInput : undefined}
-      onClick={presentation === 'page' ? pageKeys.onClick : undefined}
+      className={
+        presentation === 'dialog'
+          ? 'card-import-overlay'
+          : panel
+            ? 'card-import-panel'
+            : 'card-import-page'
+      }
+      onInput={presentation !== 'dialog' ? pageKeys.onInput : undefined}
+      onClick={presentation !== 'dialog' ? pageKeys.onClick : undefined}
       onKeyDown={(event) => {
         // Pasted data does not need Tab, so the last field hands focus to the primary action.
         if (
@@ -195,10 +213,26 @@ export function CardImportDialog({
       >
         <header className="card-import-header">
           {/* On the Import page, the page's own title and Back link already do these jobs. */}
-          <h2 id="card-import-heading" className={presentation === 'page' ? 'sr-only' : undefined}>
+          <h2
+            id="card-import-heading"
+            className={presentation !== 'dialog' ? 'sr-only' : undefined}
+          >
             Import cards
           </h2>
-          <ImportStepper step={step} />
+          {panel ? (
+            <p className="card-import-progress" aria-label="Import progress">
+              {step === 'input'
+                ? 'Add cards'
+                : step === 'review'
+                  ? 'Review cards'
+                  : 'Choose destination'}
+              <span>
+                {stepNumber} of {separateDestination ? 3 : 2}
+              </span>
+            </p>
+          ) : (
+            <ImportStepper step={step === 'destination' ? 'review' : step} />
+          )}
           {presentation === 'dialog' && (
             <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
               <CloseIcon width={18} height={18} />
@@ -206,12 +240,16 @@ export function CardImportDialog({
           )}
         </header>
         <div className="card-import-scroll">
-          <StepSwap stepKey={step} direction={step === 'review' ? 1 : -1} moveFocus>
-            <div className="card-import-body">
+          <StepSwap stepKey={step} direction={direction} moveFocus>
+            <div className="card-import-body" data-step={step}>
               <div className="card-import-options">
                 {/* The stepper shows the step; this heading stays as the focus target. */}
                 <h2 tabIndex={-1} className="sr-only">
-                  {step === 'input' ? 'Add content' : 'Review cards'}
+                  {step === 'input'
+                    ? 'Add content'
+                    : step === 'review'
+                      ? 'Review cards'
+                      : 'Choose destination'}
                 </h2>
                 {titleLabel ? (
                   <label className="card-import-title-label" htmlFor="card-import-title">
@@ -229,9 +267,8 @@ export function CardImportDialog({
                     <strong>{targetName}</strong>
                   </div>
                 ) : null}
-                {step === 'review' && reviewOptions && (
-                  <fieldset disabled={busy}>{reviewOptions}</fieldset>
-                )}
+                {(separateDestination ? step === 'destination' : step === 'review') &&
+                  reviewOptions && <fieldset disabled={busy}>{reviewOptions}</fieldset>}
                 {step === 'review' && (
                   <>
                     {!source.apkg && (
@@ -280,17 +317,19 @@ export function CardImportDialog({
                   </>
                 )}
               </div>
-              <div className="card-import-content">
-                {step === 'input' ? (
-                  <CardImportInput source={source} preferPackage={preferPackage} />
-                ) : (
-                  <CardImportPreview
-                    cards={cards}
-                    reverse={reverse && !source.apkg}
-                    media={source.apkg?.media}
-                  />
-                )}
-              </div>
+              {step !== 'destination' && (
+                <div className="card-import-content">
+                  {step === 'input' ? (
+                    <CardImportInput source={source} preferPackage={preferPackage} />
+                  ) : (
+                    <CardImportPreview
+                      cards={cards}
+                      reverse={reverse && !source.apkg}
+                      media={source.apkg?.media}
+                    />
+                  )}
+                </div>
+              )}
             </div>
           </StepSwap>
         </div>
@@ -301,39 +340,44 @@ export function CardImportDialog({
             )}
           </div>
           <div className="card-import-actions">
-            {step === 'review' ? (
+            {step !== 'input' ? (
               <Button
                 variant="ghost"
                 disabled={busy}
                 onClick={() => {
                   setError('');
-                  setStep('input');
+                  setDirection(-1);
+                  setStep(step === 'destination' ? 'review' : 'input');
                 }}
               >
                 <ChevronLeftIcon width={16} height={16} />
                 Back
               </Button>
-            ) : (
+            ) : !panel ? (
               <Button variant="ghost" disabled={busy} onClick={cancel}>
                 Cancel
               </Button>
+            ) : null}
+            {!panel && (
+              <span>
+                {step === 'input'
+                  ? 'Step 1 of 2'
+                  : `${cards.length} original${!source.apkg && reverse ? ` + ${eligible} reverse` : ''}`}
+              </span>
             )}
-            <span>
-              {step === 'input'
-                ? 'Step 1 of 2'
-                : `${cards.length} original${!source.apkg && reverse ? ` + ${eligible} reverse` : ''}`}
-            </span>
             <Button
               ref={primaryRef}
               variant="primary"
-              disabled={!canContinue || busy || (step === 'review' && !canImport)}
+              disabled={!canContinue || busy || (finalStep && !canImport)}
               onClick={() => void confirm()}
             >
               {busy
                 ? 'Importing…'
                 : step === 'input'
                   ? 'Review cards'
-                  : `Import ${countOf(count, 'card')}`}
+                  : step === 'review' && separateDestination
+                    ? 'Choose destination'
+                    : `Import ${countOf(count, 'card')}`}
               <span aria-hidden="true">→</span>
             </Button>
           </div>

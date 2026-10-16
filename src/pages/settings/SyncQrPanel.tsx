@@ -1,5 +1,4 @@
 import { lazy, Suspense, type Ref } from 'react';
-import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { CloseIcon } from '../../components/ui/icons';
 import { SettingsSubsectionHeading } from './SettingsSectionHeading';
@@ -12,15 +11,17 @@ export function SyncQrPanel({
   panelRef,
   qrValue,
   onHide,
+  onDismiss,
   onCopy,
 }: {
   panelRef: Ref<HTMLDivElement>;
   qrValue: string;
   onHide: () => void;
+  onDismiss: () => void;
   onCopy: () => void;
 }) {
   return (
-    <motion.div
+    <div
       ref={panelRef}
       tabIndex={-1}
       role="dialog"
@@ -29,9 +30,6 @@ export function SyncQrPanel({
         const next = event.relatedTarget as Node | null;
         if (!next || !event.currentTarget.contains(next)) onHide();
       }}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.16 }}
       className="rounded-2xl bg-paper p-5 outline-none"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -43,7 +41,7 @@ export function SyncQrPanel({
             Show this only while the other device is ready to scan.
           </p>
         </div>
-        <Button variant="ghost" size="sm" aria-label="Hide pairing QR" onClick={onHide}>
+        <Button variant="ghost" size="sm" aria-label="Hide pairing QR" onClick={onDismiss}>
           <CloseIcon width={16} height={16} />
         </Button>
       </div>
@@ -61,6 +59,6 @@ export function SyncQrPanel({
           publicly. Copy the link for devices without a camera.
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 }

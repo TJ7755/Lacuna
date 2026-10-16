@@ -17,6 +17,7 @@ export function CardImportInput({
     <div
       className="card-import-input"
       data-dragging={dragging}
+      data-package-empty={preferPackage && !source.apkg && !source.text}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);

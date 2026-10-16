@@ -3,21 +3,23 @@ import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDelayedPending } from '../hooks/useDelayedPending';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
 import { forecastStatus } from '../components/dashboard/forecastStatus';
 import type { ForecastLine } from '../components/dashboard/ForecastChart';
+import { useForecastChart } from '../components/dashboard/useForecastChart';
 import { WeekPanel } from '../components/dashboard/WeekPanel';
 import { leadStudyRow, queueState, TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
-import { Button } from '../components/ui/Button';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { CardsIcon, ClockIcon } from '../components/ui/icons';
 import { CountUp } from '../components/ui/Celebration';
-import { MOTION_EASING } from '../components/ui/motion';
+import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
+import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
@@ -27,13 +29,13 @@ import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
+/**
+ * The forecast leads Today, so the queue waits for it to arrive as one piece. A forecast
+ * still pending after this long gives way: the queue appears beneath a placeholder.
+ */
+const FORECAST_WAIT_MS = 600;
+
 // The course actions open on demand, so they stay out of the first-load bundle.
-// The chart waits on review history anyway, so it loads alongside it rather than at start-up.
-const ForecastChart = lazy(() =>
-  import('../components/dashboard/ForecastChart').then((module) => ({
-    default: module.ForecastChart,
-  })),
-);
 const CourseContextMenu = lazy(() =>
   import('../components/dashboard/CourseActions').then((module) => ({
     default: module.CourseContextMenu,
@@ -57,6 +59,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { openStudySheet } = useStudySheet();
   const location = useLocation();
+  const importing = new URLSearchParams(location.search).has('import');
   const [creatingCourse, setCreatingCourse] = useState(false);
   useEffect(() => {
     if (location.state?.createCourse) {
@@ -115,6 +118,13 @@ export function Dashboard() {
     return urgencyOrder(unordered, Date.now());
   }, [activeCourses, forecasts, today, summaries, pendingUpdateIds]);
 
+  const reviewActivity = data?.reviewActivity;
+  const week = useMemo(
+    () =>
+      reviewActivity ? weekSummary([...reviewActivity.values()].flat(), Date.now()) : undefined,
+    [reviewActivity],
+  );
+
   // The chart traces each forecast back over the chosen window, which needs graded
   // review history; navigation's shared data carries only review timestamps.
   const reviewHistory = useAllReviewHistory();
@@ -145,6 +155,21 @@ export function Dashboard() {
     [rows, forecasts, histories],
   );
 
+  // The chart waits on review history anyway, so it loads alongside it rather than at start-up.
+  const anyForecast = rows?.some((row) => forecasts?.[row.id]) ?? false;
+  const { Chart: ForecastChart, settled: chartSettled } = useForecastChart(anyForecast);
+  const forecastSettled =
+    !anyForecast || (histories !== undefined && (lines.length === 0 || chartSettled));
+  const forecastOverdue = useDelayedPending(rows !== undefined && !forecastSettled, FORECAST_WAIT_MS);
+  // Once Today has arrived it stays: live updates never send it back to the skeleton.
+  const [arrived, setArrived] = useState(false);
+  const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
+  useEffect(() => {
+    if (ready) setArrived(true);
+  }, [ready]);
+  const showForecast =
+    forecastSettled && ((ForecastChart !== null && lines.length > 0) || (week?.reviewed ?? 0) > 0);
+
   useLayoutEffect(() => {
     const pending = archiveFocus.current;
     if (!pending || archiveTarget || !rows || rows.some((row) => row.id === pending.courseId))
@@ -162,13 +187,6 @@ export function Dashboard() {
       : heading.current;
     target?.focus({ preventScroll: true });
   }, [archiveTarget, rows]);
-
-  const reviewActivity = data?.reviewActivity;
-  const week = useMemo(
-    () =>
-      reviewActivity ? weekSummary([...reviewActivity.values()].flat(), Date.now()) : undefined,
-    [reviewActivity],
-  );
 
   // S opens the same course as the leading Study button, never one with no work.
   const leadCourseId = rows ? leadStudyRow(rows)?.id : undefined;
@@ -211,17 +229,16 @@ export function Dashboard() {
           </p>
         )}
         <div className="ml-auto flex shrink-0 gap-2">
-          {/* Phones reach Import from the navigation drawer, which keeps this row to one line. */}
-          <Button variant="ghost" className="max-sm:hidden" onClick={() => navigate('/import')}>
-            Import
-          </Button>
-          <NewCourseControl open={creatingCourse} onOpenChange={setCreatingCourse} />
+          <div inert={importing}>
+            <NewCourseControl open={creatingCourse && !importing} onOpenChange={setCreatingCourse} />
+          </div>
+          <ImportControl onOpen={() => setCreatingCourse(false)} />
         </div>
       </div>
 
       <SyncStatus />
 
-      {!rows ? (
+      {!rows || !ready ? (
         <DelayedFallback>
           <CourseSkeleton />
         </DelayedFallback>
@@ -229,16 +246,19 @@ export function Dashboard() {
         <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
       ) : (
         <div className="flex flex-col gap-6">
-          {(lines.length > 0 || (week?.reviewed ?? 0) > 0) && (
-            <motion.section
-              aria-label="Forecast and this week"
-              className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 card-surface sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
-              initial={m > 0 ? { opacity: 0, y: 12, scale: 0.99 } : false}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.5 * m, ease: MOTION_EASING.emphasised }}
-            >
-              {lines.length > 0 && (
-                <Suspense fallback={null}>
+          {/* The forecast arrives whole, fading in place, and holds its room while late. */}
+          {!forecastSettled ? (
+            <ForecastPlaceholder />
+          ) : (
+            showForecast && (
+              <motion.section
+                aria-label="Forecast and this week"
+                className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 card-surface sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                transition={{ duration: MOTION_DURATION.local * m, ease: MOTION_EASING.emphasised }}
+              >
+                {ForecastChart && lines.length > 0 && (
                   <ForecastChart
                     lines={lines}
                     now={Date.now()}
@@ -246,14 +266,15 @@ export function Dashboard() {
                     future={chartWindow.future}
                     multiplier={m}
                   />
-                </Suspense>
-              )}
-              {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
-            </motion.section>
+                )}
+                {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+              </motion.section>
+            )
           )}
-          {/* The queue follows the forecast that explains it. */}
+          {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
           <TodayQueue
             rows={rows}
+            delay={showForecast ? MOTION_DURATION.local * 0.6 : 0}
             openMenuId={courseMenu?.course.id}
             multiplier={m}
             onStudy={(id) => openStudySheet(id)}
@@ -320,10 +341,15 @@ export function Dashboard() {
   );
 }
 
+/** Holds about the room the forecast surface takes, so its arrival barely moves the queue. */
+function ForecastPlaceholder() {
+  return <Skeleton className="h-[540px] rounded-[28px] bg-surface sm:h-[520px] lg:h-[480px]" />;
+}
+
 function CourseSkeleton() {
   return (
     <div className="flex flex-col gap-6">
-      <Skeleton className="h-80 rounded-[28px] bg-surface" />
+      <ForecastPlaceholder />
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
           <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />

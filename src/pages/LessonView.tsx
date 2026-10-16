@@ -1,3 +1,4 @@
+import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
@@ -16,18 +17,10 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 
 import { useRef, useState, type ReactNode } from 'react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { m as motion } from 'motion/react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { db } from '../db/schema';
-import {
-  useCourse,
-  useNotes,
-  useLessonCards,
-  useLessons,
-  useCourseAssessments,
-  useLessonBackingDeck,
-} from '../state/useCourseData';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
+import { useLessonViewData, type InlineLessonData } from '../state/useLessonViewData';
+import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
@@ -36,7 +29,6 @@ import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { updateCourse } from '../db/courseRepository';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
-import { riseIn } from '../components/course/riseIn';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { AddCourseControl } from '../components/course/AddCourseControl';
 import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
@@ -44,7 +36,6 @@ import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
 import { lessonMetaParts } from '../course/lessonMeta';
-import { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import {
   canEditLessons,
   isLessonAuthoringMode,
@@ -60,13 +51,12 @@ import {
   lessonContextMenu,
 } from '../components/course/LessonActionsMenu';
 import type { MenuHandle } from '../components/ui/Menu';
-import type { Lesson } from '../db/types';
 import { useToast } from '../components/ui/Toast';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 
 interface LessonViewProps {
+  inlineData?: InlineLessonData;
   /**
    * When provided (inline single-lesson branch from CoursePath), takes precedence
    * over the route param. The back link also changes to the dashboard rather than
@@ -91,6 +81,7 @@ interface LessonViewProps {
 }
 
 export function LessonView({
+  inlineData,
   courseId: courseIdProp,
   lessonId: lessonIdProp,
   studyActions,
@@ -111,8 +102,6 @@ export function LessonView({
   const focusNewCard =
     (useLocation().state as { focusNewCard?: boolean } | null)?.focusNewCard === true;
   const { notify } = useToast();
-  const [motionSpeed] = useMotionSpeed();
-  const motionMultiplier = speedMultiplier(motionSpeed);
   const [addingLesson, setAddingLesson] = useState(false);
   const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const addRef = useRef<HTMLDivElement>(null);
@@ -122,22 +111,17 @@ export function LessonView({
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
 
-  // Use a null-sentinel to distinguish loading (undefined) from not found (null).
-  // When lessonId is absent the query resolves immediately to null.
-  const lesson = useLiveQuery<Lesson | null>(
-    () => (lessonId ? db.lessons.get(lessonId).then((l) => l ?? null) : Promise.resolve(null)),
-    [lessonId],
-  );
-  const course = useCourse(courseId);
-  const lessons = useLessons(courseId);
-  const examDates = useCourseAssessments(courseId);
-  const notes = useNotes(lessonId);
-  const lessonCards = useLessonCards(lessonId);
-  const studyFlow = useCourseStudyFlow(courseId);
-
-  // Resolve the hidden scheduling deck through the Course/Lesson data boundary.
-  // Card membership remains independent from the scheduling implementation.
-  const lessonDeck = useLessonBackingDeck(courseId, lessonId);
+  const {
+    lesson,
+    course,
+    lessons,
+    examDates,
+    notes,
+    lessonCards,
+    dueReviewCardIds,
+    studyReady,
+    lessonDeck,
+  } = useLessonViewData(courseId, lessonId, inlineData);
 
   const shortcutArchived = course?.archived === true;
   // With no cards and no notes, the inline course's study flow has nothing to show.
@@ -175,7 +159,7 @@ export function LessonView({
     examDates === undefined ||
     notes === undefined ||
     lessonCards === undefined ||
-    studyFlow === undefined
+    !studyReady
   ) {
     return (
       <DelayedFallback>
@@ -215,7 +199,6 @@ export function LessonView({
   const lessonMastery = progressValue(lessonCards, course, now);
   const { nearestExam, examUrgent } = courseHeaderStats(course, examDates, lessonMastery, now);
   // Due means what Review due cards serves, counted within this lesson.
-  const dueReviewCardIds = studyFlow?.snapshot.dueReviewCardIds;
   const lessonDueCount = lessonCards.filter((card) => dueReviewCardIds?.has(card.id)).length;
   const viewMode = archived ? 'study' : resolveLessonViewMode(course);
   const switchToEdit =
@@ -232,9 +215,7 @@ export function LessonView({
     noteCount: notes.length,
     dueCount: lessonDueCount,
     daysToExam:
-      nearestExam === undefined
-        ? undefined
-        : Math.max(calendarDaysUntil(nearestExam, now), 0),
+      nearestExam === undefined ? undefined : Math.max(calendarDaysUntil(nearestExam, now), 0),
   });
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
@@ -260,7 +241,10 @@ export function LessonView({
     ) : null;
 
   return (
-    <div className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}>
+    <CoursePageArrival
+      key={lesson.id}
+      className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}
+    >
       {!isInline && (
         <CoursePageNavigation
           courseId={courseId ?? ''}
@@ -283,7 +267,7 @@ export function LessonView({
         />
       )}
       <div className="flex flex-col gap-6">
-        <motion.div {...riseIn(0, motionMultiplier)}>
+        <div>
           <LessonHeader
             title={lesson.name}
             description={lesson.description || undefined}
@@ -384,13 +368,13 @@ export function LessonView({
               )}
             </>
           )}
-        </motion.div>
+        </div>
 
         {/* Notes and cards. Edit mode fades the edit controls in place and reveals card
             management beneath. View mode leaves out a lesson's empty notes, so its cards
             take the width; Edit keeps the panel, where the first note is added. */}
         <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
-          <motion.div {...riseIn(1, motionMultiplier)} className="flex flex-wrap items-start gap-6">
+          <div className="flex flex-wrap items-start gap-6">
             {lessonId && (viewMode === 'edit' || notes.length > 0) && (
               <LessonNotesCard
                 lessonId={lessonId}
@@ -409,6 +393,9 @@ export function LessonView({
                 onSwitchToEdit={switchToEdit}
                 focusNewCard={focusNewCard && lessonCards.length === 0}
                 className="flex-[2_1_340px]"
+                find={
+                  <DeckFind key={lesson.id} cards={lessonCards} course={course} lesson={lesson} />
+                }
                 footer={
                   !archived && !isInline ? (
                     <SimpleLearnOptions
@@ -420,9 +407,11 @@ export function LessonView({
                 }
               />
             )}
-          </motion.div>
+          </div>
 
-          <AnimatedDisclosure open={viewMode === 'edit' && Boolean(courseId && lessonId)}>
+          <AnimatedDisclosure
+            open={viewMode === 'edit' && Boolean(courseId && lessonId) && lessonCards.length > 0}
+          >
             {courseId && lessonId && (
               <div className="rounded-3xl bg-surface p-6 card-surface md:p-8">
                 <LessonCardsSection
@@ -439,7 +428,7 @@ export function LessonView({
           {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
         </div>
       </div>
-    </div>
+    </CoursePageArrival>
   );
 }
 

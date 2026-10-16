@@ -1,4 +1,6 @@
-import { createRef } from 'react';
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
+import { createRef, type ComponentProps } from 'react';
+import type * as MotionReact from 'motion/react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +10,22 @@ import type { Course } from '../../db/types';
 let mockCourses: Course[] = [];
 let mockEligible = 0;
 let mockStreak = 0;
+
+vi.mock('motion/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof MotionReact>();
+  const Span = (props: ComponentProps<typeof actual.m.span>) => (
+    <actual.m.span {...props} data-layout-id={props.layoutId} />
+  );
+  return {
+    ...actual,
+    m: new Proxy(actual.m, {
+      get(target, key) {
+        if (key !== 'span') return Reflect.get(target, key);
+        return Span;
+      },
+    }),
+  };
+});
 
 vi.mock('../../state/ThemeContext', () => ({
   useTheme: () => ({ resolvedTheme: 'light', toggleTheme: vi.fn() }),
@@ -30,9 +48,65 @@ afterEach(() => {
 });
 
 describe('Sidebar', () => {
+  it.each([false, true])(
+    'shares highlights only within their navigation group (collapsed: %s)',
+    (collapsed) => {
+      mockCourses = [{ id: 'active', name: 'Active course', archived: false } as Course];
+      render(<Sidebar collapsed={collapsed} onToggleCollapsed={vi.fn()} drawer />, {
+        wrapper: MemoryRouter,
+      });
+      const highlight = () => document.querySelector('[data-layout-id]');
+      const select = (name: string) => fireEvent.click(screen.getByRole('link', { name }));
+
+      const topIdentity = highlight()?.getAttribute('data-layout-id');
+      expect(topIdentity).toBeTruthy();
+      for (const name of ['Search content', 'Progress', 'Today']) {
+        select(name);
+        expect(highlight()).toHaveAttribute('data-layout-id', topIdentity);
+        expect(document.querySelectorAll('[data-layout-id]')).toHaveLength(1);
+      }
+
+      select('Share');
+      const bottomIdentity = highlight()?.getAttribute('data-layout-id');
+      expect(bottomIdentity).toBeTruthy();
+      expect(bottomIdentity).not.toBe(topIdentity);
+      for (const name of ['Settings', 'Help', 'Share']) {
+        select(name);
+        expect(highlight()).toHaveAttribute('data-layout-id', bottomIdentity);
+        expect(document.querySelectorAll('[data-layout-id]')).toHaveLength(1);
+      }
+
+      for (const origin of ['Today', 'Settings']) {
+        for (const destination of ['Active course', 'Archived', 'Import']) {
+          select(origin);
+          select(destination);
+          expect(highlight()).toBeNull();
+          expect(screen.getByRole('link', { name: destination })).toHaveAttribute(
+            'aria-current',
+            'page',
+          );
+        }
+      }
+    },
+  );
+
+  it.each(['/course/active', '/course/active/cards', '/course/active/lesson/lesson-one'])(
+    'selects a nested course directly on initial route %s',
+    (pathname) => {
+      mockCourses = [{ id: 'active', name: 'Active course', archived: false } as Course];
+      render(
+        <MemoryRouter initialEntries={[pathname]}>
+          <Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />
+        </MemoryRouter>,
+      );
+      expect(document.querySelector('[data-layout-id]')).toBeNull();
+      expect(screen.getByRole('link', { name: 'Active course' })).toHaveClass('bg-surface');
+    },
+  );
+
   it('uses the Search destination consistently with the other navigation entries', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('link', { name: 'Search content' })).toHaveAttribute('href', '/search');
+    expectAppDestination(screen.getByRole('link', { name: 'Search content' }), '/search');
     expect(screen.queryByRole('button', { name: /^Search/ })).not.toBeInTheDocument();
   });
 
@@ -47,7 +121,7 @@ describe('Sidebar', () => {
     });
     expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
     rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
-    expect(screen.getByRole('link', { name: 'Import' })).toHaveAttribute('href', '/import');
+    expectAppDestination(screen.getByRole('link', { name: 'Import' }), '/import');
   });
   it('shades the hidden edges of its scrollbar-less course list', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
@@ -107,8 +181,8 @@ describe('Sidebar', () => {
     const courseNavigation = screen.getByRole('navigation', { name: 'Courses' });
 
     expect(within(primary).queryByRole('link', { name: 'Archived' })).not.toBeInTheDocument();
-    expect(within(courseNavigation).getByRole('link', { name: 'Archived' })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      within(courseNavigation).getByRole('link', { name: 'Archived' }),
       '/archived',
     );
     expect(within(courseNavigation).getByText('Active course')).toBeInTheDocument();
@@ -165,7 +239,7 @@ describe('Sidebar', () => {
   it('exposes Today as the destination for cross-course review', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
-    expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/');
+    expectAppDestination(screen.getByRole('link', { name: 'Today' }), '/');
   });
 
   it('keeps Search content as a route on macOS too', () => {
@@ -177,14 +251,7 @@ describe('Sidebar', () => {
 
     const search = screen.getByRole('link', { name: 'Search content' });
     expect(search.querySelector('kbd')).toBeNull();
-    expect(search).toHaveAttribute('href', '/search');
-  });
-
-  it('opens the shared course creation flow from the sidebar', () => {
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-
-    fireEvent.click(screen.getByRole('button', { name: 'New course' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expectAppDestination(search, '/search');
   });
 
   it('exposes the inactive AI action as an unpressed toggle', () => {

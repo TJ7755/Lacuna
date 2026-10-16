@@ -54,7 +54,7 @@ describe('ShareLinkPanel exit', () => {
     expect(incoming).toHaveFocus();
   });
 
-  it('retires live link controls while their replacement warning enters', async () => {
+  it('waits for credentials before showing link controls or the replacement warning', async () => {
     let finishCredentials!: (value: null) => void;
     credentials.mockReturnValue(
       new Promise<null>((resolve) => {
@@ -72,11 +72,10 @@ describe('ShareLinkPanel exit', () => {
         },
       } as Course),
     );
-    const outgoing = screen.getByRole('textbox', { name: 'Share link' });
+    expect(screen.getByRole('region', { name: 'Share link' })).toHaveAttribute('aria-busy', 'true');
+    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
     await act(async () => finishCredentials(null));
-    expect(outgoing).toBeInTheDocument();
-    expect(outgoing.closest('[inert]')).not.toBeNull();
-    expect(outgoing.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
     await settle();

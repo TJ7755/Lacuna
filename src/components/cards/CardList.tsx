@@ -3,12 +3,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AnimatePresence, m as motion } from 'motion/react';
 import { Button } from '../ui/Button';
-import { Menu, type MenuItem } from '../ui/Menu';
 import { SelectedCardsAnswerMode } from './AnswerModeControl';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
-import { CardImportDialog } from '../import/CardImportDialog';
-import { importCardCount, type CardImportContent } from '../../db/cardImport';
 import {
   addTagToCards,
   assignCardsToLesson,
@@ -22,12 +19,7 @@ import {
   snapshotCards,
   unsuspendCard,
 } from '../../db/cardRepository';
-import {
-  CheckIcon,
-  MoreIcon,
-  PlusIcon,
-  UploadIcon,
-} from '../ui/icons';
+import { CheckIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useVirtualList } from '../../hooks/useVirtualList';
@@ -48,15 +40,6 @@ interface AssignableLesson {
 
 interface CardListBaseProps {
   cards: Card[];
-  onNewCard?: () => void;
-  /** Draw New card as a secondary action, for pages whose own header holds the primary one. */
-  quietNewCard?: boolean;
-  /** Sibling to onNewCard: offers "New sequence" alongside "New card" when supplied. */
-  onNewSequence?: () => void;
-  /** Offers an image-occlusion editor alongside the other authoring controls. */
-  onNewOcclusion?: () => void;
-  /** Opens a picker for adding existing course cards to this lesson without moving them. */
-  onLinkExisting?: () => void;
   onEditCard: (card: Card) => void;
   /** When true, suppresses the internal "Cards (N)" heading row. */
   hideHeader?: boolean;
@@ -64,8 +47,6 @@ interface CardListBaseProps {
   heading?: React.ReactNode;
   /** Keeps the heading row in view below the course bar while its cards scroll past. */
   stickyHeader?: boolean;
-  /** Opens the card importer on first mount. */
-  initiallyImporting?: boolean;
   /** When supplied with courseId, enables bulk lesson assignment. */
   assignableLessons?: AssignableLesson[];
   courseId?: string;
@@ -82,16 +63,10 @@ type CardListProps = CardListBaseProps & { context: CardListContext };
 export function CardList({
   cards,
   context,
-  onNewCard,
-  quietNewCard = false,
-  onNewSequence,
-  onNewOcclusion,
-  onLinkExisting,
   onEditCard,
   hideHeader = false,
   heading,
   stickyHeader = false,
-  initiallyImporting = false,
   assignableLessons,
   courseId,
   sequences,
@@ -103,7 +78,6 @@ export function CardList({
 }: CardListProps) {
   const { notify } = useToast();
   const schedulingConfig = context.schedulingConfig;
-  const importTargetName = context.importTargetName;
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [tagging, setTagging] = useState(false);
@@ -113,7 +87,6 @@ export function CardList({
   const [assigningLesson, setAssigningLesson] = useState(false);
   // Sentinel '' means "Unassigned" (primaryLessonId null); otherwise a lesson id.
   const [assignTarget, setAssignTarget] = useState<string>('');
-  const [importing, setImporting] = useState(initiallyImporting);
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -387,14 +360,6 @@ export function CardList({
     }
   }
 
-  async function handleCardImport(content: CardImportContent) {
-    if (content.kind === 'apkg') await context.onApkgImport(content.result);
-    else await context.onImport(content.cards, content.reverse);
-    setImporting(false);
-    const count = importCardCount(content);
-    notify(`${count} card${count === 1 ? '' : 's'} imported.`, 'positive');
-  }
-
   const handleResume = useCallback(
     async (card: Card) => {
       const snapshot = await snapshotCards([card.id]);
@@ -440,41 +405,6 @@ export function CardList({
     }
   }, [notify]);
 
-  // Everything except "New card". Built from the callbacks the caller actually supplied, so a
-  // context that cannot make sequences simply has one fewer entry rather than a dead control.
-  const addMenuItems = useMemo<MenuItem[]>(() => {
-    const items: MenuItem[] = [];
-    if (onNewSequence) {
-      items.push({
-        label: 'New sequence',
-        icon: <PlusIcon width={16} height={16} />,
-        onSelect: onNewSequence,
-      });
-    }
-    if (onNewOcclusion) {
-      items.push({
-        label: 'New occlusion',
-        icon: <PlusIcon width={16} height={16} />,
-        onSelect: onNewOcclusion,
-      });
-    }
-    if (onLinkExisting) {
-      items.push({
-        label: 'Link existing cards',
-        icon: <PlusIcon width={16} height={16} />,
-        onSelect: onLinkExisting,
-      });
-    }
-    if (!selectMode) {
-      items.push({
-        label: importing ? 'Hide import panel' : 'Import cards',
-        icon: <UploadIcon width={16} height={16} />,
-        onSelect: () => setImporting((v) => !v),
-      });
-    }
-    return items;
-  }, [onNewSequence, onNewOcclusion, onLinkExisting, selectMode, importing]);
-
   return (
     <div>
       <div
@@ -516,32 +446,8 @@ export function CardList({
               {selectMode ? 'Done' : 'Select'}
             </Button>
           )}
-          {onNewCard && (
-            <Button variant={quietNewCard ? 'secondary' : 'primary'} size="sm" onClick={onNewCard}>
-              <PlusIcon width={16} height={16} />
-              New card
-            </Button>
-          )}
-          {/*
-           * The other routes to adding cards sit behind one control rather than in the row.
-           * A card is what people make nearly every time; sequences, occlusions, linking and
-           * importing are the occasional cases, and giving all five equal weight made the
-           * header read as a toolbar dump with no primary action.
-           */}
-          <Menu label="More ways to add cards" items={addMenuItems} triggerWidth={44}>
-            <MoreIcon width={16} height={16} />
-          </Menu>
         </div>
       </div>
-
-      {importing && (
-        <CardImportDialog
-          targetName={importTargetName}
-          schedulingUnitId={context.importTargetId}
-          onCancel={() => setImporting(false)}
-          onImport={handleCardImport}
-        />
-      )}
 
       <CardBulkBar
         open={selectMode}
@@ -752,23 +658,7 @@ export function CardList({
 
       {cards.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line-strong py-16 text-center">
-          <p className={onNewCard || onNewSequence ? 'mb-4 text-ink-soft' : 'text-ink-soft'}>
-            No cards yet.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {onNewCard && (
-              <Button variant="primary" onClick={onNewCard}>
-                <PlusIcon width={18} height={18} />
-                New card
-              </Button>
-            )}
-            {onNewSequence && (
-              <Button variant="secondary" onClick={onNewSequence}>
-                <PlusIcon width={18} height={18} />
-                Add a sequence
-              </Button>
-            )}
-          </div>
+          <p className="text-ink-soft">No cards yet.</p>
         </div>
       ) : (
         <>
@@ -818,7 +708,6 @@ const VIRTUAL_THRESHOLD = 50;
 
 /** Longest possible entry animation: the capped stagger plus one row's fade. */
 const INTRO_WINDOW_MS = 420;
-
 
 /** Renders the card list either as a simple grid (small decks) or a virtualised
  *  absolute-positioned list (large decks) to keep performance constant. Exported for

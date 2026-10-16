@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,10 +21,7 @@ describe('CourseSectionBar', () => {
     expect(screen.getAllByRole('link')).toHaveLength(5);
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(
-      'href',
-      '/course/course-1/cards',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Cards' }), '/course/course-1/cards');
   });
 
   it('marks only Cards current on the cards route', () => {

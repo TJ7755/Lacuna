@@ -135,19 +135,19 @@ describe('service-worker asset caching', () => {
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
       { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
       {
-        fileName: 'assets/ImportPage-IMPORT01.js',
+        fileName: 'assets/ImportPanel-IMPORT01.js',
         isEntry: false,
         imports: ['assets/shared-SHARED01.js', 'assets/courseFile-COURSE01.js'],
-        viteMetadata: { importedCss: new Set(['assets/ImportPage-IMPORT01.css']) },
+        viteMetadata: { importedCss: new Set(['assets/ImportPanel-IMPORT01.css']) },
       },
       { fileName: 'assets/courseFile-COURSE01.js', isEntry: false, imports: [] },
       { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
     ];
 
     expect(collectOfflineImportRoute(chunks)).toEqual([
-      'assets/ImportPage-IMPORT01.js',
+      'assets/ImportPanel-IMPORT01.js',
       'assets/courseFile-COURSE01.js',
-      'assets/ImportPage-IMPORT01.css',
+      'assets/ImportPanel-IMPORT01.css',
     ]);
   });
 

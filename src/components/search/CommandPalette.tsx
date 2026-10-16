@@ -1,14 +1,25 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { useSearchData } from '../../state/useSearchData';
 import { searchCardsInScope, searchCourseContent, searchQuestionsInScope } from '../../db/search';
+import type { Card, Course, Lesson } from '../../db/types';
 import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
-import { SearchResultContent } from './SearchResultContent';
+import { SearchResultOption } from './SearchResultOption';
 import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
 /** A single ordered list of navigation, Card and Question hits. */
@@ -33,24 +44,120 @@ export function CommandPalette({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   if (!open) return null;
-  return <CommandPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
+  return <GlobalPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
 }
 
-function CommandPaletteDialog({
+function GlobalPaletteDialog({
   onClose,
   returnFocusTarget,
 }: {
   onClose: () => void;
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
+  const searchData = useSearchData();
+  // Course/lesson/note hits are listed ahead of Question and Card hits, then capped
+  // together so the palette never grows unbounded on a broad query.
+  const search = useCallback(
+    (query: string): PaletteHit[] => {
+      const courses = searchData?.courses ?? [];
+      const lessons = searchData?.lessons ?? [];
+      const courseHits = searchCourseContent(query, courses, lessons, searchData?.notes ?? []);
+      const cardHits = searchCardsInScope(query, {
+        cards: searchData?.cards ?? [],
+        courses,
+        lessons,
+      });
+      const questionHits = searchQuestionsInScope(query, {
+        questions: searchData?.questions ?? [],
+        courses,
+        lessons,
+      });
+      return [...courseHits, ...questionHits, ...cardHits];
+    },
+    [searchData],
+  );
+  return (
+    <CommandPaletteDialog
+      onClose={onClose}
+      returnFocusTarget={returnFocusTarget}
+      label="Quick search"
+      inputLabel="Search all content"
+      placeholder="Search…"
+      search={search}
+      limit={MAX_RESULTS}
+    />
+  );
+}
+
+/**
+ * Quick search narrowed to one lesson's cards, primary and linked, for Ctrl/Cmd+F on a
+ * lesson. Portalled, as page-owned dialogs are, so the page's transforms cannot clip it.
+ */
+export function LessonCardsPalette({
+  cards,
+  course,
+  lesson,
+  navigationState,
+  onClose,
+  returnFocusTarget,
+}: {
+  cards: Card[];
+  course: Course;
+  lesson: Lesson;
+  /** Router state for an opened card, so its editor returns to the lesson. */
+  navigationState?: unknown;
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
+}) {
+  const search = useCallback(
+    (query: string) =>
+      searchCardsInScope(
+        query,
+        { cards, courses: [course], lessons: [lesson] },
+        { parseQuery: true },
+      ),
+    [cards, course, lesson],
+  );
+  return createPortal(
+    <CommandPaletteDialog
+      onClose={onClose}
+      returnFocusTarget={returnFocusTarget}
+      label="Find cards"
+      inputLabel="Find cards in this lesson"
+      placeholder="Find cards in this lesson…"
+      search={search}
+      navigationState={navigationState}
+      scoped
+    />,
+    document.body,
+  );
+}
+
+function CommandPaletteDialog({
+  onClose,
+  returnFocusTarget,
+  label,
+  inputLabel,
+  placeholder,
+  search,
+  limit,
+  navigationState,
+  scoped = false,
+}: {
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
+  label: string;
+  inputLabel: string;
+  placeholder: string;
+  search: (query: string) => PaletteHit[];
+  /** Caps the list and offers the full results page beyond it. */
+  limit?: number;
+  navigationState?: unknown;
+  /** Ctrl/Cmd+F reselects the field; Ctrl/Cmd+K hands over to Quick search. */
+  scoped?: boolean;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const searchData = useSearchData();
-  const cards = searchData?.cards;
-  const courses = searchData?.courses;
-  const lessons = searchData?.lessons;
-  const notes = searchData?.notes;
-  const questions = searchData?.questions;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
@@ -78,29 +185,9 @@ function CommandPaletteDialog({
     }
   }, []);
 
-  // Course/lesson/note hits are listed ahead of Question and Card hits, then capped
-  // together so the palette never grows unbounded on a broad query. Deferring
-  // the search keeps input updates urgent without imposing a fixed delay.
-  const allResults = useMemo((): PaletteHit[] => {
-    const courseHits = searchCourseContent(
-      deferredQuery,
-      courses ?? [],
-      lessons ?? [],
-      notes ?? [],
-    );
-    const cardHits = searchCardsInScope(deferredQuery, {
-      cards: cards ?? [],
-      courses: courses ?? [],
-      lessons: lessons ?? [],
-    });
-    const questionHits = searchQuestionsInScope(deferredQuery, {
-      questions: questions ?? [],
-      courses: courses ?? [],
-      lessons: lessons ?? [],
-    });
-    return [...courseHits, ...questionHits, ...cardHits];
-  }, [deferredQuery, cards, courses, lessons, notes, questions]);
-  const results = allResults.slice(0, MAX_RESULTS);
+  // Deferring the search keeps input updates urgent without imposing a fixed delay.
+  const allResults = useMemo(() => search(deferredQuery), [search, deferredQuery]);
+  const results = limit === undefined ? allResults : allResults.slice(0, limit);
   const hasVisibleResults = query.trim() !== '' && results.length > 0;
   const resultList = useRef<HTMLUListElement>(null);
   const selectionChanged = useRef(false);
@@ -144,13 +231,29 @@ function CommandPaletteDialog({
     const hit = results[index];
     if (!hit) return;
     closeForNavigation();
-    void navigate(hitPath(hit));
+    void navigate(
+      hitPath(hit),
+      navigationState === undefined ? undefined : { state: navigationState },
+    );
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === 'Escape') {
+      // Dismissal belongs to the dialog, not to the page beneath it.
+      e.stopPropagation();
       onClose();
+    } else if (scoped && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'f') {
+        e.preventDefault();
+        inputRef.current?.select();
+      } else if (key === 'k') {
+        // AppShell's Quick search takes over and returns focus to this dialog's opener.
+        returnFocusRef.current?.focus();
+        returnFocusRef.current = null;
+        onClose();
+      }
     } else if (e.target !== inputRef.current) {
       return;
     } else if (e.key === 'ArrowDown') {
@@ -174,7 +277,7 @@ function CommandPaletteDialog({
           ref={trapRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search"
+          aria-label={label}
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
           <ModalBackdrop shade={40} onClick={onClose} />
@@ -191,7 +294,7 @@ function CommandPaletteDialog({
               <input
                 ref={inputRef}
                 role="combobox"
-                aria-label="Search all content"
+                aria-label={inputLabel}
                 aria-controls={hasVisibleResults ? 'palette-listbox' : undefined}
                 aria-expanded={hasVisibleResults}
                 aria-autocomplete="list"
@@ -202,7 +305,7 @@ function CommandPaletteDialog({
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search…"
+                placeholder={placeholder}
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
               {showHints && (
@@ -259,29 +362,17 @@ function CommandPaletteDialog({
                   >
                     {results.map((hit, i) => {
                       return (
-                        <motion.li
-                          key={hitKey(hit)}
-                          role="presentation"
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.12 * m, delay: Math.min(i * 0.015, 0.15) * m }}
-                        >
-                          <button
-                            type="button"
-                            role="option"
+                        <li key={hitKey(hit)} role="presentation">
+                          <SearchResultOption
+                            index={i}
+                            hit={hit}
+                            query={deferredQuery}
                             id={`palette-option-${i}`}
-                            aria-selected={i === active}
-                            onMouseEnter={() => setActive(i)}
-                            onFocus={() => setActive(i)}
-                            onClick={() => go(i)}
-                            className={
-                              'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition-all duration-150 ' +
-                              (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
-                            }
-                          >
-                            <SearchResultContent hit={hit} query={deferredQuery} compact />
-                          </button>
-                        </motion.li>
+                            selected={i === active}
+                            onSelect={() => setActive(i)}
+                            onOpen={() => go(i)}
+                          />
+                        </li>
                       );
                     })}
                   </PaletteResults>
@@ -289,7 +380,7 @@ function CommandPaletteDialog({
               </AnimatePresence>
             </div>
 
-            {hasVisibleResults && allResults.length > MAX_RESULTS && (
+            {hasVisibleResults && limit !== undefined && allResults.length > limit && (
               <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
                 <span>
                   {results.length} of {allResults.length} results

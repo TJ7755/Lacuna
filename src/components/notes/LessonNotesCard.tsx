@@ -6,13 +6,14 @@
 
 import { useState, type ComponentProps } from 'react';
 import { AnimatePresence, LayoutGroup, m as motion, useIsPresent } from 'motion/react';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { ChevronDownIcon, EditIcon, PlusIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import { collapse, motionTransition, scaledSpring } from '../ui/motion';
+import { motionTransition, scaledSpring } from '../ui/motion';
 import { createNote, updateNote, deleteNote, reorderNotes } from '../../db/noteRepository';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import type { Note } from '../../db/types';
@@ -90,20 +91,15 @@ export function LessonNotesCard({
   return (
     <article
       className={cn(
-        'flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-6 text-[17px] leading-[1.65] card-surface md:px-12 md:py-10',
+        'flex min-w-0 flex-col rounded-3xl bg-surface p-6 text-[17px] leading-[1.65] card-surface md:px-12 md:py-10',
         className,
       )}
     >
       {/* A single note in View mode needs neither tabs nor controls, so the row
           folds away rather than leaving an empty band above the text. */}
-      <AnimatePresence initial={false}>
-      {(showTabs || editable) && (
-      <motion.div
-        key="note-bar"
-        {...collapse(m)}
-        data-note-bar=""
-        className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-normal"
-      >
+      <AnimatedDisclosure open={showTabs || editable}>
+        <div data-note-bar="" className="pb-5">
+          <div className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-normal">
         {showTabs ? (
           <div role="tablist" aria-label="Notes" className="flex min-w-0 gap-5 overflow-x-auto">
             <LayoutGroup id={`note-tabs-${lessonId}`}>
@@ -222,9 +218,9 @@ export function LessonNotesCard({
             </NoteActionsBar>
           )}
         </AnimatePresence>
-      </motion.div>
-      )}
-      </AnimatePresence>
+          </div>
+        </div>
+      </AnimatedDisclosure>
 
       {addingNote && (
         <LessonNoteEditor

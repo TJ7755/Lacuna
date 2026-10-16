@@ -5,7 +5,8 @@
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
 import { useCourseForecast } from '../state/ShellCourseData';
@@ -44,12 +45,12 @@ import { useLessonPathReorder } from '../components/course/useLessonPathReorder'
 import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { Skeleton } from '../components/ui/Skeleton';
+import { CoursePageArrival } from '../components/course/CoursePageArrival';
+import { loadLessonView } from '../routes/loaders';
+import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
-const LazyLessonView = lazy(() =>
-  import('./LessonView').then((module) => ({ default: module.LessonView })),
-);
+const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
 
 interface PracticeNodeProgress {
   fraction: number;
@@ -58,7 +59,6 @@ interface PracticeNodeProgress {
   scopeVersion: string;
   assessment?: AssessmentPracticeOption;
 }
-
 
 // The course page's Other ways menu sits beside Study, so its session plan leaves them out.
 const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
@@ -382,6 +382,7 @@ export function CoursePath() {
   ).length;
   const studyActions = (disabled = false) => (
     <CourseStudyActions
+      courseId={course.id}
       dueCount={dueCardCount}
       doneToday={doneToday}
       disabled={disabled}
@@ -396,6 +397,7 @@ export function CoursePath() {
   // course header (and its review entry point) is bypassed here, so a pending
   // merge review gets the same entry above the lesson.
   if (inlineLesson) {
+    const LessonView = getLoadedRouteModule(loadLessonView)?.default ?? LazyLessonView;
     return (
       <>
         {!archived && pendingUpdate && (
@@ -408,8 +410,22 @@ export function CoursePath() {
             </Link>
           </div>
         )}
-        <Suspense fallback={<Skeleton className="min-h-[50vh] rounded-2xl bg-ink/[0.03]" />}>
-          <LazyLessonView
+        <Suspense
+          fallback={
+            <DelayedFallback>
+              <CoursePathSkeleton />
+            </DelayedFallback>
+          }
+        >
+          <LessonView
+            inlineData={{
+              course,
+              lesson: lessons[0],
+              lessons,
+              examDates: assessments,
+              lessonCards: lessonCardsById.get(lessons[0].id) ?? [],
+              dueReviewCardIds: studyFlowSnapshot!.dueReviewCardIds,
+            }}
             courseId={courseId}
             lessonId={lessons[0].id}
             studyActions={archived ? undefined : studyActions}
@@ -431,12 +447,7 @@ export function CoursePath() {
   // Summary figures: mastery is passed in from the course-level summary (extension-lesson
   // cards already excluded there) and stands in for the forecast until it loads. The due
   // count is the snapshot's, so it matches the Review due cards session it opens.
-  const { mastery } = courseHeaderStats(
-    course,
-    assessments,
-    summary?.mastery ?? 0,
-    now,
-  );
+  const { mastery } = courseHeaderStats(course, assessments, summary?.mastery ?? 0, now);
 
   // Selected lesson detail includes linked cards, due reviews and mastery.
   const detailForLesson = (lessonId: string) => {
@@ -452,7 +463,7 @@ export function CoursePath() {
   const status = forecast ? forecastStatus(forecast) : undefined;
   const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
-    <div className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+    <CoursePageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <CourseHeader
           className="min-w-0 flex-[1_1_320px]"
@@ -474,9 +485,7 @@ export function CoursePath() {
           }
           renameLabel="course"
         />
-        {!archived && (
-studyActions()
-        )}
+        {!archived && studyActions()}
       </div>
       {!archived && pendingUpdate && (
         <Link
@@ -541,6 +550,6 @@ studyActions()
           onClose={() => setAddingQuestionSet(false)}
         />
       )}
-    </div>
+    </CoursePageArrival>
   );
 }

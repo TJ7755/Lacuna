@@ -18,20 +18,23 @@
   course overview. Read-only course analytics remain available.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
-  notes-first teaching flow when it is the next available path step. In Edit mode,
-  **Link existing cards** opens a searchable course-card picker and adds selected ordinary
-  cards (sequence-generated cards are excluded) as
+  notes-first teaching flow when it is the next available path step. In Edit mode, the card
+  panel's **New card** is the single way to add cards: it opens the card editor, whose type
+  picker keeps **Import cards** beside it and reveals the rarer types, **Sequence**, **Image
+  occlusion** and **Link existing cards**, behind **More**. **Link existing cards** opens a searchable
+  course-card picker and adds selected ordinary cards (sequence- and occlusion-generated cards
+  are excluded) as
   `LessonCardLink` memberships without moving their primary lesson or duplicating their FSRS
   state. Linked rows are labelled, excluded from destructive bulk selection, and use
   **Remove from lesson** instead of deleting the underlying shared card; removal also clears
   that lesson's exposure record.
-  While a lesson has no cards, its card panel's **New card** is the primary action and the
-  management section becomes **More ways to add cards** (sequence, occlusion, link, import)
-  without the answer-mode control. A one-lesson course with no cards and no notes disables
+  While a lesson has no cards, its card panel's **New card** is the primary action and there
+  is no management section. A one-lesson course with no cards and no notes disables
   **Study** and its `S` shortcut, because the study flow would open an empty notes step.
 - **Cards** (`/course/:courseId/cards`) lists every direct-recall Card in a course regardless of
-  lesson, sharing `CardList` with the lesson view's Card section. The old `/bank` route redirects
-  here.
+  lesson, sharing `CardList` with the lesson view's Card section. Its header's **New card** is
+  the page's one way to add content, through the same type picker; cards made there are
+  unassigned. The old `/bank` route redirects here.
 - **Questions** (`/course/:courseId/questions`) lists fixed Questions and generated families with
   their primary Concept, exposure and due state. It launches a ten-Question default session or an
   All due session. Due Questions come first, then unseen Questions, then Questions shown but never
@@ -61,8 +64,8 @@
   **Lesson 1**, with keyboard focus on its **New card** button, while the import tab remains independent of these creation-only fields.
 - **Sequences** (§5) have their own editor (`/course/:courseId/sequence/new`,
   `/course/:courseId/sequence/:sequenceId/edit`, and a lesson-scoped
-  `/course/:courseId/lesson/:lessonId/sequence/new`), reached via "New sequence" entry
-  points alongside "Add card" in both Lesson View (`LessonCardsSection`) and Cards.
+  `/course/:courseId/lesson/:lessonId/sequence/new`), reached through **Sequence** in the
+  card editor's type picker from both Lesson View and Cards.
   `CardList` groups a sequence's generated cards under its name (`GeneratedCardGroup`)
   and excludes them from bulk-select, since they can only be edited or deleted through the
   sequence.

@@ -6,6 +6,7 @@ import type * as ReactRouterDom from 'react-router-dom';
 import { CourseSettings } from './CourseSettings';
 import type { Card, Course } from '../db/types';
 
+const mockMotion = vi.hoisted(() => ({ multiplier: 1 }));
 const mockNavigate = vi.fn();
 const mockUpdateCourse = vi.fn().mockResolvedValue(undefined);
 const mockUpdateCourseAssessment = vi.fn().mockResolvedValue(undefined);
@@ -62,7 +63,7 @@ vi.mock('../state/useCourseData', () => ({
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => mockMotion.multiplier,
 }));
 
 vi.mock('../db/courseRepository', () => ({
@@ -129,9 +130,9 @@ const course: Course = {
   practiceMaxGap: 5,
 };
 
-function renderPage() {
+function renderPage(path = '/course/course-1/settings') {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/settings']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/course/:courseId/settings" element={<CourseSettings />} />
       </Routes>
@@ -140,6 +141,7 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  mockMotion.multiplier = 1;
   mockCourse = course;
   mockCards = [];
   mockUpdateCourse.mockClear();
@@ -153,7 +155,58 @@ beforeEach(() => {
   mockOptimiserRun.mockClear();
 });
 
+function openSettings(title: string) {
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${title}`) }));
+}
+
 describe('CourseSettings', () => {
+  it('exposes common edits directly and keeps secondary settings collapsed with reduced motion', async () => {
+    mockMotion.multiplier = 0;
+    renderPage();
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Study goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily workload' })).toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.getByLabelText(/New cards per day/)).toBeVisible());
+    expect(screen.getByLabelText('Target retention')).toBeVisible();
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Learning steps/)).not.toBeInTheDocument();
+    for (const title of ['Course details', 'Lessons', 'Auto-practice', 'Advanced scheduling']) {
+      expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toHaveAttribute('aria-expanded', 'false');
+    }
+    openSettings('Course details');
+    expect(screen.getByLabelText('Course name')).toHaveValue('Original course');
+    expect(screen.getByRole('button', { name: /^Course details/ })).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Draft course name' } });
+    openSettings('Course details');
+    expect(screen.queryByLabelText('Course name')).not.toBeInTheDocument();
+    openSettings('Course details');
+    expect(screen.getByLabelText('Course name')).toHaveValue('Draft course name');
+  });
+
+  it('opens the final assessment editor from its deep link', () => {
+    renderPage('/course/course-1/settings?editFinalExam=1');
+    expect(screen.getByRole('button', { name: 'Date and time' })).toBeInTheDocument();
+  });
+
+  it('requires the existing confirmation before archiving', async () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Archive course' }));
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Archive course' }));
+    await vi.waitFor(() => expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }));
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/'));
+  });
+
+  it('keeps workload drafts local until blur', () => {
+    renderPage();
+    const input = screen.getByLabelText(/New cards per day/);
+    fireEvent.change(input, { target: { value: '20' } });
+    expect(mockUpdateCourse).not.toHaveBeenCalled();
+    fireEvent.blur(input);
+    expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { newCardsPerDay: 20 });
+  });
+
   it('shows a skeleton while loading', () => {
     mockCourse = undefined;
     renderPage();
@@ -168,18 +221,22 @@ describe('CourseSettings', () => {
 
   it('populates fields from the course', () => {
     renderPage();
+    openSettings('Course details');
+    openSettings('Advanced scheduling');
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Learn first' })).toBeChecked();
   });
 
   it('can start new cards directly in spaced repetition', () => {
     renderPage();
+    openSettings('Advanced scheduling');
     fireEvent.click(screen.getByRole('switch', { name: 'Learn first' }));
     expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { learnFirst: false });
   });
 
   it('does not repeat the course name beneath the settings title', () => {
     renderPage();
+    openSettings('Course details');
 
     expect(screen.queryByText('Original course')).not.toBeInTheDocument();
     expect(screen.getByDisplayValue('Original course')).toBeInTheDocument();
@@ -187,14 +244,16 @@ describe('CourseSettings', () => {
 
   it('uses cards to group related course settings', () => {
     renderPage();
+    openSettings('Course details');
 
-    const goal = screen.getByLabelText('Course name').closest('section');
+    const goal = screen.getByRole('heading', { name: 'Study goal and dates' }).closest('section');
     expect(goal).toHaveClass('rounded-3xl', 'bg-surface');
     expect(goal).not.toHaveClass('border');
   });
 
   it('does not reset the optimiser when the same course rerenders', () => {
     const view = renderPage();
+    openSettings('Advanced scheduling');
     mockOptimiserReset.mockClear();
 
     view.rerender(
@@ -210,11 +269,11 @@ describe('CourseSettings', () => {
 
   it('renders the grouped section headings and no "Save changes" bar', () => {
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Goal and dates' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Study goal and dates' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Assessments' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Daily study' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Lessons' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Auto-practice' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Daily workload' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Lessons/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Auto-practice/ })).toBeInTheDocument();
     // "Danger zone" has no separate group heading — DangerZoneSection labels itself —
     // so assert on its presence rather than a specific role.
     expect(screen.getAllByText('Danger zone').length).toBeGreaterThan(0);
@@ -256,6 +315,7 @@ describe('CourseSettings', () => {
 
   it('commits the course name on blur, not on every keystroke', () => {
     renderPage();
+    openSettings('Course details');
     const nameInput = screen.getByDisplayValue('Original course');
     fireEvent.change(nameInput, { target: { value: 'Renamed course' } });
     expect(mockUpdateCourse).not.toHaveBeenCalled();
@@ -269,6 +329,7 @@ describe('CourseSettings', () => {
 
   it('commits the exam board on blur, not on every keystroke', () => {
     renderPage();
+    openSettings('Course details');
     const input = screen.getByLabelText('Exam board');
     fireEvent.change(input, { target: { value: 'AQA' } });
     expect(mockUpdateCourse).not.toHaveBeenCalled();
@@ -279,6 +340,7 @@ describe('CourseSettings', () => {
 
   it('commits the specification on blur, not on every keystroke', () => {
     renderPage();
+    openSettings('Course details');
     const input = screen.getByLabelText('Specification');
     fireEvent.change(input, { target: { value: '7136' } });
     expect(mockUpdateCourse).not.toHaveBeenCalled();
@@ -290,6 +352,7 @@ describe('CourseSettings', () => {
   it('clears optional course provenance to undefined', () => {
     mockCourse = { ...course, examBoard: 'AQA', specification: '7136' };
     renderPage();
+    openSettings('Course details');
 
     const examBoardInput = screen.getByLabelText('Exam board');
     fireEvent.change(examBoardInput, { target: { value: '' } });
@@ -337,6 +400,7 @@ describe('CourseSettings', () => {
 
   it('commits unlock mode immediately when a radio option is picked', () => {
     renderPage();
+    openSettings('Lessons');
     fireEvent.click(screen.getByText('Linear'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
@@ -346,6 +410,7 @@ describe('CourseSettings', () => {
 
   it('switching unlock mode shows/hides linear cadence inputs', () => {
     renderPage();
+    openSettings('Lessons');
     expect(screen.queryByText('Days between lessons')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Linear'));
     expect(screen.getByText('Days between lessons')).toBeInTheDocument();
@@ -353,6 +418,7 @@ describe('CourseSettings', () => {
 
   it('commits linear cadence interval days on blur, not on every keystroke', () => {
     renderPage();
+    openSettings('Lessons');
     fireEvent.click(screen.getByText('Linear'));
     mockUpdateCourse.mockClear();
 
@@ -369,6 +435,7 @@ describe('CourseSettings', () => {
 
   it('falls back to the current value when a practice field is left blank on blur', () => {
     renderPage();
+    openSettings('Auto-practice');
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '' } });
     fireEvent.blur(maxGapInput);
@@ -380,6 +447,7 @@ describe('CourseSettings', () => {
 
   it('accepts a zero value for the far/near thresholds and urgent window on blur', () => {
     renderPage();
+    openSettings('Auto-practice');
     const farInput = screen.getByLabelText(/Threshold \(exam not near\)/);
     fireEvent.change(farInput, { target: { value: '0' } });
     fireEvent.blur(farInput);
@@ -407,6 +475,7 @@ describe('CourseSettings', () => {
 
   it('falls back to the current value when the maximum lesson gap is set to zero on blur', () => {
     renderPage();
+    openSettings('Auto-practice');
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '0' } });
     fireEvent.blur(maxGapInput);
@@ -418,6 +487,7 @@ describe('CourseSettings', () => {
 
   it('round-trips a valid practice field edit on blur', () => {
     renderPage();
+    openSettings('Auto-practice');
     const maxGapInput = screen.getByDisplayValue('5');
     fireEvent.change(maxGapInput, { target: { value: '9' } });
     fireEvent.blur(maxGapInput);
@@ -429,6 +499,7 @@ describe('CourseSettings', () => {
 
   it('commits auto-practice immediately on toggle', () => {
     renderPage();
+    openSettings('Auto-practice');
     fireEvent.click(screen.getByLabelText('Auto-practice'));
     expect(mockUpdateCourse).toHaveBeenCalledWith(
       'course-1',
@@ -446,6 +517,7 @@ describe('CourseSettings', () => {
 
   it('rejects an invalid learning steps format on blur without committing', () => {
     renderPage();
+    openSettings('Advanced scheduling');
     const learningStepsInput = screen.getByDisplayValue('1m, 10m');
     fireEvent.change(learningStepsInput, { target: { value: 'not-a-step' } });
     fireEvent.blur(learningStepsInput);
@@ -469,6 +541,7 @@ describe('CourseSettings', () => {
     // shared local draft, not from `course.fsrsParameters`, or the second commit would
     // silently overwrite the first back to its pre-edit value.
     renderPage();
+    openSettings('Advanced scheduling');
 
     const maxIntervalInput = screen.getByDisplayValue('36500');
     fireEvent.change(maxIntervalInput, { target: { value: '100' } });

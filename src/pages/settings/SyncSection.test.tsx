@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncState } from '../../db/types';
 import { SyncSection } from './SyncSection';
+
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 const {
   readSyncStateMock,
@@ -400,6 +407,23 @@ describe('SyncSection', () => {
       expect(unlockSyncStateMock).toHaveBeenCalledWith(state, 'a long recovery phrase'),
     );
     expect(await screen.findByTestId('sync-pairing-qr')).toHaveTextContent('pairing-code');
+  });
+
+  it('collapses an inert QR on dismissal but removes its key immediately on window blur during exit', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(
+      <LazyMotion features={domAnimation}>
+        <SyncSection />
+      </LazyMotion>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show pairing QR' }));
+    const qr = await screen.findByTestId('sync-pairing-qr');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide pairing QR' }));
+    expect(qr).toBeInTheDocument();
+    expect(qr.closest('[inert]')).not.toBeNull();
+    fireEvent(window, new Event('blur'));
+    expect(qr).not.toBeInTheDocument();
   });
 
   it('starts unlocked from the remembered copy and syncs without the passphrase', async () => {

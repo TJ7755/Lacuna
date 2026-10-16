@@ -68,7 +68,8 @@ export function AppearanceSection() {
                   />
                   {active && (
                     <motion.span
-                      layoutId="accent-ring"
+                      layoutId={multiplier > 0 ? 'accent-ring' : undefined}
+                      layoutDependency={accent}
                       aria-hidden="true"
                       transition={scaledSpring(multiplier, 520, 32)}
                       className="absolute inset-0.5 rounded-full ring-2 ring-ink"
@@ -84,6 +85,7 @@ export function AppearanceSection() {
       <SettingRow label="Text size">
         <SegmentedPills
           label="Text size"
+          animateSelection={false}
           value={activeStep?.label ?? ''}
           options={scaleOptions}
           onChange={(label) => {

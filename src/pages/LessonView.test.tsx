@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as React from 'react';
@@ -135,15 +136,17 @@ function makeCard(id: string): Card {
 }
 
 function renderPage() {
-  return render(
+  const page = () => (
     <MemoryRouter initialEntries={['/course/course-1/lesson/lesson-1']}>
       <ToastProvider>
         <Routes>
           <Route path="/course/:courseId/lesson/:lessonId" element={<LessonView />} />
         </Routes>
       </ToastProvider>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+  const view = render(page());
+  return { ...view, refresh: () => view.rerender(page()) };
 }
 
 function renderInline(
@@ -163,6 +166,7 @@ function renderInline(
             showStudyNow
               ? (disabled) => (
                   <CourseStudyActions
+                    courseId="course-1"
                     dueCount={0}
                     doneToday={0}
                     disabled={disabled}
@@ -209,6 +213,25 @@ beforeEach(() => {
   mockUpdateCourse.mockResolvedValue(undefined);
   mockUpdateLesson.mockReset();
   mockUpdateLesson.mockResolvedValue(undefined);
+});
+
+describe('LessonView arrival', () => {
+  it('reveals the complete workspace together once notes are ready', () => {
+    mockCourse = { ...course, lessonViewMode: 'edit' };
+    mockNotes = undefined;
+    const view = renderPage();
+    expect(screen.queryByRole('heading', { name: lesson.name })).not.toBeInTheDocument();
+    expect(view.container.querySelector('[data-course-page-arrival]')).toBeNull();
+
+    mockNotes = [];
+    view.refresh();
+    const arrival = view.container.querySelector('[data-course-page-arrival]');
+    expect(arrival).toContainElement(screen.getByRole('heading', { name: lesson.name }));
+    expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Notes' }));
+    expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Cards in this lesson' }));
+    // Backing scheduling configuration remains undefined in this fixture: it must not block arrival.
+    expect(screen.getByRole('button', { name: 'New card' })).toBeEnabled();
+  });
 });
 
 describe('LessonView View mode', () => {
@@ -268,10 +291,7 @@ describe('LessonView View mode', () => {
     });
 
     expect(screen.getByText('Archived course')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
-      'href',
-      '/archived',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Study/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
@@ -332,7 +352,10 @@ describe('LessonView View mode', () => {
   });
 
   it('turns several notes into tabs and switches between them', () => {
-    mockNotes = [note, { ...note, id: 'note-2', name: 'Second note', content: 'Other body', orderIndex: 1 }];
+    mockNotes = [
+      note,
+      { ...note, id: 'note-2', name: 'Second note', content: 'Other body', orderIndex: 1 },
+    ];
     renderPage();
     const tabs = screen.getAllByRole('tab');
     expect(tabs.map((t) => t.textContent)).toEqual(['A note', 'Second note']);
@@ -361,9 +384,10 @@ describe('LessonView View mode', () => {
       onAddCheckpoint: vi.fn(),
     });
 
-    expect(
+    expectAppDestination(
       screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
-    ).toHaveAttribute('href', '/course/course-1/settings');
+      '/course/course-1/settings',
+    );
     expect(screen.queryByRole('button', { name: 'Edit mode' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
@@ -374,7 +398,7 @@ describe('LessonView View mode', () => {
 });
 
 describe('LessonView inline (single-lesson course) rendering', () => {
-  it('shows the course page\'s Study and Other ways, not a lesson-only pair', () => {
+  it("shows the course page's Study and Other ways, not a lesson-only pair", () => {
     renderInline(true, true);
 
     expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
@@ -417,11 +441,10 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
   });
 
-
   it('shows the course navigation with a Settings link', () => {
     renderInline();
     const link = screen.getByRole('link', { name: 'Settings' });
-    expect(link).toHaveAttribute('href', '/course/course-1/settings');
+    expectAppDestination(link, '/course/course-1/settings');
   });
 
   it('hides Add lesson in View mode', () => {
@@ -454,12 +477,20 @@ describe('LessonView Edit mode', () => {
   it('shows edit controls on each card row and the management section', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Edit card' })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Edit card' }),
       '/course/course-1/lesson/lesson-1/cards/card-1/edit',
     );
     expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Manage/ })).toBeInTheDocument();
+  });
+
+  it('draws no empty management panel for a lesson with no cards', () => {
+    mockLessonCards = [];
+    const { container } = renderPage();
+    expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /Manage/ })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-lesson-workspace-mode] .card-surface:empty')).toBeNull();
   });
 
   it('opens a newly created lesson from the inline path', async () => {

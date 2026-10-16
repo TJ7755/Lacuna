@@ -260,6 +260,12 @@ describe('DateTimePicker', () => {
     expect(onChange).not.toHaveBeenCalled();
     expect(onValidityChange).toHaveBeenLastCalledWith(false);
     expect(screen.getByRole('alert')).toHaveTextContent('does not exist');
+
+    fireEvent.focus(screen.getByRole('button', { name: '7 March 2026' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: '7 March 2026' }), { key: 'ArrowRight' });
+    fireEvent.keyDown(screen.getByRole('button', { name: '8 March 2026' }), { key: 'Enter' });
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('does not exist');
   });
 
   it('uses roving focus within the day grid without hijacking the time fields', async () => {
@@ -275,6 +281,65 @@ describe('DateTimePicker', () => {
     hour.focus();
     expect(fireEvent.keyDown(hour, { key: 'ArrowLeft' })).toBe(true);
     expect(hour).toHaveFocus();
+  });
+
+  it('keeps keyboard focus on the requested date across months and leap years', async () => {
+    const onChange = vi.fn();
+    render(<ControlledPicker initialValue={Date.UTC(2028, 0, 31, 14, 30)} onChange={onChange} />);
+    openPicker();
+    const day = async (name: string) => {
+      const button = await screen.findByRole('button', { name });
+      await waitFor(() => expect(button).toHaveFocus());
+      return button;
+    };
+
+    fireEvent.keyDown(await day('31 January 2028'), { key: 'PageDown' });
+    fireEvent.keyDown(await day('29 February 2028'), { key: 'PageDown', shiftKey: true });
+    fireEvent.keyDown(await day('28 February 2029'), { key: 'PageUp', shiftKey: true });
+    fireEvent.keyDown(await day('28 February 2028'), { key: 'ArrowRight' });
+    fireEvent.keyDown(await day('29 February 2028'), { key: 'ArrowRight' });
+    fireEvent.keyDown(await day('1 March 2028'), { key: 'ArrowLeft' });
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.keyDown(await day('29 February 2028'), { key: 'Enter' });
+    expect(onChange).toHaveBeenLastCalledWith(Date.UTC(2028, 1, 29, 14, 30));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('moves by weeks and week boundaries and selects with Space', async () => {
+    const onChange = vi.fn();
+    render(<ControlledPicker initialValue={Date.UTC(2026, 11, 30, 23, 59)} onChange={onChange} />);
+    openPicker();
+    const move = async (name: string, key: string) => {
+      const button = await screen.findByRole('button', { name });
+      await waitFor(() => expect(button).toHaveFocus());
+      fireEvent.keyDown(button, { key });
+    };
+
+    await move('30 December 2026', 'ArrowDown');
+    await move('6 January 2027', 'Home');
+    await move('3 January 2027', 'End');
+    await move('9 January 2027', 'ArrowUp');
+    await move('2 January 2027', ' ');
+    expect(onChange).toHaveBeenLastCalledWith(Date.UTC(2027, 0, 2, 23, 59));
+    const selected = screen.getByRole('button', { name: '2 January 2027' });
+    expect(selected).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(selected, { key: 'Escape' });
+    const trigger = screen.getByRole('button', { name: 'Pick a date' });
+    await waitFor(() => expect(trigger).toHaveFocus());
+    openPicker();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '2 January 2027' })).toHaveFocus(),
+    );
+  });
+
+  it('retains the chosen time when jumping to today and offers one date shortcut', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 9, 16, 9, 12));
+    const onChange = vi.fn();
+    render(<ControlledPicker initialValue={Date.UTC(2026, 5, 10, 23, 59)} onChange={onChange} />);
+    openPicker();
+    expect(screen.queryByRole('button', { name: 'Now' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Jump to today' }));
+    expect(onChange).toHaveBeenLastCalledWith(Date.UTC(2026, 9, 16, 23, 59));
   });
 
   it('closes with Done or Escape and restores focus to the trigger', async () => {
@@ -306,6 +371,8 @@ describe('DateTimePicker', () => {
     expect(done).toHaveFocus();
     fireEvent.keyDown(done, { key: 'Tab' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Previous month' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Open month selector' })).toHaveFocus(),
+    );
   });
 });

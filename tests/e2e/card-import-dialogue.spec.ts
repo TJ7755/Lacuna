@@ -71,9 +71,11 @@ for (const width of [1280, 390]) {
 
     const dialog = page.getByRole('dialog', { name: 'Import cards', exact: true });
 
-    // Import into this lesson as well: Undo must not remove the existing cards.
-    await page.getByRole('button', { name: 'More ways to add cards' }).click();
-    await page.getByRole('menuitem', { name: 'Import cards' }).click();
+    // Import into this lesson as well: Undo must not remove the existing cards. Every way
+    // to add cards starts from New card, with importing behind its further types.
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+    await page.getByRole('button', { name: 'More card types', exact: true }).click();
+    await page.getByRole('button', { name: 'Import cards', exact: true }).click();
     await dialog.getByLabel('Paste your cards').fill('Second import\tretained');
     await expect(dialog).toHaveCSS('transform', 'none');
     const close = dialog.getByRole('button', { name: 'Close import' });

@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,12 +41,12 @@ describe('CourseComparison', () => {
     fireEvent.change(screen.getByLabelText('First course'), { target: { value: 'course-a' } });
     fireEvent.change(screen.getByLabelText('Second course'), { target: { value: 'course-b' } });
 
-    expect(screen.getByRole('link', { name: /Course A/ })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      screen.getByRole('link', { name: /Course A/ }),
       '/course/course-a/analytics',
     );
-    expect(screen.getByRole('link', { name: /Course B/ })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      screen.getByRole('link', { name: /Course B/ }),
       '/course/course-b/analytics',
     );
   });

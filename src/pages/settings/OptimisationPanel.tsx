@@ -1,3 +1,4 @@
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { useEffect, useMemo } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -5,7 +6,6 @@ import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { useToast } from '../../components/ui/Toast';
-import { ChevronDownIcon } from '../../components/ui/icons';
 import { defaultFsrsParameters } from '../../fsrs/params';
 import { countReviews } from '../../fsrs/optimise';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
@@ -142,23 +142,19 @@ export function OptimisationPanel({
         Scheduling optimisation
       </SettingsSectionHeading>
 
-      <details className="group">
-        <summary
-          aria-label="Scheduling optimisation"
-          className="mt-1 flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden"
-        >
-          <span className="min-w-0 text-sm text-ink-soft">
-            {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to
-            your review history or reset its weights to the recommended defaults.
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-1 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
-
+      <InlineSettingsDisclosure
+        className="group"
+        label="Scheduling optimisation"
+        headerClassName="mt-1 flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0 text-sm text-ink-soft">
+              {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to
+              your review history or reset its weights to the recommended defaults.
+            </span>
+          </>
+        }
+      >
         <div className="mt-5 border-t border-line pt-5">
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 text-sm text-ink-soft">
@@ -293,7 +289,7 @@ export function OptimisationPanel({
             </div>
           )}
         </div>
-      </details>
+      </InlineSettingsDisclosure>
     </SettingsCard>
   );
 }

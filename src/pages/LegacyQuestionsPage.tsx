@@ -1,7 +1,8 @@
 import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPromptDialog';
 import { QuestionBankCard } from '../components/questions/QuestionBankCard';

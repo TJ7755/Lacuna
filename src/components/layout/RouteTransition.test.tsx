@@ -1,4 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import { LazyMotion, domAnimation, m } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,6 +81,41 @@ describe('routeTransitionTiming', () => {
 });
 
 describe('RouteTransition', () => {
+  it('shows the first route at once without stopping later content from animating in', () => {
+    vi.mocked(window.matchMedia).mockImplementation(
+      (query) =>
+        ({
+          matches: false,
+          media: query,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }) as unknown as MediaQueryList,
+    );
+    function Late() {
+      const [shown, setShown] = useState(false);
+      return shown ? (
+        <m.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          late
+        </m.p>
+      ) : (
+        <button type="button" onClick={() => setShown(true)}>
+          Show
+        </button>
+      );
+    }
+    const router = createMemoryRouter([
+      { element: <RouteTransition />, children: [{ path: '/', element: <Late /> }] },
+    ]);
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <RouterProvider router={router} />
+      </LazyMotion>,
+    );
+    expect(view.container.querySelector('.min-h-screen')).not.toHaveStyle({ opacity: '0' });
+    fireEvent.click(screen.getByRole('button', { name: 'Show' }));
+    expect(screen.getByText('late')).toHaveStyle({ opacity: '0' });
+  });
+
   it('updates the title and announces consecutive route changes', async () => {
     const router = renderRoutes('/settings');
     await waitFor(() => expect(document.title).toBe('Settings · Lacuna'));

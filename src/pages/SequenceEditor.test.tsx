@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -140,8 +141,8 @@ describe('SequenceEditor', () => {
       expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
       const back = screen.getByRole('link');
       expect(back).toHaveClass('min-h-11');
-      expect(back).toHaveAttribute(
-        'href',
+      expectAppDestination(
+        back,
         missing === 'course'
           ? '/'
           : missing === 'lesson'
@@ -155,7 +156,7 @@ describe('SequenceEditor', () => {
     const { container } = renderNew();
     expect(container.firstElementChild).toHaveClass(...COURSE_PAGE_FRAME.split(' '));
     const back = screen.getByRole('link', { name: 'Back to Cards' });
-    expect(back).toHaveAttribute('href', '/course/course-1/cards');
+    expectAppDestination(back, '/course/course-1/cards');
     expect(back).toHaveClass('min-h-11');
     expect(screen.getAllByRole('link')).toHaveLength(1);
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
@@ -434,7 +435,7 @@ describe('SequenceEditor', () => {
       renderEdit({ origin: { path: '/course/course-1/lesson/lesson-1', label: 'Cells' } });
 
       const link = screen.getByRole('link', { name: 'Back to Cells' });
-      expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
+      expectAppDestination(link, '/course/course-1/lesson/lesson-1');
     });
 
     // A hard refresh drops router state entirely — the back-link must still land
@@ -445,25 +446,47 @@ describe('SequenceEditor', () => {
       renderEdit();
 
       const link = screen.getByRole('link', { name: 'Back to Cards' });
-      expect(link).toHaveAttribute('href', '/course/course-1/cards');
+      expectAppDestination(link, '/course/course-1/cards');
     });
   });
 });
 
 describe('SequenceEditor — published-course lock', () => {
   it.each([false, true])('blocks saving locked sequences (editing: %s)', async (editing) => {
-    mockCourse = { ...course, distributedCopy: { lineageId: 'published-course', revision: 1, locked: true, autoAcceptUpdates: false } };
-    mockSequence = editing ? {
-      id: 'seq-1', courseId: 'course-1', primaryLessonId: null, name: 'Published sequence',
-      items: [{ id: 'item-1', value: 'First item' }], cueWindow: 2, createdAt: 0, updatedAt: 1,
-    } : undefined;
+    mockCourse = {
+      ...course,
+      distributedCopy: {
+        lineageId: 'published-course',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    mockSequence = editing
+      ? {
+          id: 'seq-1',
+          courseId: 'course-1',
+          primaryLessonId: null,
+          name: 'Published sequence',
+          items: [{ id: 'item-1', value: 'First item' }],
+          cueWindow: 2,
+          createdAt: 0,
+          updatedAt: 1,
+        }
+      : undefined;
     if (editing) renderEdit();
     else renderNew();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Sequence name' }), { target: { value: 'Changed sequence' } });
-    fireEvent.change(screen.getByRole('textbox', { name: 'Item 1 content' }), { target: { value: 'Changed item' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Sequence name' }), {
+      target: { value: 'Changed sequence' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Item 1 content' }), {
+      target: { value: 'Changed item' },
+    });
     const save = screen.getByRole('button', { name: editing ? 'Save changes' : 'Add sequence' });
     expect(save).toBeDisabled();
-    await act(async () => { fireEvent.click(save); });
+    await act(async () => {
+      fireEvent.click(save);
+    });
     expect(createSequence).not.toHaveBeenCalled();
     expect(updateSequence).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Delete sequence' })).not.toBeInTheDocument();
@@ -472,11 +495,19 @@ describe('SequenceEditor — published-course lock', () => {
   it('keeps ordinary Study-mode sequences editable', async () => {
     mockCourse = { ...course, lessonViewMode: 'study' };
     mockSequence = {
-      id: 'seq-1', courseId: 'course-1', primaryLessonId: null, name: 'My sequence',
-      items: [{ id: 'item-1', value: 'First item' }], cueWindow: 2, createdAt: 0, updatedAt: 1,
+      id: 'seq-1',
+      courseId: 'course-1',
+      primaryLessonId: null,
+      name: 'My sequence',
+      items: [{ id: 'item-1', value: 'First item' }],
+      cueWindow: 2,
+      createdAt: 0,
+      updatedAt: 1,
     };
     renderEdit();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
     expect(updateSequence).toHaveBeenCalledWith(expect.objectContaining({ id: 'seq-1' }));
   });
 });

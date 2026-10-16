@@ -1,3 +1,4 @@
+import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
@@ -121,8 +122,8 @@ export function SyncSection() {
   }, [notify]);
 
   useEffect(() => {
-    if (!showQr) return;
-    qrPanelRef.current?.focus();
+    if (!qrValue) return;
+    if (showQr) qrPanelRef.current?.focus();
     const hide = () => {
       setShowQr(false);
       setQrValue('');
@@ -136,7 +137,7 @@ export function SyncSection() {
       window.removeEventListener('blur', hide);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [showQr]);
+  }, [showQr, qrValue]);
 
   useEffect(() => {
     publishUnlockedCredentials(unlocked);
@@ -518,34 +519,39 @@ export function SyncSection() {
             </p>
           )}
 
-          {showQr && qrValue && (
-            <SyncQrPanel
-              panelRef={qrPanelRef}
-              qrValue={qrValue}
-              onHide={hideQr}
-              onCopy={() => void handleCopyPairingLink()}
-            />
-          )}
-
-          <div className="flex flex-wrap items-center gap-3">
-            {confirmDelete ? (
-              <ConfirmInline
-                message="Delete the shared channel everywhere?"
-                confirmLabel={busy === 'delete' ? 'Deleting…' : 'Delete channel'}
-                onCancel={() => setConfirmDelete(false)}
-                onConfirm={() => void handleDeleteChannel()}
-              />
-            ) : (
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setConfirmDelete(true)}
-                disabled={busy !== null}
-              >
-                <TrashIcon width={16} height={16} />
-                Delete channel
-              </Button>
+          <div>
+            {qrValue && (
+              <AnimatedDisclosure open={showQr} initial innerClassName="pb-4">
+                <SyncQrPanel
+                  panelRef={qrPanelRef}
+                  qrValue={qrValue}
+                  onHide={hideQr}
+                  onDismiss={() => setShowQr(false)}
+                  onCopy={() => void handleCopyPairingLink()}
+                />
+              </AnimatedDisclosure>
             )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              {confirmDelete ? (
+                <ConfirmInline
+                  message="Delete the shared channel everywhere?"
+                  confirmLabel={busy === 'delete' ? 'Deleting…' : 'Delete channel'}
+                  onCancel={() => setConfirmDelete(false)}
+                  onConfirm={() => void handleDeleteChannel()}
+                />
+              ) : (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={busy !== null}
+                >
+                  <TrashIcon width={16} height={16} />
+                  Delete channel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       )}

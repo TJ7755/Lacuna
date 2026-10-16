@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { summariseSelfMarking } from '../../questions/questionSets';
 import type { questionSetReturn } from '../../questions/questionSetNavigation';

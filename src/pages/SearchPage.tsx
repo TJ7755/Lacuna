@@ -10,12 +10,13 @@ import {
   type CardFilter,
 } from '../db/search';
 import { cn } from '../components/ui/cn';
-import { SearchIcon, CardsIcon } from '../components/ui/icons';
+import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
-import { SearchResultContent } from '../components/search/SearchResultContent';
+import { SearchResultOption } from '../components/search/SearchResultOption';
+import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { hitKey, hitPath } from '../components/search/searchPresentation';
 
 /** The structured filters offered as quick chips, in display order. */
@@ -142,159 +143,160 @@ export function SearchPage() {
   }
 
   return (
-    <div className={`${PAGE_FRAME} py-10 [&>*]:max-w-3xl`} onKeyDown={onKeyDown}>
-      <header className="mb-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
-          Search content
-        </h1>
-      </header>
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 card-surface card-surface-control transition-colors focus-within:border-accent-ink">
-        <SearchIcon width={18} height={18} className="text-ink-faint" />
-        <input
-          ref={searchInput}
-          role="combobox"
-          aria-label="Search content"
-          aria-autocomplete="list"
-          aria-expanded={hasResults}
-          aria-controls={hasResults ? 'search-listbox' : undefined}
-          aria-activedescendant={
-            hasResults && active < visible.length ? `search-option-${active}` : undefined
-          }
-          value={query}
-          onChange={(event) =>
-            updateParams((next) => {
-              next.delete('shown');
-              if (event.target.value) next.set('q', event.target.value);
-              else next.delete('q');
-            })
-          }
-          placeholder="Search courses, lessons, notes, cards and questions…"
-          className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
-        />
-      </div>
-      {/* Smart-view filter chips: narrow the whole collection without a text query. */}
-      <div className="mb-6 flex flex-wrap items-center gap-1.5">
-        {FILTER_CHIPS.map((chip, i) => {
-          const on = filters.has(chip.value);
-          return (
-            <motion.button
-              key={chip.value}
-              type="button"
-              onClick={() => toggleFilter(chip.value)}
-              aria-pressed={on}
-              initial={m > 0 ? { opacity: 0 } : false}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
-              whileHover={m > 0 ? { y: -1, transition: { duration: 0.1 * m } } : undefined}
-              data-press=""
-              whileTap={m > 0 ? { scale: 0.97 } : undefined}
-              className={cn(
-                'min-h-11 rounded-full border px-3 py-1 text-sm transition-colors',
-                on
-                  ? 'border-accent bg-accent-soft text-accent-ink'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
-            >
-              {chip.label}
-            </motion.button>
-          );
-        })}
-        {filters.size > 0 && (
-          <motion.button
-            type="button"
-            onClick={() => {
+    <div className={`${PAGE_FRAME} py-12 md:py-20`} onKeyDown={onKeyDown}>
+      <div className="mx-auto w-full max-w-3xl">
+        <header className="mb-8 text-center">
+          <h1 className="text-balance font-display text-3xl font-semibold tracking-tight md:text-4xl">
+            Search content
+          </h1>
+        </header>
+        <div className="mb-4 flex items-center gap-3 rounded-full bg-surface px-5 py-2 card-surface card-surface-control transition-colors focus-within:ring-2 focus-within:ring-accent-ink sm:px-6 sm:py-3">
+          <SearchIcon width={20} height={20} className="shrink-0 text-ink-faint" />
+          <input
+            ref={searchInput}
+            role="combobox"
+            aria-label="Search content"
+            aria-autocomplete="list"
+            aria-expanded={hasResults}
+            aria-controls={hasResults ? 'search-listbox' : undefined}
+            aria-activedescendant={
+              hasResults && active < visible.length ? `search-option-${active}` : undefined
+            }
+            value={query}
+            onChange={(event) =>
               updateParams((next) => {
-                next.delete('filter');
                 next.delete('shown');
-              });
-              searchInput.current?.focus();
-            }}
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.14 * m }}
-            className="min-h-11 rounded-full px-3 py-1 text-sm text-ink-faint transition-colors hover:text-ink"
-          >
-            Clear
-          </motion.button>
-        )}
-      </div>
-      <p
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        className={cn('mb-3 text-sm text-ink-soft', (!searching || !searchData) && 'sr-only')}
-      >
-        {!searchData || !searching
-          ? ''
-          : results.length === 0
-            ? 'No results'
-            : `${visible.length < results.length ? `${visible.length} of ` : ''}${results.length} ${results.length === 1 ? 'result' : 'results'}`}
-      </p>
-      {!searchData ? (
-        <DelayedFallback>
-          <SearchSkeleton />
-        </DelayedFallback>
-      ) : !searching ? null : results.length === 0 ? (
-        <div
-          className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
-        >
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-ink shadow-sm">
-            <CardsIcon width={24} height={24} />
-          </div>
-          <h2 className="font-display text-xl">Nothing matches</h2>
+                if (event.target.value) next.set('q', event.target.value);
+                else next.delete('q');
+              })
+            }
+            placeholder="Search…"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
+          />
         </div>
-      ) : (
-        <>
-          <div
-            ref={resultList}
-            id="search-listbox"
-            role="listbox"
-            aria-label="Search results"
-            className="grid gap-2"
-          >
-            {visible.map((hit, index) => (
+        {/* Smart-view filter chips: narrow the whole collection without a text query. */}
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-1.5">
+          {FILTER_CHIPS.map((chip, i) => {
+            const on = filters.has(chip.value);
+            return (
               <motion.button
-                key={hitKey(hit)}
-                id={`search-option-${index}`}
+                key={chip.value}
                 type="button"
-                role="option"
-                aria-selected={index === active}
+                onClick={() => toggleFilter(chip.value)}
+                aria-pressed={on}
                 initial={m > 0 ? { opacity: 0 } : false}
                 animate={{ opacity: 1 }}
-                transition={{ duration: 0.16 * m }}
-                onClick={() => void navigate(hitPath(hit))}
-                onFocus={() => setActive(index)}
-                whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
+                transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
+                data-press=""
+                whileTap={m > 0 ? { scale: 0.97 } : undefined}
                 className={cn(
-                  SECTION_CARD_SURFACE_CLASS,
-                  'flex min-h-11 min-w-0 items-center gap-3 p-4 text-left card-surface-control transition-colors hover:bg-surface-raised',
-                  index === active && 'ring-2 ring-accent-ink',
+                  'min-h-11 rounded-full border px-3 py-1 text-sm transition-colors',
+                  on
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line text-ink-soft hover:border-line-strong',
                 )}
               >
-                <SearchResultContent hit={hit} query={deferredQuery} />
+                {chip.label}
               </motion.button>
-            ))}
-          </div>
-          {visible.length < results.length && (
-            <button
+            );
+          })}
+        </div>
+        <div className="mb-3 flex min-h-11 items-center justify-between gap-3">
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={cn('text-sm text-ink-soft', (!searching || !searchData) && 'sr-only')}
+          >
+            {!searchData || !searching
+              ? ''
+              : results.length === 0
+                ? 'No results'
+                : `${visible.length < results.length ? `${visible.length} of ` : ''}${results.length} ${results.length === 1 ? 'result' : 'results'}`}
+          </p>
+          {filters.size > 0 && (
+            <motion.button
               type="button"
-              onClick={() => setLimit(limit + PAGE_SIZE)}
-              className="mt-4 min-h-11 rounded-full px-4 text-sm text-accent-ink"
+              onClick={() => {
+                updateParams((next) => {
+                  next.delete('filter');
+                  next.delete('shown');
+                });
+                searchInput.current?.focus();
+              }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.14 * m }}
+              className="min-h-11 rounded-full px-3 py-1 text-sm text-ink-faint transition-colors hover:text-ink"
             >
-              Show more results
-            </button>
+              Clear
+            </motion.button>
           )}
-        </>
-      )}
+        </div>
+        {!searchData ? (
+          <DelayedFallback>
+            <SearchSkeleton />
+          </DelayedFallback>
+        ) : !searching ? (
+          <div className="flex justify-center py-8">
+            <StudyDrawing kind="search" className="h-20 w-20 opacity-60" />
+          </div>
+        ) : results.length === 0 ? (
+          <div
+            className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
+          >
+            <StudyDrawing kind="search" className="mb-4 h-14 w-14 opacity-60" />
+            <p className="text-sm text-ink-faint">
+              {deferredQuery.trim() ? (
+                <>Nothing matches &ldquo;{deferredQuery}&rdquo;.</>
+              ) : (
+                'Nothing matches these filters.'
+              )}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              ref={resultList}
+              id="search-listbox"
+              role="listbox"
+              aria-label="Search results"
+              className={`${SECTION_CARD_SURFACE_CLASS} p-1.5`}
+            >
+              {visible.map((hit, index) => (
+                <SearchResultOption
+                  key={hitKey(hit)}
+                  index={index}
+                  hit={hit}
+                  query={deferredQuery}
+                  id={`search-option-${index}`}
+                  selected={index === active}
+                  onSelect={() => setActive(index)}
+                  onOpen={() => void navigate(hitPath(hit))}
+                />
+              ))}
+            </div>
+            {visible.length < results.length && (
+              <button
+                type="button"
+                onClick={() => setLimit(limit + PAGE_SIZE)}
+                className="mt-4 min-h-11 rounded-full px-4 text-sm text-accent-ink"
+              >
+                Show more results
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 function SearchSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className={`${SECTION_CARD_SURFACE_CLASS} space-y-2 p-1.5`}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col gap-1 p-4`}>
+        <div key={i} className="flex flex-col gap-1 px-2.5 py-2.5">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="mt-1 h-3 w-24" />

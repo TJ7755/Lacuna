@@ -1,9 +1,11 @@
 import { useState, useMemo, memo, type RefObject } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { AppNavLink as NavLink } from '../ui/AppLink';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
+import { scaledSpring } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
   ArchiveIcon,
@@ -20,7 +22,6 @@ import {
   FlameIcon,
   HelpIcon,
   MoonIcon,
-  PlusIcon,
   SearchIcon,
   SettingsIcon,
   ShareIcon,
@@ -76,6 +77,7 @@ function NavItem({
   end,
   details,
   compact,
+  highlightGroup,
 }: {
   to: string;
   icon: React.ReactNode;
@@ -84,6 +86,7 @@ function NavItem({
   end?: boolean;
   details?: SidebarDetail[];
   compact?: boolean;
+  highlightGroup?: 'primary' | 'footer';
 }) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -109,12 +112,8 @@ function NavItem({
           <>
             {isActive && (
               <motion.span
-                layoutId="nav-active-pill"
-                transition={
-                  m > 0
-                    ? { type: 'spring', stiffness: 500 / m ** 2, damping: 38 / m }
-                    : { duration: 0 }
-                }
+                layoutId={highlightGroup ? `nav-active-pill-${highlightGroup}` : undefined}
+                transition={scaledSpring(m * 1.2, 500, 38)}
                 className={cn('absolute inset-0 z-0 rounded-xl bg-surface', PILL_SHADOW)}
               />
             )}
@@ -390,7 +389,6 @@ export function Sidebar({
   const m = speedMultiplier(motionSpeed);
 
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
-  const navigate = useNavigate();
 
   const sidebarCourses = useMemo(
     () => courses?.filter((course) => !course.archived) ?? [],
@@ -435,6 +433,7 @@ export function Sidebar({
   const renderNavItem = (n: (typeof visibleNav)[number]) => (
     <NavItem
       key={n.id}
+      highlightGroup={FOOTER_NAV.has(n.id) ? 'footer' : 'primary'}
       to={n.id === 'dashboard' ? '/' : `/${n.id}`}
       end={n.id === 'dashboard'}
       icon={
@@ -574,23 +573,9 @@ export function Sidebar({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 * m }}
-            className="flex items-center justify-between px-3 pb-2"
+            className="flex h-11 items-center px-3 pb-2"
           >
-            <span className="font-display text-sm text-ink-soft">
-              Courses
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                if (toggleLabel === 'Close navigation') onToggleCollapsed();
-                void navigate('/', { state: { createCourse: true } });
-              }}
-              title="New course"
-              aria-label="New course"
-              className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
-            >
-              <PlusIcon width={13} height={13} />
-            </button>
+            <span className="font-display text-sm text-ink-soft">Courses</span>
           </motion.div>
         )}
         <div

@@ -99,13 +99,38 @@ function Output({
 /**
  * The share link's alternatives: a course file, a text code, a QR code and plain
  * text. One opens at a time; generated outputs survive switching between them.
- * Keyed by course, so another course starts afresh.
+ * The frame stays mounted; course-specific controls start afresh.
  */
+export function OtherShareWaysFrame({ children }: { children: ReactNode }) {
+  const titleId = useId();
+  return (
+    <section aria-labelledby={titleId} className="mt-8">
+      <h2 id={titleId} className="mb-3 font-display text-xl">
+        Other ways
+      </h2>
+      {children}
+    </section>
+  );
+}
+
 export function OtherShareWays({ course, cards }: { course: Course; cards: Card[] | undefined }) {
+  return (
+    <OtherShareWaysFrame>
+      <OtherShareControls key={course.id} course={course} cards={cards} />
+    </OtherShareWaysFrame>
+  );
+}
+
+export function OtherShareControls({
+  course,
+  cards,
+}: {
+  course: Course;
+  cards: Card[] | undefined;
+}) {
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const titleId = useId();
   const [way, setWay] = useState<Way | null>(null);
   const [busy, setBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -311,11 +336,8 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
   }
 
   return (
-    <section aria-labelledby={titleId} className="mt-8">
-      <h2 id={titleId} className="mb-3 font-display text-xl">
-        Other ways
-      </h2>
-      <div role="group" aria-labelledby={titleId} className="flex flex-wrap gap-2">
+    <>
+      <div role="group" aria-label="Other ways" className="flex flex-wrap gap-2">
         {WAYS.map((option) => (
           <Button
             key={option.id}
@@ -348,6 +370,6 @@ export function OtherShareWays({ course, cards }: { course: Course; cards: Card[
           </ShareWaySurface>
         )}
       </AnimatePresence>
-    </section>
+    </>
   );
 }

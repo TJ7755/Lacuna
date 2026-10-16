@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { EditIcon, PlusIcon, TrashIcon } from '../../components/ui/icons';
 import { motionTransition } from '../../components/ui/motion';
+import { MeasuredHeight } from '../../components/ui/MeasuredHeight';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { useToast } from '../../components/ui/Toast';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
@@ -217,7 +218,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
           })}
       </AnimatePresence>
 
-      <div>
+      <MeasuredHeight>
         <StepSwap stepKey={editingId ? `editor-${editingId}` : 'add'}>
           {editingId && draft && loaded ? (
             <div
@@ -285,7 +286,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
             </Button>
           )}
         </StepSwap>
-      </div>
+      </MeasuredHeight>
     </div>
   );
 }

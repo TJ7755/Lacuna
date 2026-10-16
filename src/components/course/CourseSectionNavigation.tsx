@@ -1,16 +1,25 @@
 import { COURSE_PAGE_FRAME } from './coursePageLayout';
 import { useCourse } from '../../state/useCourseData';
 import { CoursePageNavigation } from './CoursePageNavigation';
-import { useEffect, useState } from 'react';
+import { matchCourseSection } from './courseSections';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Whether the route's own course title is on screen. The bar's course name
  * would only repeat it, so the bar shows the name once the title scrolls away.
+ * An entered Path counts its title as on screen until the page has loaded.
  */
 export function useCourseTitleInView(pathname: string): boolean {
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    setInView(false);
+  const entered = useRef(pathname);
+  const moved = useRef(false);
+  // Entering a course on Path, its heading is usually still loading. Keep the name out
+  // of the bar until the page shows whether it has one, so it does not appear only to
+  // vanish. Returning to Path keeps the name there until the heading takes it over.
+  const [inView, setInView] = useState(() => matchCourseSection(pathname)?.index === 0);
+  useLayoutEffect(() => {
+    if (pathname !== entered.current) moved.current = true;
+    const pending = !moved.current && matchCourseSection(pathname)?.index === 0;
+    setInView(pending);
     if (typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting));
     // The shell mounts before lazy pages and their course data. Wait for this
@@ -21,7 +30,13 @@ export function useCourseTitleInView(pathname: string): boolean {
         ? document.querySelector(`[data-route-content="${CSS.escape(pathname)}"]`)
         : document;
       const title = page?.querySelector('[data-course-title]');
-      if (!title) return;
+      if (!title) {
+        // An inline single-lesson course settles with only its lesson heading.
+        if (pending && page?.querySelector('h1')) setInView(false);
+        return;
+      }
+      const bounds = title.getBoundingClientRect();
+      setInView(bounds.bottom > 0 && bounds.top < window.innerHeight);
       observer.observe(title);
       waitForTitle.disconnect();
     }

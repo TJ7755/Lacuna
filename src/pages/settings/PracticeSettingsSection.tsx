@@ -1,6 +1,6 @@
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
-import { ChevronDownIcon } from '../../components/ui/icons';
 
 export interface PracticeSettingsSectionProps {
   autoPractice: boolean;
@@ -45,7 +45,7 @@ export function PracticeSettingsSection({
   onPracticeMaxGapBlur,
 }: PracticeSettingsSectionProps) {
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div className="block text-sm text-ink-soft">
         <Toggle checked={autoPractice} onChange={onAutoPracticeChange} label="Auto-practice" />
         <span className={fieldHintClassName}>
@@ -54,23 +54,21 @@ export function PracticeSettingsSection({
         </span>
       </div>
 
-      <details className="group border-t border-line pt-4">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-            <span className="mt-1 block text-xs leading-5 text-ink-faint">
-              Lacuna places practice from workload and exam proximity. Open this to tune the
-              thresholds and maximum gap.
+      <InlineSettingsDisclosure
+        className="group ml-3 sm:ml-4"
+        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+              <span className="mt-1 block text-xs leading-5 text-ink-faint">
+                Lacuna places practice from workload and exam proximity. Open this to tune the
+                thresholds and maximum gap.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
-
+          </>
+        }
+      >
         <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
           <label className={fieldLabelClassName}>
             Threshold (exam not near)
@@ -138,7 +136,7 @@ export function PracticeSettingsSection({
             </span>
           </label>
         </div>
-      </details>
+      </InlineSettingsDisclosure>
     </div>
   );
 }

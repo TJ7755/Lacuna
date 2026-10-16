@@ -49,6 +49,7 @@ test('plays stored audio while authoring and studying in the production build', 
   await createCourse(page, 'Audio playback');
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await page.getByRole('button', { name: 'More card types', exact: true }).click();
   await page.getByRole('button', { name: 'Audio', exact: true }).click();
   await page
     .locator('input[type="file"]')

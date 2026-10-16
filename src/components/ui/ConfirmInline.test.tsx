@@ -15,6 +15,77 @@ afterAll(() => {
 });
 
 describe('ConfirmInline', () => {
+  it('blocks repeated confirmation and cancellation until the returned promise settles', async () => {
+    let finish!: () => void;
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const onCancel = vi.fn();
+    render(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={onCancel} />);
+    const confirm = screen.getByRole('button', { name: 'Yes' });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(onConfirm).toHaveBeenCalledOnce();
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(confirm).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    await act(async () => finish());
+    expect(confirm).toBeEnabled();
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
+  it('honours caller-owned busy state without starting or cancelling work', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <ConfirmInline disabled message="Delete?" onConfirm={onConfirm} onCancel={onCancel} />,
+    );
+    const confirm = screen.getByRole('button', { name: 'Yes' });
+    fireEvent.click(confirm);
+    fireEvent.keyDown(confirm, { key: 'Escape' });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    rerender(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={onCancel} />);
+    fireEvent.click(confirm);
+    expect(onConfirm).toHaveBeenCalledOnce();
+  });
+
+  it('retains caller error handling and allows retry afterwards', async () => {
+    const report = vi.fn();
+    const onConfirm = vi.fn(async () => {
+      try {
+        await Promise.reject(new Error('Deletion failed'));
+      } catch (error) {
+        report(error);
+      }
+    });
+    render(<ConfirmInline message="Delete?" onConfirm={onConfirm} onCancel={vi.fn()} />);
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Yes' })));
+    expect(report).toHaveBeenCalledWith(new Error('Deletion failed'));
+    expect(screen.getByRole('button', { name: 'Yes' })).toBeEnabled();
+  });
+
+  it('keeps non-destructive confirmation surfaces neutral', () => {
+    render(
+      <ConfirmInline
+        variant="default"
+        message="Allow access?"
+        onConfirm={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Allow access?').closest('[aria-busy]')?.className ?? '').not.toContain(
+      'bg-negative',
+    );
+    expect(screen.getByRole('button', { name: 'Yes' })).toHaveClass('bg-accent');
+  });
+
   it('preserves focus deliberately restored by its cancellation callback', () => {
     function Harness() {
       const [active, setActive] = useState(false);

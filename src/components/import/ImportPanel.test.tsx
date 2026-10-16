@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type * as Router from 'react-router-dom';
-import type * as CardImport from '../db/cardImport';
+import type * as CardImport from '../../db/cardImport';
 import { MemoryRouter } from 'react-router-dom';
-import { ImportPage } from './ImportPage';
+import { ImportPanel } from './ImportPanel';
+import { domAnimation, LazyMotion } from 'motion/react';
 
 const mocks = vi.hoisted(() => ({
+  multiplier: 0,
   navigate: vi.fn(),
   notify: vi.fn(),
   importCards: vi.fn(),
@@ -17,27 +19,29 @@ vi.mock('react-router-dom', async (original) => ({
   ...(await original<typeof Router>()),
   useNavigate: () => mocks.navigate,
 }));
-vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
-vi.mock('../state/motionSpeed', () => ({
+vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
+vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['none'],
-  speedMultiplier: () => 0,
+  speedMultiplier: () => mocks.multiplier,
 }));
-vi.mock('../state/useCourseData', () => ({
+vi.mock('../../state/useCourseData', () => ({
   useCourses: () => [{ id: 'french', name: 'French' }],
   useLessons: () => [{ id: 'greetings', name: 'Greetings' }],
 }));
-vi.mock('../db/cardImport', async (original) => ({
+vi.mock('../../db/cardImport', async (original) => ({
   ...(await original<typeof CardImport>()),
   importCardsToDestination: mocks.importCards,
 }));
-vi.mock('../db/cardRepository', () => ({ checkDuplicatesBatch: () => Promise.resolve(new Set()) }));
-vi.mock('../db/apkgImport', () => ({ parseApkg: mocks.parseApkg }));
-vi.mock('../db/courseFile', () => ({
+vi.mock('../../db/cardRepository', () => ({
+  checkDuplicatesBatch: () => Promise.resolve(new Set()),
+}));
+vi.mock('../../db/apkgImport', () => ({ parseApkg: mocks.parseApkg }));
+vi.mock('../../db/courseFile', () => ({
   decodeCourseFile: mocks.decodeFile,
   MAX_COURSE_FILE_BYTES: 100_000_000,
   withCourseFileAssets: (_file: unknown, work: () => Promise<unknown>) => work(),
 }));
-vi.mock('../db/share', () => ({
+vi.mock('../../db/share', () => ({
   decodeShare: vi.fn(),
   summariseShare: () => ({
     kind: 'course',
@@ -49,8 +53,8 @@ vi.mock('../db/share', () => ({
   }),
   importSharePayload: mocks.importShare,
 }));
-vi.mock('../db/mergeImport', () => ({ isLineagePayload: () => false }));
-vi.mock('../components/cards/CardContent', () => ({
+vi.mock('../../db/mergeImport', () => ({ isLineagePayload: () => false }));
+vi.mock('../cards/CardContent', () => ({
   CardContent: ({ card, side }: { card: Record<string, string>; side: string }) => (
     <div>{card[side]}</div>
   ),
@@ -58,6 +62,7 @@ vi.mock('../components/cards/CardContent', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.multiplier = 0;
   mocks.importCards.mockResolvedValue({
     count: 1,
     courseId: 'new-course',
@@ -67,41 +72,51 @@ beforeEach(() => {
 function open() {
   render(
     <MemoryRouter>
-      <ImportPage />
+      <ImportPanel />
     </MemoryRouter>,
   );
 }
-async function reviewText() {
+async function reviewText(reverse = false) {
   fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
   fireEvent.change(screen.getByLabelText('Paste your cards'), {
     target: { value: 'bonjour\thello' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
+  expect(await screen.findByRole('button', { name: 'Choose destination' })).toBeEnabled();
+  expect(screen.queryByLabelText('Course title')).not.toBeInTheDocument();
+  if (reverse) fireEvent.click(screen.getByRole('checkbox', { name: 'Also create reverse' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose destination' }));
   await screen.findByLabelText('Course title');
 }
 
 it('reviews before asking for a destination, retaining the draft on Undo and failure', async () => {
   open();
-  await reviewText();
-  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
+  await reviewText(true);
+  expect(screen.getByRole('button', { name: 'Import 2 cards' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Course title'), { target: { value: 'French basics' } });
   expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+  expect(await screen.findByRole('button', { name: 'Choose destination' })).toBeEnabled();
+  expect(screen.queryByLabelText('Course title')).not.toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Also create reverse' })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(mocks.importCards).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
+  expect(await screen.findByRole('checkbox', { name: 'Also create reverse' })).toBeChecked();
+  fireEvent.click(screen.getByRole('button', { name: 'Choose destination' }));
   expect(await screen.findByLabelText('Course title')).toHaveValue('French basics');
   mocks.importCards.mockRejectedValueOnce(new Error('Storage full'));
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 2 cards' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Storage full');
   expect(screen.getByLabelText('Course title')).toHaveValue('French basics');
-  fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Import 2 cards' }));
   await waitFor(() =>
     expect(mocks.navigate).toHaveBeenCalledWith('/course/new-course/lesson/new-lesson'),
   );
   expect(mocks.importCards).toHaveBeenCalledWith(
     { kind: 'course', title: 'French basics', options: { schedulingMode: 'steady' } },
-    expect.objectContaining({ kind: 'text', reverse: false }),
+    expect.objectContaining({ kind: 'text', reverse: true }),
   );
 });
 
@@ -171,6 +186,7 @@ it('reads a text file before configuring a new course with an exam target', asyn
   });
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Choose destination' }));
   fireEvent.change(await screen.findByLabelText('Course title'), {
     target: { value: 'French exam' },
   });
@@ -226,7 +242,8 @@ it('is keyboard-first: focuses the paste field, Tab reaches the primary action, 
   fireEvent.keyDown(paste, { key: 'Tab' });
   expect(screen.getByRole('button', { name: 'Review cards' })).toHaveFocus();
   fireEvent.keyDown(paste, { key: 'Enter', ctrlKey: true });
-  expect(await screen.findByLabelText('Course title')).toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Choose destination' })).toBeEnabled();
+  expect(screen.queryByLabelText('Course title')).not.toBeInTheDocument();
 });
 
 it('Escape returns to the source list only while nothing has been typed', () => {
@@ -252,4 +269,23 @@ it('keeps pasted text after going back to All sources and returning', async () =
   await waitFor(() => expect(screen.queryByLabelText('Paste your cards')).not.toBeInTheDocument());
   fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
   expect(screen.getByLabelText('Paste your cards')).toHaveValue('bonjour\thello\nmerci\tthanks');
+});
+
+it('keeps All sources in the departing form until its transition finishes', async () => {
+  mocks.multiplier = 1;
+  render(
+    <LazyMotion features={domAnimation}>
+      <MemoryRouter>
+        <ImportPanel />
+      </MemoryRouter>
+    </LazyMotion>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Lacuna course/ }));
+  const back = screen.getByRole('button', { name: 'Back to import sources' });
+  fireEvent.click(back);
+  expect(back).toBeInTheDocument();
+  expect(back.closest('[inert]')).not.toBeNull();
+  expect(back.closest('[aria-hidden="true"]')).not.toBeNull();
+  expect(screen.getByRole('button', { name: /Lacuna course/ })).toHaveFocus();
+  await waitFor(() => expect(back).not.toBeInTheDocument());
 });

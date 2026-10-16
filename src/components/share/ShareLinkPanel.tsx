@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
@@ -13,9 +13,11 @@ import {
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
+import { DelayedFallback } from '../ui/DelayedFallback';
+import { Skeleton } from '../ui/Skeleton';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { ShareIcon } from '../ui/icons';
-import { motionTransition, scaledSpring } from '../ui/motion';
+import { expandingActionSpring, motionTransition, scaledSpring } from '../ui/motion';
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
@@ -39,9 +41,54 @@ function linkFromCourse(course: Course): LinkState | null {
 
 /**
  * The default way to share: one stable link per course that carries media and
- * updates in place. Keyed by course, so switching course starts afresh.
+ * updates in place. Only its course-specific contents reset when switching course.
  */
-export function ShareLinkPanel({ course, highlight }: { course: Course; highlight: boolean }) {
+export function ShareLinkPanel(props: { course: Course; highlight: boolean }) {
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
+  const content = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number>();
+
+  useLayoutEffect(() => {
+    const element = content.current;
+    if (!element) return;
+    const measure = () => {
+      if (!element.querySelector('[aria-busy="true"], [data-share-pending]')) {
+        setHeight(element.getBoundingClientRect().height);
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    const readiness = new MutationObserver(measure);
+    readiness.observe(element, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['aria-busy'],
+    });
+    return () => {
+      observer.disconnect();
+      readiness.disconnect();
+    };
+  }, []);
+
+  return (
+    <SectionCard className="overflow-hidden p-0!">
+      <motion.div
+        initial={false}
+        animate={{ height: height ?? 'auto' }}
+        transition={expandingActionSpring(multiplier)}
+      >
+        <div ref={content} className="p-6">
+          <ShareLinkContent key={props.course.id} {...props} />
+        </div>
+      </motion.div>
+    </SectionCard>
+  );
+}
+
+function ShareLinkContent({ course, highlight }: { course: Course; highlight: boolean }) {
   const { notify } = useToast();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
@@ -161,21 +208,33 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
     }
   }
 
-  const state = managed === false ? 'unmanaged' : link ? 'live' : 'none';
+  const pending = link !== null && managed === null;
+  const state = pending ? 'pending' : managed === false ? 'unmanaged' : link ? 'live' : 'none';
 
   return (
-    <SectionCard aria-labelledby={titleId} className="overflow-hidden">
+    <div
+      role="region"
+      aria-labelledby={titleId}
+      aria-busy={pending || undefined}
+      className="overflow-hidden"
+    >
       <h2 id={titleId} className="font-display text-2xl tracking-tight">
         Share link
       </h2>
       <AnimatePresence mode="wait" initial={false}>
         <ShareLinkSurface
           key={state}
+          data-share-pending={pending || undefined}
           initial={m > 0 ? { opacity: 0, y: 8 } : false}
           animate={{ opacity: 1, y: 0 }}
-          exit={m > 0 ? { opacity: 0, y: -6 } : undefined}
+          exit={m > 0 && state !== 'pending' ? { opacity: 0, y: -6 } : undefined}
           transition={motionTransition('local', m)}
         >
+          {state === 'pending' && (
+            <DelayedFallback>
+              <Skeleton className="mt-4 h-12 w-48 rounded-full bg-ink/10" />
+            </DelayedFallback>
+          )}
           {state === 'unmanaged' && (
             <div className="mt-3">
               <p className="text-sm text-ink-soft">
@@ -187,7 +246,8 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
                   onCancel={() => setConfirmingReplace(false)}
                   message="Replace the link? The old link stays live until it expires."
                   confirmLabel="Yes, replace it"
-                  onConfirm={() => void publish(true)}
+                  onConfirm={() => publish(true)}
+                  disabled={busy}
                 >
                   <Button
                     variant="primary"
@@ -253,9 +313,10 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
                   <ConfirmInlineSwap
                     active={confirmingStop}
                     onCancel={() => setConfirmingStop(false)}
-                    message="Stop sharing this link? Students keep their copies but will not receive updates."
-                    confirmLabel="Yes, stop sharing"
-                    onConfirm={() => void stop()}
+                    message="Stop sharing? Students keep their copies but stop receiving updates."
+                    confirmLabel="Stop sharing"
+                    onConfirm={stop}
+                    disabled={busy}
                   >
                     <Button
                       size="sm"
@@ -280,6 +341,6 @@ export function ShareLinkPanel({ course, highlight }: { course: Course; highligh
           )}
         </ShareLinkSurface>
       </AnimatePresence>
-    </SectionCard>
+    </div>
   );
 }

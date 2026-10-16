@@ -1,13 +1,16 @@
+import { StrictMode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Card, Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
+import { CourseStudyActions } from '../course/CourseStudyActions';
 import { StudySheet } from './StudySheet';
 
 const mockNavigate = vi.fn();
+const motionPreference = vi.hoisted(() => ({ multiplier: 0 }));
 let mockCourses: Course[] = [];
 const mockFlows: Record<
   string,
@@ -39,7 +42,7 @@ vi.mock('../../state/useCourseStudyFlow', () => ({
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast', vi.fn()],
-  speedMultiplier: () => 0,
+  speedMultiplier: () => motionPreference.multiplier,
 }));
 
 const chemistry: Course = {
@@ -65,16 +68,31 @@ function renderSheet(
   courseId: string | null = null,
   { onClose = vi.fn(), otherWays = true }: { onClose?: () => void; otherWays?: boolean } = {},
 ) {
+  const anchor =
+    document.activeElement instanceof HTMLButtonElement
+      ? document.activeElement
+      : document.createElement('button');
+  if (!anchor.isConnected) {
+    anchor.dataset.testAnchor = '';
+    document.body.append(anchor);
+  }
   return render(
-    <LazyMotion features={domAnimation}>
-      <MemoryRouter>
-        <StudySheet courseId={courseId} otherWays={otherWays} onClose={onClose} />
-      </MemoryRouter>
-    </LazyMotion>,
+    <StrictMode>
+      <LazyMotion features={domAnimation}>
+        <MemoryRouter>
+          <StudySheet anchor={anchor} courseId={courseId} otherWays={otherWays} onClose={onClose} />
+        </MemoryRouter>
+      </LazyMotion>
+    </StrictMode>,
   );
 }
 
+afterEach(() =>
+  document.querySelectorAll('[data-test-anchor]').forEach((element) => element.remove()),
+);
+
 beforeEach(() => {
+  motionPreference.multiplier = 0;
   mockNavigate.mockClear();
   mockCourses = [chemistry];
   mockFlows.chem = {
@@ -84,9 +102,7 @@ beforeEach(() => {
       kind: 'step',
       step: { kind: 'lesson', lessonId: 'l1', label: 'Atomic structure' },
     },
-    lessonCardsById: new Map([
-      ['l1', [{ lastReviewed: 1 }, { lastReviewed: null }] as Card[]],
-    ]),
+    lessonCardsById: new Map([['l1', [{ lastReviewed: 1 }, { lastReviewed: null }] as Card[]]]),
     meanReviewSeconds: 15,
   };
 });
@@ -107,22 +123,110 @@ describe('StudySheet', () => {
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?review=due');
   });
 
-  it('offers whole-course and lesson Simple Learn without changing the main action', async () => {
+  it('cancels the preview without starting study', () => {
+    const onClose = vi.fn();
+    renderSheet('chem', { onClose });
+    expect(screen.getByRole('region', { name: 'Session preview' })).not.toHaveAttribute(
+      'aria-modal',
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps an explicit close control above the session contents', () => {
+    const onClose = vi.fn();
+    renderSheet('chem', { onClose });
+    fireEvent.click(screen.getByRole('button', { name: 'Close session preview' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('focuses without scrolling the clipped expansion to reveal its heading', () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
     renderSheet('chem');
-    fireEvent.click(screen.getByText('Practise until all correct'));
-    expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: 'Chemistry' });
+    const headingCalls = focus.mock.calls.filter(
+      (_, index) => focus.mock.contexts[index] === heading,
+    );
+    expect(headingCalls.length).toBeGreaterThan(0);
+    expect(headingCalls.every(([options]) => options?.preventScroll === true)).toBe(true);
+    focus.mockRestore();
+  });
+
+  it('focuses the preview heading and returns focus to its opener on dismissal', () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Study';
+    document.body.append(opener);
+    opener.focus();
+    const { unmount } = renderSheet('chem');
+    expect(screen.getByRole('heading', { name: 'Chemistry' })).toHaveFocus();
+    unmount();
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+
+  it('keeps Escape available without starting study', () => {
+    const onClose = vi.fn();
+    renderSheet('chem', { onClose });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('starts due review when that is the first planned step', () => {
+    Object.assign(mockFlows.chem, {
+      decision: {
+        kind: 'step',
+        step: {
+          kind: 'practice',
+          mode: 'recurring',
+          nodeKey: 'due-review',
+          label: 'Review due cards',
+        },
+      },
+    });
+    mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
+    renderSheet('chem');
+    expect(screen.getByText('About 2 min')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?review=due');
+  });
+
+  it('keeps optional practice out of the session preview', () => {
+    renderSheet('chem');
+    expect(screen.queryByText('Practise until all correct')).not.toBeInTheDocument();
+  });
+
+  it('offers whole-course and lesson practice inside Other ways', async () => {
+    render(
+      <LazyMotion features={domAnimation}>
+        <MemoryRouter>
+          <CourseStudyActions
+            courseId="chem"
+            dueCount={6}
+            doneToday={0}
+            onStudy={vi.fn()}
+            otherWays={[{ label: 'Only review due cards', onSelect: vi.fn() }]}
+          />
+        </MemoryRouter>
+      </LazyMotion>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    expect(screen.getByRole('menuitem', { name: 'Only review due cards' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Practise until all correct' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
     fireEvent.change(screen.getByLabelText('What to practise'), { target: { value: 'l1' } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start practising' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/lesson/l1/learn?mode=simple');
-  });
-
-  it('keeps Simple Learn available when the course page owns the scheduled alternatives', async () => {
-    renderSheet('chem', { otherWays: false });
-    fireEvent.click(screen.getByText('Practise until all correct'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Start practising' }));
-    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/learn?mode=simple');
+    fireEvent.click(screen.getByRole('button', { name: /^Other ways$/ }));
+    expect(screen.getByRole('menuitem', { name: 'Practise until all correct' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Practise until all correct' }), {
+      key: 'Escape',
+    });
+    expect(screen.getByRole('button', { name: 'Other ways to study' })).toHaveFocus();
   });
 
   it('offers to add cards when the course is empty', () => {
@@ -176,7 +280,7 @@ describe('StudySheet', () => {
     expect(screen.getByText('This course is archived. Restore it to study.')).toBeInTheDocument();
   });
 
-  it('crossfades from the course picker to that course\'s options', async () => {
+  it("crossfades from the course picker to that course's options", async () => {
     renderSheet();
     expect(screen.getByRole('heading', { name: 'Which course?' })).toBeInTheDocument();
 
@@ -185,9 +289,7 @@ describe('StudySheet', () => {
     expect(screen.getByRole('heading', { name: 'Chemistry' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Which course?' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { name: 'Chemistry' })).toHaveFocus(),
-    );
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Chemistry' })).toHaveFocus());
   });
 
   it('returns to the picker without leaving the sheet', () => {
@@ -214,40 +316,48 @@ describe('StudySheet', () => {
     expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
   });
 
-  it('closes when its handle is swiped down on a phone', () => {
-    const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) =>
-        ({
-          matches: false,
-          media: query,
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-        }) as unknown as MediaQueryList,
-    );
-    const onClose = vi.fn();
-    renderSheet('chem', { onClose });
-    const handle = screen.getByTestId('study-sheet-handle');
-    fireEvent.pointerDown(handle, { clientY: 100, pointerId: 1 });
-    fireEvent.pointerMove(handle, { clientY: 220, pointerId: 1 });
-    fireEvent.pointerUp(handle, { clientY: 220, pointerId: 1 });
-    expect(onClose).toHaveBeenCalledTimes(1);
-    matchMedia.mockRestore();
+  it.each(['rgb(170, 210, 40)', 'rgb(245, 245, 245)'])(
+    'starts the button fade at %s while the expanding card stays opaque',
+    (backgroundColor) => {
+      motionPreference.multiplier = 1;
+      const opener = document.createElement('button');
+      opener.style.backgroundColor = backgroundColor;
+      opener.style.color = 'rgb(20, 30, 40)';
+      document.body.append(opener);
+      opener.focus();
+      const { unmount } = renderSheet('chem');
+      const surface = screen.getByRole('region', { name: 'Session preview' });
+      expect(surface).toHaveClass('bg-surface-raised', 'card-surface');
+      expect(surface.querySelector('.pointer-events-none')).toBeNull();
+      expect(surface.style.backgroundColor).toBe('');
+      expect(surface.style.opacity).toBe('');
+      expect(screen.getByRole('button', { name: 'Close session preview' })).toHaveStyle({
+        backgroundColor,
+        color: 'rgb(20, 30, 40)',
+      });
+      unmount();
+      opener.remove();
+    },
+  );
+
+  it('keeps the final-width contents anchored inside the expanding surface', () => {
+    renderSheet('chem');
+    const surface = screen.getByRole('region', { name: 'Session preview' });
+    const body = screen.getByRole('heading', { name: 'Chemistry' }).closest('.pt-11');
+    expect(surface).toHaveClass('overflow-hidden');
+    expect(body).toHaveClass('absolute', 'right-0', 'top-0');
+    expect(body).toHaveStyle({ width: `${Math.min(448, window.innerWidth - 32)}px` });
+    expect(surface).toContainElement(body as HTMLElement);
   });
 
-  it('opens as a centred dialogue without a handle on wider screens', () => {
-    const matchMedia = vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) =>
-        ({
-          matches: query.includes('min-width'),
-          media: query,
-          addEventListener: vi.fn(),
-          removeEventListener: vi.fn(),
-        }) as unknown as MediaQueryList,
+  it('uses an anchored expansion at phone and desktop widths', () => {
+    const { unmount } = renderSheet('chem');
+    expect(screen.getByRole('region', { name: 'Session preview' })).toHaveAttribute(
+      'data-expanding-action',
+      'study',
     );
-    renderSheet('chem');
-    // The shared centred panel, not a sheet pinned to the bottom edge.
-    expect(screen.getByRole('dialog', { name: 'Choose what to study' })).toHaveClass('m-auto');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.queryByTestId('study-sheet-handle')).not.toBeInTheDocument();
-    matchMedia.mockRestore();
+    unmount();
   });
 });

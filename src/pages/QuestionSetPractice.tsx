@@ -9,7 +9,8 @@ import {
   useQuestionSetPracticeFocus,
 } from '../components/question-sets/useQuestionSetPracticeFocus';
 import { StepSwap } from '../components/ui/StepSwap';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import { feedbackAvailable, type QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import {

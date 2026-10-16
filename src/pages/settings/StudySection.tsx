@@ -1,4 +1,5 @@
-import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
+import { FlameIcon } from '../../components/ui/icons';
 import { NumberField } from './NumberField';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
@@ -172,21 +173,20 @@ export function CourseDefaultsSection() {
         </div>
       </div>
 
-      <details className="group mt-6 pt-0">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
-            <span className="mt-1 block text-sm text-ink-soft">
-              Fit default scheduling to your review history.
+      <InlineSettingsDisclosure
+        className="group mt-6 pt-0"
+        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
+              <span className="mt-1 block text-sm text-ink-soft">
+                Fit default scheduling to your review history.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
+          </>
+        }
+      >
         <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
           <SettingToggle
             title="Optimise scheduling"
@@ -195,23 +195,22 @@ export function CourseDefaultsSection() {
             onChange={setAutoOptimise}
           />
         </div>
-      </details>
+      </InlineSettingsDisclosure>
 
-      <details className="group mt-6 pt-0">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-            <span className="mt-1 block text-sm text-ink-soft">
-              Adjust when practice nodes appear on course paths.
+      <InlineSettingsDisclosure
+        className="group mt-6 pt-0"
+        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+              <span className="mt-1 block text-sm text-ink-soft">
+                Adjust when practice nodes appear on course paths.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
+          </>
+        }
+      >
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <NumberField
             label="Threshold (far)"
@@ -220,7 +219,10 @@ export function CourseDefaultsSection() {
             min={1}
             max={999}
             onCommit={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: value })
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceThresholdMinutesFar: value,
+              })
             }
           />
           <NumberField
@@ -230,7 +232,10 @@ export function CourseDefaultsSection() {
             min={1}
             max={999}
             onCommit={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: value })
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceThresholdMinutesNear: value,
+              })
             }
           />
           <NumberField
@@ -240,7 +245,10 @@ export function CourseDefaultsSection() {
             min={0}
             max={365}
             onCommit={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: value })
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceUrgentWindowDays: value,
+              })
             }
           />
           <NumberField
@@ -250,7 +258,10 @@ export function CourseDefaultsSection() {
             min={1}
             max={99}
             onCommit={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: value })
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceMaxGap: value,
+              })
             }
           />
         </div>
@@ -258,7 +269,7 @@ export function CourseDefaultsSection() {
           The near threshold applies once an exam is within the revision period; the far threshold
           applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
-      </details>
+      </InlineSettingsDisclosure>
     </SettingsCard>
   );
 }

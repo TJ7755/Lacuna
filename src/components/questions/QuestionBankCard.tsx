@@ -1,6 +1,10 @@
 import { m as motion } from 'motion/react';
-import { Link } from 'react-router-dom';
-import { formatQuestionMeta, type AttemptMark, type QuestionBankSummary } from '../../questions/bankSummary';
+import { AppLink as Link } from '../ui/AppLink';
+import {
+  formatQuestionMeta,
+  type AttemptMark,
+  type QuestionBankSummary,
+} from '../../questions/bankSummary';
 import { cn } from '../ui/cn';
 import { ClockIcon, EditIcon } from '../ui/icons';
 import { MOTION_EASING } from '../ui/motion';

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
-import { collapse } from '../ui/motion';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import {
   createNoteAnnotation,
   deleteNoteAnnotation,
@@ -149,9 +149,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
         <MarkdownView source={note.content} allowEmbeds />
       </div>
 
-      <AnimatePresence initial={false}>
-        {selectionError && (
-          <motion.div key="selection-error" {...collapse(multiplier)} className="overflow-hidden">
+      <AnimatedDisclosure open={!!selectionError}>
             <div className="mt-3 flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.04] px-3 py-2">
               <p role="status" className="text-xs text-ink-soft">
                 {selectionError}
@@ -164,17 +162,11 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                 Dismiss
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </AnimatedDisclosure>
 
-      <AnimatePresence initial={false}>
+      <AnimatedDisclosure open={!!pendingAnchor}>
         {pendingAnchor && (
-          <motion.div
-            key="new-annotation"
-            {...collapse(multiplier)}
-            className="mt-4 overflow-hidden rounded-xl border border-accent/30 bg-accent/5 p-4"
-          >
+          <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
             <p className="border-l-2 border-accent/50 pl-3 text-sm text-ink">
               {pendingAnchor.selectedText}
             </p>
@@ -213,18 +205,16 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                 Save highlight
               </Button>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </AnimatedDisclosure>
 
       {annotations.length > 0 && (
         <section
           aria-label={`Annotations for ${note.name}`}
           className="mt-5 border-t border-line pt-4"
         >
-          <h3 className="font-display text-lg text-ink">
-            Highlights
-          </h3>
+          <h3 className="font-display text-lg text-ink">Highlights</h3>
           <ul className="mt-2 space-y-2">
             {annotations.map((annotation) => {
               const detached = detachedIds.has(annotation.id);
@@ -288,13 +278,8 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                     </AnimatePresence>
                   </div>
 
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {editing ? (
-                      <motion.div
-                        key="annotation-editor"
-                        {...collapse(multiplier)}
-                        className="mt-3 overflow-hidden"
-                      >
+                  <AnimatedDisclosure open={editing}>
+                    <div className="mt-3">
                         <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
                           Annotation text
                         </label>
@@ -332,16 +317,11 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                             Save
                           </Button>
                         </div>
-                      </motion.div>
-                    ) : deleting ? (
-                      <motion.div
-                        key="annotation-delete"
-                        {...collapse(multiplier)}
-                        className="mt-3 flex items-center justify-end gap-2 overflow-hidden"
-                      >
-                        <span className="mr-auto text-xs text-ink-soft">
-                          Delete this highlight?
-                        </span>
+                    </div>
+                  </AnimatedDisclosure>
+                  <AnimatedDisclosure open={!editing && deleting}>
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      <span className="mr-auto text-xs text-ink-soft">Delete this highlight?</span>
                         <Button
                           type="button"
                           variant="ghost"
@@ -367,17 +347,11 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                         >
                           Delete
                         </Button>
-                      </motion.div>
-                    ) : annotation.body ? (
-                      <motion.p
-                        key="annotation-body"
-                        {...collapse(multiplier)}
-                        className="mt-2 overflow-hidden text-sm text-ink-soft"
-                      >
-                        {annotation.body}
-                      </motion.p>
-                    ) : null}
-                  </AnimatePresence>
+                    </div>
+                  </AnimatedDisclosure>
+                  <AnimatedDisclosure open={!editing && !deleting && !!annotation.body}>
+                    <p className="mt-2 text-sm text-ink-soft">{annotation.body}</p>
+                  </AnimatedDisclosure>
                 </motion.li>
               );
             })}

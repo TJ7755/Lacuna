@@ -5,7 +5,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import {
   useCourse,
   useLessons,

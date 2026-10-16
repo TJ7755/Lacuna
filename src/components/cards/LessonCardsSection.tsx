@@ -1,27 +1,17 @@
 // Card-management section for LessonView's Edit mode, shown beneath the compact
-// LessonCardsList — heading, empty state, and the resolving-deck skeleton. Extracted from LessonView.tsx alongside
+// LessonCardsList — heading, answer mode, the card list and the resolving-deck skeleton.
+// Adding cards of every kind starts from the panel's New card (see CardTypePicker), so
+// an empty lesson has nothing to manage here. Extracted from LessonView.tsx alongside
 // LessonNotesSection so the page component stays a thin layout/data shell.
 
 import { useState } from 'react';
-import { AnimatePresence } from 'motion/react';
 import { LessonAnswerModeControl } from './AnswerModeControl';
 import { CardList } from './CardList';
 import { courseCardListContext } from './cardListContext';
-import { LinkCardsDialog } from './LinkCardsDialog';
-import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';
-import { PlusIcon } from '../ui/icons';
 import { useToast } from '../ui/Toast';
-import {
-  useCourseCards,
-  useLessonBackingDeck,
-  useLessonCardLinks,
-  useLessons,
-  useOcclusions,
-  useSequences,
-} from '../../state/useCourseData';
+import { useLessonCardLinks, useOcclusions, useSequences } from '../../state/useCourseData';
 import { db } from '../../db/schema';
-import { ensureLessonBackingDeck } from '../../db/backingDecks';
 import { unlinkCardFromLesson } from '../../db/lessonRepository';
 import type { Card, SchedulerConfig } from '../../db/types';
 import { Skeleton } from '../ui/Skeleton';
@@ -48,26 +38,13 @@ export function LessonCardsSection({
   className,
 }: LessonCardsSectionProps) {
   const { notify } = useToast();
-  const [linking, setLinking] = useState(false);
-  const [importReadyFor, setImportReadyFor] = useState<string>();
-  const preparedDeck = useLessonBackingDeck(courseId, lessonId);
-  const importKey = `${courseId}:${lessonId}`;
   // A card pending unlink confirmation — only set when it has lesson-specific
   // teaching progress that unlinking would reset (see handleUnlink below).
   const [pendingUnlink, setPendingUnlink] = useState<Card | null>(null);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);
-  const courseCards = useCourseCards(courseId);
-  const lessons = useLessons(courseId);
   const links = useLessonCardLinks(lessonId);
   const linkedCardIds = new Set((links ?? []).map((link) => link.cardId));
-  const lessonCardIds = new Set(lessonCards.map((card) => card.id));
-  const linkCandidates = (courseCards ?? []).filter(
-    (card) =>
-      !lessonCardIds.has(card.id) &&
-      (card.sequenceItemId === null || card.sequenceItemId === undefined) &&
-      (card.occlusionRegionId === null || card.occlusionRegionId === undefined),
-  );
 
   async function handleUnlink(card: Card) {
     const exposure = await db.lessonCardExposures.get([lessonId, card.id]);
@@ -89,46 +66,15 @@ export function LessonCardsSection({
     }
   }
 
-  async function prepareEmptyImport() {
-    try {
-      await ensureLessonBackingDeck(courseId, lessonId);
-      setImportReadyFor(importKey);
-    } catch (error) {
-      notify(
-        error instanceof Error ? error.message : 'Could not prepare the card import.',
-        'negative',
-      );
-    }
-  }
+  if (lessonCards.length === 0) return null;
 
   return (
     <section className={className}>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
-          {lessonCards.length === 0 ? (
-            'More ways to add cards'
-          ) : (
-            <>
-              Manage <span className="text-ink-faint">({lessonCards.length})</span>
-            </>
-          )}
-        </h2>
-        {lessonCards.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-          >
-            <PlusIcon width={16} height={16} />
-            New occlusion
-          </Button>
-        )}
-      </div>
+      <h2 className="mb-4 font-display text-lg font-semibold tracking-tight text-ink">
+        Manage <span className="text-ink-faint">({lessonCards.length})</span>
+      </h2>
 
-      {/* Answering applies to cards, so it waits until the lesson has one. */}
-      {lessonCards.length > 0 && (
-        <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
-      )}
+      <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
 
       {pendingUnlink && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-ink/[0.04] px-4 py-2.5">
@@ -142,52 +88,7 @@ export function LessonCardsSection({
         </div>
       )}
 
-      {lessonCards.length === 0 && importReadyFor === importKey && preparedDeck ? (
-        <CardList
-          courseId={courseId}
-          cards={[]}
-          context={courseCardListContext({
-            schedulingConfig: preparedDeck,
-            courseId,
-            primaryLessonId: lessonId,
-            importTargetName: lessonName,
-          })}
-          hideHeader
-          initiallyImporting
-          onNewCard={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-          onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
-          onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-          onLinkExisting={() => setLinking(true)}
-          onEditCard={(card) =>
-            onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
-          }
-        />
-      ) : lessonCards.length === 0 ? (
-        // New card leads in the lesson's card panel; these are the other ways in.
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
-          >
-            <PlusIcon width={18} height={18} />
-            New sequence
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-          >
-            <PlusIcon width={18} height={18} />
-            New occlusion
-          </Button>
-          <Button variant="secondary" onClick={() => setLinking(true)}>
-            <PlusIcon width={18} height={18} />
-            Link existing cards
-          </Button>
-          <Button variant="secondary" onClick={() => void prepareEmptyImport()}>
-            Import cards
-          </Button>
-        </div>
-      ) : links === undefined || !lessonSchedulingConfig ? (
+      {links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never
         // render destructive controls until that membership query has resolved.
         <div className="space-y-3" aria-label="Loading lesson cards">
@@ -206,10 +107,6 @@ export function LessonCardsSection({
             importTargetName: lessonName,
           })}
           hideHeader
-          // New card leads in the lesson's card panel above, so Manage offers only the rest.
-          onNewSequence={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/sequence/new`)}
-          onNewOcclusion={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/occlusion/new`)}
-          onLinkExisting={() => setLinking(true)}
           onEditCard={(card) =>
             onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
           }
@@ -238,17 +135,6 @@ export function LessonCardsSection({
           }
         />
       )}
-      <AnimatePresence>
-        {linking && courseCards && lessons && (
-          <LinkCardsDialog
-            lessonId={lessonId}
-            cards={linkCandidates}
-            lessons={lessons}
-            onLinked={() => setLinking(false)}
-            onCancel={() => setLinking(false)}
-          />
-        )}
-      </AnimatePresence>
     </section>
   );
 }

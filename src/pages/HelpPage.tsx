@@ -1,7 +1,7 @@
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { useMemo } from 'react';
 import { useSectionDeepLink } from '../hooks/useSectionDeepLink';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { SectionRail, SectionRailMobileJumper, useSectionRail } from '../components/ui/SectionRail';
 import { SectionCard as SurfaceCard } from '../components/ui/SectionCard';

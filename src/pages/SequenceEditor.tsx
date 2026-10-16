@@ -10,7 +10,8 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useEditorKeys } from '../hooks/dialogKeys';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';

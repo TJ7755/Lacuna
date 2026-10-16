@@ -99,6 +99,10 @@ otherwise transient form state can disappear during a check.
 
 ## Share-link state
 
+The app at `preview.getlacuna.app` calls the production relay. Its CORS origin belongs in
+`lacuna-relay`'s Production `RELAY_ALLOWED_ORIGINS`, followed by a relay redeploy; changing the
+app project's Preview environment has no effect. See [relay operations](relay/README.md).
+
 Keep `lacuna-relay.vercel.app` serving the same relay as `relay.getlacuna.app`, without
 redirects: saved pairings and share write credentials contain the original URL. New
 defaults do not rewrite those records. Browser study data also stays with its original
@@ -166,6 +170,10 @@ Layout animation (`layout`, `layoutId`) needs motion's `domMax`; `domAnimation` 
 skips it, which left every sliding pill jumping until October 2026. The app loads `domMax`
 asynchronously from `src/motionFeatures.ts`. `layout="size"` or bare `layout` scales the
 element's children, so a box containing text should use `layout="position"`.
+
+Sidebar selection travel has its own 1.2 timing factor in `NavItem`, composed with the
+user's motion multiplier through `scaledSpring`. Keep this adjustment local: changing the
+shared spring helper would also slow unrelated controls.
 
 For layout assertions inside the app shell's scrollable `main`, add `main.scrollTop`
 to viewport bounding boxes before comparing positions. Playwright can scroll a
@@ -502,3 +510,141 @@ selection and keyboard focus rings. Verify computed styles; class assertions mis
 Lesson reordering translates the resting row by the pointer delta. Reserve the lifted
 surface's border in the resting state: adding a 1px border only on lift increases the
 height by 2px and leaves the row's centre 1px below the pointer.
+
+## First-route motion
+
+Do not suppress first-route entrances with `AnimatePresence initial={false}` around
+the persistent shell: its presence context also suppresses later-mounted descendants.
+Start the first route wrapper in its visible variant so later disclosures can animate.
+
+An expanding blank cover is not a shared-element transition: it delays navigation
+without connecting the destination content. Import and New course reveal their own
+content in place; keep expansion tied to that content.
+
+Global `:focus-visible` uses a box shadow, so `outline-none` does not remove it.
+The wrapper-focus suppression in `src/index.css` covers both `focus-within:ring-*`
+and `focus-within:shadow-*`; preserve the outer indicator when removing an inner one.
+
+QR pairing already carries the channel key and creates a recovery keybag local to
+the receiving device; manual pairing needs the original relay keybag passphrase.
+Do not describe those two passphrase prompts as the same operation.
+
+Expanding lazy content must be ready before measuring its surface, and laid out at its
+final width during expansion. Measuring wrapped content at button width gives an
+oversized height target and a snap at the end. Include step navigation inside the keyed
+transition; animate measured content height separately to avoid scaling text.
+
+A page-sized import dialogue cannot simply be nested inside a disclosure. Use its compact
+panel presentation, with review and destination on separate steps, rather than stacking
+all controls behind a scrollbar. Verify actual viewport bounds, including exam-date fields.
+
+SearchPage and CommandPalette share SearchResultOption for row density, hover selection
+and active styling. Keep those interactions together so Enter opens the row highlighted
+by pointer movement as well as keyboard navigation.
+
+
+## Course arrival readiness
+
+A single-lesson course is a rendering branch inside CoursePath, not a lesson route.
+Reuse its ready course snapshot in LessonView instead of reloading the study flow after
+the nested lazy module mounts. Warm both modules through the shared route-module cache
+while New course is open; mount the workspace fade after essential lesson data and notes
+resolve. Scheduling configuration and optional related content must not gate arrival.
+
+## A target's transition replaces the transition prop
+
+In Motion, `animate={{ ..., transition: { y: ... } }}` replaces the component's `transition`
+prop for that animation entirely, so a delay or duration set on the prop is silently ignored
+for every other value. Today's row stagger never ran for this reason. When an `animate` target
+carries its own transition, name every animated value in it, and keep the prop for `layout`.
+Verify a stagger by sampling per-element opacity across frames, not by reading the code.
+
+## Motion can overwrite inline opacity
+
+Motion writes inline opacity during an entrance, overwriting a manual inline opacity used
+to hide a shared-element endpoint. Course title travel uses `clip-path: inset(50%)` on the
+live endpoints instead, restoring it on completion and interruption. This also preserves
+the endpoint text for assistive technology.
+
+Interpolating a text box's width alongside font size and weight does not guarantee that
+the text fits between endpoints. Keep single-line title endpoints unwrapped in transit,
+and do not clip multiline text to the interpolated height. Measure the last word with a
+browser Range during motion; endpoint screenshots miss the disappearing word. Hide the
+departing route's heading too, while its exit still overlaps the travelling overlay.
+
+## Share course transitions
+
+Keep Share's card surface, height-measuring wrapper and Other ways heading mounted
+across course changes, but key its link controls and alternative exports by course.
+Fade changing contents only: fading a keyed wrapper around the entire card makes
+the surface flash on every selection. Share follows the course frame, not Search's
+hero layout. Remount the cards query with the alternatives too: a live query can retain its previous result while new data loads.
+Do not retain outgoing share controls just to animate a course change.
+
+## Stable disclosure headers
+
+Global press feedback animates standalone `scale`, including an overshoot on pointer release.
+`data-press` opts out of its pointer path only; keyboard activation still animates scale.
+Course settings disclosure headers own their colour feedback and pin scale with an important
+utility, preserving fixed text and header bounds while the chevron and body animate.
+Course disclosure hierarchy uses spacing and indented bodies, with Advanced practice timing
+one step further in. Keep this local; main Settings has its own retained-form disclosure.
+
+## Inline confirmation promises
+
+ConfirmInline can guard only a promise returned by onConfirm. A callback using
+`void operation()` discards that signal; preserve its existing busy/error ownership or
+return the already-handled promise. Course deletion returns its snapshot-and-delete
+promise and reports failures through the existing negative toast before allowing retry.
+
+## Main Settings disclosures retain their forms
+
+Main Settings groups retain mounted children when closed so drafts, sync subscriptions and
+pending backup operations survive. CourseSettingsDisclosure deliberately unmounts closed
+content; do not substitute it directly into main Settings without preserving those lifetimes.
+
+## Preference changes must remain independent
+
+Input mode used to write Large into the font-scale preference on Touch selection, leaving
+Keyboard permanently enlarged after a round trip. Keep mode resolution derived from its own
+setting and live detection. Settings shared-layout indicators use selection dependencies so
+root-font reflow does not spring every indicator from stale bounds; the text-size control
+updates immediately and pins press scale for pointer and keyboard activation.
+
+## Sidebar selection groups
+
+Sidebar selection glides only within Today/Search content/Progress or Share/Settings/Help.
+Keep their shared-layout identities separate; courses, Archived and drawer Import select
+directly. The sidebar's local 1.2 spring multiplier is deliberate (16 October 2026).
+
+## Study header geometry
+
+Notes, cards and between-step screens share `studyHeaderLayout.ts`. Keep the Pomodoro
+last at the column's trailing edge: matching frame widths alone cannot stabilise it
+while the number of controls after it varies. The approved notes body remains 768px,
+with a left-aligned ordinary Continue button and no full-width header divider.
+
+
+## Collapsing geometry and drag ownership
+
+A zero-height disclosure cannot release outer padding, borders, minimum height or a parent
+flex gap. Put those inside the measured body. Retained settings forms must become inert
+when closed, without unmounting their drafts. A draggable sheet must share one position
+value across entrance, pointer tracking, return and exit; springing pointer input while
+also animating the same transform produces a lagging handoff and a reset on dismissal.
+
+## Study preview focus ownership
+
+The session preview is anchored to its actual Study button, including keyboard shortcut
+opens. Keep dismissal focus tied to that anchor. Outside clicks and Tab departures preserve
+the new focus target. Focus-departure listeners must be removed before cleanup restores focus,
+otherwise Strict Mode effect replay immediately closes a freshly opened preview.
+
+## Study preview containment
+
+Keep the preview's final-width body right-anchored within its clipped shell: a left-anchored
+body moves across the page as a right-aligned trigger expands leftwards. Focus with
+preventScroll so the clipped body cannot scroll its own shell. Keep the expanding card
+opaque and neutral; fade only the original button-sized fill into its header. Fading the
+whole shell reads as a popup, while an expanding accent backing produces a pulse. Use
+resolved rendered colours for label interpolation rather than nested CSS variables.

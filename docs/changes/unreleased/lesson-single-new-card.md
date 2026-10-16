@@ -1,1 +1,0 @@
-- A lesson in Edit mode offers New card once, in its card panel; the Manage section below keeps Select and the other ways to add cards.

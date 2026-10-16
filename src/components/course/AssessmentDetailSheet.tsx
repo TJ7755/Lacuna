@@ -1,11 +1,12 @@
 import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { m as motion } from 'motion/react';
+import { m as motion, useIsPresent } from 'motion/react';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatDateTime } from '../../utils/datetime';
+import { expandingActionSpring } from '../ui/motion';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
 
@@ -22,7 +23,7 @@ export function assessmentSheetTiming(multiplier: number) {
   const ease = [0.16, 1, 0.3, 1] as const;
   return {
     backdrop: { duration: 0.16 * multiplier, ease },
-    sheet: { duration: 0.24 * multiplier, ease },
+    sheet: expandingActionSpring(multiplier),
   };
 }
 
@@ -37,7 +38,8 @@ export function AssessmentDetailSheet({
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const transition = assessmentSheetTiming(multiplier);
-  const trapRef = useFocusTrap(true);
+  const present = useIsPresent();
+  const trapRef = useFocusTrap(present);
   const resolved = resolveAssessmentCoverage(assessment, lessons, cards, links);
   const excludedNames = assessment.excludedCardIds.map(
     (id) => cards.find((card) => card.id === id)?.front ?? `Missing card: ${id}`,
@@ -47,6 +49,8 @@ export function AssessmentDetailSheet({
     <motion.div
       ref={trapRef}
       className="fixed inset-0 z-50 flex justify-end"
+      inert={!present}
+      aria-hidden={!present || undefined}
       initial={multiplier > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       exit={multiplier > 0 ? { opacity: 0 } : undefined}

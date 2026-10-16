@@ -1,7 +1,7 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
@@ -350,14 +350,18 @@ function AppShellLayout() {
         {/* Mobile drawer */}
         <AnimatePresence>
           {mobileOpen && (
-            <motion.div
+            <MobileDrawerPresence
               className="fixed inset-0 z-40 md:hidden"
-              initial={motionEnabled ? { opacity: 0 } : false}
-              animate={{ opacity: 1 }}
-              exit={motionEnabled ? { opacity: 0 } : undefined}
-              transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
             >
-              <ModalBackdrop onClick={() => setMobileOpen(false)} />
+              <motion.div
+                className="absolute inset-0"
+                initial={motionEnabled ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={motionEnabled ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <ModalBackdrop onClick={() => setMobileOpen(false)} />
+              </motion.div>
               <motion.div
                 ref={mobileDrawerRef}
                 className="absolute inset-y-0 left-0"
@@ -365,7 +369,7 @@ function AppShellLayout() {
                 animate={{ x: 0 }}
                 exit={motionEnabled ? { x: -280 } : undefined}
                 transition={
-                  motionEnabled ? { type: 'spring', stiffness: 260, damping: 30 } : { duration: 0 }
+                  scaledSpring(m, 260, 30)
                 }
                 role="dialog"
                 aria-modal="true"
@@ -394,7 +398,7 @@ function AppShellLayout() {
                   drawer
                 />
               </motion.div>
-            </motion.div>
+            </MobileDrawerPresence>
           )}
         </AnimatePresence>
 
@@ -466,10 +470,11 @@ function AppShellLayout() {
       <div ref={bottomNavRef}>
         <CourseSectionBar />
         <AnimatePresence>
-          {studySheet.open && (
+          {studySheet.open && studySheet.anchor && (
             <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
               <Suspense fallback={null}>
                 <StudySheet
+                  anchor={studySheet.anchor}
                   courseId={studySheet.courseId}
                   otherWays={studySheet.otherWays}
                   onClose={studySheet.close}
@@ -498,4 +503,9 @@ function AppShellLayout() {
       )}
     </motion.div>
   );
+}
+
+function MobileDrawerPresence(props: ComponentProps<typeof motion.div>) {
+  const present = useIsPresent();
+  return <motion.div {...props} inert={!present} aria-hidden={!present || undefined} />;
 }

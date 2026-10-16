@@ -1,0 +1,3 @@
+- Import now expands from its button into a neutral panel on Today, reusing the existing preview and confirmation flows. Existing Import links open the panel instead of a separate page.
+- Fix entrance animations being suppressed for content opened after reloading the first route.
+- Keep cold Import opens compact until content is ready, measure at the final width, and animate source changes, All sources and panel height together.

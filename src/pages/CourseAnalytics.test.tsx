@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -119,9 +120,19 @@ describe('CourseAnalytics', () => {
     };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <ToastProvider><Routes>
-          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes></ToastProvider>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/course/:courseId/analytics"
+              element={
+                <>
+                  <CourseSectionNavigation courseId="course-1" />
+                  <CourseAnalytics />
+                </>
+              }
+            />
+          </Routes>
+        </ToastProvider>
       </MemoryRouter>,
     );
 
@@ -141,9 +152,11 @@ describe('CourseAnalytics', () => {
     mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <ToastProvider><Routes>
-          <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
-        </Routes></ToastProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+          </Routes>
+        </ToastProvider>
       </MemoryRouter>,
     );
 
@@ -153,8 +166,12 @@ describe('CourseAnalytics', () => {
     }
     const forecast = screen.getByText('Exam-day forecast');
     const questions = screen.getByRole('heading', { name: 'Questions' });
-    expect(summary.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(forecast.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      summary.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      forecast.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('keeps archived analytics read-only without active-course navigation', () => {
@@ -163,17 +180,24 @@ describe('CourseAnalytics', () => {
 
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <ToastProvider><Routes>
-          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes></ToastProvider>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/course/:courseId/analytics"
+              element={
+                <>
+                  <CourseSectionNavigation courseId="course-1" />
+                  <CourseAnalytics />
+                </>
+              }
+            />
+          </Routes>
+        </ToastProvider>
       </MemoryRouter>,
     );
 
     expect(screen.getByText('Archived course')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
-      'href',
-      '/archived',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
     expect(screen.queryByText('Course tabs')).not.toBeInTheDocument();
   });
 });

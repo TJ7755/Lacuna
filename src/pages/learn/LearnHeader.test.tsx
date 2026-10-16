@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { LearnHeader } from './LearnHeader';
@@ -54,6 +55,13 @@ it('keeps results coloured while those lines are recited again', () => {
 });
 
 it("names the current card's place in Simple Learn's pip bar, not the cards cleared", () => {
+  const props = headerProps();
+  render(<LearnHeader {...props} />);
+  expect(screen.getByText('· 4 of 4')).toBeInTheDocument();
+  expect(screen.getByText('Card 4 of 4')).toBeInTheDocument();
+});
+
+function headerProps(): HeaderProps {
   const action = vi.fn();
   const props: HeaderProps = {
     mode: 'simple',
@@ -92,7 +100,28 @@ it("names the current card's place in Simple Learn's pip bar, not the cards clea
     onShowShortcuts: action,
     m: 0,
   };
-  render(<LearnHeader {...props} />);
-  expect(screen.getByText('· 4 of 4')).toBeInTheDocument();
-  expect(screen.getByText('Card 4 of 4')).toBeInTheDocument();
-});
+  return props;
+}
+
+it.each([false, true])(
+  'keeps the forecast in the actions menu (touch: %s)',
+  async (isTouchMode) => {
+    const { createCard, createCourse } = await import('../../db/repository');
+    const course = await createCourse('French beginner to advanced');
+    const current = await createCard(course.id, 'front_back', 'Question', 'Answer', []);
+    const props = {
+      ...headerProps(),
+      mode: 'fsrs' as const,
+      singleDeck: course,
+      unitDisplayName: course.name,
+      current,
+      predictedRecall: 0.75,
+      isTouchMode,
+    };
+    const { rerender } = render(<LearnHeader {...props} />);
+    expect(screen.queryByText(/75% forecast recall/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: course.name })).toBeVisible();
+    rerender(<LearnHeader {...props} menuOpen />);
+    expect(screen.getByText(/75% forecast recall/)).toBeVisible();
+  },
+);

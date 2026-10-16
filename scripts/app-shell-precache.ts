@@ -64,14 +64,14 @@ export function collectOfflineCardsDependencies(chunks: readonly StaticChunk[]):
 
 /**
  * Receiving a course file must work on first use offline, and it now happens on Import,
- * which a learner may never have opened online. Precache that route, its static imports
+ * which a learner may never have opened online. Precache that panel, its static imports
  * and their stylesheets, leaving out what the shell already holds.
  */
 export function collectOfflineImportRoute(chunks: readonly StaticChunk[]): string[] {
   const route = chunks.find((chunk) =>
-    /^assets\/ImportPage-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/ImportPanel-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
-  if (!route) throw new Error('Could not find the Import route for offline precaching.');
+  if (!route) throw new Error('Could not find the Import panel for offline precaching.');
   const eager = new Set([...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)]);
   const scripts = collectStaticImports(chunks, route);
   const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));

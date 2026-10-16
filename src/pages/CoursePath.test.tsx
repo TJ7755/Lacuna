@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -415,10 +416,7 @@ describe('CoursePath View mode', () => {
     renderPage();
 
     expect(screen.getByText('Archived course')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
-      'href',
-      '/archived',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
     expect(screen.queryByRole('navigation', { name: 'Course sections' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
@@ -472,9 +470,10 @@ describe('CoursePath View mode', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
   });
 
-  it('offers no Other ways when no reached card is eligible and no exam is ahead', () => {
+  it('keeps optional practice available when no reviews or assessments are due', () => {
     renderPage();
-    expect(screen.queryByRole('button', { name: 'Other ways to study' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
+    expect(screen.getByRole('menuitem', { name: 'Practise until all correct' })).toBeEnabled();
   });
 
   it.each([false, true])(
@@ -501,8 +500,8 @@ describe('CoursePath View mode', () => {
         expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
         return;
       }
-      expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
-        'href',
+      expectAppDestination(
+        screen.getByRole('link', { name: 'Review updates' }),
         '/course/course-1/updates',
       );
     },
@@ -533,8 +532,8 @@ describe('CoursePath View mode', () => {
         expect(screen.queryByRole('link', { name: 'Review updates' })).not.toBeInTheDocument();
         return;
       }
-      expect(screen.getByRole('link', { name: 'Review updates' })).toHaveAttribute(
-        'href',
+      expectAppDestination(
+        screen.getByRole('link', { name: 'Review updates' }),
         '/course/course-1/updates',
       );
     },
@@ -597,9 +596,7 @@ describe('CoursePath View mode', () => {
         );
       } else {
         expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-        expect(
-          screen.queryByRole('button', { name: 'Other ways to study' }),
-        ).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Other ways to study' })).toBeInTheDocument();
         expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
       }
     },

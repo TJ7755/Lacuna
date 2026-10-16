@@ -85,6 +85,7 @@ export interface SegmentedOption<T extends string> {
 
 /**
  * Pill track with a white pill that slides (and springs) to the chosen option.
+ * Only selection changes move the indicator; text-size reflow stays immediate.
  * A single radiogroup with roving focus: arrows, Home and End move the choice.
  */
 export function SegmentedPills<T extends string>({
@@ -94,6 +95,7 @@ export function SegmentedPills<T extends string>({
   onChange,
   describedBy,
   className,
+  animateSelection = true,
 }: {
   label: string;
   value: T;
@@ -101,6 +103,8 @@ export function SegmentedPills<T extends string>({
   onChange: (value: T) => void;
   describedBy?: string;
   className?: string;
+  /** Text-size changes reflow immediately, including their selection indicator. */
+  animateSelection?: boolean;
 }) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
@@ -154,6 +158,7 @@ export function SegmentedPills<T extends string>({
                 buttons.current[index] = node;
               }}
               type="button"
+              data-press={animateSelection ? undefined : ''}
               role="radio"
               aria-checked={active}
               aria-label={option.ariaLabel}
@@ -161,13 +166,15 @@ export function SegmentedPills<T extends string>({
               onClick={() => onChange(option.value)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
+                !animateSelection && 'scale-100!',
                 'relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
                 active ? 'text-ink' : 'text-ink-soft hover:text-ink',
               )}
             >
               {active && (
                 <motion.span
-                  layoutId="segmented-pill"
+                  layoutId={animateSelection && multiplier > 0 ? 'segmented-pill' : undefined}
+                  layoutDependency={value}
                   aria-hidden="true"
                   transition={scaledSpring(multiplier, 520, 36)}
                   className="absolute inset-x-0 inset-y-1 rounded-full bg-surface shadow-[0_1px_3px_hsl(var(--ink)/0.14)]"

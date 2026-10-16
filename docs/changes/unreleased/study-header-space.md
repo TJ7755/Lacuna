@@ -1,0 +1,1 @@
+- Widened study headers across notes, cards and step completion, keeping reading content at its existing measure. Forecast recall now lives in the actions menu so the default header gives the course name and progress more room.

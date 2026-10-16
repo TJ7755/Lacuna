@@ -285,11 +285,10 @@ export function BackupsSection() {
                           deleteFocusReturn.current = backup.id;
                           setConfirmDelete(null);
                         }}
-                        onConfirm={() =>
-                          backup.id !== null &&
-                          backup.id !== undefined &&
-                          void handleDelete(backup.id)
-                        }
+                        onConfirm={() => {
+                          if (backup.id === null || backup.id === undefined) return;
+                          void handleDelete(backup.id);
+                        }}
                       />
                     ) : (
                       <div className="flex items-center gap-2">

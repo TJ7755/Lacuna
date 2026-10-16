@@ -10,7 +10,8 @@
 // Absent outside a course, and absent from Learn mode, which lives outside the shell
 // and pins its own grading controls to the bottom of the screen.
 
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { prefetchRoute } from '../../routes/prefetch';
 import { CardsIcon, ChartIcon, FileTextIcon, PathIcon, SettingsIcon } from '../ui/icons';
 import { cn } from '../ui/cn';

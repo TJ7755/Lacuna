@@ -1,3 +1,4 @@
+import { useScopedFindShortcut } from '../hooks/useScopedFindShortcut';
 import { Skeleton } from '../components/ui/Skeleton';
 // Course Cards — all cards in a course, organised by lesson, with an
 // "Unassigned" bucket for cards not yet assigned to a lesson. A toolbar searches and
@@ -12,7 +13,8 @@ import {
 } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useRef } from 'react';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
@@ -27,10 +29,9 @@ import { courseCardListContext } from '../components/cards/cardListContext';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../components/ui/motion';
 import { Button } from '../components/ui/Button';
-import { MoreIcon, PlusIcon } from '../components/ui/icons';
-import { Menu } from '../components/ui/Menu';
+import { PlusIcon } from '../components/ui/icons';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
-import { filterSessionCardPool, type CardFilter } from '../db/search';
+import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '../db/search';
 import { arrivalDelay } from './settings/SettingsUi';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
@@ -80,6 +81,7 @@ export function CardsPage() {
       { replace: true },
     );
   const searchRef = useRef<HTMLInputElement>(null);
+  const findReturnFocus = useRef<HTMLElement | null>(null);
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
 
@@ -90,7 +92,19 @@ export function CardsPage() {
   const occlusions = useOcclusions(courseId);
   const lessonIds = useMemo(() => lessons?.map((lesson) => lesson.id) ?? [], [lessons]);
   const backingDecks = useCourseBankBackingDecks(courseId, lessonIds);
-  const query = search.trim().toLowerCase();
+  const query = search.trim();
+  useScopedFindShortcut(
+    cards?.length
+      ? () => {
+          if (document.activeElement !== searchRef.current) {
+            findReturnFocus.current =
+              document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }
+          searchRef.current?.focus();
+          searchRef.current?.select();
+        }
+      : undefined,
+  );
   const assignableLessons = useMemo(
     () => (lessons ?? []).map((lesson) => ({ id: lesson.id, name: lesson.name })),
     [lessons],
@@ -115,14 +129,15 @@ export function CardsPage() {
     const byLesson = new Map<string, Card[]>();
     const unassigned: Card[] = [];
     let shownCount = 0;
-    for (const card of availableCards) {
-      if (
-        query &&
-        !card.front.toLowerCase().includes(query) &&
-        !card.back.toLowerCase().includes(query)
-      ) {
-        continue;
-      }
+    const matches =
+      query && course
+        ? searchCardsInScope(
+            query,
+            { cards: availableCards, courses: [course], lessons: availableLessons },
+            { parseQuery: true },
+          ).map((hit) => hit.card)
+        : availableCards;
+    for (const card of matches) {
       shownCount += 1;
       if (card.primaryLessonId && lessonIdSet.has(card.primaryLessonId)) {
         const bucket = byLesson.get(card.primaryLessonId) ?? [];
@@ -140,7 +155,7 @@ export function CardsPage() {
         (lesson) => (byLesson.get(lesson.id)?.length ?? 0) > 0,
       ),
     };
-  }, [cards, lessons, query, filters, course?.leechThreshold]);
+  }, [cards, lessons, query, filters, course]);
 
   usePageShortcuts({
     '/': cards && cards.length > 0 ? () => searchRef.current?.focus() : undefined,
@@ -186,34 +201,23 @@ export function CardsPage() {
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
       <header className={COURSE_PAGE_HEADER}>
         <h1 className={COURSE_PAGE_TITLE}>Cards</h1>
-        <div role="group" aria-label="Add content" className="flex flex-wrap items-center gap-2">
-          <Menu
-            label="More ways to add"
-            triggerWidth={44}
-            items={[
-              {
-                label: 'New sequence',
-                icon: <PlusIcon width={16} height={16} />,
-                onSelect: () => go(`/course/${courseId}/sequence/new`),
-              },
-              {
-                label: 'New occlusion',
-                icon: <PlusIcon width={16} height={16} />,
-                onSelect: () => go(`/course/${courseId}/occlusion/new`),
-              },
-            ]}
-          >
-            <MoreIcon width={18} height={18} />
-          </Menu>
-          <Button variant="primary" onClick={() => go(`/course/${courseId}/cards/new`)}>
-            <PlusIcon width={18} height={18} />
-            New card
-          </Button>
-        </div>
+        <Button variant="primary" onClick={() => go(`/course/${courseId}/cards/new`)}>
+          <PlusIcon width={18} height={18} />
+          New card
+        </Button>
       </header>
 
       {!isEmpty && (
-        <div className="mb-6">
+        <div
+          className="mb-6"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && event.target === searchRef.current) {
+              event.preventDefault();
+              setSearch('');
+              findReturnFocus.current?.focus();
+            }
+          }}
+        >
           <CardsToolbar
             search={search}
             searchRef={searchRef}
@@ -300,8 +304,7 @@ export function CardsPage() {
 }
 
 /** The course's cards share one flat hairline surface; lessons are divided within it. */
-const BUCKET_CLASS =
-  'rounded-3xl bg-surface p-4 card-surface md:p-5';
+const BUCKET_CLASS = 'rounded-3xl bg-surface p-4 card-surface md:p-5';
 
 /** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
 const LESSON_SECTION_CLASS =

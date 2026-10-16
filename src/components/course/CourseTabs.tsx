@@ -6,7 +6,8 @@
 // on bg-ink/[0.06], the active item on bg-surface with a soft shadow).
 
 import { LayoutGroup, m as motion } from 'motion/react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { prefetchRoute } from '../../routes/prefetch';
 import { cn } from '../ui/cn';

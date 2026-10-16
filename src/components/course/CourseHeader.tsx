@@ -115,10 +115,11 @@ export function CourseHeader({
           ) : (
             <motion.h1
               key="display-title"
+              data-course-title-text={renameLabel === 'course' ? '' : undefined}
               onDoubleClick={startRename}
               title={onRename ? `Double-click to rename ${renameLabel}` : undefined}
               layout={motionMultiplier > 0 ? 'position' : undefined}
-              initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+              initial={renameLabel !== 'course' && motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
               animate={{ opacity: 1, y: 0 }}
               transition={motionTransition('feedback', motionMultiplier)}
               className={cn(

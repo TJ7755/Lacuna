@@ -139,7 +139,7 @@ describe('SearchPage', () => {
       initialEntries: ['/search'],
     });
     render(<RouterProvider router={router} />);
-    const input = screen.getByPlaceholderText(/search courses/i);
+    const input = screen.getByRole('combobox', { name: 'Search content' });
     fireEvent.change(input, { target: { value: 'Palatine' } });
     expect(input).toHaveAttribute('role', 'combobox');
     expect(screen.getByRole('listbox')).toHaveAttribute('id', input.getAttribute('aria-controls'));
@@ -156,6 +156,43 @@ describe('SearchPage', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(router.state.location.pathname).toBe('/course/course-1/cards/card-2/edit');
     scroll.mockRestore();
+  });
+
+  it('opens the hovered result with Enter whilst the field keeps focus', () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard, { ...mockCard, id: 'card-2', front: 'Palatine second' }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search?q=Palatine'],
+    });
+    render(<RouterProvider router={router} />);
+    const input = screen.getByRole('combobox');
+    const second = screen.getAllByRole('option')[1];
+    fireEvent.mouseEnter(second);
+    expect(input).toHaveFocus();
+    expect(second).toHaveAttribute('aria-selected', 'true');
+    expect(input).toHaveAttribute('aria-activedescendant', second.id);
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/course/course-1/cards/card-2/edit');
+  });
+
+  it('clears only filters and retains the query', () => {
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search?q=Palatine&filter=flagged&shown=160'],
+    });
+    render(<RouterProvider router={router} />);
+    const clear = screen.getByRole('button', { name: 'Clear' });
+    expect(clear.parentElement).not.toContainElement(
+      screen.getByRole('button', { name: 'Flagged' }),
+    );
+    fireEvent.click(clear);
+    expect(screen.getByRole('combobox')).toHaveValue('Palatine');
+    expect(router.state.location.search).toBe('?q=Palatine');
+    expect(screen.getByRole('combobox')).toHaveFocus();
   });
 
   it('preserves query and card filters when returning from a result and Escape edits the query', async () => {
@@ -179,12 +216,12 @@ describe('SearchPage', () => {
       { initialEntries: ['/search?q=Palatine&filter=flagged'] },
     );
     render(<RouterProvider router={router} />);
-    expect(screen.getByPlaceholderText(/search courses/i)).toHaveValue('Palatine');
+    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveValue('Palatine');
     expect(screen.getByRole('button', { name: 'Flagged' })).toHaveAttribute('aria-pressed', 'true');
     const option = screen.getByRole('option');
     option.focus();
     fireEvent.keyDown(option, { key: 'Escape' });
-    expect(screen.getByPlaceholderText(/search courses/i)).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveFocus();
     const main = screen.getByRole('main');
     main.scrollTo = ((options: ScrollToOptions) => {
       main.scrollTop = options.top ?? 0;
@@ -196,7 +233,7 @@ describe('SearchPage', () => {
     expect(main.scrollTop).toBe(0);
     await act(() => router.navigate(-1));
     expect(main.scrollTop).toBe(320);
-    expect(screen.getByPlaceholderText(/search courses/i)).toHaveValue('Palatine');
+    expect(screen.getByRole('combobox', { name: 'Search content' })).toHaveValue('Palatine');
     expect(screen.getByRole('button', { name: 'Flagged' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('option')).toBeInTheDocument();
   });
@@ -214,7 +251,7 @@ describe('SearchPage', () => {
       questions: [],
     });
     render(<SearchPage />, { wrapper: MemoryRouter });
-    const input = screen.getByPlaceholderText(/search courses/i);
+    const input = screen.getByRole('combobox', { name: 'Search content' });
     fireEvent.change(input, { target: { value: 'Palatine' } });
     expect(screen.getAllByRole('option')).toHaveLength(80);
     expect(screen.getByRole('status')).toHaveTextContent('80 of 100 results');
@@ -244,7 +281,7 @@ describe('SearchPage', () => {
       questions: [],
     });
     render(<SearchPage />, { wrapper: MemoryRouter });
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'resume' },
     });
     const result = screen.getByRole('option');
@@ -292,7 +329,7 @@ describe('SearchPage', () => {
     });
     render(<SearchPage />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'Palatine' },
     });
 
@@ -309,7 +346,7 @@ describe('SearchPage', () => {
     });
     render(<SearchPage />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'Course Context' },
     });
 
@@ -326,7 +363,7 @@ describe('SearchPage', () => {
     });
     render(<SearchPage />, { wrapper: MemoryRouter });
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'Palatine' },
     });
 
@@ -346,7 +383,7 @@ describe('SearchPage', () => {
     });
     render(<RouterProvider router={router} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'final velocity' },
     });
 
@@ -369,7 +406,7 @@ describe('SearchPage', () => {
 
     expect(screen.queryByText('Calculate the final velocity.')).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/search courses/i), {
+    fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'final velocity' },
     });
     expect(screen.getByRole('option', { name: /Calculate the final velocity/ })).toHaveTextContent(

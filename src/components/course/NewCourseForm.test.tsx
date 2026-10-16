@@ -5,11 +5,13 @@ import { defaultExamDate, fromDateTimeLocalValue, getLocalTimeZone } from '../..
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
+  prefetchRoute: vi.fn(),
   notify: vi.fn(),
   createCourse: vi.fn(),
   createLesson: vi.fn(),
 }));
 
+vi.mock('../../routes/prefetch', () => ({ prefetchRoute: mocks.prefetchRoute }));
 vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
 vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
@@ -24,6 +26,13 @@ describe('NewCourseForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it('warms the course and inline lesson routes while the form is open', () => {
+    render(<NewCourseForm onClose={vi.fn()} inline />);
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith('/course/new');
+    expect(mocks.prefetchRoute).toHaveBeenCalledWith('/course/new/lesson/new');
+    expect(mocks.createCourse).not.toHaveBeenCalled();
   });
 
   it('can expand inline without a modal or keyboard trap, and cancels with Escape', () => {

@@ -10,7 +10,8 @@
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useEditorKeys } from '../hooks/dialogKeys';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useCourse, useLesson, useOcclusion } from '../state/useCourseData';
 import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';
@@ -324,7 +325,8 @@ export function OcclusionEditor() {
 
           <div
             ref={gridRef}
-            className="grid grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]">
+            className="grid grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]"
+          >
             <OcclusionCanvas
               assetUrl={assetUrl}
               alt={name.trim() || 'Diagram'}

@@ -2,7 +2,8 @@ import { QuestionSetQuestionStep } from '../components/question-sets/QuestionSet
 import { QuestionSetContents, nodeLabel } from '../components/question-sets/QuestionSetContents';
 import { questionSetReturn } from '../questions/questionSetNavigation';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { db, makeId } from '../db/schema';
 import { referencedAssetHashesInValues } from '../db/assets';
 import { QuestionSetDraftFeedback } from '../components/question-sets/QuestionSetDraftFeedback';

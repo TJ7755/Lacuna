@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { prefetchRoute } from '../../routes/prefetch';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
@@ -39,6 +40,12 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   useEffect(() => {
     if (present && inline) nameInputRef.current?.focus();
   }, [present, inline]);
+
+  useEffect(() => {
+    // Fetch both route modules while the user names the course, without delaying creation.
+    prefetchRoute('/course/new');
+    prefetchRoute('/course/new/lesson/new');
+  }, []);
 
   const canCreate = !saving;
 

@@ -7,6 +7,7 @@ const loaders = vi.hoisted(() => ({
   loadCourseAnalytics: vi.fn(() => Promise.resolve()),
   loadCoursePath: vi.fn(() => Promise.resolve()),
   loadCourseSettings: vi.fn(() => Promise.resolve()),
+  loadImportPanel: vi.fn(() => Promise.resolve()),
   loadHelpPage: vi.fn(() => Promise.resolve()),
   loadLessonView: vi.fn(() => Promise.resolve()),
   loadQuestionsPage: vi.fn(() => Promise.resolve()),
@@ -25,6 +26,7 @@ describe('prefetchRoute', () => {
   });
 
   it('loads each route chunk once and distinguishes course route families', () => {
+    prefetchRoute('/import');
     prefetchRoute('/analytics');
     prefetchRoute('/analytics');
     prefetchRoute('/archived');
@@ -42,6 +44,7 @@ describe('prefetchRoute', () => {
     prefetchRoute('/course/course-1/settings');
     prefetchRoute('/unknown');
 
+    expect(loaders.loadImportPanel).toHaveBeenCalledOnce();
     expect(loaders.loadAnalytics).toHaveBeenCalledOnce();
     expect(loaders.loadArchivedCourses).toHaveBeenCalledOnce();
     expect(loaders.loadCoursePath).toHaveBeenCalledOnce();

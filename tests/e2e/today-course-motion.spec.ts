@@ -15,7 +15,7 @@ test('Today course lift responds immediately to pointer and keyboard focus', asy
   expect(await offset()).toBeLessThan(-1);
   await page.mouse.move(0, 0);
   await page.waitForTimeout(250);
-  await row.getByRole('link').focus();
+  await row.getByRole('button').first().focus();
   await page.waitForTimeout(100);
   expect(await offset()).toBeLessThan(-1);
 });
@@ -40,3 +40,20 @@ test('Today course creation expands inline with normal keyboard navigation', asy
   await expect(form).toBeHidden();
   await expect(trigger).toBeFocused();
 });
+
+for (const key of ['Enter', 'Space']) {
+  test(`Today course title opens with ${key}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await enterFreshLacuna(page);
+    const title = page
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .locator(':scope > div')
+      .first()
+      .getByRole('button')
+      .first();
+    await expect(title).not.toHaveAttribute('href');
+    await title.focus();
+    await page.keyboard.press(key);
+    await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  });
+}

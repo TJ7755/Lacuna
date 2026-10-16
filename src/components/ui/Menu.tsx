@@ -12,13 +12,15 @@ import {
 import { AnimatePresence, m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
-import { ChevronDownIcon } from './icons';
+import { ChevronDownIcon, ChevronLeftIcon } from './icons';
 import { expandingActionSpring, MOTION_EASING } from './motion';
 
 export interface MenuItem {
   /** Visible label. Also the accessible name, so write it as the action it performs. */
   label: string;
-  onSelect: () => void;
+  onSelect?: () => void;
+  /** A scoped follow-up shown inside the same expanding surface. */
+  panel?: ReactNode;
   icon?: ReactNode;
   /** A short second line under the label. */
   description?: string;
@@ -68,6 +70,7 @@ export function Menu({
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const [open, setOpen] = useState(false);
+  const [panelIndex, setPanelIndex] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -110,7 +113,7 @@ export function Menu({
     const observer = new ResizeObserver(measure);
     observer.observe(panel);
     return () => observer.disconnect();
-  }, [open, items.length]);
+  }, [open, items.length, panelIndex]);
 
   const firstEnabledIndex = items.findIndex((item) => !item.disabled);
   const activeItemUnavailable = !items[activeIndex] || !!items[activeIndex]?.disabled;
@@ -118,6 +121,7 @@ export function Menu({
 
   const close = useCallback((returnFocus: boolean) => {
     setOpen(false);
+    setPanelIndex(null);
     setActiveIndex(-1);
     if (returnFocus) triggerRef.current?.focus();
   }, []);
@@ -135,12 +139,24 @@ export function Menu({
 
   useEffect(() => {
     if (!open) return;
+    if (panelIndex !== null) {
+      panelRef.current?.querySelector<HTMLElement>('select, input, button')?.focus();
+      return;
+    }
     if (firstEnabledIndex < 0) close(false);
     else if (activeIndex >= 0) {
       if (activeItemUnavailable) setActiveIndex(firstEnabledIndex);
       else itemRefs.current[activeIndex]?.focus();
     }
-  }, [open, activeIndex, activeItemUnavailable, activeItemLabel, firstEnabledIndex, close]);
+  }, [
+    open,
+    activeIndex,
+    activeItemUnavailable,
+    activeItemLabel,
+    firstEnabledIndex,
+    close,
+    panelIndex,
+  ]);
 
   function openAt(index: number) {
     if (firstEnabledIndex < 0) return;
@@ -230,7 +246,11 @@ export function Menu({
         data-expanding-action=""
         initial={false}
         animate={{
-          width: open ? Math.max(216, measuredWidth) : measuredWidth,
+          width: open
+            ? panelIndex !== null
+              ? 'min(320px, calc(100vw - 32px))'
+              : Math.max(216, measuredWidth)
+            : measuredWidth,
           height: open ? triggerHeight + panelHeight + 2 : triggerHeight,
           borderRadius: open ? 18 : triggerHeight / 2,
         }}
@@ -240,11 +260,7 @@ export function Menu({
           // An icon-only trigger repeats down lists, so it stays unframed until opened.
           triggerWidth && !open ? 'bg-transparent hover:bg-ink/5' : 'bg-surface-raised',
           align === 'end' ? 'right-0' : 'left-0',
-          open
-            ? 'card-surface'
-            : triggerWidth
-              ? 'border-transparent'
-              : 'border-line-strong',
+          open ? 'card-surface' : triggerWidth ? 'border-transparent' : 'border-line-strong',
         )}
       >
         <motion.button
@@ -286,59 +302,91 @@ export function Menu({
               <motion.div
                 ref={panelRef}
                 id={menuId}
-                role="menu"
+                role={panelIndex === null ? 'menu' : 'group'}
                 aria-label={label}
-                onKeyDown={onMenuKeyDown}
+                onKeyDown={
+                  panelIndex === null
+                    ? onMenuKeyDown
+                    : (event) => {
+                        if (event.key === 'Escape') {
+                          event.stopPropagation();
+                          close(true);
+                        }
+                      }
+                }
                 initial={multiplier > 0 ? { opacity: 0 } : false}
                 animate={{ opacity: 1 }}
                 exit={multiplier > 0 ? { opacity: 0 } : undefined}
                 transition={{ duration: 0.12 * multiplier }}
                 style={{ top: triggerHeight }}
-                className={cn('absolute w-[214px] p-1.5', align === 'end' ? 'right-0' : 'left-0')}
+                className={cn(
+                  'absolute p-1.5',
+                  panelIndex === null ? 'w-[214px]' : 'w-[min(318px,calc(100vw-34px))]',
+                  align === 'end' ? 'right-0' : 'left-0',
+                )}
               >
-                {items.map((item, index) => (
-                  <motion.button
-                    key={item.label}
-                    ref={(node) => {
-                      itemRefs.current[index] = node;
-                    }}
-                    type="button"
-                    role="menuitem"
-                    // The label alone names the action; the description supports it.
-                    aria-label={item.description ? item.label : undefined}
-                    aria-describedby={
-                      item.description ? `${menuId}-${index}-description` : undefined
-                    }
-                    disabled={item.disabled}
-                    tabIndex={index === activeIndex ? 0 : -1}
-                    onClick={() => {
-                      close(true);
-                      item.onSelect();
-                    }}
-                    style={{ transitionDuration: `${100 * multiplier}ms` }}
-                    className={cn(
-                      'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm',
-                      'text-ink transition-colors duration-100 hover:bg-ink/5',
-                      'focus-visible:bg-ink/5 focus-visible:outline-none',
-                      'disabled:pointer-events-none disabled:opacity-40',
-                    )}
-                  >
-                    {item.icon && <span className="text-ink-faint">{item.icon}</span>}
-                    {item.description ? (
-                      <span className="flex flex-col">
-                        <strong className="font-bold">{item.label}</strong>
-                        <span
-                          id={`${menuId}-${index}-description`}
-                          className="text-[13px] text-ink-faint"
-                        >
-                          {item.description}
+                {panelIndex !== null ? (
+                  <div className="p-3">
+                    <button
+                      type="button"
+                      className="mb-2 flex min-h-11 items-center gap-2 text-sm text-ink-soft"
+                      onClick={() => setPanelIndex(null)}
+                    >
+                      <ChevronLeftIcon width={16} height={16} /> Other ways
+                    </button>
+                    <h3 className="mb-3 font-semibold">{items[panelIndex].label}</h3>
+                    {items[panelIndex].panel}
+                  </div>
+                ) : (
+                  items.map((item, index) => (
+                    <motion.button
+                      key={item.label}
+                      ref={(node) => {
+                        itemRefs.current[index] = node;
+                      }}
+                      type="button"
+                      role="menuitem"
+                      // The label alone names the action; the description supports it.
+                      aria-label={item.description ? item.label : undefined}
+                      aria-describedby={
+                        item.description ? `${menuId}-${index}-description` : undefined
+                      }
+                      disabled={item.disabled}
+                      tabIndex={index === activeIndex ? 0 : -1}
+                      onClick={() => {
+                        if (item.panel) {
+                          setActiveIndex(index);
+                          setPanelIndex(index);
+                        } else {
+                          close(true);
+                          item.onSelect?.();
+                        }
+                      }}
+                      style={{ transitionDuration: `${100 * multiplier}ms` }}
+                      className={cn(
+                        'flex min-h-11 w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm',
+                        'text-ink transition-colors duration-100 hover:bg-ink/5',
+                        'focus-visible:bg-ink/5 focus-visible:outline-none',
+                        'disabled:pointer-events-none disabled:opacity-40',
+                      )}
+                    >
+                      {item.icon && <span className="text-ink-faint">{item.icon}</span>}
+                      {item.description ? (
+                        <span className="flex flex-col">
+                          <strong className="font-bold">{item.label}</strong>
+                          <span
+                            id={`${menuId}-${index}-description`}
+                            className="text-[13px] text-ink-faint"
+                          >
+                            {item.description}
+                          </span>
                         </span>
-                      </span>
-                    ) : (
-                      item.label
-                    )}
-                  </motion.button>
-                ))}
+                      ) : (
+                        item.label
+                      )}
+                    </motion.button>
+                  ))
+                )}
               </motion.div>
             )}
           </AnimatePresence>

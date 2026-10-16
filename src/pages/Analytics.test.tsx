@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -186,8 +187,8 @@ describe('Analytics', () => {
       expect(stability).toHaveTextContent("Days until each card's recall is likely to fall to 90%");
       const leeches = screen.getByRole('region', { name: 'Leech count by course' });
       expect(leeches).toHaveTextContent('Cards you keep forgetting.');
-      expect(within(leeches).getByRole('link', { name: 'Show leech cards' })).toHaveAttribute(
-        'href',
+      expectAppDestination(
+        within(leeches).getByRole('link', { name: 'Show leech cards' }),
         '/search?filter=leech',
       );
     } finally {

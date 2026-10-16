@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card, CourseAssessment, Lesson } from '../../db/types';
 import { AssessmentDetailSheet, assessmentSheetTiming } from './AssessmentDetailSheet';
+import { expandingActionSpring } from '../ui/motion';
 import { MemoryRouter } from 'react-router-dom';
 
 const lesson: Lesson = {
@@ -75,9 +76,9 @@ describe('checkpoint assessment details', () => {
     expect(document.activeElement).toBe(revise);
   });
   it('scales sheet motion and disables durations for reduced motion', () => {
-    expect(assessmentSheetTiming(1.4).sheet.duration).toBeCloseTo(0.336);
+    expect(assessmentSheetTiming(1.4).sheet).toEqual(expandingActionSpring(1.4));
     expect(assessmentSheetTiming(0.6).backdrop.duration).toBeCloseTo(0.096);
-    expect(assessmentSheetTiming(0).sheet.duration).toBe(0);
+    expect(assessmentSheetTiming(0).sheet).toEqual({ duration: 0 });
   });
 
   it('shows identity, resolved scope, exclusions and exact-assessment revision action', () => {

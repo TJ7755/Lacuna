@@ -27,10 +27,9 @@ describe('PracticeSettingsSection', () => {
     expect(screen.getByText('Threshold (exam near)')).toBeInTheDocument();
     expect(screen.getByText('Urgent window')).toBeInTheDocument();
     expect(screen.getByText('Maximum lesson gap')).toBeInTheDocument();
-    const summary = screen.getByText('Advanced practice timing').closest('summary');
-    const disclosure = summary?.closest('details');
-    expect(disclosure).not.toHaveAttribute('open');
-    expect(disclosure).not.toContainElement(screen.getByLabelText('Auto-practice'));
+    const summary = screen.getByRole('button', { name: /Advanced practice timing/ });
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    expect(document.getElementById(summary.getAttribute('aria-controls')!)).not.toContainElement(screen.getByLabelText('Auto-practice'));
     expect(
       screen.getByRole('spinbutton', {
         name: 'Practice threshold when the exam is not near, in minutes',
@@ -45,6 +44,6 @@ describe('PracticeSettingsSection', () => {
     ).toBeInTheDocument();
 
     fireEvent.click(summary!);
-    expect(disclosure).toHaveAttribute('open');
+    expect(summary).toHaveAttribute('aria-expanded', 'true');
   });
 });

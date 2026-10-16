@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
@@ -31,13 +31,18 @@ const BOTTOM = 34;
 /**
  * The chart is drawn at its rendered width so text keeps its real pixel size on a phone
  * instead of shrinking with the viewBox. Height follows the width, within sensible limits.
+ * The first measurement lands before paint, so the chart never shows at a guessed size
+ * and then resizes, shifting everything below it.
  */
 function useChartSize() {
   const ref = useRef<SVGSVGElement>(null);
   const [width, setWidth] = useState(WIDE_WIDTH);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (!el) return;
+    const first = Math.round(el.getBoundingClientRect().width);
+    if (first > 0) setWidth(first);
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) => {
       const next = Math.round(entry.contentRect.width);
       if (next > 0) setWidth(next);

@@ -1,28 +1,31 @@
 # 15. Settings (`src/pages/Settings.tsx`)
 
 `Settings.tsx` is a thin page composition; the web settings live under
-`src/pages/settings/` (with an additional Electron-only MCP surface). The page organises them into
-five task groups: **Appearance & access**, **Study behaviour**, **Course defaults**, **Data safety**
-and **Integrations**. Existing child section ids remain in the DOM so old deep links continue to
-reach the same control. Group ids and ordering remain centralised in the page so the scrollspy and
-its navigation cannot drift from the rendered groups.
+`src/pages/settings/` (with an additional Electron-only MCP surface). Its left-aligned
+heading and quiet version share the course-page frame. Appearance is the primary card
+beside Input mode and Pomodoro timer in the same asymmetric grid as course settings;
+the cards stack on narrow screens. Each control appears once.
+
+Five compact disclosure rows below group **Appearance & access** (sidebar, Today, course
+header and shortcuts), **Study behaviour**, **Course defaults**, **Your data** and
+**Integrations**. They use the approved course-settings row treatment and existing motion
+primitives. The separate `SettingsDisclosure` keeps its forms mounted, preserving drafts,
+subscriptions and pending backup/sync operations when closed. Closed content is inert and
+hidden from assistive technology immediately. Course settings remain unchanged.
+
+Existing group and child section ids remain available. Initial and subsequent deep links
+open the containing group and scroll to the requested section; animated openings finish
+before the final scroll. The Settings section rail and mobile jumper are replaced by the
+same disclosure buttons at every viewport size.
 
 Device-local preference hooks re-read their value when subscribing, so changes made during
 mounting are visible immediately even if their change event preceded the subscription.
 
-- **Shared scrollspy rail** (`src/components/ui/SectionRail.tsx`): `useSectionRail`
-  (the IntersectionObserver hook), `SectionRail` (the desktop right-hand nav) and
-  `SectionRailMobileJumper` (a compact sticky `<select>`-style jumper) were extracted
-  from `Settings.tsx` so `CourseSettings` (below) can reuse the same wayfinding over a
-  different section list. `useMediaQuery('(min-width: 1280px)')`
-  (`src/hooks/useMediaQuery.ts`) is the single breakpoint source both components read,
-  so exactly one of the desktop rail or the mobile jumper mounts at a time — never
-  both, never neither. Below `xl`, where the rail was previously simply hidden with no
-  replacement, the mobile jumper now gives wayfinding to every viewport size.
-
 - **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches
   (9 choices: Volt plus eight alternatives); **text size** steps that scale all text. All three persist to
   `localStorage` (via `ThemeContext`, `AccentContext`, `FontScaleContext`).
+  Text-size changes reflow immediately. Their selection control stays at its natural size;
+  other Settings selection indicators animate only when their selected value changes.
   Adopting Volt replaces the previous automatically saved amber default once. Other saved
   accents and all saved light/dark/automatic theme choices survive. Choosing Amber again
   afterwards is honoured on later launches. Fresh installs open in dark mode.
@@ -38,8 +41,10 @@ mounting are visible immediately even if their change event preceded the subscri
   or touch/pen activity), `touch`, or `keyboard`. The choice drives whether the
   app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps
   hover-only affordances for always-visible ones. Persisted to `localStorage`.
-  Switching to touch mode from the default font scale automatically sets the font
-  scale to Large (1.15); switching back to keyboard never clobbers an explicit choice.
+  Explicit modes determine presentation independently of previous choices and detected activity.
+  Detection continues under manual choices, so Auto resumes the primary-pointer/last-activity
+  contract. Input mode never changes text size or another preference, and does not disable
+  physical keyboard or pointer input.
 - **Pomodoro** (v0.0.2): work minutes (1–120), short and long break minutes (1–60), and
   `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
   header.
@@ -224,30 +229,33 @@ mounting are visible immediately even if their change event preceded the subscri
 
 ### Course settings (`src/pages/CourseSettings.tsx`)
 
-The only exam/scheduling settings surface in the app — there is no deck-level settings
-page any more. Carries the shared `CourseTabs` (§12) in its header row like the other
-three course surfaces, and groups its five headed groups under the same shared `SectionRail`
-scrollspy pattern global Settings uses (extracted into `src/components/ui/SectionRail.tsx`
-in Arc 10 §10.3, see above), instead of one flat scroll:
-**Basics** (rename, exam objective), **Study** (scheduling fields, unlock mode,
-auto-practice, optimisation), **Content** (lesson management, practice
-nodes), **Assessments** (exam dates), **Danger zone**. Composed from extracted, reusable
-section components (originally factored out of the now-deleted deck-settings page so the
-same form primitives serve both models while the deck UI still existed; only the
-course-facing composition remains). Course name, provenance and the exam-objective toggle live
-directly in Basics. `SchedulingFieldsSection` owns new cards per day, target retention with
-Relaxed/Balanced/Thorough presets and adaptive guidance copy, maximum reviews and interval,
-learning/relearning steps, leech threshold/action, daily review goal and session time limit.
-`UnlockModeSection` owns semi-linear versus linear lesson unlocking and its linear cadence fields;
-`PracticeSettingsSection` (auto-practice toggle and the four threshold/window/gap fields
-feeding `shouldInsertPractice`, §-linked to `src/fsrs/practice.ts`), `ExamDatesSection`
-(the final exam/steady-retention target plus dated checkpoints), `LessonManagementSection` (reorder/rename/delete lessons)
-and `PracticeNodesSection` (list existing teacher-authored manual practice nodes and link to their
-path editor; see §5's Course architecture section), plus the `OptimisationPanel` (§8.1): a
-per-course on/off override for scheduling optimisation, a review-count gate, and an
-**Optimise now** action that runs in a Web Worker with a progress bar, then shows the
-before/after log loss; applying takes a restore-point snapshot first and **Reset to
-defaults** is always available.
+The course settings page leads with three editable cards: **Study goal and dates** spans
+one desktop column, with **Daily workload** and **Target recall** stacked beside it. The
+cards stack on narrower screens. The study card shows the final assessment's date (or
+steady retention), the exam objective and the existing assessment editors. Daily workload
+exposes new cards per day, maximum reviews per day, daily review goal and session time limit.
+Target recall retains its slider and Relaxed/Balanced/Thorough presets.
+
+A compact list below expands **Course details** (name, exam board and specification),
+**Lessons** (unlocking, linear cadence, lesson management and manual practice nodes),
+**Auto-practice** (toggle, thresholds, urgent window and maximum lesson gap), and
+**Advanced scheduling** (Learn first, interval fuzz, maximum interval, learning/relearning
+steps, leech detection and optimisation). Each row announces its expanded state. Expansion
+uses the shared disclosure motion, honours reduced motion and removes departing controls
+from keyboard and assistive-technology navigation. Headers keep fixed bounds during pointer
+and keyboard activation; colour feedback, chevron rotation and body expansion remain separate.
+Spacing separates these rows without horizontal rules. Expanded contents are modestly indented;
+Advanced practice timing sits one step further in, with a smaller, medium-weight label.
+Local field drafts stay with the page
+when a row closes. There is no section rail or second copy of the form below the cards.
+
+`SchedulingFieldsSection` supports workload-only and advanced-only groups; its default
+presentation remains the full form. `useCourseSettingsForm` owns the existing local drafts,
+validation and update callbacks. `ExamDatesSection` retains checkpoint creation, final exam
+editing and the `editFinalExam=1` deep link. Optimisation keeps its on/off override,
+review-count gate, Web Worker progress, restore-point snapshot before applying weights,
+and reset action. Archive and delete actions sit below the list, preserving their existing
+confirmations and undo notifications. Locked shared copies retain their detach controls.
 
 Lesson rename, reorder and deletion failures use the existing negative notification.
 The editor or confirmation remains available for retry; failed writes do not dismiss it.
@@ -256,7 +264,7 @@ enlarged text require more space, keeping both the name and keyboard controls us
 
 - **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
   through the existing `updateCourse` path as it's edited — there is no staged
-  "Save changes" bar and no local draft state to lose. Text and numeric fields (rename,
+  "Save changes" bar. Local drafts protect incomplete text and numeric edits. Text and numeric fields (rename,
   course provenance and scheduling numbers) commit **on blur**, with the same
   clamping/validation they always had, so a half-typed value never commits mid-edit;
   toggles, radios and selects (exam objective, unlock mode, auto-practice) commit **on
@@ -274,7 +282,7 @@ enlarged text require more space, keeping both the name and keyboard controls us
   always serves unseen lesson members in Simple mode.
 - Once the **final exam date has passed** (§8.2), the configured lifecycle policy asks what to do,
   archives automatically, or keeps the course on its rolling maintenance horizon. Checkpoints do
-  not participate. Manual archiving remains available from the dashboard course card.
+  not participate. Manual archiving is available from the dashboard course card and the bottom of course settings.
 - **Danger zone:** course deletion uses a confirmation followed by the snapshot + undo-toast
   pattern (`DangerZoneSection`): deleting is performed after the inline confirmation, with an
   "Undo" toast that restores everything from a `CourseSnapshot`

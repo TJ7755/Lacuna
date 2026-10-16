@@ -1,0 +1,1 @@
+- Study: keep the Pomodoro timer fixed when continuing from lesson notes into cards and between steps. All three headers share the notes column and place the timer after the available controls, without invisible spacers; the notes layout and Continue button stay unchanged.

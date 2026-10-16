@@ -1,6 +1,7 @@
 import { useRef, type CSSProperties } from 'react';
 import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon } from '../ui/icons';
+import { STUDY_HEADER_ROW } from './studyHeaderLayout';
 import { PomodoroTimer } from './PomodoroTimer';
 import type { SessionSummary } from './types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
@@ -66,17 +67,13 @@ export function StudyStepTransition({
       style={{ '--step-motion': m } as CSSProperties}
       data-motion={m === 0 ? 'off' : 'on'}
     >
-      {/* Learn's header geometry, so the timer stays where it was as a step ends: the
-          same frame, and room for the navigation, card-action and Undo buttons that
-          follow the timer there. */}
-      <div className="mx-auto flex min-h-[84px] w-full max-w-4xl items-center justify-end gap-2 px-6 py-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] md:gap-4">
-        <div className="hidden min-[340px]:block">
-          <PomodoroTimer />
+      <header className="pt-[env(safe-area-inset-top)]">
+        <div className={`${STUDY_HEADER_ROW} justify-end`}>
+          <div className="hidden shrink-0 min-[340px]:block">
+            <PomodoroTimer />
+          </div>
         </div>
-        <span aria-hidden="true" className="w-11 shrink-0 max-md:hidden" />
-        <span aria-hidden="true" className="w-11 shrink-0" />
-        <span aria-hidden="true" className="w-11 shrink-0" />
-      </div>
+      </header>
       <main className="study-transition-main" aria-label="Study progress">
         <div className={`study-transition-completed ${hasNext ? 'has-next' : ''}`}>
           <span

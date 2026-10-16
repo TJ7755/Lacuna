@@ -106,6 +106,9 @@ describe('SyncPairingFlow', () => {
     it('joins with a trimmed channel id', async () => {
       const { onManualJoin } = openManual();
       expect(screen.getByLabelText('Channel id')).toHaveFocus();
+      expect(
+        screen.getByText(/Enter the recovery passphrase chosen when sync was first set up/),
+      ).toBeInTheDocument();
       type('Channel id', ` ${channelId} `);
       type('Recovery passphrase', passphrase);
       fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
@@ -157,10 +160,15 @@ describe('SyncPairingFlow', () => {
 
       expect(await screen.findByText('https://relay.example')).toBeInTheDocument();
       expect(decodePairingCode).toHaveBeenCalledWith('lacuna-pairing-code');
+      expect(
+        screen.getByText(/You can reuse your existing recovery passphrase/),
+      ).toBeInTheDocument();
       expect(scannerStop).toHaveBeenCalled();
-      await waitFor(() => expect(screen.getByLabelText('Your recovery passphrase')).toHaveFocus());
+      await waitFor(() =>
+        expect(screen.getByLabelText('Recovery passphrase for this device')).toHaveFocus(),
+      );
 
-      type('Your recovery passphrase', passphrase);
+      type('Recovery passphrase for this device', passphrase);
       fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
       await waitFor(() => expect(onQrJoin).toHaveBeenCalledWith(payload, passphrase));
     });

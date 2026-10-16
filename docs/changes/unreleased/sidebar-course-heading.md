@@ -1,0 +1,1 @@
+- Removed the plus button beside the sidebar Courses heading; New course remains on Today.

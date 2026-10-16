@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -27,7 +28,9 @@ describe('CoursePageNavigation', () => {
     const { container } = renderNavigation(<button type="button">Author</button>);
     const navigation = container.querySelector('[data-course-page-navigation]');
 
-    expect(navigation).toHaveClass('sm:grid-cols-[minmax(min-content,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]');
+    expect(navigation).toHaveClass(
+      'sm:grid-cols-[minmax(min-content,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]',
+    );
     expect(screen.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Author' })).toBeVisible();
   });
@@ -35,11 +38,8 @@ describe('CoursePageNavigation', () => {
   it('keeps the back destination and course-scoped tabs in one shared row', () => {
     renderNavigation();
 
-    expect(screen.getByRole('link', { name: 'All courses' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(
-      'href',
-      '/course/course-1/cards',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'All courses' }), '/');
+    expectAppDestination(screen.getByRole('link', { name: 'Cards' }), '/course/course-1/cards');
   });
 });
 
@@ -56,28 +56,45 @@ it('reports a rejected workspace-mode save', async () => {
     </MemoryRouter>,
   );
   fireEvent.click(screen.getByRole('button', { name: 'Edit mode' }));
-  await waitFor(() => expect(mocks.notify).toHaveBeenCalledWith(
-    'Could not save workspace mode. Try again.', 'negative',
-  ));
+  await waitFor(() =>
+    expect(mocks.notify).toHaveBeenCalledWith(
+      'Could not save workspace mode. Try again.',
+      'negative',
+    ),
+  );
   expect(mocks.updateCourse).toHaveBeenCalledWith('course-1', { lessonViewMode: 'edit' });
 });
 
-it('fades the course name out of reach while the page title already shows it', () => {
+it('hides the course name out of reach while the page title already shows it', () => {
   const identity = { name: 'Biology' };
   const { rerender } = render(
     <MemoryRouter>
-      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} identityHidden />
+      <CoursePageNavigation
+        courseId="course-1"
+        backTo="/"
+        backLabel="All courses"
+        identity={identity}
+        identityHidden
+      />
     </MemoryRouter>,
   );
   expect(screen.queryByRole('link', { name: 'Biology' })).not.toBeInTheDocument();
 
   rerender(
     <MemoryRouter>
-      <CoursePageNavigation courseId="course-1" backTo="/" backLabel="All courses" identity={identity} />
+      <CoursePageNavigation
+        courseId="course-1"
+        backTo="/"
+        backLabel="All courses"
+        identity={identity}
+      />
     </MemoryRouter>,
   );
   const link = screen.getByRole('link', { name: 'Biology' });
-  expect(link).toHaveAttribute('href', '/course/course-1');
+  expectAppDestination(link, '/course/course-1');
+  expect(link.closest('[data-course-page-navigation]')).toHaveClass(
+    'sm:grid-cols-[minmax(0,1fr)_minmax(0,max-content)_minmax(0,1fr)]',
+  );
   // The name stands alone: no coloured status dot beside it.
   expect(link.querySelector('[style]')).toBeNull();
 });

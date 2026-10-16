@@ -1,7 +1,8 @@
 import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { m as motion, useMotionValue, useSpring } from 'motion/react';
+import { animate, m as motion, useMotionValue, usePresence } from 'motion/react';
+import { expandingActionSpring } from '../../components/ui/motion';
 import { hapticLight } from '../../utils/haptic';
 import type { Card } from '../../db/types';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -16,6 +17,7 @@ import {
 
 export function TouchMenuSheet({
   current,
+  forecast,
   onEdit,
   onToggleFlag,
   onBury,
@@ -27,6 +29,7 @@ export function TouchMenuSheet({
   m,
 }: {
   current: Card;
+  forecast?: string;
   onEdit: () => void;
   onToggleFlag: () => void;
   onBury: () => void;
@@ -37,27 +40,43 @@ export function TouchMenuSheet({
   onClose: () => void;
   m: number;
 }) {
-  const trapRef = useFocusTrap(true);
+  const [present, safeToRemove] = usePresence();
+  const trapRef = useFocusTrap(present);
   const sheetRef = useRef<HTMLDivElement>(null);
-  const dragY = useMotionValue(0);
-  const springY = useSpring(dragY, { stiffness: 400, damping: 30 });
+  const dragY = useMotionValue(m > 0 ? 120 : 0);
+  useEffect(() => {
+    const target = present ? 0 : Math.max(120, dragY.get() + 120);
+    if (m === 0) {
+      dragY.jump(target);
+      if (!present) safeToRemove?.();
+      return;
+    }
+    const animation = animate(dragY, target, expandingActionSpring(m));
+    if (!present) void animation.then(() => safeToRemove?.());
+    return () => animation.stop();
+  }, [present, safeToRemove, m, dragY]);
   const dragStartY = useRef(0);
   const dragStartTime = useRef(0);
+  const dragStartOffset = useRef(0);
   const isDragging = useRef(false);
 
-  const handleDragHandleDown = useCallback((e: React.PointerEvent) => {
-    e.preventDefault();
-    isDragging.current = true;
-    dragStartY.current = e.clientY;
-    dragStartTime.current = performance.now();
-    sheetRef.current?.setPointerCapture(e.pointerId);
-  }, []);
+  const handleDragHandleDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      dragY.stop();
+      dragStartOffset.current = dragY.get();
+      isDragging.current = true;
+      dragStartY.current = e.clientY;
+      dragStartTime.current = performance.now();
+      sheetRef.current?.setPointerCapture(e.pointerId);
+    },
+    [dragY],
+  );
 
   const handleDragHandleMove = useCallback(
     (e: React.PointerEvent) => {
       if (!isDragging.current) return;
-      const dy = e.clientY - dragStartY.current;
-      if (dy > 0) dragY.set(dy);
+      dragY.set(Math.max(0, dragStartOffset.current + e.clientY - dragStartY.current));
     },
     [dragY],
   );
@@ -67,39 +86,45 @@ export function TouchMenuSheet({
       if (!isDragging.current) return;
       isDragging.current = false;
       sheetRef.current?.releasePointerCapture(e.pointerId);
-      const dy = dragY.get();
+      const dy = dragY.get() - dragStartOffset.current;
       const elapsed = performance.now() - dragStartTime.current;
       // Flick or drag past threshold closes the sheet.
       if (dy > 80 || (dy > 20 && elapsed < 200)) {
-        dragY.set(0);
         onClose();
       } else {
-        dragY.set(0);
+        if (m === 0) dragY.jump(0);
+        else void animate(dragY, 0, expandingActionSpring(m));
       }
     },
-    [dragY, onClose],
+    [dragY, onClose, m],
   );
 
   return createPortal(
     <motion.div
       ref={trapRef}
-      initial={m > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      exit={m > 0 ? { opacity: 0 } : undefined}
-      transition={{ duration: 0.15 * m }}
+      inert={!present}
+      aria-hidden={!present || undefined}
       className="fixed inset-0 z-40"
       role="dialog"
       aria-modal="true"
       aria-label="Card actions"
       onClick={onClose}
     >
-      <ModalBackdrop shade={30} />
+      <motion.div
+        className="absolute inset-0"
+        initial={m > 0 ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        exit={m > 0 ? { opacity: 0 } : undefined}
+        transition={{ duration: 0.15 * m }}
+      >
+        <ModalBackdrop shade={30} />
+      </motion.div>
       <motion.div
         ref={sheetRef}
-        style={{ y: springY }}
-        initial={m > 0 ? { y: 120, opacity: 0 } : false}
-        animate={{ y: 0, opacity: 1 }}
-        exit={m > 0 ? { y: 120, opacity: 0 } : undefined}
+        style={{ y: dragY }}
+        initial={m > 0 ? { opacity: 0 } : false}
+        animate={{ opacity: 1 }}
+        exit={m > 0 ? { opacity: 0 } : undefined}
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         className="absolute bottom-0 left-0 right-0 rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] card-surface"
         onClick={(e) => e.stopPropagation()}
@@ -127,6 +152,7 @@ export function TouchMenuSheet({
           </div>
         </div>
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
+          {forecast && <p className="px-4 py-2 text-sm text-ink-soft">{forecast}</p>}
           {current.sequenceItemId === undefined && current.occlusionRegionId === undefined && (
             <TouchMenuButton
               icon={<EditIcon width={22} height={22} />}

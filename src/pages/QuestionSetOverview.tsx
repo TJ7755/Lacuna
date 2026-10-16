@@ -12,7 +12,8 @@ import {
 } from '../questions/questionSetAttemptRepository';
 import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
 import '../components/question-sets/question-set-practice.css';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { getQuestionSet } from '../questions/questionSetRepository';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import { questionSetMarks, nodeMarks } from '../components/question-sets/presentation';

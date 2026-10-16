@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { LazyMotion, domAnimation } from 'motion/react';
+import { LazyMotion, domAnimation, m } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { ROUTE_VARIANTS, RouteTransitions, TAB_DRIFT_PX } from './RouteTransitions';
@@ -11,6 +11,32 @@ vi.mock('../course/CourseSectionNavigation', () => ({
 }));
 
 describe('RouteTransitions', () => {
+  it('shows the first page at once without stopping later content from animating in', () => {
+    const page = (pathname: string, late: boolean) => (
+      <MemoryRouter>
+        <LazyMotion features={domAnimation}>
+          <RouteTransitions pathname={pathname} direction={0} multiplier={1}>
+            {late && (
+              <m.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                late
+              </m.p>
+            )}
+          </RouteTransitions>
+        </LazyMotion>
+      </MemoryRouter>
+    );
+    const view = render(page('/', false));
+    expect(view.container.querySelector('[data-route-content="/"]')).not.toHaveStyle({
+      opacity: '0',
+    });
+    view.rerender(page('/', true));
+    expect(screen.getByText('late')).toHaveStyle({ opacity: '0' });
+    view.rerender(page('/settings', false));
+    expect(view.container.querySelector('[data-route-content="/settings"]')).toHaveStyle({
+      opacity: '0',
+    });
+  });
+
   it.each(['/course/c1', '/course/c1/cards', '/course/c1/analytics'])(
     'keeps the course bar on %s',
     (pathname) => {

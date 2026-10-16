@@ -1,9 +1,9 @@
 import { m as motion } from 'motion/react';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRightIcon, CardsIcon, CheckIcon, ClockIcon, MoreIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
-import { MOTION_EASING } from '../ui/motion';
+import { MOTION_DURATION, MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
 import { STATUS_COLOUR, type ForecastStatus } from './forecastStatus';
 import { contextMenuHandlers } from '../ui/contextMenu';
@@ -39,20 +39,30 @@ export interface QueueRow {
   hasPendingUpdate: boolean;
 }
 
-/** Today's courses, most urgent first, each with its workload and a way straight in. */
+/** Rows past this many arrive together, so a long queue never trickles in for long. */
+const STAGGER_ROWS = 5;
+const STAGGER_STEP = 0.05;
+
+/**
+ * Today's courses, most urgent first, each with its workload and a way straight in. Rows
+ * fade in top to bottom on a short, bounded stagger, starting `delay` seconds in.
+ */
 export function TodayQueue({
   rows,
+  delay = 0,
   multiplier,
   onStudy,
   onMenu,
   openMenuId,
 }: {
   rows: QueueRow[];
+  delay?: number;
   multiplier: number;
   onStudy: (id: string) => void;
   onMenu: (id: string, position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
   openMenuId?: string;
 }) {
+  const navigate = useNavigate();
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const menuButtons = useRef(new Map<string, HTMLButtonElement>());
   const openActions = (rowId: string) => {
@@ -68,6 +78,7 @@ export function TodayQueue({
   return (
     <section aria-label="Today, most urgent first" className="flex flex-col gap-2">
       {rows.map((row, index) => {
+        const arrival = delay + Math.min(index, STAGGER_ROWS) * STAGGER_STEP;
         return (
           <motion.div
             key={row.id}
@@ -77,11 +88,18 @@ export function TodayQueue({
             animate={{
               opacity: 1,
               y: multiplier > 0 && focusedId === row.id ? -2 : 0,
-              transition: { y: liftTransition },
+              // A transition on the target replaces the prop below, so the fade names its own.
+              transition: {
+                y: liftTransition,
+                opacity: {
+                  duration: MOTION_DURATION.local * multiplier,
+                  delay: arrival * multiplier,
+                  ease: MOTION_EASING.emphasised,
+                },
+              },
             }}
             transition={{
-              duration: 0.46 * multiplier,
-              delay: (0.05 + index * 0.06) * multiplier,
+              duration: MOTION_DURATION.local * multiplier,
               ease: MOTION_EASING.emphasised,
             }}
             whileHover={multiplier > 0 ? { y: -2, transition: liftTransition } : undefined}
@@ -97,11 +115,12 @@ export function TodayQueue({
               className="h-2.5 w-2.5 shrink-0 rounded-full"
               style={{ background: STATUS_COLOUR[row.status] }}
             />
-            <Link
-              to={row.href}
+            <button
+              type="button"
+              onClick={() => navigate(row.href)}
               onPointerEnter={() => prefetchRoute(row.href)}
               onFocus={() => prefetchRoute(row.href)}
-              className="flex min-h-11 min-w-0 flex-1 items-center font-display text-lg font-semibold leading-tight sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
+              className="flex min-h-11 min-w-0 flex-1 items-center text-left font-display text-lg font-semibold leading-tight sm:text-xl tracking-tight text-ink hover:underline hover:decoration-2 hover:underline-offset-4"
             >
               <span className="line-clamp-2 break-words">
                 {row.name}
@@ -111,7 +130,7 @@ export function TodayQueue({
                   </span>
                 )}
               </span>
-            </Link>
+            </button>
             {row.state === 'done' ? (
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-positive">
                 <motion.span
@@ -122,7 +141,7 @@ export function TodayQueue({
                     type: 'spring',
                     stiffness: 500,
                     damping: 15,
-                    delay: (0.3 + index * 0.06) * multiplier,
+                    delay: (arrival + 0.2) * multiplier,
                   }}
                 >
                   <CheckIcon width={14} height={14} />
@@ -146,6 +165,8 @@ export function TodayQueue({
                 </span>
                 {/* Study opens the course's session plan, as Study does on the course page. */}
                 <Button
+                  data-study-trigger={row.id}
+                  hoverScale={false}
                   variant={row === lead ? 'primary' : 'secondary'}
                   onClick={() => onStudy(row.id)}
                   aria-label={`Study ${row.name}`}

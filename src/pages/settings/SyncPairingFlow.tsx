@@ -320,7 +320,7 @@ export function SyncPairingFlow({
               Join another device
             </SettingsSubsectionHeading>
             <p className="text-sm text-ink-soft">
-              Scan a pairing QR or enter the channel details and recovery passphrase.
+              Scan the pairing QR from your other device, or enter its channel details manually.
             </p>
           </div>
           <SegmentedPills
@@ -384,15 +384,15 @@ export function SyncPairingFlow({
                   <SyncField
                     id="sync-qr-passphrase"
                     error={fieldError('sync-qr-passphrase')}
-                    label="Your recovery passphrase"
+                    label="Recovery passphrase for this device"
                     value={pairingPassphrase}
                     onChange={setPairingPassphrase}
                     type="password"
                     autoComplete="new-password"
                   />
                   <p className="text-xs text-ink-faint">
-                    Set a local recovery passphrase of at least 16 characters. It protects the
-                    recovery copy stored on this device.
+                    Choose at least 16 characters to protect this device’s recovery copy. You can
+                    reuse your existing recovery passphrase.
                   </p>
                   {formError}
                   <div className="flex flex-wrap gap-2">
@@ -434,8 +434,8 @@ export function SyncPairingFlow({
                 autoComplete="current-password"
               />
               <p className="text-xs text-ink-faint">
-                The channel id is not an account name. Treat it and the recovery passphrase as
-                private pairing details.
+                Enter the recovery passphrase chosen when sync was first set up. Keep it and the
+                channel id private.
               </p>
               {advanced}
               {formError}

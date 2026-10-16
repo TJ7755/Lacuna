@@ -1,0 +1,1 @@
+- Recompose main Settings around Appearance, Input mode and Pomodoro cards, followed by compact expandable groups using the approved course-settings treatment. Preserve existing controls, form state and section deep links; closed groups leave the keyboard and accessibility order immediately.

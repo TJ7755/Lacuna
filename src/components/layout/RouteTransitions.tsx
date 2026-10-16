@@ -1,5 +1,6 @@
-import { forwardRef, useCallback, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
+import { CourseTitleTransition } from '../course/CourseTitleTransition';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
 
@@ -35,22 +36,30 @@ export function RouteTransitions({
   multiplier: number;
   children: ReactNode;
 }) {
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
   const section = matchCourseSection(pathname);
   // Course analytics is not a tab, but it is still the course's own page, so it keeps the bar.
   const barCourseId = section?.courseId ?? COURSE_ANALYTICS.exec(pathname)?.[1];
   return (
     <>
-      {barCourseId && <CourseSectionNavigation key={barCourseId} courseId={barCourseId} pathname={pathname} />}
+      {barCourseId && (
+        <CourseSectionNavigation key={barCourseId} courseId={barCourseId} pathname={pathname} />
+      )}
+      {barCourseId && <CourseTitleTransition key={`title-${barCourseId}`} courseId={barCourseId} pathname={pathname} multiplier={multiplier} />}
       {/* The persistent chrome stays outside this clipped viewport. The departing page
           leaves at once, so popLayout never shows two pages at the same time.
           AnimatePresence supplies the latest direction to the departing page too. */}
       <div className={section ? 'relative overflow-x-clip' : 'relative min-h-full'}>
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
+        <AnimatePresence custom={direction} mode="popLayout">
           <RoutePage
             key={pathname}
             pathname={pathname}
             direction={direction}
             multiplier={multiplier}
+            entering={mounted.current}
           >
             {children}
           </RoutePage>
@@ -66,9 +75,10 @@ const RoutePage = forwardRef<
     pathname: string;
     direction: number;
     multiplier: number;
+    entering: boolean;
     children: ReactNode;
   }
->(function RoutePage({ pathname, direction, multiplier, children }, ref) {
+>(function RoutePage({ pathname, direction, multiplier, entering, children }, ref) {
   const present = useIsPresent();
   const pageRef = useRef<HTMLDivElement | null>(null);
   const assignRef = useCallback(
@@ -99,7 +109,7 @@ const RoutePage = forwardRef<
       data-route-content={pathname}
       custom={direction}
       variants={ROUTE_VARIANTS}
-      initial={multiplier > 0 ? 'enter' : false}
+      initial={multiplier > 0 && entering ? 'enter' : 'center'}
       animate={multiplier > 0 ? 'center' : undefined}
       exit={multiplier > 0 ? 'exit' : undefined}
       transition={{

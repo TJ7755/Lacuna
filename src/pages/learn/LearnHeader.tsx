@@ -15,6 +15,7 @@ import {
   CloseIcon,
 } from '../../components/ui/icons';
 import { Button } from '../../components/ui/Button';
+import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -193,6 +194,10 @@ export function LearnHeader({
             : Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)
         } of ${sessionTotal}`
       : null;
+  const forecast =
+    mode !== 'simple' && !plannedRevision
+      ? `${Math.round(predictedRecall * 100)}% ${forecastLabel(singleDeck)}`
+      : undefined;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (
@@ -204,11 +209,22 @@ export function LearnHeader({
       onPointerLeave={onPointerLeave}
       className={cn(
         'left-0 right-0 top-0 z-20 bg-paper',
-        'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
+        'pt-[env(safe-area-inset-top)]',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="mx-auto flex min-h-[84px] w-full max-w-4xl items-center gap-2 px-6 py-2.5 md:gap-4">
+      <div className={`${STUDY_HEADER_ROW} gap-2 md:gap-4`}>
+        {/* One Exit for every width, leading the row: a pill with its label, and a
+            round icon button on a phone. */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onExit}
+          className="h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
+        >
+          <CloseIcon width={16} height={16} aria-hidden="true" />
+          <span className="max-md:sr-only">Exit</span>
+        </Button>
         <div className="min-w-10 flex-1 overflow-hidden">
           <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
             <h1 className="truncate font-bold text-ink" title={info.title}>
@@ -216,11 +232,6 @@ export function LearnHeader({
             </h1>
             {cardPosition && (
               <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
-            )}
-            {mode !== 'simple' && !plannedRevision && (
-              <span className="ml-auto hidden shrink-0 pl-3 text-ink-soft tabular-nums md:inline">
-                {Math.round(predictedRecall * 100)}% {forecastLabel(singleDeck)}
-              </span>
             )}
           </div>
           {info.subtitle && (
@@ -246,10 +257,6 @@ export function LearnHeader({
             {`${Math.max(0, Math.ceil(revisionSecondsRemaining / 60))} min left`}
           </span>
         )}
-
-        <div className="hidden min-[340px]:block">
-          <PomodoroTimer />
-        </div>
 
         <button
           type="button"
@@ -288,6 +295,7 @@ export function LearnHeader({
               (isTouchMode ? (
                 <TouchMenuSheet
                   current={current}
+                  forecast={forecast}
                   onEdit={onEdit}
                   onToggleFlag={onToggleFlag}
                   onBury={onBury}
@@ -306,6 +314,7 @@ export function LearnHeader({
                   transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
                   className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
                 >
+                  {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
                   {current.sequenceItemId === undefined &&
                     current.occlusionRegionId === undefined && (
                       <MenuItem
@@ -378,24 +387,16 @@ export function LearnHeader({
             aria-label="Undo last answer"
             title="Undo"
             // Always laid out, disabled until there is an answer to undo, so the controls
-            // before it (the timer among them) never shift when the first answer lands.
+            // beside it never shift when the first answer lands.
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40"
           >
             <UndoIcon width={18} height={18} />
           </button>
         )}
 
-        {/* One Exit for every width, leading the row: a pill with its label, and a
-            round icon button on a phone. */}
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onExit}
-          className="order-first h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
-        >
-          <CloseIcon width={16} height={16} aria-hidden="true" />
-          <span className="max-md:sr-only">Exit</span>
-        </Button>
+        <div className="hidden shrink-0 min-[340px]:block">
+          <PomodoroTimer />
+        </div>
       </div>
     </motion.header>
   );

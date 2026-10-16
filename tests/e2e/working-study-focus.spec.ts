@@ -7,6 +7,7 @@ test('Working study focuses the answer on entry and the next card', async ({ pag
   await createCourse(page, 'Working focus');
   const coursePath = new URL(page.url()).hash;
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await page.getByRole('button', { name: 'More card types', exact: true }).click();
   await page.getByRole('button', { name: 'Working', exact: true }).click();
   const prompt = page.getByRole('textbox', { name: 'Question', exact: true });
   const scheme = page.getByRole('textbox', { name: 'Scheme source', exact: true });

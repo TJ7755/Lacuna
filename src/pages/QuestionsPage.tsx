@@ -8,7 +8,8 @@ import { QuestionSetLibraryActions } from '../components/question-sets/QuestionS
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
 import { PlusIcon } from '../components/ui/icons';
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, makeId } from '../db/schema';
 import { useCourse } from '../state/useCourseData';

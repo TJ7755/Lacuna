@@ -33,13 +33,6 @@
   cursor: default;
   opacity: 0.4;
 }
-.card-import-dialog button:focus-visible,
-.card-import-dialog input:focus-visible,
-.card-import-dialog select:focus-visible,
-.card-import-dialog summary:focus-visible {
-  outline: 2px solid hsl(var(--accent));
-  outline-offset: 3px;
-}
 .card-import-header {
   display: flex;
   align-items: center;
@@ -577,4 +570,131 @@
   .card-import-step-mark {
     transition: none;
   }
+}
+
+.card-import-panel .card-import-dialog {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.card-import-panel .card-import-header {
+  padding: 0 0 12px;
+}
+.card-import-progress {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  font-weight: 600;
+}
+.card-import-progress > span {
+  color: hsl(var(--ink-faint));
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.card-import-panel .card-import-scroll {
+  overflow: visible;
+}
+.card-import-panel .card-import-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 12px;
+}
+.card-import-panel .card-import-options,
+.card-import-panel .card-import-content {
+  padding: 0;
+  background: transparent;
+}
+.card-import-panel .card-import-body[data-step='input'] .card-import-options {
+  display: contents;
+}
+.card-import-panel .card-import-input textarea {
+  height: 140px;
+  min-height: 100px;
+  resize: none;
+  padding: 12px 16px;
+}
+.card-import-panel .card-import-input-label {
+  margin-bottom: 8px;
+}
+.card-import-panel .card-import-source-meta {
+  margin: 8px 0 0;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.card-import-panel .card-import-package {
+  min-height: 180px;
+  padding: 16px;
+}
+.card-import-panel .card-import-package-icon {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+}
+.card-import-panel .card-import-reverse {
+  margin: 0;
+}
+.card-import-panel .card-import-total {
+  margin: 4px 0 0;
+}
+.card-import-panel .card-import-total strong {
+  font-size: 32px;
+}
+.card-import-panel .card-import-total > span {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+.card-import-panel .card-import-notices {
+  gap: 4px;
+  margin-top: 8px;
+}
+.card-import-panel .card-import-notices:empty {
+  display: none;
+}
+.card-import-panel .card-import-notice {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.card-import-panel .card-import-preview {
+  min-height: 0;
+  gap: 0;
+}
+.card-import-panel .card-import-preview > div:first-child {
+  width: 100%;
+}
+.card-import-panel .card-import-pair {
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 40%), 1fr));
+  gap: 12px;
+}
+.card-import-panel .card-import-face {
+  height: 128px;
+  border-radius: 16px;
+}
+.card-import-panel .card-import-face-content {
+  padding: 12px;
+}
+.card-import-panel .card-import-face-label {
+  margin-bottom: 6px;
+}
+.card-import-panel .card-import-footer {
+  padding: 12px 0 0;
+  background: transparent;
+}
+.card-import-panel .card-import-actions {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.card-import-panel .card-import-actions > button:last-child {
+  margin-left: auto;
+}
+
+.card-import-panel .card-import-input[data-package-empty='true'] .card-import-input-label,
+.card-import-panel .card-import-input[data-package-empty='true'] .card-import-source-meta {
+  display: none;
 }

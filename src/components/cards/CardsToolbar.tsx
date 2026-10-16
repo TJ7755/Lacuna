@@ -50,6 +50,8 @@ export function CardsToolbar({
         />
         <input
           ref={searchRef}
+          data-scoped-find
+          title="Find cards (Ctrl+F or Command+F)"
           type="search"
           aria-label="Search all cards"
           value={search}

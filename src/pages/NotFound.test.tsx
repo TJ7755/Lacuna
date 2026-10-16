@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
@@ -17,7 +18,7 @@ describe('NotFound', () => {
       screen.getByRole('heading', { name: 'This page is not on the path.' }),
     ).toBeInTheDocument();
     expect(screen.getByText('/definitely-not-a-route')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Back to Today' })).toHaveAttribute('href', '/');
+    expectAppDestination(screen.getByRole('link', { name: 'Back to Today' }), '/');
     // The shared borderless card surface, not an outlined box.
     const card = screen
       .getByRole('heading', { name: 'This page is not on the path.' })

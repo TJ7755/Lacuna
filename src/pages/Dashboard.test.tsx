@@ -19,7 +19,8 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ state: null }),
+  useLocation: () => ({ state: null, search: '' }),
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
   ),
@@ -29,7 +30,9 @@ let mockCourseDashboardData: unknown = undefined;
 let mockPendingUpdateIds = new Set<string>();
 
 // The chart's past line needs graded review history; tests supply one per forecast.
-vi.mock('../state/useData', () => ({ useAllReviewHistory: () => [] }));
+// Undefined stands for history still loading.
+let mockReviewHistory: unknown[] | undefined = [];
+vi.mock('../state/useData', () => ({ useAllReviewHistory: () => mockReviewHistory }));
 vi.mock('../state/dashboardForecasts', async (importOriginal) => ({
   ...(await importOriginal<typeof DashboardForecasts>()),
   dashboardForecastHistories: (
@@ -179,11 +182,12 @@ beforeEach(() => {
   mockCourseDashboardData = undefined;
   mockPendingUpdateIds = new Set<string>();
   mockForecasts = {};
+  mockReviewHistory = [];
 });
 
-function queueLinks() {
+function queueTitles() {
   const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
-  return within(queue).getAllByRole('link');
+  return Array.from(queue.children, (row) => within(row as HTMLElement).getAllByRole('button')[0]);
 }
 
 describe('Dashboard', () => {
@@ -271,22 +275,25 @@ describe('Dashboard', () => {
     expect(screen.getByLabelText('Today: 12 cards, about 14 minutes')).toBeInTheDocument();
   });
 
-  it('links each row to its course page', () => {
+  it('opens each course row without a native link', () => {
     setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
     render(<Dashboard />);
-    const link = screen.getByRole('link', { name: 'Test Course' });
-    expect(link).toHaveAttribute('href', '/course/course-1');
+    const link = screen.getByRole('button', { name: 'Test Course' });
+    expect(link).not.toHaveAttribute('href');
+    fireEvent.click(link);
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1');
     expect(screen.queryByText('Update ready')).not.toBeInTheDocument();
   });
 
-  it('links to update review and flags the row when a course has pending changes', () => {
+  it('opens update review and flags the row when a course has pending changes', () => {
     setCourseData();
     mockPendingUpdateIds = new Set(['course-1']);
 
     render(<Dashboard />);
 
-    const link = screen.getByRole('link', { name: /Test Course/ });
-    expect(link).toHaveAttribute('href', '/course/course-1/updates');
+    const link = screen.getByRole('button', { name: 'Test Course Update available' });
+    fireEvent.click(link);
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/updates');
     expect(link).toHaveTextContent('Update available');
   });
 
@@ -308,7 +315,7 @@ describe('Dashboard', () => {
     expect(screen.queryByRole('button', { name: 'Study Test Course' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Study Busy Course' })).toBeInTheDocument();
     // The row stays reachable and keeps its menu.
-    expect(screen.getByRole('link', { name: 'Test Course' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'More for Test Course' })).toBeInTheDocument();
   });
 
@@ -334,7 +341,7 @@ describe('Dashboard', () => {
     expect(screen.getByText('Nothing due')).toBeInTheDocument();
     for (const name of ['Empty Course', 'Quiet Course', 'Loading Course']) {
       expect(screen.queryByRole('button', { name: `Study ${name}` })).not.toBeInTheDocument();
-      expect(screen.getByRole('link', { name })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
   });
 
@@ -349,7 +356,7 @@ describe('Dashboard', () => {
     );
     render(<Dashboard />);
 
-    expect(queueLinks().map((link) => link.textContent)).toEqual(['Near Exam', 'Far Exam']);
+    expect(queueTitles().map((link) => link.textContent)).toEqual(['Near Exam', 'Far Exam']);
     fireEvent.keyDown(window, { key: 's' });
     expect(mockOpenStudySheet).toHaveBeenCalledWith('far');
     expect(mockOpenStudySheet).not.toHaveBeenCalledWith('near');
@@ -386,7 +393,7 @@ describe('Dashboard', () => {
     render(<Dashboard />);
 
     // A past exam no longer counts as an exam, so it ranks among the no-exam courses.
-    expect(queueLinks().map((link) => link.textContent)).toEqual([
+    expect(queueTitles().map((link) => link.textContent)).toEqual([
       'Near Exam',
       'Far Exam',
       'No Exam Big',
@@ -417,10 +424,10 @@ describe('Dashboard', () => {
     setCourseData();
     render(<Dashboard />);
     expect(screen.queryByRole('heading', { name: 'Exam-day forecast' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Test Course' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
   });
 
-  it('shows the week panel with the streak, cards this week and studied days', () => {
+  it('shows the week panel with the streak, cards this week and studied days', async () => {
     setCourseData([mockCourse], {
       streak: 5,
       reviewActivity: new Map([['card-1', [Date.now(), Date.now() - 1000]]]),
@@ -428,7 +435,7 @@ describe('Dashboard', () => {
     mockForecasts = { 'course-1': forecast(0.9) };
     render(<Dashboard />);
 
-    expect(screen.getByText('days in a row')).toBeInTheDocument();
+    expect(await screen.findByText('days in a row')).toBeInTheDocument();
     expect(screen.getByText('cards this week')).toBeInTheDocument();
     expect(screen.getByText('studied this week')).toBeInTheDocument();
     expect(screen.getByLabelText(/^Studied on \d of \d days this week/)).toBeInTheDocument();
@@ -438,7 +445,7 @@ describe('Dashboard', () => {
     expect(cards).toHaveTextContent('2');
   });
 
-  it('leads with the forecast, above what to study', () => {
+  it('leads with the forecast, above what to study', async () => {
     setCourseData([mockCourse], {
       summaries: { 'course-1': summary(3) },
       reviewActivity: new Map([['card-1', [Date.now()]]]),
@@ -446,10 +453,46 @@ describe('Dashboard', () => {
     mockForecasts = { 'course-1': forecast(0.9) };
     render(<Dashboard />);
 
-    const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
+    const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
     expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
+  });
+
+  it('holds the queue until the forecast can arrive whole above it', async () => {
+    setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
+    mockForecasts = { 'course-1': forecast(0.9) };
+    mockReviewHistory = undefined;
+    const { rerender } = render(<Dashboard />);
+
+    // Review history is still loading, so neither the forecast nor the queue shows yet.
+    expect(screen.queryByRole('region', { name: 'Today, most urgent first' })).not.toBeInTheDocument();
+
+    mockReviewHistory = [];
+    rerender(<Dashboard />);
+    const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
+    const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
+    expect(within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
+    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows the queue without waiting indefinitely on a slow forecast', () => {
+    vi.useFakeTimers();
+    try {
+      setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
+      mockForecasts = { 'course-1': forecast(0.9) };
+      mockReviewHistory = undefined;
+      render(<Dashboard />);
+      expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Forecast and this week' })).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('opens the course menu under its More button without navigating, then dismisses it', async () => {
@@ -491,11 +534,11 @@ describe('Dashboard', () => {
   });
 
   it.each(['ContextMenu', 'F10'])(
-    'opens the course actions with %s on the course link',
+    'opens the course actions with %s on the course title',
     async (key) => {
       setCourseData();
       render(<Dashboard />);
-      const link = screen.getByRole('link', { name: 'Test Course' });
+      const link = screen.getByRole('button', { name: 'Test Course' });
       act(() => link.focus());
       fireEvent.keyDown(link, { key, shiftKey: key === 'F10' });
       expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveFocus();
@@ -506,7 +549,7 @@ describe('Dashboard', () => {
   it('opens visible course actions on right-click while preserving selected text menus', async () => {
     setCourseData();
     render(<Dashboard />);
-    const link = screen.getByRole('link', { name: 'Test Course' });
+    const link = screen.getByRole('button', { name: 'Test Course' });
     const selection = window.getSelection()!;
     const range = document.createRange();
     range.selectNodeContents(link);
@@ -598,7 +641,7 @@ describe('Dashboard', () => {
 
     setCourseData([{ ...mockCourse, archived: true }]);
     rerender(<Dashboard />);
-    expect(screen.queryByRole('link', { name: 'Test Course' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
 
     const options = mockNotify.mock.calls[0][2] as { onAction: () => void };
     options.onAction();

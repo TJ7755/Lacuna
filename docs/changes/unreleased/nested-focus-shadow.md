@@ -1,0 +1,1 @@
+- Remove duplicate inner focus rings from inputs whose wrapper already provides a focus shadow, preserving the visible outer keyboard indicator.

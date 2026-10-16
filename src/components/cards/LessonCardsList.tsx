@@ -2,11 +2,12 @@
 // is the card's front, rendered as on the Cards page so maths shows as maths, its kind
 // beneath and when it next comes up; an occlusion card leads with its diagram. In
 // Edit mode a pencil and a New card button fade in; their slots are always laid
-// out, so nothing shifts when the mode changes. Bulk management (selecting,
-// deleting, importing, linking) lives in LessonCardsSection below.
+// out, so nothing shifts when the mode changes. Find, in both modes, closes the
+// heading row. Bulk management (selecting, deleting, importing, linking) lives in
+// LessonCardsSection below.
 
 import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { m as motion } from 'motion/react';
 import { PlusIcon, EditIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
@@ -40,6 +41,8 @@ interface LessonCardsListProps {
   onNavigate: (path: string) => void;
   /** Optional content under the rows, e.g. the Simple Learn disclosure. */
   footer?: ReactNode;
+  /** The lesson's Find control, last in the heading row. */
+  find?: ReactNode;
   /** Offered beside an empty View-mode list, where cards can only be added in Edit. */
   onSwitchToEdit?: () => void;
   /** Focus New card on arrival, as the next step after creating a course. */
@@ -54,6 +57,7 @@ export function LessonCardsList({
   editable,
   onNavigate,
   footer,
+  find,
   className,
   onSwitchToEdit,
   focusNewCard = false,
@@ -88,25 +92,28 @@ export function LessonCardsList({
         >
           Cards in this lesson
         </h2>
-        <motion.button
-          ref={newCardRef}
-          type="button"
-          {...fade}
-          tabIndex={editable ? 0 : -1}
-          aria-hidden={editable ? undefined : true}
-          onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-          className={cn(
-            'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-            // The first card is the lesson's next step, so it leads until one exists.
-            cards.length === 0
-              ? 'bg-accent text-accent-fg hover:brightness-105'
-              : 'bg-ink/[0.06] text-ink hover:bg-ink/10',
-            !editable && 'pointer-events-none',
-          )}
-        >
-          <PlusIcon width={16} height={16} />
-          New card
-        </motion.button>
+        <div className="flex shrink-0 items-center gap-1">
+          <motion.button
+            ref={newCardRef}
+            type="button"
+            {...fade}
+            tabIndex={editable ? 0 : -1}
+            aria-hidden={editable ? undefined : true}
+            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+            className={cn(
+              'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+              // The first card is the lesson's next step, so it leads until one exists.
+              cards.length === 0
+                ? 'bg-accent text-accent-fg hover:brightness-105'
+                : 'bg-ink/[0.06] text-ink hover:bg-ink/10',
+              !editable && 'pointer-events-none',
+            )}
+          >
+            <PlusIcon width={16} height={16} />
+            New card
+          </motion.button>
+          {find}
+        </div>
       </div>
 
       {visible.length === 0 ? (

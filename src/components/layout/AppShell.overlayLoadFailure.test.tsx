@@ -48,7 +48,7 @@ function CurrentPage() {
     <>
       <h1>Current page</h1>
       <button onClick={() => setCount(count + 1)}>Count {count}</button>
-      <button onClick={() => openStudySheet()}>Study</button>
+      <button data-study-trigger="" onClick={() => openStudySheet()}>Study</button>
     </>
   );
 }

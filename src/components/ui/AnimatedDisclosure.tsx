@@ -16,15 +16,37 @@ interface AnimatedDisclosureProps {
   children: React.ReactNode;
   className?: string;
   innerClassName?: string;
+  retainContent?: boolean;
+  initial?: boolean;
 }
 
-export function AnimatedDisclosure({ open, ...props }: AnimatedDisclosureProps) {
+export function AnimatedDisclosure({ open, retainContent = false, initial = false, ...props }: AnimatedDisclosureProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const enabled = multiplier > 0;
 
+  if (retainContent) {
+    return (
+      <motion.div
+        inert={!open}
+        aria-hidden={!open || undefined}
+        initial={false}
+        animate={{
+          height: open ? 'auto' : 0,
+          opacity: open ? 1 : 0,
+          overflow: 'hidden',
+          transitionEnd: { overflow: open ? 'visible' : 'hidden' },
+        }}
+        transition={animatedDisclosureTiming(multiplier)}
+        className={cn('overflow-hidden', props.className)}
+      >
+        <div className={cn('flow-root', props.innerClassName)}>{props.children}</div>
+      </motion.div>
+    );
+  }
+
   return (
-    <AnimatePresence initial={false}>
+    <AnimatePresence initial={initial}>
       {open && <DisclosureContent {...props} enabled={enabled} multiplier={multiplier} />}
     </AnimatePresence>
   );
@@ -43,14 +65,12 @@ function DisclosureContent({
       inert={!present}
       aria-hidden={!present || undefined}
       initial={enabled ? { height: 0, opacity: 0 } : false}
-      animate={
-        enabled ? { height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } } : undefined
-      }
+      animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
       exit={enabled ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
       transition={animatedDisclosureTiming(multiplier)}
       className={cn(enabled ? 'overflow-hidden' : 'overflow-visible', className)}
     >
-      <div className={innerClassName}>{children}</div>
+      <div className={cn('flow-root', innerClassName)}>{children}</div>
     </motion.div>
   );
 }

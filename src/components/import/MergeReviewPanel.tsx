@@ -5,7 +5,8 @@
 // `src/db/mergeImport.ts`. British English throughout.
 
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import {

@@ -1,4 +1,4 @@
-// Two-step inline confirmation: a compact "<message> <confirm>/<cancel>" cluster
+// Two-step inline confirmation: a contained consequence-and-actions panel
 // that replaces a trigger control in place, so destructive actions never rely on
 // window.confirm() (blocks in tests, looks native nowhere). See NoteRow.tsx and
 // Settings.tsx's backup-restore list for the hand-rolled versions this replaces.
@@ -8,12 +8,15 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type ComponentProps,
   type ReactNode,
 } from 'react';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
+import { buttonClassName } from './buttonStyles';
+import { motionTransition } from './motion';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 
 export interface ConfirmInlineProps {
@@ -21,7 +24,9 @@ export interface ConfirmInlineProps {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
+  /** Preserve caller-owned busy states, including work that does not return a promise. */
+  disabled?: boolean;
   onCancel: () => void;
   /** 'destructive' styles the confirm button in the negative colour; 'default' uses accent. */
   variant?: 'destructive' | 'default';
@@ -40,7 +45,7 @@ interface ConfirmInlineSwapProps extends ConfirmInlineProps {
 }
 
 export function inlineConfirmTiming(multiplier: number) {
-  return { duration: 0.16 * multiplier, ease: [0.16, 1, 0.3, 1] as const };
+  return motionTransition('feedback', multiplier);
 }
 
 const FOCUSABLE_SELECTOR =
@@ -69,10 +74,15 @@ export function ConfirmInline({
   onConfirm,
   onCancel,
   variant = 'destructive',
+  disabled = false,
   announce = false,
   focusOnMount,
   className,
 }: ConfirmInlineProps) {
+  const [pending, setPending] = useState(false);
+  const inFlight = useRef(false);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -88,7 +98,28 @@ export function ConfirmInline({
     if (focusOnMount === 'cancel') cancelRef.current?.focus();
   }, [focusOnMount, present]);
 
+  const confirm = () => {
+    if (inFlight.current || disabled) return;
+    inFlight.current = true;
+    try {
+      const result = onConfirm();
+      if (result) {
+        setPending(true);
+        // Leave rejection handling with the caller; only release our pending guard.
+        return result.finally(() => {
+          inFlight.current = false;
+          setPending(false);
+        });
+      }
+      inFlight.current = false;
+    } catch (error) {
+      inFlight.current = false;
+      throw error;
+    }
+  };
+
   const cancel = () => {
+    if (inFlight.current || disabled) return;
     const focused = document.activeElement;
     const returnFocus = rootRef.current?.contains(focused);
     onCancel();
@@ -105,42 +136,53 @@ export function ConfirmInline({
   return (
     <div
       ref={rootRef}
-      className={cn('flex items-center gap-1', className)}
+      aria-busy={pending || disabled}
+      className={cn(
+        '@container w-full min-w-0 max-w-full rounded-2xl border p-4',
+        variant === 'destructive' ? 'border-negative/20 bg-negative/5' : 'border-line bg-surface',
+        className,
+      )}
       onKeyDown={(event) => {
         if (event.key === 'Escape' || (event.key === 'Enter' && (event.ctrlKey || event.metaKey))) {
           dialogKeyDown({ onCancel: cancel })(event);
         }
       }}
     >
-      <span
-        role={announce ? 'status' : undefined}
-        aria-live={announce ? 'polite' : undefined}
-        className="mr-1 min-w-0 text-xs text-ink-soft"
-        style={{ overflowWrap: 'anywhere' }}
-      >
-        {message}
-      </span>
-      <button
-        ref={confirmRef}
-        type="button"
-        onClick={onConfirm}
-        className={cn(
-          'min-h-11 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-          variant === 'destructive'
-            ? 'text-negative hover:bg-negative/10'
-            : 'text-accent-ink hover:bg-accent/10',
-        )}
-      >
-        {confirmLabel}
-      </button>
-      <button
-        ref={cancelRef}
-        type="button"
-        onClick={cancel}
-        className="min-h-11 rounded-full px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-ink/5"
-      >
-        {cancelLabel}
-      </button>
+      <div className="flex flex-col gap-3 @min-[32rem]:flex-row @min-[32rem]:items-center">
+        <span
+          role={announce ? 'status' : undefined}
+          aria-live={announce ? 'polite' : undefined}
+          className="min-w-0 flex-1 text-sm text-ink-soft"
+          style={{ overflowWrap: 'anywhere' }}
+        >
+          {message}
+        </span>
+        <div className="flex max-w-full flex-wrap gap-2 @min-[32rem]:shrink-0">
+          <button
+            ref={confirmRef}
+            type="button"
+            onClick={confirm}
+            disabled={pending || disabled}
+            style={{ transitionDuration: `${150 * multiplier}ms` }}
+            className={cn(
+              buttonClassName(variant === 'destructive' ? 'danger' : 'primary', 'sm'),
+              'max-w-full break-words',
+            )}
+          >
+            {confirmLabel}
+          </button>
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={cancel}
+            disabled={pending || disabled}
+            style={{ transitionDuration: `${150 * multiplier}ms` }}
+            className={buttonClassName('secondary', 'sm')}
+          >
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -177,7 +219,11 @@ export function ConfirmInlineSwap({
       ref={rootRef}
       layout="position"
       transition={inlineConfirmTiming(multiplier)}
-      className={cn('inline-flex items-center', swapClassName)}
+      className={cn(
+        'inline-flex min-w-0 max-w-full items-center',
+        active && 'w-full',
+        swapClassName,
+      )}
       onClickCapture={(event) => {
         if (active) return;
         const trigger = rootRef.current?.querySelector('[data-confirm-trigger]');
@@ -191,11 +237,11 @@ export function ConfirmInlineSwap({
         {active ? (
           <SwapSurface
             key="confirmation"
-            initial={multiplier > 0 ? { opacity: 0, scale: 0.98 } : false}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={multiplier > 0 ? { opacity: 0, scale: 0.98 } : undefined}
+            initial={multiplier > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={multiplier > 0 ? { opacity: 0 } : undefined}
             transition={inlineConfirmTiming(multiplier)}
-            className="flex items-center"
+            className="flex w-full min-w-0 max-w-full items-center"
           >
             <ConfirmInline
               {...confirmationProps}
@@ -211,11 +257,11 @@ export function ConfirmInlineSwap({
           <SwapSurface
             key="trigger"
             data-confirm-trigger=""
-            initial={multiplier > 0 ? { opacity: 0, scale: 0.98 } : false}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={multiplier > 0 ? { opacity: 0, scale: 0.98 } : undefined}
+            initial={multiplier > 0 ? { opacity: 0 } : false}
+            animate={{ opacity: 1 }}
+            exit={multiplier > 0 ? { opacity: 0 } : undefined}
             transition={inlineConfirmTiming(multiplier)}
-            className="flex items-center"
+            className="flex min-w-0 max-w-full items-center"
           >
             {children}
           </SwapSurface>

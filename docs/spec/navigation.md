@@ -41,15 +41,29 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   body rather than the viewport so the footer remains visible below the Electron titlebar.
 - **Search navigation:** the sidebar always opens `/search`, consistently with the other
   navigation destinations. Quick search remains available through `Ctrl/Cmd+K`.
+  Both share compact result rows, pointer/focus selection and the same active highlight;
+  arrow keys select and Enter opens the active result. The page retains URL-backed
+  filters and pagination. Clear filters sits beside the result count and preserves the query.
   Study actions live on Today and course pages rather than appearing as a different kind
   of sidebar entry. Stored navigation preferences retain order and visibility whilst
   retiring the old Review today entry and refreshing destination names.
+- **Today course rows:** the course title uses a navigation button to avoid the browser URL
+  preview, retaining its hover underline, route prefetch and native Enter/Space activation.
+  Study and course-menu actions remain separate.
 - **Mobile:** the sidebar becomes a drawer opened from a top bar burger or a deliberate
   left-edge rightward swipe; the scrim closes it; it auto-closes on navigation. The edge
   gesture rejects vertical movement and starts on non-interactive content only, so ordinary
   scrolling and controls retain their native behaviour. Supported browsers suppress horizontal
   history overscroll while the application shell is mounted; iOS Safari may still reserve its
   native screen-edge back gesture. On desktop the sidebar is always visible.
+- **Scoped Find:** `Ctrl/Cmd+F` focuses course Cards search or, on a lesson with cards,
+  opens **Find cards**: the Quick search dialogue narrowed to that lesson's primary and
+  explicitly linked cards, also opened by the search button that ends the lesson's
+  "Cards in this lesson" heading. Course Cards search covers only that course. Both reuse
+  the shared matching rules. Escape dismisses lesson Find or clears course search and
+  restores the previous focus; `Ctrl/Cmd+K` inside lesson Find hands over to the global
+  Quick search. Editors and modal dialogues retain their own Find behaviour, and browser
+  Find remains available outside these card views and on a lesson without cards.
 - **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles **Quick search**;
   `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
   shortcuts are inert while typing in an input/textarea. Quick search focuses its search field on
@@ -100,6 +114,9 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
 | `/method`                                               | Technical method page                                                   | **no**    | lazy    |
 | `/deck/:deckId`                                         | Redirects to `/`                                                        | yes       | eager   |
 | `/study`                                                | Redirects to `/`                                                        | yes       | eager   |
+
+`/import` redirects to `/?import=1`, which opens the Import panel on Today. Closing
+the panel removes the query parameter. Old links remain usable without a separate page.
 
 The public landing opens with one headline, direct app entry and the existing illustration.
 Supporting copy is distributed across the scroll so each scene has only one or two focal points. Its
@@ -212,7 +229,7 @@ page) and **Continue** replaces it while an attempt is unfinished; Edit mode kee
 links. An attempt that cannot be read leaves its set unscored instead of hiding the list.
 
 "Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
-headers, path lesson rows, the study sheet and the **Review due cards** session: cards
+headers, path lesson rows, the session preview and the **Review due cards** session: cards
 introduced in reached lessons whose scheduled review has passed and which remain below
 Practice's mastery threshold. New cards are never due. A review already secured for an
 exam later today is omitted even if its saved due timestamp has passed. Counts use the
@@ -277,20 +294,25 @@ conductor at `/course/:courseId/study`. The conductor rebuilds its next-step dec
 authoritative course state after every completed lesson or Practice step; it never stores a
 fixed queue. Lesson notes, Simple recall, curricular Practice, due review, transition
 reports and Pomodoro breaks therefore form one continuous study period rather than unrelated
-routes. Study opens the study sheet (a bottom sheet on a phone, whose handle swipes it away; the
-shared centred dialogue from 768px), which previews today's session before **Start session**:
+routes. Study expands from its own button into a session preview, using the same spring as New
+course, with its persistent top-right trigger turning into a close control. The contents fade
+in and out over 120ms at normal motion speed while the surface expands or contracts; text
+retains its dimensions throughout. The course stays visible, without a modal backdrop or a phone sheet. The surface stays
+inside the viewport, including Today rows near its bottom. Escape or Cancel returns focus to
+Study; clicking or tabbing elsewhere closes without taking focus back. The preview shows:
 the planner's next step (a lesson with its card and new-card counts, a Card practice or due review
 with its card count), then **Review due cards** when due reviews remain, marked as offered next
 because the between-steps screen offers them beside Continue. Each step and the session carry an
 "about N min" estimate from the course's mean review time, counting a new card as three reviews;
-a step with no cards has no estimate and the session total is then omitted. The sheet never shows
-steps beyond those two, since the planner decides one step at a time. With nothing to start, the sheet
+a step with no cards has no estimate and the session total is then omitted. The preview never shows
+steps beyond those two, since the planner decides one step at a time. The course title and total
+estimate lead an unboxed numbered sequence. A compact action row pairs **Cancel** with
+**Start session**, without nested frames or a detached Done action. With nothing to start, the preview
 names the blocker: an empty course offers **Add cards** when its lessons are editable, a locked
 lesson is named with its unlock condition (release date or the lesson before it), and an archived
 course says to restore it. Opened from Today, the
-plan is followed by **Other ways**: due review on its own, each applicable named assessment and
-Practise until all correct. Opened from a course page, which has its own Other ways menu beside
-Study, the sheet leaves that section out. When an imminent
+plan is followed by **Other ways**: due review on its own and each applicable named assessment. Opened from a course page, which has its own Other ways menu beside
+Study, the preview leaves that section out. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained
 as a preference. Selecting a visible manual Practice node or assessment on the path bypasses the
@@ -298,9 +320,11 @@ generic choice and enters that exact scope. Before **Study**, a ring shows the c
 due today, filling as the day's are done and completing with a tick once none are due; the course's
 exam-day recall, card and lesson counts sit in one card beneath its lessons. Beside **Study**, an
 **Other ways** menu offers
-**Only review due cards** (course-wide due review, directly) and each upcoming assessment. Every
+**Only review due cards** (course-wide due review, directly), each upcoming assessment and
+**Practise until all correct**. Practice expands within that menu to choose the whole course or
+a lesson; answers still update the review schedule. It is never duplicated in the session preview. Every
 course entry point is the same `CourseStudyActions` pair, a one-lesson course included, and
-Today's **Study** on a course row (and the S shortcut there) opens the same study sheet, so Study
+Today's **Study** on a course row (and the S shortcut there) opens the same session preview, so Study
 always previews the session before it starts. Once the curriculum is finished, the
 conductor's next step is that same due review, under the same name. It creates no
 path node or milestone. Path nodes show **Manual** or **Automatic** explicitly. Existing manual
@@ -464,7 +488,7 @@ their sequence label and recall instruction sit above and below that shared cue/
 **Card editor**, **Course settings**, **Settings** and **Search** use display titles
 without decorative eyebrows and the shared surface-card language. Course settings,
 Settings and Search align with the shared page frame; Search keeps a narrower reading
-column on that frame’s left edge. The editor and course settings add a sticky bottom
+column centred within that frame. The editor and course settings add a sticky bottom
 action bar. Help’s footer presents its destination links directly, without a descriptive
 caption that repeats them.
 Sequence and diagram editors share the course page frame in loaded, loading and not-found states.
@@ -517,3 +541,14 @@ The public sitemap lists the homepage and comparison URL; robots.txt advertises 
 sitemap. Study routes remain hash-based and are not sitemap entries. Direct sharing
 and import links preserve their destination through first-run setup. The service
 worker excludes public comparison paths from the app-shell navigation fallback.
+
+The sidebar Courses heading has no creation shortcut. Create courses with **New course** on Today.
+
+### In-app navigation controls
+
+Sidebar entries, course tabs, back controls and other in-app route actions use the shared
+`AppLink` / `AppNavLink` controls. They retain link semantics, keyboard focus, Enter activation,
+active-route styling and router navigation, without an `href` that produces the browser's
+bottom-left hover URL. Control/Command-click and middle-click open the resolved route separately.
+External destinations, downloads and public-site links retain native anchors. Native link-address
+copying from the context menu is consequently unavailable on the in-app controls.

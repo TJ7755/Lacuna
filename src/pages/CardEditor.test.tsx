@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import * as React from 'react';
@@ -13,7 +14,7 @@ const mockNavigate = vi.fn();
 let mockIsPresent = true;
 
 vi.mock('motion/react', async () => ({
-  ...await vi.importActual<typeof MotionReact>('motion/react'),
+  ...(await vi.importActual<typeof MotionReact>('motion/react')),
   useIsPresent: () => mockIsPresent,
 }));
 let mockCourse: Course | undefined;
@@ -37,7 +38,6 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, MemoryRouter: TestMemoryRouter, useNavigate: () => mockNavigate };
 });
 
-
 vi.mock('../state/useData', () => ({
   useCard: () => mockCard,
 }));
@@ -46,6 +46,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useCourseCards: () => [],
   useLesson: () => mockLesson,
+  useLessons: () => [],
   useLessonCards: () => (mockLesson ? [] : undefined),
   useLessonBackingDeck: () => undefined,
   useCourseBankBackingDeck: () => mockBankBackingDeck,
@@ -200,6 +201,13 @@ function renderEditingViaLesson(state?: unknown) {
   );
 }
 
+// The rarer types wait behind More until asked for.
+function chooseType(name: string) {
+  const more = screen.queryByRole('button', { name: 'More card types' });
+  if (more) fireEvent.click(more);
+  fireEvent.click(screen.getByRole('button', { name }));
+}
+
 afterEach(() => vi.useRealTimers());
 
 beforeEach(() => {
@@ -220,6 +228,25 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
     value: { writeText: writeClipboardText },
+  });
+});
+
+describe('CardEditor — import entry', () => {
+  it('opens the existing import dialogue without expanding More and keeps the card draft', async () => {
+    renderNew();
+    const front = screen.getAllByRole('textbox')[0];
+    fireEvent.change(front, { target: { value: 'Unsaved question' } });
+    const more = screen.getByRole('button', { name: 'More card types' });
+    const importButton = screen.getByRole('button', { name: 'Import cards' });
+    expect(screen.getByRole('group', { name: 'Card type' })).not.toContainElement(importButton);
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(importButton);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close import' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(front).toHaveValue('Unsaved question');
+    expect(more).toHaveAttribute('aria-expanded', 'false');
   });
 });
 
@@ -335,6 +362,20 @@ describe('CardEditor — draft autosave', () => {
     expect(screen.getByPlaceholderText(/Question or prompt/)).toHaveValue('Second card draft');
   });
 
+  it('keeps typed content as a draft when another editor takes over', () => {
+    renderNew();
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Unsaved prompt' },
+    });
+    chooseType('Sequence');
+
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/sequence/new', {
+      replace: true,
+      state: null,
+    });
+    expect(loadDraft(draftKey('bank:course-1', 'new'))?.front).toBe('Unsaved prompt');
+  });
+
   it('persists the source draft when navigating between cards before the debounce expires', async () => {
     const firstCard = { ...generatedCard, sequenceItemId: undefined };
     const secondCard = {
@@ -394,7 +435,7 @@ describe('CardEditor — live preview', () => {
       'aria-pressed',
       'true',
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Numeric answer' }));
+    chooseType('Numeric answer');
     expect(screen.getByRole('button', { name: 'Numeric answer' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -417,7 +458,7 @@ describe('CardEditor — live preview', () => {
 describe('CardEditor — numeric items', () => {
   it('creates a numeric item with its answer in the structured payload', async () => {
     renderNew();
-    fireEvent.click(screen.getByRole('button', { name: 'Numeric answer' }));
+    chooseType('Numeric answer');
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'What is 8 / 2?' },
     });
@@ -492,12 +533,9 @@ describe('CardEditor — backing-deck boundary', () => {
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'What is demand?' },
     });
-    fireEvent.change(
-      screen.getByPlaceholderText('Answer'),
-      {
-        target: { value: 'The quantity consumers will buy.' },
-      },
-    );
+    fireEvent.change(screen.getByPlaceholderText('Answer'), {
+      target: { value: 'The quantity consumers will buy.' },
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(600);
@@ -530,10 +568,9 @@ describe('CardEditor — backing-deck boundary', () => {
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'What is demand?' },
     });
-    fireEvent.change(
-      screen.getByPlaceholderText('Answer'),
-      { target: { value: 'The quantity consumers will buy.' } },
-    );
+    fireEvent.change(screen.getByPlaceholderText('Answer'), {
+      target: { value: 'The quantity consumers will buy.' },
+    });
 
     await act(async () => {
       vi.advanceTimersByTime(600);
@@ -550,7 +587,7 @@ describe('CardEditor — backing-deck boundary', () => {
 describe('CardEditor — working items', () => {
   it('copies a compiler-backed mark-scheme prompt for the current question', async () => {
     renderNew();
-    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    chooseType('Working');
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Show that x = 4.' },
     });
@@ -565,7 +602,7 @@ describe('CardEditor — working items', () => {
 
   it('creates a working item with the compiled scheme in its structured payload', async () => {
     renderNew();
-    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    chooseType('Working');
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Show that x = 4.' },
     });
@@ -602,7 +639,7 @@ describe('CardEditor — working items', () => {
 
   it('does not save while any mark-scheme line is invalid', async () => {
     renderNew();
-    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    chooseType('Working');
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Show your working.' },
     });
@@ -635,7 +672,7 @@ describe('CardEditor — working items', () => {
 
   it('persists pinned working fixtures with the item', async () => {
     renderNew();
-    fireEvent.click(screen.getByRole('button', { name: 'Working' }));
+    chooseType('Working');
     fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
       target: { value: 'Solve for x.' },
     });
@@ -692,7 +729,9 @@ describe('CardEditor — generated cards', () => {
     renderEditing();
 
     fireEvent.keyDown(screen.getByPlaceholderText(/Question or prompt/), { key: 'Escape' });
-    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'), { state: { returning: true } });
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/course/course-1'), {
+      state: { returning: true },
+    });
   });
 
   it('renders the ordinary editable form for a non-generated card', () => {
@@ -746,7 +785,7 @@ describe('CardEditor — return-to-origin back-link', () => {
     renderEditingViaLesson({ origin: { path: '/course/course-1/cards', label: 'Cards' } });
 
     const link = screen.getByRole('link', { name: 'Cards' });
-    expect(link).toHaveAttribute('href', '/course/course-1/cards');
+    expectAppDestination(link, '/course/course-1/cards');
   });
 
   // A hard refresh drops router state — the lesson-scoped route itself still
@@ -757,7 +796,7 @@ describe('CardEditor — return-to-origin back-link', () => {
     renderEditingViaLesson();
 
     const link = screen.getByRole('link', { name: 'Cells' });
-    expect(link).toHaveAttribute('href', '/course/course-1/lesson/lesson-1');
+    expectAppDestination(link, '/course/course-1/lesson/lesson-1');
   });
 
   // The Card-scoped edit route (Cards' Unassigned bucket) already has no
@@ -767,22 +806,33 @@ describe('CardEditor — return-to-origin back-link', () => {
     renderEditing();
 
     const link = screen.getByRole('link', { name: 'Cards' });
-    expect(link).toHaveAttribute('href', '/course/course-1/cards');
+    expectAppDestination(link, '/course/course-1/cards');
   });
 });
-
 
 describe('CardEditor — authored answer mode', () => {
   it('saves an explicit typing choice when creating a card', async () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
     renderNew();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'type' } });
-    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'French for cat?' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), {
+      target: { value: 'type' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'French for cat?' },
+    });
     fireEvent.change(screen.getByPlaceholderText(/answer/i), { target: { value: 'chat' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
-    await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
-      'course-1', 'front_back', 'French for cat?', 'chat', [], undefined, 'type',
-    ));
+    await waitFor(() =>
+      expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1',
+        'front_back',
+        'French for cat?',
+        'chat',
+        [],
+        undefined,
+        'type',
+      ),
+    );
   });
 
   it('loads an override and can return an existing card to the lesson default', async () => {
@@ -790,66 +840,109 @@ describe('CardEditor — authored answer mode', () => {
     mockCard = { ...generatedCard, sequenceItemId: undefined, answerMode: 'type' };
     renderEditing();
     expect(screen.getByRole('combobox', { name: 'Card answer mode' })).toHaveValue('type');
-    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'inherit' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(updateCard).toHaveBeenCalledWith(mockCard!.id,
-      expect.objectContaining({ answerMode: undefined }),
-    ));
-  });
-  it.each([false, true])('ignores a restored answer-mode override in View mode (editing: %s)', async (editing) => {
-    mockCourse = { ...course, lessonViewMode: 'study' };
-    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' } : undefined;
-    saveDraft(draftKey('bank:course-1', editing ? 'card-1' : 'new'), {
-      type: 'front_back', front: 'Draft question', back: 'Draft answer', tags: [],
-      answerMode: 'type', timestamp: Date.now(),
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), {
+      target: { value: 'inherit' },
     });
-    if (editing) renderEditing();
-    else renderNew();
-    fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
-    expect(screen.queryByRole('combobox', { name: 'Card answer mode' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
-    if (editing) {
-      await waitFor(() => expect(updateCard).toHaveBeenCalledWith('card-1', expect.objectContaining({ answerMode: 'reveal' })));
-    } else {
-      await waitFor(() => expect(createCourseCard).toHaveBeenCalledWith(
-        'course-1', 'front_back', 'Draft question', 'Draft answer', [], undefined, undefined,
-      ));
-    }
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() =>
+      expect(updateCard).toHaveBeenCalledWith(
+        mockCard!.id,
+        expect.objectContaining({ answerMode: undefined }),
+      ),
+    );
   });
+  it.each([false, true])(
+    'ignores a restored answer-mode override in View mode (editing: %s)',
+    async (editing) => {
+      mockCourse = { ...course, lessonViewMode: 'study' };
+      mockCard = editing
+        ? { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' }
+        : undefined;
+      saveDraft(draftKey('bank:course-1', editing ? 'card-1' : 'new'), {
+        type: 'front_back',
+        front: 'Draft question',
+        back: 'Draft answer',
+        tags: [],
+        answerMode: 'type',
+        timestamp: Date.now(),
+      });
+      if (editing) renderEditing();
+      else renderNew();
+      fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
+      expect(screen.queryByRole('combobox', { name: 'Card answer mode' })).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
+      if (editing) {
+        await waitFor(() =>
+          expect(updateCard).toHaveBeenCalledWith(
+            'card-1',
+            expect.objectContaining({ answerMode: 'reveal' }),
+          ),
+        );
+      } else {
+        await waitFor(() =>
+          expect(createCourseCard).toHaveBeenCalledWith(
+            'course-1',
+            'front_back',
+            'Draft question',
+            'Draft answer',
+            [],
+            undefined,
+            undefined,
+          ),
+        );
+      }
+    },
+  );
 
   it('preserves the saved answer mode if authoring is turned off while editing', async () => {
     mockCourse = { ...course, lessonViewMode: 'edit' };
     mockCard = { ...generatedCard, sequenceItemId: undefined, answerMode: 'reveal' };
     renderEditing();
-    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), { target: { value: 'type' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), {
+      target: { value: 'type' },
+    });
     mockCourse = { ...course, lessonViewMode: 'study' };
-    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Updated question' } });
+    fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+      target: { value: 'Updated question' },
+    });
     expect(screen.queryByRole('combobox', { name: 'Card answer mode' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => expect(updateCard).toHaveBeenCalledWith('card-1', expect.objectContaining({ answerMode: 'reveal' })));
+    await waitFor(() =>
+      expect(updateCard).toHaveBeenCalledWith(
+        'card-1',
+        expect.objectContaining({ answerMode: 'reveal' }),
+      ),
+    );
   });
-
 });
 
-
 describe('CardEditor — save navigation', () => {
-  it.each([false, true])('cancels the save return when the editor closes (editing: %s)', async (editing) => {
-    vi.useFakeTimers();
-    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
-    const view = editing ? renderEditing() : renderNew();
-    if (!editing) {
-      fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), { target: { value: 'Q' } });
-      fireEvent.change(screen.getByPlaceholderText(/^Answer$/), { target: { value: 'A' } });
-    }
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }));
-    });
-    expect(editing ? updateCard : createCourseCard).toHaveBeenCalledOnce();
-    expect(mockNavigate).not.toHaveBeenCalled();
-    view.unmount();
-    await act(async () => { vi.advanceTimersByTime(500); });
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    'cancels the save return when the editor closes (editing: %s)',
+    async (editing) => {
+      vi.useFakeTimers();
+      mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
+      const view = editing ? renderEditing() : renderNew();
+      if (!editing) {
+        fireEvent.change(screen.getByPlaceholderText(/Question or prompt/), {
+          target: { value: 'Q' },
+        });
+        fireEvent.change(screen.getByPlaceholderText(/^Answer$/), { target: { value: 'A' } });
+      }
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }),
+        );
+      });
+      expect(editing ? updateCard : createCourseCard).toHaveBeenCalledOnce();
+      expect(mockNavigate).not.toHaveBeenCalled();
+      view.unmount();
+      await act(async () => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
 
   it('ignores a save that finishes after the editor has closed', async () => {
     vi.useFakeTimers();
@@ -859,8 +952,12 @@ describe('CardEditor — save navigation', () => {
     const view = renderEditing();
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     view.unmount();
-    await act(async () => { save.resolve(); });
-    await act(async () => { vi.advanceTimersByTime(500); });
+    await act(async () => {
+      save.resolve();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -880,7 +977,9 @@ describe('CardEditor — save navigation', () => {
     });
     mockCard = { ...generatedCard, id: 'card-2', sequenceItemId: undefined };
     fireEvent.click(screen.getByRole('link', { name: 'Next card' }));
-    await act(async () => { vi.advanceTimersByTime(500); });
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -900,7 +999,9 @@ describe('CardEditor — save navigation', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
-    await act(async () => { vi.advanceTimersByTime(500); });
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -912,8 +1013,12 @@ describe('CardEditor — save navigation', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     });
     expect(mockNavigate).not.toHaveBeenCalled();
-    await act(async () => { vi.advanceTimersByTime(450); });
-    expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards', { state: { returning: true } });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
+    expect(mockNavigate).toHaveBeenCalledExactlyOnceWith('/course/course-1/cards', {
+      state: { returning: true },
+    });
   });
 });
 
@@ -925,29 +1030,45 @@ describe('CardEditor — saved-card return', () => {
 
   it('returns to Cards after save feedback when the editor stays present', async () => {
     renderEditing();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
-    await act(async () => { vi.advanceTimersByTime(450); });
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/cards', { state: { returning: true } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/cards', {
+      state: { returning: true },
+    });
   });
 
   it('cancels the pending return when the editor unmounts', async () => {
     const view = renderEditing();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
     view.unmount();
-    await act(async () => { vi.advanceTimersByTime(450); });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('cancels the return as the route starts exiting, before unmount', async () => {
     const view = renderEditing();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
     mockIsPresent = false;
     view.rerender(
       <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
-        <Routes><Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} /></Routes>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
       </MemoryRouter>,
     );
-    await act(async () => { vi.advanceTimersByTime(450); });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -955,48 +1076,80 @@ describe('CardEditor — saved-card return', () => {
     render(
       <MemoryRouter initialEntries={['/course/course-1/cards/card-1/edit']}>
         <Link to="/course/course-1/cards/card-2/edit">Open second card</Link>
-        <Routes><Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} /></Routes>
+        <Routes>
+          <Route path="/course/:courseId/cards/:cardId/edit" element={<CardEditor />} />
+        </Routes>
       </MemoryRouter>,
     );
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
     mockCard = { ...generatedCard, id: 'card-2', sequenceItemId: undefined };
     fireEvent.click(screen.getByRole('link', { name: 'Open second card' }));
-    await act(async () => { vi.advanceTimersByTime(450); });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('does not schedule a return when saving finishes after unmount', async () => {
     let finishSave!: () => void;
-    updateCard.mockImplementationOnce(() => new Promise<void>((resolve) => { finishSave = resolve; }));
+    updateCard.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
     const view = renderEditing();
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     view.unmount();
-    await act(async () => { finishSave(); });
-    await act(async () => { vi.advanceTimersByTime(450); });
+    await act(async () => {
+      finishSave();
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(450);
+    });
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
 
 describe('CardEditor — published-course lock', () => {
-  it.each([false, true])('blocks saving a locked copy, including the keyboard shortcut (editing: %s)', async (editing) => {
-    mockCourse = { ...course, distributedCopy: { lineageId: 'published-course', revision: 1, locked: true, autoAcceptUpdates: false } };
-    mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
-    if (editing) renderEditing();
-    else renderNew();
-    const fields = screen.getAllByRole('textbox');
-    fireEvent.change(fields[0], { target: { value: 'Changed question' } });
-    fireEvent.change(fields[1], { target: { value: 'Changed answer' } });
-    expect(screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' })).toBeDisabled();
-    await act(async () => { fireEvent.keyDown(fields[0], { key: 'Enter', ctrlKey: true }); });
-    expect(updateCard).not.toHaveBeenCalled();
-    expect(createCourseCard).not.toHaveBeenCalled();
-  });
+  it.each([false, true])(
+    'blocks saving a locked copy, including the keyboard shortcut (editing: %s)',
+    async (editing) => {
+      mockCourse = {
+        ...course,
+        distributedCopy: {
+          lineageId: 'published-course',
+          revision: 1,
+          locked: true,
+          autoAcceptUpdates: false,
+        },
+      };
+      mockCard = editing ? { ...generatedCard, sequenceItemId: undefined } : undefined;
+      if (editing) renderEditing();
+      else renderNew();
+      const fields = screen.getAllByRole('textbox');
+      fireEvent.change(fields[0], { target: { value: 'Changed question' } });
+      fireEvent.change(fields[1], { target: { value: 'Changed answer' } });
+      expect(
+        screen.getByRole('button', { name: editing ? 'Save changes' : 'Add card' }),
+      ).toBeDisabled();
+      await act(async () => {
+        fireEvent.keyDown(fields[0], { key: 'Enter', ctrlKey: true });
+      });
+      expect(updateCard).not.toHaveBeenCalled();
+      expect(createCourseCard).not.toHaveBeenCalled();
+    },
+  );
 
   it('keeps ordinary Study-mode cards editable', async () => {
     mockCourse = { ...course, lessonViewMode: 'study' };
     mockCard = { ...generatedCard, sequenceItemId: undefined };
     renderEditing();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })); });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    });
     expect(updateCard).toHaveBeenCalledWith('card-1', expect.any(Object));
   });
 });

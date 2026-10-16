@@ -2,7 +2,7 @@ import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
 import { useCourses } from '../state/useCourseData';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';

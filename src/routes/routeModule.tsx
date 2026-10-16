@@ -6,7 +6,13 @@ export type RouteLoader = () => Promise<RouteModule>;
 const pendingModules = new WeakMap<RouteLoader, Promise<RouteModule>>();
 const loadedModules = new WeakMap<RouteLoader, RouteModule>();
 
+/** Read completed prefetches without introducing a first-render suspense delay. */
+export function getLoadedRouteModule<T extends RouteLoader>(loader: T): Awaited<ReturnType<T>> | undefined {
+  return loadedModules.get(loader) as Awaited<ReturnType<T>> | undefined;
+}
+
 /** Share the actual module between navigation and hover/focus prefetch. */
+export function loadRouteModule<T extends RouteLoader>(loader: T): ReturnType<T>;
 export function loadRouteModule(loader: RouteLoader): Promise<RouteModule> {
   const pending = pendingModules.get(loader);
   if (pending) return pending;

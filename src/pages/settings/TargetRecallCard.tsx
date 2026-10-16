@@ -24,13 +24,18 @@ export function TargetRecallCard({
   retention,
   onChange,
   onCommit,
+  compact = false,
+  headingLevel = 3,
 }: {
   retention: number;
+  compact?: boolean;
+  headingLevel?: 2 | 3;
   /** Updates the live figure as the slider is dragged; does not commit. */
   onChange: (value: number) => void;
   /** Commits the value once the drag or keyboard interaction ends, or a preset is picked. */
   onCommit: (value: number) => void;
 }) {
+  const Heading = `h${headingLevel}` as const;
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const percent = Math.round(retention * 100);
@@ -44,7 +49,7 @@ export function TargetRecallCard({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-4">
-        <h3 className="font-semibold text-ink">Target recall</h3>
+        <Heading className="font-semibold text-ink">Target recall</Heading>
         <motion.span
           key={percent}
           initial={multiplier > 0 ? { scale: 1.08 } : false}
@@ -77,12 +82,13 @@ export function TargetRecallCard({
               aria-pressed={active}
               onClick={() => onCommit(preset.value)}
               className={cn(
-                'inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-[background-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+                'inline-flex min-h-11 items-center gap-2 rounded-full text-sm font-semibold transition-[background-color,color,transform] duration-150 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+                compact ? 'px-3' : 'px-4',
                 active ? 'bg-ink text-paper' : 'bg-ink/[0.06] text-ink-soft hover:text-ink',
               )}
             >
               {preset.label}
-              <span className="font-normal opacity-70 tabular-nums">
+              <span className={cn('font-normal opacity-70 tabular-nums', compact && 'sr-only')}>
                 {Math.round(preset.value * 100)}%
               </span>
             </button>

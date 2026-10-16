@@ -1,3 +1,4 @@
+import { calendarKeyboardDate } from './calendarKeyboardDate';
 import { buttonClassName } from './buttonStyles';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -139,11 +140,7 @@ export function DateTimePicker({
   const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
   const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
   const [validationError, setValidationError] = useState<string | null>(null);
-  useFocusTrap(
-    open,
-    { autoFocusSelector: '[aria-current="date"], [tabindex="0"]' },
-    dropdownRef,
-  );
+  useFocusTrap(open, { autoFocusSelector: '[aria-current="date"], [tabindex="0"]' }, dropdownRef);
 
   useLayoutEffect(() => {
     if (!open || !popoverReady) return;
@@ -216,57 +213,6 @@ export function DateTimePicker({
     }
   }, []);
 
-  // Keyboard handling belongs to the day grid. Attaching it to the whole dialog
-  // hijacks arrows and Enter from the month controls and time fields.
-  const handleDayKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const current = focusIndex ?? initialFocusIndex;
-      let next = current;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          next = current - 1;
-          break;
-        case 'ArrowRight':
-          next = current + 1;
-          break;
-        case 'ArrowUp':
-          next = current - 7;
-          break;
-        case 'ArrowDown':
-          next = current + 7;
-          break;
-        case 'Home':
-          next = Math.floor(current / 7) * 7;
-          break;
-        case 'End':
-          next = Math.min(Math.floor(current / 7) * 7 + 6, cells.length - 1);
-          break;
-        case 'PageUp':
-          e.preventDefault();
-          setSlideDir(-1);
-          dayRefs.current = [];
-          pendingGridFocusRef.current = { mode: 'days', index: null };
-          setView((currentView) => shiftMonth(currentView, -1));
-          return;
-        case 'PageDown':
-          e.preventDefault();
-          setSlideDir(1);
-          dayRefs.current = [];
-          pendingGridFocusRef.current = { mode: 'days', index: null };
-          setView((currentView) => shiftMonth(currentView, 1));
-          return;
-        default:
-          return;
-      }
-      e.preventDefault();
-      next = Math.max(0, Math.min(cells.length - 1, next));
-      setFocusIndex(next);
-      dayRefs.current[next]?.focus();
-    },
-    [cells.length, focusIndex, initialFocusIndex],
-  );
-
   const selectDay = useCallback(
     (day: number, currentMonth: boolean) => {
       const { y, m } = resolveAdjacentMonth(day, currentMonth, year, month);
@@ -290,6 +236,38 @@ export function DateTimePicker({
       setView({ year: y, month: m });
     },
     [year, month, hours, minutes, onChange, reportValidity, timeZone],
+  );
+
+  // Date arithmetic uses UTC only as a calendar coordinate, never as the chosen instant.
+  const handleDayKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      const current = focusIndex ?? initialFocusIndex;
+      const cell = cells[current];
+      if (!cell) return;
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        selectDay(cell.day, cell.currentMonth);
+        return;
+      }
+      const { y, m } = resolveAdjacentMonth(cell.day, cell.currentMonth, year, month);
+      const next = calendarKeyboardDate(y, m, cell.day, event.key, event.shiftKey);
+      if (!next) return;
+      event.preventDefault();
+      if (next.year !== year || next.month !== month) {
+        setSlideDir(next.year * 12 + next.month > year * 12 + month ? 1 : -1);
+        dayRefs.current = [];
+        const index = new Date(Date.UTC(next.year, next.month, 1)).getUTCDay() + next.day - 1;
+        pendingGridFocusRef.current = { mode: 'days', index };
+        setView({ year: next.year, month: next.month });
+      } else {
+        const index = cells.findIndex(
+          (candidate) => candidate.currentMonth && candidate.day === next.day,
+        );
+        setFocusIndex(index);
+        dayRefs.current[index]?.focus();
+      }
+    },
+    [cells, focusIndex, initialFocusIndex, month, selectDay, year],
   );
 
   const setTime = useCallback(
@@ -467,7 +445,7 @@ export function DateTimePicker({
 
   useLayoutEffect(() => {
     if (!open || pickerMode !== 'days' || pendingGridFocusRef.current?.mode !== 'days') return;
-    const next = initialFocusIndex;
+    const next = pendingGridFocusRef.current.index ?? initialFocusIndex;
     setFocusIndex(next);
     const element = dayRefs.current[next];
     if (element?.isConnected) {
@@ -616,20 +594,12 @@ export function DateTimePicker({
                 <div className="flex items-center justify-between px-4 py-3">
                   <button
                     type="button"
-                    onClick={() => navigateHeader(-1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                    aria-label={`Previous ${headerUnit}`}
-                  >
-                    <ChevronLeftIcon width={16} height={16} />
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => {
                       if (pickerMode === 'days') enterMode('months');
                       else if (pickerMode === 'months') enterMode('years');
                       else enterMode('months');
                     }}
-                    className="flex min-h-11 items-center justify-center rounded-full px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
+                    className="flex min-h-11 items-center justify-start rounded-full px-3 py-1 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/5 active:bg-ink/5"
                     aria-label={
                       pickerMode === 'days'
                         ? 'Open month selector'
@@ -640,14 +610,24 @@ export function DateTimePicker({
                   >
                     {headerText}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateHeader(1)}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
-                    aria-label={`Next ${headerUnit}`}
-                  >
-                    <ChevronRightIcon width={16} height={16} />
-                  </button>
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => navigateHeader(-1)}
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                      aria-label={`Previous ${headerUnit}`}
+                    >
+                      <ChevronLeftIcon width={16} height={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateHeader(1)}
+                      className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink"
+                      aria-label={`Next ${headerUnit}`}
+                    >
+                      <ChevronRightIcon width={16} height={16} />
+                    </button>
+                  </div>
                 </div>
 
                 <AnimatePresence mode="wait">
@@ -905,24 +885,6 @@ export function DateTimePicker({
                     className="text-xs font-medium text-accent-ink transition-opacity hover:opacity-80 active:opacity-80"
                   >
                     Jump to today
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const now = Date.now();
-                      const nowComponents = getComponentsInZone(now, timeZone);
-                      const ms = fromDateTimeLocalValue(
-                        `${nowComponents.year}-${pad(nowComponents.month + 1)}-${pad(nowComponents.day)}T${pad(nowComponents.hours)}:${pad(nowComponents.minutes)}`,
-                        timeZone,
-                      );
-                      if (!Number.isFinite(ms)) return;
-                      reportValidity(null);
-                      onChange(ms);
-                      setView({ year: nowComponents.year, month: nowComponents.month });
-                    }}
-                    className="hit-target text-xs font-medium text-ink-soft transition-opacity hover:text-ink active:text-ink"
-                  >
-                    Now
                   </button>
                   <button
                     type="button"

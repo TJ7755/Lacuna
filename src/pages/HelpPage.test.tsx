@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -130,12 +131,9 @@ describe('HelpPage', () => {
     expect(
       screen.queryByText(/Still have questions\? Check the settings pages/),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
-    expect(screen.getByRole('link', { name: 'Progress' })).toHaveAttribute('href', '/analytics');
-    expect(screen.getByRole('link', { name: 'How the scheduler works' })).toHaveAttribute(
-      'href',
-      '/method',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Settings' }), '/settings');
+    expectAppDestination(screen.getByRole('link', { name: 'Progress' }), '/analytics');
+    expectAppDestination(screen.getByRole('link', { name: 'How the scheduler works' }), '/method');
   });
 
   it('describes study entry with the controls the study sheet shows', () => {

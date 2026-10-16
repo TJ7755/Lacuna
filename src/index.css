@@ -316,9 +316,8 @@
   }
   /* A focus-within wrapper owns the outer indicator; suppressing the nested
      control's shadow avoids the double ring without removing keyboard focus. */
-  [class*='focus-within:ring-'] > input:focus-visible,
-  [class*='focus-within:ring-'] > textarea:focus-visible,
-  [class*='focus-within:ring-'] > select:focus-visible {
+  :is([class*='focus-within:ring-'], [class*='focus-within:shadow-'])
+    > :is(input, textarea, select):focus-visible {
     box-shadow: none;
   }
 }

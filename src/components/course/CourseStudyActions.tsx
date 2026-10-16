@@ -1,6 +1,7 @@
 import { Button } from '../ui/Button';
 import { ArrowRightIcon } from '../ui/icons';
 import { Menu, type MenuItem } from '../ui/Menu';
+import { SimpleLearnPractice } from '../learn/SimpleLearnOptions';
 import { DueRing } from './DueRing';
 
 /**
@@ -10,12 +11,14 @@ import { DueRing } from './DueRing';
  * what is due today.
  */
 export function CourseStudyActions({
+  courseId,
   dueCount,
   doneToday,
   disabled = false,
   onStudy,
   otherWays,
 }: {
+  courseId: string;
   dueCount: number;
   /** The course's cards already reviewed today, which fill the ring. */
   doneToday: number;
@@ -26,11 +29,29 @@ export function CourseStudyActions({
   return (
     <div className="flex flex-wrap items-center gap-2.5">
       <DueRing due={dueCount} done={doneToday} />
-      <Button variant="primary" size="lg" disabled={disabled} onClick={onStudy}>
+      <Button
+        data-study-trigger={courseId}
+        hoverScale={false}
+        variant="primary"
+        size="lg"
+        disabled={disabled}
+        onClick={onStudy}
+      >
         Study
         <ArrowRightIcon />
       </Button>
-      <Menu label="Other ways to study" items={otherWays} chevron size="md">
+      <Menu
+        label="Other ways to study"
+        items={[
+          ...otherWays,
+          {
+            label: 'Practise until all correct',
+            panel: <SimpleLearnPractice courseId={courseId} />,
+          },
+        ]}
+        chevron
+        size="md"
+      >
         Other ways
       </Menu>
     </div>

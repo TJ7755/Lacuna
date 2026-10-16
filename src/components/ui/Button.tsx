@@ -15,10 +15,11 @@ interface ButtonProps extends Omit<
 > {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  hoverScale?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', className, style, ...rest },
+  { variant = 'secondary', size = 'md', hoverScale = true, className, style, ...rest },
   ref,
 ) {
   const [motionSpeed] = useMotionSpeed();
@@ -29,7 +30,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       data-press=""
       whileTap={multiplier > 0 ? { scale: 0.96 } : undefined}
-      whileHover={multiplier > 0 ? { scale: 1.02 } : undefined}
+      whileHover={hoverScale && multiplier > 0 ? { scale: 1.02 } : undefined}
       transition={scaledSpring(multiplier, 600, 28)}
       style={{ ...style, transitionDuration: `${150 * multiplier}ms` }}
       className={cn(buttonClassName(variant, size), className)}
