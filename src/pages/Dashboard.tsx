@@ -7,7 +7,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
-import { ErrorBoundary } from '../components/layout/ErrorBoundary';
 import { forecastStatus } from '../components/dashboard/forecastStatus';
 import type { ForecastLine } from '../components/dashboard/ForecastChart';
 import { WeekPanel } from '../components/dashboard/WeekPanel';
@@ -33,11 +32,6 @@ import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/Cou
 const ForecastChart = lazy(() =>
   import('../components/dashboard/ForecastChart').then((module) => ({
     default: module.ForecastChart,
-  })),
-);
-const SharingAnnouncement = lazy(() =>
-  import('../components/layout/SharingAnnouncement').then((module) => ({
-    default: module.SharingAnnouncement,
   })),
 );
 const CourseContextMenu = lazy(() =>
@@ -270,12 +264,6 @@ export function Dashboard() {
               setCourseMenu({ course, position, trigger });
             }}
           />
-          {/* Below the queue, so the forecast and the day's work come first. */}
-          <ErrorBoundary fallback={null}>
-            <Suspense fallback={null}>
-              <SharingAnnouncement />
-            </Suspense>
-          </ErrorBoundary>
         </div>
       )}
 

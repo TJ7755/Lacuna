@@ -233,15 +233,14 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
   expect(y).toBeLessThanOrEqual(1);
 });
 
-test('Today puts the study queue above the sharing announcement on a phone', async ({ page }) => {
+test('Today keeps Study on the first phone screen without a sharing announcement', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   const queue = page.getByRole('region', { name: 'Today, most urgent first' });
-  const banner = page.getByRole('region', { name: 'New sharing features' });
-  await expect(banner).toBeVisible();
-  const queueBox = (await queue.boundingBox())!;
-  expect((await banner.boundingBox())!.y).toBeGreaterThanOrEqual(queueBox.y + queueBox.height);
+  await expect(queue).toBeVisible();
+  await expect(page.getByRole('region', { name: 'New sharing features' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Explore sharing/ })).toHaveCount(0);
   // The first course's Study is on the first screen.
   const start = (await queue.getByRole('button', { name: /^Study / }).first().boundingBox())!;
   expect(start.y + start.height).toBeLessThanOrEqual(844);

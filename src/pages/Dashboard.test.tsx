@@ -57,7 +57,6 @@ vi.mock('../state/useCourseData', () => ({
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
   speedMultiplier: () => 1,
-  // The sharing announcement's error boundary reads it.
   getMotionMultiplier: () => 1,
 }));
 
@@ -188,6 +187,17 @@ function queueLinks() {
 }
 
 describe('Dashboard', () => {
+  it('does not render a sharing announcement on Today', async () => {
+    localStorage.clear();
+    setCourseData();
+    render(<Dashboard />);
+    await act(() => vi.dynamicImportSettled());
+
+    expect(screen.getByRole('region', { name: 'Today, most urgent first' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'New sharing features' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Explore sharing/ })).not.toBeInTheDocument();
+  });
+
   it('renders skeleton when data is loading', async () => {
     vi.useFakeTimers();
     try {
