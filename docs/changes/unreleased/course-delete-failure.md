@@ -1,0 +1,1 @@
+- Report course-deletion snapshot and storage failures through the existing error toast, retain the confirmation for retry, and prevent duplicate deletion while pending. Cancelling returns focus to Delete course.

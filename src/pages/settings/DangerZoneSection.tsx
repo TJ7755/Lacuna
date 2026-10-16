@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
+import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { useToast } from '../../components/ui/Toast';
 import { SettingsCard } from './SettingsUi';
 
@@ -42,40 +42,46 @@ export function DangerZoneSection({
   const [confirming, setConfirming] = useState(false);
 
   async function handleDelete() {
-    const snap = await snapshot();
-    await onDelete();
-    // A null snapshot cannot be restored, so offer no Undo in that case.
-    notify(
-      `'${entityName}' deleted.`,
-      'neutral',
-      snap === null || snap === undefined
-        ? undefined
-        : {
-            actionLabel: 'Undo',
-            onAction: () => {
-              void onRestore(snap);
+    try {
+      const snap = await snapshot();
+      await onDelete();
+      // A null snapshot cannot be restored, so offer no Undo in that case.
+      notify(
+        `'${entityName}' deleted.`,
+        'neutral',
+        snap === null || snap === undefined
+          ? undefined
+          : {
+              actionLabel: 'Undo',
+              onAction: () => {
+                void onRestore(snap);
+              },
             },
-          },
-    );
-    onDeleted();
+      );
+      onDeleted();
+    } catch (error) {
+      notify(
+        error instanceof Error ? error.message : `Could not delete the ${entityLabel}.`,
+        'negative',
+      );
+    }
   }
 
   return (
     <SettingsCard>
       <div className="mb-1 font-semibold text-negative">Danger zone</div>
       <p className="mb-4 text-sm text-ink-soft">{description}</p>
-      {confirming ? (
-        <ConfirmInline
-          message={`Delete '${entityName}' and its local study data?`}
-          confirmLabel={`Delete ${entityLabel}`}
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => void handleDelete()}
-        />
-      ) : (
+      <ConfirmInlineSwap
+        active={confirming}
+        message={`Delete '${entityName}' and its local study data?`}
+        confirmLabel={`Delete ${entityLabel}`}
+        onCancel={() => setConfirming(false)}
+        onConfirm={handleDelete}
+      >
         <Button variant="danger" size="sm" onClick={() => setConfirming(true)}>
           Delete {entityLabel}
         </Button>
-      )}
+      </ConfirmInlineSwap>
     </SettingsCard>
   );
 }
