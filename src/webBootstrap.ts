@@ -46,6 +46,7 @@ export interface LandingHydrationOptions {
   isElectron?: boolean;
   seedFlagPresent?: boolean;
   landingMarkupPresent?: boolean;
+  appStartPending?: boolean;
 }
 
 function readSeedFlag(): boolean {
@@ -64,7 +65,10 @@ export function shouldHydrateLanding({
   isElectron = window.electronAPI?.isElectron === true,
   seedFlagPresent = readSeedFlag(),
   landingMarkupPresent = !!document.getElementById('root')?.querySelector('.landing-page'),
+  appStartPending = document.documentElement.hasAttribute('data-app-starting'),
 }: LandingHydrationOptions = {}): boolean {
+  // Honour the head's decision even if storage or the URL changed while modules loaded.
+  if (appStartPending) return false;
   if (isElectron) return false;
   // In-page anchors (for example #landing-product) stay on the landing page.
   // Anything addressing the study app through its hash routes boots the full app.
