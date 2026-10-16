@@ -496,3 +496,9 @@ Tailwind can emit a custom `border: var(...)` utility after a `border-color` uti
 so the shorthand wins regardless of class order. Override the border's custom property
 for control variants. Avoid blanket `box-shadow: none` on surfaces: it can also override
 selection and keyboard focus rings. Verify computed styles; class assertions miss both.
+
+## Drag styling must preserve measured bounds
+
+Lesson reordering translates the resting row by the pointer delta. Reserve the lifted
+surface's border in the resting state: adding a 1px border only on lift increases the
+height by 2px and leaves the row's centre 1px below the pointer.

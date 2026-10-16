@@ -19,7 +19,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.addInitScript((theme) => localStorage.setItem('lacuna-theme', theme), theme);
     await enterFreshLacuna(page);
-    await expect(page.getByRole('region', { name: 'New sharing features' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'New sharing features' })).toHaveCount(0);
     for (const accent of accents) {
       await page.evaluate((accent) => {
         document.documentElement.dataset.accent = accent;
