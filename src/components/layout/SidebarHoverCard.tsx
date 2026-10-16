@@ -153,7 +153,7 @@ export function SidebarHoverCard({
               style={position}
               onPointerEnter={clearTimer}
               onPointerLeave={hideSoon}
-              className="fixed z-[70] w-56 max-w-[calc(100vw-1rem)] rounded-[18px] bg-surface p-4 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
+              className="fixed z-[70] w-56 max-w-[calc(100vw-1rem)] rounded-[18px] bg-surface p-4 card-surface"
             >
               <p className="mb-3 truncate font-display text-base font-semibold text-ink">{title}</p>
               <dl className="space-y-2 text-xs">

@@ -11,11 +11,11 @@
   width: min(460px, 100%);
   max-height: 90dvh;
   overflow: auto;
-  border: 1px solid hsl(var(--line));
   border-radius: 18px;
   background: hsl(var(--paper));
   color: hsl(var(--ink));
-  box-shadow: 0 20px 60px #0003;
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-path-panel header {
   padding: 20px 24px;

@@ -154,7 +154,7 @@ export function MergeReviewPanel() {
       <div ref={root} className="mx-auto max-w-3xl px-6 py-8 md:px-10">
         {backLink}
         {status}
-        <div className="rounded-3xl bg-surface shadow-card p-10 text-center">
+        <div className="rounded-3xl bg-surface card-surface p-10 text-center">
           <p className="text-sm text-ink-soft">
             This course is up to date. There is nothing to review.
           </p>
@@ -244,7 +244,7 @@ export function MergeReviewPanel() {
         </Section>
       )}
       {ordered.length === 0 && (
-        <div className="rounded-3xl bg-surface shadow-card p-10 text-center">
+        <div className="rounded-3xl bg-surface card-surface p-10 text-center">
           <p className="text-sm text-ink-soft">Everything in this update has been reviewed.</p>
         </div>
       )}

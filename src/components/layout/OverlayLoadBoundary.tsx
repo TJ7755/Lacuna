@@ -19,7 +19,7 @@ function UnavailableOverlay({ label, onClose }: { label: string; onClose: () => 
         }
       }}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 shadow-xl">
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 card-surface">
         <h2 className="font-display text-xl text-ink">{label} could not load</h2>
         <p className="mb-5 mt-2 text-sm text-ink-soft">Reconnect and reload to try again.</p>
         <Button onClick={onClose}>Close</Button>

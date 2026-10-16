@@ -32,14 +32,14 @@ export function CardBulkBar({
           className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex flex-col items-center gap-3 px-4"
         >
           {panel && (
-            <div className="pointer-events-auto w-full max-w-md rounded-3xl bg-surface p-5 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_24px_48px_-16px_hsl(var(--ink)/0.35)]">
+            <div className="pointer-events-auto w-full max-w-md rounded-3xl bg-surface p-5 card-surface">
               {panel}
             </div>
           )}
           <div
             role="toolbar"
             aria-label="Selected cards"
-            className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-[28px] bg-ink p-2 pl-5 text-paper shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.5)]"
+            className="pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-[28px] bg-ink p-2 pl-5 text-paper card-surface"
           >
             {children}
           </div>

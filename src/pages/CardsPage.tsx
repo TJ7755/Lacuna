@@ -299,9 +299,9 @@ export function CardsPage() {
   );
 }
 
-/** The course's cards share one borderless surface; lessons are divided within it. */
+/** The course's cards share one flat hairline surface; lessons are divided within it. */
 const BUCKET_CLASS =
-  'rounded-3xl bg-surface p-4 shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)] md:p-5';
+  'rounded-3xl bg-surface p-4 card-surface md:p-5';
 
 /** Lessons after the first are divided by a rule; the motion wrapper is each one's parent. */
 const LESSON_SECTION_CLASS =

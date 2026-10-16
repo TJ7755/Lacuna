@@ -148,7 +148,7 @@ export function SearchPage() {
           Search content
         </h1>
       </header>
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 shadow-sm transition-shadow focus-within:border-accent focus-within:shadow-md">
+      <div className="mb-6 flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 card-surface card-surface-control transition-colors focus-within:border-accent-ink">
         <SearchIcon width={18} height={18} className="text-ink-faint" />
         <input
           ref={searchInput}
@@ -267,7 +267,7 @@ export function SearchPage() {
                 whileHover={m > 0 ? { y: -3, transition: { duration: 0.12 * m } } : undefined}
                 className={cn(
                   SECTION_CARD_SURFACE_CLASS,
-                  'flex min-h-11 min-w-0 items-center gap-3 p-4 text-left transition-shadow hover:shadow-md',
+                  'flex min-h-11 min-w-0 items-center gap-3 p-4 text-left card-surface-control transition-colors hover:bg-surface-raised',
                   index === active && 'ring-2 ring-accent-ink',
                 )}
               >

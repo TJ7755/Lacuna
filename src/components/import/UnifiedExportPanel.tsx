@@ -186,7 +186,7 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
         {heading}
       </SettingsSubsectionHeading>
 
-      {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
+      {/* Format grid — flat rounded-2xl cards with hairline boundaries per SPEC §3.1 */}
       <div className="grid gap-3 sm:grid-cols-2">
         {formats.map((format, i) => (
           <motion.button
@@ -202,8 +202,8 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
             onClick={() => void handleExport(format)}
             disabled={busy}
             className={cn(
-              'group flex items-start gap-3.5 rounded-2xl border border-line bg-surface p-4 text-left transition-all',
-              'hover:border-line-strong hover:bg-surface-raised/40 hover:shadow-sm hover:shadow-black/5',
+              'group flex items-start gap-3.5 rounded-2xl card-surface card-surface-control bg-surface p-4 text-left transition-colors',
+              'hover:bg-surface-raised/40',
               'disabled:opacity-40 disabled:pointer-events-none',
             )}
           >

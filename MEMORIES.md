@@ -489,3 +489,10 @@ unrelated lines and bloats the diff; format only the lines you changed.
 Live queries can rehydrate a Question when unrelated observed rows change, including its own
 attempt receipt. Key asynchronous presentation ownership to the Question/session identity;
 using the hydrated object as an effect dependency can cancel and abandon the same attempt.
+
+## Tailwind surface utility ordering
+
+Tailwind can emit a custom `border: var(...)` utility after a `border-color` utility,
+so the shorthand wins regardless of class order. Override the border's custom property
+for control variants. Avoid blanket `box-shadow: none` on surfaces: it can also override
+selection and keyboard focus rings. Verify computed styles; class assertions miss both.

@@ -19,7 +19,7 @@ import { cn } from '../../components/ui/cn';
 import { MOTION_EASING, scaledSpring } from '../../components/ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
-/** Card surface shared by every settings section: no border, soft layered shadow. */
+/** Card surface shared by every settings section: a flat surface with a hairline border. */
 export const SETTINGS_CARD_CLASS =
   `${SECTION_CARD_SURFACE_CLASS} mb-5 p-6 md:p-7`;
 

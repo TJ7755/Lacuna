@@ -34,8 +34,8 @@ export function NewCourseControl({
           borderRadius: open ? 24 : 22,
         }}
         transition={transition}
-        // An inset ring rather than a border, so the button fills the full 44px.
-        className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]' : 'ring-line-strong'}`}
+        // The closed button uses an inset ring to fill its 44px height; the open form is a flat card.
+        className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
         <motion.button
           ref={trigger}

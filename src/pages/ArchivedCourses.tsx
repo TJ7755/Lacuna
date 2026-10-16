@@ -71,7 +71,7 @@ export function ArchivedCourses() {
           {archived.map((course, index) => (
             <li
               key={course.id}
-              className={`${SECTION_CARD_SURFACE_CLASS} group relative flex items-center justify-between gap-4 p-5 transition-shadow hover:shadow-[0_1px_2px_hsl(var(--ink)/0.06),0_18px_40px_-24px_hsl(var(--ink)/0.3)] focus-within:ring-2 focus-within:ring-accent/25`}
+              className={`${SECTION_CARD_SURFACE_CLASS} group relative flex items-center justify-between gap-4 p-5 card-surface-control transition-colors hover:bg-surface-raised focus-within:ring-2 focus-within:ring-accent/25`}
             >
               <Link
                 to={`/course/${course.id}`}

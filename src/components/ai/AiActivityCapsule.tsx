@@ -93,7 +93,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
     <section
       ref={capsuleRef}
       aria-label="AI activity"
-      className="relative flex items-center gap-1 rounded-xl border border-line-strong bg-paper p-1.5 shadow-lg shadow-black/10"
+      className="relative flex items-center gap-1 rounded-xl border border-line-strong bg-paper p-1.5 card-surface"
     >
       {props.canOpenConversation ? (
         <button
@@ -152,7 +152,7 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
         <div
           role="dialog"
           aria-label="AI activity details"
-          className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line-strong bg-paper shadow-xl shadow-black/15"
+          className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line-strong bg-paper card-surface"
         >
           <div className="border-b border-line bg-surface px-4 py-3">
             <p className="text-sm font-medium text-ink-faint">

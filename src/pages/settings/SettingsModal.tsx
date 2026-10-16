@@ -60,7 +60,7 @@ function ModalPanel({
         className={cn(
           'relative z-10 m-auto w-full rounded-3xl',
           wide ? 'max-w-lg' : 'max-w-md',
-          'max-h-[90vh] overflow-y-auto bg-surface p-6 shadow-[0_24px_64px_-24px_hsl(var(--ink)/0.45)] md:p-7',
+          'max-h-[90vh] overflow-y-auto bg-surface p-6 card-surface md:p-7',
         )}
       >
         {children}

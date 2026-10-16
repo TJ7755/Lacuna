@@ -76,6 +76,8 @@ for (const theme of ['light', 'dark'] as const) {
         .getByRole('region', { name: 'Today, most urgent first' })
         .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
         .click();
+      // Measure resting colours; the preceding click can hover a filter after navigation.
+      await page.mouse.move(0, 0);
       const courseUrl = page.url();
       let baseline: Awaited<ReturnType<typeof geometry>> | undefined;
       for (const [suffix, title] of [

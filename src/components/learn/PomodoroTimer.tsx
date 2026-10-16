@@ -183,7 +183,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right overflow-hidden rounded-[18px] bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
+            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right overflow-hidden rounded-[18px] bg-surface card-surface"
           >
             <div className="px-4 py-4">
               {/* header */}

@@ -162,7 +162,7 @@ function PhoneSheet({
         transition={{ duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] }}
         style={{ bottom: -offset }}
         className={cn(
-          'absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-[0_-16px_40px_-20px_hsl(var(--ink)/0.35)]',
+          'absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto overflow-x-hidden rounded-t-3xl bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] card-surface',
           start.current === null && 'transition-[bottom] duration-200 ease-out',
         )}
         onClick={(event) => event.stopPropagation()}

@@ -304,7 +304,7 @@ export function LearnHeader({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
                   transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]"
+                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
                 >
                   {current.sequenceItemId === undefined &&
                     current.occlusionRegionId === undefined && (

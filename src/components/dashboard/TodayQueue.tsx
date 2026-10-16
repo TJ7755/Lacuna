@@ -90,7 +90,7 @@ export function TodayQueue({
               if (!event.currentTarget.contains(event.relatedTarget as Node | null))
                 setFocusedId(null);
             }}
-            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 shadow-[0_1px_2px_hsl(var(--ink)/0.05)] transition-shadow hover:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)] focus-within:shadow-[0_12px_28px_-18px_hsl(var(--ink)/0.35)]"
+            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 card-surface card-surface-control transition-colors hover:bg-surface-raised"
           >
             <span
               aria-hidden="true"

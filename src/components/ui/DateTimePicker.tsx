@@ -610,7 +610,7 @@ export function DateTimePicker({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
                 transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line-strong bg-surface card-surface"
               >
                 {/* Header: month navigation */}
                 <div className="flex items-center justify-between px-4 py-3">

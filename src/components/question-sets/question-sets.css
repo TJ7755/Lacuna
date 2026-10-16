@@ -1,10 +1,5 @@
 @import './question-set-controls.css';
 
-/* The shared Direction C card surface (SECTION_CARD_SURFACE_CLASS). */
-:root {
-  --qs-card-shadow: 0 1px 2px hsl(var(--ink) / 0.05), 0 16px 40px -28px hsl(var(--ink) / 0.22);
-}
-
 .qs-library {
   color: hsl(var(--ink));
 }
@@ -53,7 +48,8 @@
   border-radius: 24px;
   background: hsl(var(--surface));
   overflow: hidden;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-set-row {
   display: flex;
@@ -180,7 +176,8 @@
   min-width: 0;
   margin: auto;
   padding: 28px;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-part-bar {
   display: flex;
@@ -219,7 +216,8 @@
   background: hsl(var(--surface));
   border-radius: 24px;
   margin: 18px 0;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-settings summary {
   cursor: pointer;
@@ -268,7 +266,8 @@
   border-radius: 24px;
   padding: 14px;
   margin: 12px 0;
-  box-shadow: var(--qs-card-shadow);
+  border: var(--card-border);
+  box-shadow: none;
 }
 .qs-outline button {
   display: block;
@@ -562,7 +561,7 @@
   border: 1px solid hsl(var(--line));
   border-radius: 10px;
   background: hsl(var(--surface-raised));
-  box-shadow: 0 8px 24px hsl(var(--ink) / 0.08);
+  box-shadow: none;
 }
 .qs-library-options-panel > a {
   display: block;

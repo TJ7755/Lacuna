@@ -241,7 +241,7 @@ export function Menu({
           triggerWidth && !open ? 'bg-transparent hover:bg-ink/5' : 'bg-surface-raised',
           align === 'end' ? 'right-0' : 'left-0',
           open
-            ? 'border-transparent shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]'
+            ? 'card-surface'
             : triggerWidth
               ? 'border-transparent'
               : 'border-line-strong',

@@ -71,8 +71,8 @@ export function DialogPanel({
         layout={layout && m > 0 ? 'position' : undefined}
         transition={scaledSpring(m, 320, 30)}
         className={cn(
-          // Quick search's modal surface: borderless white, lifted by a soft ink shadow.
-          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-[0_24px_48px_-16px_hsl(var(--ink)/0.35),0_0_0_1px_hsl(var(--ink)/0.05)]',
+          // The same flat hairline surface as page cards and Quick search.
+          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-surface card-surface',
           className,
         )}
       >

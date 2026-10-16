@@ -330,7 +330,7 @@ export function AiConnectionState({
             Pair your AI client
           </h2>
 
-          <div className="mt-5 rounded-xl border border-line-strong bg-surface-raised px-4 py-5 text-center shadow-sm">
+          <div className="mt-5 rounded-xl border border-line-strong bg-surface-raised px-4 py-5 text-center card-surface">
             <p className="text-sm font-medium text-ink-soft">
               Pairing code
             </p>

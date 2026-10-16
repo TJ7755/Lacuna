@@ -41,3 +41,27 @@ describe('colour scheme', () => {
     expect(block).toContain(`color-scheme: ${scheme};`);
   });
 });
+
+describe('flat card surfaces', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+
+  it('uses one theme-token hairline and no shadow', () => {
+    const utility = css.match(/@utility card-surface \{([^}]+)\}/)?.[1];
+    expect(css).toContain('--card-border: 1px solid hsl(var(--line));');
+    expect(utility?.trim()).toBe('border: var(--card-border);');
+  });
+
+  it.each([':root', '.dark'])('keeps control boundaries above 3:1 on %s surfaces', (theme) => {
+    const block = css.slice(css.indexOf(`${theme} {`)).split('}')[0];
+    const token = (name: string) => luminance(block.match(new RegExp(`--${name}: ([^;]+);`))![1]);
+    const boundary = token('ink-faint');
+    for (const surface of ['paper', 'surface', 'surface-raised']) {
+      const background = token(surface);
+      expect(
+        (Math.max(boundary, background) + 0.05) / (Math.min(boundary, background) + 0.05),
+        surface,
+      ).toBeGreaterThanOrEqual(3);
+    }
+    expect(css).toMatch(/@utility card-surface-control \{\s*--card-border: 1px solid hsl\(var\(--ink-faint\)\);\s*\}/);
+  });
+});

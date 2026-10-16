@@ -56,7 +56,7 @@ interface CourseOverviewProps {
 }
 
 const CARD =
-  'rounded-3xl bg-surface shadow-[0_1px_2px_hsl(var(--ink)/0.05),0_16px_40px_-28px_hsl(var(--ink)/0.22)]';
+  'rounded-3xl bg-surface card-surface';
 const SECURE = 90;
 
 /**
@@ -265,7 +265,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                         'hover:bg-ink/[0.03] disabled:cursor-default',
                         authoring && (lesson || practice) && 'pr-[60px]',
                         reorder?.lifted &&
-                          'bg-surface shadow-[0_18px_40px_-20px_hsl(var(--ink)/0.45)]',
+                          'bg-surface card-surface',
                       )}
                     >
                       <span
