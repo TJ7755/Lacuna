@@ -881,8 +881,7 @@ export { CURRENT_ITEM_PAYLOAD_VERSION } from '../items/types';
  * `front` fallback, never crash and never mis-mark (docs/archive/roadmap-2026-08-11.md §11.2 rule 3; the
  * fallback itself is `UnknownItemFace`).
  *
- * `scaffold` is declared but not built in Arc 11 slice 1 (deferred — see
- * `.agent-mail/arc11-slice1-plan.md`'s "Deferrals" section). Its eventual payload
+ * `scaffold` is declared but not built in Arc 11 slice 1. Its eventual payload
  * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
  * grammar, so the slot is reserved now instead of this union being reopened later.
  */

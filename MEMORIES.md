@@ -197,10 +197,6 @@ in the preview. Prefer the verified Nemotron Ultra and Gemma 4 free routes for l
 Approving a hosted `write_grant` retains write scope for that course. A later write there can
 commit without another prompt; use a different course or fresh hosted session to test rejection.
 
-GitHub `pull_request_review_comment` runs on a PR merge ref. A privileged
-comment-triggered AI workflow must explicitly check out the trusted default branch
-before starting a tool with secrets; the usual checkout default is unsafe here.
-
 The frozen Python v3 short-term candidate loads the v2 coefficient file because v3 changed
 only routing. The shipped TypeScript runtime loads v3 JSON. The shared port fixture checks
 both, so a coefficient update must keep their versioned artefacts aligned.
