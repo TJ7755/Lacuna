@@ -13,11 +13,7 @@ dist/
 # Electron
 /release/
 electron/dist-electron/
-.worktrees/
 
 .env*
 !.env.example
 /.ai-invites/
-
-# Claude Code agent worktrees
-.claude/worktrees/
