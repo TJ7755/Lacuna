@@ -39,6 +39,8 @@ validate and stamp writes within the existing repository transaction boundaries 
 to locked published copies. `getConceptsForSpecificationPoint` uses the index and restricts results
 to the requested Course. Unknown but syntactically valid IDs are retained, including links to a
 different specification or a point outside the current tier/route selection.
+Regenerating Sequence or Occlusion Card faces retains the existing Concept's links; a teacher's
+published replacement or removal of those links remains authoritative during managed updates.
 
 `src/specifications/tagResolver.ts` provides pure review helpers. `resolveSpecPointTags` proposes
 qualified links from `spec:<ref>` and `spec:<code>:<ref>` Card tags. References match the published

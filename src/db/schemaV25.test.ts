@@ -31,7 +31,7 @@ describe('schema v25 agent memories through the current schema', () => {
     });
     db.close();
 
-    const snapshot = await readAllDataFromVersion('lacuna', 29);
+    const snapshot = await readAllDataFromVersion('lacuna', 30);
     expect(snapshot.agentMemories).toEqual([expect.objectContaining({ id: 'memory-1' })]);
   });
 });

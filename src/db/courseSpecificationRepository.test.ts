@@ -18,6 +18,7 @@ describe('Course specification reference', () => {
       specificationId: 'unbundled-board-fixture',
       tier: 'higher',
       routeIds: ['route.b'],
+      futureOptionalMetadata: { sourceIssue: 'Retain this additive metadata' },
     };
     const now = vi.spyOn(Date, 'now').mockReturnValue(course.updatedAt + 100);
     try {

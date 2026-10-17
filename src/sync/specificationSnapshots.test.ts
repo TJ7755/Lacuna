@@ -9,6 +9,7 @@ const specificationRef = {
   specificationId: 'future-science-2099',
   tier: 'higher',
   routeIds: ['paper-5'],
+  futureOptionalMetadata: { sourceIssue: 'Retain this additive metadata' },
 };
 
 function course(): CourseRecord {

@@ -24,6 +24,7 @@ const reference = {
   specificationId: 'pearson-4bi1-2028',
   tier: 'higher',
   routeIds: ['route-not-installed'],
+  futureOptionalMetadata: { sourceIssue: 'Retain this additive metadata' },
 };
 const links = ['pearson-4bi1-2028:1.a', 'uninstalled-spec:outside-current-selection'];
 const qualification = {

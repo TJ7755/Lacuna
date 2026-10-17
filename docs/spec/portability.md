@@ -184,6 +184,8 @@ A single, reusable export UI offering multiple output formats:
   Course's selection never silently removes its Concepts' links. Device sync resolves concurrent
   link edits by the existing whole-Concept last-writer rule, rather than unioning removed links
   back into the record. The existing deterministic tie-break applies to equal timestamps.
+  Additive unknown metadata inside a specification reference is retained through validation,
+  import and export, like other nested portable records.
 - **Import modes:**
   - **Replace** — wipe the tables represented by the backup, then restore exactly. The UI
     calls this **Replace local data**, explains that there is no account or cloud copy, and

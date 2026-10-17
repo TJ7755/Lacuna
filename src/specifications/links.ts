@@ -6,7 +6,7 @@ const uniqueIds = z
   .array(id)
   .refine((ids) => new Set(ids).size === ids.length, 'Duplicate ids are not allowed.');
 
-export const specificationRefSchema = z.strictObject({
+export const specificationRefSchema = z.looseObject({
   specificationId: id,
   tier: id.optional(),
   routeIds: uniqueIds.optional(),

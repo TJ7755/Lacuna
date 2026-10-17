@@ -11,6 +11,7 @@ const specificationRef = {
   specificationId: 'future-science-2099',
   tier: 'higher',
   routeIds: ['paper-5'],
+  futureOptionalMetadata: { sourceIssue: 'Retain this additive metadata' },
 };
 const specificationPointIds = ['future-science-2099:enzymes.1', 'previous-science:density'];
 
