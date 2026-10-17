@@ -67,9 +67,11 @@ function RetainedDisclosure({
   useLayoutEffect(() => {
     const inner = innerRef.current;
     if (!inner) return;
-    const measure = () => setHeight(inner.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
+    // Layout height, not the transformed bounding box: an ancestor mid-scale would shrink it.
+    setHeight(inner.offsetHeight);
+    const observer = new ResizeObserver((entries) => {
+      setHeight(entries?.[0]?.borderBoxSize?.[0]?.blockSize ?? inner.offsetHeight);
+    });
     observer.observe(inner);
     return () => observer.disconnect();
   }, []);

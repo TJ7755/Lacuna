@@ -76,8 +76,8 @@ describe('AnimatedDisclosure', () => {
     let measuredHeight = 120;
     let resize = () => {};
     const measure = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(() => ({ height: measuredHeight }) as DOMRect);
+      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+      .mockImplementation(() => measuredHeight);
     const disconnect = vi.fn();
     vi.stubGlobal(
       'ResizeObserver',
