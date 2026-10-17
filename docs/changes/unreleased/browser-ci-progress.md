@@ -1,0 +1,1 @@
+- Show named browser test and retry starts in CI logs and preserve per-attempt JSON timings alongside the existing HTML reports and failure evidence.
