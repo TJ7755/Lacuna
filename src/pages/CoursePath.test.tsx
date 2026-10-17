@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
+import type * as MotionSpeedState from '../state/motionSpeed';
 import { CoursePath } from './CoursePath';
 import { ToastProvider } from '../components/ui/Toast';
 import type {
@@ -175,7 +176,7 @@ vi.mock('../db/assessmentRepository', () => ({
 }));
 
 vi.mock('../state/motionSpeed', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../state/motionSpeed')>();
+  const actual = await importOriginal<typeof MotionSpeedState>();
   return { ...actual, useMotionSpeed: () => ['fast'] };
 });
 
