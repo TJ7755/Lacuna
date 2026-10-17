@@ -96,7 +96,7 @@ describe('Menu', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('calls the item and closes when one is chosen', () => {
+  it('calls the item and closes when one is chosen', async () => {
     const onFirst = vi.fn();
     const { trigger } = renderMenu({ onFirst });
 
@@ -104,7 +104,8 @@ describe('Menu', () => {
     fireEvent.click(screen.getByText('New sequence'));
 
     expect(onFirst).toHaveBeenCalledOnce();
-    expect(screen.queryByText('New sequence')).not.toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    await vi.waitFor(() => expect(screen.queryByText('New sequence')).not.toBeInTheDocument());
   });
 
   it('returns focus to the trigger on Escape', () => {

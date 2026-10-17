@@ -27,7 +27,7 @@ test('Today course creation expands inline with normal keyboard navigation', asy
   const centring = await trigger.evaluate((button) => {
     const icon = button.querySelector('svg')!.getBoundingClientRect();
     const label = button.lastElementChild!.getBoundingClientRect();
-    const surface = button.parentElement!.getBoundingClientRect();
+    const surface = button.getBoundingClientRect();
     return Math.abs((icon.left + label.right) / 2 - (surface.left + surface.right) / 2);
   });
   expect(centring).toBeLessThanOrEqual(1);

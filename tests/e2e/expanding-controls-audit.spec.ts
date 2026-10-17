@@ -6,7 +6,7 @@ test('Tab leaves Other ways from its trigger in both directions', async ({ page 
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
@@ -40,7 +40,7 @@ for (const width of [390, 1440]) {
     await enterFreshLacuna(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
     for (const label of ['Add', 'Other ways to study']) {
@@ -93,7 +93,7 @@ test('New course icon and label stay centred as one group at enlarged text size'
   const geometry = await trigger.evaluate((button) => {
     const icon = button.querySelector('svg')!.getBoundingClientRect();
     const text = button.lastElementChild!.getBoundingClientRect();
-    const surface = button.parentElement!.getBoundingClientRect();
+    const surface = button.getBoundingClientRect();
     return {
       offset: Math.abs((icon.left + text.right - surface.left - surface.right) / 2),
       contained: icon.left >= surface.left && text.right <= surface.right,
@@ -107,27 +107,36 @@ test('New course icon and label stay centred as one group at enlarged text size'
   });
 });
 
-test('expanding menus animate their own geometry and settle without clipping', async ({ page }) => {
+test('expanding menus reveal their own geometry and settle without clipping', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   for (const label of ['Add', 'Other ways to study']) {
     const trigger = page.getByRole('button', { name: label, exact: true });
     const samples = await trigger.evaluate(async (button) => {
       const surface = button.parentElement!;
-      const before = surface.getBoundingClientRect().width;
+      const visibleWidth = () => {
+        const width = surface.getBoundingClientRect().width;
+        const clip = getComputedStyle(surface).clipPath;
+        if (clip === 'none') return width;
+        const inset = clip.slice(6).split(' round ')[0].split(' ').map(parseFloat);
+        const right = inset[1] ?? inset[0];
+        const left = inset[3] ?? right;
+        return width - right - left;
+      };
+      const before = visibleWidth();
       (button as HTMLButtonElement).click();
       const widths: number[] = [];
       const start = performance.now();
       while (performance.now() - start < 700) {
         await new Promise(requestAnimationFrame);
-        widths.push(surface.getBoundingClientRect().width);
+        widths.push(visibleWidth());
       }
-      return { before, widths, after: surface.getBoundingClientRect().width };
+      return { before, widths, after: visibleWidth() };
     });
     expect(samples.widths.length).toBeGreaterThan(5);
     expect(samples.after).toBeGreaterThan(samples.before + 10);

@@ -1,3 +1,4 @@
+import { MorphContent } from '../ui/MorphContent';
 import { useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
@@ -5,6 +6,7 @@ import { loadImportPanel } from '../../routes/loaders';
 import { prefetchRoute } from '../../routes/prefetch';
 import { getLoadedRouteModule, loadRouteModule } from '../../routes/routeModule';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { useInlineMorph } from '../ui/useMorphReveal';
 import { expandingActionSpring } from '../ui/motion';
 
 const panelWidth = 'min(448px, calc(100vw - 48px))';
@@ -41,6 +43,8 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
   const transition = expandingActionSpring(multiplier);
+  const width = Math.min(448, window.innerWidth - 48);
+  const morph = useInlineMorph(expanded, 100, multiplier, 'end', 0, 44, 24, width);
   const prefetch = () => prefetchRoute('/import');
 
   function changeOpen(next: boolean) {
@@ -65,14 +69,21 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
 
   return (
     <div className="relative z-[6] h-11 w-[100px] shrink-0">
-      <motion.div
-        initial={false}
-        animate={{
-          width: expanded ? panelWidth : 100,
-          height: expanded ? 'auto' : 44,
-          borderRadius: expanded ? 24 : 22,
+      <div
+        ref={morph.depth}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-0 top-0 rounded-3xl"
+        style={{
+          width,
+          height: morph.height,
+          opacity: 0,
+          boxShadow: '0 18px 48px -12px rgb(0 0 0 / 0.28)',
         }}
-        transition={transition}
+      />
+      <div
+        ref={morph.surface}
+        data-morph-surface=""
+        style={{ width, height: morph.height }}
         className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
         {expanded && (
@@ -96,32 +107,30 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           data-press=""
           whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
           transition={transition}
-          className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px] disabled:opacity-40"
+          className={`absolute right-0 top-0 ${expanded ? '' : 'ring-1 ring-inset ring-line-strong'} flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px] disabled:opacity-40`}
         >
           {pending ? 'Loading…' : open ? 'Close' : 'Import'}
         </motion.button>
         <div inert={!expanded} aria-hidden={!expanded || undefined}>
           <AnimatePresence initial={false}>
             {expanded && ImportPanel && (
-              <motion.div
+              <MorphContent
+                multiplier={multiplier}
                 key="panel"
+                ref={morph.content}
                 id={panelId}
                 className="pt-11"
                 // Measure final wrapping before the surrounding surface expands.
                 style={{ width: panelWidth }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * multiplier }}
               >
                 <div>
                   <ImportPanel onClose={() => changeOpen(false)} onBusyChange={setBusy} />
                 </div>
-              </motion.div>
+              </MorphContent>
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
+      </div>
       {open && loadError && (
         <div className="absolute right-0 top-12 w-56 rounded-xl bg-surface-raised p-3 text-sm card-surface">
           <p role="alert">Could not load import.</p>

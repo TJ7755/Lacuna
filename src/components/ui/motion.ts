@@ -49,8 +49,16 @@ export function scaledSpring(multiplier: number, stiffness: number, damping: num
 }
 
 /** Shared physical spring for surfaces that expand from an action button. */
-export function expandingActionSpring(multiplier: number) {
-  const spring = scaledSpring(multiplier, 420, 36);
+export function expandingActionSpring(
+  multiplier: number,
+  phase?: 'open' | 'close',
+  axis: 'x' | 'y' = 'x',
+) {
+  const response = phase === 'close' ? 0.3 : axis === 'x' ? 0.42 : 0.46;
+  const omega = phase === 'close' ? 10 / response : (2 * Math.PI) / response;
+  const spring = phase
+    ? scaledSpring(multiplier, omega ** 2, 2 * (phase === 'close' ? 1 : 0.85) * omega)
+    : scaledSpring(multiplier, 420, 36);
   if (spring.type !== 'spring') return { duration: 0 } as const;
   return { ...spring, mass: 1 };
 }
@@ -69,6 +77,9 @@ export function collapse(multiplier: number) {
       transitionEnd: { overflow: 'visible' as const },
     },
     exit: multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' as const } : undefined,
-    transition: { height: expandingActionSpring(multiplier), opacity: { duration: 0.12 * multiplier } },
+    transition: {
+      height: expandingActionSpring(multiplier),
+      opacity: { duration: 0.12 * multiplier },
+    },
   };
 }

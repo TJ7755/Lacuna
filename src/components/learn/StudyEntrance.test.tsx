@@ -5,7 +5,10 @@ import { StudyEntrance } from './StudyEntrance';
 const preference = vi.hoisted(() => ({ multiplier: 1 }));
 const release = vi.hoisted(() => vi.fn());
 vi.mock('../../state/motionSpeed', () => ({ getMotionMultiplier: () => preference.multiplier }));
-vi.mock('../layout/LandingTransition', () => ({ releaseStudyCover: release }));
+vi.mock('../layout/LandingTransition', () => ({
+  releaseStudyCover: release,
+  hasLandingArrival: () => false,
+}));
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -18,7 +21,7 @@ it('reveals ready content with a header fade and three short staggered rises', (
   const handled = vi.fn();
   const animate = vi
     .spyOn(Element.prototype, 'animate')
-    .mockReturnValue({ cancel, finished: { catch: handled } } as unknown as Animation);
+    .mockReturnValue({ cancel, finished: { then: handled } } as unknown as Animation);
   const { container, unmount } = render(
     <StudyEntrance>
       <header>Session</header>

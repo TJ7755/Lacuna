@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { m as motion } from 'motion/react';
+import { StudyLaunchCover } from './StudyLaunchCover';
 import { getMotionMultiplier } from '../../state/motionSpeed';
 
 // The overlay survives route navigation. Grow from the clicked link, navigate
@@ -40,6 +41,7 @@ export function beginStudyTransition(
   navigate: () => void,
 ): void {
   if (getMotionMultiplier() === 0) {
+    sessionStorage.removeItem(ARRIVAL_KEY);
     navigate();
     return;
   }
@@ -49,8 +51,8 @@ export function beginStudyTransition(
 
 export function releaseStudyCover(): void {
   if (sessionStorage.getItem(ARRIVAL_KEY) !== 'study') return;
-  sessionStorage.removeItem(ARRIVAL_KEY);
-  window.dispatchEvent(new Event(RELEASE_EVENT));
+  const unclaimed = window.dispatchEvent(new Event(RELEASE_EVENT, { cancelable: true }));
+  if (unclaimed) sessionStorage.removeItem(ARRIVAL_KEY);
 }
 
 interface Transition extends Appearance {
@@ -70,18 +72,27 @@ export function LandingTransition() {
         covered: false,
       });
     };
-    const release = () => setTransition(null);
     window.addEventListener(BEGIN_EVENT, onBegin);
-    window.addEventListener(RELEASE_EVENT, release);
     return () => {
       window.removeEventListener(BEGIN_EVENT, onBegin);
-      window.removeEventListener(RELEASE_EVENT, release);
     };
   }, []);
 
   if (!transition) return null;
   const { rect, covered, colour, radius, paper, navigate } = transition;
   const multiplier = getMotionMultiplier();
+  if (paper && navigate)
+    return (
+      <StudyLaunchCover
+        rect={rect}
+        colour={colour}
+        paper={paper}
+        radius={radius}
+        navigate={navigate}
+        multiplier={multiplier}
+        onComplete={() => setTransition(null)}
+      />
+    );
   const coverTransform = `translate3d(${-rect.left}px, ${-rect.top}px, 0) scale(${innerWidth / rect.width}, ${innerHeight / rect.height})`;
 
   return (

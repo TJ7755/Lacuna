@@ -1,5 +1,4 @@
 import { m as motion } from 'motion/react';
-import { expandingActionSpring } from '../ui/motion';
 
 const ARROW = ['M5 12L19 12', 'M13 6L19 12L13 18'];
 const CROSS = ['M6 6L18 18', 'M18 6L12 12L6 18'];
@@ -25,7 +24,7 @@ export function StudyActionIcon({ open, multiplier }: { open: boolean; multiplie
           initial={multiplier > 0 ? { d: arrow } : false}
           animate={{ d: open ? CROSS[index] : arrow }}
           exit={{ d: arrow }}
-          transition={expandingActionSpring(multiplier)}
+          transition={{ type: 'spring', duration: (open ? 0.24 : 0.18) * multiplier, bounce: 0 }}
         />
       ))}
     </svg>
