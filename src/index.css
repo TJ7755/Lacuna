@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import 'highlight.js/styles/github-dark.css';
+@import './components/markdown/syntax.css';
 
 /* Instrument Sans is shared with the landing page and available offline. */
 @font-face {
@@ -641,11 +641,11 @@
 }
 
 /* Mermaid diagrams sit in the same card language as tables and images. */
-pre.lacuna-mermaid {
-  background-color: hsl(var(--surface-raised));
+.prose-lacuna pre.lacuna-mermaid {
+  background-color: hsl(var(--surface));
   border: 1px solid hsl(var(--line));
-  border-radius: 14px;
-  padding: 1rem 1.1rem;
+  border-radius: 24px;
+  padding: 1.25rem;
 }
 pre.lacuna-mermaid[data-mermaid-error='true'] {
   border-color: hsl(var(--warning) / 0.6);
@@ -663,15 +663,23 @@ pre.lacuna-mermaid[data-mermaid-error='true'] {
 }
 .lacuna-mermaid-source {
   margin-top: 0.7rem;
-  font-size: 0.78em;
-  color: hsl(var(--ink-faint));
+  font-family: var(--font-body);
+  white-space: normal;
+  color: hsl(var(--ink-soft));
 }
 .lacuna-mermaid-source > summary {
   cursor: pointer;
   width: fit-content;
+  min-height: 44px;
+  align-content: center;
+  border-radius: 9999px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 .lacuna-mermaid-source pre {
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
+  white-space: pre;
 }
 
 /* Revealed cloze answer: highlighted inline within the full sentence.

@@ -12,10 +12,22 @@ describe('ChartCard data access', () => {
         Chart
       </ChartCard>,
     );
-    fireEvent.click(screen.getByText('View data'));
+    const disclosure = screen.getByRole('button', { name: 'View data' });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    fireEvent.click(disclosure);
+    expect(disclosure).toHaveAttribute('aria-expanded', 'true');
     const table = screen.getByRole('table', { name: 'Review volume' });
     expect(within(table).getByRole('columnheader', { name: 'Reviews' })).toBeInTheDocument();
     expect(within(table).getByRole('cell', { name: '12' })).toBeInTheDocument();
+    expect(document.getElementById(disclosure.getAttribute('aria-controls')!)).toContainElement(
+      table,
+    );
+    fireEvent.click(disclosure);
+    expect(table.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    fireEvent.click(disclosure);
+    expect(screen.getByRole('table')).toBe(table);
   });
 
   it('keeps an empty state free of an empty data disclosure', () => {

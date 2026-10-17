@@ -1,6 +1,11 @@
-import { typedAnswerCorrect, typedAnswerFeedbackHtml, type TypedAnswerFeedback } from './typedAnswerFeedback';
+import {
+  typedAnswerCorrect,
+  typedAnswerFeedbackHtml,
+  type TypedAnswerFeedback,
+} from './typedAnswerFeedback';
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createPortal } from 'react-dom';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -18,6 +23,7 @@ import { resolveAssetMarkdownCached } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
 import 'katex/dist/katex.min.css';
 import { MarkdownImageViewer } from './MarkdownImageViewer';
+import { ContentDisclosure } from '../ui/ContentDisclosure';
 
 type ClozeMode = 'front' | 'back' | 'none';
 
@@ -476,6 +482,10 @@ export const MarkdownView = memo(function MarkdownView({
 }: MarkdownViewProps) {
   const [resolved, setResolved] = useState(source);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [diagramSources, setDiagramSources] = useState<{
+    html: string;
+    sources: { host: HTMLElement; source: string }[];
+  } | null>(null);
 
   // Track the source we have already resolved so the effect can distinguish
   // "source prop changed" (do work) from "effect re-fired with the same source"
@@ -538,18 +548,33 @@ export const MarkdownView = memo(function MarkdownView({
     if (!container) return;
     if (!container.querySelector('pre.lacuna-mermaid')) return;
     let cancelled = false;
-    void renderMermaidDiagrams(container).catch(() => {
-      if (!cancelled) container.setAttribute('data-mermaid-failed', 'true');
-    });
-    // Diagrams bake the light/dark palette into their SVG at render time, so
-    // re-render them when the theme toggles rather than leaving stale colours.
+    void renderMermaidDiagrams(container)
+      .then(() => {
+        if (cancelled) return;
+        // Cached Markdown stays static HTML; React owns each interactive source disclosure
+        // through a separate host without rebuilding the rendered document.
+        const sources = Array.from(container.querySelectorAll('.lacuna-mermaid-source')).map(
+          (fallback) => {
+            const source = fallback.querySelector('code')?.textContent ?? '';
+            const host = document.createElement('div');
+            host.className = 'lacuna-mermaid-source';
+            fallback.replaceWith(host);
+            return { host, source };
+          },
+        );
+        setDiagramSources({ html, sources });
+      })
+      .catch(() => {
+        if (!cancelled) container.setAttribute('data-mermaid-failed', 'true');
+      });
+    // Diagrams bake resolved tokens into their SVG, including the selected accent.
     const observer = new MutationObserver(() => {
       if (cancelled) return;
       void updateMermaidTheme(container).catch(() => {});
     });
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ['class', 'data-accent', 'style'],
     });
     return () => {
       cancelled = true;
@@ -558,12 +583,26 @@ export const MarkdownView = memo(function MarkdownView({
   }, [html]);
 
   const content = (
-    <div
-      ref={containerRef}
-      className={cn('prose-lacuna', className)}
-      dangerouslySetInnerHTML={{ __html: html }}
-      tabIndex={-1}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className={cn('prose-lacuna', className)}
+        dangerouslySetInnerHTML={{ __html: html }}
+        tabIndex={-1}
+      />
+      {diagramSources?.html === html &&
+        diagramSources.sources.map(({ host, source }, index) =>
+          createPortal(
+            <ContentDisclosure label="Diagram source">
+              <pre>
+                <code>{source}</code>
+              </pre>
+            </ContentDisclosure>,
+            host,
+            String(index),
+          ),
+        )}
+    </>
   );
   return enlargeImages ? (
     <MarkdownImageViewer key={source}>{content}</MarkdownImageViewer>

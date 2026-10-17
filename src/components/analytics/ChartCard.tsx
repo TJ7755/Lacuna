@@ -6,6 +6,7 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { StudyDrawing } from '../ui/StudyDrawing';
 import { useRevealOnce } from './useRevealOnce';
+import { ContentDisclosure } from '../ui/ContentDisclosure';
 
 const RevealContext = createContext(true);
 
@@ -119,10 +120,7 @@ export function ChartCard({
       )}
       {!empty && action && <div className="mt-3 text-sm">{action}</div>}
       {!empty && data && data.rows.length > 0 && (
-        <details className={cn('text-sm', action ? 'mt-1' : 'mt-3')}>
-          <summary className="-ml-3 inline-flex min-h-11 w-fit cursor-pointer items-center rounded-full px-3 text-ink-soft hover:bg-ink/[0.05] focus-visible:outline-2 focus-visible:outline-accent">
-            View data
-          </summary>
+        <ContentDisclosure label="View data" className={cn('text-sm', action ? 'mt-1' : 'mt-3')}>
           <div
             className="mt-2 max-h-80 overflow-auto"
             tabIndex={0}
@@ -153,7 +151,7 @@ export function ChartCard({
               </tbody>
             </table>
           </div>
-        </details>
+        </ContentDisclosure>
       )}
     </SectionCard>
   );

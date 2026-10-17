@@ -77,34 +77,28 @@ function nextRenderId(): string {
   return `lacuna-mermaid-${Date.now().toString(36)}-${renderSequence++}`;
 }
 
-function palette(dark: boolean): Record<string, string> {
-  return dark
-    ? {
-        primaryColor: '#2a2620',
-        primaryTextColor: '#f0ede7',
-        primaryBorderColor: '#c8a853',
-        lineColor: '#8a8478',
-        secondaryColor: '#1c1b18',
-        tertiaryColor: '#26241f',
-        background: '#141311',
-        mainBkg: '#2a2620',
-        nodeBorder: '#c8a853',
-        clusterBkg: '#1c1b18',
-        edgeLabelBackground: '#141311',
-      }
-    : {
-        primaryColor: '#faf7f0',
-        primaryTextColor: '#1a1816',
-        primaryBorderColor: '#7a3f14',
-        lineColor: '#6b6459',
-        secondaryColor: '#f5f2ec',
-        tertiaryColor: '#efe9dc',
-        background: '#ffffff',
-        mainBkg: '#faf7f0',
-        nodeBorder: '#7a3f14',
-        clusterBkg: '#f5f2ec',
-        edgeLabelBackground: '#ffffff',
-      };
+function palette(): Record<string, string> {
+  const style = getComputedStyle(document.documentElement);
+  // Mermaid derives further colours, so resolve tokens using its comma-separated HSL syntax.
+  const colour = (token: string) =>
+    `hsl(${style.getPropertyValue(token).trim().split(/\s+/).join(', ')})`;
+  return {
+    primaryColor: colour('--accent-soft'),
+    primaryTextColor: colour('--ink'),
+    primaryBorderColor: colour('--accent-ink'),
+    lineColor: colour('--ink-soft'),
+    secondaryColor: colour('--surface'),
+    secondaryTextColor: colour('--ink'),
+    tertiaryColor: colour('--paper'),
+    tertiaryTextColor: colour('--ink'),
+    textColor: colour('--ink'),
+    background: colour('--surface'),
+    mainBkg: colour('--accent-soft'),
+    nodeBorder: colour('--accent-ink'),
+    clusterBkg: colour('--surface'),
+    clusterBorder: colour('--line-strong'),
+    edgeLabelBackground: colour('--surface'),
+  };
 }
 
 /**
@@ -154,6 +148,7 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
       details.appendChild(pre);
       block.appendChild(details);
       block.setAttribute('data-mermaid-rendered', 'true');
+      block.setAttribute('data-mermaid-source', source);
       block.setAttribute('data-mermaid-theme', themeKey);
     } catch {
       block.setAttribute('data-mermaid-error', 'true');
@@ -261,13 +256,14 @@ export async function sanitizeDiagramSvg(dirty: string): Promise<string> {
   }
 }
 
-/** Current colour-scheme theme key, matching ThemeContext's resolved theme. */
-export function mermaidThemeKey(): 'dark' | 'light' {
+/** Include resolved tokens so accent changes invalidate existing diagrams too. */
+export function mermaidThemeKey(): string {
   if (typeof document === 'undefined') return 'light';
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  return `${theme}:${JSON.stringify(palette())}`;
 }
 
-function ensureInitialised(mermaid: MermaidApi, themeKey: 'dark' | 'light'): boolean {
+function ensureInitialised(mermaid: MermaidApi, themeKey: string): boolean {
   if (mermaidInitialisedFor === themeKey) return true;
   try {
     mermaid.initialize({
@@ -276,8 +272,8 @@ function ensureInitialised(mermaid: MermaidApi, themeKey: 'dark' | 'light'): boo
       // SVG text survives sanitisation without allowing foreignObject HTML.
       htmlLabels: false,
       theme: 'base',
-      themeVariables: palette(themeKey === 'dark'),
-      fontFamily: 'Geist, system-ui, sans-serif',
+      themeVariables: palette(),
+      fontFamily: 'Instrument Sans, system-ui, sans-serif',
     });
     mermaidInitialisedFor = themeKey;
     return true;
@@ -287,9 +283,7 @@ function ensureInitialised(mermaid: MermaidApi, themeKey: 'dark' | 'light'): boo
 }
 
 /**
- * Re-render already-rendered diagrams after a light/dark theme switch. Sources
- * are read back from each block's collapsible source section, so no
- * re-parsing of the Markdown is needed. No-op when the theme is unchanged.
+ * Re-render diagrams after theme or accent changes without re-parsing Markdown.
  */
 export async function updateMermaidTheme(container: HTMLElement): Promise<void> {
   const blocks = Array.from(
@@ -303,7 +297,7 @@ export async function updateMermaidTheme(container: HTMLElement): Promise<void> 
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i] as HTMLElement;
     if (block.getAttribute('data-mermaid-theme') === themeKey) continue;
-    const source = block.querySelector('.lacuna-mermaid-source code')?.textContent?.trim();
+    const source = block.getAttribute('data-mermaid-source');
     const figure = block.querySelector('.lacuna-mermaid-rendered');
     if (!source || !figure) continue;
     try {
