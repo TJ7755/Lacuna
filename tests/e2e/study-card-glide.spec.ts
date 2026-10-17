@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
-import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse } from './fixtures/lacunaApp';
 
 test.use({ hasTouch: true });
 
@@ -10,7 +10,9 @@ const artefacts = resolve('artifacts/study-card-glide');
 
 async function startStudy(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await enterFreshLacuna(page);
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await createCourse(page, 'Card glide');
   await page.getByRole('button', { name: 'Edit mode' }).click();
   for (const front of ['Glide one', 'Glide two', 'Glide three']) {
@@ -37,14 +39,14 @@ async function reveal(page: Page) {
     .last()
     .click();
   await expect(page.locator('[data-study-face="back"]')).toBeVisible();
-  await page.evaluate(async () => {
-    await Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-        .map((a) => a.finished.catch(() => {})),
-    );
-  });
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-study-face="back"]')
+        .locator('..')
+        .evaluate((node) => getComputedStyle(node).opacity),
+    )
+    .toBe('1');
 }
 
 async function saveTrace(session: CDPSession, path: string) {
@@ -299,4 +301,183 @@ test('first grade starts departing while write completion is delayed', async ({ 
     cardId,
   );
   expect(count).toBe(1);
+});
+
+test('paced exit physics accelerates a button grade and carries a touch flick', async ({
+  page,
+}) => {
+  await startStudy(page);
+  const directory = resolve('artifacts/study-card-exit-physics');
+  await mkdir(directory, { recursive: true });
+  const session = await page.context().newCDPSession(page);
+  const screenshots: { time: number; data: string }[] = [];
+  session.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+    screenshots.push({ time: (metadata.timestamp ?? 0) * 1000, data });
+    void session.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+  });
+  await session.send('Page.startScreencast', { format: 'png', maxWidth: 390, maxHeight: 900 });
+  const results = [];
+  try {
+    for (const input of ['button', 'touch'] as const) {
+      const card = (await page.locator('[data-study-card-id]:not([inert])').elementHandle())!;
+      const measurement = await card.evaluateHandle((node, input) => {
+        type Frame = {
+          time: number;
+          x: number;
+          angle: number;
+          left: number;
+          incomingY: number | null;
+        };
+        let started: number | null = null;
+        let startX = 0;
+        let offscreenAt: number | null = null;
+        const frames: Frame[] = [];
+        const moves: { time: number; x: number }[] = [];
+        const onMove = (event: PointerEvent) =>
+          moves.push({ time: performance.now(), x: event.clientX });
+        window.addEventListener('pointermove', onMove, true);
+        const finished = new Promise<{
+          started: number;
+          startX: number;
+          offscreenAt: number | null;
+          frames: Frame[];
+          moves: { time: number; x: number }[];
+        }>((done) => {
+          window.addEventListener(
+            input === 'button' ? 'click' : 'pointerup',
+            () => {
+              started = performance.now();
+              startX = new DOMMatrixReadOnly(getComputedStyle(node).transform).m41;
+              frames.push({
+                time: 0,
+                x: startX,
+                angle: startX / 160,
+                left: node.getBoundingClientRect().left,
+                incomingY: null,
+              });
+            },
+            { once: true, capture: true },
+          );
+          function sample() {
+            if (started !== null) {
+              const time = performance.now() - started;
+              if (!node.isConnected || time > 1400) {
+                window.removeEventListener('pointermove', onMove, true);
+                done({
+                  started: performance.timeOrigin + started,
+                  startX,
+                  offscreenAt,
+                  frames,
+                  moves,
+                });
+                return;
+              }
+              const matrix = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+              const left = node.getBoundingClientRect().left;
+              if (left >= innerWidth && offscreenAt === null) offscreenAt = time;
+              const incoming = document.querySelector('[data-study-card-id]:not([inert])');
+              frames.push({
+                time,
+                x: matrix.m41,
+                angle: (Math.atan2(matrix.m12, matrix.m11) * 180) / Math.PI,
+                left,
+                incomingY: incoming
+                  ? new DOMMatrixReadOnly(getComputedStyle(incoming).transform).m42
+                  : null,
+              });
+            }
+            requestAnimationFrame(sample);
+          }
+          requestAnimationFrame(sample);
+        });
+        return { finished };
+      }, input);
+      if (input === 'button') {
+        await page
+          .getByRole('button', { name: 'Yes', exact: true })
+          .evaluate((button) => (button as HTMLButtonElement).click());
+      } else {
+        await card.evaluate(async (node) => {
+          const control = node.querySelector<HTMLElement>('[role="button"]')!;
+          const box = control.getBoundingClientRect();
+          const x = box.x + box.width / 2;
+          const y = box.y + box.height / 2;
+          const capture = control.setPointerCapture;
+          const release = control.releasePointerCapture;
+          // Synthetic touch pointers have no native capture session. This isolates
+          // release physics from the browser's scroll gesture arbitration.
+          control.setPointerCapture = () => {};
+          control.releasePointerCapture = () => {};
+          const send = (type: string, dx: number) =>
+            control.dispatchEvent(
+              new PointerEvent(type, {
+                bubbles: true,
+                pointerId: 1,
+                pointerType: 'touch',
+                isPrimary: true,
+                clientX: x + dx,
+                clientY: y,
+              }),
+            );
+          try {
+            send('pointerdown', 0);
+            for (const dx of [20, 40, 60, 80]) {
+              send('pointermove', dx);
+              await new Promise(requestAnimationFrame);
+            }
+            send('pointerup', 80);
+          } finally {
+            control.setPointerCapture = capture;
+            control.releasePointerCapture = release;
+          }
+        });
+      }
+      const result = { input, ...(await measurement.evaluate((value) => value.finished)) };
+      results.push(result);
+      await writeFile(resolve(directory, 'curves.json'), JSON.stringify(results, null, 2));
+      await measurement.dispose();
+      if (input === 'button') {
+        await expect
+          .poll(() =>
+            page
+              .locator('[data-study-card-id]:not([inert])')
+              .evaluate((node) =>
+                Math.abs(new DOMMatrixReadOnly(getComputedStyle(node).transform).m42),
+              ),
+          )
+          .toBeLessThan(0.1);
+        await reveal(page);
+      }
+    }
+  } finally {
+    await writeFile(resolve(directory, 'curves.json'), JSON.stringify(results, null, 2));
+    await session.send('Page.stopScreencast').catch(() => {});
+    await session.detach().catch(() => {});
+  }
+  for (const result of results) {
+    for (const time of result.input === 'button' ? [160, 400] : [80, 240]) {
+      const frame = screenshots.reduce((a, b) =>
+        Math.abs(a.time - result.started - time) < Math.abs(b.time - result.started - time) ? a : b,
+      );
+      await writeFile(
+        resolve(directory, `${result.input}-${time}ms.png`),
+        Buffer.from(frame.data, 'base64'),
+      );
+    }
+  }
+  for (const result of results) {
+    expect(result.offscreenAt).not.toBeNull();
+    expect(result.offscreenAt!).toBeGreaterThan(result.input === 'button' ? 450 : 200);
+    expect(result.offscreenAt!).toBeLessThan(600);
+    const position = (time: number) =>
+      result.frames.reduce((a, b) => (Math.abs(a.time - time) < Math.abs(b.time - time) ? a : b)).x;
+    if (result.input === 'button') {
+      expect(position(200) - position(100)).toBeGreaterThan(position(100) * 2);
+      expect(position(300) - position(200)).toBeGreaterThan(position(200) - position(100));
+      expect(result.frames.find((frame) => frame.x > 1)!.time).toBeLessThan(100);
+    } else {
+      expect(result.startX).toBeGreaterThan(60);
+      expect(position(50)).toBeGreaterThan(result.startX + 20);
+    }
+  }
 });

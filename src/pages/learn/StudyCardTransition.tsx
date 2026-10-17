@@ -17,6 +17,7 @@ import {
 import { scaledSpring } from '../../components/ui/motion';
 import type { Phase } from './types';
 import { StudyCardMotionContext } from './studyCardMotion';
+import { studyCardExitTransition } from './studyCardExit';
 
 interface Departure {
   correct: boolean;
@@ -81,10 +82,13 @@ export const StudyCardTransition = forwardRef<
         commit();
         return true;
       }
+      const bounds = element.current.parentElement!.getBoundingClientRect();
+      const clearance = 32 + element.current.offsetHeight * 0.08;
       setDeparture({
         correct,
-        // Include the full card width and its rotated corners, even after a long drag.
-        x: (correct ? 1 : -1) * (window.innerWidth + element.current.offsetWidth + 64),
+        // The grid stays at the resting position while its card is being dragged.
+        // Aim just beyond the viewport, allowing clearance for rotated corners.
+        x: correct ? window.innerWidth - bounds.left + clearance : -bounds.right - clearance,
         velocity,
       });
       // Begin persistence while the card is still visible. No speculative queue read,
@@ -130,7 +134,7 @@ const StudyCardPresentation = forwardRef<
   { 'data-study-card-id': string; departure: Departure | null; m: number; children: ReactNode }
 >(function StudyCardPresentation({ departure, m, children, ...attributes }, ref) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, (offset) => offset / 100);
+  const rotate = useTransform(x, (offset) => offset / 160);
   const opacity = useTransform(x, (offset) =>
     departure ? Math.max(0, 1 - (offset / departure.x) ** 4) : 1,
   );
@@ -141,10 +145,11 @@ const StudyCardPresentation = forwardRef<
     if (!departure) return;
     // Start on acceptance, not after the database has supplied the next card.
     // The same value already contains the drag offset, so release never changes owners.
-    const animation = animate(x, departure.x, {
-      ...scaledSpring(m, 300, 35),
-      velocity: departure.velocity,
-    });
+    const animation = animate(
+      x,
+      departure.x,
+      studyCardExitTransition(m, x.get(), departure.x, departure.velocity),
+    );
     flight.current = animation;
     return () => animation.stop();
   }, [departure, m, x]);
@@ -170,7 +175,7 @@ const StudyCardPresentation = forwardRef<
         className="relative col-start-1 row-start-1 w-full self-center"
         initial={{ y: 12, scale: 0.96 }}
         animate={{ y: 0, scale: 1 }}
-        transition={scaledSpring(m, 300, 35)}
+        transition={scaledSpring(m, 100, 20)}
         inert={departure !== null || !present}
         aria-hidden={departure !== null || !present || undefined}
         style={{
