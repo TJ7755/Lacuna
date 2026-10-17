@@ -358,6 +358,29 @@ describe('SequenceEditor', () => {
     },
   );
 
+  it.each([
+    ['modern', true, 9],
+    ['legacy', false, 229],
+  ] as const)('leaves %s composition Tab with the item', (_, isComposing, keyCode) => {
+    mockCourse = course;
+    renderNew();
+    type(1, 'First');
+    enter(1);
+    type(2, 'Second');
+    field(2).focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      isComposing,
+      keyCode,
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(field(2), event);
+    expect.soft(field(2)).toHaveFocus();
+    expect.soft(event.defaultPrevented).toBe(false);
+    expect(createSequence).not.toHaveBeenCalled();
+  });
+
   it('leaves backward Tab and earlier items to native navigation', () => {
     mockCourse = course;
     renderNew();

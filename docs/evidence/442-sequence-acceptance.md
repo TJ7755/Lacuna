@@ -53,9 +53,34 @@ bun run changelog:check
 git diff --check
 ```
 
-Result: **134 tests passed in 7 files**, no web type errors, **280 valid changelog
+Initial result: **134 tests passed in 7 files**, no web type errors, **280 valid changelog
 fragments**, and no whitespace errors. Bun **1.4.3**; dependencies installed with
 `bun install --frozen-lockfile`. No lint was run: the parent task owns serial lint.
+
+### Independent review correction: legacy IME composition
+
+Independent review of `86565eba` found that a last-row Tab with `keyCode: 229` and
+`isComposing: false` moved focus to Save and prevented the default. The row only checked
+the modern composition flag, unlike MarkdownEditor and useEditorKeys. The row guard now
+also returns for legacy key-code 229 before any focus hand-off or outline gesture.
+
+With only the new regression applied to `86565eba`:
+
+```sh
+bun run test src/pages/SequenceEditor.test.tsx --maxWorkers=1 -t 'composition Tab'
+```
+
+Result: **1 failed, 1 passed, 37 skipped**. The legacy case failed both assertions:
+focus moved from Item 2 content to Add sequence, and `defaultPrevented` was true. The
+modern composition case already passed. After the guard: **2 passed, 37 skipped**;
+both cases retain item focus, leave the event unprevented and do not save.
+
+Final follow-up result: the full seven-file command above passed **136 tests** with one
+worker. Web typecheck again found no errors in 1,729 files across three projects.
+Changelog and whitespace checks passed. Existing tests still cover Enter-add, both
+Control/Meta save chords, earlier-row Tab, Shift+Tab and disabled-save fallback. No
+existing assertion was weakened. No lint, browser or other computer-use tools were run
+for this follow-up; the browser evidence below remains the original audit, not a rerun.
 
 ## Browser reproduction and results
 
@@ -143,6 +168,8 @@ It measures focused-control bounds, not operating-system caret geometry.
 External human, accessibility and native-platform gates are owned by
 [#456](https://github.com/TJ7755/Lacuna/issues/456), not deferred #442 implementation
 acceptance. User review and merge remain human actions. Keep PR #567 open on its current
-base until the parent confirms master has advanced after #564; then rebase and inspect CI.
-This acceptance clarification changes documentation only. No schema, backup/import,
+base until the parent confirms master has advanced after the non-redesign #564/#568 merge
+sequence; only then rebase and inspect CI. The parent acceptance clarification changed
+documentation only; the independent-review correction adds the legacy composition guard
+and its regression coverage. No schema, backup/import,
 wire format, permission, scheduling or generated-card/history ownership code changes.

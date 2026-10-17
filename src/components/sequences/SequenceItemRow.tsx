@@ -85,7 +85,7 @@ export function SequenceItemRow({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.nativeEvent.isComposing) return;
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     const field = e.currentTarget;
     const collapsed = field.selectionStart === field.selectionEnd;
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey;

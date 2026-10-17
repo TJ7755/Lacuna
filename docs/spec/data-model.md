@@ -287,6 +287,8 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   without submitting. Earlier items and backward `Tab` retain native navigation. If save
   cannot receive focus, forward `Tab` also retains native navigation. `Ctrl/Cmd+Enter`
   saves the whole sequence, including from an item; it never adds another item.
+  Row shortcuts leave composition events alone, including legacy key-code 229 with
+  `isComposing` false: Tab must not move focus to save or prevent the event's default.
   Empty items are scaffolding: preview and save omit them, and save explains a missing
   name, missing script part or lack of generated cards. Name and missing-part errors return
   focus to the relevant control. No empty item generates a card; an all-empty outline
