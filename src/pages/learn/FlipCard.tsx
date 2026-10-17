@@ -137,7 +137,8 @@ export function FlipCard({
   const swipeXMotion = sharedX ?? localX;
   const resetSwipe = useCallback(() => {
     if (m === 0) swipeXMotion.jump(0);
-    else animate(swipeXMotion, 0, scaledSpring(m, 480, 38));
+    // Critically damped like the study controls' springs: snappy, settling without bounce.
+    else animate(swipeXMotion, 0, scaledSpring(m, 480, 2 * Math.sqrt(480)));
     setSwipe({ x: 0, hint: null });
   }, [m, swipeXMotion]);
   useEffect(() => () => swipeXMotion.stop(), [swipeXMotion]);
@@ -371,10 +372,7 @@ export function FlipCard({
                   ? undefined
                   : `min(${stableHeight}px, var(--study-card-max-height, ${stableHeight}px))`,
             }}
-            className={cn(
-              'relative z-10 ' + surfaceClassName,
-              CARD_SURFACE_CLASS,
-            )}
+            className={cn('relative z-10 ' + surfaceClassName, CARD_SURFACE_CLASS)}
           >
             {/* Keep drag feedback attached to the card throughout the throw. */}
             {swipe.hint && (

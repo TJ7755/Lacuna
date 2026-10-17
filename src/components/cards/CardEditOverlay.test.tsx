@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardEditOverlay } from './CardEditOverlay';
 import type { Card } from '../../db/types';
@@ -96,6 +96,32 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('CardEditOverlay type picker', () => {
+  it('picks the card type with the full editor pill track and swaps the fields with it', () => {
+    const { getByRole, getByLabelText, queryByLabelText } = render(
+      <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const group = getByRole('group', { name: 'Card type' });
+    expect(within(group).getByRole('button', { name: 'Front / back' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(group).getByRole('button', { name: 'Cloze deletion' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    fireEvent.click(within(group).getByRole('button', { name: 'Cloze deletion' }));
+
+    expect(within(group).getByRole('button', { name: 'Cloze deletion' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveValue('Front');
+    expect(queryByLabelText('Back')).not.toBeInTheDocument();
+  });
 });
 
 describe('CardEditOverlay draft scope', () => {
