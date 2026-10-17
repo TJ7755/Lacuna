@@ -141,12 +141,14 @@ describe('minimal completion report', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
     expect(screen.queryByText('Session complete')).not.toBeInTheDocument();
-    const details = screen.getByText('Session details').closest('details');
-    expect(details).not.toHaveAttribute('open');
-    expect(details).toContainElement(screen.getByText('Mean time'));
-    expect(details).toContainElement(screen.getByText('Focus'));
-    expect(details).toContainElement(screen.getByText('+15 percentage points'));
-    expect(screen.getByText('Accuracy').closest('details')).toBeNull();
+    const trigger = screen.getByRole('button', { name: 'Session details' });
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Mean time')).toBeInTheDocument();
+    expect(screen.getByText('Focus')).toBeInTheDocument();
+    expect(screen.getByText('+15 percentage points')).toBeInTheDocument();
+    expect(screen.getByText('Accuracy').closest('button')).toBeNull();
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('retains simple-pass continuation without a grading chart', () => {
