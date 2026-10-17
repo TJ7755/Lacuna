@@ -5,6 +5,8 @@ import { FlipCard } from '../learn/FlipCard';
 import { StudyControls } from '../learn/StudyControls';
 import { StudyCardTransition, type StudyCardTransitionHandle } from '../learn/StudyCardTransition';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { Button } from '../../components/ui/Button';
+import { SECTION_CARD_SURFACE_CLASS } from '../../components/ui/SectionCard';
 import { Arrow } from './ComparisonUi';
 import './NativeFlashcardDemo.css';
 
@@ -104,13 +106,18 @@ export function NativeFlashcardDemo() {
     );
   }
   return (
-    <div className="qc-native-demo">
+    <div className={`${SECTION_CARD_SURFACE_CLASS} qc-native-demo`}>
       <nav className="qc-native-formats" aria-label="Flashcard formats">
         {formats.map((item) => (
-          <button key={item} aria-pressed={format === item} onClick={() => choose(item)}>
+          <Button
+            variant={format === item ? 'inverse' : 'ghost'}
+            key={item}
+            aria-pressed={format === item}
+            onClick={() => choose(item)}
+          >
             {item}
             <Arrow />
-          </button>
+          </Button>
         ))}
       </nav>
       <div className="qc-native-stage">

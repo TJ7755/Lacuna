@@ -1,6 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { DownloadIcon, LacunaIcon } from '../components/ui/icons';
+import { Button, buttonClassName } from '../components/ui/Button';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { StepSwap } from '../components/ui/StepSwap';
 import './Download.css';
 
 declare const __APP_VERSION__: string;
@@ -38,17 +41,19 @@ function AlternativeDownload({ platform, children }: { platform: string; childre
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="download-alternative">
-      <button type="button" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+      <Button variant="ghost" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
         Other {platform} download <span aria-hidden="true">{expanded ? '−' : '+'}</span>
-      </button>
-      {expanded && <div className="download-alternative-content">{children}</div>}
+      </Button>
+      <AnimatedDisclosure open={expanded} innerClassName="download-alternative-content">
+        {children}
+      </AnimatedDisclosure>
     </div>
   );
 }
 
 function DownloadButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a href={href} className="download-action">
+    <a href={href} className={`${buttonClassName('primary', 'lg')} download-action`}>
       <DownloadIcon className="size-5" />
       {children}
     </a>
@@ -172,7 +177,8 @@ export function Download() {
           </header>
           <div className="download-platforms" role="group" aria-label="Operating system">
             {(Object.keys(platformLabels) as DesktopPlatform[]).map((platform) => (
-              <button
+              <Button
+                variant={selected === platform ? 'inverse' : 'secondary'}
                 key={platform}
                 type="button"
                 aria-pressed={selected === platform}
@@ -182,31 +188,37 @@ export function Download() {
                 }}
               >
                 {platformLabels[platform]}
-              </button>
+              </Button>
             ))}
           </div>
           <section className="download-selection" aria-live="polite" aria-atomic="true">
-            {SelectedDownload ? (
-              <SelectedDownload />
-            ) : (
-              <p className="download-compatibility">Choose your computer.</p>
-            )}
+            <StepSwap stepKey={selected ?? 'none'}>
+              {SelectedDownload ? (
+                <SelectedDownload />
+              ) : (
+                <p className="download-compatibility">Choose your computer.</p>
+              )}
+            </StepSwap>
           </section>
         </div>
         <footer className="download-footer">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             aria-expanded={helpOpen}
             aria-controls="download-help"
             onClick={() => setHelpOpen(!helpOpen)}
           >
             Installation help
-          </button>
+          </Button>
           <a href={DOWNLOADS.release} className="download-inline-link">
             View checksums and release files
           </a>
         </footer>
-        <div id="download-help">{helpOpen && <InstallationHelp platform={selected} />}</div>
+        <div id="download-help">
+          <AnimatedDisclosure open={helpOpen}>
+            <InstallationHelp platform={selected} />
+          </AnimatedDisclosure>
+        </div>
       </main>
     </div>
   );

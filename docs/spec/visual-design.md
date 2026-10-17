@@ -368,3 +368,13 @@ editor-toolbar actions retain their local layout.
   102% with the raised shadow, tracks vertical movement directly, and springs neighbours
   aside. Drop carries presented positions across the repository update before settling with
   the release velocity. These transitions honour motion speed and become instant at zero.
+
+### Public utility pages
+
+Download and Method use the current theme tokens. Download choices, comparison demo controls
+and Method metrics reuse the shared pill buttons; their panels use the shared flat card surface.
+Installation help and Method weights use measured disclosures. Benchmark changes use scaled
+springs, while chart dragging follows the pointer directly. Comparison screenshots open in the
+shared dialog with trapped focus, Escape/backdrop dismissal and focus returned to the trigger.
+Landing, Method and Download navigation targets are at least 44 px high. Unknown route paths wrap even without spaces.
+The landing hero and lower editorial sections retain their separate treatment.

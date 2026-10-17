@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { useDragX } from './useDragX';
 
 const VIEW_W = 560;
@@ -36,15 +36,14 @@ const CURVE_POINTS = (() => {
 })();
 
 /**
- * The sigmoid, made touchable. The curve draws itself on reveal; a draggable
+ * The sigmoid, made touchable. A draggable
  * marker slides along it, showing how any weighted sum z lands on a valid
  * probability between 0 and 1.
  */
 export function SigmoidExplorer() {
-  const { ref, visible } = useRevealOnScroll<HTMLElement>();
   const svgRef = useRef<SVGSVGElement>(null);
   const [z, setZ] = useState(1.2);
-  const { dragging, handlers } = useDragX(svgRef, VIEW_W, (x) => setZ(xToZ(x)));
+  const { handlers } = useDragX(svgRef, VIEW_W, (x) => setZ(xToZ(x)));
 
   const p = sigmoid(z);
   const markerX = zToX(z);
@@ -61,7 +60,7 @@ export function SigmoidExplorer() {
   }
 
   return (
-    <figure ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
+    <figure className={`${SECTION_CARD_SURFACE_CLASS} mt-6 p-5 sm:p-6`}>
       <svg
         ref={svgRef}
         viewBox="0 0 560 240"
@@ -70,8 +69,20 @@ export function SigmoidExplorer() {
         aria-label="Interactive sigmoid curve mapping any weighted sum to a probability between 0 and 1"
       >
         {/* Axes and the two guide lines the curve is anchored to. */}
-        <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
-        <line x1={PLOT_LEFT} y1={PLOT_TOP} x2={PLOT_LEFT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_BOTTOM}
+          x2={PLOT_RIGHT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_TOP}
+          x2={PLOT_LEFT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
         <line
           x1={PLOT_LEFT}
           y1={pToY(0.5)}
@@ -92,14 +103,10 @@ export function SigmoidExplorer() {
         <polyline
           points={CURVE_POINTS}
           fill="none"
-          stroke="hsl(var(--accent))"
+          stroke="hsl(var(--accent-ink))"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={{ transition: 'stroke-dashoffset 1600ms cubic-bezier(0.4, 0, 0.2, 1) 200ms' }}
         />
 
         {/* Marker: a dot pinned to the curve, with drop lines to both axes. */}
@@ -108,33 +115,77 @@ export function SigmoidExplorer() {
           y1={markerY}
           x2={markerX}
           y2={PLOT_BOTTOM}
-          stroke="hsl(var(--accent) / 0.35)"
-          style={{ transition: dragging ? 'none' : 'x1 200ms ease, x2 200ms ease, y1 200ms ease' }}
+          stroke="hsl(var(--accent-ink) / 0.35)"
         />
         <line
           x1={PLOT_LEFT}
           y1={markerY}
           x2={markerX}
           y2={markerY}
-          stroke="hsl(var(--accent) / 0.35)"
-          style={{ transition: dragging ? 'none' : 'x2 200ms ease, y1 200ms ease, y2 200ms ease' }}
+          stroke="hsl(var(--accent-ink) / 0.35)"
         />
-        <circle
-          cx={markerX}
-          cy={markerY}
-          r="6"
-          fill="hsl(var(--accent))"
-          className={visible && !dragging ? 'exam-pulse' : ''}
-          style={{ transition: dragging ? 'none' : 'cx 200ms ease, cy 200ms ease' }}
-        />
+        <circle cx={markerX} cy={markerY} r="6" fill="hsl(var(--accent-ink))" />
 
         {/* Axis annotations. */}
-        <text x={PLOT_LEFT - 6} y={PLOT_TOP + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">1</text>
-        <text x={PLOT_LEFT - 6} y={pToY(0.5) + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">.5</text>
-        <text x={PLOT_LEFT - 6} y={PLOT_BOTTOM + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">0</text>
-        <text x={PLOT_LEFT} y={PLOT_BOTTOM + 20} fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">z = −6</text>
-        <text x={zToX(0)} y={PLOT_BOTTOM + 20} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">z = 0</text>
-        <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 20} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">z = +6</text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_TOP + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          1
+        </text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={pToY(0.5) + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          .5
+        </text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_BOTTOM + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          0
+        </text>
+        <text
+          x={PLOT_LEFT}
+          y={PLOT_BOTTOM + 20}
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          z = −6
+        </text>
+        <text
+          x={zToX(0)}
+          y={PLOT_BOTTOM + 20}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          z = 0
+        </text>
+        <text
+          x={PLOT_RIGHT}
+          y={PLOT_BOTTOM + 20}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          z = +6
+        </text>
 
         {/* Drag surface across the whole plot. */}
         <rect
@@ -155,10 +206,10 @@ export function SigmoidExplorer() {
           {...handlers}
         />
       </svg>
-      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[11px] text-ink-faint">
-        <span>drag anywhere on the chart</span>
+      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-body text-sm text-ink-faint">
         <span className="text-ink-soft">
-          z = {z >= 0 ? '+' : ''}{z.toFixed(1)} → P(recall) = {Math.round(p * 100)}%
+          z = {z >= 0 ? '+' : ''}
+          {z.toFixed(1)} → P(recall) = {Math.round(p * 100)}%
         </span>
       </figcaption>
     </figure>

@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import { Button, buttonClassName } from '../../components/ui/Button';
+import { SECTION_CARD_SURFACE_CLASS } from '../../components/ui/SectionCard';
+import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
+import { StepSwap } from '../../components/ui/StepSwap';
 import { Arrow } from './ComparisonUi';
 import './TeacherSection.css';
 
@@ -13,7 +17,7 @@ export function TeacherSection() {
           own revision history.
         </p>
       </div>
-      <div className="qc-teachers-panel">
+      <div className={`${SECTION_CARD_SURFACE_CLASS} qc-teachers-panel`}>
         <div className="qc-teachers-copy">
           <h3>No teacher or student accounts</h3>
           <p>
@@ -21,24 +25,34 @@ export function TeacherSection() {
             import.
           </p>
           <div className="qc-teachers-options" aria-label="Course sharing example">
-            <button aria-pressed={!updates} onClick={() => setUpdates(false)}>
+            <Button
+              variant={!updates ? 'inverse' : 'secondary'}
+              aria-pressed={!updates}
+              onClick={() => setUpdates(false)}
+            >
               First share
-            </button>
-            <button aria-pressed={updates} onClick={() => setUpdates(true)}>
+            </Button>
+            <Button
+              variant={updates ? 'inverse' : 'secondary'}
+              aria-pressed={updates}
+              onClick={() => setUpdates(true)}
+            >
               Course updates
-            </button>
+            </Button>
           </div>
           <div className="qc-teachers-detail" aria-live="polite">
-            <strong>
-              {updates ? 'Republish to the same link' : 'One course, ready for everyone'}
-            </strong>
-            <p>
-              {updates
-                ? 'Add a lesson or correct a card, then republish. Students can receive the changes in their existing course.'
-                : 'Send it through the channels your class already uses. There is no class roster to set up in Lacuna.'}
-            </p>
+            <StepSwap stepKey={String(updates)}>
+              <strong>
+                {updates ? 'Republish to the same link' : 'One course, ready for everyone'}
+              </strong>
+              <p>
+                {updates
+                  ? 'Add a lesson or correct a card, then republish. Students can receive the changes in their existing course.'
+                  : 'Send it through the channels your class already uses. There is no class roster to set up in Lacuna.'}
+              </p>
+            </StepSwap>
           </div>
-          <a href="/#/share" className="qc-button">
+          <a href="/#/share" className={buttonClassName('primary')}>
             Open course sharing <Arrow />
           </a>
         </div>
@@ -47,7 +61,7 @@ export function TeacherSection() {
           role="img"
           aria-label="One teacher shares a course link; each student keeps their own study progress"
         >
-          <div className="qc-teacher-course">
+          <div className={`${SECTION_CARD_SURFACE_CLASS} qc-teacher-course`}>
             <div className="qc-teacher-course-heading">
               <span className="qc-brand-dot" />
               <strong>Your biology course</strong>
@@ -55,9 +69,10 @@ export function TeacherSection() {
             <div className="qc-teacher-lessons">
               <span>Enzymes</span>
               <span>Cell structure</span>
-              {updates && <span className="qc-teacher-new-lesson">Diffusion added</span>}
+              <AnimatedDisclosure open={updates}>
+                <span className="qc-teacher-new-lesson">Diffusion added</span>
+              </AnimatedDisclosure>
             </div>
-            <div className="qc-teacher-material">Lessons · Notes · Cards · Questions</div>
           </div>
           <div className="qc-teacher-link">
             <span aria-hidden="true">↓</span>
@@ -65,14 +80,13 @@ export function TeacherSection() {
           </div>
           <div className="qc-teacher-students">
             {['Student A', 'Student B', 'Student C'].map((student) => (
-              <div className="qc-teacher-student" key={student}>
+              <div className={`${SECTION_CARD_SURFACE_CLASS} qc-teacher-student`} key={student}>
                 <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
                   <circle cx="16" cy="10" r="5" stroke="currentColor" strokeWidth="1.5" />
                   <path d="M6 28v-3a10 10 0 0 1 20 0v3" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
                 <strong>{student}</strong>
                 <span>{updates ? 'Course updated' : 'Own course copy'}</span>
-                <small>Own review history</small>
               </div>
             ))}
           </div>

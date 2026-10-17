@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { useDragX } from './useDragX';
 
 const VIEW_W = 560;
@@ -64,10 +64,9 @@ const FAILURE_POINTS = curvePoints(failureWeight);
  * blend in both cases, never a cliff edge.
  */
 export function BlendCurve() {
-  const { ref, visible } = useRevealOnScroll<HTMLElement>();
   const svgRef = useRef<SVGSVGElement>(null);
   const [day, setDay] = useState(0.6);
-  const { dragging, handlers } = useDragX(svgRef, VIEW_W, (x) => setDay(xToDay(x)));
+  const { handlers } = useDragX(svgRef, VIEW_W, (x) => setDay(xToDay(x)));
 
   const wSuccess = successWeight(day);
   const wFailure = failureWeight(day);
@@ -88,7 +87,7 @@ export function BlendCurve() {
   }
 
   return (
-    <figure ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
+    <figure className={`${SECTION_CARD_SURFACE_CLASS} mt-6 p-5 sm:p-6`}>
       <svg
         ref={svgRef}
         viewBox="0 0 560 200"
@@ -96,10 +95,30 @@ export function BlendCurve() {
         role="group"
         aria-label="Weight given to the short-term model by days since last review, on two paths: after a success, full weight until six hours then fading to zero by one day; after a failure, full weight until four days then fading to zero by five days"
       >
-        <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
-        <line x1={PLOT_LEFT} y1={PLOT_TOP} x2={PLOT_LEFT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_BOTTOM}
+          x2={PLOT_RIGHT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_TOP}
+          x2={PLOT_LEFT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
         {[1, 4, 5].map((d) => (
-          <line key={d} x1={dayToX(d)} y1={PLOT_TOP} x2={dayToX(d)} y2={PLOT_BOTTOM} stroke="hsl(var(--line))" strokeDasharray="4 4" />
+          <line
+            key={d}
+            x1={dayToX(d)}
+            y1={PLOT_TOP}
+            x2={dayToX(d)}
+            y2={PLOT_BOTTOM}
+            stroke="hsl(var(--line))"
+            strokeDasharray="4 4"
+          />
         ))}
 
         <polyline
@@ -109,10 +128,6 @@ export function BlendCurve() {
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={{ transition: 'stroke-dashoffset 1400ms cubic-bezier(0.4, 0, 0.2, 1) 200ms' }}
         />
         <polyline
           points={SUCCESS_POINTS}
@@ -121,10 +136,6 @@ export function BlendCurve() {
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={{ transition: 'stroke-dashoffset 1400ms cubic-bezier(0.4, 0, 0.2, 1) 350ms' }}
         />
 
         <line
@@ -133,31 +144,89 @@ export function BlendCurve() {
           x2={markerX}
           y2={PLOT_BOTTOM}
           stroke="hsl(var(--ink-faint) / 0.35)"
-          style={{ transition: dragging ? 'none' : 'x1 200ms ease, x2 200ms ease, y1 200ms ease' }}
         />
-        <circle
-          cx={markerX}
-          cy={successMarkerY}
-          r="5"
-          fill="hsl(var(--positive))"
-          style={{ transition: dragging ? 'none' : 'cx 200ms ease, cy 200ms ease' }}
-        />
-        <circle
-          cx={markerX}
-          cy={failureMarkerY}
-          r="5"
-          fill="hsl(var(--negative))"
-          style={{ transition: dragging ? 'none' : 'cx 200ms ease, cy 200ms ease' }}
-        />
+        <circle cx={markerX} cy={successMarkerY} r="5" fill="hsl(var(--positive))" />
+        <circle cx={markerX} cy={failureMarkerY} r="5" fill="hsl(var(--negative))" />
 
-        <text x={PLOT_LEFT - 6} y={PLOT_TOP + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">1</text>
-        <text x={PLOT_LEFT - 6} y={PLOT_BOTTOM + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">0</text>
-        <text x={dayToX(2.2)} y={PLOT_TOP + 14} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-soft))">short-term model only</text>
-        <text x={dayToX(4.5)} y={PLOT_BOTTOM - 10} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-soft))">FSRS-6 only</text>
-        <text x={dayToX(1)} y={PLOT_BOTTOM + 18} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">day 1</text>
-        <text x={dayToX(4)} y={PLOT_BOTTOM + 18} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">day 4</text>
-        <text x={dayToX(5)} y={PLOT_BOTTOM + 18} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">day 5</text>
-        <text x={PLOT_LEFT} y={PLOT_BOTTOM + 18} fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">day 0</text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_TOP + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          1
+        </text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_BOTTOM + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          0
+        </text>
+        <text
+          x={dayToX(2.2)}
+          y={PLOT_TOP + 14}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-soft))"
+        >
+          short-term model only
+        </text>
+        <text
+          x={dayToX(4.5)}
+          y={PLOT_BOTTOM - 10}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-soft))"
+        >
+          FSRS-6 only
+        </text>
+        <text
+          x={dayToX(1)}
+          y={PLOT_BOTTOM + 18}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          day 1
+        </text>
+        <text
+          x={dayToX(4)}
+          y={PLOT_BOTTOM + 18}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          day 4
+        </text>
+        <text
+          x={dayToX(5)}
+          y={PLOT_BOTTOM + 18}
+          textAnchor="middle"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          day 5
+        </text>
+        <text
+          x={PLOT_LEFT}
+          y={PLOT_BOTTOM + 18}
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          day 0
+        </text>
 
         <rect
           x={PLOT_LEFT}
@@ -177,7 +246,7 @@ export function BlendCurve() {
           {...handlers}
         />
       </svg>
-      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[11px] text-ink-faint">
+      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-body text-sm text-ink-faint">
         <span className="flex flex-wrap items-center gap-4">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-positive" aria-hidden />
@@ -187,7 +256,6 @@ export function BlendCurve() {
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-negative" aria-hidden />
             after a failure
           </span>
-          <span>drag along the days axis</span>
         </span>
         <span className="text-ink-soft">
           day {day.toFixed(2)} · {successPct}% / {failurePct}% short-term

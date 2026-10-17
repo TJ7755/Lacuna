@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { useDragX } from './useDragX';
 
 const VIEW_W = 560;
@@ -42,10 +42,9 @@ const FORGOTTEN_POINTS = curvePoints((p) => -Math.log(1 - p)); // outcome: forgo
  * confident and wrong is punished without mercy.
  */
 export function LossExplorer() {
-  const { ref, visible } = useRevealOnScroll<HTMLElement>();
   const svgRef = useRef<SVGSVGElement>(null);
   const [p, setP] = useState(0.9);
-  const { dragging, handlers } = useDragX(svgRef, VIEW_W, (x) => setP(xToP(x)));
+  const { handlers } = useDragX(svgRef, VIEW_W, (x) => setP(xToP(x)));
 
   const lossRecalled = -Math.log(p);
   const lossForgotten = -Math.log(1 - p);
@@ -61,12 +60,8 @@ export function LossExplorer() {
     }
   }
 
-  const drawStyle = (delay: number) => ({
-    transition: `stroke-dashoffset 1400ms cubic-bezier(0.4, 0, 0.2, 1) ${delay}ms`,
-  });
-
   return (
-    <figure ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
+    <figure className={`${SECTION_CARD_SURFACE_CLASS} mt-6 p-5 sm:p-6`}>
       <svg
         ref={svgRef}
         viewBox="0 0 560 240"
@@ -74,8 +69,20 @@ export function LossExplorer() {
         role="group"
         aria-label="Interactive chart of log loss against predicted probability, for a remembered outcome and a forgotten one"
       >
-        <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={PLOT_RIGHT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
-        <line x1={PLOT_LEFT} y1={PLOT_TOP} x2={PLOT_LEFT} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_BOTTOM}
+          x2={PLOT_RIGHT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_TOP}
+          x2={PLOT_LEFT}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
         {[1, 2, 3].map((l) => (
           <line
             key={l}
@@ -94,10 +101,6 @@ export function LossExplorer() {
           stroke="hsl(var(--positive))"
           strokeWidth="2.5"
           strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={drawStyle(200)}
         />
         <polyline
           points={FORGOTTEN_POINTS}
@@ -105,10 +108,6 @@ export function LossExplorer() {
           stroke="hsl(var(--negative))"
           strokeWidth="2.5"
           strokeLinecap="round"
-          pathLength={1}
-          strokeDasharray={1}
-          strokeDashoffset={visible ? 0 : 1}
-          style={drawStyle(500)}
         />
 
         {/* The prediction being made, and what it costs either way. */}
@@ -118,27 +117,49 @@ export function LossExplorer() {
           x2={markerX}
           y2={PLOT_BOTTOM}
           stroke="hsl(var(--line-strong))"
-          style={{ transition: dragging ? 'none' : 'x1 200ms ease, x2 200ms ease' }}
         />
-        <circle
-          cx={markerX}
-          cy={lossToY(lossRecalled)}
-          r="5"
-          fill="hsl(var(--positive))"
-          style={{ transition: dragging ? 'none' : 'cx 200ms ease, cy 200ms ease' }}
-        />
-        <circle
-          cx={markerX}
-          cy={lossToY(lossForgotten)}
-          r="5"
-          fill="hsl(var(--negative))"
-          style={{ transition: dragging ? 'none' : 'cx 200ms ease, cy 200ms ease' }}
-        />
+        <circle cx={markerX} cy={lossToY(lossRecalled)} r="5" fill="hsl(var(--positive))" />
+        <circle cx={markerX} cy={lossToY(lossForgotten)} r="5" fill="hsl(var(--negative))" />
 
-        <text x={PLOT_LEFT - 6} y={PLOT_TOP + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">{LOSS_CAP}+</text>
-        <text x={PLOT_LEFT - 6} y={PLOT_BOTTOM + 4} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">0</text>
-        <text x={PLOT_LEFT} y={PLOT_BOTTOM + 20} fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">predicts certain to forget</text>
-        <text x={PLOT_RIGHT} y={PLOT_BOTTOM + 20} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">predicts certain to recall</text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_TOP + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          {LOSS_CAP}+
+        </text>
+        <text
+          x={PLOT_LEFT - 6}
+          y={PLOT_BOTTOM + 4}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          0
+        </text>
+        <text
+          x={PLOT_LEFT}
+          y={PLOT_BOTTOM + 20}
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          predicts certain to forget
+        </text>
+        <text
+          x={PLOT_RIGHT}
+          y={PLOT_BOTTOM + 20}
+          textAnchor="end"
+          fontFamily="var(--font-body)"
+          fontSize="12"
+          fill="hsl(var(--ink-faint))"
+        >
+          predicts certain to recall
+        </text>
 
         <rect
           x={PLOT_LEFT}
@@ -158,7 +179,7 @@ export function LossExplorer() {
           {...handlers}
         />
       </svg>
-      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-mono text-[11px] text-ink-faint">
+      <figcaption className="mt-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1 font-body text-sm text-ink-faint">
         <span>
           prediction: <span className="text-ink-soft">{Math.round(p * 100)}% likely to recall</span>
         </span>
