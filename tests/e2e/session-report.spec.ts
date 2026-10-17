@@ -27,10 +27,19 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
   await expect(page.getByText('Goal reached', { exact: true })).toHaveCount(0);
-  await expect(page.getByText('+100 percentage points')).toBeHidden();
-  await page.getByRole('button', { name: 'Session details' }).click();
+  // The details stay mounted but folded to zero height, inert and hidden from assistive technology.
+  const details = page.getByRole('button', { name: 'Session details' });
+  const panel = page.locator(`[id="${await details.getAttribute('aria-controls')}"]`);
+  await expect(details).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(async () => (await panel.boundingBox())!.height).toBe(0);
+  await details.click();
+  await expect(details).toHaveAttribute('aria-expanded', 'true');
+  await expect(panel).not.toHaveAttribute('aria-hidden', 'true');
   await expect(page.getByText('+100 percentage points')).toBeVisible();
-  await page.getByRole('button', { name: 'Session details' }).click();
+  await details.click();
+  await expect(panel).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(async () => (await panel.boundingBox())!.height).toBe(0);
   await expect(
     page.getByRole('progressbar', { name: 'Cards correct in this pass' }),
   ).toHaveAttribute('aria-valuenow', '100');

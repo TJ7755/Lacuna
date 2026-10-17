@@ -148,6 +148,10 @@
   .session-report-actions {
     gap: 8px;
   }
+  /* Keep both actions on one line at 320px, as before the shared Button sizes. */
+  .session-report-actions > button {
+    padding-inline: 12px;
+  }
   .session-report-done {
     min-width: 128px;
   }
