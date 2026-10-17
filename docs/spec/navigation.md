@@ -307,20 +307,22 @@ routes. Study expands from its own button into a session preview, using the same
 course, with its persistent top-right trigger turning into a close control. The contents fade
 in and out over 120ms at normal motion speed while the surface expands or contracts; text
 retains its dimensions throughout. The course stays visible, without a modal backdrop or a phone sheet. The surface stays
-inside the viewport, including Today rows near its bottom. Escape or Cancel returns focus to
+inside the viewport, including Today rows near its bottom. Escape or the close control returns focus to
 Study; clicking or tabbing elsewhere closes without taking focus back. The preview shows:
 the planner's next step (a lesson with its card and new-card counts, a Card practice or due review
 with its card count), then **Review due cards** when due reviews remain, marked as offered next
-because the between-steps screen offers them beside Continue. Each step and the session carry an
-"about N min" estimate from the course's mean review time, counting a new card as three reviews;
-a step with no cards has no estimate and the session total is then omitted. The preview never shows
+because the between-steps screen offers them beside Continue. The session carries one
+"About N min" estimate from the course's mean review time, counting a new card as three reviews;
+the total is omitted when any step has no cards to estimate. The preview never shows
 steps beyond those two, since the planner decides one step at a time. The course title and total
-estimate lead an unboxed numbered sequence. A compact action row pairs **Cancel** with
-**Start session**, without nested frames or a detached Done action. With nothing to start, the preview
+estimate lead an unboxed list without numbered badges or repeated step timings.
+**Start session** is the primary action; the persistent Study close control handles dismissal
+without a duplicate Cancel action. With nothing to start, the preview
 names the blocker: an empty course offers **Add cards** when its lessons are editable, a locked
 lesson is named with its unlock condition (release date or the lesson before it), and an archived
 course says to restore it. Opened from Today, the
-plan is followed by **Other ways**: due review on its own and each applicable named assessment. Opened from a course page, which has its own Other ways menu beside
+action row includes a quiet **Other ways** disclosure: due review on its own and each applicable
+named assessment appear only when expanded. Opened from a course page, which has its own Other ways menu beside
 Study, the preview leaves that section out. When an imminent
 assessment overlaps reached, exposed material and has useful work, the conductor also offers each
 applicable named assessment, ordered by date. Choosing a branch is temporary and is not retained

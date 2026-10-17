@@ -143,24 +143,52 @@ describe('StudySheet', () => {
     expect(steps).toHaveTextContent('Atomic structureLearn · 2 cards, 1 new');
     expect(steps).toHaveTextContent('2 cards, 1 new');
     expect(steps).toHaveTextContent('Review due cards6 cards, offered next');
+    expect(steps.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(steps).not.toHaveTextContent('min');
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
     // One review plus a new card counted three times is a minute; six reviews round up to two.
     expect(screen.getByText('About 3 min')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study');
+    expect(
+      screen.queryByRole('button', { name: /^Only review due cards/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
     fireEvent.click(screen.getByRole('button', { name: /^Only review due cards/ }));
     expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?review=due');
   });
 
-  it('cancels the preview without starting study', () => {
+  it('closes the preview without a duplicate Cancel action or starting study', () => {
     const onClose = vi.fn();
     renderSheet('chem', { onClose });
     expect(screen.getByRole('region', { name: 'Session preview' })).not.toHaveAttribute(
       'aria-modal',
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close session preview' }));
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('reveals named assessments on demand and keeps their study route', () => {
+    Object.assign(mockFlows.chem, {
+      decision: {
+        kind: 'choice',
+        step: { kind: 'lesson', lessonId: 'l1', label: 'Atomic structure' },
+        assessments: [{ assessmentId: 'exam/1', name: 'Chemistry checkpoint' }],
+      },
+    });
+    renderSheet('chem');
+    const alternatives = screen.getByRole('button', { name: 'Other ways' });
+    expect(alternatives).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByRole('button', { name: 'Revise for Chemistry checkpoint' }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(alternatives);
+    expect(alternatives).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Revise for Chemistry checkpoint' }));
+    expect(mockNavigate).toHaveBeenLastCalledWith('/course/chem/study?assessmentId=exam%2F1');
   });
 
   it('keeps an explicit close control above the session contents', () => {

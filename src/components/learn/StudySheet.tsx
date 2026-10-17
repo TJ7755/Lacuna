@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
 import { StudyExpansion, useStudyLaunch } from './StudyExpansion';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
-import { ArrowRightIcon, ChevronLeftIcon } from '../ui/icons';
-import { cn } from '../ui/cn';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { ArrowRightIcon, ChevronDownIcon, ChevronLeftIcon } from '../ui/icons';
 import { planStudySession } from '../../course/studySessionPlan';
 import { canEditLessons } from '../../course/lessonViewMode';
 import { lessonEffectiveReleaseDates } from '../../course/path';
@@ -50,7 +50,6 @@ export function StudySheet({
                   }
                 : undefined
             }
-            onClose={onClose}
           />
         ) : (
           <CoursePicker
@@ -58,7 +57,6 @@ export function StudySheet({
               setStepDirection(1);
               setPickedCourseId(id);
             }}
-            onClose={onClose}
           />
         )}
       </StepSwap>
@@ -66,13 +64,7 @@ export function StudySheet({
   );
 }
 
-function CoursePicker({
-  onPick,
-  onClose,
-}: {
-  onPick: (courseId: string) => void;
-  onClose: () => void;
-}) {
+function CoursePicker({ onPick }: { onPick: (courseId: string) => void }) {
   const courses = useCourses();
   const active = courses?.filter((course) => !course.archived);
 
@@ -98,9 +90,6 @@ function CoursePicker({
           </Button>
         ))
       )}
-      <Button variant="ghost" size="lg" onClick={onClose}>
-        Cancel
-      </Button>
     </>
   );
 }
@@ -109,18 +98,18 @@ function CourseStudyOptions({
   courseId,
   otherWays,
   onBack,
-  onClose,
 }: {
   courseId: string;
   otherWays: boolean;
   onBack?: () => void;
-  onClose: () => void;
 }) {
   const navigate = useNavigate();
   const launch = useStudyLaunch();
   const course = useCourse(courseId);
   const flow = useCourseStudyFlow(courseId);
   const title = flow?.course.name ?? course?.name;
+  const [showOtherWays, setShowOtherWays] = useState(false);
+  const otherWaysId = useId();
 
   // The choice is encoded in the URL rather than handed over in memory, so the study
   // flow starts already knowing what it is running and never shows an entry of its own.
@@ -131,9 +120,6 @@ function CourseStudyOptions({
       <>
         {onBack && <AllCoursesButton onClick={onBack} />}
         <PreviewTitle>Course not found</PreviewTitle>
-        <Button variant="ghost" size="lg" onClick={onClose}>
-          Cancel
-        </Button>
       </>
     );
   }
@@ -160,42 +146,33 @@ function CourseStudyOptions({
       {flow === undefined ? (
         <p className="py-2 text-sm text-ink-faint">Working out what is next…</p>
       ) : plan && plan.steps.length > 0 ? (
-        <>
-          <ol aria-label="Today's session" className="flex flex-col gap-5 py-2">
-            {plan.steps.map((step, index) => (
-              <li key={step.key} className="flex items-start gap-3">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-semibold tabular-nums',
-                    index === 0 ? 'bg-accent-soft text-accent-ink' : 'bg-ink/5 text-ink-soft',
-                  )}
-                >
-                  {index + 1}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
-                    {step.title}
-                  </p>
-                  {step.detail && <p className="text-sm text-ink-soft">{step.detail}</p>}
-                </div>
-                {step.minutes !== undefined && (
-                  <span className="shrink-0 text-sm text-ink-soft tabular-nums">
-                    {step.minutes} min
-                  </span>
-                )}
-              </li>
-            ))}
-          </ol>
-        </>
+        <ol aria-label="Today's session" className="flex list-none flex-col gap-4 py-1">
+          {plan.steps.map((step) => (
+            <li key={step.key} className="min-w-0">
+              <p className="font-medium leading-snug text-ink [overflow-wrap:anywhere]">
+                {step.title}
+              </p>
+              {step.detail && <p className="mt-0.5 text-sm text-ink-soft">{step.detail}</p>}
+            </li>
+          ))}
+        </ol>
       ) : (
         <NothingToStudy flow={flow} onAddCards={() => navigate(`/course/${courseId}/cards/new`)} />
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
-        <Button variant="ghost" size="lg" data-dialog-close onClick={onClose}>
-          Cancel
-        </Button>
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {otherWays && (canReviewDueCards || assessments.length > 0) && (
+          <Button
+            variant="ghost"
+            className="mr-auto"
+            aria-expanded={showOtherWays}
+            aria-controls={otherWaysId}
+            onClick={() => setShowOtherWays((value) => !value)}
+          >
+            Other ways
+            <ChevronDownIcon width={14} height={14} aria-hidden="true" />
+          </Button>
+        )}
         {plan && plan.steps.length > 0 && (
           <Button
             variant="primary"
@@ -209,14 +186,12 @@ function CourseStudyOptions({
       </div>
 
       {otherWays && (canReviewDueCards || assessments.length > 0) && (
-        <section aria-label="Other ways" className="mt-2 flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-ink-soft">Other ways</h3>
-          {canReviewDueCards && (
-            <div>
+        <AnimatedDisclosure open={showOtherWays}>
+          <section id={otherWaysId} aria-label="Other ways" className="flex flex-col gap-1">
+            {canReviewDueCards && (
               <Button
-                variant="secondary"
-                aria-describedby="study-due-reviews-description"
-                className="w-full"
+                variant="ghost"
+                className="justify-start"
                 onClick={() => start('?review=due')}
               >
                 Only review due cards
@@ -224,21 +199,21 @@ function CourseStudyOptions({
                   {snapshot?.recurringPracticeEligibleCount}
                 </span>
               </Button>
-              <p id="study-due-reviews-description" className="mt-1 text-sm text-ink-soft">
-                Skip new cards and lessons
-              </p>
-            </div>
-          )}
-          {assessments.map((assessment) => (
-            <Button
-              key={assessment.assessmentId}
-              variant="secondary"
-              onClick={() => start(`?assessmentId=${encodeURIComponent(assessment.assessmentId)}`)}
-            >
-              Revise for {assessment.name}
-            </Button>
-          ))}
-        </section>
+            )}
+            {assessments.map((assessment) => (
+              <Button
+                key={assessment.assessmentId}
+                variant="ghost"
+                className="justify-start"
+                onClick={() =>
+                  start(`?assessmentId=${encodeURIComponent(assessment.assessmentId)}`)
+                }
+              >
+                Revise for {assessment.name}
+              </Button>
+            ))}
+          </section>
+        </AnimatedDisclosure>
       )}
     </>
   );
