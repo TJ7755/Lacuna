@@ -82,17 +82,18 @@ describe('ForecastChart axis', () => {
     expect(screen.getByRole('button', { name: 'Physics Behind' })).toBeInTheDocument();
   });
 
-  it('spotlights the first three of many courses and keeps the rest quiet until asked', () => {
+  it('spotlights the highest forecasts in stable descending order and keeps the rest quiet until asked', () => {
     const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.1 * k }));
     const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+    const recalls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.8, 0.8, 0.9, 0.8];
     const { container } = render(
       <ForecastChart
         lines={names.map((name, i) => ({
           id: name,
           name,
           status: 'behind' as const,
-          forecast: { ...forecast(7), ifStopped: i / 100 },
-          history,
+          forecast: { ...forecast(7), ifStopped: recalls[i] },
+          history: history.map((point) => ({ ...point, recall: recalls[i] })),
         }))}
         now={NOW}
         past={18}
@@ -101,12 +102,22 @@ describe('ForecastChart axis', () => {
       />,
     );
     // Only the spotlit courses carry today's figure and a coloured line.
-    expect(container.querySelectorAll('text.font-display')).toHaveLength(3);
+    const labels = [...container.querySelectorAll('text.font-display')];
+    expect(labels.map((label) => label.textContent)).toEqual(['90%', '80%', '80%']);
+    const colours = ['hsl(var(--accent-ink))', 'hsl(var(--series-1))', 'hsl(var(--series-2))'];
+    labels.forEach((label, index) => {
+      expect(label).toHaveAttribute('fill', colours[index]);
+      expect(label.closest('g')!.querySelector('path')).toHaveAttribute('stroke', colours[index]);
+    });
+    const legend = screen.getByRole('list', { name: 'Courses' });
+    const courseNames = () => [...legend.querySelectorAll('span[title]')].map((name) => name.textContent);
+    expect(courseNames()).toEqual(['H', 'F', 'G']);
     const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
     expect(new Set(strokes).size).toBe(4);
     expect(screen.queryByRole('button', { name: 'D Behind' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '6 more' }));
+    expect(courseNames()).toEqual(['H', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'I']);
     const d = screen.getByRole('button', { name: 'D Behind' });
     fireEvent.focus(d);
     expect(container.querySelectorAll('text.font-display')).toHaveLength(4);

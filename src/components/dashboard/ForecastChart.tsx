@@ -106,7 +106,7 @@ const DAY = 86_400_000;
 /** Smallest vertical gap between today's percentage labels. */
 const LABEL_GAP = 22;
 /**
- * Beyond this many courses the chart spotlights the first few, in the queue's urgency order,
+ * Beyond this many courses the chart spotlights the highest stop-now forecasts, descending,
  * and keeps the rest as quiet context: nine coloured lines and labels read as noise, and
  * the series palette starts repeating after six.
  */
@@ -137,11 +137,11 @@ export function spreadLabels(ys: number[], top: number, bottom: number, gap: num
  * stopped now, traced over recent days up to today against the target. The window runs
  * `past` days back and `future` days ahead; nothing is projected after today, which only
  * holds the exam markers. Lines draw in, today's points land with a small spring, and
- * choosing a course in the legend brings its line forward. With many courses only the most
- * urgent few are coloured and labelled; the rest stay faint until chosen.
+ * choosing a course in the legend brings its line forward. With many courses only the highest
+ * stop-now forecasts are coloured and labelled; the rest stay faint until chosen.
  */
 export function ForecastChart({
-  lines,
+  lines: inputLines,
   now,
   past,
   future,
@@ -157,7 +157,14 @@ export function ForecastChart({
   const { ref, W, H, narrow } = useChartSize();
   const [focus, setFocus] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const spotlit = lines.length <= SPOTLIGHT_LIMIT ? lines.length : SPOTLIGHT;
+  const spotlit = inputLines.length <= SPOTLIGHT_LIMIT ? inputLines.length : SPOTLIGHT;
+  const lines = useMemo(() => {
+    const ranked = [...inputLines]
+      .sort((a, b) => b.forecast.ifStopped - a.forecast.ifStopped)
+      .slice(0, spotlit);
+    const ids = new Set(ranked.map((line) => line.id));
+    return [...ranked, ...inputLines.filter((line) => !ids.has(line.id))];
+  }, [inputLines, spotlit]);
   const hidden = lines.length - spotlit;
   const colour = (index: number) => (index < spotlit ? courseColour(index) : CONTEXT_COLOUR);
   const target = lines[0]?.forecast.target ?? 0.9;
