@@ -1,7 +1,7 @@
 import { CreateButton } from '../ui/CreateButton';
 // "Cards in this lesson" — the compact card list beside the lesson's note. Each row
-// is the card's front, rendered as on the Cards page so maths shows as maths, its kind
-// beneath and when it next comes up; an occlusion card leads with its diagram. In
+// is the card's front, rendered as on the Cards page so maths shows as maths, with a
+// kind icon beside its schedule; an occlusion card leads with its diagram. In
 // Edit mode a pencil and a New card button fade in; their slots are always laid
 // out, so nothing shifts when the mode changes. Find, in both modes, closes the
 // heading row. Bulk management (selecting, deleting, importing, linking) lives in
@@ -15,12 +15,8 @@ import { cn } from '../ui/cn';
 import { Button } from '../ui/Button';
 import { motionTransition } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import {
-  cardKindLabel,
-  cardScheduleLabel,
-  orderOcclusionSiblings,
-  plainFront,
-} from './lessonCardRow';
+import { cardScheduleLabel, orderOcclusionSiblings, plainFront } from './lessonCardRow';
+import { CardKindIcon } from './CardKindIcon';
 import { ScheduleChip } from './ScheduleChip';
 import { OcclusionThumbnail } from './OcclusionThumbnail';
 import { useOcclusions } from '../../state/useCourseData';
@@ -138,9 +134,11 @@ export function LessonCardsList({
                       <CardContent card={card} side="front" />
                     </Suspense>
                   </div>
-                  <span className="text-[13px] text-ink-soft">{cardKindLabel(card)}</span>
                 </div>
-                <ScheduleChip schedule={cardScheduleLabel(card, now)} />
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <CardKindIcon card={card} />
+                  <ScheduleChip schedule={cardScheduleLabel(card, now)} />
+                </div>
                 <motion.span
                   {...fade}
                   aria-hidden={editable ? undefined : true}

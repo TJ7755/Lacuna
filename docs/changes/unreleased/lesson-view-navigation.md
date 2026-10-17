@@ -1,0 +1,1 @@
+- Make the lesson’s course link visibly navigable, move Select beside Manage, and align compact card-kind icons with schedule pills while preserving answer previews and tags.

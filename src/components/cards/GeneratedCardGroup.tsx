@@ -32,6 +32,7 @@ interface GeneratedCardGroupProps {
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
   occlusions?: Occlusion[];
+  compactMetadata?: boolean;
 }
 
 const KIND_META = {
@@ -52,6 +53,7 @@ export function GeneratedCardGroup({
   onUnlinkCard,
   motionMultiplier,
   occlusions,
+  compactMetadata,
 }: GeneratedCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { Icon, editLabel } = KIND_META[kind];
@@ -93,6 +95,7 @@ export function GeneratedCardGroup({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={onUnlinkCard}
           motionMultiplier={motionMultiplier}
+          compactMetadata={compactMetadata}
           occlusions={occlusions}
         />
       </div>

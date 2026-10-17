@@ -49,6 +49,8 @@ vi.mock('../../fsrs/leech', () => ({
 }));
 
 vi.mock('../ui/icons', () => ({
+  CardsIcon: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
+  FileTextIcon: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
   CheckIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="check-icon" {...props} />,
   CloseIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="close-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
@@ -161,6 +163,38 @@ beforeEach(() => {
 });
 
 describe('CardList', () => {
+  it('keeps lesson selection in its heading and exposes compact card kinds', async () => {
+    render(
+      <CardList
+        cards={[mockCard, { ...mockCard2, type: 'cloze' }]}
+        context={mockContext}
+        onEditCard={vi.fn()}
+        heading={<h2>Manage (2)</h2>}
+        beforeCards={<p>Answer by</p>}
+        compactMetadata
+      />,
+    );
+    const heading = screen.getByRole('heading', { name: 'Manage (2)' });
+    expect(heading.parentElement).toContainElement(screen.getByRole('button', { name: 'Select' }));
+    expect(screen.getByRole('img', { name: 'Front / back' })).toHaveAttribute(
+      'title',
+      'Front / back',
+    );
+    expect(screen.getByRole('img', { name: 'Cloze' })).toHaveAttribute('title', 'Cloze');
+    expect(await screen.findByText('Paris')).toBeInTheDocument();
+    expect(screen.getByText('geography')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+    const card = screen.getByRole('button', {
+      name: 'Select card: What is the capital of France?',
+    });
+    fireEvent.click(card);
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(
+      screen.getByRole('button', { name: 'Card details: What is the capital of France?' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('provides a named details control and keeps the covered swipe tray inert', async () => {
     const { container } = render(
       <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,

@@ -252,7 +252,7 @@ export function LessonView({
           backTo={backTo}
           backLabel={backLabel}
           archived={archived}
-          identity={archived ? undefined : { name: course.name }}
+          identity={archived ? undefined : { name: course.name, back: true }}
           className="mb-6"
           trailing={
             archived || canEditLessons(course) ? undefined : (
