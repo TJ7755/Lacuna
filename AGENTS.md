@@ -25,7 +25,6 @@
 12. **Update documentation** (docs/SPEC.md, README.md, etc.) after any meaningful change, adding a changelog fragment in `docs/changes/unreleased/` (see its README) rather than editing docs/CHANGES.md, and **MEMORIES.md** after any lesson learned. See Memories below. If the relevant documentation does not exist, ignore this.
 13. **UI changes must look native** — beautiful, seamless, never bolted on. Follow `docs/spec/visual-design.md` and `docs/spec/accessibility.md`, which define the palette, typography, motion and layout the code implements. Keep user-facing text minimal and intentional; no cringe or design-commentary copy.
 14. **Avoid unnecessary dependencies.** Keep dependencies up to date where possible, and avoid known security concerns.
-15. **Prove behaviour changes with a red-to-green test.** Every bug fix or intentional behaviour change must include or identify an automated test that fails on the merge-base and passes on the proposed head. The test may be new or existing, but its assertions must not be weakened to obtain a pass. Pure refactors must preserve relevant existing coverage; documentation, tooling, dependency and CI-only changes require proportionate validation instead. Any emergency exception must be explicit, and the missing regression test must land in the next change.
 
 ---
 
@@ -33,19 +32,11 @@
 
 1. **Be surgical.** Prefer the least code that achieves the functionality with the least future maintenance. Reducing code beats adding it. Fix incidental performance issues you find.
 2. **When multiple reasonable solutions exist**, explain the trade-offs and ask the prompter which they prefer — unless one is clearly superior, in which case say so and proceed.
-3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prefer aesthetics.
+3. **Prioritise performance over aesthetics**, and make the trade-off explicit. If the performance difference is negligible, prioritise aesthetics.
 4. **Complete the entire task list in one go** (where a list exists), except for asking questions. Do not stop after the first task unless blocked by ambiguity or errors.
 5. **Extract rather than append.** When a change would push a file past ~500 lines, or adds a concern distinct from the file's main responsibility (e.g. gesture handling inside a page component), extract it into a new module instead of appending. Extending existing *systems* does not mean extending existing *files*.
+6. **Prove behaviour changes with a red-to-green test.** Every bug fix or intentional behaviour change should include or identify an automated test that fails on the merge-base and passes on the proposed head. The test may be new or existing, but its assertions must not be weakened to obtain a pass. Pure refactors must preserve relevant existing coverage; documentation, tooling, dependency and CI-only changes require proportionate validation instead. This is a guideline rather than a rule, because I do not want pointless red-green unit tests. I once had a test that tested if the saturation level was over 95%, which is utterly redundant. Please don't overdo this!
 
----
-
-## Memories
-
-`MEMORIES.md` holds durable facts about how to work in this repository. Read it before starting; it is short by design, and it exists because it carries the things that have caught agents out before.
-
-Write to it when you learn something a future agent would otherwise get wrong. It is not a changelog: `docs/CHANGES.md` records what changed and why, in order, and grows forever; `MEMORIES.md` records what is true now, and is edited in place. When a fact stops being true, correct or delete that entry rather than appending a newer one beneath it.
-
-Do not record what is already discoverable — architecture, file layout, past fixes, commit history, or the rules in this file. Keep each entry to a heading and a few lines: the fact, then why it matters.
 
 ---
 
