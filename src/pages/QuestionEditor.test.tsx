@@ -140,6 +140,44 @@ describe('QuestionEditor', () => {
     expect(screen.queryByText('New definition')).not.toBeInTheDocument();
   });
 
+  it.each(['fixed', 'generated'] as const)(
+    'requires a deliberate Concept choice for a new %s Question',
+    async (kind) => {
+      renderEditor();
+      const concept = await screen.findByRole('combobox', { name: 'Primary skill practised' });
+      expect(concept).toHaveValue('');
+      fireEvent.change(screen.getByPlaceholderText('Completing the square'), {
+        target: { value: 'Deliberate choice' },
+      });
+      if (kind === 'generated') {
+        fireEvent.click(screen.getByRole('button', { name: 'Generated family' }));
+      } else {
+        fireEvent.change(screen.getByLabelText('Prompt'), { target: { value: 'What is 2 + 2?' } });
+        fireEvent.change(screen.getByLabelText('Expected answer'), { target: { value: '4' } });
+        fireEvent.change(screen.getByLabelText('Worked explanation'), {
+          target: { value: 'Combine the pairs.' },
+        });
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+
+      expect(concept).toHaveFocus();
+      expect(concept).toHaveAccessibleDescription('Choose the primary skill practised.');
+      expect(concept).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByPlaceholderText('Completing the square')).toHaveValue('Deliberate choice');
+      expect(mocks.createFixed).not.toHaveBeenCalled();
+      expect(mocks.createGenerated).not.toHaveBeenCalled();
+      expect(mocks.notify).not.toHaveBeenCalled();
+
+      chooseConcept();
+      fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+      await waitFor(() =>
+        expect(kind === 'fixed' ? mocks.createFixed : mocks.createGenerated).toHaveBeenCalledWith(
+          expect.objectContaining({ courseId: 'course-1', targetConceptId: 'concept-1' }),
+        ),
+      );
+    },
+  );
+
   it('creates a fixed Question with a worked explanation and one target Concept', async () => {
     renderEditor();
 
@@ -151,6 +189,7 @@ describe('QuestionEditor', () => {
     fireEvent.change(screen.getByLabelText('Worked explanation'), {
       target: { value: 'Combine the two pairs to get four.' },
     });
+    chooseConcept();
     fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
 
     await waitFor(() =>
@@ -198,6 +237,7 @@ describe('QuestionEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('Completing the square'), {
       target: { value: 'Apply addition' },
     });
+    chooseConcept();
     fireEvent.keyDown(prompt, { key: 'Enter', ctrlKey: true });
 
     await waitFor(() => expect(mocks.createFixed).toHaveBeenCalledOnce());
@@ -219,6 +259,7 @@ describe('QuestionEditor', () => {
     fireEvent.change(screen.getByPlaceholderText('Completing the square'), {
       target: { value: 'Integer-root quadratics' },
     });
+    chooseConcept();
     fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
 
     await waitFor(() =>
@@ -295,9 +336,18 @@ describe('QuestionEditor', () => {
   });
 
   it('offers Restore and Discard, and restored drafts remain guarded', async () => {
+    mocks.data!.concepts.push({
+      ...mocks.data!.concepts[0],
+      id: 'concept-2',
+      name: 'Quadratic equations',
+    });
     const key = questionDraftKey('course-1');
     saveDraft<QuestionDraftData>(key, {
-      state: { ...EMPTY_QUESTION_AUTHORING_STATE, name: 'Recovered definition' },
+      state: {
+        ...EMPTY_QUESTION_AUTHORING_STATE,
+        name: 'Recovered definition',
+        targetConceptId: 'concept-2',
+      },
       timestamp: 10,
     });
     const router = renderEditor();
@@ -307,6 +357,7 @@ describe('QuestionEditor', () => {
     expect(screen.getByPlaceholderText('Completing the square')).toHaveValue(
       'Recovered definition',
     );
+    expect(screen.getByRole('combobox', { name: 'Primary skill practised' })).toHaveValue('concept-2');
     await act(() => router.navigate('/away'));
     expect(await screen.findByRole('dialog', { name: 'Leave this Question?' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
@@ -322,6 +373,7 @@ describe('QuestionEditor', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Discard draft' }));
     expect(loadDraft(key)).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Primary skill practised' })).toHaveValue('');
     await act(() => router.navigate('/away'));
     expect(await screen.findByText('Other page')).toBeInTheDocument();
   });
@@ -371,6 +423,7 @@ describe('QuestionEditor', () => {
       target: { value: 'Explanation' },
     });
 
+    chooseConcept();
     fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
 
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled();
@@ -391,6 +444,7 @@ describe('QuestionEditor', () => {
     fireEvent.change(screen.getByLabelText('Worked explanation'), {
       target: { value: 'Explanation' },
     });
+    chooseConcept();
     fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
     await waitFor(() =>
       expect(mocks.notify).toHaveBeenCalledWith('Database write failed', 'negative'),
@@ -400,6 +454,16 @@ describe('QuestionEditor', () => {
     expect(await screen.findByRole('dialog', { name: 'Leave this Question?' })).toBeInTheDocument();
     expect(loadDraft<QuestionDraftData>(questionDraftKey('course-1'))?.state.name).toBe(
       'Failed definition',
+    );
+    expect(loadDraft<QuestionDraftData>(questionDraftKey('course-1'))?.state.targetConceptId).toBe(
+      'concept-1',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+    expect(await screen.findByText('Questions list')).toBeInTheDocument();
+    expect(mocks.createFixed).toHaveBeenCalledTimes(2);
+    expect(mocks.createFixed).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: 'Failed definition', targetConceptId: 'concept-1' }),
     );
   });
 
@@ -524,4 +588,10 @@ function renderEditor(entry = '/course/course-1/questions/new') {
   );
   render(<RouterProvider router={router} />);
   return router;
+}
+
+function chooseConcept() {
+  fireEvent.change(screen.getByRole('combobox', { name: /^Primary skill practised/ }), {
+    target: { value: 'concept-1' },
+  });
 }

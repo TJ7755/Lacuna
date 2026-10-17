@@ -1,0 +1,1 @@
+- New individual Questions require an explicit primary Concept choice instead of silently using the first Course Concept; editing, restored drafts and repeat entry retain deliberate choices. (#439)

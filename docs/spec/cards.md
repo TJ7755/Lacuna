@@ -153,8 +153,11 @@ ordinary `front_back` cards to the scheduler.
 
 The separate Question editor creates either a fixed problem or a built-in generated family. Every
 Question requires a name and exactly one **Primary skill practised** Concept; prerequisite Concepts
-are optional. Fixed Questions additionally require a prompt, valid numeric answer or compiled
-working scheme, and worked explanation. A generated family selects a supported generator and its
+are optional. A new Question leaves the primary Concept unselected, even when Concepts already
+exist in the Course; the author chooses one or creates it explicitly. Editing and restoring a draft
+retain its stored Concept, and repeat entry retains the Concept just saved. Fixed Questions
+additionally require a prompt, valid numeric answer or compiled working scheme, and worked
+explanation. A generated family selects a supported generator and its
 typed configuration. Changing Question form during editing is prohibited: it would be a new
 definition, not a cosmetic edit.
 

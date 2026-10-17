@@ -92,7 +92,7 @@ export function QuestionEditor() {
   useEffect(() => {
     if (draft.loaded || data === undefined || (editing && record === undefined)) return;
     if (!editing) {
-      draft.initialise(newQuestionState(data.concepts[0]?.id ?? ''));
+      draft.initialise(newQuestionState(''));
       return;
     }
     if (!record) {

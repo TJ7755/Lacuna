@@ -45,3 +45,86 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await confirm.click({ trial: true });
   await cancel.click({ trial: true });
 });
+
+for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+  test(`Question entry requires a Concept choice and retains it across repeat and edit (${reducedMotion})`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion });
+    await enterFreshLacuna(page);
+    await createCourse(page, 'Deliberate Concepts');
+    const courseId = new URL(page.url()).hash.split('/')[2];
+    const editorUrl = `/#/course/${courseId}/questions/new`;
+    const concept = page.getByRole('combobox', { name: /^Primary skill practised/ });
+    const name = page.getByPlaceholder('Completing the square');
+    const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
+    const explanation = page.getByRole('textbox', { name: 'Worked explanation', exact: true });
+    const answer = page.getByRole('textbox', { name: 'Expected answer', exact: true });
+
+    // Create the existing Course Concepts through the supported editor controls.
+    await page.goto(editorUrl);
+    await page.getByPlaceholder('A single piece of knowledge').fill('Another skill');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(concept).not.toHaveValue('');
+    await page.getByPlaceholder('A single piece of knowledge').fill('Chosen skill');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await expect(page.getByPlaceholder('A single piece of knowledge')).toHaveValue('');
+    const chosenId = await concept.inputValue();
+    await expect(concept.locator('option').nth(1)).toHaveText('Another skill');
+    await page.getByRole('button', { name: 'Generated family' }).click();
+    await name.fill('Existing generated family');
+    await page.getByRole('button', { name: 'Create Question' }).click();
+    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'New question', exact: true }).click();
+    await expect(prompt).toBeFocused();
+    await expect(concept).toHaveValue('');
+    await prompt.fill('What is 2 + 2?');
+    await answer.fill('4');
+    await explanation.fill('Combine the two pairs.');
+    await name.fill('First explicit Question');
+    await name.press('Control+Enter');
+    await expect(concept).toBeFocused();
+    await expect(concept).toHaveAccessibleDescription('Choose the primary skill practised.');
+    await expect(prompt).toHaveValue('What is 2 + 2?');
+    await concept.selectOption({ label: 'Chosen skill' });
+    await page
+      .getByRole('combobox', { name: 'Lesson', exact: true })
+      .selectOption({ label: 'Lesson 1' });
+    await page.getByRole('button', { name: 'Another skill', exact: true }).click();
+    await page.getByRole('button', { name: 'Save & add another' }).click();
+    await expect(prompt).toHaveValue('');
+    await expect(prompt).toBeFocused();
+    await expect(concept).toHaveValue(chosenId);
+    await expect(page.getByRole('combobox', { name: 'Lesson', exact: true })).not.toHaveValue('');
+    await expect(
+      page.getByRole('button', { name: 'Another skill', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'false');
+
+    await prompt.fill('What is 3 + 3?');
+    await answer.fill('6');
+    await explanation.fill('Combine the two triples.');
+    await name.fill('Second explicit Question');
+    await name.press('Meta+Enter');
+    await expect(prompt).toHaveValue('');
+    await expect(concept).toHaveValue(chosenId);
+    await page.reload();
+    await expect(concept).toHaveValue('');
+    await expect(page.getByRole('button', { name: 'Restore draft' })).toHaveCount(0);
+    await prompt.press('Escape');
+    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+
+    for (const questionName of ['First explicit Question', 'Second explicit Question']) {
+      await page.getByRole('link', { name: `Edit ${questionName}`, exact: true }).click();
+      await expect(concept).toHaveValue(chosenId);
+      await expect(name).toHaveValue(questionName);
+      await expect(answer).toHaveValue(questionName.startsWith('First') ? '4' : '6');
+      await expect(
+        page.getByRole('button', { name: 'Another skill', exact: true }),
+      ).toHaveAttribute('aria-pressed', questionName.startsWith('First') ? 'true' : 'false');
+      await name.fill(`${questionName} edited`);
+      await page.getByRole('button', { name: 'Save Question' }).click();
+      await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+    }
+  });
+}
