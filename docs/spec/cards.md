@@ -174,11 +174,17 @@ stems span both text columns and show their leaf total. Below 720px, the scheme 
 under the question. New or empty sets focus the first Question field. Populated sets open
 without visible focus; neither entry nor returning from Preview focuses the title.
 
-Tab moves Question → Mark scheme → Marks, and Enter in Marks inserts the next sibling after
-any parts. Textarea Enter and Shift+Enter insert newlines. Tab on an empty leaf indents to a
-part or subpart; an existing parent answer moves into its first child with an Undo toast.
-Shift+Tab outdents an empty leaf and Backspace deletes one. A stem's Tab leads to its first
-part. Row menus are outside the Tab sequence, reached with Context Menu or Shift+F10 from a
+Tab moves Question → Mark scheme → the next Question, inserting a sibling after the last row.
+Marks stays outside the Tab sequence, with its automatic total and editable override unchanged.
+At the end of an unselected scheme, ArrowRight focuses Marks and selects its override; ArrowLeft
+at the start of Marks, or Shift+Tab there, returns to the scheme's end. Tab in Marks also moves
+to the next Question, inserting one when needed; Enter in Marks always inserts a sibling after
+any parts. Shift+Tab in a Question returns to the preceding scheme, or its Question if it is a
+stem; the first row leaves backwards navigation to the browser. Textarea Enter and Shift+Enter
+insert newlines. Tab on an empty leaf indents to a part or subpart; an existing parent answer
+moves into its first child with an Undo toast. Shift+Tab on an empty part outdents before moving
+backwards, and Backspace deletes an empty leaf. A stem's Tab leads to its first part. Row menus
+are outside the Tab sequence, reached with Context Menu or Shift+F10 from a
 row field; Alt+Up/Down reorders siblings. Menus offer answer type, image, per-point guidance
 and dimension, knowledge links, movement and confirmed deletion. Multiple-choice options and
 correct answers appear inline; switching away from populated options requires confirmation.

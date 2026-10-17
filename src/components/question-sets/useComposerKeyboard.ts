@@ -15,7 +15,8 @@ export function focusComposerField(
     row?.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-field="${field}"]`) ??
     row?.querySelector<HTMLTextAreaElement>('textarea');
   input?.focus({ preventScroll: true });
-  if (input?.type !== 'number') input?.setSelectionRange(input.value.length, input.value.length);
+  if (field === 'marks') input?.select();
+  else input?.setSelectionRange(input.value.length, input.value.length);
   row?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
 }
 
@@ -27,14 +28,19 @@ export function useComposerKeyboard(actions: {
   remove: (row: QuestionSetAuthoringNode) => void;
   move: (row: QuestionSetAuthoringNode, direction: number) => void;
 }) {
-  return (event: KeyboardEvent, row: QuestionSetAuthoringNode, firstChild?: string) => {
+  return (
+    event: KeyboardEvent,
+    row: QuestionSetAuthoringNode,
+    nextRow?: QuestionSetAuthoringNode,
+    previousRow?: QuestionSetAuthoringNode,
+  ) => {
     if (
       event.defaultPrevented ||
       event.nativeEvent.isComposing ||
       event.nativeEvent.keyCode === 229
     )
       return;
-    const target = event.target as HTMLElement;
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement;
     const field = target.dataset.field as ComposerField | undefined;
     if (!field || event.ctrlKey || event.metaKey) return;
     if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
@@ -42,7 +48,12 @@ export function useComposerKeyboard(actions: {
       actions.move(row, event.key === 'ArrowUp' ? -1 : 1);
       return;
     }
-    if (event.key === 'Tab' && field === 'question' && isEmptyRow(row)) {
+    if (
+      event.key === 'Tab' &&
+      field === 'question' &&
+      isEmptyRow(row) &&
+      (!event.shiftKey || row.depth > 0)
+    ) {
       event.preventDefault();
       (event.shiftKey ? actions.outdent : actions.indent)(row);
       return;
@@ -57,19 +68,44 @@ export function useComposerKeyboard(actions: {
       actions.insert(row);
       return;
     }
+    if (
+      event.key === 'ArrowRight' &&
+      !event.shiftKey &&
+      !event.altKey &&
+      field === 'scheme' &&
+      target.selectionStart === target.value.length &&
+      target.selectionEnd === target.value.length
+    ) {
+      event.preventDefault();
+      actions.focus(row.id, 'marks');
+      return;
+    }
+    if (
+      event.key === 'ArrowLeft' &&
+      !event.shiftKey &&
+      !event.altKey &&
+      field === 'marks' &&
+      (!target.value || target.selectionStart === 0)
+    ) {
+      event.preventDefault();
+      actions.focus(row.id, 'scheme');
+      return;
+    }
     if (event.key !== 'Tab') return;
     if (field === 'question' && !event.shiftKey) {
       event.preventDefault();
       actions.focus(
-        hasChildren(row) && firstChild ? firstChild : row.id,
+        hasChildren(row) && nextRow ? nextRow.id : row.id,
         hasChildren(row) ? 'question' : 'scheme',
       );
-    } else if (field === 'scheme') {
+    } else if (field === 'question' && event.shiftKey && previousRow) {
       event.preventDefault();
-      actions.focus(row.id, event.shiftKey ? 'question' : 'marks');
-    } else if (field === 'marks' && event.shiftKey) {
+      actions.focus(previousRow.id, hasChildren(previousRow) ? 'question' : 'scheme');
+    } else if (field === 'scheme' || field === 'marks') {
       event.preventDefault();
-      actions.focus(row.id, 'scheme');
+      if (event.shiftKey) actions.focus(row.id, field === 'marks' ? 'scheme' : 'question');
+      else if (nextRow) actions.focus(nextRow.id);
+      else actions.insert(row);
     }
   };
 }

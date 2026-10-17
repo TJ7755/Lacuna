@@ -221,7 +221,7 @@ export function QuestionComposer({
               }
               onFocus={() => setActive(row.id)}
               onBlur={() => setActive((current) => (current === row.id ? null : current))}
-              onKeyDown={(event) => keyboard(event, row, rows[index + 1]?.id)}
+              onKeyDown={(event) => keyboard(event, row, rows[index + 1], rows[index - 1])}
               onMove={(direction) => move(row, direction)}
               canMoveUp={peerIndex > 0}
               canMoveDown={peerIndex < peers.length - 1}

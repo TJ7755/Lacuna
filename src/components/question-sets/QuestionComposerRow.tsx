@@ -193,6 +193,7 @@ export function QuestionComposerRow({
             className="qs-composer-scheme"
             data-field="scheme"
             aria-label={`${label} mark scheme`}
+            aria-keyshortcuts="ArrowRight"
             placeholder="Mark scheme"
             value={scheme}
             onChange={(event) => writeScheme(event.target.value)}
@@ -201,13 +202,14 @@ export function QuestionComposerRow({
             className="qs-composer-marks"
             data-field="marks"
             aria-label={`${label} marks`}
-            type="number"
-            min="1"
-            step="1"
+            type="text"
             inputMode="numeric"
+            pattern="[0-9]*"
+            tabIndex={-1}
             placeholder={String(autoTotal || '–')}
             value={override ?? ''}
             onChange={(event) => {
+              if (!/^\d*$/.test(event.target.value)) return;
               const value = event.target.value === '' ? null : Number(event.target.value);
               setOverride(value);
               let allocations = parseMarkSchemeLines(scheme, answer.allocations);
