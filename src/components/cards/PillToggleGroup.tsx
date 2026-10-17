@@ -16,6 +16,7 @@ export interface PillToggleOption<T extends string> {
   label: string;
   /** Accessible name when it should differ from the visible label. */
   ariaLabel?: string;
+  description?: string;
 }
 
 export function PillToggleGroup<T extends string>({
@@ -79,6 +80,8 @@ export function PillToggleGroup<T extends string>({
                 type="button"
                 aria-pressed={active}
                 aria-label={option.ariaLabel}
+                aria-description={option.description}
+                title={option.description}
                 onClick={() => onChange(option.value)}
                 className={cn(pillClass, active ? 'text-ink' : 'text-ink-soft hover:text-ink')}
               >

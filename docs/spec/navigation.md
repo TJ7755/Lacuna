@@ -237,6 +237,16 @@ is pending, announces **Saved** to screen readers on completion, and retains sav
 navigation protection. Marks appear once in the contents/review summary, only when non-zero.
 An attempt that cannot be read leaves its set unscored instead of hiding the list.
 
+The question-set overview shares the editor's page width and title. Its header uses the course
+workspace pill for **Practice / Paper**, with feedback timing in accessible descriptions;
+**Start** creates the selected mode and **Resume** opens the most recently updated unfinished
+attempt. Editable sets retain an **Edit** pill. Questions and indented parts appear inline beside
+an Attempts card using the course Path's wrapping columns and row styles. The Attempts card is
+absent until an attempt exists. Recorded marks and available assessment dimensions sit beneath
+the attempt rows; unresolved marks stay labelled separately. Linked concept coverage occupies
+one line, and the **All / First recorded / Repeated** filter appears only after a repeated attempt.
+Removed sets retain their title and attempt links in the same page frame.
+
 "Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
 headers, path lesson rows, the session preview and the **Review due cards** session: cards
 introduced in reached lessons whose scheduled review has passed and which remain below
