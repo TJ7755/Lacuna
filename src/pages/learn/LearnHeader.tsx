@@ -9,7 +9,6 @@ import {
   FocusIcon,
   FullscreenIcon,
   KeyboardIcon,
-  MenuIcon,
   MoreIcon,
   PauseIcon,
   RestoreIcon,
@@ -113,7 +112,6 @@ export function LearnHeader({
   sessionCardOutcomes,
   filterParams,
   tagFilter,
-  onOpenNav,
   onExit,
   focusMode,
   onToggleFocus,
@@ -147,7 +145,6 @@ export function LearnHeader({
   sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
   tagFilter: string | null;
-  onOpenNav: () => void;
   onExit: () => void;
   focusMode: boolean;
   onToggleFocus: () => void;
@@ -259,15 +256,6 @@ export function LearnHeader({
           </span>
         )}
 
-        <button
-          type="button"
-          onClick={onOpenNav}
-          aria-label="Open navigation"
-          title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 max-md:hidden"
-        >
-          <MenuIcon width={18} height={18} />
-        </button>
         <div className="relative">
           <button
             type="button"

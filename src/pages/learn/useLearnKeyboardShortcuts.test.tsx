@@ -19,8 +19,6 @@ function params(
     hintStep: 0,
     setHintStep: vi.fn(),
     undoLast: vi.fn(),
-    navOpen: false,
-    setNavOpen: vi.fn(),
     menuOpen: false,
     setMenuOpen: vi.fn(),
     editing: false,
@@ -41,15 +39,12 @@ function params(
 }
 
 describe('study keyboard ownership', () => {
-  it.each(['menuOpen', 'editing', 'navOpen', 'hintsOpen'] as const)(
-    'does not grade through %s',
-    (overlay) => {
-      const callbacks = params({ [overlay]: true });
-      renderHook(() => useLearnKeyboardShortcuts(callbacks));
-      fireEvent.keyDown(window, { key: 'y' });
-      expect(callbacks.answer).not.toHaveBeenCalled();
-    },
-  );
+  it.each(['menuOpen', 'editing', 'hintsOpen'] as const)('does not grade through %s', (overlay) => {
+    const callbacks = params({ [overlay]: true });
+    renderHook(() => useLearnKeyboardShortcuts(callbacks));
+    fireEvent.keyDown(window, { key: 'y' });
+    expect(callbacks.answer).not.toHaveBeenCalled();
+  });
 
   it('does not reveal when Enter belongs to an editor field', () => {
     const callbacks = params({ phase: 'question', editing: true, isTypingCard: true });
@@ -120,8 +115,10 @@ it('retains unmodified grading and shifted letter bindings', () => {
 
 it('uses the configured help key to open and close study hints', () => {
   const callbacks = params({ bindings: { ...DEFAULT_BINDINGS, help: 'b' } });
-  const { rerender } = renderHook(({ hintsOpen }) => useLearnKeyboardShortcuts({ ...callbacks, hintsOpen }),
-    { initialProps: { hintsOpen: false } });
+  const { rerender } = renderHook(
+    ({ hintsOpen }) => useLearnKeyboardShortcuts({ ...callbacks, hintsOpen }),
+    { initialProps: { hintsOpen: false } },
+  );
   fireEvent.keyDown(window, { key: 'b' });
   expect(callbacks.setHintsOpen).toHaveBeenCalledWith(true);
   vi.mocked(callbacks.setHintsOpen).mockClear();

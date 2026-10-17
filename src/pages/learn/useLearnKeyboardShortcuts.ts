@@ -14,8 +14,6 @@ export interface UseLearnKeyboardShortcutsParams {
   hintStep: 0 | 1 | 2;
   setHintStep: (updater: (step: 0 | 1 | 2) => 0 | 1 | 2) => void;
   undoLast: () => void;
-  navOpen: boolean;
-  setNavOpen: (open: boolean) => void;
   menuOpen: boolean;
   setMenuOpen: (open: boolean) => void;
   editing: boolean;
@@ -56,8 +54,6 @@ export function useLearnKeyboardShortcuts({
   hintStep,
   setHintStep,
   undoLast,
-  navOpen,
-  setNavOpen,
   menuOpen,
   setMenuOpen,
   editing,
@@ -77,9 +73,15 @@ export function useLearnKeyboardShortcuts({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (
-        e.repeat || e.defaultPrevented || e.isComposing ||
-        e.ctrlKey || e.metaKey || e.altKey || editing
-      ) return;
+        e.repeat ||
+        e.defaultPrevented ||
+        e.isComposing ||
+        e.ctrlKey ||
+        e.metaKey ||
+        e.altKey ||
+        editing
+      )
+        return;
       // While the user is typing into any input, textarea, select, or content-editable
       // element, card shortcuts stay inert so keystrokes don't accidentally grade.
       const target = e.target as HTMLElement | null;
@@ -98,12 +100,6 @@ export function useLearnKeyboardShortcuts({
           e.preventDefault();
           setHintsOpen(false);
         }
-        return;
-      }
-      // While the nav drawer is open, only Escape (to close it) is meaningful;
-      // card shortcuts stay inert so navigating doesn't grade the current card.
-      if (navOpen) {
-        if (e.key === 'Escape') setNavOpen(false);
         return;
       }
       if (menuOpen) {
@@ -203,8 +199,6 @@ export function useLearnKeyboardShortcuts({
     hintStep,
     setHintStep,
     undoLast,
-    navOpen,
-    setNavOpen,
     menuOpen,
     setMenuOpen,
     editing,

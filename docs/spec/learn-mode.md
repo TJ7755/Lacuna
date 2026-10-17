@@ -558,7 +558,7 @@ badge; otherwise "Keep studying" is offered.
 
 `Space`/`Up` reveal; after reveal `Y`/`Right` = Yes, `N`/`Left` = No; `E` edit,
 `U` undo, `F` focus mode, `?` help (also accessible from the 3-dot menu as
-"Keyboard shortcuts"), `Esc` closes overlays/drawer.
+"Keyboard shortcuts"), `Esc` closes overlays. The session has no navigation drawer; **Exit** returns to app navigation.
 
 ### Exam date
 
@@ -567,7 +567,6 @@ Course creation creates a mandatory final `CourseAssessment`. The blank-course f
 date-times. The date and time are editable in Course Settings' scheduling fields, while
 additional checkpoints live in its Assessments section. The legacy `Deck.examDatePromptDismissed`
 field remains only for migration compatibility; the current Course UI has no `ExamDateBanner`.
-
 
 Optional Simple Learn remains available in the Study sheet when the course page provides the scheduled alternatives in its Other ways menu.
 

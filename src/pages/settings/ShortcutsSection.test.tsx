@@ -103,8 +103,6 @@ describe('ShortcutsSection', () => {
           hintStep: 0,
           setHintStep: vi.fn(),
           undoLast: vi.fn(),
-          navOpen: false,
-          setNavOpen: vi.fn(),
           menuOpen: false,
           setMenuOpen: vi.fn(),
           editing: false,

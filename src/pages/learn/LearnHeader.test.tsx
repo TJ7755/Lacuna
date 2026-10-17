@@ -27,7 +27,6 @@ it('keeps results coloured while those lines are recited again', () => {
       currentCardIds={['one', 'two', 'three']}
       filterParams={[]}
       tagFilter={null}
-      onOpenNav={action}
       onExit={action}
       focusMode={false}
       onToggleFocus={action}
@@ -82,7 +81,6 @@ function headerProps(): HeaderProps {
     currentCardIds: ['four'],
     filterParams: [],
     tagFilter: null,
-    onOpenNav: action,
     onExit: action,
     focusMode: false,
     onToggleFocus: action,
@@ -132,3 +130,10 @@ it.each([false, true])(
     }
   },
 );
+
+it.each([false, true])('has no navigation opener (touch: %s)', (isTouchMode) => {
+  render(<LearnHeader {...headerProps()} isTouchMode={isTouchMode} />);
+  expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Exit' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Card actions' })).toBeInTheDocument();
+});

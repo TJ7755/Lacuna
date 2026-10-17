@@ -181,8 +181,7 @@ inert immediately while their exit animation finishes.
 Dashboard and navigation share one shell-owned live query, also supplying the final-exam
 controller. Desktop and mobile navigation consume the same derived result. Dashboard alone
 retains hydrated cards and observes lesson progress and course calibration; leaving it removes
-those extra subscriptions after the navigation query resolves. Full-screen Learn navigation
-owns its query only while its drawer is mounted. Course Path derives its header summary from
+those extra subscriptions after the navigation query resolves. Course Path derives its header summary from
 the same course records used to build its path, using the study conductor's shared reader.
 
 **Course path** (`/course/:courseId`):
@@ -456,12 +455,14 @@ the mode field directly. When CoursePath renders this
 page inline for a single-lesson course, it gets the same full header/CTA treatment, including
 exam context via `nearestExamDate`.
 
-**Learn session** (full screen, outside the shell):
+**Learn session** (full screen, outside the shell): the header has no navigation
+opener or drawer. Use **Exit** to return to the app navigation. Card actions, Undo
+and the timer retain their shared row spacing; Focus mode offers its own exit control.
 
 ```
 + shared header (hidden in Focus Mode) ----------------+
-| [=] ORGANIC CHEMISTRY · MODE progress...  68% (o)  |
-|                 (Pomodoro) [...] [Focus] [Full] Exit |
+| Exit  ORGANIC CHEMISTRY · MODE progress...           |
+|                            [...] Undo (Pomodoro)    |
 +----------------------------------------------------+
 |                                                    |
 |     +-- flip card (rotateX flip on reveal) --+     |

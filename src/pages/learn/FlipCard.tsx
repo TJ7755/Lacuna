@@ -29,7 +29,6 @@ export function FlipCard({
   isTouchMode,
   menuOpen,
   editing,
-  navOpen,
   hintsOpen,
   onReveal,
   onHide,
@@ -52,7 +51,6 @@ export function FlipCard({
   isTouchMode: boolean;
   menuOpen: boolean;
   editing: boolean;
-  navOpen: boolean;
   hintsOpen: boolean;
   onReveal: () => void;
   onHide: () => void;
@@ -115,13 +113,13 @@ export function FlipCard({
         (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
       )
         return;
-      if (menuOpen || editing || navOpen || hintsOpen) return;
+      if (menuOpen || editing || hintsOpen) return;
       event.preventDefault();
       replayAudio();
     };
     window.addEventListener('keydown', onReplayKey);
     return () => window.removeEventListener('keydown', onReplayKey);
-  }, [audioCard, phase, menuOpen, editing, navOpen, hintsOpen, replayAudio]);
+  }, [audioCard, phase, menuOpen, editing, hintsOpen, replayAudio]);
 
   // Follow the pointer without spring lag; only an abandoned swipe springs back.
   const swipeXMotion = useMotionValue(0);
@@ -137,7 +135,7 @@ export function FlipCard({
       if (swipeRef.current.dragging || committed.current || !isPresent) return;
       if ((e.target as Element).closest('audio, button, input, textarea, a')) return;
       // Ignore swipes when any overlay is open.
-      if (menuOpen || editing || navOpen || hintsOpen) return;
+      if (menuOpen || editing || hintsOpen) return;
       swipeXMotion.stop();
       swipeRef.current = {
         x: 0,
@@ -150,7 +148,7 @@ export function FlipCard({
       containerRef.current?.setPointerCapture?.(e.pointerId);
       setSwipe({ x: 0, hint: null });
     },
-    [menuOpen, editing, navOpen, hintsOpen, isPresent, swipeXMotion],
+    [menuOpen, editing, hintsOpen, isPresent, swipeXMotion],
   );
 
   const handlePointerMove = useCallback(
@@ -305,7 +303,6 @@ export function FlipCard({
           !swipe.hint &&
           !menuOpen &&
           !editing &&
-          !navOpen &&
           !hintsOpen && (
             <>
               <motion.div

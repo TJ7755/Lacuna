@@ -25,7 +25,6 @@ import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { LearnHeader } from './learn/LearnHeader';
-import { NavSidebar } from './learn/NavSidebar';
 import { FlipCard } from './learn/FlipCard';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
 import { StreakCelebration, type StreakMoment } from './learn/StreakCelebration';
@@ -150,8 +149,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     toggleFullscreen,
     hintsOpen,
     setHintsOpen,
-    navOpen,
-    setNavOpen,
     typedAnswer,
     setTypedAnswer,
     typingInputRef,
@@ -252,7 +249,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   });
 
   const studyFocusRef = useStudyFocus(
-    current?.id, phase, editing || menuOpen || navOpen || hintsOpen,
+    current?.id, phase, editing || menuOpen || hintsOpen,
   );
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
@@ -310,8 +307,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   );
 
   useEffect(() => {
-    if (editing || menuOpen || navOpen || hintsOpen) cardTransitionRef.current?.cancel();
-  }, [editing, menuOpen, navOpen, hintsOpen]);
+    if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, hintsOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -323,8 +320,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     hintStep,
     setHintStep,
     undoLast: undoWithTransitionCancel,
-    navOpen,
-    setNavOpen,
     menuOpen,
     setMenuOpen,
     editing,
@@ -476,8 +471,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               )}
             </AnimatePresence>
-            {/* Navigation drawer: hidden by default, slides in for quick navigation away. */}
-            <NavSidebar open={navOpen} onClose={() => setNavOpen(false)} />
             {/* Help overlay (opened with ?) */}
             <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
             {focusMode && !focusChromeVisible && !menuOpen && (
@@ -511,7 +504,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   sessionCardOutcomes={sessionCardOutcomes}
                   filterParams={filterParams}
                   tagFilter={tagFilter}
-                  onOpenNav={() => setNavOpen(true)}
                   onExit={() => exitGuardRef.current?.requestLeave()}
                   focusMode={focusMode}
                   onToggleFocus={() => {
@@ -625,7 +617,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                       isTouchMode={isTouchMode}
                       menuOpen={menuOpen}
                       editing={editing}
-                      navOpen={navOpen}
                       hintsOpen={hintsOpen}
                       onReveal={reveal}
                       onHide={hide}

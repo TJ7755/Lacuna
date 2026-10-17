@@ -60,7 +60,7 @@
   label focuses the input.
   Card rows expose a native details/selection button. Covered swipe actions are inert,
   and hover actions also appear when focus is within the row.
-- Study overlays own their keyboard input. Opening editing, help, navigation or an exit
+- Study overlays own their keyboard input. Opening editing, help or an exit
   confirmation cancels a grade that has not yet committed; its deliberate animation and
   inter-card pause remain unchanged. A stable study landmark receives focus when a card
   change or editor dismissal removes the previous control; typed questions focus their input.

@@ -123,7 +123,6 @@ export function NativeFlashcardDemo() {
             isTouchMode={false}
             menuOpen={false}
             editing={false}
-            navOpen={false}
             hintsOpen={false}
             onReveal={() => setRevealed(true)}
             onHide={() => setRevealed(false)}
