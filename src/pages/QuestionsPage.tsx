@@ -7,7 +7,8 @@ import { RemovedQuestionSetAttempts } from '../components/question-sets/RemovedQ
 import { QuestionSetLibraryActions } from '../components/question-sets/QuestionSetLibraryActions';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { useState } from 'react';
-import { PlusIcon } from '../components/ui/icons';
+import { ExpandingCreateControl } from '../components/ui/ExpandingCreateControl';
+import { Field, Input } from '../components/ui/Field';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -54,6 +55,8 @@ export function QuestionsPage() {
   };
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [name, setName] = useState('');
   const [startingSetId, setStartingSetId] = useState<string | null>(null);
   const data = useLiveQuery(async () => {
     if (!courseId) return null;
@@ -111,10 +114,12 @@ export function QuestionsPage() {
       .map((content) => ({ content, draft: false })),
   ].filter((row) => row.content.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
   const create = async () => {
+    if (creating || !name.trim()) return;
     setCreating(true);
     setError('');
     try {
       const draft = createEmptyQuestionSetDraft(course.id, makeId());
+      draft.content.title = name.trim();
       await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
       await navigate(`/course/${course.id}/question-sets/${draft.content.id}/edit`, {
         state: origin,
@@ -148,12 +153,48 @@ export function QuestionsPage() {
             Questions
           </h1>
         </div>
-        {author && (
-          <Button variant="primary" onClick={() => void create()} disabled={creating}>
-            {/* Leads with + like New card and New course. */}
-            <PlusIcon width={16} height={16} />
-            {creating ? 'Creating…' : 'New question set'}
-          </Button>
+        {!course.archived && canEditLessons(course) && (
+          <ExpandingCreateControl
+            label="New question set"
+            className="ml-auto"
+            closedWidth={192}
+            open={createOpen}
+            onOpenChange={(open) => {
+              if (creating) return;
+              if (open && !author) {
+                void updateCourse(course.id, { lessonViewMode: 'edit' })
+                  .then(() => setCreateOpen(true))
+                  .catch((cause) => setError(String(cause)));
+              } else setCreateOpen(open);
+            }}
+          >
+            <form
+              aria-label="New question set"
+              className="flex flex-col gap-5 p-6"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void create();
+              }}
+            >
+              <Field label="Name">
+                <Input
+                  autoFocus
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="e.g. Cell biology practice"
+                  disabled={creating}
+                />
+              </Field>
+              <Button
+                type="submit"
+                variant="primary"
+                className="self-end"
+                disabled={creating || !name.trim()}
+              >
+                {creating ? 'Creating…' : 'Create'}
+              </Button>
+            </form>
+          </ExpandingCreateControl>
         )}
       </header>
       {(error || data.error) && (
@@ -249,16 +290,6 @@ export function QuestionsPage() {
               <p>Exam-style questions with mark schemes.</p>
             )}
             {search && <button onClick={() => setSearch('')}>Clear search</button>}
-            {!search && !author && !course.archived && canEditLessons(course) && (
-              // View mode is read-only, so the way forward is the mode switch itself.
-              <Button
-                variant="secondary"
-                className="mt-4"
-                onClick={() => void updateCourse(course.id, { lessonViewMode: 'edit' })}
-              >
-                Switch to Edit to write one
-              </Button>
-            )}
           </div>
         )}
       </section>

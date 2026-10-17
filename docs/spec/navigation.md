@@ -227,7 +227,15 @@ Questions tab. There each question set shows its question and mark counts, when 
 its latest self-marked score and, after two or more finished attempts, the last five scores as bars.
 In View mode **Attempt** starts a Practice attempt at once (Paper mode is chosen on the set's own
 page) and **Continue** replaces it while an attempt is unfinished; Edit mode keeps the authoring
-links. An attempt that cannot be read leaves its set unscored instead of hiding the list.
+links. Editable courses offer **New question set** in both modes as a neutral pill that expands
+in place to a **Name** field and **Create**. Opening it in View mode first switches the course to
+Edit. Creating a named draft opens its question list directly, headed by the set title (or
+**Untitled set** for legacy drafts). A quiet **Covers** line lists linked lessons and exams;
+**Edit** reveals the name and linkage settings in place, closed with **Done**. Legacy unnamed
+drafts open these settings with the name focused. Autosave shows **Saving…** only while work
+is pending, announces **Saved** to screen readers on completion, and retains save errors and
+navigation protection. Marks appear once in the contents/review summary, only when non-zero.
+An attempt that cannot be read leaves its set unscored instead of hiding the list.
 
 "Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
 headers, path lesson rows, the session preview and the **Review due cards** session: cards

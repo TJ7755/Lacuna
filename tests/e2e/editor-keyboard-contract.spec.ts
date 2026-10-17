@@ -68,8 +68,9 @@ test('question-set confirmation owns shortcuts and returns to its opener', async
   const coursePath = new URL(page.url()).hash.slice(1);
   await page.goto(`/#${coursePath}/questions`);
   await page.getByRole('button', { name: 'New question set', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Set title' }).fill('Cells');
-  await page.keyboard.press('Control+Enter');
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Cells');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Add first question' }).click();
   await page.getByRole('textbox', { name: 'Question text' }).fill('Name the organelle.');
   await page.keyboard.press('Control+Enter');
@@ -89,3 +90,23 @@ test('question-set confirmation owns shortcuts and returns to its opener', async
   await page.keyboard.press('Control+Enter');
   await expect(page.getByRole('textbox', { name: 'Marking criterion' })).toHaveValue('Nucleus');
 });
+
+for (const width of [320, 390]) {
+  test(`creation pills keep their expanded forms within a ${width}px viewport`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await enterFreshLacuna(page);
+    const trigger = page.locator('main').getByRole('button', { name: 'New course', exact: true });
+    await trigger.click();
+    const form = page.getByRole('form', { name: 'New course' });
+    const bounds = await form.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+    await expect(form).toBeHidden();
+  });
+}

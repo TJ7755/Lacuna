@@ -31,7 +31,10 @@ vi.mock('../state/useCourseData', () => ({
     archived: false,
   }),
 }));
-vi.mock('../course/lessonViewMode', () => ({ resolveLessonViewMode: () => 'read' }));
+vi.mock('../course/lessonViewMode', () => ({
+  resolveLessonViewMode: () => 'read',
+  canEditLessons: () => false,
+}));
 vi.mock('../components/question-sets/RemovedQuestionSetAttempts', () => ({
   RemovedQuestionSetAttempts: () => null,
 }));
@@ -62,13 +65,14 @@ function SetPage() {
   const { setId } = useParams();
   const location = useLocation();
   const origin = location.state as
-    | { questionSetReturnTo?: string; questionSetReturnLabel?: string }
-    | undefined;
+    { questionSetReturnTo?: string; questionSetReturnLabel?: string } | undefined;
   return (
     <div>
       <p>Set: {setId}</p>
       <output aria-label="Return state">{JSON.stringify(origin)}</output>
-      <Link to={origin?.questionSetReturnTo ?? '/course/course-1/questions'}>Back to Questions</Link>
+      <Link to={origin?.questionSetReturnTo ?? '/course/course-1/questions'}>
+        Back to Questions
+      </Link>
     </div>
   );
 }
@@ -181,15 +185,31 @@ describe('QuestionsPage navigation', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Other course' }));
 
     expect(await screen.findByRole('searchbox', { name: 'Search sets' })).toHaveValue('');
-    expect(screen.getByLabelText('Current location')).toHaveTextContent('/course/course-2/questions');
+    expect(screen.getByLabelText('Current location')).toHaveTextContent(
+      '/course/course-2/questions',
+    );
   });
 
   it('scores each set and starts a Practice attempt from the list', async () => {
     startAttempt.mockResolvedValue({ id: 'attempt-9' });
     mocks.data = {
       sets: [
-        { id: 'set-cells', courseId: 'course-1', title: 'Cell structure', lessonIds: [], assessmentIds: [], questions: [] },
-        { id: 'set-new', courseId: 'course-1', title: 'Osmosis', lessonIds: [], assessmentIds: [], questions: [] },
+        {
+          id: 'set-cells',
+          courseId: 'course-1',
+          title: 'Cell structure',
+          lessonIds: [],
+          assessmentIds: [],
+          questions: [],
+        },
+        {
+          id: 'set-new',
+          courseId: 'course-1',
+          title: 'Osmosis',
+          lessonIds: [],
+          assessmentIds: [],
+          questions: [],
+        },
       ],
       drafts: [],
       legacy: 0,
@@ -205,7 +225,9 @@ describe('QuestionsPage navigation', () => {
         </Routes>
       </MemoryRouter>,
     );
-    expect(screen.getByRole('img', { name: 'Latest score 72%. Recent scores: 48%, 72%' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: 'Latest score 72%. Recent scores: 48%, 72%' }),
+    ).toBeInTheDocument();
     expect(screen.getByText(/last tried 3 days ago/)).toBeInTheDocument();
     expect(screen.getByText(/not tried yet/)).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole('button', { name: 'Attempt' })[1]);

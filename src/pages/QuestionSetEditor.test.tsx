@@ -6,6 +6,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
+import { createLesson } from '../db/lessonRepository';
+import { createCourseAssessment } from '../db/assessmentRepository';
 import {
   createEmptyQuestionSetDraft,
   loadQuestionSetDraft,
@@ -57,8 +59,8 @@ function open(courseId: string, path = 'question-sets/paper-set/edit') {
   );
 }
 async function beginQuestion() {
-  fireEvent.change(await screen.findByLabelText('Set title'), { target: { value: 'Cells' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Continue to questions' }));
+  fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Cells' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Done' }));
   fireEvent.click(screen.getByRole('button', { name: 'Edit Q1' }));
 }
 describe('Paper question set authoring', () => {
@@ -74,28 +76,28 @@ describe('Paper question set authoring', () => {
       db.courseAssessments.clear(),
     ]);
   });
-  it('starts with set details and gives a clear route to the question list', async () => {
+  it('opens legacy drafts on contents with focused name details', async () => {
     const course = await setup();
     open(course.id);
-    expect(await screen.findByRole('heading', { name: 'Create a question set' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Untitled set', level: 1 })).toBeVisible();
     expect(screen.queryByLabelText('Question text')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Save set' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Set title'), { target: { value: 'Cells' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to questions' }));
-    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Cells' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.getByRole('heading', { name: 'Cells', level: 1 })).toBeVisible();
     expect(screen.getByRole('button', { name: 'Edit Q1' })).toBeVisible();
   });
   it('is keyboard-first: title focused, Ctrl+Enter continues, Escape steps back', async () => {
     const course = await setup();
     open(course.id);
-    const title = await screen.findByLabelText('Set title');
+    const title = await screen.findByLabelText('Name');
     await waitFor(() => expect(title).toHaveFocus());
     fireEvent.change(title, { target: { value: 'Cells' } });
     fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true });
-    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Cells', level: 1 })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Edit Q1' }));
     fireEvent.keyDown(await screen.findByLabelText('Question text'), { key: 'Escape' });
-    expect(await screen.findByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'Cells', level: 1 })).toBeVisible();
   });
   it('does not repeat the course name above Questions', async () => {
     const course = await setup();
@@ -205,14 +207,14 @@ describe('Paper question set authoring', () => {
   it('ignores composition whilst progressing question-set steps', async () => {
     const course = await setup();
     open(course.id);
-    const title = await screen.findByLabelText('Set title');
+    const title = await screen.findByLabelText('Name');
     fireEvent.change(title, { target: { value: 'Cells' } });
     fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true, isComposing: true });
     expect(title).toBeInTheDocument();
     fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true, keyCode: 229 });
     expect(title).toBeInTheDocument();
     fireEvent.keyDown(title, { key: 'Enter', ctrlKey: true });
-    expect(screen.getByRole('heading', { name: 'Questions in this set' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Cells', level: 1 })).toBeVisible();
   });
   it('guides a multipart question from its introduction to its first part and subpart', async () => {
     const course = await setup();
@@ -248,7 +250,7 @@ describe('Paper question set authoring', () => {
     await db.courses.put({ ...stored!, distributedCopy: { locked: true } } as never);
     open(course.id);
     expect(await screen.findByText(/This course is read-only/)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Set title')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
   });
   it('shows local drafts only in Edit mode and creates a real empty set', async () => {
     const course = await setup();
@@ -258,19 +260,22 @@ describe('Paper question set authoring', () => {
     // Says what a question set is to someone who has never made one.
     expect(screen.getByText('Exam-style questions with mark schemes.')).toBeInTheDocument();
     expect(screen.queryByText('Untitled set')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'New question set' })).not.toBeInTheDocument();
-    // The empty state still shows the way forward: the switch into Edit.
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to Edit to write one' }));
-    expect(await screen.findByRole('button', { name: 'New question set' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'New question set' }));
+    expect(await screen.findByLabelText('Name')).toHaveFocus();
+    expect((await db.courses.get(course.id))?.lessonViewMode).toBe('edit');
+    expect(screen.queryByText('Switch to Edit to write one')).not.toBeInTheDocument();
     view.unmount();
     await db.courses.update(course.id, { lessonViewMode: 'edit' });
     open(course.id, 'questions');
     expect(await screen.findByText('Untitled set')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'New question set' }));
-    expect(await screen.findByLabelText('Set title')).toHaveValue('');
+    expect(await screen.findByLabelText('Name')).toHaveValue('');
     expect(screen.queryByLabelText('Question text')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Set title'), { target: { value: 'New set' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to questions' }));
+    expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'New set' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'New question set' }));
+    expect(await screen.findByRole('heading', { name: 'New set', level: 1 })).toBeVisible();
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Add first question' }));
     expect(screen.getByLabelText('Question text')).toHaveValue('');
   });
@@ -297,5 +302,33 @@ describe('Paper question set authoring', () => {
     expect(screen.getByText('Remove the existing answer options?')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.getByLabelText('Option 1', { exact: true })).toHaveValue('Ionic bonding');
+  });
+  it('shows saving only during edits and keeps saved confirmation out of sight', async () => {
+    const course = await setup();
+    open(course.id);
+    const name = await screen.findByLabelText('Name');
+    expect(screen.queryByText('Draft saved on this device')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
+    fireEvent.change(name, { target: { value: 'Cells' } });
+    expect(screen.getByText('Saving…')).toBeVisible();
+    await waitFor(() => expect(screen.queryByText('Saving…')).not.toBeInTheDocument());
+    expect(screen.getByText('Saved')).toHaveClass('sr-only');
+  });
+  it('summarises linked lessons and reveals editable settings in place', async () => {
+    const course = await setup();
+    const lesson = await createLesson(course.id, 'Cell structure');
+    const exam = await createCourseAssessment(course.id, 'Mock exam', Date.now() + 86_400_000);
+    const draft = (await loadQuestionSetDraft(course.id, 'paper-set'))!;
+    draft.content.title = 'Cells';
+    draft.content.lessonIds = [lesson.id];
+    draft.content.assessmentIds = [exam.id];
+    await saveQuestionSetDraft(draft, { expectedDraftRevisionId: draft.draftRevisionId });
+    open(course.id);
+    expect(await screen.findByText('Covers Cell structure · Mock exam')).toBeVisible();
+    expect(screen.queryByLabelText('Name')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByLabelText('Name')).toHaveValue('Cells');
+    expect(await screen.findByRole('checkbox', { name: 'Cell structure' })).toBeChecked();
+    expect(screen.queryByText('Optional')).not.toBeInTheDocument();
   });
 });

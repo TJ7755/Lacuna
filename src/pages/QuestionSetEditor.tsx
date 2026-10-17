@@ -19,7 +19,8 @@ import {
 } from '../questions/questionSetAuthoring';
 import { validateQuestionSet, type QuestionAnswer } from '../questions/questionSets';
 import { useQuestionSetEditor } from '../components/question-sets/useQuestionSetEditor';
-import { QuestionSetSettings } from '../components/question-sets/QuestionSetSettings';
+import { QuestionSetSaveStatus } from '../components/question-sets/QuestionSetSaveStatus';
+import { QuestionSetDetails } from '../components/question-sets/QuestionSetDetails';
 import { QuestionSetPreview } from '../components/question-sets/QuestionSetPreview';
 import {
   emptyAnswer,
@@ -31,7 +32,7 @@ import { ConfirmInline } from '../components/ui/ConfirmInline';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-flow.css';
 
-type Step = 'setup' | 'contents' | 'question' | 'marks' | 'links' | 'review' | 'preview';
+type Step = 'contents' | 'question' | 'marks' | 'links' | 'review' | 'preview';
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
@@ -50,19 +51,12 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
   const navigate = useNavigate();
   const origin = questionSetReturn(useLocation().state, courseId);
   const [activeId, setActiveId] = useState('');
-  const [selectedStep, setStep] = useState<Step | null>(null);
-  const step = selectedStep ?? (snapshot?.draft?.content.title.trim() ? 'contents' : 'setup');
-  useEffect(() => {
-    if (selectedStep === null && snapshot?.draft)
-      setStep(snapshot.draft.content.title.trim() ? 'contents' : 'setup');
-  }, [snapshot, selectedStep]);
+  const [step, setStep] = useState<Step>('contents');
   const heading = useRef<HTMLHeadingElement>(null);
-  const titleInput = useRef<HTMLInputElement>(null);
   const ready = Boolean(session && snapshot?.draft);
   useEffect(() => {
-    // The first step opens on its title field so typing can start at once; later steps
-    // announce their heading, as before.
-    (step === 'setup' ? titleInput.current : heading.current)?.focus({ preventScroll: true });
+    if (step !== 'contents' || !heading.current?.closest('header')?.querySelector('input'))
+      heading.current?.focus({ preventScroll: true });
     heading.current?.closest('header')?.scrollIntoView?.({ block: 'start' });
   }, [step, activeId, ready]);
   const [error, setError] = useState('');
@@ -238,34 +232,28 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
           >
             ← Question sets
           </Link>
-          {step !== 'setup' && <p className="qs-muted">{content.title}</p>}
+          {step !== 'contents' && <p className="qs-muted">{content.title}</p>}
           <h1 ref={heading} tabIndex={-1}>
-            {step === 'setup'
-              ? content.title
-                ? 'Set details'
-                : 'Create a question set'
-              : step === 'contents'
-                ? 'Questions in this set'
-                : step === 'question'
-                  ? `Write ${label}`
-                  : step === 'marks'
-                    ? `Mark scheme for ${label}`
-                    : step === 'links'
-                      ? `Link knowledge to ${label}`
-                      : step === 'review'
-                        ? 'Review your question set'
-                        : 'Student preview'}
+            {step === 'contents'
+              ? content.title.trim() || 'Untitled set'
+              : step === 'question'
+                ? `Write ${label}`
+                : step === 'marks'
+                  ? `Mark scheme for ${label}`
+                  : step === 'links'
+                    ? `Link knowledge to ${label}`
+                    : step === 'review'
+                      ? 'Review your question set'
+                      : 'Student preview'}
           </h1>
-          <p className="qs-status" role="status">
-            {snapshot.phase === 'error'
-              ? 'Could not save'
-              : snapshot.dirty || snapshot.phase === 'saving'
-                ? 'Saving…'
-                : snapshot.phase === 'publishing'
-                  ? 'Saving set…'
-                  : 'Draft saved on this device'}{' '}
-            · {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
-          </p>
+          {step === 'contents' && (
+            <QuestionSetDetails
+              content={content}
+              disabled={busy || snapshot.requiresReload}
+              onChange={(next) => mutate(() => session.update(() => next))}
+            />
+          )}
+          <QuestionSetSaveStatus snapshot={snapshot} />
         </div>
       </header>
       {message && (
@@ -329,54 +317,20 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
             ))}
           </ol>
         )}
-        {step === 'setup' && (
-          <>
-            <section className="qs-paper">
-              <label className="qs-field">
-                Set title
-                <input
-                  ref={titleInput}
-                  value={content.title}
-                  placeholder="Name this question set"
-                  onChange={(event) =>
-                    mutate(() => session.update((set) => ({ ...set, title: event.target.value })))
-                  }
-                />
-              </label>
-              <p className="qs-muted">Group questions for a lesson, topic or practice paper.</p>
-              <QuestionSetSettings
-                content={content}
-                onChange={(next) => mutate(() => session.update(() => next))}
-              />
-            </section>
-            <footer className="qs-flow-footer">
-              <Button
-                variant="primary"
-                data-step-primary
-                onClick={() => {
-                  if (!content.title.trim()) setError('Give this set a title.');
-                  else {
-                    setError('');
-                    setStep('contents');
-                  }
-                }}
-              >
-                Continue to questions
-              </Button>
-            </footer>
-          </>
-        )}
         {(step === 'contents' || step === 'review') && (
           <>
             <div className="qs-flow-set-summary">
               <span>
                 {content.questions.length}{' '}
-                {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
-                {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                {content.questions.length === 1 ? 'question' : 'questions'}
+                {questionSetMarks(content) > 0 && (
+                  <>
+                    {' '}
+                    · {questionSetMarks(content)}{' '}
+                    {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
+                  </>
+                )}
               </span>
-              <Button variant="ghost" onClick={() => setStep('setup')}>
-                Edit set details
-              </Button>
             </div>
             {step === 'review' && (
               <p className="qs-muted mb-5">
