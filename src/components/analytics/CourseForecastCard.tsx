@@ -1,4 +1,5 @@
 import { useDeferredValue, useMemo } from 'react';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 import { ForecastChart, type ForecastLine } from '../dashboard/ForecastChart';
 import { forecastStatus } from '../dashboard/forecastStatus';
 import { dashboardForecastHistories, dashboardForecasts } from '../../state/dashboardForecasts';
@@ -48,7 +49,7 @@ export function CourseForecastCard({
   return (
     <section
       aria-label="Exam-day forecast"
-      className="rounded-[28px] bg-surface px-6 pb-6 pt-7 card-surface md:px-8 md:pt-8"
+      className={`${SECTION_CARD_SURFACE_CLASS} p-5 md:p-6`}
     >
       <ForecastChart
         lines={[line]}

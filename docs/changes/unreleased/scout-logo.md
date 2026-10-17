@@ -1,0 +1,1 @@
+- Use the shared accent-coloured Lacuna mark in the expanded, compact and collapsed sidebar and mobile header. Refresh favicon, PWA, desktop and portable-splash marks to Volt lime, and remove the Download header mark’s separate orange override.

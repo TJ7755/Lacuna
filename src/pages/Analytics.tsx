@@ -172,8 +172,8 @@ export function Analytics() {
   }
 
   return (
-    <div className={`${PAGE_FRAME} flex flex-col gap-4 py-10 md:gap-6`}>
-      <Rise index={0} className="flex flex-wrap items-start justify-between gap-4">
+    <div className={`${PAGE_FRAME} flex flex-col gap-4 pb-10 pt-6 md:gap-6 md:pt-8`}>
+      <Rise index={0} className="mb-4 flex flex-wrap items-start justify-between gap-4 md:mb-2">
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           Progress
         </h1>

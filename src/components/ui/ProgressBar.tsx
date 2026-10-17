@@ -1,6 +1,7 @@
-import { scaledSpring } from './motion';
 import { m as motion } from 'motion/react';
 import { cn } from './cn';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { scaledSpring } from './motion';
 
 export type ProgressVariant = 'accent' | 'positive' | 'negative' | 'warning' | 'simple';
 
@@ -27,13 +28,16 @@ interface ProgressBarProps {
 
 export function ProgressBar({
   value,
-  motionMultiplier = 1,
+  motionMultiplier,
   className,
   showLabel = false,
   height = 10,
   label = 'Progress',
   variant = 'accent',
 }: ProgressBarProps) {
+  const [speed] = useMotionSpeed();
+  const preferenceMultiplier = speedMultiplier(speed);
+  const multiplier = preferenceMultiplier === 0 ? 0 : (motionMultiplier ?? preferenceMultiplier);
   const pct = Math.round(Math.min(Math.max(value, 0), 1) * 100);
   return (
     <div className={cn('flex items-center gap-3', className)}>
@@ -53,7 +57,7 @@ export function ProgressBar({
           )}
           initial={false}
           animate={{ scaleX: pct / 100 }}
-          transition={scaledSpring(motionMultiplier, 120, 22)}
+          transition={scaledSpring(multiplier, 120, 22)}
         />
       </div>
       {showLabel && (

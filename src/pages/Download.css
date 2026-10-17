@@ -44,7 +44,7 @@
   letter-spacing: -0.04em;
 }
 .download-brand svg {
-  color: hsl(var(--accent-ink));
+  color: hsl(var(--accent));
 }
 .download-browser-link {
   display: inline-flex;

@@ -127,9 +127,9 @@ export function CardPreview({
               animate={{ scale: 1, rotate: 0, opacity: 1 }}
               exit={m > 0 ? { scale: 0.6, opacity: 0 } : undefined}
               transition={scaledSpring(m, 520, 16)}
-              className="pointer-events-none absolute -right-2 -top-2 grid h-12 w-12 place-items-center rounded-full bg-positive text-white shadow-[0_8px_20px_-8px_hsl(var(--positive)/0.7)]"
+              className="pointer-events-none absolute -right-2 -top-2 grid h-12 w-12 place-items-center rounded-full bg-positive text-paper"
             >
-              <CheckIcon width={24} height={24} strokeWidth={2.6} />
+              <CheckIcon width={24} height={24} strokeWidth={1.6} />
             </motion.span>
           )}
         </AnimatePresence>

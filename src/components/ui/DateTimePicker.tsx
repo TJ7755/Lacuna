@@ -591,19 +591,19 @@ export function DateTimePicker({
                   left: popoverPosition?.left ?? 0,
                   visibility: popoverPosition ? 'visible' : 'hidden',
                 }}
-                initial={{
+                initial={m > 0 ? {
                   opacity: 0,
                   y: appearance === 'chip' ? 0 : placement === 'bottom' ? -6 : 6,
                   scale: appearance === 'chip' ? 0.94 : 0.97,
-                }}
+                } : false}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
+                exit={m > 0 ? { opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 } : undefined}
                 transition={
                   appearance === 'chip'
                     ? scaledSpring(m, 520, 34)
                     : { duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }
                 }
-                className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line-strong bg-surface card-surface"
+                className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-3xl border border-line-strong bg-surface card-surface"
               >
                 {/* Header: month navigation */}
                 <div className="flex items-center justify-between px-4 py-3">
@@ -846,7 +846,7 @@ export function DateTimePicker({
                             commitTimeDrafts();
                           }
                         }}
-                        className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
+                        className="h-11 w-14 rounded-xl border-[1.5px] border-line bg-surface text-center text-sm text-ink outline-none focus:border-accent-ink tabular"
                       />
                       <span className="text-ink-faint">:</span>
                       <input
@@ -870,7 +870,7 @@ export function DateTimePicker({
                             commitTimeDrafts();
                           }
                         }}
-                        className="h-8 w-12 rounded-lg border border-line-strong bg-paper text-center text-sm text-ink outline-none focus:border-accent tabular"
+                        className="h-11 w-14 rounded-xl border-[1.5px] border-line bg-surface text-center text-sm text-ink outline-none focus:border-accent-ink tabular"
                       />
                     </div>
                   </div>
@@ -897,7 +897,7 @@ export function DateTimePicker({
                       onChange(ms);
                       setView({ year: nowComponents.year, month: nowComponents.month });
                     }}
-                    className="text-xs font-medium text-accent-ink transition-opacity hover:opacity-80 active:opacity-80"
+                    className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-accent-ink transition-colors hover:bg-ink/5"
                   >
                     Jump to today
                   </button>

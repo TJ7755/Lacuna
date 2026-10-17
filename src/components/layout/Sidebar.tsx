@@ -17,6 +17,7 @@ import {
   DownloadIcon,
   FlameIcon,
   HelpIcon,
+  LacunaIcon,
   MoonIcon,
   SearchIcon,
   SettingsIcon,
@@ -197,13 +198,11 @@ export function Sidebar({
               : 'px-[18px]',
         )}
       >
-        <img
+        <LacunaIcon
           data-testid="sidebar-brand-mark"
-          src={`${import.meta.env.BASE_URL}icon.svg`}
-          alt=""
           aria-hidden="true"
           className={cn(
-            'shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-[3px]',
+            'shrink-0 rounded-[18.75%] bg-accent-soft p-[3px] text-accent-ink',
             sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
           )}
         />

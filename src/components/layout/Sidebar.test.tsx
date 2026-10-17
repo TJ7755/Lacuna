@@ -135,18 +135,20 @@ describe('Sidebar', () => {
     expect(screen.queryByText(/spaced revision|spaced repetition/i)).not.toBeInTheDocument();
 
     const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName).toBe('IMG');
-    expect(mark).toHaveAttribute('src', '/icon.svg');
-    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-[#0a0a0b]');
+    expect(mark.tagName.toLowerCase()).toBe('svg');
+    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).not.toHaveAttribute('src');
+    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-accent-soft');
     expect(screen.getByText('Lacuna')).toHaveClass('text-xl');
   });
 
-  it('keeps the fixed-colour mark inside the collapsed sidebar', () => {
+  it('keeps the accent-token mark inside the collapsed sidebar', () => {
     render(<Sidebar collapsed onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
     const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName).toBe('IMG');
-    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark.tagName.toLowerCase()).toBe('svg');
+    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-9', 'w-9');
     expect(mark.parentElement).toHaveClass('px-[18px]');
     expect(screen.getByText('Lacuna')).toHaveAttribute('aria-hidden', 'true');
@@ -166,8 +168,9 @@ describe('Sidebar', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
 
     const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName).toBe('IMG');
-    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark.tagName.toLowerCase()).toBe('svg');
+    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-8', 'w-8');
     expect(screen.getByText('Lacuna')).toHaveClass('text-lg');
   });

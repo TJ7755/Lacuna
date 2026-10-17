@@ -1,3 +1,4 @@
+import { scaledSpring } from '../ui/motion';
 // The Today queue's course actions: a pointer-positioned context menu and the
 // archive confirmation. Loaded on demand from the dashboard.
 
@@ -140,8 +141,8 @@ export function ArchiveCourseDialog({
         initial={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : false}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={m > 0 ? { opacity: 0, y: 12, scale: 0.98 } : undefined}
-        transition={m > 0 ? { type: 'spring', stiffness: 320, damping: 30 } : { duration: 0 }}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-line-strong bg-paper p-6 card-surface"
+        transition={scaledSpring(m, 320, 30)}
+        className="relative z-10 w-full max-w-md rounded-3xl bg-surface p-6 card-surface"
       >
         <h2 id="archive-course-title" className="font-display text-2xl">
           Archive {course.name}?

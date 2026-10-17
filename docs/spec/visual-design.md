@@ -16,7 +16,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   and `accent-ink` for readable text, charts and keyboard focus. Neutral dividers carry only
   a faint green tint; warning colours retain their semantic role.
 - **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
-  (orange) for on-track, failure and behind-target states.
+  (orange) for on-track, failure and behind-target states. Filled semantic badges use
+  theme-inverting paper foregrounds; arbitrary course colours mark neutral comparison badges with
+  a coloured border so their labels remain readable.
 - **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where
   lines stand for things rather than states (the exam-day forecast's courses), with separate
   light and dark values.
@@ -33,7 +35,9 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
   form never stretches its sibling buttons: closed actions keep their height throughout.
   Segmented controls are a pill track with a white pill that slides between options; when the
   options cannot sit side by side (a narrow screen or enlarged text), the track stacks them
-  vertically at full width rather than overflowing its card. Choice chips wrap. The
+  vertically at full width rather than overflowing its card. Settings, card and individual-question
+  choices share one implementation, retaining radio or pressed-button semantics as appropriate.
+  Choice chips wrap. The
   paper grain is off (`--grain-opacity: 0`).
 
 ### 3.2 Typography
@@ -43,6 +47,10 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 - **Body (`font-body`, Instrument Sans):** all running text, including the landing page.
   Both faces are bundled locally (OFL) and precached so they work offline.
 - **Brand (`font-brand`, Space Grotesk):** the Lacuna wordmark and course overview title.
+  App sidebar, mobile-header and desktop-titlebar marks use the shared `LacunaIcon` with
+  `accent-ink`, following the active theme and accent. Standalone favicon, PWA and desktop
+  artwork uses the landing mark’s default Volt lime; `icons:generate` also refreshes the
+  existing portable-splash mark without altering its wordmark or copy.
 - **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
   or display face; axis and metadata labels are never monospace.
 - Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
@@ -78,7 +86,9 @@ so the app can be as snappy or as gentle as the user prefers.
 Shared conventions:
 
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
-- Springs for tactile controls and shared-layout indicators.
+- Springs for tactile controls and shared-layout indicators. Shared progress fills, swipe returns
+  and decorative spring acknowledgements also scale their physics through `scaledSpring`, with
+  immediate updates at a zero motion multiplier.
 - Expanding action surfaces and disclosures share a physical spring with stiffness 420,
   damping 36 and mass 1. Motion speed scales stiffness by the inverse square of the
   multiplier and damping by its inverse, preserving the damping ratio. Reduced motion

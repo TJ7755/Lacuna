@@ -6,9 +6,9 @@ import { scaledSpring } from '../ui/motion';
 export type ResultTone = 'right' | 'partial' | 'wrong' | 'undetermined';
 
 const TONE_CLASS: Record<ResultTone, string> = {
-  right: 'bg-positive text-white',
-  partial: 'bg-warning text-ink',
-  wrong: 'bg-negative text-white',
+  right: 'bg-positive text-paper',
+  partial: 'bg-warning text-paper',
+  wrong: 'bg-negative text-paper',
   undetermined: 'bg-ink/10 text-ink-soft',
 };
 

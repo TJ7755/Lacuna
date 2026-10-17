@@ -10,6 +10,7 @@ import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { averagePredictedRetrievability, masteryFraction } from '../../fsrs/progress';
 import { isLeech } from '../../fsrs/leech';
 import { startOfDay } from '../../utils/datetime';
+import { scaledSpring } from '../ui/motion';
 
 interface ComparisonMetric {
   label: string;
@@ -142,7 +143,7 @@ function ComparisonBar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={m > 0 ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 * m, delay: delay * m, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-2"
@@ -151,17 +152,14 @@ function ComparisonBar({
         <span className="text-ink">{metric.label}</span>
         {winnerColour && (
           <motion.span
-            initial={{ opacity: 0, scale: 0 }}
+            initial={m > 0 ? { opacity: 0, scale: 0 } : false}
             animate={{ opacity: 1, scale: 1 }}
             transition={{
-              duration: 0.3 * m,
+              ...scaledSpring(m, 500, 25),
               delay: (delay + 0.35) * m,
-              type: 'spring',
-              stiffness: 500,
-              damping: 25,
             }}
-            className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
-            style={{ backgroundColor: winnerColour }}
+            className="flex h-6 w-6 items-center justify-center rounded-full border bg-surface text-xs font-semibold text-ink"
+            style={{ borderColor: winnerColour }}
             aria-label={winner === 'A' ? 'Course A leads' : 'Course B leads'}
           >
             {winner}
@@ -173,7 +171,7 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourA }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ scaleX: 0 }}
+              initial={m > 0 ? { scaleX: 0 } : false}
               animate={{ scaleX: widthA / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.05) * m, ease: [0.16, 1, 0.3, 1] }}
               className="h-full w-full origin-left rounded-full"
@@ -189,7 +187,7 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourB }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ scaleX: 0 }}
+              initial={m > 0 ? { scaleX: 0 } : false}
               animate={{ scaleX: widthB / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.1) * m, ease: [0.16, 1, 0.3, 1] }}
               className="h-full w-full origin-left rounded-full"

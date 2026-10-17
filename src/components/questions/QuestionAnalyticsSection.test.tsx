@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type {
   QuestionAnalytics,
@@ -142,7 +142,13 @@ describe('QuestionAnalyticsSection', () => {
     expect(screen.getByText('Recorded marks')).toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Question performance' }).parentElement?.parentElement).toHaveClass('bg-surface', 'rounded-3xl');
     expect(screen.getByRole('table', { name: 'Question performance' })).toBeInTheDocument();
-    expect(screen.getByText('Attempt details').closest('details')).not.toHaveAttribute('open');
+    const details = screen.getByRole('button', { name: 'Attempt details' });
+    const panel = document.getElementById(details.getAttribute('aria-controls')!);
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(panel?.firstElementChild).toHaveAttribute('inert');
+    fireEvent.click(details);
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    expect(panel?.firstElementChild).not.toHaveAttribute('inert');
     expect(screen.getByText('Unique variants seen').nextElementSibling).toHaveTextContent('2');
     expect(screen.getByText('Repeated presentations').nextElementSibling).toHaveTextContent(
       '1 / 3',

@@ -8,6 +8,8 @@ import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
 import { CheckIcon, CloseIcon, EditIcon, FlagIcon, TagIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
+import { scaledSpring } from '../ui/motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { hapticLight, hapticMedium } from '../../utils/haptic';
 import { isLeech } from '../../fsrs/leech';
 import { useIsTouchMode } from '../../state/inputMode';
@@ -69,7 +71,9 @@ export const CardRow = React.memo(function CardRow({
   occlusion?: Occlusion;
   compactMetadata?: boolean;
 }) {
-  const m = motionMultiplier ?? 1;
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
+  const m = multiplier === 0 ? 0 : (motionMultiplier ?? multiplier);
   const isTouchMode = useIsTouchMode();
 
   const tags = card.tags ?? [];
@@ -101,7 +105,7 @@ export const CardRow = React.memo(function CardRow({
       dragX.set(0);
     }
   }, [selectMode, expanded, dragX]);
-  const springX = useSpring(dragX, { stiffness: 420, damping: 30, mass: 0.8 });
+  const springX = useSpring(dragX, m > 0 ? { ...scaledSpring(m, 420, 30), mass: 0.8 } : { duration: 0 });
   // The tray shows only once the row moves left: at rest its tinted buttons would
   // otherwise show through the row's rounded corners.
   const trayVisibility = useTransform(springX, (x) => (x < -0.5 ? 'visible' : 'hidden'));
@@ -133,18 +137,19 @@ export const CardRow = React.memo(function CardRow({
       const target = e.target as HTMLElement;
       if (target.closest('button:not([data-card-details]), a, [role="button"]')) return;
       e.stopPropagation();
-      dragX.jump(springX.get());
-      springX.jump(dragX.get());
+      const presentedX = m === 0 ? dragX.get() : springX.get();
+      dragX.jump(presentedX);
+      springX.jump(presentedX);
       swipeState.current = {
         dragging: true,
-        startX: e.clientX - springX.get() + (trayOpenRef.current ? -trayWidth : 0),
+        startX: e.clientX - presentedX + (trayOpenRef.current ? -trayWidth : 0),
         startY: e.clientY,
         isSwipe: false,
         openBeforeDrag: trayOpenRef.current,
       };
       cardRef.current?.setPointerCapture(e.pointerId);
     },
-    [selectMode, expanded, dragX, springX],
+    [selectMode, expanded, dragX, springX, m],
   );
 
   const handlePointerMove = useCallback(
@@ -361,8 +366,8 @@ export const CardRow = React.memo(function CardRow({
 
       <motion.div
         ref={cardRef}
-        style={{ x: springX, touchAction: 'pan-y' }}
-        initial={skipAnimation ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+        style={{ x: m === 0 ? dragX : springX, touchAction: 'pan-y' }}
+        initial={skipAnimation || m === 0 ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={
           skipAnimation
@@ -443,7 +448,7 @@ export const CardRow = React.memo(function CardRow({
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-soft"
+                    className="rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft"
                   >
                     {t}
                   </span>
@@ -523,8 +528,9 @@ export const CardRow = React.memo(function CardRow({
                   title={flagged ? 'Remove flag' : 'Flag card'}
                   aria-pressed={flagged}
                   data-press=""
-                  whileTap={{ scale: 0.85 }}
-                  whileHover={{ scale: 1.08 }}
+                  whileTap={m > 0 ? { scale: 0.96 } : undefined}
+                  whileHover={m > 0 ? { scale: 1.02 } : undefined}
+                  transition={scaledSpring(m, 400, 30)}
                   className={cn(
                     'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 transition-colors hover:bg-ink/5 hover:text-accent-ink',
                     flagged ? 'text-accent-ink' : 'text-ink-faint',
@@ -537,8 +543,9 @@ export const CardRow = React.memo(function CardRow({
                   onClick={handleEditClick}
                   title="Edit card"
                   data-press=""
-                  whileTap={{ scale: 0.85 }}
-                  whileHover={{ scale: 1.08 }}
+                  whileTap={m > 0 ? { scale: 0.96 } : undefined}
+                  whileHover={m > 0 ? { scale: 1.02 } : undefined}
+                  transition={scaledSpring(m, 400, 30)}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors hover:bg-ink/5 hover:text-accent-ink"
                 >
                   <EditIcon width={16} height={16} />
@@ -549,8 +556,9 @@ export const CardRow = React.memo(function CardRow({
                     onClick={linked ? handleUnlinkClick : handleDeleteClick}
                     title={linked ? 'Remove from lesson' : 'Delete card'}
                     data-press=""
-                    whileTap={{ scale: 0.85 }}
-                    whileHover={{ scale: 1.08 }}
+                    whileTap={m > 0 ? { scale: 0.96 } : undefined}
+                    whileHover={m > 0 ? { scale: 1.02 } : undefined}
+                    transition={scaledSpring(m, 400, 30)}
                     className={cn(
                       'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-ink-faint transition-colors',
                       linked

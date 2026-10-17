@@ -252,7 +252,7 @@ export function Dashboard() {
             showForecast && (
               <motion.section
                 aria-label="Forecast and this week"
-                className="flex flex-col gap-5 rounded-[28px] bg-surface px-4 pb-5 pt-5 card-surface sm:px-6 sm:pb-6 sm:pt-7 md:px-8 md:pt-8"
+                className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
                 initial={m > 0 ? { opacity: 0 } : false}
                 animate={{ opacity: 1 }}
                 transition={{ duration: MOTION_DURATION.local * m, ease: MOTION_EASING.emphasised }}
@@ -342,7 +342,7 @@ export function Dashboard() {
 
 /** Holds about the room the forecast surface takes, so its arrival barely moves the queue. */
 function ForecastPlaceholder() {
-  return <Skeleton className="h-[540px] rounded-[28px] bg-surface sm:h-[520px] lg:h-[480px]" />;
+  return <Skeleton className="h-[540px] rounded-3xl bg-surface sm:h-[520px] lg:h-[480px]" />;
 }
 
 function CourseSkeleton() {
