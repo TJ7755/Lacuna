@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { Input, fieldLabelClassName } from '../components/ui/Field';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -8,7 +9,6 @@ import {
 } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
 import {
   useCourse,
   useCourseCards,
@@ -103,12 +103,9 @@ export function CourseSettings() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent-ink underline">
-          Back to Today
-        </Link>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
 
@@ -366,11 +363,19 @@ function CourseSettingsSkeleton() {
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
       <Skeleton className="mb-8 mt-6 h-10 w-64 rounded-full bg-ink/10 md:mt-8" />
-      <div className="flex flex-col gap-5">
-        {[40, 32, 24].map((height) => (
-          <div key={height} className="space-y-4 rounded-3xl bg-surface p-7">
-            <Skeleton className="h-6 w-40 rounded-full bg-ink/10" />
-            <Skeleton className="w-full rounded-2xl bg-ink/10" style={{ height: height * 4 }} />
+      <div className="grid gap-5 min-[1100px]:grid-cols-[1.15fr_1fr]">
+        {[0, 1, 2].map((key) => (
+          <div
+            key={key}
+            className={`space-y-5 rounded-3xl bg-surface p-6 card-surface ${key === 0 ? 'min-[1100px]:row-span-2' : ''}`}
+          >
+            <Skeleton className="h-7 w-48 max-w-full" />
+            {Array.from({ length: key === 0 ? 4 : 2 }, (_, index) => (
+              <div key={index}>
+                <Skeleton className="mb-3 h-4 w-32" />
+                <Skeleton className="h-11 w-full rounded-full" />
+              </div>
+            ))}
           </div>
         ))}
       </div>

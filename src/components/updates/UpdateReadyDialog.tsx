@@ -1,6 +1,8 @@
+import { useIsPresent } from 'motion/react';
 import { useId, useState } from 'react';
 import { Button } from '../ui/Button';
-import { ModalBackdrop } from '../ui/ModalBackdrop';
+import { DialogPanel } from '../ui/DialogPanel';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { UpdateReleaseNotes } from './UpdateReleaseNotes';
 import './UpdateReadyDialog.css';
@@ -16,18 +18,18 @@ export function UpdateReadyDialog({
   onInstall: () => void;
   onLater: () => void;
 }) {
-  const trapRef = useFocusTrap(true, { autoFocusSelector: '[data-update-install]' });
+  const present = useIsPresent();
+  const trapRef = useFocusTrap(present, { autoFocusSelector: '[data-update-install]' });
   const [notesOpen, setNotesOpen] = useState(false);
   const notesId = useId();
   const descriptionId = useId();
   return (
-    <div
-      ref={trapRef}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Update ready"
-      aria-describedby={descriptionId}
-      className="update-ready fixed inset-0 z-[70] flex items-center justify-center p-4"
+    <DialogPanel
+      trapRef={trapRef}
+      label="Update ready"
+      describedBy={descriptionId}
+      overlayClassName="update-ready z-[70]"
+      className="max-w-[650px]"
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
@@ -35,7 +37,6 @@ export function UpdateReadyDialog({
         onLater();
       }}
     >
-      <ModalBackdrop className="update-ready-backdrop" />
       <div className="update-ready-panel">
         <div className="update-ready-art" aria-hidden="true">
           <svg viewBox="0 0 180 220" fill="none" focusable="false">
@@ -78,7 +79,7 @@ export function UpdateReadyDialog({
                 >
                   What’s new <span aria-hidden="true">{notesOpen ? '−' : '+'}</span>
                 </button>
-                {notesOpen && (
+                <AnimatedDisclosure open={notesOpen}>
                   <div
                     id={notesId}
                     role="region"
@@ -96,7 +97,7 @@ export function UpdateReadyDialog({
                       Full release notes
                     </a>
                   </div>
-                )}
+                </AnimatedDisclosure>
               </div>
             )}
           </div>
@@ -104,17 +105,12 @@ export function UpdateReadyDialog({
             <Button variant="ghost" onClick={onLater}>
               Later
             </Button>
-            <Button
-              data-update-install
-              variant="ghost"
-              className="update-ready-install"
-              onClick={onInstall}
-            >
+            <Button data-update-install variant="primary" onClick={onInstall}>
               Restart Lacuna
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </DialogPanel>
   );
 }

@@ -1,3 +1,5 @@
+import { AnimatePresence, useIsPresent } from 'motion/react';
+import { DialogPanel } from '../../components/ui/DialogPanel';
 import { useEffect, useId, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../components/ui/cn';
@@ -56,23 +58,25 @@ export function ShortcutsSection() {
           </button>
         ))}
       </div>
-      {capturingAction && (
-        <KeyCaptureOverlay
-          action={capturingAction}
-          onCapture={(key) => {
-            const error = bindingError(capturingAction, key, shortcutBindings.bindings);
-            if (error) {
-              notify(error, 'negative');
-              return;
-            }
-            shortcutBindings.setBinding(capturingAction, key);
-            setCapturingAction(null);
-            notify('Shortcut updated.', 'positive');
-          }}
-          onReject={(message) => notify(message, 'negative')}
-          onCancel={() => setCapturingAction(null)}
-        />
-      )}
+      <AnimatePresence>
+        {capturingAction && (
+          <KeyCaptureOverlay
+            action={capturingAction}
+            onCapture={(key) => {
+              const error = bindingError(capturingAction, key, shortcutBindings.bindings);
+              if (error) {
+                notify(error, 'negative');
+                return;
+              }
+              shortcutBindings.setBinding(capturingAction, key);
+              setCapturingAction(null);
+              notify('Shortcut updated.', 'positive');
+            }}
+            onReject={(message) => notify(message, 'negative')}
+            onCancel={() => setCapturingAction(null)}
+          />
+        )}
+      </AnimatePresence>
       <div className="mt-4 flex justify-end">
         <Button
           variant="ghost"
@@ -100,11 +104,12 @@ function KeyCaptureOverlay({
   onReject: (message: string) => void;
   onCancel: () => void;
 }) {
-  const titleId = useId();
+  const present = useIsPresent();
   const instructionsId = useId();
-  const trapRef = useFocusTrap(true, { autoFocusSelector: '[role="dialog"]' });
+  const trapRef = useFocusTrap(present, { autoFocusSelector: '[role="dialog"]' });
 
   useEffect(() => {
+    if (!present) return;
     const handler = (event: KeyboardEvent) => {
       if (
         event.isComposing ||
@@ -142,35 +147,29 @@ function KeyCaptureOverlay({
     };
     window.addEventListener('keydown', handler, { capture: true });
     return () => window.removeEventListener('keydown', handler, { capture: true });
-  }, [action, onCapture, onCancel, onReject]);
+  }, [action, onCapture, onCancel, onReject, present]);
 
   return (
-    <div
-      ref={trapRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-      onClick={onCancel}
+    <DialogPanel
+      label={`Set shortcut for ${ACTION_LABELS[action]}`}
+      describedBy={instructionsId}
+      trapRef={trapRef}
+      onKeyDown={() => {}}
+      onBackdropClick={onCancel}
+      tabIndex={0}
+      className="max-w-md overflow-y-auto p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={instructionsId}
-        tabIndex={0}
-        className="rounded-2xl border border-line-strong bg-surface px-8 py-6 card-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <SettingsSubsectionHeading id={titleId} className="mb-2 font-display text-lg">
-          Set shortcut for {ACTION_LABELS[action]}
-        </SettingsSubsectionHeading>
-        <p id={instructionsId} className="text-sm text-ink-soft">
-          Press the key you want to use. Press Escape or click outside this card to cancel.
-        </p>
-        <div className="mt-4 flex justify-end">
-          <Button type="button" variant="ghost" size="sm" data-shortcut-cancel onClick={onCancel}>
-            Cancel shortcut capture
-          </Button>
-        </div>
+      <SettingsSubsectionHeading className="mb-2 font-display text-xl">
+        Set shortcut for {ACTION_LABELS[action]}
+      </SettingsSubsectionHeading>
+      <p id={instructionsId} className="text-sm text-ink-soft">
+        Press the key you want to use. Press Escape or click outside this card to cancel.
+      </p>
+      <div className="mt-4 flex justify-end">
+        <Button type="button" variant="ghost" size="sm" data-shortcut-cancel onClick={onCancel}>
+          Cancel shortcut capture
+        </Button>
       </div>
-    </div>
+    </DialogPanel>
   );
 }

@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -247,7 +248,14 @@ export function QuestionEditor() {
     );
   }
   if (course === null || (editing && record === null)) {
-    return <div className="p-10 text-ink-soft">This Question could not be found.</div>;
+    return (
+      <MissingRecord
+        message="This Question could not be found."
+        to={course === null ? '/' : `/course/${courseId}/questions`}
+      >
+        {course === null ? 'Back to Today' : 'Questions'}
+      </MissingRecord>
+    );
   }
 
   const tagSuggestions = [...new Set(data.questions.flatMap((question) => question.tags))].sort();

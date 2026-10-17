@@ -186,9 +186,9 @@ function ToastBar({
   }, [resume, isPersistent, toast.id, toastDuration]);
 
   const toneClasses = {
-    positive: 'border-positive/40 text-positive',
-    negative: 'border-negative/40 text-negative',
-    neutral: 'border-line-strong text-ink',
+    positive: 'text-positive',
+    negative: 'text-negative',
+    neutral: 'text-ink',
   } as const;
 
   const progressColour = {
@@ -214,7 +214,7 @@ function ToastBar({
       }
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',
+        'relative flex items-center gap-3 rounded-3xl px-4 py-3 text-sm bg-surface card-surface max-w-[min(24rem,calc(100vw-3rem))] overflow-hidden',
         toneClasses[toast.tone],
       )}
       onMouseEnter={() => {
@@ -274,7 +274,7 @@ function ToastBar({
             toast.onDismiss?.();
             onDismiss();
           }}
-          className="shrink-0 font-medium text-accent-ink underline underline-offset-2 transition-opacity hover:opacity-80 active:opacity-80"
+          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           {toast.actionLabel}
         </button>

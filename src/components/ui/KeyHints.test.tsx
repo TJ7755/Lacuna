@@ -65,6 +65,17 @@ describe('KeyHints', () => {
     expect(dialog).toHaveAttribute('aria-label', 'Keyboard shortcuts');
   });
 
+  it('keeps one bounded dialog with a separately scrollable shortcut list', () => {
+    render(<KeyHints open onClose={vi.fn()} />);
+    const dialogs = screen.getAllByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(dialogs).toHaveLength(1);
+    expect(dialogs[0]).toHaveClass('min-h-0', 'max-h-full');
+    expect(screen.getAllByRole('list')[0].parentElement?.parentElement).toHaveClass(
+      'min-h-0',
+      'overflow-y-auto',
+    );
+  });
+
   it('shows the title and group headings', () => {
     render(<KeyHints open onClose={vi.fn()} />);
     expect(screen.getByText('Keyboard shortcuts')).toBeInTheDocument();
@@ -107,7 +118,9 @@ it('does not overwrite newer bindings from a closed help view', async () => {
     const { unmount } = render(<KeyHints open={false} onClose={vi.fn()} />);
     const updated = { ...DEFAULT_BINDINGS, help: 'b', yes: 'j' };
     saveBindings(updated);
-    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
     expect(loadBindings()).toEqual(updated);
     unmount();
   } finally {

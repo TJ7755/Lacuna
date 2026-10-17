@@ -1,17 +1,20 @@
+import { AnimatePresence, useIsPresent } from 'motion/react';
+import { DialogPanel } from '../ui/DialogPanel';
 import type { ReactNode } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { ErrorBoundary } from './ErrorBoundary';
 
 function UnavailableOverlay({ label, onClose }: { label: string; onClose: () => void }) {
-  const ref = useFocusTrap(true);
+  const present = useIsPresent();
+  const ref = useFocusTrap(present);
   return (
-    <div
-      ref={ref}
+    <DialogPanel
+      trapRef={ref}
       role="alertdialog"
-      aria-modal="true"
-      aria-label={`${label} unavailable`}
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      label={`${label} unavailable`}
+      overlayClassName="z-[60]"
+      className="max-w-sm overflow-y-auto p-6"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -19,12 +22,10 @@ function UnavailableOverlay({ label, onClose }: { label: string; onClose: () => 
         }
       }}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-6 card-surface">
-        <h2 className="font-display text-xl text-ink">{label} could not load</h2>
-        <p className="mb-5 mt-2 text-sm text-ink-soft">Reconnect and reload to try again.</p>
-        <Button onClick={onClose}>Close</Button>
-      </div>
-    </div>
+      <h2 className="font-display text-xl text-ink">{label} could not load</h2>
+      <p className="mb-5 mt-2 text-sm text-ink-soft">Reconnect and reload to try again.</p>
+      <Button onClick={onClose}>Close</Button>
+    </DialogPanel>
   );
 }
 
@@ -42,7 +43,11 @@ export function OverlayLoadBoundary({
   return (
     <ErrorBoundary
       label={label}
-      fallback={open ? <UnavailableOverlay label={label} onClose={onClose} /> : null}
+      fallback={
+        <AnimatePresence>
+          {open && <UnavailableOverlay label={label} onClose={onClose} />}
+        </AnimatePresence>
+      }
     >
       {children}
     </ErrorBoundary>

@@ -1,3 +1,6 @@
+import { COURSE_PAGE_FRAME, COURSE_PAGE_TITLE } from '../course/coursePageLayout';
+import { Skeleton } from '../ui/Skeleton';
+import { DelayedFallback } from '../ui/DelayedFallback';
 // Merge review surface (Arc 7 §7.5, Task 7). A course-scoped route reached from the
 // "Update available" entry point on the course card and CoursePath header. It reads the
 // course's `pendingMergeReviews` row and lets the student resolve each queued update,
@@ -147,15 +150,30 @@ export function MergeReviewPanel() {
 
   // Loading.
   if (review === undefined || course === undefined)
-    return <div className="mx-auto max-w-3xl px-6 py-8 md:px-10" aria-hidden="true" />;
+    return (
+      <DelayedFallback>
+        <div className={`${COURSE_PAGE_FRAME} py-6 md:py-8`}>
+          <Skeleton className="mb-6 h-11 w-32 rounded-full" />
+          <Skeleton className="mb-8 h-11 w-64 max-w-full" />
+          <div className="space-y-3">
+            {[0, 1, 2].map((key) => (
+              <div key={key} className="rounded-3xl bg-surface p-6 card-surface">
+                <Skeleton className="mb-4 h-5 w-1/2" />
+                <Skeleton className="h-11 w-28 rounded-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </DelayedFallback>
+    );
 
   // Empty state: navigated here with nothing outstanding, or completed this review.
   if (review === null)
     return (
-      <div ref={root} className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+      <div ref={root} className={`${COURSE_PAGE_FRAME} py-6 md:py-8`}>
         {backLink}
         {status}
-        <div className="rounded-3xl bg-surface card-surface p-10 text-center">
+        <div className="rounded-3xl bg-surface card-surface p-6 text-center md:p-8">
           <p className="text-sm text-ink-soft">
             This course is up to date. There is nothing to review.
           </p>
@@ -216,11 +234,11 @@ export function MergeReviewPanel() {
     );
   };
   return (
-    <div ref={root} className="mx-auto max-w-3xl px-6 py-8 md:px-10">
+    <div ref={root} className={`${COURSE_PAGE_FRAME} py-6 md:py-8`}>
       {backLink}
       {status}
       <header className="mb-8">
-        <h1 className="font-display text-3xl tracking-tight">{course?.name ?? 'Course update'}</h1>
+        <h1 className={COURSE_PAGE_TITLE}>{course?.name ?? 'Course update'}</h1>
         <p className="mt-1 text-sm text-ink-soft">{headerLine}</p>
       </header>
       {createdCount > 0 && (
@@ -245,12 +263,12 @@ export function MergeReviewPanel() {
         </Section>
       )}
       {ordered.length === 0 && (
-        <div className="rounded-3xl bg-surface card-surface p-10 text-center">
+        <div className="rounded-3xl bg-surface card-surface p-6 text-center md:p-8">
           <p className="text-sm text-ink-soft">Everything in this update has been reviewed.</p>
         </div>
       )}
       {ordered.length > 0 && (
-        <footer className="rounded-2xl bg-surface p-4">
+        <footer className="rounded-3xl bg-surface p-6 card-surface">
           <p className="mb-3 text-xs text-ink-soft">
             Accept all applies updates and removals. Conflicts need your decision.
           </p>

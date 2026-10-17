@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 import { Skeleton } from '../components/ui/Skeleton';
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
@@ -6,7 +7,6 @@ import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
 import {
   useCourse,
   useLessons,
@@ -88,12 +88,9 @@ export function CourseAnalytics() {
 
   if (course === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent-ink underline">
-          Back to Today
-        </Link>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
 
