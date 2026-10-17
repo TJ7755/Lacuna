@@ -74,6 +74,18 @@ describe('Paper question set authoring', () => {
       db.courseAssessments.clear(),
     ]);
   });
+  it('uses concise captions for all three composer columns', async () => {
+    const course = await setup();
+    const { container } = open(course.id);
+    await screen.findByLabelText('Q1 question');
+    expect(
+      Array.from(
+        container.querySelectorAll('.qs-composer-captions span'),
+        (span) => span.textContent,
+      ),
+    ).toEqual(['', 'Question', 'Mark scheme', 'Marks', '']);
+  });
+
   it('opens on the first question without focusing the title and supports the writing loop', async () => {
     const course = await setup();
     open(course.id);

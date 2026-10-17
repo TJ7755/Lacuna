@@ -111,15 +111,11 @@ for (const mode of ['practice', 'paper'] as const) {
       await page.emulateMedia({ reducedMotion });
       await openSet(page);
       await page
-        .getByRole('radio', {
-          name:
-            mode === 'paper'
-              ? 'Paper — feedback at the end'
-              : 'Practice — feedback after each question',
-        })
-        .check();
+        .getByRole('group', { name: 'Attempt mode' })
+        .getByRole('button', { name: mode === 'paper' ? 'Paper' : 'Practice', exact: true })
+        .click();
       await page.setViewportSize({ width: 320, height: 900 });
-      await page.getByRole('button', { name: 'Start attempt', exact: true }).click();
+      await page.getByRole('button', { name: 'Start', exact: true }).click();
       const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
       await expect(answer).toBeFocused();
       await answer.fill('Controls the cell.');
@@ -181,7 +177,7 @@ test('a single written part keeps its direct Tab path and blank confirmation exp
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openSet(page, true);
   await page.setViewportSize({ width: 320, height: 900 });
-  await page.getByRole('button', { name: 'Start attempt', exact: true }).click();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
   const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
   await expect(answer).toBeFocused();
   await expect(page.getByRole('button', { name: 'All parts', exact: true })).toHaveCount(0);

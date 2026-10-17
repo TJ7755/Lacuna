@@ -74,6 +74,6 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await mcq.focus();
     await mcq.press('Control+Enter');
     await expect(page).toHaveURL(/question-sets\/[^/]+$/);
-    await expect(page.getByRole('button', { name: 'Start attempt', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
   });
 }
