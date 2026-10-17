@@ -1,0 +1,1 @@
+- Sequences: Tab from the last item's content once again focuses Add sequence or Save changes. Enter still adds an item and Ctrl/Cmd+Enter saves the sequence; backward Tab and unavailable save targets retain native navigation (#442).

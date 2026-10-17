@@ -272,12 +272,26 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   generic bulk mutations) run an `assertNoGeneratedCards` check and throw if any targeted
   card has a `sequenceItemId`, while sequence-internal paths (`updateSequence`'s diffing,
   `deleteSequence`) mutate `db.cards` directly and bypass the guard.
-- **Quick entry:** the add control follows the item list, so it remains beside the current
-  working position, while each row also offers an add-below control. Adding an item focuses
-  it and scrolls it into view without overriding reduced-motion preferences.
-  `Ctrl/Cmd+Enter` from a non-empty item's value editor inserts and focuses the next item
-  directly after it; an empty item is marked invalid instead of creating blank chains. The
-  shortcut is scoped to item content and does not fire from sequence metadata fields.
+- **Quick entry:** new sequences start with the name focused and one blank item. The type
+  picker seeds the cue window and terminology; description, cue window, recitation chunk
+  size and label-card configuration wait under **Options**, with generated cards under
+  **Preview**. Script speakers remain beside their lines and **Your part** selects which
+  lines become cards.
+  Plain `Enter` splits a non-empty item at the caret, inserts the next item directly after
+  it, focuses it and scrolls it into view, respecting reduced motion and motion speed.
+  `Shift+Enter` inserts a line break; `Enter` on an empty item starts a named section
+  when possible. `Alt+Up/Down` reorders; `Backspace` at the start joins to the preceding
+  item or removes a section break. Clearing a row then joining removes it by keyboard;
+  each row also has a pointer/touch Delete control.
+  Forward `Tab` from the last item's content focuses **Add sequence** or **Save changes**
+  without submitting. Earlier items and backward `Tab` retain native navigation. If save
+  cannot receive focus, forward `Tab` also retains native navigation. `Ctrl/Cmd+Enter`
+  saves the whole sequence, including from an item; it never adds another item.
+  Empty items are scaffolding: preview and save omit them, and save explains a missing
+  name, missing script part or lack of generated cards. Name and missing-part errors return
+  focus to the relevant control. Multiline paste inserts at the current selection, preserving
+  surrounding items and parsing script speakers; there is no whole-outline replacement dialog.
+  The action bar follows the shared page-frame bounds, including at 320px with Larger text.
 
 ### Occlusions — image occlusion (schema v19)
 
