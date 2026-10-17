@@ -57,8 +57,10 @@ for (const width of [768, 1024]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await enterFreshLacuna(page);
-    await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
+    await page
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+      .click();
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '150%';
@@ -75,10 +77,7 @@ for (const width of [768, 1024]) {
       ).toBeLessThanOrEqual(1);
     }
     await navigation.getByRole('link', { name: 'Cards', exact: true }).click();
-    await page
-      .getByRole('group', { name: 'Add content' })
-      .getByRole('button', { name: 'New card', exact: true })
-      .click();
+    await page.getByRole('button', { name: 'New card', exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Front', exact: true })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Back', exact: true })).toBeVisible();
     expect(
@@ -90,30 +89,39 @@ for (const width of [768, 1024]) {
 test('mouse lesson dragging carries the lesson and moves its neighbour aside', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1200 });
   await enterFreshLacuna(page);
-  await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
-  const lessons = page.locator('[aria-roledescription="sortable lesson"]');
+  const lessons = page.locator('[data-path-lesson] [aria-roledescription="sortable path row"]');
   const first = lessons.nth(0);
   await first.scrollIntoViewIfNeeded();
   const firstName = await first.getAttribute('aria-label');
   const start = await first.boundingBox();
   const neighbour = await lessons.nth(1).boundingBox();
   if (!start || !neighbour || !firstName) throw new Error('Lesson bounds missing');
-  const x = start.x + start.width / 2;
-  const y = start.y + start.height / 2;
-  const endY = neighbour.y + neighbour.height + 10;
+  const centreX = start.x + start.width / 2;
+  const centreY = start.y + start.height / 2;
+  // PointerEvent coordinates are whole CSS pixels; retain the initial grab offset.
+  const x = Math.round(centreX);
+  const y = Math.round(centreY);
+  const endY = Math.round(neighbour.y + neighbour.height + 10);
   await page.mouse.move(x, y);
   await page.mouse.down();
+  await expect(first).toHaveAttribute('data-drag-lifted', 'true');
+  const lifted = (await first.boundingBox())!;
   await page.mouse.move(x + 20, endY);
-  const held = await first.boundingBox();
-  expect(held!.x + held!.width / 2 - x).toBeCloseTo(20, 0);
-  expect(held!.y + held!.height / 2 - y).toBeCloseTo(endY - y, 0);
-  await expect
-    .poll(async () => (await lessons.nth(1).boundingBox())!.y)
-    .toBeLessThan(neighbour.y);
+  const held = await first.evaluate(async (element) => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
+  expect(held.x + held.width / 2 - lifted.x - lifted.width / 2).toBeCloseTo(0, 0);
+  expect(held.y + held.height / 2 - lifted.y - lifted.height / 2).toBeCloseTo(endY - y, 0);
+  await expect.poll(async () => (await lessons.nth(1).boundingBox())!.y).toBeLessThan(neighbour.y);
   // The lesson's name sits inside the row, so it travels with it.
-  await expect(first).toContainText(firstName.split(',')[0]);
+  await expect(first).toContainText('Core concepts & rendering');
   await page.mouse.up();
   await expect(lessons.nth(1)).toHaveAttribute('aria-label', firstName);
 });

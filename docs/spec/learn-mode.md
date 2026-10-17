@@ -21,6 +21,11 @@ Long text scrolls inside the card body rather than scrolling the page. Simple Le
 the same layout. Review notifications sit above the study actions and their surfaces pass
 pointer input through; the existing Undo action remains interactive.
 
+The notes intro and active session share the same wider header frame, centred around
+the narrower reading/card column. Exit leads the header; the timer closes it at widths
+from 340px, with Undo immediately before the timer during card study. Both stay in place
+when the notes intro hands over to the first card.
+
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
    filter narrows a single-deck session). Build a `SessionContext` (one objective
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.

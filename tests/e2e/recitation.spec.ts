@@ -36,7 +36,9 @@ test('learns a poem by cumulative recitation', async ({ page }, testInfo) => {
   await page.getByText('Poetry / verse', { exact: true }).click();
   await expect(page.getByRole('radio', { name: /Poetry/ })).toBeChecked();
   await page.getByRole('textbox', { name: 'Sequence name' }).fill('Because I could not stop');
-  await page.getByRole('textbox', { name: 'Line 1 content' }).fill('Because I could not stop for Death');
+  await page
+    .getByRole('textbox', { name: 'Line 1 content' })
+    .fill('Because I could not stop for Death');
   await page.keyboard.press('Enter');
   await page.getByRole('textbox', { name: 'Line 2 content' }).fill('He kindly stopped for me');
   await page.getByRole('button', { name: 'Add sequence' }).click();
@@ -67,24 +69,33 @@ test('learns a poem by cumulative recitation', async ({ page }, testInfo) => {
   await page.getByRole('textbox', { name: 'line 2' }).fill('He stopped for me');
   const green = page.locator('[data-session-card-status="correct"]');
   await expect(green).toHaveCount(1);
-  await expect(green).toHaveClass(/bg-positive/);
+  await expect(green.locator(':scope > span')).toHaveClass(/bg-positive/);
   await expect(green).toHaveClass(/border-accent/);
-  await expect(page.getByRole('heading', { name: 'Because I could not stop', exact: true })).toHaveCSS('position', 'absolute');
+  await expect(
+    page.getByRole('heading', { name: 'Because I could not stop', exact: true }),
+  ).toHaveCSS('position', 'absolute');
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeInViewport();
     await page.screenshot({ path: testInfo.outputPath(`recitation-${width}.png`) });
   }
-  await page.screenshot({ path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/recall.png` : undefined });
+  await page.screenshot({
+    path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/recall.png` : undefined,
+  });
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'line 2: correct' })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'line 2: correct' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
   await page.getByRole('button', { name: 'line 2: correct' }).click();
   await expect(page.getByRole('button', { name: 'line 2: marked wrong' })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
   if (process.env.RECITATION_SHOTS) await page.waitForTimeout(400);
-  await page.screenshot({ path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/check.png` : undefined });
+  await page.screenshot({
+    path: process.env.RECITATION_SHOTS ? `${process.env.RECITATION_SHOTS}/check.png` : undefined,
+  });
   await page.getByRole('button', { name: 'Try again' }).click();
   await expect(page.getByRole('textbox', { name: 'line 2' })).toBeVisible();
   await page.getByRole('textbox', { name: 'line 1' }).fill('Because I could not stop for Death');

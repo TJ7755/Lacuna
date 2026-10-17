@@ -21,11 +21,9 @@ test('the course bar keeps its section tabs and workspace mode on one height', a
   const tabs = page.getByRole('navigation', { name: 'Course sections' });
   const mode = page.getByRole('group', { name: 'Workspace mode' });
   expect(Math.round((await box(mode)).height)).toBe(Math.round((await box(tabs)).height));
-  // The compact pills still take a 44px target.
+  // The button itself supplies the 44px target.
   const edit = mode.getByRole('button', { name: 'Edit mode', exact: true });
-  expect(
-    await edit.evaluate((element) => parseFloat(getComputedStyle(element, '::before').height)),
-  ).toBeGreaterThanOrEqual(44);
+  expect((await box(edit)).height).toBeGreaterThanOrEqual(44);
 });
 
 test('the Lessons and Assessments headings share a line', async ({ page }) => {
@@ -71,14 +69,17 @@ test('path lesson names keep whole words on a phone in Edit mode', async ({ page
   for (const width of widths) expect(width).toBeGreaterThanOrEqual(127);
 });
 
-test('the Cards header offers its other ways as a 44px round control', async ({ page }) => {
+test('the Cards header keeps New card as its single 44px authoring entry', async ({ page }) => {
   const course = await openWelcomeCourse(page, 1440);
   await page.goto(`/#${course}/cards`);
-  const more = page.getByRole('button', { name: 'More ways to add', exact: true });
-  const newCard = page.getByRole('button', { name: 'New card', exact: true }).first();
-  const moreBox = await box(more);
-  expect(Math.round(moreBox.width)).toBe(44);
-  expect(Math.round(moreBox.height)).toBe(Math.round((await box(newCard)).height));
+  const header = page.locator('main header').filter({
+    has: page.getByRole('heading', { name: 'Cards', exact: true }),
+  });
+  const newCard = header.getByRole('button', { name: 'New card', exact: true });
+  await expect(header.getByRole('button')).toHaveCount(1);
+  expect(Math.round((await box(newCard)).height)).toBe(44);
+  await newCard.click();
+  await expect(page.getByRole('group', { name: 'Card type', exact: true })).toBeVisible();
 });
 
 test('card rows show maths whole and cloze answers without stray spaces', async ({ page }) => {
@@ -106,7 +107,7 @@ test('card rows show maths whole and cloze answers without stray spaces', async 
 });
 
 for (const width of [390, 1440]) {
-  test(`the study header shares the card column at ${width}px`, async ({ page }) => {
+  test(`the study controls frame the reading column at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
@@ -128,12 +129,26 @@ for (const width of [390, 1440]) {
     await expect(card).toBeVisible();
     const cardBox = await box(card);
     const exitBox = await box(exit);
-    expect(Math.abs(exitBox.x - cardBox.x)).toBeLessThanOrEqual(1);
+    const frame = await page.locator('header > div').evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return {
+        left: rect.left + parseFloat(style.paddingLeft),
+        right: rect.right - parseFloat(style.paddingRight),
+      };
+    });
+    expect(Math.abs(exitBox.x - frame.left)).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(cardBox.x + cardBox.width / 2 - (frame.left + frame.right) / 2),
+    ).toBeLessThanOrEqual(1);
     const undo = await box(page.getByRole('button', { name: 'Undo last answer' }));
-    expect(Math.abs(undo.x + undo.width - (cardBox.x + cardBox.width))).toBeLessThanOrEqual(1);
     // The timer is the same 44px round control as its neighbours, and stays put.
     const timerBox = await box(timer);
     expect(Math.round(timerBox.width)).toBe(44);
+    expect(Math.abs(timerBox.x + timerBox.width - frame.right)).toBeLessThanOrEqual(1);
+    expect(Math.abs(timerBox.x - undo.x - undo.width - (width < 768 ? 8 : 16))).toBeLessThanOrEqual(
+      1,
+    );
     expect(
       Math.abs(timerBox.y + timerBox.height / 2 - (undo.y + undo.height / 2)),
     ).toBeLessThanOrEqual(1);
@@ -146,7 +161,7 @@ for (const width of [390, 1440]) {
 
 test("a lesson's card list renders maths as the Cards page does", async ({ page }) => {
   await openWelcomeCourse(page, 1440);
-  await page.getByText('Core concepts & rendering', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Core concepts & rendering', exact: true }).click();
   const list = page.getByRole('complementary').filter({ hasText: 'Cards in this lesson' });
   const row = list.getByRole('listitem').filter({ hasText: 'What is the derivative of' });
   await expect(row.locator('.katex').first()).toBeVisible();
@@ -195,10 +210,10 @@ test('a switch sits centred in its settings row', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await page.goto('/#/settings');
+  await page.goto('/#/settings#settings-sidebar');
   const toggle = page.getByRole('switch', { name: 'Show Today' });
   await toggle.scrollIntoViewIfNeeded();
-  const row = await box(toggle.locator('xpath=ancestor::div[contains(@class,"grid")][1]'));
+  const row = await box(toggle.locator('..'));
   const knob = await box(toggle);
   expect(Math.abs(knob.y + knob.height / 2 - (row.y + row.height / 2))).toBeLessThanOrEqual(1);
 });
@@ -294,7 +309,7 @@ test('the course tab pill glides between sections rather than jumping', async ({
 
 test('an inline confirmation swaps without scaling its text', async ({ page }) => {
   await openWelcomeCourse(page, 1440);
-  await page.getByText('Core concepts & rendering', { exact: true }).first().click();
+  await page.getByRole('button', { name: 'Core concepts & rendering', exact: true }).click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByTitle('Delete note').click();
   const confirmation = page.getByText('Delete?', { exact: true });

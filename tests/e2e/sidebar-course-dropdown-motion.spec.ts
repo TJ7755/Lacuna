@@ -1,14 +1,14 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 
-async function sample(panel: Locator, start: number) {
-  return panel.evaluate((panel, start) => {
+async function frames(panel: Locator, start: number, duration = 0, togglePanel = false) {
+  return panel.evaluate(async (panel, { start, duration, togglePanel }) => {
     const sidebar = panel.closest('aside')!;
     const archived = sidebar.querySelector('[aria-label="Archived"]')!;
     const sibling = sidebar.querySelector('[aria-label="Biology"]')!;
     const rows = [...panel.querySelectorAll('a')].map((row) => row.parentElement!);
     const chevron = sidebar.querySelector('[aria-controls] > span')!;
-    return {
+    const read = () => ({
       ms: Math.round(performance.now() - start),
       px: panel.getBoundingClientRect().height,
       siblingY: sibling.getBoundingClientRect().y,
@@ -24,8 +24,33 @@ async function sample(panel: Locator, start: number) {
         ) *
           180) /
         Math.PI,
-    };
-  }, start);
+    });
+    const samples = [read()];
+    if (!duration) return samples;
+    // Keep the gesture and every frame on the browser clock. Protocol round trips
+    // and screenshot capture must not consume the short stagger being measured.
+    start = performance.now();
+    samples[0].ms = 0;
+    if (togglePanel) {
+      const button = [...sidebar.querySelectorAll('button')].find(
+        (button) => button.getAttribute('aria-controls') === panel.id,
+      )!;
+      button.click();
+    }
+    await new Promise<void>((resolve) => {
+      const sampleFrame = () => {
+        samples.push(read());
+        if (performance.now() - start < duration) requestAnimationFrame(sampleFrame);
+        else resolve();
+      };
+      requestAnimationFrame(sampleFrame);
+    });
+    return samples;
+  }, { start, duration, togglePanel });
+}
+
+async function sample(panel: Locator, start: number) {
+  return (await frames(panel, start))[0];
 }
 
 async function toggle(panel: Locator) {
@@ -38,18 +63,8 @@ async function toggle(panel: Locator) {
 }
 
 async function curve(page: Page, panel: Locator, name?: string) {
-  const start = await page.evaluate(() => performance.now());
-  const samples = [await sample(panel, start)];
-  await toggle(panel);
-  for (const time of [16, 32, 64, 100, 150, 200, 250, 300, 400, 500, 650]) {
-    const elapsed = await page.evaluate((start) => performance.now() - start, start);
-    if (elapsed < time) await page.waitForTimeout(time - elapsed);
-    const frame = await sample(panel, start);
-    samples.push(frame);
-    if (name && [64, 150, 250].includes(time)) {
-      await page.screenshot({ path: test.info().outputPath(`${name}-${frame.ms}ms.png`) });
-    }
-  }
+  const samples = await frames(panel, 0, 650, true);
+  if (name) await page.screenshot({ path: test.info().outputPath(`${name}-settled.png`) });
   return samples;
 }
 
@@ -203,9 +218,7 @@ test('course height, lesson stagger and following rows share reversible motion',
       dispatchEvent(new CustomEvent('lacuna:motion-speed', { detail: speed }));
     }, speed);
     await page.waitForTimeout(32);
-    await toggle(panel);
-    await page.waitForTimeout(100);
-    const height = (await sample(panel, 0)).px;
+    const height = (await frames(panel, 0, 100, true)).at(-1)!.px;
     speeds.push({ speed, heightAt100ms: height });
     await page.waitForTimeout(1000);
     await toggle(panel);
