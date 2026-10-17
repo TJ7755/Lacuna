@@ -23,7 +23,7 @@ import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
-import { countOf } from '../../utils/plural';
+import { SessionSegments } from './SessionSegments';
 
 function computeHeaderInfo({
   singleDeck,
@@ -448,91 +448,6 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
         transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
         className="h-full w-full origin-left rounded-full bg-accent"
       />
-    </div>
-  );
-}
-
-function SessionSegments({
-  cardIds,
-  outcomes,
-  currentCardIds,
-  value,
-  label,
-  m,
-}: {
-  cardIds: string[];
-  outcomes: Map<string, SessionCardOutcome>;
-  currentCardIds: readonly string[];
-  value: number;
-  label: string;
-  m: number;
-}) {
-  const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
-  const progressAnnouncement =
-    currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
-  const maxSegments = 120;
-  const groupSize = Math.max(1, Math.ceil(cardIds.length / maxSegments));
-  const groups: string[][] = [];
-  for (let index = 0; index < cardIds.length; index += groupSize) {
-    groups.push(cardIds.slice(index, index + groupSize));
-  }
-
-  return (
-    // The pip bar is the session's only progress indicator now that the counter ring
-    // has gone, so it carries the value itself rather than being a decorative group
-    // beside one. The live summary below still reports the per-card breakdown.
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
-      title={`${countOf(cardIds.length, 'card')} in this session`}
-    >
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {progressAnnouncement}
-      </span>
-      <div className="flex h-2 w-full gap-1" aria-hidden="true">
-        {groups.map((group) => {
-          const current = group.some((id) => currentCardIds.includes(id));
-          const groupOutcomes = group.map((id) => outcomes.get(id));
-          const status = groupOutcomes.some((outcome) => outcome === 'wrong')
-            ? 'wrong'
-            : groupOutcomes.every((outcome) => outcome === 'correct')
-              ? 'correct'
-              : current
-                ? 'current'
-                : 'unseen';
-          return (
-            <span
-              key={group[0]}
-              data-session-card-status={status}
-              className={cn(
-                'relative min-w-px flex-1 overflow-hidden rounded-full border',
-                current
-                  ? 'border-accent'
-                  : status === 'correct'
-                    ? 'border-positive'
-                    : status === 'wrong'
-                      ? 'border-negative'
-                      : 'border-transparent',
-                status === 'current' && 'bg-accent/10',
-                status === 'unseen' && 'bg-ink/10',
-              )}
-            >
-              <motion.span
-                className={cn(
-                  'absolute inset-0 origin-left rounded-full',
-                  status === 'wrong' ? 'bg-negative' : 'bg-positive',
-                )}
-                initial={false}
-                animate={{ scaleX: status === 'correct' || status === 'wrong' ? 1 : 0 }}
-                transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
-              />
-            </span>
-          );
-        })}
-      </div>
     </div>
   );
 }

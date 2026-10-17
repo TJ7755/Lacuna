@@ -493,7 +493,12 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   face to orient the user.
 - **Mode-aware session progress:** Simple Learn uses a segmented strip because its stopping rule is
   rigid: each card is green after a correct result, red after an incorrect result, accent-outlined
-  while current, and muted while unseen. FSRS, assessment-revision and filtered sessions instead show the live
+  while current, and muted while unseen. Sessions that fit retain a full-width strip. Larger sessions
+  show a width-aware window with pills at least 16px wide and 4px gaps. At roughly 80% of the window,
+  the whole row glides left to put the current card near 20%, stopping at the final full window.
+  Subtle edge masks indicate hidden cards. Undo, retries and other index changes select the same
+  window for that index; reduced motion and viewport resizing snap to the correct position.
+  FSRS, assessment-revision and filtered sessions instead show the live
   objective value from `sessionProgress`, labelled as predicted score or secured progress, so the
   header and scheduler cannot disagree.
 - **Continuous practice chrome:** Yes and No replace only the card surface; the Learn header and
