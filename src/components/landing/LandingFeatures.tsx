@@ -70,7 +70,7 @@ function ExamSchedule() {
           />
         </svg>
         <span className="landing-chart-dot" />
-        <span className="landing-chart-value">84%</span>
+        <span className="landing-chart-value">78%</span>
       </div>
     </div>
   );

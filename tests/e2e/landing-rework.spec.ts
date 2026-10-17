@@ -27,6 +27,7 @@ const allowed = new Set([
   '1mo',
   '3mo',
   '84%',
+  '78%',
   'la bibliothèque',
   'No',
   'Yes',
