@@ -498,8 +498,11 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   derived from the offset; vertical gestures retain page scrolling. Cancelled drags spring
   back, and committed drags carry their release velocity into the same departure used by
   buttons and keyboard. Translation, rotation and fading share one position-driven motion,
-  starting before persistence supplies the next card. Springs follow the motion-speed setting;
-  reduced motion skips the departure. The first successful swipe hides the persistent swipe
+  starting before persistence supplies the next card. An exit from rest accelerates over a
+  560ms flight to just beyond the viewport; flicks inherit capped release velocity with
+  flights bounded to 360–560ms. The incoming card settles with a slower, critically damped
+  spring. Both follow the motion-speed setting; reduced motion skips the departure.
+  The first successful swipe hides the persistent swipe
   hints via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study
   mode (amber for assessment revision, green for simple, red for leech filter, etc.), and a label
