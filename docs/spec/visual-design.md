@@ -167,16 +167,23 @@ Specific motion (current state of the app):
   opt out.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
-- **Sidebar:** width animates on collapse/expand (spring); the active-item marker slides
+- **Sidebar:** desktop width changes between 72px and 264px over 280ms with the standard
+  easing curve, including safe-area padding. Real width drives the adjacent content and
+  active pill in the same frame. Icons stay centred 36px from the inner left edge in both
+  states; the theme and collapse controls stay stacked. Mounted, single-line labels clip
+  at the moving edge, fading out over 120ms or in over 180ms after a 60ms delay. Hidden
+  labels, course expanders and retained lesson lists are inert and hidden from assistive
+  technology. Hover cards close during resizing and work again on the settled rail.
+  Timings scale with motion speed and become instant at zero. The active-item marker slides
   within Today/Search content/Progress or within Share/Settings/Help, using separate
   shared-layout identities for those groups. Leaving a group selects the destination
   directly, without travelling or leaving an outgoing highlight. Course rows (including
   nested routes), Archived and the drawer's Import select directly. Pointer and keyboard
   navigation follow the same rule. The glide retains
   stiffness 500 and damping 38, with a sidebar-only 1.2 timing multiplier applied alongside
-  motion speed through `scaledSpring`, preserving the damping ratio; items nudge
-  right slightly on hover. Expanding a course's lesson list fades in place rather than
-  tweening height. A collapsible drawer on mobile (§4.1); the drawer overlay and panel
+  motion speed through `scaledSpring`, preserving the damping ratio. Expanding a course's
+  lesson list fades in place; collapsing the desktop sidebar also folds its height.
+  A collapsible drawer on mobile (§4.1); the drawer overlay and panel
   skip enter/exit when the motion multiplier is 0.
 - **Course cards** (dashboard grid): no arrival stagger (that competed with the shell
   fade). A `whileHover` lift (`y: -4`) with a smooth surface-colour transition; a

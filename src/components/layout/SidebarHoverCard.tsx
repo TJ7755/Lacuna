@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useLocation } from 'react-router-dom';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { useSidebarMotion } from './SidebarMotion';
 
 export interface SidebarDetail {
   icon: ReactNode;
@@ -33,6 +34,7 @@ export function SidebarHoverCard({
   const location = useLocation();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const { moving } = useSidebarMotion();
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const pointerType = useRef('');
@@ -48,10 +50,11 @@ export function SidebarHoverCard({
   }
   function show(target: HTMLElement, delay: number) {
     clearTimer();
-    if (!details?.length) return;
+    if (!details?.length || moving) return;
     anchor.current = target;
     timer.current = setTimeout(() => {
-      if (!target.isConnected) return;
+      if (!target.isConnected || target.closest('aside')?.hasAttribute('data-sidebar-moving'))
+        return;
       const bounds = target.getBoundingClientRect();
       const edge = target.closest('aside')?.getBoundingClientRect().right ?? bounds.right;
       setPosition({
@@ -70,10 +73,10 @@ export function SidebarHoverCard({
     if (!position || !anchor.current || !popup.current) return;
     const bounds = anchor.current.getBoundingClientRect();
     const height = popup.current.offsetHeight;
-    const top = Math.max(8, Math.min(
-      bounds.top + (bounds.height - height) / 2,
-      window.innerHeight - height - 8,
-    ));
+    const top = Math.max(
+      8,
+      Math.min(bounds.top + (bounds.height - height) / 2, window.innerHeight - height - 8),
+    );
     if (position.top !== top) setPosition({ ...position, top });
   }, [position]);
 
@@ -81,7 +84,7 @@ export function SidebarHoverCard({
     clearTimeout(timer.current);
     setPosition(null);
     return () => clearTimeout(timer.current);
-  }, [location.pathname]);
+  }, [location.pathname, moving]);
 
   useEffect(() => {
     if (!position) return;
@@ -139,37 +142,41 @@ export function SidebarHoverCard({
     <>
       {trigger}
       {createPortal(
-        <AnimatePresence>
-          {position && details && (
-            <motion.div
-              ref={popup}
-              key={id}
-              id={id}
-              role="tooltip"
-              initial={m > 0 ? { opacity: 0, x: -8, scale: 0.98 } : false}
-              animate={m > 0 ? { opacity: 1, x: 0, scale: 1 } : undefined}
-              exit={m > 0 ? { opacity: 0, x: -4 } : undefined}
-              transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-              style={position}
-              onPointerEnter={clearTimer}
-              onPointerLeave={hideSoon}
-              className="fixed z-[70] w-56 max-w-[calc(100vw-1rem)] rounded-[18px] bg-surface p-4 card-surface"
-            >
-              <p className="mb-3 truncate font-display text-base font-semibold text-ink">{title}</p>
-              <dl className="space-y-2 text-xs">
-                {details.map(({ icon, label, value }) => (
-                  <div key={label} className="flex items-center justify-between gap-4">
-                    <dt className="flex items-center gap-2 text-ink-soft">
-                      {icon}
-                      {label}
-                    </dt>
-                    <dd className="whitespace-nowrap tabular-nums text-ink">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </motion.div>
-          )}
-        </AnimatePresence>,
+        !moving && (
+          <AnimatePresence>
+            {position && details && (
+              <motion.div
+                ref={popup}
+                key={id}
+                id={id}
+                role="tooltip"
+                initial={m > 0 ? { opacity: 0, x: -8, scale: 0.98 } : false}
+                animate={m > 0 ? { opacity: 1, x: 0, scale: 1 } : undefined}
+                exit={m > 0 ? { opacity: 0, x: -4 } : undefined}
+                transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
+                style={position}
+                onPointerEnter={clearTimer}
+                onPointerLeave={hideSoon}
+                className="fixed z-[70] w-56 max-w-[calc(100vw-1rem)] rounded-[18px] bg-surface p-4 card-surface"
+              >
+                <p className="mb-3 truncate font-display text-base font-semibold text-ink">
+                  {title}
+                </p>
+                <dl className="space-y-2 text-xs">
+                  {details.map(({ icon, label, value }) => (
+                    <div key={label} className="flex items-center justify-between gap-4">
+                      <dt className="flex items-center gap-2 text-ink-soft">
+                        {icon}
+                        {label}
+                      </dt>
+                      <dd className="whitespace-nowrap tabular-nums text-ink">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        ),
         document.body,
       )}
     </>
