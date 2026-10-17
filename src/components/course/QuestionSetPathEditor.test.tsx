@@ -23,7 +23,7 @@ vi.mock('../../db/practiceNodeRepository', () => ({
 async function fixture() {
   const course = await createCourse('Biology');
   const firstLesson = await createLesson(course.id, 'Cells');
-  const secondLesson = await createLesson(course.id, 'Tissues');
+  await createLesson(course.id, 'Tissues');
   const content: QuestionSet = {
     id: 'set-1',
     courseId: course.id,
@@ -53,7 +53,7 @@ async function fixture() {
     ],
   };
   const set = await createQuestionSet(content, 100);
-  return { course, firstLesson, secondLesson, set };
+  return { course, firstLesson, set };
 }
 
 function activity(
@@ -89,7 +89,7 @@ describe('QuestionSetPathEditor', () => {
   afterEach(cleanup);
 
   it('creates an activity from a saved set at the selected lesson anchor', async () => {
-    const { course, firstLesson, secondLesson, set } = await fixture();
+    const { course, firstLesson, set } = await fixture();
     const onClose = vi.fn();
     render(
       <QuestionSetPathEditor
@@ -99,20 +99,18 @@ describe('QuestionSetPathEditor', () => {
       />,
     );
 
-    expect(await screen.findByRole('dialog', { name: 'Add practice questions' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('dialog', { name: 'Add practice questions' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
     await screen.findByRole('radio', { name: 'Cell structure' });
     fireEvent.click(screen.getByRole('radio', { name: 'Cell structure' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Tissues' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add to path' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() =>
-      expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(
-        course.id,
-        set.id,
-        secondLesson.id,
-      ),
+      expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(course.id, set.id, firstLesson.id),
     );
-    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
     expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
   });
@@ -127,43 +125,74 @@ describe('QuestionSetPathEditor', () => {
         onClose={onClose}
       />,
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
     const choice = await screen.findByRole('radio', { name: 'Cell structure' });
     fireEvent.keyDown(choice, { key: 'Enter', ctrlKey: true });
     expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+    await screen.findByText('Choose a question set.');
     fireEvent.click(choice);
-    fireEvent.keyDown(choice, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Cell structure' }), {
+      key: 'Enter',
+      ctrlKey: true,
+    });
     await waitFor(() =>
       expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(course.id, set.id, firstLesson.id),
     );
-    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   });
 
-  it('keeps the set when removal is cancelled and saves edits to the lesson anchor', async () => {
-    const { course, firstLesson, secondLesson, set } = await fixture();
+  it('keeps the set and anchor when deletion is cancelled and Done saves', async () => {
+    const { course, firstLesson, set } = await fixture();
     const node = activity(course.id, set.id, firstLesson.id);
     const onClose = vi.fn();
     render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
-
-    expect(await screen.findByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
-    await screen.findByRole('radio', { name: 'Cell structure' });
-    const setSelect = screen.getByRole('radio', { name: 'Cell structure' });
-    expect(setSelect).toBeChecked();
-    expect(setSelect).toBeDisabled();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Remove activity' }));
-    expect(
-      screen.getByText('Remove this activity? The question set and attempts will remain.'),
-    ).toBeInTheDocument();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
-    expect(setSelect).toBeChecked();
-    expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole('radio', { name: 'Tissues' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, secondLesson.id),
+      expect(screen.getByRole('textbox', { name: 'Question set' })).toHaveValue('Cell structure'),
     );
-    expect(onClose).toHaveBeenCalledOnce();
+    expect(screen.getByRole('textbox', { name: 'Question set' })).toHaveAttribute('readonly');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Delete' }), { key: 'Escape' });
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() =>
+      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id),
+    );
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+  });
+
+  it('keeps a selected draft open if its question set disappears and saving fails', async () => {
+    const { course, firstLesson, set } = await fixture();
+    const onClose = vi.fn();
+    render(
+      <QuestionSetPathEditor
+        courseId={course.id}
+        afterLessonId={firstLesson.id}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Cell structure' }));
+    await db.questionSets.delete(set.id);
+    await screen.findByText('Save a question set before adding it to the path.');
+    vi.mocked(createQuestionSetPracticeNode).mockRejectedValueOnce(
+      new Error('Question set no longer exists.'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await screen.findByText('Question set no longer exists.');
+    expect(createQuestionSetPracticeNode).toHaveBeenCalledWith(course.id, set.id, firstLesson.id);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('can leave an empty question-set entry point when there are no saved sets to choose', async () => {
+    const course = await createCourse('Empty question pool');
+    const lesson = await createLesson(course.id, 'First lesson');
+    const onClose = vi.fn();
+    render(
+      <QuestionSetPathEditor courseId={course.id} afterLessonId={lesson.id} onClose={onClose} />,
+    );
+    await screen.findByText('Save a question set before adding it to the path.');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
   });
 });

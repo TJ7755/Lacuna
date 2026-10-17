@@ -21,6 +21,22 @@
   deletion. Deleting an activity retains its cards or question set and attempts. View mode has
   no authoring menus. Assessment rows also expose Edit; the required final assessment cannot
   be moved or deleted.
+  Selecting an authored checkpoint, card-practice or Question Set row in Edit mode opens
+  an editor over that row. The Assessments card uses the same editor; Add expands it from
+  its trigger. Checkpoints read “Name on date and time, covering everything so far / chosen
+  lessons”, with excluded cards appended as “except N cards”. The searchable exclusion picker
+  groups toggle rows by lesson; excluded rows are struck through and labelled Excluded.
+  Card practice reads “Name practises all cards / N cards from all lessons / chosen lessons,
+  in lesson / random order”. Question Set activities read “Practise question set”; an existing
+  activity retains its set identity. Position is edited on the path, with no position field.
+  Done, Escape and outside presses save valid drafts; an invalid draft remains open with
+  an inline error and focus on its offending control. A new Question Set editor with no saved
+  sets and no selected draft closes without creating an activity. Deletion uses an anchored confirmation.
+  Holding any authored path row for 350 ms lifts it for vertical dragging. Neighbours make
+  room, viewport edges scroll, Escape cancels and release persists through the same repository
+  operations as Move up/down. Alt+ArrowUp/ArrowDown moves between the same lesson anchors.
+  Invalid coverage/dependency destinations are refused. Computed automatic-practice stops
+  are not authored records and remain outside reordering; the final assessment stays fixed.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
   notes-first teaching flow when it is the next available path step. In Edit mode, the card

@@ -106,3 +106,13 @@ its own shadow so there is one visible keyboard-focus indicator, not two.
 Inline confirmations disable confirmation and cancellation, including Escape, whilst a
 returned action promise or caller-owned disabled state is pending. Cancelling afterwards
 retains the existing focus-return behaviour.
+
+- Path editors are named dialogs. Their background is inert and hidden from assistive
+  technology; focus starts in the sentence's name field (or Question Set choice) and returns
+  to the source row after folding. Child popovers own Tab and Escape until they close.
+  Done, Escape and outside activation save valid changes. Invalid names retain the editor,
+  announce the problem inline and receive focus. Exclusion rows are full-width toggle buttons
+  with stable accessible names and aria-pressed; the visual Excluded tag supplements the
+  struck-through text. Dragging is available only in Edit mode, with live lift/move/cancel
+  announcements and Escape cancellation. Row menus and Alt+ArrowUp/ArrowDown retain keyboard
+  access to the same permitted lesson-anchor moves.

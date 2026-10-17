@@ -26,7 +26,7 @@ import { courseHeaderStats } from '../course/headerStats';
 import { buildCourseStudyFlowSnapshot, courseMeanReviewSeconds } from '../course/studyFlowSnapshot';
 import { PracticeNodeEditor } from '../components/course/PracticeNodeEditor';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
-import { AssessmentEditorDialog } from '../components/course/AssessmentEditorDialog';
+import { AssessmentPathEditor } from '../components/course/AssessmentPathEditor';
 import { AssessmentDetailSheet } from '../components/course/AssessmentDetailSheet';
 import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
@@ -41,7 +41,7 @@ import { formatShortDate, startOfDay } from '../utils/datetime';
 
 import { updateCourse } from '../db/courseRepository';
 import { isLessonAuthoringMode } from '../course/lessonViewMode';
-import { useLessonPathReorder } from '../components/course/useLessonPathReorder';
+import { useCoursePathReorder } from '../components/course/useCoursePathReorder';
 import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
@@ -121,12 +121,6 @@ export function CoursePath() {
     (message: string) => notify(message, 'negative'),
     [notify],
   );
-  const lessonReorder = useLessonPathReorder({
-    courseId: courseId ?? '',
-    lessons: lessons ?? [],
-    enabled: authoring,
-    onError: notifyReorderError,
-  });
 
   const dataLoaded =
     course !== undefined &&
@@ -216,6 +210,16 @@ export function CoursePath() {
       practiceMilestones,
       nearestPracticeAssessmentDate,
     ],
+  );
+
+  const lessonReorder = useCoursePathReorder(
+    courseId ?? '',
+    nodes,
+    lessons ?? [],
+    courseCards ?? [],
+    lessonLinks ?? [],
+    authoring,
+    notifyReorderError,
   );
 
   const examDateContext = useMemo(
@@ -334,14 +338,15 @@ export function CoursePath() {
         <PracticeNodeEditor
           courseId={course.id}
           lessons={lessons}
+          cards={courseCards}
+          links={lessonLinks}
           node={practiceEditor.node}
           defaultPosition={practiceEditor.defaultPosition}
           onSaved={() => setPracticeEditor(null)}
-          onCancel={() => setPracticeEditor(null)}
         />
       )}
       {assessmentEditor && (
-        <AssessmentEditorDialog
+        <AssessmentPathEditor
           courseId={course.id}
           assessment={assessmentEditor.assessment}
           defaultAfterLessonId={assessmentEditor.defaultAfterLessonId}
@@ -350,7 +355,6 @@ export function CoursePath() {
           links={lessonLinks}
           timeZone={course.timeZone}
           onSaved={() => setAssessmentEditor(null)}
-          onCancel={() => setAssessmentEditor(null)}
         />
       )}
     </AnimatePresence>
@@ -522,7 +526,9 @@ export function CoursePath() {
         onLessonOpen={(id) => navigate(`/course/${courseId}/lesson/${id}`)}
         onLessonCreated={(lesson) => navigate(`/course/${courseId}/lesson/${lesson.id}`)}
         onPracticeOpen={(node) =>
-          navigate(`/course/${courseId}/study?practiceNode=${encodeURIComponent(node.nodeKey)}`)
+          authoring && node.practiceNode
+            ? setPracticeEditor({ node: node.practiceNode })
+            : navigate(`/course/${courseId}/study?practiceNode=${encodeURIComponent(node.nodeKey)}`)
         }
         onPracticeEdit={(node) =>
           node.practiceNode && setPracticeEditor({ node: node.practiceNode })

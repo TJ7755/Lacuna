@@ -1,6 +1,4 @@
-import { QuestionSetChoices } from '../question-sets/QuestionSetChoices';
-import { useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import type { QuestionSetPracticeNode } from '../../db/types';
@@ -9,12 +7,9 @@ import {
   updateQuestionSetPracticeNode,
   deleteQuestionSetPracticeNode,
 } from '../../db/practiceNodeRepository';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { dialogKeyDown } from '../../hooks/dialogKeys';
-import { Button } from '../ui/Button';
-import { ConfirmInline } from '../ui/ConfirmInline';
-import { ModalBackdrop } from '../ui/ModalBackdrop';
-import './question-set-path.css';
+import { QuestionSetChoices } from '../question-sets/QuestionSetChoices';
+import { PathEditorSurface } from './PathEditorSurface';
+import { PathEditorPopover } from './PathEditorPopover';
 import '../question-sets/question-sets.css';
 
 export function QuestionSetPathEditor({
@@ -28,7 +23,6 @@ export function QuestionSetPathEditor({
   afterLessonId?: string;
   onClose: () => void;
 }) {
-  const trap = useFocusTrap(true);
   const data = useLiveQuery(
     () =>
       db.transaction('r', [db.questionSets, db.lessons], async () => ({
@@ -40,98 +34,82 @@ export function QuestionSetPathEditor({
     [courseId],
   );
   const [setId, setSetId] = useState(node?.questionSetId ?? '');
-  const [lessonId, setLessonId] = useState(node?.afterLessonId ?? afterLessonId ?? '');
-  const [busy, setBusy] = useState(false);
-  const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState('');
-  const canSave = !busy && !!setId && !!lessonId && !confirm;
-  const run = async (remove = false) => {
-    if (busy) return;
-    setBusy(true);
-    setError('');
+  const sentence = useRef<HTMLParagraphElement>(null);
+  const title = data?.sets.find((set) => set.id === setId)?.title;
+  async function save() {
+    if (!node && !setId && data?.sets.length === 0) return true;
+    const anchor = node?.afterLessonId ?? afterLessonId ?? data?.lessons.at(-1)?.id;
+    if (!setId || !anchor) {
+      setError(!setId ? 'Choose a question set.' : 'Add a lesson before this activity.');
+      sentence.current?.querySelector<HTMLElement>('input, button')?.focus();
+      return false;
+    }
     try {
-      if (remove && node) await deleteQuestionSetPracticeNode(node.id);
-      else if (node) await updateQuestionSetPracticeNode(node.id, lessonId);
-      else await createQuestionSetPracticeNode(courseId, setId, lessonId);
-      onClose();
+      if (node) await updateQuestionSetPracticeNode(node.id, anchor);
+      else await createQuestionSetPracticeNode(courseId, setId, anchor);
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save this activity.');
-      setBusy(false);
+      return false;
     }
-  };
-  return createPortal(
-    <div
-      ref={trap}
-      className="qs-path-dialog"
-      role="dialog"
-      aria-modal="true"
-      aria-label={node ? 'Edit practice questions' : 'Add practice questions'}
-      onKeyDown={dialogKeyDown({
-        onCancel: () => {
-          if (!busy) onClose();
-        },
-        onSubmit: () => {
-          if (canSave) void run();
-        },
-      })}
+  }
+  async function remove() {
+    if (!node) return false;
+    try {
+      await deleteQuestionSetPracticeNode(node.id);
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not delete this activity.');
+      return false;
+    }
+  }
+  return (
+    <PathEditorSurface
+      label={node ? 'Edit practice questions' : 'Add practice questions'}
+      onSave={save}
+      onClosed={onClose}
+      onDelete={node ? remove : undefined}
+      deleteNoun="question-set activity"
     >
-      <ModalBackdrop
-        onClick={() => {
-          if (!busy) onClose();
-        }}
-      />
-      <section className="qs-path-panel">
-        <header>
-          <h2>{node ? 'Edit practice questions' : 'Add practice questions'}</h2>
-        </header>
-        <div className="qs-path-fields">
-          <QuestionSetChoices
-            label="Question set"
-            value={setId}
-            disabled={busy || !!node}
-            onChange={setSetId}
-            options={data?.sets.map((set) => ({ value: set.id, label: set.title })) ?? []}
+      <p ref={sentence} data-morph-row className="path-editor-sentence">
+        Practise{' '}
+        {node ? (
+          <input
+            aria-label="Question set"
+            data-path-editor-focus
+            className="path-editor-name"
+            readOnly
+            value={title ?? node.name}
           />
-          {data?.sets.length === 0 && <p>Save a question set before adding it to the path.</p>}
-          <QuestionSetChoices
-            label="After lesson"
-            value={lessonId}
-            disabled={busy}
-            onChange={setLessonId}
-            options={
-              data?.lessons.map((lesson) => ({ value: lesson.id, label: lesson.name })) ?? []
-            }
-          />
-          {error && (
-            <p role="alert" className="text-negative">
-              {error}
-            </p>
-          )}
-          {confirm && !busy && (
-            <ConfirmInline
-              message="Remove this activity? The question set and attempts will remain."
-              confirmLabel="Remove activity"
-              focusOnMount="cancel"
-              onConfirm={() => void run(true)}
-              onCancel={() => setConfirm(false)}
-            />
-          )}
-        </div>
-        <footer>
-          {node && (
-            <Button variant="ghost" disabled={busy || confirm} onClick={() => setConfirm(true)}>
-              Remove activity
-            </Button>
-          )}
-          <Button variant="ghost" disabled={busy} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button disabled={!canSave} onClick={() => void run()}>
-            {busy ? 'Saving…' : node ? 'Save' : 'Add to path'}
-          </Button>
-        </footer>
-      </section>
-    </div>,
-    document.body,
+        ) : (
+          <PathEditorPopover initialFocus label={title ?? 'Choose a question set'}>
+            {(close) => (
+              <QuestionSetChoices
+                label="Question set"
+                value={setId}
+                onChange={(id) => {
+                  setSetId(id);
+                  setError('');
+                  close();
+                }}
+                options={data?.sets.map((set) => ({ value: set.id, label: set.title })) ?? []}
+              />
+            )}
+          </PathEditorPopover>
+        )}
+        .
+      </p>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-negative">
+          {error}
+        </p>
+      )}
+      {data?.sets.length === 0 && (
+        <p className="mt-3 text-sm text-ink-faint">
+          Save a question set before adding it to the path.
+        </p>
+      )}
+    </PathEditorSurface>
   );
 }

@@ -1,10 +1,16 @@
+import {
+  bindPathTouchReorder,
+  type DragSession,
+  type DragState,
+  type TouchReorderContext,
+} from './bindPathTouchReorder';
+import { usePathDropTransition } from './usePathDropTransition';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import type { Lesson } from '../../db/types';
 import { reorderLessons } from '../../db/lessonRepository';
 import { hapticStrong } from '../../utils/haptic';
 
-const HOLD_DELAY_MS = 350;
 const EARLY_MOVE_LIMIT_PX = 8;
 
 export type LessonDropMarker = 'before' | 'after' | undefined;
@@ -14,6 +20,9 @@ export interface LessonReorderInteraction {
   lifted: boolean;
   offset?: { x: number; y: number };
   dropMarker: LessonDropMarker;
+  refused?: boolean;
+  direct?: boolean;
+  settleVelocity?: number;
   registerElement: (element: HTMLButtonElement | null) => void;
   onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -21,26 +30,6 @@ export interface LessonReorderInteraction {
   onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onClickCapture: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onKeyDown: (event: ReactKeyboardEvent<HTMLButtonElement>) => void;
-}
-
-interface DragSession {
-  lessonId: string;
-  inputId: number;
-  inputType: 'pointer' | 'touch';
-  startX: number;
-  startY: number;
-  slots: Map<string, DOMRect>;
-  element: HTMLButtonElement;
-  timer: number;
-  active: boolean;
-  targetIndex: number;
-}
-
-interface DragState {
-  lessonId: string;
-  x?: number;
-  y?: number;
-  targetIndex: number;
 }
 
 /** Moves one lesson into an insertion index measured against the remaining lessons. */
@@ -59,26 +48,25 @@ function sameOrder(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((id, index) => id === right[index]);
 }
 
-export function useLessonPathReorder({
-  courseId,
-  lessons,
+export function usePathReorder({
+  items,
+  onReorder,
+  orderForMove = moveLessonIds,
+  keyboardTarget,
+  holdDelay = 0,
   enabled,
   onError,
 }: {
-  courseId: string;
-  lessons: Lesson[];
+  items: { id: string; name: string }[];
+  onReorder: (ids: string[], id: string) => Promise<void>;
+  orderForMove?: (ids: string[], id: string, index: number) => string[] | null;
+  keyboardTarget?: (id: string, delta: -1 | 1) => number;
+  holdDelay?: number;
   enabled: boolean;
   onError: (message: string) => void;
 }) {
-  const orderedLessons = useMemo(
-    () => [...lessons].sort((a, b) => a.orderIndex - b.orderIndex),
-    [lessons],
-  );
-  const orderedIds = useMemo(() => orderedLessons.map((lesson) => lesson.id), [orderedLessons]);
-  const lessonNames = useMemo(
-    () => new Map(orderedLessons.map((lesson) => [lesson.id, lesson.name])),
-    [orderedLessons],
-  );
+  const orderedIds = useMemo(() => items.map((item) => item.id), [items]);
+  const lessonNames = useMemo(() => new Map(items.map((item) => [item.id, item.name])), [items]);
   const elementsRef = useRef(new Map<string, HTMLButtonElement>());
   const touchCleanupRef = useRef(new Map<string, () => void>());
   const sessionRef = useRef<DragSession | null>(null);
@@ -102,14 +90,13 @@ export function useLessonPathReorder({
     setDragState(null);
   }, []);
 
-  useEffect(
-    () => () => {
-      clearSession(true);
-      for (const cleanup of touchCleanupRef.current.values()) cleanup();
-      touchCleanupRef.current.clear();
-    },
-    [clearSession],
+  const dropTransition = usePathDropTransition(orderedIds.join('\0'), elementsRef, () =>
+    clearSession(true),
   );
+
+  // Native listeners belong to the element ref. Effect cleanup can run during
+  // Fast Refresh while Motion keeps that ref mounted.
+  useEffect(() => () => clearSession(true), [clearSession]);
 
   useEffect(() => {
     if (enabled) return;
@@ -124,28 +111,81 @@ export function useLessonPathReorder({
         const rect =
           sessionRef.current?.slots.get(id) ?? elementsRef.current.get(id)?.getBoundingClientRect();
         if (!rect) continue;
-        if (clientY >= rect.top + rect.height / 2) targetIndex += 1;
+        if (
+          clientY >=
+          rect.top -
+            ((sessionRef.current?.scroller?.scrollTop ?? 0) -
+              (sessionRef.current?.scrollTop ?? 0)) +
+            rect.height / 2
+        )
+          targetIndex += 1;
       }
       return targetIndex;
     },
     [orderedIds],
   );
 
+  const scrollFrame = useRef<() => void>(() => {});
+  scrollFrame.current = () => {
+    const session = sessionRef.current;
+    if (!session?.active || !session.scroller || session.clientY === undefined) return;
+    const edge = 64;
+    const bounds = session.scroller.getBoundingClientRect();
+    const top = Math.max(0, bounds.top);
+    const bottom = Math.min(window.innerHeight, bounds.bottom || window.innerHeight);
+    const step =
+      session.clientY < top + edge
+        ? -Math.min(14, (top + edge - session.clientY) / 4)
+        : session.clientY > bottom - edge
+          ? Math.min(14, (session.clientY - bottom + edge) / 4)
+          : 0;
+    if (!step) return;
+    session.scroller.scrollTop += step;
+    session.targetIndex = targetIndexForY(session.lessonId, session.clientY);
+    setDragState({
+      lessonId: session.lessonId,
+      targetIndex: session.targetIndex,
+      x: 0,
+      y: session.clientY - session.startY + session.scroller.scrollTop - (session.scrollTop ?? 0),
+    });
+  };
+  const draggingId = dragState?.lessonId;
+  useEffect(() => {
+    if (!draggingId) return;
+    let frame: number;
+    const tick = () => {
+      scrollFrame.current();
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [draggingId]);
+
   const persistOrder = useCallback(
     async (lessonId: string, targetIndex: number) => {
-      const nextIds = moveLessonIds(orderedIds, lessonId, targetIndex);
+      const nextIds = orderForMove(orderedIds, lessonId, targetIndex);
+      if (!nextIds) {
+        dropTransition.reset();
+        clearSession(true);
+        setAnnouncement(`${lessonNames.get(lessonId) ?? 'Row'} cannot move there.`);
+        return;
+      }
       if (sameOrder(nextIds, orderedIds)) {
+        dropTransition.reset();
+        clearSession(true);
         setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} order unchanged.`);
         return;
       }
       setPending(true);
       try {
-        await reorderLessons(courseId, nextIds);
+        await onReorder(nextIds, lessonId);
         const finalIndex = nextIds.indexOf(lessonId);
         setAnnouncement(
           `${lessonNames.get(lessonId) ?? 'Lesson'} moved to position ${finalIndex + 1} of ${nextIds.length}.`,
         );
       } catch {
+        clearSession(true);
+        dropTransition.reset();
         const message = 'Lesson order could not be saved.';
         setAnnouncement(message);
         onError(message);
@@ -153,7 +193,7 @@ export function useLessonPathReorder({
         setPending(false);
       }
     },
-    [courseId, lessonNames, onError, orderedIds],
+    [onReorder, orderForMove, lessonNames, onError, orderedIds, clearSession, dropTransition],
   );
 
   useEffect(() => {
@@ -182,6 +222,24 @@ export function useLessonPathReorder({
     return result;
   }, [dragState, orderedIds]);
 
+  const touchContext = useRef<TouchReorderContext>(null!);
+  touchContext.current = {
+    enabled: enabled && !pending,
+    sessionRef,
+    suppressClickRef,
+    elementsRef,
+    orderedIds,
+    lessonNames,
+    clearSession,
+    setDragState,
+    setAnnouncement,
+    targetIndexForY,
+    persistOrder,
+    holdDelay,
+    orderForMove,
+    dropTransition,
+  };
+
   const interactionFor = useCallback(
     (lessonId: string): LessonReorderInteraction => {
       let offset = { x: 0, y: 0 };
@@ -190,17 +248,26 @@ export function useLessonPathReorder({
         if (dragState.lessonId === lessonId) {
           offset = { x: dragState.x ?? 0, y: dragState.y ?? 0 };
         } else {
-          const nextIds = moveLessonIds(orderedIds, dragState.lessonId, dragState.targetIndex);
+          const nextIds =
+            orderForMove(orderedIds, dragState.lessonId, dragState.targetIndex) ?? orderedIds;
           const from = slots.get(lessonId);
           const to = slots.get(orderedIds[nextIds.indexOf(lessonId)]);
           if (from && to) offset = { x: to.left - from.left, y: to.top - from.top };
         }
       }
+      if (dropTransition.offsets?.has(lessonId))
+        offset = { x: 0, y: dropTransition.offsets.get(lessonId)! };
       const interactionEnabled = enabled && !pending;
       return {
         enabled: interactionEnabled,
+        refused:
+          !!dragState &&
+          dragState.lessonId === lessonId &&
+          !orderForMove(orderedIds, lessonId, dragState.targetIndex),
         offset,
-        lifted: dragState?.lessonId === lessonId,
+        lifted: dragState?.lessonId === lessonId && !dragState.dropping,
+        settleVelocity: dropTransition.velocityFor(lessonId),
+        direct: (dragState?.lessonId === lessonId && !dragState.dropping) || dropTransition.instant,
         dropMarker: dropMarkerByLessonId.get(lessonId),
         registerElement: (element) => {
           touchCleanupRef.current.get(lessonId)?.();
@@ -211,109 +278,10 @@ export function useLessonPathReorder({
           }
           elementsRef.current.set(lessonId, element);
 
-          const touchFor = (touches: TouchList, inputId: number): Touch | undefined => {
-            for (let index = 0; index < touches.length; index++) {
-              const touch = touches[index];
-              if (touch?.identifier === inputId) return touch;
-            }
-            return undefined;
-          };
-          const startTouch = (event: TouchEvent) => {
-            if (!interactionEnabled || event.touches.length !== 1 || sessionRef.current) return;
-            const touch = event.touches[0];
-            if (!touch) return;
-            // A new physical gesture cannot be the synthetic click belonging to
-            // the preceding drop, so it must never inherit that suppression.
-            suppressClickRef.current = null;
-            const inputId = touch.identifier;
-            const timer = window.setTimeout(() => {
-              const session = sessionRef.current;
-              if (!session || session.inputType !== 'touch' || session.inputId !== inputId) return;
-              session.active = true;
-              const originalIndex = orderedIds.indexOf(lessonId);
-              session.targetIndex = Math.max(originalIndex, 0);
-              setDragState({ lessonId, targetIndex: session.targetIndex });
-              setAnnouncement(
-                `${lessonNames.get(lessonId) ?? 'Lesson'} lifted. Drag to a new position, then release.`,
-              );
-              hapticStrong();
-            }, HOLD_DELAY_MS);
-            sessionRef.current = {
-              lessonId,
-              inputId,
-              inputType: 'touch',
-              startX: touch.clientX,
-              startY: touch.clientY,
-              slots: new Map(
-                [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
-              ),
-              element,
-              timer,
-              active: false,
-              targetIndex: 0,
-            };
-          };
-          const moveTouch = (event: TouchEvent) => {
-            const session = sessionRef.current;
-            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
-            const touch = touchFor(event.touches, session.inputId);
-            if (!touch) return;
-            if (!session.active) {
-              const distance = Math.hypot(
-                touch.clientX - session.startX,
-                touch.clientY - session.startY,
-              );
-              if (distance > EARLY_MOVE_LIMIT_PX) clearSession(false);
-              // Deliberately do not preventDefault: movement before the hold is
-              // an ordinary vertical scroll, not a failed drag.
-              return;
-            }
-            event.preventDefault();
-            session.targetIndex = targetIndexForY(lessonId, touch.clientY);
-            setDragState({
-              lessonId,
-              targetIndex: session.targetIndex,
-              x: touch.clientX - session.startX,
-              y: touch.clientY - session.startY,
-            });
-          };
-          const endTouch = (event: TouchEvent) => {
-            const session = sessionRef.current;
-            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
-            if (!touchFor(event.changedTouches, session.inputId)) return;
-            const targetIndex = session.targetIndex;
-            const active = session.active;
-            if (active) event.preventDefault();
-            clearSession(false);
-            if (!active) return;
-            // Suppress only the compatibility click generated by this completed
-            // drag. The timeout is measured from drop, so a long drag cannot
-            // outlive it; any new pointer/touch start clears it immediately.
-            suppressClickRef.current = { lessonId, until: Date.now() + 750 };
-            void persistOrder(lessonId, targetIndex);
-          };
-          const cancelTouch = (event: TouchEvent) => {
-            const session = sessionRef.current;
-            if (!session || session.inputType !== 'touch' || session.lessonId !== lessonId) return;
-            if (!touchFor(event.changedTouches, session.inputId)) return;
-            const wasActive = session.active;
-            clearSession(false);
-            suppressClickRef.current = null;
-            if (wasActive) {
-              setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} move cancelled.`);
-            }
-          };
-          element.addEventListener('touchstart', startTouch, { passive: true });
-          element.addEventListener('touchmove', moveTouch, { passive: false });
-          element.addEventListener('touchend', endTouch, { passive: false });
-          element.addEventListener('touchcancel', cancelTouch, { passive: true });
-          const cleanup = () => {
-            element.removeEventListener('touchstart', startTouch);
-            element.removeEventListener('touchmove', moveTouch);
-            element.removeEventListener('touchend', endTouch);
-            element.removeEventListener('touchcancel', cancelTouch);
-          };
-          touchCleanupRef.current.set(lessonId, cleanup);
+          touchCleanupRef.current.set(
+            lessonId,
+            bindPathTouchReorder(element, lessonId, touchContext),
+          );
         },
         onPointerDown: (event) => {
           if (
@@ -325,21 +293,43 @@ export function useLessonPathReorder({
             return;
           const element = event.currentTarget;
           suppressClickRef.current = null;
+          dropTransition.reset();
           const inputId = event.pointerId;
           const startX = event.clientX;
           const startY = event.clientY;
+          const timer = holdDelay
+            ? window.setTimeout(() => {
+                const session = sessionRef.current;
+                if (!session || session.inputId !== inputId) return;
+                session.active = true;
+                session.targetIndex = targetIndexForY(lessonId, session.clientY ?? startY);
+                setDragState({
+                  lessonId,
+                  targetIndex: session.targetIndex,
+                  x: 0,
+                  y: (session.clientY ?? startY) - startY,
+                });
+                setAnnouncement(
+                  `${lessonNames.get(lessonId) ?? 'Row'} lifted. Drag to a new position, then release.`,
+                );
+                hapticStrong();
+              }, holdDelay)
+            : 0;
           element.setPointerCapture?.(inputId);
           sessionRef.current = {
             lessonId,
             inputId,
             inputType: 'pointer',
+            clientY: startY,
+            scroller: element.closest('main') ?? document.documentElement,
+            scrollTop: (element.closest('main') ?? document.documentElement).scrollTop,
             startX,
             startY,
             slots: new Map(
               [...elementsRef.current].map(([id, node]) => [id, node.getBoundingClientRect()]),
             ),
             element,
-            timer: 0,
+            timer,
             active: false,
             targetIndex: 0,
           };
@@ -353,13 +343,22 @@ export function useLessonPathReorder({
             session.lessonId !== lessonId
           )
             return;
+          const time = performance.now();
+          session.velocity =
+            ((event.clientY - (session.clientY ?? event.clientY)) /
+              Math.max(1, time - (session.lastMoveTime ?? time))) *
+            1000;
+          session.lastMoveTime = time;
+          session.clientY = event.clientY;
           if (!session.active) {
+            if (holdDelay) return;
             const distance = Math.hypot(
               event.clientX - session.startX,
               event.clientY - session.startY,
             );
             if (distance <= EARLY_MOVE_LIMIT_PX) return;
             session.active = true;
+            hapticStrong();
             setAnnouncement(
               `${lessonNames.get(lessonId) ?? 'Lesson'} lifted. Drag to a new position, then release.`,
             );
@@ -369,8 +368,12 @@ export function useLessonPathReorder({
           setDragState({
             lessonId,
             targetIndex: session.targetIndex,
-            x: event.clientX - session.startX,
-            y: event.clientY - session.startY,
+            x: holdDelay ? 0 : event.clientX - session.startX,
+            y:
+              event.clientY -
+              session.startY +
+              (session.scroller?.scrollTop ?? 0) -
+              (session.scrollTop ?? 0),
           });
         },
         onPointerUp: (event) => {
@@ -384,7 +387,17 @@ export function useLessonPathReorder({
             return;
           const targetIndex = session.targetIndex;
           const active = session.active;
-          clearSession(true);
+          if (active && holdDelay && orderForMove(orderedIds, lessonId, targetIndex)) {
+            dropTransition.capture(
+              lessonId,
+              performance.now() - (session.lastMoveTime ?? 0) < 80 ? (session.velocity ?? 0) : 0,
+            );
+            window.clearTimeout(session.timer);
+            if (session.element.hasPointerCapture?.(session.inputId))
+              session.element.releasePointerCapture(session.inputId);
+            session.active = false;
+            setDragState((old) => (old ? { ...old, dropping: true } : old));
+          } else clearSession(true);
           if (active) {
             suppressClickRef.current = { lessonId, until: Date.now() + 750 };
             void persistOrder(lessonId, targetIndex);
@@ -421,7 +434,8 @@ export function useLessonPathReorder({
           event.stopPropagation();
           const currentIndex = orderedIds.indexOf(lessonId);
           if (currentIndex < 0) return;
-          const targetIndex = event.key === 'ArrowUp' ? currentIndex - 1 : currentIndex + 1;
+          const delta = event.key === 'ArrowUp' ? -1 : 1;
+          const targetIndex = keyboardTarget?.(lessonId, delta) ?? currentIndex + delta;
           if (targetIndex < 0 || targetIndex >= orderedIds.length) {
             setAnnouncement(`${lessonNames.get(lessonId) ?? 'Lesson'} cannot move further.`);
             return;
@@ -440,18 +454,39 @@ export function useLessonPathReorder({
       pending,
       persistOrder,
       targetIndexForY,
+      orderForMove,
+      keyboardTarget,
+      holdDelay,
+      dropTransition,
     ],
   );
 
   /** Moves a lesson one place, as Alt and the arrow keys do, for the lesson actions menu. */
   const moveBy = useCallback(
     (lessonId: string, delta: -1 | 1) => {
-      const targetIndex = orderedIds.indexOf(lessonId) + delta;
+      const targetIndex = keyboardTarget?.(lessonId, delta) ?? orderedIds.indexOf(lessonId) + delta;
       if (pending || targetIndex < 0 || targetIndex >= orderedIds.length) return;
       void persistOrder(lessonId, targetIndex);
     },
-    [orderedIds, pending, persistOrder],
+    [orderedIds, pending, persistOrder, keyboardTarget],
   );
 
   return { announcement, interactionFor, moveBy, pending };
+}
+
+/** Lesson-only callers retain their existing repository contract. */
+export function useLessonPathReorder({
+  courseId,
+  lessons,
+  enabled,
+  onError,
+}: {
+  courseId: string;
+  lessons: Lesson[];
+  enabled: boolean;
+  onError: (message: string) => void;
+}) {
+  const items = useMemo(() => [...lessons].sort((a, b) => a.orderIndex - b.orderIndex), [lessons]);
+  const onReorder = useCallback((ids: string[]) => reorderLessons(courseId, ids), [courseId]);
+  return usePathReorder({ items, enabled, onError, onReorder });
 }

@@ -54,6 +54,12 @@ export function useFocusTrap(
     const onKeyDown = (e: KeyboardEvent) => {
       if (!container || container.closest('[inert]')) return;
       if (e.key !== 'Tab' || e.defaultPrevented) return;
+      const activeDialog = document.activeElement?.closest('[role="dialog"]');
+      const ownDialog = container.matches('[role="dialog"]')
+        ? container
+        : container.querySelector('[role="dialog"]');
+      // A portalled child picker owns its own trap until it closes.
+      if (activeDialog && container.contains(activeDialog) && activeDialog !== ownDialog) return;
 
       const elements = Array.from(
         container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),

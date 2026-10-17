@@ -1,137 +1,221 @@
-// Modal editor for a manual practice node, opened from the path's Add card practice
-// action or an existing node's edit badge. Mirrors the chrome of CardEditOverlay.
-// Settings links back here instead of maintaining a competing management surface.
-//
-// British English throughout.
-
-import { useState } from 'react';
-import { dialogKeyDown } from '../../hooks/dialogKeys';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { Button } from '../ui/Button';
-import { ConfirmInline } from '../ui/ConfirmInline';
-import { useToast } from '../ui/Toast';
+import { countOf } from '../../utils/plural';
+import { useMemo, useRef, useState } from 'react';
 import {
   createPracticeNode,
   updatePracticeNode,
   deletePracticeNode,
 } from '../../db/practiceNodeRepository';
-import type { Lesson, PracticeNode } from '../../db/types';
-import { PracticeNodeFields } from './PracticeNodeFields';
+import type { Card, Lesson, LessonCardLink, PracticeNode } from '../../db/types';
+import { lessonCardMembershipForLessons } from '../../course/studyPools';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { choiceChipClass } from '../ui/choiceChip';
+import { inputFrameClassName } from '../ui/Field';
+import { PathEditorSurface } from './PathEditorSurface';
+import { PathEditorPopover } from './PathEditorPopover';
 import { emptyPracticeNodeDraft, draftFromPracticeNode, parseCardCount } from './practiceNodeDraft';
-import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
-
-interface PracticeNodeEditorProps {
-  courseId: string;
-  lessons: Lesson[];
-  /** The node being edited; undefined when creating a new one. */
-  node?: PracticeNode;
-  /** Seeds a new node's position on the visible course path. */
-  defaultPosition?: number;
-  onSaved: () => void;
-  onCancel: () => void;
-}
 
 export function PracticeNodeEditor({
   courseId,
   lessons,
+  cards = [],
+  links = [],
   node,
   defaultPosition,
   onSaved,
-  onCancel,
-}: PracticeNodeEditorProps) {
-  const { notify } = useToast();
-  const trapRef = useFocusTrap(true);
+}: {
+  courseId: string;
+  lessons: Lesson[];
+  cards?: Card[];
+  links?: LessonCardLink[];
+  node?: PracticeNode;
+  defaultPosition?: number;
+  onSaved: () => void;
+}) {
   const [draft, setDraft] = useState(() =>
-    node ? draftFromPracticeNode(node) : emptyPracticeNodeDraft(defaultPosition),
+    node
+      ? draftFromPracticeNode(node)
+      : { ...emptyPracticeNodeDraft(defaultPosition), name: 'Card practice' },
   );
-  const [saving, setSaving] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    const name = draft.name.trim() || 'Card practice';
-    const opts = {
-      position: draft.position,
-      lessonIds: draft.lessonIds,
-      cardCount: parseCardCount(draft.cardCount),
-      randomize: draft.randomize,
-    };
+  const [choosingLessons, setChoosingLessons] = useState(!!draft.lessonIds?.length);
+  const [error, setError] = useState('');
+  const name = useRef<HTMLInputElement>(null);
+  const count = useRef<HTMLInputElement>(null);
+  const countTrigger = useRef<HTMLSpanElement>(null);
+  const scope = useMemo(
+    () =>
+      lessonCardMembershipForLessons(
+        new Set(draft.lessonIds ?? lessons.map((lesson) => lesson.id)),
+        cards,
+        links,
+      ),
+    [cards, lessons, draft.lessonIds, links],
+  );
+  async function save() {
+    if (!draft.name.trim()) {
+      setError('Enter a name.');
+      name.current?.focus();
+      return false;
+    }
+    if (
+      draft.cardCount.trim() &&
+      (!Number.isInteger(Number(draft.cardCount)) || Number(draft.cardCount) < 1)
+    ) {
+      setError('Enter a whole card limit of at least 1, or leave it empty.');
+      (count.current ?? countTrigger.current?.querySelector('button'))?.focus();
+      return false;
+    }
     try {
-      if (node) {
-        await updatePracticeNode(node.id, { name, ...opts });
-      } else {
-        await createPracticeNode(courseId, { type: 'manual', name, ...opts });
-      }
-      onSaved();
-    } catch (err) {
-      setSaving(false);
-      notify(err instanceof Error ? err.message : 'Could not save the practice node.', 'negative');
+      const options = {
+        name: draft.name.trim(),
+        position: draft.position,
+        lessonIds: draft.lessonIds,
+        cardCount: parseCardCount(draft.cardCount),
+        randomize: draft.randomize,
+      };
+      if (node) await updatePracticeNode(node.id, options);
+      else await createPracticeNode(courseId, { type: 'manual', ...options });
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not save the practice node.');
+      return false;
     }
   }
-
-  async function handleDelete() {
-    if (!node) return;
+  async function remove() {
+    if (!node) return false;
     try {
       await deletePracticeNode(node.id);
-      onSaved();
-    } catch (err) {
-      setConfirmingDelete(false);
-      notify(
-        err instanceof Error ? err.message : 'Could not delete the practice node.',
-        'negative',
-      );
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not delete the practice node.');
+      return false;
     }
   }
-
   return (
-    <DialogPanel
+    <PathEditorSurface
       label={node ? 'Edit card practice' : 'Add card practice'}
-      trapRef={trapRef}
-      onBackdropClick={onCancel}
-      className="max-h-[90vh] max-w-md"
-      onKeyDown={dialogKeyDown({
-        onCancel,
-        onSubmit: () => {
-          if (!saving) void handleSave();
-        },
-        enterSubmits: true,
-      })}
+      onSave={save}
+      onClosed={onSaved}
+      onDelete={node ? remove : undefined}
+      deleteNoun="practice node"
     >
-      <DialogHeader
-        title={node ? 'Edit card practice' : 'Add card practice'}
-        onClose={onCancel}
-        closeLabel="Close editor"
-      />
-
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <PracticeNodeFields draft={draft} onChange={setDraft} lessons={lessons} />
-      </div>
-
-      <footer className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
-        {node ? (
-          confirmingDelete ? (
-            <ConfirmInline
-              message="Delete?"
-              onConfirm={() => void handleDelete()}
-              onCancel={() => setConfirmingDelete(false)}
-            />
-          ) : (
-            <Button variant="danger" size="sm" onClick={() => setConfirmingDelete(true)}>
-              Delete
-            </Button>
-          )
-        ) : (
-          <span />
-        )}
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button variant="primary" onClick={() => void handleSave()} disabled={saving}>
-            Save
-          </Button>
+      <p data-morph-row className="path-editor-sentence">
+        <input
+          ref={name}
+          data-path-editor-focus
+          aria-label="Name"
+          aria-invalid={(!draft.name.trim() && !!error) || undefined}
+          className="path-editor-name"
+          value={draft.name}
+          onChange={(event) => {
+            setDraft({ ...draft, name: event.target.value });
+            setError('');
+          }}
+        />{' '}
+        practises{' '}
+        <span ref={countTrigger}>
+          <PathEditorPopover label={draft.cardCount ? `${draft.cardCount} cards` : 'all cards'}>
+            <label className="block p-2 text-sm text-ink-soft">
+              Card limit
+              <input
+                ref={count}
+                type="number"
+                min={1}
+                step={1}
+                placeholder="No limit"
+                className={`mt-2 block w-full ${inputFrameClassName}`}
+                value={draft.cardCount}
+                onChange={(event) => setDraft({ ...draft, cardCount: event.target.value })}
+              />
+            </label>
+          </PathEditorPopover>
+        </span>{' '}
+        from{' '}
+        <PathEditorPopover
+          label={
+            draft.lessonIds?.length
+              ? `${draft.lessonIds.length} chosen lesson${draft.lessonIds.length === 1 ? '' : 's'}`
+              : 'all lessons'
+          }
+        >
+          {(close) => (
+            <>
+              <button
+                type="button"
+                className="path-editor-option"
+                onClick={() => {
+                  setChoosingLessons(false);
+                  setDraft({ ...draft, lessonIds: undefined });
+                  close();
+                }}
+              >
+                All lessons
+              </button>
+              <button
+                type="button"
+                className="path-editor-option"
+                onClick={() => {
+                  setChoosingLessons(true);
+                  close();
+                }}
+              >
+                Chosen lessons
+              </button>
+            </>
+          )}
+        </PathEditorPopover>
+        , in{' '}
+        <PathEditorPopover label={draft.randomize ? 'random' : 'lesson'}>
+          {(close) => (
+            <>
+              {[false, true].map((randomize) => (
+                <button
+                  key={String(randomize)}
+                  type="button"
+                  className="path-editor-option"
+                  aria-pressed={draft.randomize === randomize}
+                  onClick={() => {
+                    setDraft({ ...draft, randomize });
+                    close();
+                  }}
+                >
+                  {randomize ? 'Random' : 'Lesson'}
+                </button>
+              ))}
+            </>
+          )}
+        </PathEditorPopover>{' '}
+        order.
+      </p>
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-negative">
+          {error}
+        </p>
+      )}
+      <AnimatedDisclosure open={choosingLessons}>
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Covered lessons">
+          {lessons.map((lesson) => (
+            <button
+              key={lesson.id}
+              type="button"
+              aria-pressed={draft.lessonIds?.includes(lesson.id) ?? false}
+              className={choiceChipClass(draft.lessonIds?.includes(lesson.id) ?? false)}
+              onClick={() => {
+                const selected = draft.lessonIds ?? [];
+                const lessonIds = selected.includes(lesson.id)
+                  ? selected.filter((id) => id !== lesson.id)
+                  : [...selected, lesson.id];
+                setDraft({ ...draft, lessonIds: lessonIds.length ? lessonIds : undefined });
+              }}
+            >
+              {lesson.name}
+            </button>
+          ))}
         </div>
-      </footer>
-    </DialogPanel>
+      </AnimatedDisclosure>
+      <p data-morph-row className="mt-3 text-sm text-ink-faint">
+        {countOf(draft.lessonIds?.length ?? lessons.length, 'lesson')} ·{' '}
+        {Math.min(parseCardCount(draft.cardCount) ?? scope.length, scope.length)} cards
+      </p>
+    </PathEditorSurface>
   );
 }

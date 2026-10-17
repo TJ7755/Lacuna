@@ -1,14 +1,10 @@
+import { moveAuthoredPathNode } from './pathNodeReorder';
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { PathNode } from '../../course/path';
 import type { CourseAssessment, Lesson } from '../../db/types';
-import { deleteCourseAssessment, updateCourseAssessment } from '../../db/assessmentRepository';
-import {
-  deletePracticeNode,
-  deleteQuestionSetPracticeNode,
-  updatePracticeNode,
-  updateQuestionSetPracticeNode,
-} from '../../db/practiceNodeRepository';
+import { deleteCourseAssessment } from '../../db/assessmentRepository';
+import { deletePracticeNode, deleteQuestionSetPracticeNode } from '../../db/practiceNodeRepository';
 import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
@@ -76,14 +72,7 @@ export function PathNodeActionsMenu({
   }
 
   function move(delta: -1 | 1) {
-    const target = lessons[position + delta];
-    void run(() => {
-      if (assessment)
-        return updateCourseAssessment(assessment.id, { afterLessonId: target?.id ?? null });
-      if (node.nodeType === 'practice-question-set')
-        return updateQuestionSetPracticeNode(node.practiceNode.id, target.id).then(() => undefined);
-      return updatePracticeNode(practice!.id, { position: target?.orderIndex });
-    });
+    void run(() => moveAuthoredPathNode(node, lessons, position + delta));
   }
 
   function remove() {

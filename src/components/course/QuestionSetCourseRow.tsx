@@ -1,3 +1,4 @@
+import type { LessonReorderInteraction } from './useLessonPathReorder';
 import { useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -18,11 +19,13 @@ export function QuestionSetCourseRow({
   index,
   authoring,
   lessons,
+  reorder,
 }: {
   node: QuestionSetPathNode;
   index: number;
   authoring: boolean;
   lessons: Lesson[];
+  reorder?: LessonReorderInteraction;
 }) {
   const data = useQuestionSetPathData(node);
   const navigate = useNavigate();
@@ -46,21 +49,37 @@ export function QuestionSetCourseRow({
   return (
     <>
       <motion.button
+        key={authoring ? 'author' : 'study'}
+        data-path-row=""
+        ref={reorder?.registerElement}
+        onPointerDown={reorder?.onPointerDown}
+        onPointerMove={reorder?.onPointerMove}
+        onPointerUp={reorder?.onPointerUp}
+        onPointerCancel={reorder?.onPointerCancel}
+        onClickCapture={reorder?.onClickCapture}
+        onKeyDown={reorder?.onKeyDown}
+        aria-describedby={reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined}
+        aria-roledescription={reorder?.enabled ? 'sortable path row' : undefined}
+        aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
         type="button"
         aria-label={`Practice questions: ${name}`}
-        disabled={unavailable}
+        disabled={unavailable && !authoring}
         onClick={() =>
-          navigate(`/course/${courseId}/question-sets/${node.questionSetId}`, {
-            state: {
-              questionSetReturnTo: location.pathname + location.search,
-              questionSetReturnLabel: 'Back to path',
-            },
-          })
+          authoring
+            ? setEditing(true)
+            : navigate(`/course/${courseId}/question-sets/${node.questionSetId}`, {
+                state: {
+                  questionSetReturnTo: location.pathname + location.search,
+                  questionSetReturnLabel: 'Back to path',
+                },
+              })
         }
         data-press=""
-        whileTap={m ? { scale: 0.99 } : undefined}
+        whileTap={m && !reorder?.lifted ? { scale: 0.99 } : undefined}
         className={cn(
           authoring && 'pr-[60px]',
+          reorder?.lifted && 'bg-surface path-editor-shadow',
+          reorder?.refused && 'ring-1 ring-negative/40',
           'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors hover:bg-ink/[0.03] disabled:cursor-default',
         )}
       >

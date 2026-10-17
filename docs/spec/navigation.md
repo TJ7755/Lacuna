@@ -261,14 +261,15 @@ same `fsrs/eligibility.ts` due-card logic the path itself uses.
 
 Course locking controls study progression, not authoring. In View mode, locked lesson
 nodes remain inert; in Edit mode, they retain their locked appearance and status but open the
-ordinary lesson authoring view. Edit mode also enables direct path reordering: mouse and pen
-drags start after 8 px of movement; touch requires a 350 ms hold, leaving early movement free
-for scrolling. The lesson follows the pointer and neighbouring lessons make room. Escape and
-pointer cancellation abandon the move. `Alt+ArrowUp`/`Alt+ArrowDown` provides the
-keyboard equivalent with live announcements. Reordering persists through the same
-`reorderLessons` repository operation used by Course Settings; checkpoint placement remains
-attached to its stable lesson anchor, while manual and automatic Practice positions and
-one-way lesson unlock ratchets are deliberately left unchanged.
+ordinary lesson authoring view. Edit mode also enables direct path reordering: holding an
+authored row for 350 ms lifts it, then it tracks vertical movement while neighbours spring
+aside. Early touch movement remains available for scrolling; dragging near the viewport
+edges scrolls the path. Escape and pointer cancellation abandon the move.
+`Alt+ArrowUp`/`Alt+ArrowDown` and Move up/down use the same lesson-anchor destinations with
+live announcements. Lessons persist through `reorderLessons`; authored checkpoints, manual
+practice and Question Set activities use their existing repository placement operations.
+Dependencies and custom assessment coverage cannot be moved into an invalid order.
+Computed automatic-practice stops remain outside authoring.
 
 In Edit mode each path row and the lesson heading carry a visible **Lesson actions** menu
 (`LessonActionsMenu`) with Rename, Move up, Move down and Delete lesson. Right-click, the
@@ -293,7 +294,8 @@ Checkpoint nodes open a detail sheet showing the assessment date, resolved lesso
 exclusions and validation state. Revision starts with that assessment's stable id; the final
 assessment uses the same authoring and resolution rules, and each course retains exactly one.
 In Edit mode, **Add checkpoint** creates one at the end of the visible path and selecting an
-existing checkpoint opens the same assessment editor used by Course Settings. View mode retains
+existing checkpoint opens its sentence editor over the row. The Assessments card opens the
+same surface, while Course Settings retains its settings form. View mode retains
 the read-only detail and revision behaviour. Inline single-lesson courses expose the same creation
 action through an **Add** menu in the lesson header, beside Study; the chosen form opens beneath
 the header.

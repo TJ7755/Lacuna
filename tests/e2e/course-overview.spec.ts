@@ -89,6 +89,7 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await expect.poll(closedFit).toBe(0);
   await add.click();
   await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Name' }).fill('Keyboard checkpoint');
   await page.getByRole('textbox', { name: 'Name' }).press('Escape');
   await expect(add).toBeFocused();
 });

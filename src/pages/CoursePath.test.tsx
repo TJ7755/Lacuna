@@ -703,7 +703,7 @@ describe('CoursePath Edit mode', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
     expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
       expect(mockCreatePracticeNode).toHaveBeenCalledWith(
@@ -724,7 +724,7 @@ describe('CoursePath Edit mode', () => {
       target: { value: 'Paper 1' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
       expect(mockCreateCourseAssessment).toHaveBeenCalledWith(
@@ -736,7 +736,7 @@ describe('CoursePath Edit mode', () => {
     });
   });
 
-  it('restores the Add checkpoint control after cancelling checkpoint creation', async () => {
+  it('keeps a new checkpoint open with an inline error when Done has no name', async () => {
     renderPage();
     const opener = screen.getByRole('button', { name: 'Add' });
     opener.focus();
@@ -744,9 +744,10 @@ describe('CoursePath Edit mode', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
-    await waitFor(() => expect(opener).toHaveFocus());
+    await screen.findByText('Enter a name.');
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
   });
 
   it('restores the Add checkpoint control after closing checkpoint creation with Escape', async () => {
@@ -758,6 +759,7 @@ describe('CoursePath Edit mode', () => {
 
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
+    fireEvent.change(nameInput, { target: { value: 'New checkpoint' } });
     fireEvent.keyDown(nameInput, { key: 'Escape' });
 
     await waitFor(() => expect(opener).toHaveFocus());
@@ -767,13 +769,19 @@ describe('CoursePath Edit mode', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Date and time' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Choose date and time' }));
 
-    const done = screen.getByRole('button', { name: 'Done' });
+    const done = screen.getAllByRole('button', { name: 'Done' }).at(-1)!;
     done.focus();
     fireEvent.keyDown(done, { key: 'Tab' });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Close editor' })).toHaveFocus());
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole('dialog', { name: 'Choose date and time' })).getAllByRole(
+          'button',
+        )[0],
+      ).toHaveFocus(),
+    );
   });
 
   it('edits a checkpoint directly from its path node', async () => {
@@ -800,7 +808,7 @@ describe('CoursePath Edit mode', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Revised Paper 1' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
       expect(mockUpdateCourseAssessment).toHaveBeenCalledWith(
@@ -808,6 +816,33 @@ describe('CoursePath Edit mode', () => {
         expect.objectContaining({ name: 'Revised Paper 1' }),
       );
     });
+  });
+
+  it('moves a checkpoint by the same lesson anchor with Alt+Arrow as its menu', async () => {
+    mockAssessments = [
+      {
+        id: 'assessment-1',
+        courseId: 'course-1',
+        kind: 'checkpoint',
+        name: 'Paper 1',
+        examDate: Date.now() + MS_PER_DAY,
+        afterLessonId: 'lesson-1',
+        coverageMode: 'prefix',
+        excludedCardIds: [],
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ];
+    renderPage();
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }), {
+      key: 'ArrowDown',
+      altKey: true,
+    });
+    await waitFor(() =>
+      expect(mockUpdateCourseAssessment).toHaveBeenCalledWith('assessment-1', {
+        afterLessonId: 'lesson-2',
+      }),
+    );
   });
 
   it('confirms checkpoint deletion before removing it from the repository', async () => {
@@ -831,11 +866,19 @@ describe('CoursePath Edit mode', () => {
     const deleteTrigger = screen.getByRole('button', { name: 'Delete' });
     fireEvent.click(deleteTrigger);
 
-    expect(screen.getByRole('status')).toHaveTextContent('Delete checkpoint?');
-    expect(screen.getByRole('button', { name: 'Keep checkpoint' })).toHaveFocus();
+    expect(screen.getByText('Delete this checkpoint?')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog', { name: 'Delete' })).getByRole('button', {
+        name: 'Delete',
+      }),
+    ).toHaveFocus();
     expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Delete' })).getByRole('button', {
+        name: 'Delete',
+      }),
+    );
 
     await waitFor(() => {
       expect(mockDeleteCourseAssessment).toHaveBeenCalledWith('assessment-1');
@@ -861,7 +904,7 @@ describe('CoursePath Edit mode', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Keep checkpoint' }));
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Delete' }), { key: 'Escape' });
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus());
     expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
@@ -878,7 +921,7 @@ describe('CoursePath Edit mode', () => {
     act(() => lessonViewProps.onAddPractice());
     expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
       expect(mockCreatePracticeNode).toHaveBeenCalledWith(
@@ -901,7 +944,7 @@ describe('CoursePath Edit mode', () => {
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();
     fireEvent.change(nameInput, { target: { value: 'Solo checkpoint' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save checkpoint' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() => {
       expect(mockCreateCourseAssessment).toHaveBeenCalledWith(

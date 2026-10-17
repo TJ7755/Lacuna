@@ -6,7 +6,7 @@ import type { AssessmentPracticeOption } from '../../course/assessmentPractice';
 import type { LessonReorderInteraction } from './useLessonPathReorder';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatShortDate } from '../../utils/datetime';
-import { MOTION_EASING } from '../ui/motion';
+import { MOTION_EASING, scaledSpring } from '../ui/motion';
 import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
@@ -83,6 +83,7 @@ export function CourseOverview(props: CourseOverviewProps) {
       <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-6">
         <section
           className={cn(CARD, 'min-w-0 px-5 pb-3 pt-6 md:px-7 md:pt-7')}
+          data-path-card=""
           aria-labelledby="course-path-heading"
         >
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -113,8 +114,8 @@ export function CourseOverview(props: CourseOverviewProps) {
             </AnimatedDisclosure>
           )}
           <p id="lesson-path-reorder-instructions" className="sr-only">
-            In Edit mode, drag this lesson to reorder; with touch, hold first. Alternatively, press
-            Alt and the up or down arrow key.
+            In Edit mode, hold a row to lift it, then drag to reorder. Alternatively, press Alt and
+            the up or down arrow key.
           </p>
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {props.announcement}
@@ -137,21 +138,55 @@ export function CourseOverview(props: CourseOverviewProps) {
                 } as const;
 
                 if (node.nodeType === 'checkpoint') {
+                  const reorder = authoring ? props.reorderFor(node.id) : undefined;
                   const date = node.assessment.examDate;
                   return (
                     <motion.li
                       key={node.id}
+                      data-path-source={node.id}
                       {...arrive}
+                      animate={{
+                        opacity: 1,
+                        y: reorder?.offset?.y ?? 0,
+                        scale: reorder?.lifted ? 1.02 : 1,
+                      }}
+                      transition={{
+                        y: reorder?.direct
+                          ? { duration: 0 }
+                          : { ...scaledSpring(m, 420, 36), velocity: reorder?.settleVelocity ?? 0 },
+                        scale: scaledSpring(m, 420, 36),
+                        layout: scaledSpring(m, 420, 36),
+                      }}
+                      style={{ zIndex: reorder?.lifted ? 30 : undefined }}
                       className="relative my-1.5 ml-[18px] has-[[aria-expanded=true]]:z-20"
                     >
                       <div
                         className={cn(
                           'flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm',
+                          reorder?.lifted && 'bg-surface path-editor-shadow',
+                          reorder?.refused && 'ring-1 ring-negative/40',
                           authoring && 'pr-[60px]',
                         )}
                       >
                         <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
                         <button
+                          ref={reorder?.registerElement}
+                          onPointerDown={reorder?.onPointerDown}
+                          onPointerMove={reorder?.onPointerMove}
+                          onPointerUp={reorder?.onPointerUp}
+                          onPointerCancel={reorder?.onPointerCancel}
+                          onClickCapture={reorder?.onClickCapture}
+                          onKeyDown={reorder?.onKeyDown}
+                          aria-keyshortcuts={
+                            reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined
+                          }
+                          aria-describedby={
+                            reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined
+                          }
+                          aria-roledescription={reorder?.enabled ? 'sortable path row' : undefined}
+                          data-drag-lifted={reorder?.lifted || undefined}
+                          data-drag-refused={reorder?.refused || undefined}
+                          data-path-row=""
                           type="button"
                           disabled={archived}
                           onClick={() => props.onAssessmentOpen(node.assessment.id)}
@@ -190,10 +225,25 @@ export function CourseOverview(props: CourseOverviewProps) {
                 }
 
                 if (node.nodeType === 'practice-question-set') {
+                  const reorder = authoring ? props.reorderFor(node.id) : undefined;
                   return (
                     <motion.li
                       key={node.id}
+                      data-path-source={node.id}
                       {...arrive}
+                      animate={{
+                        opacity: 1,
+                        y: reorder?.offset?.y ?? 0,
+                        scale: reorder?.lifted ? 1.02 : 1,
+                      }}
+                      transition={{
+                        y: reorder?.direct
+                          ? { duration: 0 }
+                          : { ...scaledSpring(m, 420, 36), velocity: reorder?.settleVelocity ?? 0 },
+                        scale: scaledSpring(m, 420, 36),
+                        layout: scaledSpring(m, 420, 36),
+                      }}
+                      style={{ zIndex: reorder?.lifted ? 30 : undefined }}
                       className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
                     >
                       <QuestionSetCourseRow
@@ -201,6 +251,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                         index={index}
                         lessons={lessons}
                         authoring={authoring && !archived}
+                        reorder={authoring ? props.reorderFor(node.id) : undefined}
                       />
                     </motion.li>
                   );
@@ -215,7 +266,9 @@ export function CourseOverview(props: CourseOverviewProps) {
                 const detail = lesson ? props.detailForLesson(lesson.lesson.id) : undefined;
                 const status = lesson?.status ?? (progress?.completed ? 'completed' : 'available');
                 const reorder =
-                  lesson && authoring ? props.reorderFor(lesson.lesson.id) : undefined;
+                  authoring && node.nodeType !== 'practice-auto'
+                    ? props.reorderFor(node.id)
+                    : undefined;
                 if (lesson) lessonNumber += 1;
                 const name = lesson
                   ? lesson.lesson.name
@@ -247,7 +300,21 @@ export function CourseOverview(props: CourseOverviewProps) {
                 return (
                   <motion.li
                     key={node.id}
+                    data-path-source={node.id}
                     {...arrive}
+                    animate={{
+                      opacity: 1,
+                      y: reorder?.offset?.y ?? 0,
+                      scale: reorder?.lifted ? 1.02 : 1,
+                    }}
+                    transition={{
+                      y: reorder?.direct
+                        ? { duration: 0 }
+                        : { ...scaledSpring(m, 420, 36), velocity: reorder?.settleVelocity ?? 0 },
+                      scale: scaledSpring(m, 420, 36),
+                      layout: scaledSpring(m, 420, 36),
+                    }}
+                    style={{ zIndex: reorder?.lifted ? 30 : undefined }}
                     // Each animated row is its own stacking context; lift the one whose
                     // menu is open above the rows after it.
                     className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
@@ -261,13 +328,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                       // starts or the reorder hook never sees this row.
                       key={authoring ? 'author' : 'study'}
                       ref={reorder?.registerElement}
+                      data-path-row=""
                       type="button"
                       aria-label={label}
                       aria-describedby={
                         reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined
                       }
                       aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
-                      aria-roledescription={reorder?.enabled ? 'sortable lesson' : undefined}
+                      aria-roledescription={reorder?.enabled ? 'sortable path row' : undefined}
                       title={locked && lesson ? props.lockHint(lesson.lesson.id) : undefined}
                       disabled={locked && !authoring && !archived}
                       onPointerDown={reorder?.onPointerDown}
@@ -277,19 +345,19 @@ export function CourseOverview(props: CourseOverviewProps) {
                       onClickCapture={reorder?.onClickCapture}
                       onKeyDown={reorder?.onKeyDown}
                       onClick={open}
-                      style={{
-                        x: reorder?.offset?.x ?? 0,
-                        y: reorder?.offset?.y ?? 0,
-                        zIndex: reorder?.lifted ? 30 : undefined,
-                      }}
+                      data-drag-lifted={reorder?.lifted || undefined}
+                      data-drag-refused={reorder?.refused || undefined}
                       data-press=""
-                      whileTap={m ? { scale: 0.99 } : undefined}
+                      whileTap={m && !reorder?.lifted ? { scale: 0.99 } : undefined}
                       className={cn(
                         'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
                         'hover:bg-ink/[0.03] disabled:cursor-default',
                         authoring && (lesson || practice) && 'pr-[60px]',
+                        reorder?.refused && 'ring-1 ring-negative/40',
                         // Reserve the lifted border so dragging cannot change the row's bounds.
-                        reorder?.lifted ? 'bg-surface card-surface' : 'border border-transparent',
+                        reorder?.lifted
+                          ? 'bg-surface path-editor-shadow'
+                          : 'border border-transparent',
                       )}
                     >
                       <span
@@ -414,6 +482,7 @@ export function CourseOverview(props: CourseOverviewProps) {
         <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
           <section
             className={cn(CARD, 'flex flex-col gap-3.5 px-5 pb-6 pt-6 md:px-7 md:pt-7')}
+            data-path-card=""
             aria-labelledby="course-assessments-heading"
           >
             {/* Matches the Lessons card beside it, so the two headings share a line. */}
@@ -426,9 +495,11 @@ export function CourseOverview(props: CourseOverviewProps) {
               return (
                 <div
                   key={assessment.id}
+                  data-path-source={assessment.id}
                   className="relative flex items-center has-[[aria-expanded=true]]:z-20"
                 >
                   <button
+                    data-path-row=""
                     type="button"
                     disabled={archived}
                     onClick={() => props.onAssessmentOpen(assessment.id)}

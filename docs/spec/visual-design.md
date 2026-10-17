@@ -370,3 +370,13 @@ spring; the plus rotates to close, Escape dismisses and focus returns to the tri
 forms are inert and hidden from assistive technology. Full-editor creation keeps immediate
 navigation with the same pill and a motion-scaled 0.97 press. Embedded menu and compact
 editor-toolbar actions retain their local layout.
+
+- **Path editing:** checkpoint/exam, manual practice and Question Set editors use the shared
+  morph reveal from their opening row, or Add trigger. The editor overlays the path card,
+  with a quiet paper-coloured scrim and no background blur. Below 640px it ends as a bottom
+  sheet using the same reveal. Inline sentence fields and chip popovers replace modal forms;
+  lesson pills disclose on the shared spring. Popovers scale from 94% with a quick spring.
+  Saving folds the retained sentence back into its source. Path drag lifts the whole row to
+  102% with the raised shadow, tracks vertical movement directly, and springs neighbours
+  aside. Drop carries presented positions across the repository update before settling with
+  the release velocity. These transitions honour motion speed and become instant at zero.

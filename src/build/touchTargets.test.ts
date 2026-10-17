@@ -13,7 +13,7 @@ const CONTROL_FILES = [
   'src/components/course/PracticeNodeEditor.tsx',
   'src/components/course/NewCourseForm.tsx',
   'src/components/course/AssessmentDetailSheet.tsx',
-  'src/components/course/AssessmentEditorDialog.tsx',
+  'src/components/course/AssessmentPathEditor.tsx',
   'src/components/cards/LinkCardsDialog.tsx',
   'src/components/cards/CardEditOverlay.tsx',
   'src/components/items/BatchAuthoringPromptDialog.tsx',

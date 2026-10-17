@@ -1,3 +1,4 @@
+import { scaledSpring } from './motion';
 import { calendarKeyboardDate } from './calendarKeyboardDate';
 import { buttonClassName } from './buttonStyles';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ interface DateTimePickerProps {
   onValidityChange?: (valid: boolean) => void;
   label?: string;
   timeZone?: string;
+  appearance?: 'field' | 'chip';
 }
 
 interface CalendarView {
@@ -101,6 +103,7 @@ export function DateTimePicker({
   onValidityChange,
   label,
   timeZone,
+  appearance = 'field',
 }: DateTimePickerProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -555,11 +558,15 @@ export function DateTimePicker({
         }}
         className={cn(
           // The text input's frame (Field's inputFrameClassName), with the accent while open.
-          'flex w-full items-center gap-3 rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-left text-sm text-ink outline-none transition-colors focus-visible:border-accent',
-          open ? 'border-accent' : 'border-line',
+          appearance === 'chip'
+            ? 'path-editor-chip'
+            : 'flex w-full items-center gap-3 rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-left text-sm text-ink outline-none transition-colors focus-visible:border-accent',
+          appearance === 'field' && (open ? 'border-accent' : 'border-line'),
         )}
       >
-        <CalendarIcon width={16} height={16} className="shrink-0 text-ink-faint" />
+        {appearance === 'field' && (
+          <CalendarIcon width={16} height={16} className="shrink-0 text-ink-faint" />
+        )}
         <span className="tabular">{display}</span>
       </button>
 
@@ -584,10 +591,18 @@ export function DateTimePicker({
                   left: popoverPosition?.left ?? 0,
                   visibility: popoverPosition ? 'visible' : 'hidden',
                 }}
-                initial={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
+                initial={{
+                  opacity: 0,
+                  y: appearance === 'chip' ? 0 : placement === 'bottom' ? -6 : 6,
+                  scale: appearance === 'chip' ? 0.94 : 0.97,
+                }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }}
-                transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
+                transition={
+                  appearance === 'chip'
+                    ? scaledSpring(m, 520, 34)
+                    : { duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }
+                }
                 className="fixed z-[60] max-h-[calc(100vh-2rem)] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-line-strong bg-surface card-surface"
               >
                 {/* Header: month navigation */}
