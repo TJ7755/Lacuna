@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AiSession } from '../../ai/session/types';
+import { Button } from '../ui/Button';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 
 interface AiComposerProps {
   session: AiSession;
@@ -62,8 +64,8 @@ export function AiComposer({
 
   return (
     <div className="border-t border-line bg-surface p-3">
-      {queuedFollowUp && !editingQueued && (
-        <div className="mb-2 flex items-center gap-3 rounded-lg border border-line bg-paper pl-3 text-xs text-ink-soft">
+      <AnimatedDisclosure open={!!queuedFollowUp && !editingQueued}>
+        <div className="mb-2 flex items-center gap-3 rounded-xl border border-line bg-surface pl-3 text-xs text-ink-soft">
           <div className="min-w-0 flex-1 py-2">
             <span className="font-medium text-ink">Queued next</span>
             <p className="mt-0.5 line-clamp-2">{queuedFollowUp}</p>
@@ -73,16 +75,16 @@ export function AiComposer({
             aria-label="Edit queued follow-up"
             disabled={disabled}
             onClick={editQueuedFollowUp}
-            className="min-h-11 shrink-0 px-3 font-medium text-accent-ink hover:text-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-11 shrink-0 px-3 font-medium text-accent-ink hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             Edit
           </button>
         </div>
-      )}
+      </AnimatedDisclosure>
       {editingQueued && (
         <p className="mb-2 text-xs font-medium text-accent-ink">Editing queued follow-up</p>
       )}
-      <div className="overflow-hidden rounded-xl border border-line-strong bg-paper shadow-sm transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/10">
+      <div className="overflow-hidden rounded-xl border-[1.5px] border-line bg-surface transition-colors focus-within:border-accent">
         <textarea
           ref={inputRef}
           rows={2}
@@ -114,15 +116,16 @@ export function AiComposer({
           className="flex items-center justify-between gap-2 border-t border-line px-2 py-1"
         >
           <span className="px-1 text-[10px] text-ink-faint">Shift+Enter for a new line</span>
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="primary"
             aria-label="Send message"
             disabled={disabled || sending || content.trim().length === 0}
             onClick={() => void send()}
-            className="hit-target flex h-8 min-w-16 items-center justify-center rounded-full bg-accent px-4 text-xs font-medium text-accent-fg transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-35"
+            className="min-w-16 px-4"
           >
             Send
-          </button>
+          </Button>
         </div>
       </div>
     </div>
