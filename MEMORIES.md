@@ -648,3 +648,12 @@ preventScroll so the clipped body cannot scroll its own shell. Keep the expandin
 opaque and neutral; fade only the original button-sized fill into its header. Fading the
 whole shell reads as a popup, while an expanding accent backing produces a pulse. Use
 resolved rendered colours for label interpolation rather than nested CSS variables.
+
+## Development optimiser generations
+
+A 200 response for a lazy page does not prove its import graph loads: its optimised
+children can return `504 Outdated Optimize Dep`. Inspect browser module requests.
+If the running server's `node_modules/.vite/deps` cache has disappeared, restart the
+worktree's server; retrying the route retains rejected imports in the document.
+Keep late QR/Markdown imports in `optimizeDeps.include` and avoid changing the
+optimiser cache underneath a running server.

@@ -36,7 +36,10 @@
 Scripts: `dev`/`start` (Vite), `build` (`bun run typecheck && vite build`), `preview`, `typecheck`,
 `test`, `test:coverage`, `test:coverage:recovery`, `test:e2e:web`, `test:watch`, and `lint`. The Dashboard is the only eager page;
 settings, search, share, analytics, help, course pages, editors, the course conductor and
-full-screen routes are lazy-loaded on demand.
+full-screen routes are lazy-loaded on demand. A failed route-module fetch triggers one full
+page reload, guarded in session storage; a repeated failure reaches the existing error boundary.
+A successful load at the failed URL clears the guard. Speculative route prefetches and module
+evaluation errors do not trigger automatic reloads. The same hash URL is retained on web and desktop.
 
 ### Optional multi-device sync foundation
 
