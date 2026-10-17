@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import { createCard, createCourseCard, createCourse } from './repository';
 import { addDays } from '../fsrs/heatmap';
@@ -12,7 +12,8 @@ import {
   listReviewHistoryForCourse,
 } from './reviewHistoryRead';
 import { reviewHistoryEntryIdForEvent } from './reviewHistory';
-import type { ReviewLog } from './types';
+import { makeSessionContext, selectNext } from '../fsrs/session';
+import type { Card, ReviewLog } from './types';
 
 function review(timestamp: number, eventId?: string): ReviewLog {
   return {
@@ -37,6 +38,50 @@ describe('review-history read adapter', () => {
       db.courses.clear(),
       db.reviewHistory.clear(),
     ]);
+  });
+
+  it('bulk-reads card histories without event-by-event cursors and preserves session order', async () => {
+    const course = await createCourse('Biology', { learnFirst: false });
+    const cards = await Promise.all(Array.from({ length: 12 }, (_, i) =>
+      createCourseCard(course.id, 'front_back', `Cell ${i}`, 'Mitochondrion'),
+    ));
+    const now = Date.now();
+    for (const [i, card] of cards.entries()) {
+      Object.assign(card, { stability: 2 + i, difficulty: 5, reps: 3, state: 2,
+        lastReviewed: now - 10 * 86_400_000, due: now - 86_400_000 });
+    }
+    await db.reviewHistory.bulkAdd(cards.flatMap((card, i) =>
+      Array.from({ length: 3 }, (_, r) => ({
+        ...review(now - (4 - r) * 86_400_000, `${card.id}-${r}`),
+        id: `${card.id}-${r}`, cardId: card.id,
+        // Historical ownership can differ after a card moves; cardId is authoritative.
+        courseId: i % 2 ? 'previous-course' : course.id,
+        schedulingUnitId: card.schedulingUnitId,
+      })),
+    ));
+    const canonical = await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray();
+    const expected = await hydrateCardsWithHistory(cards, canonical);
+    const cursor = vi.spyOn(IDBIndex.prototype, 'openCursor');
+    let actual: Card[];
+    try {
+      actual = await hydrateCardsWithHistory(cards);
+      expect(cursor).not.toHaveBeenCalled();
+    } finally {
+      cursor.mockRestore();
+    }
+    expect(actual!).toEqual(expected);
+    function order(pool: Card[]) {
+      const ctx = makeSessionContext([{ config: course, scope: { kind: 'course', courseId: course.id } }], 'due', pool);
+      const ids: string[] = [];
+      let next: Card | null;
+      while ((next = selectNext(pool, ctx, new Map(), now))) {
+        ids.push(next.id);
+        pool = pool.filter((card) => card.id !== next!.id);
+      }
+      return ids;
+    }
+    expect(order(actual!)).toEqual(order(expected));
+    expect(order(actual!)).toHaveLength(cards.length);
   });
 
   it('counts repeat attempts within the local day by course and scheduling unit', async () => {

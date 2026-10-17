@@ -4,6 +4,7 @@ const loaders = vi.hoisted(() => ({
   loadAnalytics: vi.fn(() => Promise.resolve()),
   loadArchivedCourses: vi.fn(() => Promise.resolve()),
   loadCardsPage: vi.fn(() => Promise.resolve()),
+  loadCourseStudyFlow: vi.fn(() => Promise.resolve()),
   loadCourseAnalytics: vi.fn(() => Promise.resolve()),
   loadCoursePath: vi.fn(() => Promise.resolve()),
   loadCourseSettings: vi.fn(() => Promise.resolve()),
@@ -31,6 +32,8 @@ describe('prefetchRoute', () => {
     prefetchRoute('/analytics');
     prefetchRoute('/archived');
     prefetchRoute('/course/course-1');
+    prefetchRoute('/course/course-1/study');
+    prefetchRoute('/course/course-2/study?review=due');
     prefetchRoute('/course/course-1/lesson/lesson-1');
     prefetchRoute('/course/course-1/cards/new');
     prefetchRoute('/course/course-1/questions/question-1/edit');
@@ -47,6 +50,7 @@ describe('prefetchRoute', () => {
     expect(loaders.loadImportPanel).toHaveBeenCalledOnce();
     expect(loaders.loadAnalytics).toHaveBeenCalledOnce();
     expect(loaders.loadArchivedCourses).toHaveBeenCalledOnce();
+    expect(loaders.loadCourseStudyFlow).toHaveBeenCalledOnce();
     expect(loaders.loadCoursePath).toHaveBeenCalledOnce();
     expect(loaders.loadLessonView).toHaveBeenCalledOnce();
     expect(loaders.loadCardsPage).toHaveBeenCalledOnce();

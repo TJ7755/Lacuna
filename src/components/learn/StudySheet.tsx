@@ -1,4 +1,5 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { prefetchRoute } from '../../routes/prefetch';
 import { useNavigate } from 'react-router-dom';
 import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
@@ -104,6 +105,9 @@ function CourseStudyOptions({
   onBack?: () => void;
 }) {
   const navigate = useNavigate();
+  useEffect(() => {
+    prefetchRoute(`/course/${courseId}/study`);
+  }, [courseId]);
   const launch = useStudyLaunch();
   const course = useCourse(courseId);
   const flow = useCourseStudyFlow(courseId);
