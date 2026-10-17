@@ -132,13 +132,17 @@ it('keeps the active element after the retained outgoing element unmounts', asyn
   view.unmount();
 });
 
-it('keeps the lifted card visible until persistence supplies its replacement', async () => {
-  const { ref, view } = setup();
+it('starts the exit before persistence supplies its replacement', async () => {
+  const { ref, view, frame } = setup();
   const commit = vi.fn();
   void act(() => ref.current!.dismiss(true, commit));
+  const current = view.container.querySelector('[data-study-card-id]')!;
+  await waitFor(() => expect((current as HTMLElement).style.transform).toContain('translateX'));
   await waitFor(() => expect(commit).toHaveBeenCalledOnce());
   await new Promise((resolve) => setTimeout(resolve, 450));
-  const current = view.container.querySelector('[data-study-card-id]')!;
-  expect((current as HTMLElement).style.transform).not.toContain('translateX');
+  expect((current as HTMLElement).style.transform).toContain('translateX');
+  view.rerender(frame('two', 'question'));
+  await waitFor(() => expect(view.queryByText('one answer')).not.toBeInTheDocument());
+  expect(view.getByText('two question')).toBeInTheDocument();
   view.unmount();
 });

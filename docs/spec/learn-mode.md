@@ -407,9 +407,10 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 
-- The response timer **starts on reveal** ("Show answer") and **stops when the answer
-  is graded**; it runs continuously and never pauses. (Opening the in-session editor
-  rebases the timer so editing time is excluded.)
+- The response timer starts when the question is presented and is captured on reveal
+  ("Show answer"). Inspecting the answer, dragging to grade and the departure animation
+  do not change that captured time. Machine-marked cards capture time at submission.
+  Opening the in-session editor rebases the timer so editing time is excluded.
 - "No" -> grade **1 (Again)**. "Yes" maps to Easy/Good/Hard by speed:
   - **Calibration** (`totalCorrectReviews < 20`): `< 3 s -> Easy(4)`,
     `> 8 s -> Hard(2)`, else `Good(3)`.
@@ -492,8 +493,14 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - The **card-actions menu** is also a bottom sheet in touch mode (a dropdown on
   keyboard). Both are wired to `useFocusTrap(true)`.
 - The **flip card accepts swipes**: a left swipe (past 60px) commits "No"; a right
-  swipe commits "Yes". The first successful swipe hides the persistent swipe hints
-  via a `localStorage` flag (`lacuna.learnHints`).
+  swipe commits "Yes". A flick also commits after 12px when release velocity exceeds
+  650px/s in that direction. Horizontal drags follow the pointer directly, with rotation
+  derived from the offset; vertical gestures retain page scrolling. Cancelled drags spring
+  back, and committed drags carry their release velocity into the same departure used by
+  buttons and keyboard. Translation, rotation and fading share one position-driven motion,
+  starting before persistence supplies the next card. Springs follow the motion-speed setting;
+  reduced motion skips the departure. The first successful swipe hides the persistent swipe
+  hints via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study
   mode (amber for assessment revision, green for simple, red for leech filter, etc.), and a label
   pill (Question / Answer / Fill the gap / Type the answer) animates in with the card

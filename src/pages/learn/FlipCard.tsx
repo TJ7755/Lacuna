@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, animate, useIsPresent, useMotionValue } from 'motion/react';
 import { hapticMedium } from '../../utils/haptic';
 import type { Card, Grade, Occlusion } from '../../db/types';
@@ -10,6 +10,8 @@ import type { LearnModeType, Phase } from './types';
 import { isAudioCardFront } from '../../media/audio';
 import { StudyCardFace } from './StudyCardFace';
 import { CardSizeMeasurements, useStableCardHeight } from './useStableCardHeight';
+import { scaledSpring } from '../../components/ui/motion';
+import { StudyCardMotionContext } from './studyCardMotion';
 
 // One quiet surface in every mode and phase: no outline and no tinted halo.
 const CARD_SURFACE_CLASS =
@@ -81,7 +83,15 @@ export function FlipCard({
       return false;
     }
   });
-  const swipeRef = useRef({ x: 0, startX: 0, startY: 0, dragging: false, isSwipe: false });
+  const swipeRef = useRef({
+    x: 0,
+    startX: 0,
+    startY: 0,
+    startOffset: 0,
+    pointerId: 0,
+    dragging: false,
+    axis: null as 'x' | 'y' | null,
+  });
   const selectionLenRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const swipeThreshold = 60;
@@ -122,27 +132,31 @@ export function FlipCard({
   }, [audioCard, phase, menuOpen, editing, hintsOpen, replayAudio]);
 
   // Follow the pointer without spring lag; only an abandoned swipe springs back.
-  const swipeXMotion = useMotionValue(0);
+  const localX = useMotionValue(0);
+  const sharedX = useContext(StudyCardMotionContext);
+  const swipeXMotion = sharedX ?? localX;
   const resetSwipe = useCallback(() => {
     if (m === 0) swipeXMotion.jump(0);
-    else animate(swipeXMotion, 0, { type: 'spring', stiffness: 480, damping: 38 });
+    else animate(swipeXMotion, 0, scaledSpring(m, 480, 38));
     setSwipe({ x: 0, hint: null });
   }, [m, swipeXMotion]);
   useEffect(() => () => swipeXMotion.stop(), [swipeXMotion]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
-      if (swipeRef.current.dragging || committed.current || !isPresent) return;
+      if (e.button > 0 || swipeRef.current.dragging || committed.current || !isPresent) return;
       if ((e.target as Element).closest('audio, button, input, textarea, a')) return;
       // Ignore swipes when any overlay is open.
       if (menuOpen || editing || hintsOpen) return;
       swipeXMotion.stop();
       swipeRef.current = {
-        x: 0,
+        x: swipeXMotion.get(),
+        startOffset: swipeXMotion.get(),
         startX: e.clientX,
         startY: e.clientY,
         dragging: true,
-        isSwipe: false,
+        pointerId: e.pointerId,
+        axis: null,
       };
       selectionLenRef.current = window.getSelection()?.toString().length ?? 0;
       containerRef.current?.setPointerCapture?.(e.pointerId);
@@ -153,36 +167,37 @@ export function FlipCard({
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
-      if (!swipeRef.current.dragging) return;
+      if (!swipeRef.current.dragging || e.pointerId !== swipeRef.current.pointerId) return;
       const dx = e.clientX - swipeRef.current.startX;
       const dy = e.clientY - swipeRef.current.startY;
       // Decide whether this is a horizontal swipe or a vertical scroll.
       // Swipe-to-grade is only enabled during the answer phase, matching keyboard shortcuts.
-      if (!swipeRef.current.isSwipe && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-        if (phase === 'answer') {
-          swipeRef.current.isSwipe = true;
-        }
+      if (!swipeRef.current.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 8) {
+        swipeRef.current.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
       }
-      if (!swipeRef.current.isSwipe) return;
-      swipeRef.current.x = dx;
-      swipeXMotion.set(dx);
+      if (swipeRef.current.axis !== 'x' || phase !== 'answer') return;
+      const offset = swipeRef.current.startOffset + dx;
+      swipeRef.current.x = offset;
+      swipeXMotion.set(offset);
       const hint: 'left' | 'right' | null =
-        dx < -swipeThreshold / 2 ? 'left' : dx > swipeThreshold / 2 ? 'right' : null;
-      setSwipe({ x: dx, hint });
+        offset < -swipeThreshold / 2 ? 'left' : offset > swipeThreshold / 2 ? 'right' : null;
+      setSwipe({ x: offset, hint });
     },
     [phase, swipeXMotion],
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
-      if (!swipeRef.current.dragging) return;
+      if (!swipeRef.current.dragging || e.pointerId !== swipeRef.current.pointerId) return;
       containerRef.current?.releasePointerCapture?.(e.pointerId);
       swipeRef.current.dragging = false;
       const dx = swipeRef.current.x;
-      const wasSwipe = swipeRef.current.isSwipe;
-      swipeRef.current.isSwipe = false;
-      if (wasSwipe) {
-        if (Math.abs(dx) > swipeThreshold && phase === 'answer') {
+      const axis = swipeRef.current.axis;
+      swipeRef.current.axis = null;
+      const velocity = swipeXMotion.getVelocity();
+      if (axis) {
+        const flick = Math.abs(dx) > 12 && Math.abs(velocity) > 650 && dx * velocity > 0;
+        if (axis === 'x' && (Math.abs(dx) > swipeThreshold || flick) && phase === 'answer') {
           committed.current = true;
           hapticMedium();
           setHasSwiped(true);
@@ -192,7 +207,7 @@ export function FlipCard({
             /* ignore */
           }
           // The shared transition carries swipe, button and keyboard grades off-screen.
-          void onAnswer(dx > 0, 'touch', swipeXMotion.getVelocity());
+          void onAnswer(dx > 0, 'touch', velocity);
         } else {
           resetSwipe();
         }
@@ -205,7 +220,7 @@ export function FlipCard({
           selection && containerRef.current
             ? containerRef.current.contains(selection.anchorNode)
             : false;
-        setSwipe({ x: 0, hint: null });
+        resetSwipe();
         if (!selectionGrew || !isInsideCard) {
           if (phase === 'question') onReveal();
           else if (phase === 'answer' && audioCard) setShowAudioFront((visible) => !visible);
@@ -218,10 +233,10 @@ export function FlipCard({
 
   const handlePointerCancel = useCallback(
     (e: React.PointerEvent) => {
-      if (committed.current) return;
+      if (committed.current || e.pointerId !== swipeRef.current.pointerId) return;
       containerRef.current?.releasePointerCapture?.(e.pointerId);
       swipeRef.current.dragging = false;
-      swipeRef.current.isSwipe = false;
+      swipeRef.current.axis = null;
       resetSwipe();
     },
     [resetSwipe],
@@ -349,7 +364,7 @@ export function FlipCard({
             }}
             style={{
               transformOrigin: 'center center',
-              x: swipeXMotion,
+              x: sharedX ? undefined : swipeXMotion,
               minHeight: stableHeight === undefined ? undefined : `min(${stableHeight}px, 100%)`,
             }}
             className={cn(
