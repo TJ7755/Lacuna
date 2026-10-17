@@ -106,7 +106,7 @@ export function NumericAnswerEditor({
           ) : (
             <div
               className={cn(
-                value.kind === 'within' && 'grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]',
+                value.kind === 'within' && 'grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_9rem]',
               )}
             >
               <MathsAnswerInput
