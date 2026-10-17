@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     allowOnly: !process.env.CI,
     environment: 'node',
+    maxWorkers: 1,
     include: ['src/**/*.test.ts'],
   },
 });

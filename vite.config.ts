@@ -102,6 +102,14 @@ export default defineConfig({
   server: {
     port: 5173,
     headers: crossOriginIsolationHeaders,
+    watch: {
+      ignored: [
+        '**/artifacts/**',
+        '**/coverage/**',
+        '**/playwright-report/**',
+        '**/electron/dist-electron/**',
+      ],
+    },
   },
   preview: {
     headers: crossOriginIsolationHeaders,
