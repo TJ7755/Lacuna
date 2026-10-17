@@ -143,6 +143,16 @@ behaviour for unsigned macOS. Windows NSIS and Linux AppImage retain their exist
 Windows portable and Linux DEB remain manual updates. A wider rollout requires evidence from the
 actual signed release artefacts as well as the existing data-durability and device gates.
 
+## Controlled rollout
+
+- Initial testing: clean and restored historical profiles on Windows and macOS.
+- Limited pupil beta: confirmed backup routine, diagnostics and a named support channel.
+- Wider school rollout: two weeks without unresolved data-loss, startup or installation P0s,
+  signed Windows and macOS releases, and macOS notarisation.
+
+For each pilot user, make backup status visible and explain how to export a full backup.
+These gates do not claim that device verification or signing has already passed.
+
 ## Trigger integrity
 
 The workflow accepts tags matching `v*`, then rejects the run unless both conditions hold:

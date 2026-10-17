@@ -47,7 +47,7 @@ interface PendingShareImport {
   };
 }
 
-/** Decode-time lineage check (docs/archive/roadmap-2026-08-11.md §7.5): does this payload's lineage match a
+/** Decode-time lineage check (docs/spec/portability.md): does this payload's lineage match a
  *  course already tracked locally? If so, route the confirm step to the merge importer
  *  instead of the plain `importSharePayload` path. */
 async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {

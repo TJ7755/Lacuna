@@ -6,7 +6,7 @@
 // single effective date the scheduler should target. It is pure: no DB access and
 // no Date.now() except as a default parameter.
 //
-// Resolution order (new_features_list.md §8.2 and Addendum 2 §G):
+// Resolution order (docs/spec/exam-objective.md):
 //   1. Lesson override: if the card's primary lesson has an `examDate`, use it.
 //      This is an explicit teacher override and wins outright, regardless of
 //      whether it is in the past or the future, and even if a sooner checkpoint

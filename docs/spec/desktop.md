@@ -140,11 +140,9 @@ The shipped surface deliberately excludes raw FSRS-state writes, review recordin
 operations, note annotations and most course-structure mutation. Streamable HTTP, a web
 companion process, durable client identity and plugin extension points remain deferred.
 
-These exclusions describe the shipped contract, not an instruction to bolt future operations onto
-the renderer through generic UI automation. The attachable local companion and canonical
-programmatic release scenario implement the first §§2.12–2.13 slices. The broader proposed
-user-action surface — including the separate safety boundary for study-history writes — remains in
-`docs/archive/roadmap-2026-08-11.md` §2.14.
+These exclusions describe the shipped contract. The attachable local companion and canonical
+programmatic release scenario cover the supported automation surface. Any broader user-action
+surface, especially study-history writes, requires a fresh product and safety decision.
 
 ### Scripts
 
