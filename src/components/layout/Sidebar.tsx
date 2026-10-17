@@ -369,34 +369,38 @@ export function Sidebar({
           drawer ? 'gap-2' : 'flex-col items-start pl-[14px]',
         )}
       >
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title="Toggle colour theme"
-          aria-label="Toggle colour theme"
-          className={cn(
-            'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
-            'text-ink-soft hover:bg-ink/5 hover:text-ink',
-            drawer
-              ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
-              : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
-          )}
+        <motion.div
+          // Desktop keeps the stacked footprint so nothing above shifts. Expanded, the theme
+          // toggle drops into the bottom slot beside the chevron; collapsed, it rises to the
+          // upper slot. Same curve as the width, so reversals stay in step.
+          initial={false}
+          animate={drawer ? undefined : { y: collapsed ? 0 : '100%' }}
+          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+          className={cn(!drawer && 'pb-2')}
         >
-          {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title="Toggle colour theme"
+            aria-label="Toggle colour theme"
+            className={cn(
+              'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+              'text-ink-soft hover:bg-ink/5 hover:text-ink',
+              drawer
+                ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
+                : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
+            )}
+          >
+            {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+        </motion.div>
         {collapseControl && (
           <motion.div
-            // Desktop keeps the stacked footprint so nothing above shifts: the chevron rests
-            // beside the theme toggle when expanded and glides down to its slot when collapsed,
-            // on the width's own curve so reversals stay in step.
+            // The chevron stays on the bottom line and slides between the rail column and the
+            // row's right edge.
             initial={false}
-            animate={
-              drawer
-                ? undefined
-                : { x: collapsed ? 0 : DESKTOP_CHEVRON_ROW_X, y: collapsed ? 0 : '-100%' }
-            }
+            animate={drawer ? undefined : { x: collapsed ? 0 : DESKTOP_CHEVRON_ROW_X }}
             transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
-            className={cn(!drawer && 'pt-2')}
             data-testid={drawer ? undefined : 'sidebar-collapse-slot'}
           >
             <button

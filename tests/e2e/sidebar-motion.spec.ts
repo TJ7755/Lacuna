@@ -43,7 +43,8 @@ for (const compact of [false, true]) {
       sidebar.getByRole('button', { name: 'Toggle colour theme' }),
       sidebar.getByRole('button', { name: /^(Collapse|Expand) sidebar$/ }),
     ];
-    // The collapse chevron changes slot by design; every other icon stays put.
+    // Only the theme toggle's height and the chevron's column change; every icon's left stays put
+    // (the chevron aside).
     const icons = [...rows, controls[0]];
     const chevronBox = async () =>
       controls[1].locator('svg').evaluate((icon) => {
@@ -54,11 +55,11 @@ for (const compact of [false, true]) {
     await page.waitForTimeout(700);
     const before = await Promise.all(icons.map(iconLeft));
     const expandedChevron = await chevronBox();
-    const themeTop = await controls[0]
-      .locator('svg')
-      .evaluate((icon) => icon.getBoundingClientRect().top);
-    // Expanded: theme left, chevron right, on one row.
-    expect(Math.abs(expandedChevron.top - themeTop)).toBeLessThanOrEqual(0.5);
+    const themeTop = () =>
+      controls[0].locator('svg').evaluate((icon) => icon.getBoundingClientRect().top);
+    const expandedThemeTop = await themeTop();
+    // Expanded: theme left, chevron right, together on the bottom line.
+    expect(Math.abs(expandedChevron.top - expandedThemeTop)).toBeLessThanOrEqual(0.5);
     expect(expandedChevron.left).toBeGreaterThan(before[names.length]! + 100);
     const brand = page.getByTestId('sidebar-brand-mark');
     const brandLeft = (await brand.boundingBox())!.x;
@@ -79,12 +80,13 @@ for (const compact of [false, true]) {
     const after = await Promise.all(icons.map(iconLeft));
     for (let i = 0; i < icons.length; i++)
       expect(Math.abs(after[i] - before[i]), [...names, 'Theme'][i]).toBeLessThanOrEqual(0.5);
-    // Collapsed: the chevron stacks directly beneath the theme toggle, on the same axis.
+    // Collapsed: the chevron stays on the bottom line, in the rail column, beneath the theme toggle.
     await expect
       .poll(async () => Math.abs((await chevronBox()).left - after[names.length]!))
       .toBeLessThanOrEqual(0.5);
     const collapsedChevron = await chevronBox();
-    expect(collapsedChevron.top).toBeGreaterThan(themeTop + 40);
+    expect(Math.abs(collapsedChevron.top - expandedChevron.top)).toBeLessThanOrEqual(0.5);
+    await expect.poll(themeTop).toBeLessThan(expandedThemeTop - 40);
     expect(Math.abs((await brand.boundingBox())!.x - brandLeft)).toBeLessThanOrEqual(0.5);
     for (const row of rows) await expect(row).toHaveAccessibleName(new RegExp('.+'));
     for (let i = 0; i < rows.length; i++) {
@@ -129,10 +131,11 @@ for (const compact of [false, true]) {
     const restored = await Promise.all(icons.map(iconLeft));
     expect(restored).toEqual(before);
     await expect.poll(chevronBox).toEqual(expandedChevron);
+    await expect.poll(themeTop).toBe(expandedThemeTop);
   });
 }
 
-test('the collapse chevron glides between row and stack and reverses mid-flight', async ({
+test('the collapse chevron slides along the bottom line as the theme toggle rises, and reverse mid-flight', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -150,7 +153,7 @@ test('the collapse chevron glides between row and stack and reverses mid-flight'
       return { left, top, themeTop: theme.getBoundingClientRect().top };
     };
     const rest = where();
-    const trail: { left: number; top: number }[] = [];
+    const trail: { left: number; top: number; themeTop: number }[] = [];
     button.click();
     const start = performance.now();
     while (performance.now() - start < 120) {
@@ -165,13 +168,16 @@ test('the collapse chevron glides between row and stack and reverses mid-flight'
     await new Promise((resolve) => setTimeout(resolve, 500));
     return { rest, trail, reversed, next, settled: where() };
   });
+  // Expanded: both controls share the bottom line.
   expect(result.rest.top).toBeCloseTo(result.rest.themeTop, 0);
   for (const sample of result.trail) {
     expect(sample.left).toBeLessThanOrEqual(result.rest.left + 0.5);
-    expect(sample.top).toBeGreaterThanOrEqual(result.rest.top - 0.5);
+    // The chevron never leaves the bottom line; the theme toggle only rises.
+    expect(Math.abs(sample.top - result.rest.top)).toBeLessThanOrEqual(1.5);
+    expect(sample.themeTop).toBeLessThanOrEqual(result.rest.themeTop + 0.5);
   }
   expect(result.trail.at(-1)!.left).toBeLessThan(result.rest.left - 5);
-  expect(result.trail.at(-1)!.top).toBeGreaterThan(result.rest.top + 5);
+  expect(result.trail.at(-1)!.themeTop).toBeLessThan(result.rest.themeTop - 5);
   // Nothing jumps on reversal; it eases back towards the row.
   expect(Math.abs(result.next.left - result.reversed.left)).toBeLessThan(60);
   expect(result.settled.left).toBeCloseTo(result.rest.left, 0);
@@ -190,11 +196,13 @@ test('the collapse chevron snaps under reduced motion', async ({ page }) => {
     .getByRole('complementary')
     .getByRole('button', { name: 'Toggle colour theme' });
   const rowTop = (await theme.boundingBox())!.y;
-  expect((await button.boundingBox())!.y).toBeCloseTo(rowTop, 0);
+  const buttonTop = (await button.boundingBox())!.y;
+  expect(buttonTop).toBeCloseTo(rowTop, 0);
   await button.click();
   await expect
-    .poll(async () => (await button.boundingBox())!.y, { timeout: 250 })
-    .toBeGreaterThan(rowTop + 40);
+    .poll(async () => (await theme.boundingBox())!.y, { timeout: 250 })
+    .toBeLessThan(rowTop - 40);
+  expect((await button.boundingBox())!.y).toBeCloseTo(buttonTop, 0);
 });
 
 test('width, active pill and content share each frame on Today', async ({ page, context }) => {
@@ -361,7 +369,13 @@ test('course lessons fold without unmounting and rail hover cards wait for the m
   await enterFreshLacuna(page);
   const aside = page.getByRole('complementary');
   const course = aside.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
-  const expander = aside.getByRole('button', { name: 'Expand Welcome to Lacuna', exact: true });
+  const expander = aside.getByRole('button', { name: /^(Expand|Collapse) Welcome to Lacuna$/ });
+  // The Welcome course may already be open on a fresh profile; fold it so the expansion is measured.
+  if ((await expander.getAttribute('aria-expanded')) === 'true') {
+    await expander.click();
+    await expect(expander).toHaveAttribute('aria-expanded', 'false');
+    await page.waitForTimeout(600);
+  }
   await expander.click();
   const lesson = aside.getByRole('link', {
     name: 'Core concepts & rendering',
