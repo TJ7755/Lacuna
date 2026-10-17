@@ -11,7 +11,12 @@ import {
 } from '../../db/revisionPlanRepository';
 import type { CourseAssessment, RevisionPlan } from '../../db/types';
 import { formatDateTime } from '../../utils/datetime';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { DelayedFallback } from '../ui/DelayedFallback';
 import { Button } from '../ui/Button';
+import { Field, Input, inputFrameClassName } from '../ui/Field';
+import { Skeleton } from '../ui/Skeleton';
+import { cn } from '../ui/cn';
 import { SectionCard } from '../ui/SectionCard';
 
 const PRESETS = [10, 20, 30] as const;
@@ -126,7 +131,28 @@ export function RevisionPlanSetup({
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-paper" />;
+  if (loading)
+    return (
+      // The pending treatment of the neighbouring study screens: a withheld skeleton column.
+      <div
+        role="status"
+        aria-busy="true"
+        className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        aria-label="Loading revision plan"
+      >
+        <DelayedFallback>
+          <div className="w-full max-w-xl space-y-4">
+            <Skeleton className="h-4 w-32 bg-ink/5" />
+            <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
+            <Skeleton className="h-5 w-full bg-ink/5" />
+            <div className="mt-8 flex gap-3">
+              <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
+              <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
+            </div>
+          </div>
+        </DelayedFallback>
+      </div>
+    );
   if (!assessment) {
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
@@ -202,9 +228,8 @@ export function RevisionPlanSetup({
                   </Button>
                 ))}
               </div>
-              <label className="mt-4 block text-sm text-ink-soft">
-                Custom minutes
-                <input
+              <Field label="Custom minutes" className="mt-4">
+                <Input
                   type="number"
                   min={1}
                   max={480}
@@ -214,9 +239,8 @@ export function RevisionPlanSetup({
                     if (plan && todayWindow?.status === 'scheduled')
                       void updateBudget(todayWindow.day, budget);
                   }}
-                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none focus:border-accent"
                 />
-              </label>
+              </Field>
             </section>
           )}
 
@@ -242,7 +266,7 @@ export function RevisionPlanSetup({
                 >
                   {editingSchedule ? 'Hide future days' : 'Edit future days'}
                 </button>
-                {editingSchedule && (
+                <AnimatedDisclosure open={editingSchedule}>
                   <div className="mt-3 space-y-2">
                     {plan.windows
                       .filter((window) => window.day !== today && window.status === 'scheduled')
@@ -262,7 +286,7 @@ export function RevisionPlanSetup({
                             onBlur={(event) =>
                               void updateBudget(window.day, Number(event.target.value))
                             }
-                            className="w-20 rounded-md border border-line-strong bg-paper px-2 py-1.5 text-sm"
+                            className={cn(inputFrameClassName, 'min-h-11 w-20 text-sm')}
                           />
                           <Button
                             variant="ghost"
@@ -276,7 +300,7 @@ export function RevisionPlanSetup({
                         </div>
                       ))}
                   </div>
-                )}
+                </AnimatedDisclosure>
               </section>
             )}
 
@@ -311,7 +335,7 @@ function PlanShell({
 }) {
   return (
     <div className="min-h-screen bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
-      <main className="mx-auto max-w-xl">
+      <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center">
         <h1 className="font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
         {children}
         <Button variant="ghost" size="lg" className="mt-4 w-full" onClick={onExit}>

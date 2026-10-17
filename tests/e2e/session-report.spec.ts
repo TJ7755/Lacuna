@@ -28,9 +28,9 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
   await expect(page.getByText('Goal reached', { exact: true })).toHaveCount(0);
   await expect(page.getByText('+100 percentage points')).toBeHidden();
-  await page.locator('summary').filter({ hasText: 'Session details' }).click();
+  await page.getByRole('button', { name: 'Session details' }).click();
   await expect(page.getByText('+100 percentage points')).toBeVisible();
-  await page.locator('summary').filter({ hasText: 'Session details' }).click();
+  await page.getByRole('button', { name: 'Session details' }).click();
   await expect(
     page.getByRole('progressbar', { name: 'Cards correct in this pass' }),
   ).toHaveAttribute('aria-valuenow', '100');

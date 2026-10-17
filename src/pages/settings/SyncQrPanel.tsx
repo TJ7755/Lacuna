@@ -46,9 +46,19 @@ export function SyncQrPanel({
         </Button>
       </div>
       <div className="flex flex-col items-center gap-4">
-        <div className="rounded-2xl bg-white p-4">
-          <Suspense fallback={<div className="h-64 w-64" aria-hidden="true" />}>
-            <QRCode value={qrValue} size={256} level="L" bgColor="#ffffff" fgColor="#000000" />
+        {/* The white tile keeps its 256px QR where there is room and shrinks with the
+            panel, so the nested 20px inset survives on a phone. White/black are required
+            for reliable scanning and are not part of the app palette. */}
+        <div className="w-full max-w-[288px] shrink-0 aspect-square rounded-2xl bg-white p-4">
+          <Suspense fallback={<div className="h-full w-full" aria-hidden="true" />}>
+            <QRCode
+              value={qrValue}
+              size={256}
+              level="L"
+              bgColor="#ffffff"
+              fgColor="#000000"
+              className="h-full w-full"
+            />
           </Suspense>
         </div>
         <Button variant="secondary" size="sm" onClick={onCopy}>
