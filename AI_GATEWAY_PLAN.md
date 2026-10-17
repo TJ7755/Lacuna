@@ -250,9 +250,9 @@ write, a rejected write and Stop. Record model/provider, latency, token cost and
 transport fixtures alone do not establish that a real model completes the workflow. Use
 disposable study data and a capped test credential.
 
-Update `docs/SPEC.md` and the relevant spec pages, `docs/desktop.md`, README and
-`docs/CHANGES.md` when implementation lands. Add durable operational lessons to `MEMORIES.md`
-only when actually learned. This draft itself needs no application changelog entry.
+Update the relevant specification and operating procedures when implementation lands,
+and record changes in `docs/changes/unreleased/`. This draft itself needs no application
+changelog entry.
 
 ## Decisions and deployment checks
 

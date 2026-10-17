@@ -1,8 +1,8 @@
 # Lacuna specification
 
-Delivered behaviour at the development head after **v0.2.9 beta** (release verified
-20 September 2026). The [roadmap](next_plan.md) tracks remaining work; [changes](CHANGES.md)
-records release history. Historical plans do not override these contracts.
+Delivered behaviour at the development head. [GitHub issues](https://github.com/TJ7755/Lacuna/issues)
+track remaining work; [changes](CHANGES.md) records release history. Historical plans do not
+override these contracts.
 
 Lacuna is a local-first, exam-driven FSRS-6 application organised into courses, lessons,
 notes and recall Cards. Questions have independent evidence and scheduling. Core study data

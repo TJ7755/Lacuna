@@ -18,7 +18,7 @@
 > **Remaining human item:** the §6.8 manual pass — a real labelled diagram authored end to
 > end, both card kinds, light and dark, touch and keyboard, web and Electron.
 
-> Supersedes the Arc 6 outline in `next_plan.md` for implementation purposes. UI directions
+> Historical Arc 6 design record. UI directions
 > were mocked, reviewed and chosen before this plan was written: see
 > [`mockups-audio.html`](./mockups-audio.html) and
 > [`mockups-occlusion.html`](./mockups-occlusion.html) in this folder. Chosen directions:
