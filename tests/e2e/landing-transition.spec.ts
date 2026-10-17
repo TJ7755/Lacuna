@@ -79,7 +79,7 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   ).toBeLessThanOrEqual(2);
 });
 
-for (const label of ['Revision around your exam', 'Ready to make it stick?']) {
+for (const label of ['Revision around your exam', 'Your exam has a date. Start there.']) {
   test(`${label} launches promptly while preserving the continuous cover`, async ({ page }) => {
     await page.goto('/#/welcome');
     await page.evaluate(() => {

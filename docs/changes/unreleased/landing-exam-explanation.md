@@ -1,0 +1,1 @@
+- Replace the landing page below the hero with concise exam scheduling, forecast, grading, exam question and privacy explanations, using static product examples and a shorter FAQ.

@@ -40,8 +40,11 @@ easier. Run the implemented canonical slice with
 ## 2. First run, landing page and technical account
 
 - [ ] A genuinely empty profile opens `#/welcome`; an existing profile opens the dashboard.
-- [ ] The landing page scroll navigation, exam-date demonstration and interactive grading
-      demonstration all respond without trapping scroll or keyboard focus.
+- [ ] “See how it works” and the keyboard skip link focus and scroll to `#how-it-works`.
+- [ ] The landing page presents scheduling, forecast, Yes/No grading, exam questions and privacy
+      in that order; visuals stay decorative and outside the tab order.
+- [ ] Landing copy and visuals fit desktop and phone widths, including reduced motion and enlarged
+      text; the FAQ, closing app entry, method and download links work.
 - [ ] The landing call to action enters the application and creates the seeded Welcome course once.
 - [ ] Reloading does not duplicate the Welcome course.
 - [ ] Both seeded SVG illustrations render; no broken-image icon appears.
