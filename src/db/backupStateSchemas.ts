@@ -25,7 +25,7 @@ import {
   verdict,
 } from './backupRecordSchemas';
 import { isAgentMemory } from './agentMemoryRecord';
-import { specificationPointIdsSchema } from '../specifications/links';
+import { specificationPointIdsSchema } from '../specifications/linkSchemas';
 
 const projection = z.discriminatedUnion('projectionMode', [
   object({ projectionMode: z.literal('memory-model'), memoryModelVersion: text }),

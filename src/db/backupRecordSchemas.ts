@@ -3,7 +3,7 @@ import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
-import { specificationRefSchema } from '../specifications/links';
+import { specificationRefSchema } from '../specifications/linkSchemas';
 
 export const text = z.string();
 export const id = text.min(1);

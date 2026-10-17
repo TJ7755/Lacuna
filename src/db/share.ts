@@ -76,11 +76,8 @@ import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
 import { importSharedQuestionSets, packQuestionSetMedia } from '../questions/questionSetShare';
-import {
-  specificationPointIdsSchema,
-  specificationRefSchema,
-  type SpecificationReference,
-} from '../specifications/links';
+import { specificationPointIdsSchema, specificationRefSchema } from '../specifications/linkSchemas';
+import type { SpecificationReference } from '../specifications/links';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -709,7 +706,8 @@ export interface SharePayloadV5 extends Omit<SharePayloadV4, 'v'> {
 }
 
 /** The decoded contents of a share code, either a flat deck list or a single course. */
-export type SharePayload = SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
+export type SharePayload =
+  SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
 
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
@@ -765,7 +763,11 @@ export function parseSharePayload(payload: unknown): SharePayload {
       ...parse.data,
       questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
       ...(parse.data.v === 5
-        ? { questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(parseQuestionSetPracticeNode) }
+        ? {
+            questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(
+              parseQuestionSetPracticeNode,
+            ),
+          }
         : {}),
     } as SharePayloadV4 | SharePayloadV5;
   }
@@ -1124,17 +1126,25 @@ export async function buildCourseSharePayload(
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts, questionSets, practiceNodes] =
-    await Promise.all([
-      lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.cards.where('courseId').equals(courseId).toArray(),
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.concepts.where('courseId').equals(courseId).toArray(),
-      db.questions.where('courseId').equals(courseId).toArray(),
-      db.questionConcepts.where('courseId').equals(courseId).toArray(),
-      db.questionSets.where('courseId').equals(courseId).toArray(),
-      db.practiceNodes.where('courseId').equals(courseId).toArray(),
-    ]);
+  const [
+    notes,
+    courseCards,
+    lessonLinks,
+    concepts,
+    questions,
+    questionConcepts,
+    questionSets,
+    practiceNodes,
+  ] = await Promise.all([
+    lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+    db.cards.where('courseId').equals(courseId).toArray(),
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    db.concepts.where('courseId').equals(courseId).toArray(),
+    db.questions.where('courseId').equals(courseId).toArray(),
+    db.questionConcepts.where('courseId').equals(courseId).toArray(),
+    db.questionSets.where('courseId').equals(courseId).toArray(),
+    db.practiceNodes.where('courseId').equals(courseId).toArray(),
+  ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
     const group = notesByLesson.get(note.lessonId);
@@ -1347,10 +1357,13 @@ export async function buildCourseSharePayload(
     };
   });
 
-  const questionSetPracticeNodes = practiceNodes.filter(
-    (node) => node.type === 'question-set',
+  const questionSetPracticeNodes = practiceNodes.filter((node) => node.type === 'question-set');
+  assertQuestionSetPracticeNodeReferences(
+    questionSetPracticeNodes,
+    [course],
+    lessons,
+    questionSets,
   );
-  assertQuestionSetPracticeNodeReferences(questionSetPracticeNodes, [course], lessons, questionSets);
   return {
     v: 5,
     by: null,
@@ -1854,8 +1867,13 @@ async function importCourseSharePayload(
               throw new Error('A shared Question Set activity has a missing Set or Lesson.');
             }
             return parseQuestionSetPracticeNode({
-              ...node, id: makeId(), courseId: course.id, questionSetId, afterLessonId,
-              createdAt: importedAt, updatedAt: importedAt,
+              ...node,
+              id: makeId(),
+              courseId: course.id,
+              questionSetId,
+              afterLessonId,
+              createdAt: importedAt,
+              updatedAt: importedAt,
             });
           });
           if (importedNodes.length > 0) await db.practiceNodes.bulkAdd(importedNodes);
