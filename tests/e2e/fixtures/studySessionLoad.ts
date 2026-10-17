@@ -3,10 +3,11 @@ import type { Card } from '../../../src/db/types';
 import { db } from '../../../src/db/schema';
 import { assetUrl, storeImageBlob } from '../../../src/db/assets';
 import { reviewHistoryEntriesForCard } from '../../../src/db/reviewHistory';
+import type { StudyImageFixture } from './largeStudyImages';
 import { buildCardConcept } from '../../../src/questions/concepts';
 
-/** Disposable browser fixture using the same compressed byte assets as imported images. */
-export async function seed() {
+/** Original-sized imported assets, stored through the same byte/hash seam as APKG media. */
+export async function seed(images: StudyImageFixture[]) {
   await seedHeavy(true);
   await db.open();
   const originals = await db.cards.toArray();
@@ -24,31 +25,15 @@ export async function seed() {
   });
   await db.cards.clear();
   await db.reviewHistory.clear();
-  const canvas = document.createElement('canvas');
-  canvas.width = 1280;
-  canvas.height = 960;
-  const ctx = canvas.getContext('2d')!;
   let bytes = 0;
-  for (let i = 0; i < 210; i++) {
-    // A textured microscopy-like image: unique, decodable, and large enough to exercise storage.
-    const pixels = ctx.createImageData(canvas.width, canvas.height);
-    let random = i + 1;
-    for (let p = 0; p < pixels.data.length; p += 4) {
-      random = (Math.imul(random, 1664525) + 1013904223) | 0;
-      pixels.data[p] = (random >>> 24) & 255;
-      pixels.data[p + 1] = 100 + ((random >>> 16) & 127);
-      pixels.data[p + 2] = 140;
-      pixels.data[p + 3] = 255;
-    }
-    ctx.putImageData(pixels, 0, 0);
-    ctx.fillStyle = '#fff'; ctx.font = '40px sans-serif';
-    ctx.fillText(`Biology specimen ${i}`, 40, 70);
-    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.8));
-    const asset = await storeImageBlob(blob, blob.type, canvas.width, canvas.height);
+  for (const [i, image] of images.entries()) {
+    const blob = await (await fetch(image.url)).blob();
+    const asset = await storeImageBlob(blob, image.mimeType, image.width, image.height);
+    if (asset.hash !== image.hash) throw new Error('Fixture image bytes changed during seeding');
     const stored = (await db.assets.get(asset.hash))!.blob;
     bytes += stored instanceof Blob ? stored.size : stored.byteLength;
-    const cardIndex = i < 105 ? i * 2 : (i - 105) * 2 + 1;
-    if (i < 105) {
+    const cardIndex = i;
+    if (i % 2 === 0) {
       cards[cardIndex].front += `\n\n![Cell specimen](${assetUrl(asset.hash)})`;
     } else {
       const regionId = `biology-region-${i}`;
@@ -72,6 +57,10 @@ export async function seed() {
   await db.lessonCardExposures.bulkAdd(cards.map((card) => ({
     lessonId: card.primaryLessonId!, cardId: card.id, taughtAt: card.createdAt, updatedAt: Date.now(),
   })));
+  const reviews = await db.reviewHistory.count();
   db.close();
-  return { cards: cards.length, imageCards: 105, occlusionCards: 105, imageBytes: bytes, reviews: 6440 };
+  return { cards: cards.length, imageCards: images.length / 2, occlusionCards: images.length / 2,
+    imageBytes: bytes, reviews, distinctImages: new Set(images.map((image) => image.hash)).size,
+    minImageBytes: Math.min(...images.map((image) => image.bytes)),
+    maxImageBytes: Math.max(...images.map((image) => image.bytes)) };
 }

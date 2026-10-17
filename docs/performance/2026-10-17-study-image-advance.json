@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-17",
+  "baselineCommit": "ce418d83f9f15cb20883e43c39e4aed3aab269e3",
+  "environment": {
+    "build": "Vite production",
+    "browser": "headless Chromium",
+    "cpuSlowdown": 4,
+    "workers": 1,
+    "motion": "normal",
+    "advancesPerState": 24
+  },
+  "definition": "Yes pointer down to visible incoming image, completed HTMLImageElement.decode() and two animation-frame samples; card frame timing recorded independently.",
+  "fixture": {
+    "cards": 322,
+    "imageCards": 54,
+    "occlusionCards": 54,
+    "imageBytes": 397930832,
+    "reviews": 6440,
+    "distinctImages": 108,
+    "minImageBytes": 2932099,
+    "maxImageBytes": 4580050
+  },
+  "before": {
+    "gradeToImagePaintMs": {
+      "p50": 260.24,
+      "worst": 447.61
+    },
+    "gradeToFrameMs": {
+      "p50": 146.94,
+      "worst": 340.06
+    },
+    "gradeToLoadedImageMs": {
+      "p50": 186.94,
+      "worst": 373.32
+    },
+    "firstFrameHeightPx": 276.79,
+    "paintedFrameHeightPx": 495.83,
+    "smallestInitialToPaintedHeightRatio": 0.5498,
+    "backgroundWarmDecodeMs": {
+      "p50": 159.44,
+      "worst": 461.87
+    },
+    "backgroundAssetReadMs": {
+      "p50": 30.99,
+      "worst": 85.04
+    },
+    "targetsWithCompletedDecodeOfSameURLBeforeGrade": 24,
+    "targetAssetReadsAfterGrade": 0,
+    "canvasContextCalls": 0,
+    "byCardKind": {
+      "markdown": {
+        "p50": 267.43,
+        "worst": 447.61
+      },
+      "occlusion": {
+        "p50": 244.19,
+        "worst": 447.07
+      }
+    },
+    "byMimeType": {
+      "image/jpeg": {
+        "p50": 251.94,
+        "worst": 447.07
+      },
+      "image/png": {
+        "p50": 265.92,
+        "worst": 447.61
+      }
+    }
+  },
+  "after": {
+    "gradeToImagePaintMs": {
+      "p50": 179.06,
+      "worst": 271.35
+    },
+    "gradeToFrameMs": {
+      "p50": 137.46,
+      "worst": 217.4
+    },
+    "gradeToLoadedImageMs": {
+      "p50": 137.46,
+      "worst": 217.41
+    },
+    "firstFrameHeightPx": 488.37,
+    "paintedFrameHeightPx": 490.85,
+    "smallestInitialToPaintedHeightRatio": 0.9893,
+    "backgroundWarmDecodeMs": {
+      "p50": 131.92,
+      "worst": 220.14
+    },
+    "backgroundAssetReadMs": {
+      "p50": 7.05,
+      "worst": 49.96
+    },
+    "targetsWithCompletedDecodeOfSameURLBeforeGrade": 24,
+    "targetAssetReadsAfterGrade": 0,
+    "canvasContextCalls": 0,
+    "byCardKind": {
+      "markdown": {
+        "p50": 181.62,
+        "worst": 202.31
+      },
+      "occlusion": {
+        "p50": 177.71,
+        "worst": 271.35
+      }
+    },
+    "byMimeType": {
+      "image/jpeg": {
+        "p50": 177.41,
+        "worst": 211.73
+      },
+      "image/png": {
+        "p50": 182.15,
+        "worst": 271.35
+      }
+    }
+  }
+}

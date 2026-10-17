@@ -45,6 +45,7 @@ export interface OcclusionMaskLayerProps {
    *  themselves (see src/db/assetCache.ts's `resolveAssetUrl`) before mounting this
    *  component — it never touches the asset store directly. */
   assetUrl: string;
+  imageSize?: Readonly<{ width: number; height: number }>;
   /** Accessible name for the diagram image. */
   alt: string;
   regions: OcclusionMaskRegion[];
@@ -69,6 +70,7 @@ export interface OcclusionMaskLayerProps {
  */
 export function OcclusionMaskLayer({
   assetUrl,
+  imageSize,
   alt,
   regions,
   onRegionClick,
@@ -79,6 +81,8 @@ export function OcclusionMaskLayer({
     <div className={cn('relative w-full overflow-hidden rounded-2xl bg-ink/[0.04]', className)}>
       <img
         src={assetUrl}
+        width={imageSize?.width}
+        height={imageSize?.height}
         alt={alt}
         loading="lazy"
         decoding="async"

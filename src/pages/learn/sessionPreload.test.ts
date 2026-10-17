@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveAssetUrl } from '../../db/assetCache';
+import { rememberAssetImageSize, resolveAssetUrl } from '../../db/assetCache';
 import { assetUrl } from '../../db/assets';
 import type { Card } from '../../db/types';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
@@ -7,7 +7,7 @@ import { defaultFsrsParameters } from '../../fsrs/params';
 import { makeSessionContext, selectNext } from '../../fsrs/session';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 
-vi.mock('../../db/assetCache', () => ({ resolveAssetUrl: vi.fn() }));
+vi.mock('../../db/assetCache', () => ({ resolveAssetUrl: vi.fn(), rememberAssetImageSize: vi.fn() }));
 
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
@@ -70,6 +70,23 @@ describe('image warm-up', () => {
     await vi.waitFor(() => expect(images).toHaveLength(3));
     expect(resolveAssetUrl).not.toHaveBeenCalledWith('c'.padStart(64, '0'));
     expect(images.every((image) => image.decode.mock.calls.length === 1)).toBe(true);
+    stop();
+  });
+
+  it('records natural dimensions only after decoding has completed', async () => {
+    let finishDecode!: () => void;
+    vi.stubGlobal('Image', class {
+      src = '';
+      naturalWidth = 4000;
+      naturalHeight = 3000;
+      decode() { return new Promise<void>((resolve) => { finishDecode = resolve; }); }
+    });
+    vi.mocked(resolveAssetUrl).mockResolvedValue('blob:large');
+    const stop = preloadSessionImages([card('a')], new Map());
+    await vi.waitFor(() => expect(finishDecode).toBeTypeOf('function'));
+    expect(rememberAssetImageSize).not.toHaveBeenCalled();
+    finishDecode();
+    await vi.waitFor(() => expect(rememberAssetImageSize).toHaveBeenCalledWith('blob:large', 4000, 3000));
     stop();
   });
 
