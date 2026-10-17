@@ -11,6 +11,13 @@ time limit, a due break, an assessment, a lesson or the end of the flow still pa
 
 ### Session lifecycle
 
+Card presentations use a `100dvh` column: the header and answer/grade controls reserve
+their space, and the card fills the remaining height. Images scale proportionally to fit;
+occlusion masks share the fitted image's coordinate box. Media cards use compact padding.
+Long text scrolls inside the card body rather than scrolling the page. Simple Learn uses
+the same layout. Review notifications sit above the study actions and their surfaces pass
+pointer input through; the existing Undo action remains interactive.
+
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
    filter narrows a single-deck session). Build a `SessionContext` (one objective
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.

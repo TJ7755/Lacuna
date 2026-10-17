@@ -46,7 +46,7 @@ export function StudyControls({
   return (
     <>
       {(isTypingCard || !isTouchMode) && (
-        <div className={'grid w-full ' + (isTypingCard ? 'mt-6' : 'mt-8')}>
+        <div className={'study-controls grid w-full shrink-0 ' + (isTypingCard ? 'mt-6' : 'mt-8')}>
           <motion.div
             className="col-start-1 row-start-1 flex w-full flex-col items-center self-start gap-3"
             initial={false}

@@ -239,7 +239,7 @@ export function FlipCard({
 
   const displayedFront = !revealed || showAudioFront;
   const surfaceClassName =
-    'flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14';
+    'study-card-surface flex min-h-[12rem] flex-col items-center justify-center rounded-3xl border bg-surface px-6 py-10 md:min-h-[14rem] md:px-12 md:py-14';
 
   const { height: stableHeight, frontRef, backRef } = useStableCardHeight();
   const face = (side: 'front' | 'back', measuring = false) => (
@@ -264,7 +264,10 @@ export function FlipCard({
   );
 
   return (
-    <div className="flex flex-1 items-center justify-center" style={{ perspective: '1600px' }}>
+    <div
+      className="study-flip-card flex flex-1 items-center justify-center"
+      style={{ perspective: '1600px' }}
+    >
       <div
         ref={containerRef}
         role="button"
@@ -344,11 +347,12 @@ export function FlipCard({
               duration: 0.28 * m,
               ease: [0.16, 1, 0.3, 1],
             }}
-            style={{ transformOrigin: 'center center', x: swipeXMotion, minHeight: stableHeight }}
+            style={{
+              transformOrigin: 'center center',
+              x: swipeXMotion,
+              minHeight: stableHeight === undefined ? undefined : `min(${stableHeight}px, 100%)`,
+            }}
             className={cn(
-              // A modest floor keeps short cards from looking like a stray label without
-              // making a two-line card float in an otherwise empty container. Longer cards
-              // grow past it as before.
               'relative z-10 ' + surfaceClassName,
               CARD_SURFACE_CLASS,
             )}

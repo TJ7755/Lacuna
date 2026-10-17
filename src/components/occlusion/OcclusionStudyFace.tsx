@@ -68,8 +68,10 @@ export function OcclusionStudyFace({
     });
 
   return (
-    <div className={cn('text-left', className)}>
-      <OcclusionMaskLayer assetUrl={assetUrl} alt={occlusion.name} regions={regions} />
+    <div className={cn('study-occlusion text-left', className)}>
+      <div className="study-occlusion-diagram">
+        <OcclusionMaskLayer assetUrl={assetUrl} alt={occlusion.name} regions={regions} />
+      </div>
       {side === 'back' && face.answerText !== undefined && (
         <p className="mt-4 text-center text-lg text-ink">{face.answerText}</p>
       )}

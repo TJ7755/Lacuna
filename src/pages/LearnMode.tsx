@@ -1,4 +1,5 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
+import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
 import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -377,7 +378,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   }
 
   return (
-    <StudyEntrance className="min-h-screen overflow-x-clip bg-paper">
+    <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
         active={() =>
@@ -453,7 +454,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="flex min-h-screen flex-col"
+            className={
+              'study-session flex h-dvh flex-col overflow-hidden' +
+              (focusMode ? ' pt-[calc(84px+env(safe-area-inset-top))]' : '')
+            }
           >
             {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
             <AnimatePresence>
@@ -534,24 +538,20 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               )}
             </AnimatePresence>
-            {/* Card — mode-aware border accent */}
-            {/* The card and its controls centre as one block. Centring the card alone
-                leaves it optically high, because the reveal and grade controls sit below
-                it and all the remaining height collects underneath them. When a card is
-                taller than the viewport this container simply grows, so nothing is
-                clipped and the page scrolls as before. StudyControls reserves the same
-                space in both phases so this centred block does not shift on reveal. */}
+            {/* Reserve the controls first; only the card body may scroll. */}
             <main
               ref={studyFocusRef}
               tabIndex={-1}
               aria-label="Study card"
               className={
-                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none focus-visible:shadow-none ' +
+                'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col outline-none focus-visible:shadow-none ' +
                 'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-                'pt-8 md:pt-12 ' +
+                'pt-4 md:pt-6 ' +
                 (isTouchMode && !suppressClassicGrading
-                  ? 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-                  : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
+                  ? gradingMode === 'manual'
+                    ? 'pb-[calc(14rem+env(safe-area-inset-bottom))]'
+                    : 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
+                  : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
               }
             >
               <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
@@ -578,62 +578,64 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               ) : (
                 current && (
-                  <StudyCardTransition
-                    ref={cardTransitionRef}
-                    cardId={current.id}
-                    phase={phase}
-                    multiplier={m}
-                  >
-                    {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
-                      <NumericStudyFace
-                        card={
-                          current as Card & {
-                            payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                  <div className="study-card-slot min-h-0 flex-1">
+                    <StudyCardTransition
+                      ref={cardTransitionRef}
+                      cardId={current.id}
+                      phase={phase}
+                      multiplier={m}
+                    >
+                      {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
+                        <NumericStudyFace
+                          card={
+                            current as Card & {
+                              payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                            }
                           }
-                        }
-                        allowCheckerDisputes={!isSimpleMode}
-                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                      />
-                    ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
-                      <WorkingStudyFace
-                        card={
-                          current as Card & {
-                            payload: Extract<ItemPayload, { kind: 'working' }>;
+                          allowCheckerDisputes={!isSimpleMode}
+                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                        />
+                      ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
+                        <WorkingStudyFace
+                          card={
+                            current as Card & {
+                              payload: Extract<ItemPayload, { kind: 'working' }>;
+                            }
                           }
-                        }
-                        allowCheckerDisputes={!isSimpleMode}
-                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                      />
-                    ) : hasUnrenderableItemPayload ? (
-                      <UnknownItemFace card={current} />
-                    ) : (
-                      <FlipCard
-                        card={current}
-                        revealed={phase === 'answer'}
-                        motionSpeed={motionSpeed}
-                        phase={phase}
-                        isTouchMode={isTouchMode}
-                        menuOpen={menuOpen}
-                        editing={editing}
-                        hintsOpen={hintsOpen}
-                        onReveal={reveal}
-                        onHide={hide}
-                        onAnswer={(input, source, velocity) =>
-                          answerWithUndo(input, source, velocity)
-                        }
-                        typedAnswer={typedAnswer}
-                        isTypingCard={isTypingCard}
-                        mode={mode}
-                        isLinesModeCard={isLinesModeCard}
-                        hintStep={hintStep}
-                        onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
-                        hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
-                        answerStrictness={answerStrictness}
-                        occlusion={occlusion}
-                        occlusionAnswerText={occlusionAnswerText}
-                      />
-                    )}
-                  </StudyCardTransition>
+                          allowCheckerDisputes={!isSimpleMode}
+                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                        />
+                      ) : hasUnrenderableItemPayload ? (
+                        <UnknownItemFace card={current} />
+                      ) : (
+                        <FlipCard
+                          card={current}
+                          revealed={phase === 'answer'}
+                          motionSpeed={motionSpeed}
+                          phase={phase}
+                          isTouchMode={isTouchMode}
+                          menuOpen={menuOpen}
+                          editing={editing}
+                          hintsOpen={hintsOpen}
+                          onReveal={reveal}
+                          onHide={hide}
+                          onAnswer={(input, source, velocity) =>
+                            answerWithUndo(input, source, velocity)
+                          }
+                          typedAnswer={typedAnswer}
+                          isTypingCard={isTypingCard}
+                          mode={mode}
+                          isLinesModeCard={isLinesModeCard}
+                          hintStep={hintStep}
+                          onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
+                          hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
+                          answerStrictness={answerStrictness}
+                          occlusion={occlusion}
+                          occlusionAnswerText={occlusionAnswerText}
+                        />
+                      )}
+                    </StudyCardTransition>
+                  </div>
                 )
               )}
 

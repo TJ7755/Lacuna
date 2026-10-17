@@ -218,7 +218,7 @@ export function SequenceRecitation({
       ref={rootRef}
       className={cn(
         SECTION_CARD_SURFACE_CLASS,
-        'mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8 md:px-10 md:py-10',
+        'study-recitation mx-auto flex w-full max-w-2xl flex-col gap-6 px-6 py-8 md:px-10 md:py-10',
       )}
       onKeyDown={(event) => {
         // While marking, a line's number toggles it, so marking never needs the pointer.

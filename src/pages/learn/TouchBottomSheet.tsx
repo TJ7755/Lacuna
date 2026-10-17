@@ -36,7 +36,7 @@ export function TouchBottomSheet({
       initial={{ y: 80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-      className="fixed bottom-0 left-0 right-0 z-20 overflow-hidden bg-paper pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+      className="study-touch-controls fixed bottom-0 left-0 right-0 z-20 overflow-hidden bg-paper pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
     >
       <StepSwap
         stepKey={phase}
