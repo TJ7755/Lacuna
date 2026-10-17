@@ -2,10 +2,14 @@ import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
-import { expandingActionSpring } from './motion';
+import { scaledSpring } from './motion';
 
 export function animatedDisclosureTiming(multiplier: number) {
-  return { height: expandingActionSpring(multiplier), opacity: { duration: 0.12 * multiplier } };
+  return {
+    // A height cannot overshoot below zero: CSS rejects it and freezes the closing edge.
+    height: scaledSpring(multiplier, 420, 2 * Math.sqrt(420)),
+    opacity: { duration: 0.12 * multiplier },
+  };
 }
 
 /**

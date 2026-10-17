@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
-import { expandingActionSpring } from './motion';
+import { scaledSpring } from './motion';
 import { domAnimation, LazyMotion } from 'motion/react';
+import { spring } from 'motion';
 
 const motion = vi.hoisted(() => ({ multiplier: 1 }));
 
@@ -12,10 +13,33 @@ vi.mock('../../state/motionSpeed', () => ({
 }));
 
 describe('animatedDisclosureTiming', () => {
+  it.each([0.6, 1, 1.4])('closes without crossing zero at speed %s', (multiplier) => {
+    for (const height of [400, 1600, 4000]) {
+      const generator = spring({
+        ...animatedDisclosureTiming(multiplier).height,
+        keyframes: [height, 0],
+      });
+      let previous = height;
+      for (let time = 0; time <= 1500 * multiplier; time += 1000 / 60) {
+        const frame = generator.next(time);
+        // Negative CSS heights are rejected, leaving the last positive sliver frozen.
+        expect(frame.value).toBeGreaterThanOrEqual(0);
+        expect(frame.value).toBeLessThanOrEqual(previous);
+        previous = frame.value;
+        if (frame.done) break;
+      }
+      expect(previous).toBe(0);
+    }
+  });
+
   it('follows the global speed and reduced-motion multipliers', () => {
-    expect(animatedDisclosureTiming(1.4).height).toEqual(expandingActionSpring(1.4));
+    expect(animatedDisclosureTiming(1.4).height).toEqual(
+      scaledSpring(1.4, 420, 2 * Math.sqrt(420)),
+    );
     expect(animatedDisclosureTiming(1.4).opacity.duration).toBeCloseTo(0.168);
-    expect(animatedDisclosureTiming(0.6).height).toEqual(expandingActionSpring(0.6));
+    expect(animatedDisclosureTiming(0.6).height).toEqual(
+      scaledSpring(0.6, 420, 2 * Math.sqrt(420)),
+    );
     expect(animatedDisclosureTiming(0.6).opacity.duration).toBeCloseTo(0.072);
     expect(animatedDisclosureTiming(0)).toEqual({
       height: { duration: 0 },

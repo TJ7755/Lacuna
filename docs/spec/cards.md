@@ -30,7 +30,8 @@ use native click activation. Each section owns its open state and retains its re
 body, diagrams and annotation drafts while closed. Closed content is inert and hidden
 from assistive technology. Shared retained disclosures cache their natural height and
 observe content resizes, keeping measurement and Markdown/Mermaid work out of toggles.
-The expansion spring follows motion speed and becomes instant with reduced motion.
+The height spring is critically damped, so closing never overshoots below zero and
+freezes on an invalid CSS height. It follows motion speed and becomes instant with reduced motion.
 Concurrent Mermaid renders and theme updates use distinct SVG IDs so one diagram cannot
 remove another. The development server pre-bundles Mermaid's CommonJS dependencies.
 
