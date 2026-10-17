@@ -34,6 +34,8 @@ export function StudyEntrance({
         ),
       ),
     ];
+    // Cancellation rejects finished in browsers and the DOM test environment.
+    animations.forEach((animation) => void animation?.finished.catch(() => {}));
     return () => animations.forEach((animation) => animation?.cancel());
   }, []);
   return (

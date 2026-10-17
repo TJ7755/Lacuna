@@ -15,9 +15,10 @@ beforeEach(() => {
 
 it('reveals ready content with a header fade and three short staggered rises', () => {
   const cancel = vi.fn();
+  const handled = vi.fn();
   const animate = vi
     .spyOn(Element.prototype, 'animate')
-    .mockReturnValue({ cancel } as unknown as Animation);
+    .mockReturnValue({ cancel, finished: { catch: handled } } as unknown as Animation);
   const { container, unmount } = render(
     <StudyEntrance>
       <header>Session</header>
@@ -47,6 +48,7 @@ it('reveals ready content with a header fade and three short staggered rises', (
   expect(container.firstChild).not.toHaveStyle({ transform: 'translateY(0px)' });
   unmount();
   expect(cancel).toHaveBeenCalledTimes(4);
+  expect(handled).toHaveBeenCalledTimes(4);
 });
 
 it('reveals immediately with no animations under reduced motion', () => {
