@@ -1,0 +1,1 @@
+- Restore compact, content-sized study cards, centred between the header and fixed study controls. Larger cards grow up to the viewport limit while retaining fitted media, registered occlusion masks and internal text scrolling.

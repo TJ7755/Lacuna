@@ -12,7 +12,10 @@ time limit, a due break, an assessment, a lesson or the end of the flow still pa
 ### Session lifecycle
 
 Card presentations use a `100dvh` column: the header and answer/grade controls reserve
-their space, and the card fills the remaining height. Images scale proportionally to fit;
+their space, and a content-sized card sits centred in the remaining area. Short desktop
+cards are approximately 300px tall; larger cards grow up to the available height. Both
+faces share the larger natural height, capped to the viewport, and the controls stay in
+place between differently sized cards. Images scale proportionally to fit;
 occlusion masks share the fitted image's coordinate box. Media cards use compact padding.
 Long text scrolls inside the card body rather than scrolling the page. Simple Learn uses
 the same layout. Review notifications sit above the study actions and their surfaces pass

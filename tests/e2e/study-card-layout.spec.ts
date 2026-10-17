@@ -9,6 +9,12 @@ async function availableCardHeight(card: Locator): Promise<number> {
   return card.evaluate((card) => card.closest('.study-card-slot')!.clientHeight);
 }
 
+async function naturalCardHeight(card: Locator): Promise<number> {
+  return card
+    .locator('[data-study-sizing-face]')
+    .evaluateAll((faces) => Math.max(...faces.map((face) => (face as HTMLElement).offsetHeight)));
+}
+
 async function centreOffsetFromCard(element: Locator): Promise<number> {
   return element.evaluate((element) => {
     const surface = element.closest('[data-study-face]')?.parentElement;
@@ -47,9 +53,7 @@ async function lessonIdForCourse(page: Page, courseId: string) {
   );
 }
 
-test('keeps both study-card faces within the remaining viewport height', async ({
-  page,
-}) => {
+test('keeps both study-card faces within the remaining viewport height', async ({ page }) => {
   await enterFreshLacuna(page);
   await createCourse(page, 'Stable card');
   const courseId = /#\/course\/([^/]+)/.exec(page.url())?.[1];
@@ -102,7 +106,12 @@ test('keeps both study-card faces within the remaining viewport height', async (
       measurementWidthAdded: 0,
     });
     await expect
-      .poll(async () => Math.abs((await cardHeight(card)) - (await availableCardHeight(card))))
+      .poll(async () =>
+        Math.abs(
+          (await cardHeight(card)) -
+            Math.min(await naturalCardHeight(card), await availableCardHeight(card)),
+        ),
+      )
       .toBeLessThan(1);
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBe(900);
     const frontHeight = await cardHeight(card);
