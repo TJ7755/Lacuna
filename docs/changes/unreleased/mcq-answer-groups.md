@@ -1,0 +1,1 @@
+- Keep correct-answer radio groups separate when editing several multiple-choice questions on one screen.

@@ -1,5 +1,5 @@
 import { QuestionSetChoices } from './QuestionSetChoices';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { makeId } from '../../db/schema';
 import type { QuestionAnswer, QuestionResponse } from '../../questions/questionSets';
@@ -13,6 +13,7 @@ export function QuestionSetResponseEditor({
   onChange: (answer: QuestionAnswer) => void;
 }) {
   const [pending, setPending] = useState<QuestionResponse | null>(null);
+  const optionGroup = useId();
   const response = answer.response;
   const change = (next: QuestionResponse) => onChange({ ...answer, response: next });
   return (
@@ -84,7 +85,7 @@ export function QuestionSetResponseEditor({
             <div className="qs-option" key={option.id}>
               <input
                 type={response.selection === 'single' ? 'radio' : 'checkbox'}
-                name="correct-option"
+                name={optionGroup}
                 aria-label={`Option ${i + 1} is correct`}
                 checked={response.correctOptionIds.includes(option.id)}
                 onChange={() =>
