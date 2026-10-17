@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto';
 import { createFixedQuestion } from '../questions/repository.authoring';
 import { createConcept } from '../questions/repository.concepts';
-import { beforeEach, describe, expect, it } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import * as setRepository from '../questions/questionSetRepository';
 import { db } from '../db/schema';
 import { createLesson } from '../db/lessonRepository';
 import { createCourseAssessment } from '../db/assessmentRepository';
@@ -11,6 +12,62 @@ import { open, resetEditorData, setup } from './questionSetEditorTestSupport';
 
 describe('Paper question set authoring', () => {
   beforeEach(resetEditorData);
+  afterEach(() => vi.restoreAllMocks());
+
+  it('retries a failed draft load without reloading or losing its saved input', async () => {
+    const course = await setup();
+    const draft = (await loadQuestionSetDraft(course.id, 'paper-set'))!;
+    draft.content.questions[0].prompt = 'Keep this unfinished question';
+    await saveQuestionSetDraft(draft, { expectedDraftRevisionId: draft.draftRevisionId });
+    const detail = 'IndexedDB transaction refused';
+    vi.spyOn(setRepository, 'getQuestionSet').mockRejectedValueOnce(new Error(detail));
+
+    open(course.id);
+    const heading = await screen.findByRole('heading', {
+      name: 'Could not open this question set',
+    });
+    expect(heading).toHaveFocus();
+    expect(screen.getByText(detail)).not.toBeVisible();
+    fireEvent.click(screen.getByText('Technical details'));
+    expect(screen.getByText(detail)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByLabelText('Q1 question')).toHaveValue(
+      'Keep this unfinished question',
+    );
+    await waitFor(() => expect(screen.getByLabelText('Q1 question')).toHaveFocus());
+    expect((await loadQuestionSetDraft(course.id, 'paper-set'))?.content.questions[0].prompt).toBe(
+      'Keep this unfinished question',
+    );
+  });
+
+  it('distinguishes a missing draft from a failed load and offers a way back', async () => {
+    const course = await setup();
+    await db.appState.clear();
+    open(course.id);
+
+    const heading = await screen.findByRole('heading', { name: 'Question set not found' });
+    expect(heading).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Back to Questions' }));
+    expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
+  });
+
+  it('acknowledges a slow draft load and replaces it with the saved editor', async () => {
+    const course = await setup();
+    let finish!: (value: null) => void;
+    vi.spyOn(setRepository, 'getQuestionSet').mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    open(course.id);
+    expect(await screen.findByRole('status', { name: 'Loading question set' })).toBeVisible();
+    await act(async () => finish(null));
+    expect(await screen.findByLabelText('Q1 question')).toBeVisible();
+    expect(screen.queryByRole('status', { name: 'Loading question set' })).not.toBeInTheDocument();
+  });
   it('uses concise captions for all three composer columns', async () => {
     const course = await setup();
     const { container } = open(course.id);

@@ -37,19 +37,41 @@ import {
 import type { QuestionSetAttemptSession } from '../components/question-sets/questionSetAttemptSession';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import {
+  QuestionSetLoading,
+  QuestionSetUnavailable,
+} from '../components/question-sets/QuestionSetRouteState';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
 export function QuestionSetPractice() {
   const { courseId = '', setId = '', attemptId = '' } = useParams();
-  const { session, error } = useQuestionSetAttempt(courseId, setId, attemptId);
+  const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
+  const backTo = `/course/${courseId}/question-sets/${setId}`;
+  if (missing)
+    return (
+      <QuestionSetUnavailable
+        title="Attempt not found"
+        backTo={backTo}
+        backLabel="Back to question set"
+      >
+        This attempt may have been removed or belong to another question set. Choose a saved attempt
+        or start a new one from the set.
+      </QuestionSetUnavailable>
+    );
   if (error)
     return (
-      <p role="alert" className="p-8">
-        {error}
-      </p>
+      <QuestionSetUnavailable
+        title="Could not open this attempt"
+        backTo={backTo}
+        backLabel="Back to question set"
+        detail={error}
+        onRetry={retryLoad}
+      >
+        The saved attempt could not be read. Try again; your saved answers have not been removed.
+      </QuestionSetUnavailable>
     );
-  if (!session) return <p className="p-8">Loading attempt…</p>;
+  if (!session) return <QuestionSetLoading label="Loading attempt" />;
   return <PracticeWorkspace key={attemptId} session={session} />;
 }
 

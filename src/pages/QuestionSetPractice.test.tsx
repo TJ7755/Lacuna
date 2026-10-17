@@ -149,6 +149,44 @@ describe('QuestionSetPractice', () => {
     await db.open();
   });
 
+  it('retries a failed attempt load without losing a saved answer', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    await attemptRepository.saveQuestionSetResponseDraft(
+      attempt.id,
+      attempt.revisionId,
+      'q1-a',
+      { kind: 'written', text: 'Keep this answer' },
+      'q1-a',
+    );
+    vi.spyOn(attemptRepository, 'getQuestionSetAttempt').mockRejectedValueOnce(
+      new Error('Attempt transaction refused'),
+    );
+    open(course.id, set.id, attempt.id);
+
+    const failureHeading = await screen.findByRole('heading', {
+      name: 'Could not open this attempt',
+    });
+    await waitFor(() => expect(failureHeading).toHaveFocus());
+    expect(screen.getByText(/Attempt transaction refused/)).not.toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByLabelText('Your answer')).toHaveValue('Keep this answer');
+    await waitFor(() => expect(screen.getByLabelText('Your answer')).toHaveFocus());
+    expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
+      kind: 'written',
+      text: 'Keep this answer',
+    });
+  });
+
+  it('offers a return action for a missing attempt without pretending it is still loading', async () => {
+    const { course, set } = await fixture();
+    const { router } = open(course.id, set.id, 'missing');
+    expect(await screen.findByRole('heading', { name: 'Attempt not found' })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Back to question set' }));
+    expect(router.state.location.pathname).toBe(`/course/${course.id}/question-sets/${set.id}`);
+  });
+
   it('keeps practice progression inside the card without submission captions or saved chrome', async () => {
     const { course, set } = await fixture();
     const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
