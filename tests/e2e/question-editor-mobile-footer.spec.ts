@@ -97,9 +97,10 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(prompt).toBeFocused();
     await expect(concept).toHaveValue(chosenId);
     await expect(page.getByRole('combobox', { name: 'Lesson', exact: true })).not.toHaveValue('');
-    await expect(
-      page.getByRole('button', { name: 'Another skill', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.getByRole('button', { name: 'Another skill', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
 
     await prompt.fill('What is 3 + 3?');
     await answer.fill('6');
@@ -126,5 +127,55 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
       await page.getByRole('button', { name: 'Save Question' }).click();
       await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
     }
+  });
+}
+
+for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+  test(`Question validation focuses the answer and invalid generator field (${reducedMotion})`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion });
+    await enterFreshLacuna(page);
+    await createCourse(page, 'Question validation');
+    const courseId = new URL(page.url()).hash.split('/')[2];
+    await page.goto(`/#/course/${courseId}/questions/new`);
+    const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
+    const answer = page.getByRole('textbox', { name: 'Expected answer', exact: true });
+    await prompt.fill('What is 2 + 2?');
+    await page.getByRole('button', { name: 'Create Question' }).click();
+    await expect(answer).toBeFocused();
+    await expect(page.getByText('Add a valid answer.', { exact: true })).toBeVisible();
+    await expect(prompt).toHaveValue('What is 2 + 2?');
+    await answer.fill('4');
+    await answer.press('Control+Enter');
+    await expect(
+      page.getByRole('textbox', { name: 'Worked explanation', exact: true }),
+    ).toBeFocused();
+
+    await page.getByRole('button', { name: 'Generated family' }).click();
+    const name = page.getByPlaceholder('Completing the square');
+    await name.fill('Validated quadratic family');
+    await page.getByPlaceholder('A single piece of knowledge').fill('Quadratic roots');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    const minimum = page.getByRole('spinbutton', { name: 'Minimum root magnitude', exact: true });
+    await minimum.fill('10');
+    await name.press('Meta+Enter');
+    await expect(minimum).toBeFocused();
+    await expect(minimum).toHaveValue('10');
+    await expect(minimum).toHaveAttribute('aria-invalid', 'true');
+    await expect(minimum).toHaveAccessibleDescription(
+      'Use a minimum root magnitude no greater than the maximum.',
+    );
+    await expect(name).toHaveValue('Validated quadratic family');
+    await minimum.fill('3');
+    await expect(minimum).toBeFocused();
+    await expect(minimum).not.toHaveAttribute('aria-invalid', 'true');
+    await page.getByRole('button', { name: 'Create Question' }).click();
+    await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+    await page.getByRole('link', { name: 'Edit Validated quadratic family', exact: true }).click();
+    await expect(minimum).toHaveValue('3');
+    await expect(
+      page.getByRole('combobox', { name: 'Primary skill practised', exact: true }),
+    ).toHaveValue(/.+/);
   });
 }

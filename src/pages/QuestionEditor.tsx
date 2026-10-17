@@ -33,6 +33,8 @@ import { useEditorKeys } from '../hooks/dialogKeys';
 import type { ItemFixture, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from '../items/markSchemeCompiler';
 import { questionGeneratorRegistry } from '../questions/generators';
+import type { GeneratorDescription } from '../questions/generators/contracts';
+import { INTEGER_ROOT_QUADRATIC_GENERATOR_KEY } from '../questions/generators/integerRootQuadratic';
 import {
   createConcept,
   createFixedQuestion,
@@ -106,6 +108,7 @@ export function QuestionEditor() {
   const [attempted, setAttempted] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLDivElement>(null);
+  const configurationRef = useRef<HTMLElement>(null);
   const explanationRef = useRef<HTMLTextAreaElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const conceptRef = useRef<HTMLSelectElement>(null);
@@ -113,7 +116,18 @@ export function QuestionEditor() {
     kind === 'fixed'
       ? fixedPayload(answerKind, numericAnswer, workingCompilation, workingFixtures)
       : undefined;
+  const configurationErrors = useMemo(
+    () =>
+      kind === 'generated' && generator
+        ? generatedConfigurationErrors(generator, generatorConfig)
+        : {},
+    [generator, generatorConfig, kind],
+  );
+  const firstConfigurationError = generator?.configurationFields.find(
+    (field) => configurationErrors[field.key],
+  )?.key;
   const allErrors = {
+    configuration: firstConfigurationError,
     prompt: kind === 'fixed' && !prompt.trim() ? 'Add a prompt.' : undefined,
     answer: kind === 'fixed' && !payload ? 'Add a valid answer.' : undefined,
     explanation: kind === 'fixed' && !explanation.trim() ? 'Add a worked explanation.' : undefined,
@@ -140,11 +154,14 @@ export function QuestionEditor() {
     setAttempted(true);
     const first = (
       [
-        ['prompt', promptRef.current],
         [
-          'answer',
-          answerRef.current?.querySelector<HTMLElement>('input, textarea, select, button'),
+          'configuration',
+          configurationRef.current?.querySelector<HTMLElement>(
+            `[name="${firstConfigurationError}"]`,
+          ),
         ],
+        ['prompt', promptRef.current],
+        ['answer', answerRef.current?.querySelector<HTMLElement>('input, textarea, select')],
         ['explanation', explanationRef.current],
         ['name', nameRef.current],
         ['concept', conceptRef.current],
@@ -352,6 +369,7 @@ export function QuestionEditor() {
                   {answerKind === 'numeric' ? (
                     <NumericAnswerEditor
                       value={numericAnswer}
+                      invalid={Boolean(errors.answer)}
                       onChange={(value) => draft.update({ numericAnswer: value })}
                     />
                   ) : (
@@ -382,9 +400,11 @@ export function QuestionEditor() {
             </>
           ) : generator ? (
             <GeneratedQuestionConfiguration
+              ref={configurationRef}
               generator={generator}
               configuration={generatorConfig}
               onChange={(value) => draft.update({ generatorConfig: value })}
+              errors={attempted ? configurationErrors : undefined}
             />
           ) : null}
         </StepSwap>
@@ -499,4 +519,35 @@ function fixedPayload(
     }),
     fixtures,
   };
+}
+
+function generatedConfigurationErrors(
+  generator: GeneratorDescription,
+  configuration: Record<string, string | number | boolean>,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of generator.configurationFields) {
+    if (field.kind !== 'integer') continue;
+    const value = configuration[field.key];
+    if (
+      typeof value !== 'number' ||
+      !Number.isInteger(value) ||
+      (field.minimum !== undefined && value < field.minimum) ||
+      (field.maximum !== undefined && value > field.maximum)
+    ) {
+      errors[field.key] =
+        field.minimum !== undefined && field.maximum !== undefined
+          ? `Enter a whole number from ${field.minimum} to ${field.maximum}.`
+          : 'Enter a valid whole number.';
+    }
+  }
+  if (
+    generator.key === INTEGER_ROOT_QUADRATIC_GENERATOR_KEY &&
+    !errors.minimumRootMagnitude &&
+    !errors.maximumRootMagnitude &&
+    Number(configuration.minimumRootMagnitude) > Number(configuration.maximumRootMagnitude)
+  ) {
+    errors.minimumRootMagnitude = 'Use a minimum root magnitude no greater than the maximum.';
+  }
+  return errors;
 }

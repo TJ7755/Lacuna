@@ -166,7 +166,10 @@ before name, lesson and Concepts, and a new fixed Question opens with focus in t
 Ctrl/Cmd+Enter saves; for a new Question it is **Save & add another**, which keeps the form, lesson,
 Concept, answer type and tags and starts the next prompt. Escape leaves only while nothing has been
 changed. A save with missing fields reports each at its field, keeps every input and focuses the
-first in page order, without a toast.
+first in page order, without a toast. Missing numeric answers focus the answer input rather than
+the answer-check buttons. Generated-family integer limits and the minimum/maximum root relationship
+are checked inline before saving; the first invalid configuration field receives focus before
+metadata, and correcting it clears its accessible error without replacing the input.
 
 Question authoring uses the same local draft store as Card authoring through a typed, generic
 storage boundary. Fixed, working and generated state — including invalid raw working source,

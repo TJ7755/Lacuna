@@ -64,23 +64,6 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
   ),
 }));
 
-vi.mock('../components/items/NumericAnswerEditor', () => ({
-  numericAnswerSpecIsValid: (value: { value?: string }) => Boolean(value.value?.trim()),
-  NumericAnswerEditor: ({
-    value,
-    onChange,
-  }: {
-    value: { kind: 'exact'; value: string };
-    onChange: (value: { kind: 'exact'; value: string }) => void;
-  }) => (
-    <input
-      aria-label="Expected answer"
-      value={value.value}
-      onChange={(event) => onChange({ kind: 'exact', value: event.target.value })}
-    />
-  ),
-}));
-
 vi.mock('../components/items/MarkSchemeEditor', () => ({
   MarkSchemeEditor: () => <div>Working answer editor</div>,
 }));
@@ -250,6 +233,74 @@ describe('QuestionEditor', () => {
     await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveFocus());
     expect(loadDraft(questionDraftKey('course-1'))).toBeNull();
   });
+
+  it.each([
+    [
+      'Minimum root magnitude',
+      '0',
+      '1',
+      'Enter a whole number from 1 to 20.',
+      'minimumRootMagnitude',
+    ],
+    [
+      'Minimum root magnitude',
+      '10',
+      '3',
+      'Use a minimum root magnitude no greater than the maximum.',
+      'minimumRootMagnitude',
+    ],
+    [
+      'Maximum root magnitude',
+      '21',
+      '5',
+      'Enter a whole number from 1 to 20.',
+      'maximumRootMagnitude',
+    ],
+    [
+      'Maximum leading coefficient',
+      '1.5',
+      '2',
+      'Enter a whole number from 1 to 9.',
+      'maximumLeadingCoefficient',
+    ],
+  ])(
+    'keeps invalid generator input inline and focuses %s (%s)',
+    async (label, invalid, valid, message, key) => {
+      renderEditor();
+      fireEvent.click(await screen.findByRole('button', { name: 'Generated family' }));
+      fireEvent.change(screen.getByPlaceholderText('Completing the square'), {
+        target: { value: 'Retained family' },
+      });
+      chooseConcept();
+      const field = screen.getByRole('spinbutton', { name: label });
+      fireEvent.change(field, { target: { value: invalid } });
+      fireEvent.keyDown(field, { key: 'Enter', ctrlKey: true });
+
+      expect(field).toHaveFocus();
+      expect(field).toHaveValue(Number(invalid));
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      expect(field).toHaveAccessibleDescription(message);
+      expect(screen.getByPlaceholderText('Completing the square')).toHaveValue('Retained family');
+      expect(mocks.createGenerated).not.toHaveBeenCalled();
+      expect(mocks.notify).not.toHaveBeenCalled();
+
+      fireEvent.change(field, { target: { value: valid } });
+      expect(field).toHaveFocus();
+      expect(field).not.toHaveAttribute('aria-invalid', 'true');
+      expect(screen.queryByText(message)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+      expect(await screen.findByText('Questions list')).toBeInTheDocument();
+      expect(mocks.createGenerated).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Retained family',
+          targetConceptId: 'concept-1',
+          generatorConfig: expect.objectContaining({
+            [key]: Number(valid),
+          }),
+        }),
+      );
+    },
+  );
 
   it('creates the audited built-in quadratic Question family', async () => {
     mocks.createGenerated.mockResolvedValue(undefined);
