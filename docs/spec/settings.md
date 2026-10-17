@@ -95,8 +95,10 @@ mounting are visible immediately even if their change event preceded the subscri
   visible initially; **More** discloses the older points without changing retention. Ordinary
   snapshots are capped at ten, while pre-migration snapshots are exempt. Startup saves when the
   newest point is at least 24 hours old. Ordinary saves have a five-minute in-session throttle;
-  deliberate backups and pre-combine/peer-apply safety snapshots bypass it. Snapshots are not
-  deduplicated by content.
+  deliberate backups and pre-combine/peer-apply safety snapshots bypass it. Peer sync skips its
+  safety snapshot and import only when the current-format payload, import projections and merged
+  state are provably unchanged. Deletes, migrations and uncertain comparisons retain the snapshot;
+  stored restore points are not deduplicated by content.
 - **Device sync:** **Another device** shows the paired state and last successful sync together,
   with Sync now, Show pairing QR and a compact Lock control grouped below. The existing unlocked
   explanation remains on the lock control. **End-to-end encrypted** discloses the relay URL,

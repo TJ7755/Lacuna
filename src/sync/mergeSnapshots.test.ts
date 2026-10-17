@@ -19,7 +19,7 @@ import {
 } from '../db/reviewHistory';
 import { applyReview, makeEngine } from '../fsrs/fsrs';
 import { defaultFsrsParameters } from '../fsrs/params';
-import { mergeSnapshots, type MergedBackupFile } from './mergeSnapshots';
+import { mergeSnapshots, snapshotStateUnchanged, type MergedBackupFile } from './mergeSnapshots';
 
 const PARAMS = defaultFsrsParameters();
 
@@ -609,5 +609,37 @@ describe('mergeSnapshots', () => {
     const merged = expectPeerProperties(a, b);
     expect(merged.cards[0].suspended).toBe(false);
     expect(merged.cards[0].flagged).toBe(true);
+  });
+});
+
+describe('snapshotStateUnchanged', () => {
+  it('ignores export time and object-key order', () => {
+    const left = backup();
+    const right = Object.fromEntries(Object.entries(left).reverse()) as unknown as BackupFile;
+    right.exportedAt += 1;
+
+    expect(snapshotStateUnchanged(left, right)).toBe(true);
+  });
+
+  it('preserves nested array order', () => {
+    const left = { ...backup(), metadata: { steps: ['first', 'second'] } };
+    const right = { ...backup(), metadata: { steps: ['second', 'first'] } };
+
+    expect(snapshotStateUnchanged(left, right)).toBe(false);
+  });
+
+  it('rejects values that JSON serialisation would silently conflate', () => {
+    const nonFinite = { ...backup(), metadata: NaN };
+    const nullValue = { ...backup(), metadata: null };
+    const date = { ...backup(), metadata: new Date(0) };
+    const plainObject = { ...backup(), metadata: {} };
+    expect(snapshotStateUnchanged(nonFinite, nullValue)).toBe(false);
+    expect(snapshotStateUnchanged(date, plainObject)).toBe(false);
+  });
+
+  it('does not normalise missing collections or discard unknown metadata', () => {
+    expect(snapshotStateUnchanged(backup(), backup({ notes: [] }))).toBe(false);
+    const unknownSchema = { ...backup(), schema: 999 };
+    expect(snapshotStateUnchanged(backup(), unknownSchema)).toBe(false);
   });
 });
