@@ -5,7 +5,7 @@
 // auto-inserted in the current gap, from the volume of due work and how close the
 // exam is. It is pure: no DB access and no Date.now() except as a default.
 //
-// The rule (new_features_list.md Addendum 2 §H): estimate the minutes it would
+// The rule (docs/spec/course-management.md): estimate the minutes it would
 // take to clear the due cards (count x mean review time), and trigger practice
 // once that crosses a threshold. The threshold tightens only when an urgent
 // assessment intersects the caller's current Practice scope. A

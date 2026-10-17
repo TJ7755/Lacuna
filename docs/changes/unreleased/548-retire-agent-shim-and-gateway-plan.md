@@ -1,0 +1,1 @@
+- Removed the redundant Claude instruction file and completed AI gateway implementation plan; current agent and contribution policies remain authoritative. (#548)
