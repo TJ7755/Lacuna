@@ -3,7 +3,7 @@
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import { canEditLessons } from '../course/lessonViewMode';
-import { specificationRefSchema, type SpecificationReference } from '../specifications/links';
+import type { SpecificationReference } from '../specifications/links';
 import type {
   Concept,
   QuestionAttempt,
@@ -71,6 +71,11 @@ export type CreateCourseOptions = Partial<CourseRecord> & {
   timeZone?: string;
 };
 
+async function parseSpecificationReference(reference: SpecificationReference) {
+  const { specificationRefSchema } = await import('../specifications/links');
+  return specificationRefSchema.parse(reference);
+}
+
 export async function createCourse(name: string, opts?: CreateCourseOptions): Promise<Course> {
   try {
     const createdAt = Date.now();
@@ -82,7 +87,9 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
       ...recordOptions
     } = opts ?? {};
     if (recordOptions.specificationRef !== undefined) {
-      recordOptions.specificationRef = specificationRefSchema.parse(recordOptions.specificationRef);
+      recordOptions.specificationRef = await parseSpecificationReference(
+        recordOptions.specificationRef,
+      );
     }
     if (schedulingMode === 'steady' && requestedExamDate !== undefined) {
       throw new Error('A steady-retention course cannot also have an exam date.');
@@ -183,7 +190,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
           specificationRef:
             changes.specificationRef === undefined
               ? undefined
-              : specificationRefSchema.parse(changes.specificationRef),
+              : await parseSpecificationReference(changes.specificationRef),
         }
       : changes;
     const compatibilityChanges = changes as Partial<Course>;
@@ -224,7 +231,7 @@ export async function setCourseSpecificationReference(
 ): Promise<void> {
   try {
     const specificationRef =
-      reference === undefined ? undefined : specificationRefSchema.parse(reference);
+      reference === undefined ? undefined : await parseSpecificationReference(reference);
     await db.transaction('rw', db.courses, async () => {
       const course = await db.courses.get(courseId);
       if (!course) throw new Error('The course could not be found.');

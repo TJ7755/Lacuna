@@ -1,10 +1,6 @@
 import { canEditLessons } from '../course/lessonViewMode';
 import { clearTombstone, recordTombstone, stampUpdatedAt } from '../db/mutationStamp';
 import { db, makeId } from '../db/schema';
-import {
-  qualifiedSpecificationPointIdSchema,
-  specificationPointIdsSchema,
-} from '../specifications/links';
 import type { Concept } from './types';
 import { cleanName } from './repository.shared';
 import { referencedQuestionSetConceptIds } from './questionSetRepository';
@@ -66,6 +62,7 @@ export async function setConceptSpecificationPoints(
   ids: string[],
   now = Date.now(),
 ): Promise<Concept> {
+  const { specificationPointIdsSchema } = await import('../specifications/links');
   const specificationPointIds = specificationPointIdsSchema.parse(ids);
   return db.transaction('rw', [db.courses, db.concepts], async () => {
     const concept = await db.concepts.get(conceptId);
@@ -86,6 +83,7 @@ export async function getConceptsForSpecificationPoint(
   courseId: string,
   qualifiedId: string,
 ): Promise<Concept[]> {
+  const { qualifiedSpecificationPointIdSchema } = await import('../specifications/links');
   const id = qualifiedSpecificationPointIdSchema.parse(qualifiedId);
   return (
     await db.concepts
