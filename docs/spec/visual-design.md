@@ -95,6 +95,8 @@ Shared conventions:
   first-open React.lazy fallback delay.
   A constant shadow layer fades in, and Study dims the page by 2.5% without scaling it.
   Reversals start from the presented reveal; closed contents are inert and aria-hidden.
+  Creation headers share the reveal's trigger origin, including viewport clamp offsets,
+  so their labels stay anchored on first opening and during reversals.
   Motion speed scales spring stiffness by the inverse square of the multiplier, damping
   by its inverse, and all axis delays proportionately; multiplier zero applies endpoints
   immediately. Native animation owners consume cancellation, including unmounts.

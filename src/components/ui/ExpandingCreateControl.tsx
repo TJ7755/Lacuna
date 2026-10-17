@@ -100,12 +100,12 @@ export function ExpandingCreateControl({
             if (open) close();
             else onOpenChange(true);
           }}
-          animate={{ x: -offset }}
           data-press=""
           whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
           transition={transition}
-          style={{ width: closedWidth }}
-          className={`absolute ${anchor} top-0 ${open ? '' : 'rounded-full ring-1 ring-inset ring-line-strong'} flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}
+          // Share the reveal's origin so viewport clamping cannot move the header independently.
+          style={{ width: closedWidth, left: morph.origin.left }}
+          className={`absolute top-0 ${open ? '' : 'rounded-full ring-1 ring-inset ring-line-strong'} flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}
         >
           <motion.span
             aria-hidden="true"

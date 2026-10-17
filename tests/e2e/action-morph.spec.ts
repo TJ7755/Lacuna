@@ -57,6 +57,53 @@ for (const width of [390, 1440]) {
   });
 }
 
+test('first phone creation reveal preserves its trigger centre while clamping the panel', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await enterFreshLacuna(page);
+  const trigger = page.locator('main').getByRole('button', { name: 'New course', exact: true });
+  await expect
+    .poll(() =>
+      trigger.evaluate((button) => {
+        let element: Element | null = button;
+        while (element) {
+          const transform = getComputedStyle(element).transform;
+          if (transform !== 'none' && transform !== 'matrix(1, 0, 0, 1, 0, 0)') return false;
+          element = element.parentElement;
+        }
+        return true;
+      }),
+    )
+    .toBe(true);
+  const drift = await trigger.evaluate(async (button) => {
+    const before = button.getBoundingClientRect();
+    const centre = before.left + before.width / 2;
+    const samples: number[] = [];
+    const sample = async (duration: number) => {
+      const start = performance.now();
+      while (performance.now() - start < duration) {
+        await new Promise(requestAnimationFrame);
+        const rect = button.getBoundingClientRect();
+        samples.push(Math.abs(rect.left + rect.width / 2 - centre));
+      }
+    };
+    (button as HTMLButtonElement).click();
+    await sample(650);
+    const firstOpen = Math.max(...samples);
+    samples.length = 0;
+    for (const duration of [90, 90, 650]) {
+      (button as HTMLButtonElement).click();
+      await sample(duration);
+    }
+    return { firstOpen, reversals: Math.max(...samples) };
+  });
+  expect(drift.firstOpen).toBeLessThanOrEqual(2);
+  expect(drift.reversals).toBeLessThanOrEqual(2);
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await expect(trigger).toBeFocused();
+});
+
 test('study prepares beneath a morphing paper blend and reveals without a blank hand-off', async ({
   page,
 }) => {
