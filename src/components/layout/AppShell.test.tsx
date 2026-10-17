@@ -209,7 +209,7 @@ describe('AppShell mobile navigation', () => {
     expect(mark).toHaveClass('text-accent-ink');
     expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-[18px]', 'w-[18px]');
-    expect(mark.className).not.toMatch(/\bbg-|\bp-/);
+    expect(mark.getAttribute('class')).not.toMatch(/\bbg-|\bp-/);
     expect(mark.parentElement).toHaveTextContent('Lacuna');
   });
 

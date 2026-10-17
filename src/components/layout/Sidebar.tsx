@@ -202,7 +202,7 @@ export function Sidebar({
           data-testid="sidebar-brand-mark"
           aria-hidden="true"
           className={cn(
-            'shrink-0 rounded-[18.75%] bg-accent-soft p-[3px] text-accent-ink',
+            'shrink-0 rounded-[18.75%] bg-accent-ink p-[3px] text-accent dark:bg-accent-soft dark:text-accent-ink',
             sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
           )}
         />

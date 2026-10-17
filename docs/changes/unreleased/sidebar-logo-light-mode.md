@@ -1,0 +1,1 @@
+- Restored the sidebar Lacuna mark in light mode to a dark accent tile with bright accent strokes, matching its dark-mode contrast and the landing mark, instead of a pale tile with thin dark strokes.
