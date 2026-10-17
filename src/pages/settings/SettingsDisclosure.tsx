@@ -100,7 +100,7 @@ export function SettingsDisclosure({
         }}
         transition={animatedDisclosureTiming(multiplier)}
         onAnimationComplete={open ? scrollToTarget : undefined}
-        className="overflow-hidden"
+        className="relative overflow-hidden"
       >
         <div className="px-2 pb-6 pt-2 [&_section[id]]:scroll-mt-20">
           <SettingsHeadingLevelProvider level={3}>{children}</SettingsHeadingLevelProvider>

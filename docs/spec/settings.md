@@ -12,6 +12,8 @@ header and shortcuts), **Study behaviour**, **Course defaults**, **Your data** a
 primitives. The separate `SettingsDisclosure` keeps its forms mounted, preserving drafts,
 subscriptions and pending backup/sync operations when closed. Closed content is inert and
 hidden from assistive technology immediately. Course settings remain unchanged.
+Each panel contains its positioned descendants, so closed content contributes no scroll
+height; the page ends after the final row and its normal bottom padding.
 
 Existing group and child section ids remain available. Initial and subsequent deep links
 open the containing group and scroll to the requested section; animated openings finish
@@ -293,6 +295,5 @@ enlarged text require more space, keeping both the name and keyboard controls us
   `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
   stale or deleted `courseId` reaches a genuine not-found state instead of
   hanging on the loading skeleton.
-
 
 [Specification index](../SPEC.md)
