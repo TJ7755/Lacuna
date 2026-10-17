@@ -10,14 +10,13 @@ import { useRecitationInput } from '../../state/recitationInput';
 import { useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { cn } from '../../components/ui/cn';
-import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
-import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
 import {
-  choiceChipClass,
-  PillSwitch,
-  SETTINGS_HEADING_ROW_CLASS,
-  SettingsCard,
-} from './SettingsUi';
+  AUDIO_PLAYBACK_SPEEDS,
+  useAudioSettings,
+  type AudioPlaybackSpeed,
+} from '../../state/audioSettings';
+import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
+import { PillSwitch, SegmentedPills, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
 const FINAL_EXAM_POLICIES: Array<{
   value: AfterFinalExamPolicy;
@@ -63,20 +62,20 @@ export function StudySection() {
         <div className="min-w-0 flex-1 basis-48">
           <div className="font-semibold text-ink">Audio playback speed</div>
         </div>
-        <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Audio playback speed">
-          {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
-            <button
-              key={speed}
-              type="button"
-              role="radio"
-              aria-checked={audioSettings.playbackSpeed === speed}
-              onClick={() => setAudioSettings({ ...audioSettings, playbackSpeed: speed })}
-              className={choiceChipClass(audioSettings.playbackSpeed === speed)}
-            >
-              {speed}×
-            </button>
-          ))}
-        </div>
+        <SegmentedPills
+          label="Audio playback speed"
+          value={String(audioSettings.playbackSpeed)}
+          options={AUDIO_PLAYBACK_SPEEDS.map((speed) => ({
+            value: String(speed),
+            label: `${speed}×`,
+          }))}
+          onChange={(speed) =>
+            setAudioSettings({
+              ...audioSettings,
+              playbackSpeed: Number(speed) as AudioPlaybackSpeed,
+            })
+          }
+        />
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
@@ -87,19 +86,15 @@ export function StudySection() {
             ignores case only, exact requires both to match.
           </p>
         </div>
-        <div className="flex flex-wrap gap-1">
-          {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setAnswerStrictness(level)}
-              aria-pressed={answerStrictness === level}
-              className={cn(choiceChipClass(answerStrictness === level), 'capitalize')}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
+        <SegmentedPills
+          label="Grading strictness"
+          value={answerStrictness}
+          options={(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => ({
+            value: level,
+            label: <span className="capitalize">{level}</span>,
+          }))}
+          onChange={setAnswerStrictness}
+        />
       </div>
 
       <SettingToggle

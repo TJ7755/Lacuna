@@ -4,6 +4,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { TagInput } from '../ui/TagInput';
 import { Button } from '../ui/Button';
+import { Toggle } from '../ui/Toggle';
 import { useToast } from '../ui/Toast';
 import { updateCard } from '../../db/cardRepository';
 import { hasCloze } from '../../utils/cloze';
@@ -154,15 +155,11 @@ export function CardEditOverlay({
               placeholder="The chemical symbol for water is {{c1::H2O}}."
               onError={(m) => notify(m, 'negative')}
             />
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <input
-                type="checkbox"
-                checked={showBackCloze}
-                onChange={(e) => setShowBackCloze(e.target.checked)}
-                className="accent-accent"
-              />
-              Preview revealed answer
-            </label>
+            <Toggle
+              checked={showBackCloze}
+              onChange={setShowBackCloze}
+              label="Preview revealed answer"
+            />
             {!clozeValid && front.trim().length > 0 && (
               <p className="text-sm text-negative">
                 Add at least one cloze deletion using the Cloze button, e.g.{' '}

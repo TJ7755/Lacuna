@@ -1,4 +1,4 @@
-import { QuestionSetChoices } from './QuestionSetChoices';
+import { SegmentedPills } from '../../pages/settings/SettingsUi';
 import { useId, useState } from 'react';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { makeId } from '../../db/schema';
@@ -21,36 +21,39 @@ export function QuestionSetResponseEditor({
   return (
     <section aria-label="Response format">
       {showFormat && (
-        <QuestionSetChoices
-          label="Response"
-          value={response.kind}
-          onChange={(value) => {
-            const kind = value as QuestionResponse['kind'];
-            const next: QuestionResponse =
-              kind === 'multiple-choice'
-                ? {
-                    kind,
-                    selection: 'single',
-                    options: [
-                      { id: makeId(), content: '' },
-                      { id: makeId(), content: '' },
-                    ],
-                    correctOptionIds: [],
-                  }
-                : { kind };
-            if (
-              response.kind === 'multiple-choice' &&
-              response.options.some((option) => option.content.trim())
-            )
-              setPending(next);
-            else change(next);
-          }}
-          options={[
-            { value: 'written', label: 'Written answer' },
-            { value: 'multiple-choice', label: 'Multiple choice' },
-            { value: 'calculation', label: 'Calculation' },
-          ]}
-        />
+        <fieldset className="mb-3 min-w-0">
+          <legend className="mb-2 text-sm font-semibold text-ink">Response</legend>
+          <SegmentedPills
+            label="Response"
+            value={response.kind}
+            onChange={(value) => {
+              const kind = value as QuestionResponse['kind'];
+              const next: QuestionResponse =
+                kind === 'multiple-choice'
+                  ? {
+                      kind,
+                      selection: 'single',
+                      options: [
+                        { id: makeId(), content: '' },
+                        { id: makeId(), content: '' },
+                      ],
+                      correctOptionIds: [],
+                    }
+                  : { kind };
+              if (
+                response.kind === 'multiple-choice' &&
+                response.options.some((option) => option.content.trim())
+              )
+                setPending(next);
+              else change(next);
+            }}
+            options={[
+              { value: 'written', label: 'Written answer' },
+              { value: 'multiple-choice', label: 'Multiple choice' },
+              { value: 'calculation', label: 'Calculation' },
+            ]}
+          />
+        </fieldset>
       )}
       {pending && (
         <ConfirmInline
@@ -66,21 +69,24 @@ export function QuestionSetResponseEditor({
       )}
       {response.kind === 'multiple-choice' && (
         <>
-          <QuestionSetChoices
-            label="Selection"
-            value={response.selection}
-            onChange={(value) =>
-              change({
-                ...response,
-                selection: value as 'single' | 'multiple',
-                correctOptionIds: [],
-              })
-            }
-            options={[
-              { value: 'single', label: 'Choose one' },
-              { value: 'multiple', label: 'Choose several' },
-            ]}
-          />
+          <fieldset className="mb-3 min-w-0">
+            <legend className="mb-2 text-sm font-semibold text-ink">Selection</legend>
+            <SegmentedPills
+              label="Selection"
+              value={response.selection}
+              onChange={(value) =>
+                change({
+                  ...response,
+                  selection: value as 'single' | 'multiple',
+                  correctOptionIds: [],
+                })
+              }
+              options={[
+                { value: 'single', label: 'Choose one' },
+                { value: 'multiple', label: 'Choose several' },
+              ]}
+            />
+          </fieldset>
           <p className="qs-muted">
             Select the correct option{response.selection === 'multiple' ? 's' : ''}. Learners still
             mark their own work.

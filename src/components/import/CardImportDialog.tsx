@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -13,6 +13,7 @@ import {
 } from '../../db/cardImport';
 import { ChevronLeftIcon, CloseIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
+import { Toggle } from '../ui/Toggle';
 import { StepSwap } from '../ui/StepSwap';
 import { CountUp } from '../ui/Celebration';
 import { ImportStepper } from './ImportStepper';
@@ -57,6 +58,7 @@ export function CardImportDialog({
   onCancel,
   onImport,
 }: CardImportDialogProps) {
+  const reverseId = useId();
   const source = useCardImportSource(initialText, onTextChange);
   const loadedFile = useRef<File | undefined>(undefined);
   useEffect(() => {
@@ -272,16 +274,16 @@ export function CardImportDialog({
                 {step === 'review' && (
                   <>
                     {!source.apkg && (
-                      <label className="card-import-reverse">
-                        <span>Also create reverse</span>
-                        <input
-                          type="checkbox"
+                      <div className="card-import-reverse">
+                        <label htmlFor={reverseId}>Also create reverse</label>
+                        <Toggle
+                          id={reverseId}
                           checked={reverse}
-                          onChange={(event) => setReverse(event.target.checked)}
+                          onChange={setReverse}
+                          ariaLabel="Also create reverse"
                           disabled={busy || !eligible}
                         />
-                        <span className="card-import-switch" aria-hidden="true" />
-                      </label>
+                      </div>
                     )}
                     <div className="card-import-total">
                       <strong>
