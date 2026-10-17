@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 it('snaps backwards across a boundary and recomputes the window after resizing', async () => {
-  let width = 796;
+  let width = 810;
   let measure = () => {};
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(() => width);
   vi.stubGlobal(
@@ -24,27 +24,31 @@ it('snaps backwards across a boundary and recomputes the window after resizing',
   );
   const cardIds = Array.from({ length: 322 }, (_, index) => `card-${index}`);
   const props = { cardIds, outcomes: new Map(), value: 0.1, label: 'Session progress', m: 0 };
-  const { rerender } = render(<SessionSegments {...props} currentCardIds={['card-31']} />, {
+  const { rerender } = render(<SessionSegments {...props} currentCardIds={['card-12']} />, {
     wrapper: ({ children }) => <LazyMotion features={domAnimation}>{children}</LazyMotion>,
   });
   const row = screen.getByRole('progressbar').querySelector('[data-session-segment-row]')!;
   const pips = row.querySelectorAll('[data-session-card-status]');
   expect(pips).toHaveLength(322);
-  expect(pips[0]).toHaveStyle({ width: '16px' });
+  expect(pips[0]).toHaveStyle({ width: '42px' });
+  expect(row).toHaveStyle({ gap: '6px' });
+  expect(row.parentElement).toHaveClass('h-2.5');
 
-  rerender(<SessionSegments {...props} currentCardIds={['card-32']} />);
+  rerender(<SessionSegments {...props} currentCardIds={['card-13']} />);
   await waitFor(() => expect(row).toHaveStyle({ transform: 'translateX(-480px)' }));
-  rerender(<SessionSegments {...props} currentCardIds={['card-31']} />);
+  rerender(<SessionSegments {...props} currentCardIds={['card-12']} />);
   await waitFor(() => expect(row).toHaveStyle({ transform: 'none' }));
-  rerender(<SessionSegments {...props} currentCardIds={['card-32']} />);
+  rerender(<SessionSegments {...props} currentCardIds={['card-13']} />);
   await waitFor(() => expect(row).toHaveStyle({ transform: 'translateX(-480px)' }));
   act(() => {
     width = 156;
     measure();
   });
-  await waitFor(() => expect(row).toHaveStyle({ transform: 'translateX(-600px)' }));
+  await waitFor(() => expect(row).toHaveStyle({ transform: 'translateX(-200px)' }));
   expect(pips[0]).toHaveStyle({ width: '16px' });
-  expect(screen.getByText('Card 33 of 322')).toBeInTheDocument();
+  expect(row).toHaveStyle({ gap: '4px' });
+  expect(row.parentElement).toHaveClass('h-2');
+  expect(screen.getByText('Card 14 of 322')).toBeInTheDocument();
 });
 
 it('keeps the original flexible pills and no mask when the session fits', () => {
