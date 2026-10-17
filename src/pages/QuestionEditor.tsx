@@ -17,6 +17,7 @@ import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
 import { TagInput } from '../components/ui/TagInput';
+import { Toggle } from '../components/ui/Toggle';
 import { StepSwap } from '../components/ui/StepSwap';
 import { useToast } from '../components/ui/Toast';
 import { motionTransition } from '../components/ui/motion';
@@ -401,15 +402,11 @@ export function QuestionEditor() {
           />
         </section>
         {editing && (
-          <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-ink-soft">
-            <input
-              type="checkbox"
-              checked={suspended}
-              onChange={(event) => draft.update({ suspended: event.target.checked })}
-              className="accent-accent"
-            />
-            Suspend this Question
-          </label>
+          <Toggle
+            checked={suspended}
+            onChange={(suspended) => draft.update({ suspended })}
+            label="Suspend this Question"
+          />
         )}
       </div>
 

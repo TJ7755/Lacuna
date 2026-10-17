@@ -468,6 +468,17 @@ describe('QuestionEditor', () => {
     };
     const copy = 'Delete this Question definition? Its attempt evidence will be retained.';
 
+    it('saves suspension from the standard switch with the Question draft', async () => {
+      openEditor();
+      const control = await screen.findByRole('switch', { name: 'Suspend this Question' });
+      expect(control).not.toBeChecked();
+      fireEvent.click(control);
+      fireEvent.click(screen.getByRole('button', { name: 'Save Question' }));
+      await waitFor(() => expect(mocks.updateFixed).toHaveBeenCalledWith(
+        'question-1', expect.objectContaining({ suspended: true }),
+      ));
+    });
+
     it('asks inline and leaves the definition intact on Cancel', async () => {
       openEditor();
       fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));

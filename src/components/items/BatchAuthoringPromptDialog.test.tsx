@@ -122,7 +122,7 @@ describe('BatchAuthoringPromptDialog', () => {
     });
     fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
     fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
-    fireEvent.click(screen.getByLabelText('Set generation constraints'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Set generation constraints' }));
     fireEvent.change(screen.getByLabelText(/Maximum items/), { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Copy Question batch prompt' }));
 
