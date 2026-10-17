@@ -7,12 +7,15 @@ import type * as ReactRouterDom from 'react-router-dom';
 import type { Card, Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import { CourseStudyActions } from '../course/CourseStudyActions';
+import { prefetchRoute } from '../../routes/prefetch';
 import { StudySheet } from './StudySheet';
 import {
   LandingTransition,
   hasLandingArrival,
   releaseStudyCover,
 } from '../layout/LandingTransition';
+
+vi.mock('../../routes/prefetch', () => ({ prefetchRoute: vi.fn() }));
 
 const mockNavigate = vi.fn();
 const motionPreference = vi.hoisted(() => ({ multiplier: 0 }));
@@ -101,6 +104,7 @@ afterEach(() =>
 beforeEach(() => {
   motionPreference.multiplier = 0;
   mockNavigate.mockClear();
+  vi.mocked(prefetchRoute).mockClear();
   mockCourses = [chemistry];
   mockFlows.chem = {
     course: chemistry,
@@ -118,6 +122,7 @@ describe('StudySheet', () => {
   it('expands the preview before navigating under the cover', async () => {
     motionPreference.multiplier = 1;
     renderSheet('chem');
+    expect(prefetchRoute).toHaveBeenCalledWith('/course/chem/study');
     fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(hasLandingArrival()).toBe(true);

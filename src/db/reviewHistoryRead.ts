@@ -71,7 +71,15 @@ export async function listReviewHistoryForCards(
   if (cards.length === 0) return [];
   const canonical =
     reviewHistory ??
-    (await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray());
+    (await db.transaction('r', db.reviewHistory, async () => {
+      // anyOf uses an IndexedDB cursor callback for every event. Exact-key getAll
+      // reads share one transaction and preserve that cursor's index/key order.
+      const cardIds = [...new Set(cards.map((card) => card.id))].sort();
+      const histories = await Promise.all(
+        cardIds.map((id) => db.reviewHistory.where('cardId').equals(id).toArray()),
+      );
+      return histories.flat();
+    }));
   const entries =
     reviewHistory === undefined
       ? mergeReviewHistoryForRead(canonical, cards)

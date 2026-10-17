@@ -26,6 +26,13 @@ pointer input through; the existing Undo action remains interactive.
 3. Otherwise **serve** cards one at a time until the captured work is cleared, the
    remaining objective is met, a configured limit is reached, or the user exits.
 
+The session preview prefetches study code without awaiting it. Session history reads use
+concurrent exact-card queries in one read transaction, preserving canonical/legacy merge
+precedence and event ordering. The current card never waits for later images. After its
+first paint, a speculative window warms at most two upcoming cards and six asset images;
+failed or cancelled preloads cannot stop study. Lookahead uses separate FSRS engines so
+scoring cannot change the active engine's fuzz seed, queue or review evidence.
+
 The top bar shows **session completion**, starting at zero for outstanding work and
 reaching 100% when that work is finished. A captured card counts as cleared once it
 has been answered in the session, whatever the grade, once it leaves study (suspended,

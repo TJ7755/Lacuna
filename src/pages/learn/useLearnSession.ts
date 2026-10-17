@@ -110,6 +110,7 @@ import {
   saveSimpleSession,
 } from './simpleSessionPersistence';
 import { inRecitationOrder } from './recitation/recitationFlow';
+import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { resolveLearnSessionScope } from './sessionScope';
 import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
 import {
@@ -963,6 +964,30 @@ export function useLearnSession({
     progressCacheRef.current.dirty = true;
   }, [finish, distraction, isSimpleMode, persistSimpleResume, requestWindowId]);
 
+  const preloadEnabled = enabled && (phase === 'question' || phase === 'answer');
+  useEffect(() => {
+    if (!preloadEnabled || !current) return;
+    let stopPreloading: (() => void) | undefined;
+    let timeout: number | undefined;
+    // Let the current face paint before speculative reads and decoding begin.
+    const frame = window.requestAnimationFrame(() => {
+      timeout = window.setTimeout(() => {
+        const pool = isSimpleMode
+          ? simpleQueue.current.filter((card) => !simpleMastered.current.has(card.id))
+          : cardsRef.current;
+        const upcoming = sessionPreloadCards(
+          pool, current.id, isSimpleMode ? null : ctxRef.current, cooldowns.current,
+        );
+        stopPreloading = preloadSessionImages(upcoming, occlusionMapRef.current);
+      }, 0);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+      stopPreloading?.();
+    };
+  }, [current, preloadEnabled, isSimpleMode]);
+
   // Stable ref so the initial-load effect never re-runs just because serveNext's
   // callback identity changed (which would reset phase and undo reveal/exit).
   const serveNextRef = useRef(serveNext);
@@ -1031,6 +1056,11 @@ export function useLearnSession({
     setLessonNotesScreen(null);
     if (!enabled) return;
     void (async () => {
+      const measureStartup = performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
+      const markLoad = (stage: string) => {
+        if (measureStartup) performance.mark(`lacuna:study-load:${stage}`);
+      };
+      markLoad('load-start');
       let units: StudyUnit[];
       let sessionUnits: SchedulingUnitRecord[] | SessionUnit[];
       let cards: Card[];
@@ -1263,6 +1293,7 @@ export function useLearnSession({
       }
       if (cancelled) return;
 
+      markLoad('pool-ready');
       cards = filterSessionCardPool(cards, { tag: tagFilter, filters: filterParams });
 
       if (isSimpleMode) {
@@ -1287,6 +1318,7 @@ export function useLearnSession({
         !plannedRevision && !isSimpleMode && filterParams.includes('due') ? 'due' : 'objective',
         plannedRevision || isSimpleMode ? undefined : cards,
       );
+      markLoad('context-ready');
       ctxRef.current = ctx;
       cardsRef.current = cards;
       const answerLessonIds = [
@@ -1309,6 +1341,7 @@ export function useLearnSession({
         // a failed lookup leaves occlusion cards on their plain-text fallback.
       }
       if (cancelled) return;
+      markLoad('metadata-ready');
       const initialProgress = sessionProgress(cards, ctx);
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
@@ -1324,6 +1357,7 @@ export function useLearnSession({
         reviewsByDeck.current = await dailyReviewCounts(reviewKindRef.current, reviewNow);
         if (cancelled) return;
       }
+      markLoad('progress-ready');
       setLimitOverride(false);
       setSingleDeck((prev) => {
         const next = !isGlobal ? units[0] : null;
@@ -1454,8 +1488,10 @@ export function useLearnSession({
           mode,
         });
       } else {
+        markLoad('serve-start');
         sessionStartMs.current = revisionWindowStartedAt.current || Date.now();
         serveNextRef.current();
+        markLoad('serve-end');
       }
     })();
     return () => {
