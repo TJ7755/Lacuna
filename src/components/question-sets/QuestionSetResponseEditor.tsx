@@ -8,7 +8,9 @@ import { Button } from '../ui/Button';
 export function QuestionSetResponseEditor({
   answer,
   onChange,
+  showFormat = true,
 }: {
+  showFormat?: boolean;
   answer: QuestionAnswer;
   onChange: (answer: QuestionAnswer) => void;
 }) {
@@ -18,36 +20,38 @@ export function QuestionSetResponseEditor({
   const change = (next: QuestionResponse) => onChange({ ...answer, response: next });
   return (
     <section aria-label="Response format">
-      <QuestionSetChoices
-        label="Response"
-        value={response.kind}
-        onChange={(value) => {
-          const kind = value as QuestionResponse['kind'];
-          const next: QuestionResponse =
-            kind === 'multiple-choice'
-              ? {
-                  kind,
-                  selection: 'single',
-                  options: [
-                    { id: makeId(), content: '' },
-                    { id: makeId(), content: '' },
-                  ],
-                  correctOptionIds: [],
-                }
-              : { kind };
-          if (
-            response.kind === 'multiple-choice' &&
-            response.options.some((option) => option.content.trim())
-          )
-            setPending(next);
-          else change(next);
-        }}
-        options={[
-          { value: 'written', label: 'Written answer' },
-          { value: 'multiple-choice', label: 'Multiple choice' },
-          { value: 'calculation', label: 'Calculation' },
-        ]}
-      />
+      {showFormat && (
+        <QuestionSetChoices
+          label="Response"
+          value={response.kind}
+          onChange={(value) => {
+            const kind = value as QuestionResponse['kind'];
+            const next: QuestionResponse =
+              kind === 'multiple-choice'
+                ? {
+                    kind,
+                    selection: 'single',
+                    options: [
+                      { id: makeId(), content: '' },
+                      { id: makeId(), content: '' },
+                    ],
+                    correctOptionIds: [],
+                  }
+                : { kind };
+            if (
+              response.kind === 'multiple-choice' &&
+              response.options.some((option) => option.content.trim())
+            )
+              setPending(next);
+            else change(next);
+          }}
+          options={[
+            { value: 'written', label: 'Written answer' },
+            { value: 'multiple-choice', label: 'Multiple choice' },
+            { value: 'calculation', label: 'Calculation' },
+          ]}
+        />
+      )}
       {pending && (
         <ConfirmInline
           message="Remove the existing answer options?"

@@ -19,7 +19,9 @@ export function QuestionSetDraftFeedback({
   setError,
   setConfirm,
   onCopied,
+  showRetry = true,
 }: {
+  showRetry?: boolean;
   message: string;
   snapshot: QuestionSetDraftSessionSnapshot;
   session: QuestionSetDraftSession;
@@ -58,7 +60,7 @@ export function QuestionSetDraftFeedback({
         </Button>
       )}
       <div className="qs-actions">
-        {!snapshot.conflictSource && (
+        {showRetry && !snapshot.conflictSource && (
           <Button variant="secondary" onClick={() => void session.retry().catch(() => undefined)}>
             Retry save
           </Button>

@@ -496,4 +496,22 @@ for local cleanup. Course deletion includes drafts and undo restores them with f
 revisions. The Paper editor uses these APIs for local autosave and validated completion.
 Its author preview does not create attempts, answers or card reviews.
 
+The composer maps each non-blank mark-scheme line to one allocation, preserving identity,
+explanation, dimension and Concept links by non-blank line index while editing. New points
+use Knowledge. A trailing `(n)` is reserved for a whole-number weight: it is stripped from
+`criterion` and stored in `maxMarks`. Display restores weights other than one; a criterion
+that itself ends in a numeric suffix always receives an explicit weight, including `(1)`,
+so `See equation (2) (1)` round-trips without losing its literal suffix. Blank lines are
+editing whitespace, not allocations. Existing positive-integer validation still applies.
+
+Marks defaults to the point sum, shown as the field's placeholder. An entered total writes
+`answer.maxMarks`; for one point it also writes that point's full maximum. With several
+points, a different total leaves allocations intact and reports the mismatch after row
+focus leaves. Clearing the field restores the sum of the authored line weights. Overrides
+are represented only by existing marks fields; no draft or published schema field is added.
+On reopening, a stored total equal to its point sum is presented as automatic; the schema
+does not retain a separate override-intent flag.
+Indenting moves the complete answer (including response and links) into the first child;
+stems never retain their own scored answer.
+
 [Specification index](../SPEC.md)

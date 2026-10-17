@@ -165,3 +165,27 @@ the editor has closed.
 Virtualised lists rebuild the heights of mounted rows when the card count changes,
 so adding or deleting cards preserves spacing without waiting for another resize.
 Resize measurements include the full row border box, keeping padding and borders in the layout.
+
+### Question-set composer (`src/pages/QuestionSetEditor.tsx`)
+
+Authored question sets use one continuous, autosaving list of questions, parts and subparts.
+Each leaf has growing Markdown question and mark-scheme textareas, followed by Marks; shared
+stems span both text columns and show their leaf total. Below 720px, the scheme and marks sit
+under the question. New or empty sets focus the first Question field. Populated sets open
+without visible focus; neither entry nor returning from Preview focuses the title.
+
+Tab moves Question → Mark scheme → Marks, and Enter in Marks inserts the next sibling after
+any parts. Textarea Enter and Shift+Enter insert newlines. Tab on an empty leaf indents to a
+part or subpart; an existing parent answer moves into its first child with an Undo toast.
+Shift+Tab outdents an empty leaf and Backspace deletes one. A stem's Tab leads to its first
+part. Row menus are outside the Tab sequence, reached with Context Menu or Shift+F10 from a
+row field; Alt+Up/Down reorders siblings. Menus offer answer type, image, per-point guidance
+and dimension, knowledge links, movement and confirmed deletion. Multiple-choice options and
+correct answers appear inline; switching away from populated options requires confirmation.
+
+The header contains the title, icon-only Set details (name, lessons and exams), Preview and
+Save set. Only Saving… and Could not save are visible save statuses; Saved is announced
+without visual text. Ctrl/Cmd+Enter publishes after existing validation. Failed validation
+shows issues on their rows and focuses the first offending row. Escape leaves through the
+existing draft-flush navigation guard; Preview returns to the same composer. Row transitions,
+active wash, stem totals and disclosures follow motion speed and reduced motion.

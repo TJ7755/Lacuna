@@ -1,9 +1,34 @@
-import { SHORTCUT_GROUPS } from './shortcuts';
+import { SHORTCUT_GROUPS, type ShortcutGroup } from './shortcuts';
+
+const composerShortcuts: ShortcutGroup = {
+  title: 'Question-set composer',
+  shortcuts: [
+    {
+      keys: ['Tab'],
+      description: 'Next field: question, mark scheme, marks; a stem leads to its first part',
+    },
+    { keys: ['Enter'], description: 'Insert the next row from Marks; new line in textareas' },
+    { keys: ['Shift', 'Enter'], description: 'New line in a question or mark scheme' },
+    {
+      keys: ['Tab'],
+      description: 'Indent an empty row; move a parent mark scheme into its first part',
+    },
+    { keys: ['Shift', 'Tab'], description: 'Outdent an empty row' },
+    { keys: ['Backspace'], description: 'Delete an empty row' },
+    {
+      keys: ['Shift', 'F10'],
+      description: 'Open row options from a field (also the Context Menu key)',
+    },
+    { keys: ['Alt', 'Up/Down'], description: 'Move a question or part' },
+    { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save set' },
+    { keys: ['Esc'], description: 'Leave the composer and flush its draft' },
+  ],
+};
 import { formatBinding, type ShortcutBindings } from './shortcutBindings';
 
 /** Resolve the shared cheatsheet against the current study bindings without writing settings. */
 export function shortcutGroups(bindings: ShortcutBindings) {
-  return SHORTCUT_GROUPS.map((group) => ({
+  return [...SHORTCUT_GROUPS, composerShortcuts].map((group) => ({
     ...group,
     shortcuts: group.shortcuts.map((s) => {
       // Replace hardcoded keys with custom bindings for the Learn actions.
