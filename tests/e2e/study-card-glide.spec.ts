@@ -303,11 +303,11 @@ test('first grade starts departing while write completion is delayed', async ({ 
   expect(count).toBe(1);
 });
 
-test('paced exit physics accelerates a button grade and carries a touch flick', async ({
+test('paced exit tempo captures accelerating departures and overlapping arrivals', async ({
   page,
 }) => {
   await startStudy(page);
-  const directory = resolve('artifacts/study-card-exit-physics');
+  const directory = resolve('artifacts/study-card-exit-tempo');
   await mkdir(directory, { recursive: true });
   const session = await page.context().newCDPSession(page);
   const screenshots: { time: number; data: string }[] = [];
@@ -331,6 +331,9 @@ test('paced exit physics accelerates a button grade and carries a touch flick', 
         let started: number | null = null;
         let startX = 0;
         let offscreenAt: number | null = null;
+        let incomingStartedAt: number | null = null;
+        let incomingSettledAt: number | null = null;
+        const incomingFrames: { time: number; y: number; scale: number }[] = [];
         const frames: Frame[] = [];
         const moves: { time: number; x: number }[] = [];
         const onMove = (event: PointerEvent) =>
@@ -340,6 +343,9 @@ test('paced exit physics accelerates a button grade and carries a touch flick', 
           started: number;
           startX: number;
           offscreenAt: number | null;
+          incomingStartedAt: number | null;
+          incomingSettledAt: number | null;
+          incomingFrames: { time: number; y: number; scale: number }[];
           frames: Frame[];
           moves: { time: number; x: number }[];
         }>((done) => {
@@ -361,30 +367,43 @@ test('paced exit physics accelerates a button grade and carries a touch flick', 
           function sample() {
             if (started !== null) {
               const time = performance.now() - started;
-              if (!node.isConnected || time > 1400) {
+              const incoming = document.querySelector('[data-study-card-id]:not([inert])');
+              let incomingY: number | null = null;
+              if (incoming && incoming !== node) {
+                incomingStartedAt ??= time;
+                const style = getComputedStyle(incoming);
+                const matrix = new DOMMatrixReadOnly(style.transform);
+                incomingY = matrix.m42;
+                const elapsed = time - incomingStartedAt;
+                incomingFrames.push({ time: elapsed, y: incomingY, scale: matrix.m11 });
+                if (style.transform === 'none') incomingSettledAt ??= elapsed;
+              }
+              if (node.isConnected) {
+                const matrix = new DOMMatrixReadOnly(getComputedStyle(node).transform);
+                const left = node.getBoundingClientRect().left;
+                if (left >= innerWidth && offscreenAt === null) offscreenAt = time;
+                frames.push({
+                  time,
+                  x: matrix.m41,
+                  angle: (Math.atan2(matrix.m12, matrix.m11) * 180) / Math.PI,
+                  left,
+                  incomingY,
+                });
+              }
+              if ((!node.isConnected && incomingSettledAt !== null) || time > 1400) {
                 window.removeEventListener('pointermove', onMove, true);
                 done({
                   started: performance.timeOrigin + started,
                   startX,
                   offscreenAt,
+                  incomingStartedAt,
+                  incomingSettledAt,
+                  incomingFrames,
                   frames,
                   moves,
                 });
                 return;
               }
-              const matrix = new DOMMatrixReadOnly(getComputedStyle(node).transform);
-              const left = node.getBoundingClientRect().left;
-              if (left >= innerWidth && offscreenAt === null) offscreenAt = time;
-              const incoming = document.querySelector('[data-study-card-id]:not([inert])');
-              frames.push({
-                time,
-                x: matrix.m41,
-                angle: (Math.atan2(matrix.m12, matrix.m11) * 180) / Math.PI,
-                left,
-                incomingY: incoming
-                  ? new DOMMatrixReadOnly(getComputedStyle(incoming).transform).m42
-                  : null,
-              });
             }
             requestAnimationFrame(sample);
           }
@@ -455,7 +474,7 @@ test('paced exit physics accelerates a button grade and carries a touch flick', 
     await session.detach().catch(() => {});
   }
   for (const result of results) {
-    for (const time of result.input === 'button' ? [160, 400] : [80, 240]) {
+    for (const time of result.input === 'button' ? [60, 240] : [40, 160]) {
       const frame = screenshots.reduce((a, b) =>
         Math.abs(a.time - result.started - time) < Math.abs(b.time - result.started - time) ? a : b,
       );
@@ -467,11 +486,19 @@ test('paced exit physics accelerates a button grade and carries a touch flick', 
   }
   for (const result of results) {
     expect(result.offscreenAt).not.toBeNull();
-    expect(result.offscreenAt!).toBeGreaterThan(result.input === 'button' ? 450 : 200);
-    expect(result.offscreenAt!).toBeLessThan(600);
+    expect(result.offscreenAt!).toBeGreaterThan(result.input === 'button' ? 300 : 100);
+    expect(result.offscreenAt!).toBeLessThan(result.input === 'button' ? 340 : 280);
+    expect(result.incomingStartedAt).not.toBeNull();
+    expect(result.incomingStartedAt!).toBeLessThan(result.offscreenAt!);
+    expect(result.incomingSettledAt).not.toBeNull();
+    expect(result.incomingSettledAt!).toBeLessThan(320);
+    expect(result.incomingFrames.every((frame) => frame.y >= -0.01 && frame.scale <= 1.0001)).toBe(
+      true,
+    );
     const position = (time: number) =>
       result.frames.reduce((a, b) => (Math.abs(a.time - time) < Math.abs(b.time - time) ? a : b)).x;
     if (result.input === 'button') {
+      expect(position(60)).toBeGreaterThan(4);
       expect(position(200) - position(100)).toBeGreaterThan(position(100) * 2);
       expect(position(300) - position(200)).toBeGreaterThan(position(200) - position(100));
       expect(result.frames.find((frame) => frame.x > 1)!.time).toBeLessThan(100);
