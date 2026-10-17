@@ -40,6 +40,8 @@
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  /* A scroll container ends touch-action inheritance, so restate it or the browser claims horizontal swipes. */
+  touch-action: pan-y;
   justify-content: safe center;
   container-type: size;
 }
