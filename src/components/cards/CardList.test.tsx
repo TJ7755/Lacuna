@@ -41,6 +41,8 @@ vi.mock('../../db/cardRepository', () => ({
 
 // Occlusion thumbnails resolve their diagram from the asset store.
 vi.mock('../../db/assetCache', () => ({
+  peekCachedAssetUrl: () => undefined,
+  cachedAssetImageSize: () => undefined,
   resolveAssetUrl: () => Promise.resolve('blob:diagram'),
 }));
 

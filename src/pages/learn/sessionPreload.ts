@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from '../../db/assetCache';
+import { rememberAssetImageSize, resolveAssetUrl } from '../../db/assetCache';
 import { referencedAssetHashesInValues } from '../../db/assets';
 import type { OcclusionCardData } from '../../db/occlusionStudy';
 import type { Card } from '../../db/types';
@@ -60,6 +60,7 @@ export function preloadSessionImages(
       image.decoding = 'async';
       image.src = url;
       await image.decode();
+      rememberAssetImageSize(url, image.naturalWidth, image.naturalHeight);
     }).catch(() => {
       // Missing or undecodable images must never interrupt study.
     });

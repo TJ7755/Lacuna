@@ -19,7 +19,7 @@ import { rehypeWikilinks } from './wikilinks';
 import { rehypeMermaidPlaceholder, renderMermaidDiagrams, updateMermaidTheme } from './mermaid';
 import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
-import { resolveAssetMarkdownCached } from '../../db/assetCache';
+import { cachedAssetImageSize, resolveAssetMarkdownCached, resolveCachedAssetMarkdown } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
 import 'katex/dist/katex.min.css';
 import { MarkdownImageViewer } from './MarkdownImageViewer';
@@ -134,9 +134,14 @@ const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
  */
 const IMAGE_FALLBACK_ALT = 'Image';
 
+function imageDimensions(props: Pick<ComponentProps<'img'>, 'src' | 'width' | 'height'>) {
+  if (props.width !== undefined || props.height !== undefined || typeof props.src !== 'string' || !props.src.startsWith('blob:')) return undefined;
+  return cachedAssetImageSize(props.src);
+}
+
 const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
   img: ({ node: _node, ...props }) => (
-    <img {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
+    <img {...imageDimensions(props)} {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
   ),
   table: ({ node: _node, ...props }) => (
     <div className="lacuna-table-wrap">
@@ -149,7 +154,7 @@ const ENLARGE_COMPONENTS: MarkdownProps['components'] = {
   ...MARKDOWN_COMPONENTS,
   img: ({ node, ...props }) =>
     (node?.data as { linkedImage?: boolean } | undefined)?.linkedImage ? (
-      <img {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
+      <img {...imageDimensions(props)} {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
     ) : (
       <button
         type="button"
@@ -157,7 +162,7 @@ const ENLARGE_COMPONENTS: MarkdownProps['components'] = {
         aria-label={props.alt ? `Enlarge image: ${props.alt}` : 'Enlarge image'}
       >
         {/* The button names the image, so an absent alt stays empty rather than a file name. */}
-        <img {...props} alt={props.alt ?? ''} loading="lazy" decoding="async" />
+        <img {...imageDimensions(props)} {...props} alt={props.alt ?? ''} loading="lazy" decoding="async" />
       </button>
     ),
 };
@@ -480,7 +485,9 @@ export const MarkdownView = memo(function MarkdownView({
   enlargeImages = false,
   typedAnswerFeedback,
 }: MarkdownViewProps) {
-  const [resolved, setResolved] = useState(source);
+  const [resolved, setResolved] = useState(() =>
+    source.includes(ASSET_PROTOCOL) ? resolveCachedAssetMarkdown(source) : source,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const [diagramSources, setDiagramSources] = useState<{
     html: string;

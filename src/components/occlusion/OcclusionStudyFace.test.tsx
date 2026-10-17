@@ -4,7 +4,11 @@ import { OcclusionStudyFace } from './OcclusionStudyFace';
 import type { Card, Occlusion, OcclusionRegion } from '../../db/types';
 
 const resolveAssetUrl = vi.fn();
+const peekCachedAssetUrl = vi.fn();
+const cachedAssetImageSize = vi.fn();
 vi.mock('../../db/assetCache', () => ({
+  peekCachedAssetUrl: (...args: unknown[]) => peekCachedAssetUrl(...args),
+  cachedAssetImageSize: (...args: unknown[]) => cachedAssetImageSize(...args),
   resolveAssetUrl: (...args: unknown[]) => resolveAssetUrl(...args),
 }));
 
@@ -70,9 +74,22 @@ function makeCard(
 
 afterEach(() => {
   resolveAssetUrl.mockReset();
+  peekCachedAssetUrl.mockReset();
+  cachedAssetImageSize.mockReset();
 });
 
 describe('OcclusionStudyFace', () => {
+  it('mounts a warmed diagram with its full-sized frame without waiting for an effect', () => {
+    peekCachedAssetUrl.mockReturnValue('blob:warmed-diagram');
+    cachedAssetImageSize.mockReturnValue({ width: 3600, height: 2700 });
+    resolveAssetUrl.mockReturnValue(new Promise(() => {}));
+    render(<OcclusionStudyFace card={makeCard('l1')} occlusion={makeOcclusion()} side="front" />);
+    const image = screen.getByRole('img', { name: 'Plant cell' });
+    expect(image).toHaveAttribute('src', 'blob:warmed-diagram');
+    expect(image).toHaveAttribute('width', '3600');
+    expect(image).toHaveAttribute('height', '2700');
+  });
+
   it('masks every label region on the front and rings the target', async () => {
     resolveAssetUrl.mockResolvedValue('blob:diagram');
     const occlusion = makeOcclusion();

@@ -35,6 +35,10 @@ precedence and event ordering. The current card never waits for later images. Af
 first paint, a speculative window warms at most two upcoming cards and six asset images;
 failed or cancelled preloads cannot stop study. Lookahead uses separate FSRS engines so
 scoring cannot change the active engine's fuzz seed, queue or review evidence.
+Warmed image URLs are available in the first render. Stored or already decoded natural
+image dimensions reserve the frame immediately; images do not gate the incoming card's
+entrance. Dimension metadata expires with its object URL. Background decoding can recover
+missing dimensions for older imports without updating the original asset row.
 
 The top bar shows **session completion**, starting at zero for outstanding work and
 reaching 100% when that work is finished. A captured card counts as cleared once it
