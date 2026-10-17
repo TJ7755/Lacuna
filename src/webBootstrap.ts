@@ -1,5 +1,4 @@
-const GOOGLE_FONTS_STYLESHEET =
-  'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&display=swap';
+import { SEED_FLAG_KEY } from './db/seedFlags';
 
 /** In-app hash routes start with `#/`; any other fragment is an in-page anchor. */
 export function isAppHashRoute(hash: string): boolean {
@@ -8,29 +7,6 @@ export function isAppHashRoute(hash: string): boolean {
 
 function isHostedWebProtocol(protocol: string): boolean {
   return protocol === 'http:' || protocol === 'https:';
-}
-
-/** Add remote font resources only where the web CSP and network model permit them. */
-export function installHostedFontLinks(
-  targetDocument: Document = document,
-  protocol: string = window.location.protocol,
-): void {
-  if (!isHostedWebProtocol(protocol)) return;
-
-  const googlePreconnect = targetDocument.createElement('link');
-  googlePreconnect.rel = 'preconnect';
-  googlePreconnect.href = 'https://fonts.googleapis.com';
-
-  const staticPreconnect = targetDocument.createElement('link');
-  staticPreconnect.rel = 'preconnect';
-  staticPreconnect.href = 'https://fonts.gstatic.com';
-  staticPreconnect.crossOrigin = 'anonymous';
-
-  const stylesheet = targetDocument.createElement('link');
-  stylesheet.rel = 'stylesheet';
-  stylesheet.href = GOOGLE_FONTS_STYLESHEET;
-
-  targetDocument.head.append(googlePreconnect, staticPreconnect, stylesheet);
 }
 
 export interface ServiceWorkerRegistrationOptions {
@@ -64,6 +40,44 @@ export async function registerProductionServiceWorker(
   }
 }
 
+
+export interface LandingHydrationOptions {
+  hash?: string;
+  isElectron?: boolean;
+  seedFlagPresent?: boolean;
+  landingMarkupPresent?: boolean;
+  appStartPending?: boolean;
+}
+
+function readSeedFlag(): boolean {
+  try {
+    return localStorage.getItem(SEED_FLAG_KEY) !== null;
+  } catch {
+    // Storage may be unavailable; fall through to the prerender check.
+    return false;
+  }
+}
+
+/** First-visit browsers hydrate the prerendered landing page; the packaged app,
+ * in-app hash routes and returning browsers boot the study app directly. */
+export function shouldHydrateLanding({
+  hash = window.location.hash,
+  isElectron = window.electronAPI?.isElectron === true,
+  seedFlagPresent = readSeedFlag(),
+  landingMarkupPresent = !!document.getElementById('root')?.querySelector('.landing-page'),
+  appStartPending = document.documentElement.hasAttribute('data-app-starting'),
+}: LandingHydrationOptions = {}): boolean {
+  // Honour the head's decision even if storage or the URL changed while modules loaded.
+  if (appStartPending) return false;
+  if (isElectron) return false;
+  // In-page anchors (for example #landing-product) stay on the landing page.
+  // Anything addressing the study app through its hash routes boots the full app.
+  if (hash.startsWith('#/')) return false;
+  // A previous start seeded the example course, so this browser already knows
+  // the app: skip the marketing flash and go straight to the dashboard.
+  if (seedFlagPresent) return false;
+  return landingMarkupPresent;
+}
 
 /** Keep website analytics out of desktop, development and preview sessions. */
 export function installSimpleAnalytics({

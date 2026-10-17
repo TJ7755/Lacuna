@@ -3,6 +3,7 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ToastProvider, useToast } from './Toast';
 import { renderHook } from '@testing-library/react';
 import { Profiler } from 'react';
+import * as motionSpeed from '../../state/motionSpeed';
 
 function TestComponent() {
   const { notify } = useToast();
@@ -31,14 +32,25 @@ describe('ToastProvider', () => {
     function ActionToast() {
       const { notify } = useToast();
       return (
-        <button onClick={() => notify('Undoable change', 'neutral', {
-          actionLabel: 'Undo', onAction: vi.fn(), duration: 150, onDismiss,
-        })}>
+        <button
+          onClick={() =>
+            notify('Undoable change', 'neutral', {
+              actionLabel: 'Undo',
+              onAction: vi.fn(),
+              duration: 150,
+              onDismiss,
+            })
+          }
+        >
           Show undo toast
         </button>
       );
     }
-    render(<ToastProvider><ActionToast /></ToastProvider>);
+    render(
+      <ToastProvider>
+        <ActionToast />
+      </ToastProvider>,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Show undo toast' }));
     const undo = screen.getByRole('button', { name: 'Undo' });
     const toast = screen.getByText('Undoable change').closest('.relative') as HTMLElement;
@@ -52,7 +64,9 @@ describe('ToastProvider', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument();
     expect(onDismiss).not.toHaveBeenCalled();
 
-    fireEvent.blur(undo, { relatedTarget: screen.getByRole('button', { name: 'Show undo toast' }) });
+    fireEvent.blur(undo, {
+      relatedTarget: screen.getByRole('button', { name: 'Show undo toast' }),
+    });
     await waitFor(() => expect(onDismiss).toHaveBeenCalledOnce());
   });
 
@@ -63,6 +77,18 @@ describe('ToastProvider', () => {
       </ToastProvider>,
     );
     expect(screen.getByTestId('child')).toBeInTheDocument();
+  });
+
+  it('shows notifications immediately when motion is disabled', () => {
+    const multiplier = vi.spyOn(motionSpeed, 'speedMultiplier').mockReturnValue(0);
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>,
+    );
+    fireEvent.click(screen.getByText('Notify'));
+    expect(screen.getByText('Hello world').closest('.relative')).toBeVisible();
+    multiplier.mockRestore();
   });
 
   it('shows a toast notification', async () => {

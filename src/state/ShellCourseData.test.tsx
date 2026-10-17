@@ -103,6 +103,7 @@ it('batches scheduling performance across courses and retains only derived navig
   expect(result.current.dashboard).toBeUndefined();
   expect(Object.keys(result.current.sidebar!).sort()).toEqual([
     'courses',
+    'forecasts',
     'lessons',
     'stats',
     'summaries',

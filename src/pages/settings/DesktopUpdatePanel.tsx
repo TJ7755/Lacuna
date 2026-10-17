@@ -29,7 +29,7 @@ export function DesktopUpdatePanel() {
             href="https://github.com/TJ7755/Lacuna/releases"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-accent underline underline-offset-2"
+            className="text-accent-ink underline underline-offset-2"
           >
             Download the latest release
           </a>

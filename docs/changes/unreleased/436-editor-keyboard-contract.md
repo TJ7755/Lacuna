@@ -1,0 +1,3 @@
+- Forms, Markdown editors, Quick search and AI composition ignore input-method composition keys and respect shortcuts already consumed by nested fields. (#436)
+- Inline confirmations keep Escape and Ctrl/Cmd+Enter within the decision, returning focus to their available opener on cancellation without advancing the underlying question-set editor. (#440)
+- Card-entry Tab shortcuts fall back to native traversal when a disabled or missing target cannot receive focus, preserving the valid repeat-save loop. (#438)

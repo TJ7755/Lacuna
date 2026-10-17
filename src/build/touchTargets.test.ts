@@ -5,23 +5,23 @@ import { describe, expect, it } from 'vitest';
 // These files once shipped 32px or 36px controls; none of their sizing classes may
 // fall below `h-11`/`w-11` (44px) again.
 const CONTROL_FILES = [
+  'src/components/sequences/SequenceItemRow.tsx',
+  'src/components/sequences/SequenceOutlineEditor.tsx',
   'src/components/ui/ConfirmInline.tsx',
   'src/components/learn/PomodoroTimer.tsx',
   'src/components/ui/KeyHints.tsx',
   'src/components/course/PracticeNodeEditor.tsx',
   'src/components/course/NewCourseForm.tsx',
   'src/components/course/AssessmentDetailSheet.tsx',
-  'src/components/course/AssessmentEditorDialog.tsx',
+  'src/components/course/AssessmentPathEditor.tsx',
   'src/components/cards/LinkCardsDialog.tsx',
   'src/components/cards/CardEditOverlay.tsx',
-  'src/components/sequences/ScriptPasteImport.tsx',
   'src/components/items/BatchAuthoringPromptDialog.tsx',
-  'src/components/notes/NoteRow.tsx',
   'src/components/notes/AnnotatedNoteContent.tsx',
   'src/components/occlusion/OcclusionRegionPane.tsx',
   'src/components/occlusion/OcclusionCanvas.tsx',
   'src/components/import/MergeReviewPanel.tsx',
-  'src/components/course/CourseCard.tsx',
+  'src/components/import/MergeReviewRow.tsx',
   'src/pages/settings/AppearanceSection.tsx',
 ];
 

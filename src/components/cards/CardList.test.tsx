@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { forwardRef } from 'react';
 import { CardList } from './CardList';
 import type { Card, LegacyDeckRecord, Occlusion, Sequence } from '../../db/types';
-import { courseCardListContext, type CardListContext } from './cardListContext';
+import { courseCardListContext } from './cardListContext';
 
 const mockNotify = vi.fn();
 const dataHooks = vi.hoisted(() => ({ useCard: vi.fn() }));
@@ -39,11 +39,20 @@ vi.mock('../../db/cardRepository', () => ({
   unsuspendCard: vi.fn(),
 }));
 
+// Occlusion thumbnails resolve their diagram from the asset store.
+vi.mock('../../db/assetCache', () => ({
+  peekCachedAssetUrl: () => undefined,
+  cachedAssetImageSize: () => undefined,
+  resolveAssetUrl: () => Promise.resolve('blob:diagram'),
+}));
+
 vi.mock('../../fsrs/leech', () => ({
   isLeech: vi.fn(() => false),
 }));
 
 vi.mock('../ui/icons', () => ({
+  CardsIcon: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
+  FileTextIcon: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
   CheckIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="check-icon" {...props} />,
   CloseIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="close-icon" {...props} />,
   EditIcon: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="edit-icon" {...props} />,
@@ -87,16 +96,6 @@ vi.mock('../ui/Button', () => ({
 vi.mock('./CardAnalytics', () => ({
   CardAnalytics: ({ card }: { card: Card }) => (
     <div data-testid="card-analytics">Analytics history: {card.history.length}</div>
-  ),
-}));
-
-vi.mock('../import/CardImportDialog', () => ({
-  CardImportDialog: ({ schedulingUnitId, onImport }: { schedulingUnitId?: string; onImport: (content: unknown) => void }) => (
-    <div data-testid="import-panel">
-      <span data-testid="import-target">{schedulingUnitId}</span>
-      <button type="button" onClick={() => onImport({ kind: 'text', cards: [], reverse: false })}>Trigger import</button>
-      <button type="button" onClick={() => onImport({ kind: 'apkg', result: { deckName: 'Imported', cards: [], media: new Map(), skippedNotes: 0, skippedCards: 0 } })}>Trigger APKG import</button>
-    </div>
   ),
 }));
 
@@ -165,15 +164,39 @@ beforeEach(() => {
   dataHooks.useCard.mockImplementation((id?: string) => (id ? mockCard : null));
 });
 
-/**
- * Opens the "More ways to add cards" menu. New card is the header's only primary action;
- * sequences, occlusions, linking and importing sit behind this trigger.
- */
-function openAddMenu() {
-  fireEvent.click(screen.getByLabelText('More ways to add cards'));
-}
-
 describe('CardList', () => {
+  it('keeps lesson selection in its heading and exposes compact card kinds', async () => {
+    render(
+      <CardList
+        cards={[mockCard, { ...mockCard2, type: 'cloze' }]}
+        context={mockContext}
+        onEditCard={vi.fn()}
+        heading={<h2>Manage (2)</h2>}
+        beforeCards={<p>Answer by</p>}
+        compactMetadata
+      />,
+    );
+    const heading = screen.getByRole('heading', { name: 'Manage (2)' });
+    expect(heading.parentElement).toContainElement(screen.getByRole('button', { name: 'Select' }));
+    expect(screen.getByRole('img', { name: 'Front / back' })).toHaveAttribute(
+      'title',
+      'Front / back',
+    );
+    expect(screen.getByRole('img', { name: 'Cloze' })).toHaveAttribute('title', 'Cloze');
+    expect(await screen.findByText('Paris')).toBeInTheDocument();
+    expect(screen.getByText('geography')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+    const card = screen.getByRole('button', {
+      name: 'Select card: What is the capital of France?',
+    });
+    fireEvent.click(card);
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(
+      screen.getByRole('button', { name: 'Card details: What is the capital of France?' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+  });
+
   it('provides a named details control and keeps the covered swipe tray inert', async () => {
     const { container } = render(
       <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
@@ -188,16 +211,35 @@ describe('CardList', () => {
     expect(await screen.findByTestId('card-analytics')).toBeInTheDocument();
   });
 
+  it('tints a hovered row without letting the swipe tray show through', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    const row = container.querySelector('[data-card-id]')!;
+    // Every background the row can take must be opaque, or the tray behind it shows.
+    const backgrounds = row.className.split(/\s+/).filter((name) => /(^|:)bg-/.test(name));
+    expect(backgrounds.length).toBeGreaterThan(0);
+    for (const name of backgrounds) expect(name).not.toContain('/');
+  });
+
+  it('hides the swipe tray while the row is at rest', () => {
+    const { container } = render(
+      <CardList cards={[mockCard]} context={mockContext} onEditCard={vi.fn()} />,
+    );
+    // Its tinted buttons showed through the row's rounded corners on every row.
+    expect(container.querySelector<HTMLElement>('[data-card-swipe-tray]')!.style.visibility).toBe(
+      'hidden',
+    );
+  });
+
   it('renders empty state when no cards', () => {
-    const onNewCard = vi.fn();
     const onEditCard = vi.fn();
     const consoleError = vi.spyOn(console, 'error');
     try {
       render(
-        <CardList cards={[]} context={mockContext} onNewCard={onNewCard} onEditCard={onEditCard} />,
+        <CardList cards={[]} context={mockContext} onEditCard={onEditCard} />,
       );
       expect(screen.getByText('No cards yet.')).toBeInTheDocument();
-      expect(screen.getAllByText('New card')).not.toHaveLength(0);
       expect(consoleError).not.toHaveBeenCalledWith(
         expect.stringContaining('Function components cannot be given refs'),
       );
@@ -266,37 +308,11 @@ describe('CardList', () => {
     expect(dataHooks.useCard).not.toHaveBeenCalled();
   });
 
-  it('routes APKG imports through the context capability', async () => {
-    const onApkgImport = vi.fn();
-    const context: CardListContext = {
-      schedulingConfig: mockDeck,
-      importTargetName: 'Course bank',
-      onImport: vi.fn(),
-      onApkgImport,
-      onRestore: vi.fn(),
-    };
-    render(<CardList cards={[mockCard]} context={context} onEditCard={vi.fn()} />);
-
-    openAddMenu();
-    fireEvent.click(screen.getByText('Import cards'));
-    fireEvent.click(screen.getByText('Trigger APKG import'));
-    await waitFor(() =>
-      expect(onApkgImport).toHaveBeenCalledWith({
-        deckName: 'Imported',
-        cards: [],
-        media: new Map(),
-        skippedNotes: 0,
-        skippedCards: 0,
-      }),
-    );
-  });
-
   it('renders cards with front content', async () => {
     render(
       <CardList
         cards={[mockCard]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -312,7 +328,7 @@ describe('CardList', () => {
     render(<CardList cards={[workingCard]} context={mockContext} onEditCard={vi.fn()} />);
 
     expect(screen.getByText('Working')).toBeInTheDocument();
-    expect(screen.queryByText('Front / Back')).not.toBeInTheDocument();
+    expect(screen.queryByText('Front / back')).not.toBeInTheDocument();
   });
 
   it('shows select mode when Select button is clicked', () => {
@@ -320,7 +336,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard, mockCard2]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -335,7 +350,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard, mockCard2]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -349,7 +363,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -357,58 +370,6 @@ describe('CardList', () => {
     fireEvent.click(cardRow);
     const analytics = await screen.findByTestId('card-analytics');
     expect(analytics).toBeInTheDocument();
-  });
-
-  it('shows import panel when Import is clicked', () => {
-    render(<CardList cards={[]} context={mockContext} onNewCard={vi.fn()} onEditCard={vi.fn()} />);
-    openAddMenu();
-    fireEvent.click(screen.getByText('Import cards'));
-    expect(screen.getByTestId('import-panel')).toBeInTheDocument();
-  });
-
-  it('shows New and Import buttons when not in select mode', () => {
-    render(
-      <CardList
-        cards={[mockCard]}
-        context={mockContext}
-        onNewCard={vi.fn()}
-        onEditCard={vi.fn()}
-      />,
-    );
-    // New card is the one primary action in the header; the rest live behind the menu.
-    expect(screen.getByText('New card')).toBeInTheDocument();
-    expect(screen.queryByText('Import cards')).not.toBeInTheDocument();
-    openAddMenu();
-    expect(screen.getByText('Import cards')).toBeInTheDocument();
-  });
-
-  it('calls onNewCard when New card button is clicked', () => {
-    const onNewCard = vi.fn();
-    render(
-      <CardList
-        cards={[mockCard]}
-        context={mockContext}
-        onNewCard={onNewCard}
-        onEditCard={vi.fn()}
-      />,
-    );
-    fireEvent.click(screen.getByText('New card'));
-    expect(onNewCard).toHaveBeenCalledOnce();
-  });
-
-  it('offers the lesson action for linking existing cards', () => {
-    const onLinkExisting = vi.fn();
-    render(
-      <CardList
-        cards={[mockCard]}
-        context={mockContext}
-        onEditCard={vi.fn()}
-        onLinkExisting={onLinkExisting}
-      />,
-    );
-    openAddMenu();
-    fireEvent.click(screen.getByText('Link existing cards'));
-    expect(onLinkExisting).toHaveBeenCalledOnce();
   });
 
   it('marks linked cards and removes their lesson link instead of deleting the card', async () => {
@@ -436,7 +397,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard, mockCard2]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -450,7 +410,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard, mockCard2]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
         courseId="course-1"
         assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
@@ -476,7 +435,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
         courseId="course-1"
         assignableLessons={[{ id: 'lesson-1', name: 'Lesson 1' }]}
@@ -525,8 +483,7 @@ describe('CardList', () => {
         <CardList
           cards={[mockCard, mockCard2]}
           context={mockContext}
-          onNewCard={vi.fn()}
-          onEditCard={vi.fn()}
+            onEditCard={vi.fn()}
         />,
       );
       fireEvent.click(screen.getByText('Select'));
@@ -557,7 +514,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -577,7 +533,6 @@ describe('CardList', () => {
       <CardList
         cards={[mockCard]}
         context={mockContext}
-        onNewCard={vi.fn()}
         onEditCard={vi.fn()}
       />,
     );
@@ -591,6 +546,27 @@ describe('CardList', () => {
         onAction: expect.any(Function),
       }),
     );
+  });
+
+  it('enters the tag field and returns focus to Select once the cards are tagged', async () => {
+    const { addTagToCards } = await import('../../db/cardRepository');
+    vi.mocked(addTagToCards).mockResolvedValueOnce(undefined);
+    render(
+      <CardList
+        cards={[mockCard]}
+        context={mockContext}
+        onEditCard={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByText('Select'));
+    fireEvent.click(screen.getByText('Select all'));
+    fireEvent.click(screen.getByText('Tag…'));
+    const field = screen.getByPlaceholderText('Type a tag…');
+    expect(field).toHaveFocus();
+    fireEvent.change(field, { target: { value: 'exam' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(addTagToCards).toHaveBeenCalledWith([mockCard.id], 'exam'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Select' })).toHaveFocus());
   });
 
   describe('generated cards', () => {
@@ -642,19 +618,52 @@ describe('CardList', () => {
       expect(onEditSequence).toHaveBeenCalledWith('sequence-1');
     });
 
+    it('lists a sequence’s cards in item order, each label card after its item', async () => {
+      const ordered: Sequence = {
+        ...sequence,
+        items: [
+          { id: 'item-1', value: 'Sodium' },
+          { id: 'item-2', value: 'Potassium' },
+        ],
+      };
+      const card = (id: string, sequenceItemId: string, back: string): Card => ({
+        ...mockCard,
+        id,
+        front: id,
+        back,
+        sequenceItemId,
+      });
+      render(
+        <CardList
+          cards={[
+            card('c-2', 'item-2', 'Potassium'),
+            card('c-1-label', 'item-1::label', 'Sodium label'),
+            card('c-1', 'item-1', 'Sodium'),
+          ]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          sequences={[ordered]}
+        />,
+      );
+      await screen.findByText('Potassium');
+      const backs = ['Sodium', 'Sodium label', 'Potassium'].map((text) => screen.getByText(text));
+      for (let i = 1; i < backs.length; i++) {
+        expect(backs[i - 1].compareDocumentPosition(backs[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+    });
+
     it('badges a generated card and hides its select checkbox and delete action', () => {
       render(
         <CardList
           cards={[mockCard, generatedCard]}
           context={mockContext}
-          onNewCard={vi.fn()}
-          onEditCard={vi.fn()}
+            onEditCard={vi.fn()}
           sequences={[sequence]}
         />,
       );
       expect(screen.getByText('Sequence')).toBeInTheDocument();
       expect(screen.getAllByText('Sequence')).toHaveLength(1);
-      expect(screen.getAllByText('Front / Back')).toHaveLength(1);
+      expect(screen.getAllByText('Front / back')).toHaveLength(1);
 
       fireEvent.click(screen.getByText('Select'));
       // Only the ordinary card is selectable: "Select all" only ever selects it.
@@ -702,6 +711,23 @@ describe('CardList', () => {
       // Only the ordinary card is selectable: "Select all" only ever selects it.
       fireEvent.click(screen.getByText('Select all'));
       expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('previews an occlusion card as its diagram and answers with the region it asks about', async () => {
+      const { container } = render(
+        <CardList
+          cards={[occlusionCard]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          occlusions={[{ ...occlusion, regions: [{ ...occlusion.regions[0], answerText: 'Aorta' }] }]}
+        />,
+      );
+      expect(container.querySelector('[data-occlusion-thumbnail]')).not.toBeNull();
+      expect(container.querySelector('[data-card-answer]')).toHaveTextContent(/^Aorta$/);
+      // The stored fallback back repeats the front, so it is not what the row shows.
+      await waitFor(() =>
+        expect(container.querySelector('[data-card-answer]')).not.toHaveTextContent('Label 1 of 1'),
+      );
     });
   });
 });

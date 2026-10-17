@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,7 +18,6 @@ vi.mock('../state/useCourseData', () => ({
   useLessons: () => [],
   useCourseCards: () => [],
   useCourseReviewHistory: () => [],
-  useCourseSessionHistory: () => [],
 }));
 
 vi.mock('../components/questions/useQuestionData', () => ({
@@ -26,6 +26,10 @@ vi.mock('../components/questions/useQuestionData', () => ({
 
 vi.mock('../components/analytics/CourseAnalytics', () => ({
   CourseAnalytics: () => <div>Card analytics charts</div>,
+}));
+
+vi.mock('../components/analytics/CourseForecastCard', () => ({
+  CourseForecastCard: () => <section>Exam-day forecast</section>,
 }));
 
 vi.mock('../components/course/CourseTabs', () => ({
@@ -116,9 +120,19 @@ describe('CourseAnalytics', () => {
     };
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <ToastProvider><Routes>
-          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes></ToastProvider>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/course/:courseId/analytics"
+              element={
+                <>
+                  <CourseSectionNavigation courseId="course-1" />
+                  <CourseAnalytics />
+                </>
+              }
+            />
+          </Routes>
+        </ToastProvider>
       </MemoryRouter>,
     );
 
@@ -134,23 +148,56 @@ describe('CourseAnalytics', () => {
     expect(screen.getByText('Card analytics charts')).toBeInTheDocument();
   });
 
+  it('opens with the headline figures and the course forecast before the evidence', () => {
+    mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/analytics']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId/analytics" element={<CourseAnalytics />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    );
+
+    const summary = screen.getByRole('region', { name: 'Summary' });
+    for (const label of ['Mastery', 'Cards', 'Reviews, 30 days', 'Study time, 30 days']) {
+      expect(summary).toHaveTextContent(label);
+    }
+    const forecast = screen.getByText('Exam-day forecast');
+    const questions = screen.getByRole('heading', { name: 'Questions' });
+    expect(
+      summary.compareDocumentPosition(forecast) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      forecast.compareDocumentPosition(questions) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('keeps archived analytics read-only without active-course navigation', () => {
     mocks.course = { id: 'course-1', name: 'Mathematics', archived: true };
     mocks.questionData = { questions: [], conceptSets: [], concepts: [], attempts: [] };
 
     render(
       <MemoryRouter initialEntries={['/course/course-1/analytics']}>
-        <ToastProvider><Routes>
-          <Route path="/course/:courseId/analytics" element={<><CourseSectionNavigation courseId="course-1" /><CourseAnalytics /></>} />
-        </Routes></ToastProvider>
+        <ToastProvider>
+          <Routes>
+            <Route
+              path="/course/:courseId/analytics"
+              element={
+                <>
+                  <CourseSectionNavigation courseId="course-1" />
+                  <CourseAnalytics />
+                </>
+              }
+            />
+          </Routes>
+        </ToastProvider>
       </MemoryRouter>,
     );
 
     expect(screen.getByText('Archived course')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Archived courses' })).toHaveAttribute(
-      'href',
-      '/archived',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
     expect(screen.queryByText('Course tabs')).not.toBeInTheDocument();
   });
 });

@@ -1,6 +1,11 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
+import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
+import { FileTextIcon, UploadIcon } from '../ui/icons';
 import type { useCardImportSource } from './useCardImportSource';
+import { countOf } from '../../utils/plural';
 
 export function CardImportInput({
   source,
@@ -15,6 +20,7 @@ export function CardImportInput({
     <div
       className="card-import-input"
       data-dragging={dragging}
+      data-package-empty={preferPackage && !source.apkg && !source.text}
       onDragOver={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -29,12 +35,18 @@ export function CardImportInput({
       }}
     >
       <div className="card-import-input-label">
-        <label htmlFor="card-import-text">
+        <label htmlFor="card-import-text" className={fieldLabelClassName}>
           {preferPackage ? 'Anki package' : 'Paste your cards'}
         </label>
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
-          Upload a file <span aria-hidden="true">↗</span>
-        </button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => fileRef.current?.click()}
+          disabled={source.reading}
+        >
+          <UploadIcon width={16} height={16} />
+          Upload a file
+        </Button>
       </div>
       <input
         ref={fileRef}
@@ -49,6 +61,9 @@ export function CardImportInput({
       />
       {source.apkg ? (
         <div className="card-import-package">
+          <span className="card-import-package-icon" aria-hidden="true">
+            <FileTextIcon width={24} height={24} />
+          </span>
           <strong>{source.filename}</strong>
           <p>{source.apkg.cards.length} cards · Anki package</p>
           <p>Includes scheduling history and media.</p>
@@ -58,6 +73,9 @@ export function CardImportInput({
         </div>
       ) : preferPackage && !source.text ? (
         <div className="card-import-package">
+          <span className="card-import-package-icon" aria-hidden="true">
+            <UploadIcon width={24} height={24} />
+          </span>
           <strong>Drop an Anki package here</strong>
           <p>Import cards with their media and scheduling history.</p>
           <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
@@ -66,6 +84,7 @@ export function CardImportInput({
         </div>
       ) : (
         <textarea
+          className={inputFrameClassName}
           id="card-import-text"
           value={source.text}
           onChange={(event) => source.changeText(event.target.value)}
@@ -77,7 +96,7 @@ export function CardImportInput({
         <span>
           {source.reading
             ? 'Reading file…'
-            : `${source.apkg?.cards.length ?? source.result.cards.length} cards detected`}
+            : `${countOf(source.apkg?.cards.length ?? source.result.cards.length, 'card')} detected`}
         </span>
         <span>
           {source.apkg
@@ -94,7 +113,7 @@ export function CardImportInput({
           <summary>Import settings</summary>
           <label>
             Format
-            <select
+            <Select
               value={source.format}
               onChange={(event) => source.setFormat(event.target.value as ImportFormat | '')}
             >
@@ -106,7 +125,7 @@ export function CardImportInput({
                   {FORMAT_LABELS[format]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <p>Use one row per card: front, back, then optional tags.</p>
         </details>

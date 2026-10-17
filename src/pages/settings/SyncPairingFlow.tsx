@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '../../components/ui/Button';
-import { cn } from '../../components/ui/cn';
+import { SegmentedPills } from './SettingsUi';
+import { useActionFocus } from '../../hooks/useActionFocus';
 import { CameraIcon } from '../../components/ui/icons';
-import { useToast } from '../../components/ui/Toast';
+import { SyncRelayFields } from './SyncRelayFields';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
+import { syncFeedback, focusSyncField, type SyncFeedback } from './syncFeedback';
 import { SyncField } from './SyncField';
 import { SettingsSubsectionHeading } from './SettingsSectionHeading';
 import { DEFAULT_RELAY_URL, validateRecoveryPassphrase } from '../../sync/pairingConfig';
@@ -18,9 +21,9 @@ type JoinMode = 'qr' | 'manual';
 interface SyncPairingFlowProps {
   mode: SyncPairingMode;
   busy: SyncPairingBusy;
-  onSetup: (relayUrl: string, mintSecret: string, passphrase: string) => void;
-  onManualJoin: (relayUrl: string, channelId: string, passphrase: string) => void;
-  onQrJoin: (payload: PairingPayload, passphrase: string) => void;
+  onSetup: (relayUrl: string, mintSecret: string, passphrase: string) => Promise<void>;
+  onManualJoin: (relayUrl: string, channelId: string, passphrase: string) => Promise<void>;
+  onQrJoin: (payload: PairingPayload, passphrase: string) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -32,7 +35,11 @@ export function SyncPairingFlow({
   onQrJoin,
   onCancel,
 }: SyncPairingFlowProps) {
-  const { notify } = useToast();
+  const [feedback, setFeedback] = useState<SyncFeedback | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const flowRef = useRef<HTMLDivElement>(null);
+  const methodArrow = useRef(false);
+  const { remember, restore } = useActionFocus();
   const [joinMode, setJoinMode] = useState<JoinMode>('qr');
   const [relayUrl, setRelayUrl] = useState(DEFAULT_RELAY_URL);
   const [mintSecret, setMintSecret] = useState('');
@@ -46,6 +53,46 @@ export function SyncPairingFlow({
   const [scanError, setScanError] = useState<string | null>(null);
   const scannerElementRef = useRef<HTMLDivElement>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+
+  useEffect(() => {
+    if (methodArrow.current) {
+      methodArrow.current = false;
+      return;
+    }
+    if (mode === 'setup') focusSyncField('sync-setup-passphrase');
+    else if (joinMode === 'manual') focusSyncField('sync-join-channel');
+    else if (pairingPayload) focusSyncField('sync-qr-passphrase');
+    else
+      flowRef.current
+        ?.querySelector<HTMLButtonElement>(
+          '[data-scan]:not([disabled]), [role=radio][aria-checked=true]',
+        )
+        ?.focus();
+  }, [mode, joinMode, pairingPayload]);
+
+  function fail(next: SyncFeedback) {
+    setFeedback(next);
+    if (next.field?.endsWith('-relay') || next.field === 'sync-mint-secret') {
+      setShowAdvanced(true);
+    }
+  }
+
+  useEffect(() => {
+    if (!feedback) return;
+    restore(
+      feedback.field
+        ? document.getElementById(feedback.field)
+        : (flowRef.current?.querySelector<HTMLButtonElement>('button[type=submit]') ?? null),
+    );
+  }, [feedback, showAdvanced, restore]);
+
+  const fieldError = (id: string) => (feedback?.field === id ? feedback.message : undefined);
+  const formError =
+    feedback && !feedback.field ? (
+      <p role="alert" className="text-sm text-negative">
+        {feedback.message}
+      </p>
+    ) : null;
 
   useEffect(() => {
     if (!scanning) return;
@@ -115,28 +162,66 @@ export function SyncPairingFlow({
     };
   }, [scanning]);
 
-  function handleSetup(event: FormEvent<HTMLFormElement>) {
+  async function handleSetup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
+    remember();
+    setFeedback(null);
     const passphraseError = validateRecoveryPassphrase(setupPassphrase);
     if (passphraseError) {
-      notify(passphraseError, 'negative');
+      fail({ message: passphraseError, field: 'sync-setup-passphrase' });
       return;
     }
     if (setupPassphrase !== setupConfirmation) {
-      notify('The recovery passphrases do not match.', 'negative');
+      fail({ message: 'The recovery passphrases do not match.', field: 'sync-setup-confirmation' });
       return;
     }
-    onSetup(relayUrl, mintSecret, setupPassphrase);
+    try {
+      await onSetup(relayUrl, mintSecret, setupPassphrase);
+    } catch (error) {
+      fail(syncFeedback(error, 'Could not set up sync. Try again.', 'sync-setup'));
+    }
   }
 
-  function handleManualJoin(event: FormEvent<HTMLFormElement>) {
+  async function handleManualJoin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onManualJoin(relayUrl, manualChannelId.trim(), manualPassphrase);
+    if (busy) return;
+    remember();
+    setFeedback(null);
+    if (!/^[0-9a-f]{32}$/.test(manualChannelId.trim())) {
+      fail({
+        message: 'Enter the 32-character channel id from your other device.',
+        field: 'sync-join-channel',
+      });
+      return;
+    }
+    const passphraseError = validateRecoveryPassphrase(manualPassphrase);
+    if (passphraseError) {
+      fail({ message: passphraseError, field: 'sync-join-passphrase' });
+      return;
+    }
+    try {
+      await onManualJoin(relayUrl, manualChannelId.trim(), manualPassphrase);
+    } catch (error) {
+      fail(syncFeedback(error, 'Could not join. Check your details and try again.', 'sync-join'));
+    }
   }
 
-  function handleQrJoin(event: FormEvent<HTMLFormElement>) {
+  async function handleQrJoin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pairingPayload) onQrJoin(pairingPayload, pairingPassphrase);
+    if (!pairingPayload || busy) return;
+    remember();
+    setFeedback(null);
+    const passphraseError = validateRecoveryPassphrase(pairingPassphrase);
+    if (passphraseError) {
+      fail({ message: passphraseError, field: 'sync-qr-passphrase' });
+      return;
+    }
+    try {
+      await onQrJoin(pairingPayload, pairingPassphrase);
+    } catch (error) {
+      fail(syncFeedback(error, 'Could not pair. Try scanning again.', 'sync-qr'));
+    }
   }
 
   function handleStartScan() {
@@ -153,230 +238,218 @@ export function SyncPairingFlow({
   const cameraAvailable =
     typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getUserMedia);
 
-  const isDefaultRelay = relayUrl.trim() === '' || relayUrl.trim() === DEFAULT_RELAY_URL;
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const advanced = (
+    <SyncRelayFields
+      setup={mode === 'setup'}
+      open={showAdvanced}
+      onToggle={() => setShowAdvanced((value) => !value)}
+      relayUrl={relayUrl}
+      onRelayChange={setRelayUrl}
+      mintSecret={mintSecret}
+      onMintChange={setMintSecret}
+      feedback={feedback}
+    />
+  );
 
-  if (mode === 'setup') {
-    return (
-      <form onSubmit={handleSetup} className="space-y-5">
-        <div>
-          <SettingsSubsectionHeading className="mb-1 font-display text-lg">
-            Set up sync
-          </SettingsSubsectionHeading>
-          <p className="text-sm text-ink-soft">
-            This device will create the private channel and publish the first encrypted snapshot.
-          </p>
-        </div>
-        <SyncField
-          id="sync-setup-relay"
-          label="Relay URL"
-          value={relayUrl}
-          onChange={setRelayUrl}
-          placeholder={DEFAULT_RELAY_URL}
-        />
-        {!isDefaultRelay || showAdvanced ? (
-          <SyncField
-            id="sync-mint-secret"
-            label="Relay mint secret (private relays only)"
-            value={mintSecret}
-            onChange={setMintSecret}
-            type="password"
-            autoComplete="off"
-            placeholder={
-              isDefaultRelay ? 'Leave empty for the default relay' : 'Required for this relay'
-            }
-          />
-        ) : null}
-        {!isDefaultRelay ? null : (
-          <button
-            type="button"
-            onClick={() => setShowAdvanced((value) => !value)}
-            className="text-left text-xs text-accent hover:underline"
-          >
-            {showAdvanced ? 'Hide advanced' : 'Advanced: use a private relay'}
-          </button>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SyncField
-            id="sync-setup-passphrase"
-            label="Recovery passphrase"
-            value={setupPassphrase}
-            onChange={setSetupPassphrase}
-            type="password"
-            autoComplete="new-password"
-          />
-          <SyncField
-            id="sync-setup-confirmation"
-            label="Confirm recovery passphrase"
-            value={setupConfirmation}
-            onChange={setSetupConfirmation}
-            type="password"
-            autoComplete="new-password"
-          />
-        </div>
-        <p className="text-xs text-ink-faint">
-          Use at least 16 characters. Choose a phrase you can recover; the relay mint secret is used
-          only to create this channel and is not stored.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" variant="primary" disabled={busy !== null}>
-            {busy === 'setup' ? 'Setting up…' : 'Set up sync'}
-          </Button>
-          <Button type="button" variant="ghost" onClick={onCancel} disabled={busy !== null}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    );
-  }
+  const formKeys = dialogKeyDown({
+    onCancel,
+    onSubmit: () => flowRef.current?.querySelector<HTMLFormElement>('form')?.requestSubmit(),
+  });
 
   return (
-    <div>
-      <div className="mb-5">
-        <SettingsSubsectionHeading className="mb-1 font-display text-lg">
-          Join another device
-        </SettingsSubsectionHeading>
-        <p className="text-sm text-ink-soft">
-          Scan a pairing QR or enter the channel details and recovery passphrase.
-        </p>
-      </div>
-      <div
-        className="mb-5 flex gap-1 rounded-lg border border-line bg-surface-raised/30 p-1"
-        role="tablist"
-        aria-label="Pairing method"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={joinMode === 'qr'}
-          onClick={() => setJoinMode('qr')}
-          className={cn(
-            'min-h-10 flex-1 rounded-md px-3 text-sm transition-colors',
-            joinMode === 'qr' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink',
-          )}
-        >
-          QR code
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={joinMode === 'manual'}
-          onClick={() => setJoinMode('manual')}
-          className={cn(
-            'min-h-10 flex-1 rounded-md px-3 text-sm transition-colors',
-            joinMode === 'manual' ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:text-ink',
-          )}
-        >
-          Enter details
-        </button>
-      </div>
-
-      {joinMode === 'qr' ? (
-        <>
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <Button
-              variant="secondary"
-              onClick={scanning ? handleStopScan : handleStartScan}
-              disabled={!cameraAvailable || busy !== null}
-            >
-              <CameraIcon width={18} height={18} />
-              {scanning ? 'Stop scanning' : 'Scan pairing QR'}
-            </Button>
-            {!cameraAvailable && (
-              <span className="text-xs text-ink-faint">
-                Camera scanning is unavailable in this browser.
-              </span>
-            )}
-          </div>
-          {scanning && (
-            <div className="mb-4 rounded-xl border border-line-strong bg-black p-3">
-              <div
-                id="sync-qr-scanner"
-                ref={scannerElementRef}
-                className="mx-auto aspect-square max-w-sm overflow-hidden rounded-lg"
-              />
-              <p className="mt-2 text-xs text-white/70">Point the camera at the pairing QR.</p>
-            </div>
-          )}
-          {scanError && (
-            <p role="alert" className="mb-4 text-sm text-negative">
-              {scanError}
+    <div
+      ref={flowRef}
+      onChange={() => setFeedback(null)}
+      onKeyDown={formKeys}
+      onKeyDownCapture={(event) => {
+        methodArrow.current =
+          !!(event.target as Element).closest('[role="radiogroup"]') &&
+          ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key);
+      }}
+    >
+      {mode === 'setup' ? (
+        <form onSubmit={(event) => void handleSetup(event)} className="space-y-5">
+          <div>
+            <SettingsSubsectionHeading className="mb-1 font-display text-lg">
+              Set up sync
+            </SettingsSubsectionHeading>
+            <p className="text-sm text-ink-soft">
+              Start here on your first device. Your study data is encrypted before it leaves this
+              device.
             </p>
-          )}
-          {pairingPayload && (
-            <form onSubmit={handleQrJoin} className="space-y-4">
-              <div className="rounded-xl border border-line bg-surface-raised/40 px-4 py-3 text-sm text-ink-soft">
-                QR read. This device will pair with{' '}
-                <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>.
-              </div>
-              <SyncField
-                id="sync-qr-passphrase"
-                label="Your recovery passphrase"
-                value={pairingPassphrase}
-                onChange={setPairingPassphrase}
-                type="password"
-                autoComplete="new-password"
-              />
-              <p className="text-xs text-ink-faint">
-                Set a local recovery passphrase of at least 16 characters. It protects the recovery
-                copy stored on this device.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="primary" disabled={busy !== null}>
-                  {busy === 'join' ? 'Joining…' : 'Join channel'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setPairingPayload(null)}
-                  disabled={busy !== null}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          )}
-        </>
-      ) : (
-        <form onSubmit={handleManualJoin} className="space-y-4">
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <SyncField
-              id="sync-join-relay"
-              label="Relay URL"
-              value={relayUrl}
-              onChange={setRelayUrl}
-              placeholder={DEFAULT_RELAY_URL}
+              id="sync-setup-passphrase"
+              error={fieldError('sync-setup-passphrase')}
+              label="Recovery passphrase"
+              value={setupPassphrase}
+              onChange={setSetupPassphrase}
+              type="password"
+              autoComplete="new-password"
             />
             <SyncField
-              id="sync-join-channel"
-              label="Channel id"
-              value={manualChannelId}
-              onChange={setManualChannelId}
-              placeholder="32 lowercase hexadecimal characters"
-              autoComplete="off"
+              id="sync-setup-confirmation"
+              error={fieldError('sync-setup-confirmation')}
+              label="Confirm recovery passphrase"
+              value={setupConfirmation}
+              onChange={setSetupConfirmation}
+              type="password"
+              autoComplete="new-password"
             />
           </div>
-          <SyncField
-            id="sync-join-passphrase"
-            label="Recovery passphrase"
-            value={manualPassphrase}
-            onChange={setManualPassphrase}
-            type="password"
-            autoComplete="current-password"
-          />
           <p className="text-xs text-ink-faint">
-            The channel id is not an account name. Treat it and the recovery passphrase as private
-            pairing details.
+            Use at least 16 characters. Keep this phrase safe: you need it to recover your pairing
+            or join another device without a QR code.
           </p>
+          {advanced}
+          {formError}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" variant="primary" disabled={busy !== null}>
-              {busy === 'join' ? 'Joining…' : 'Join channel'}
+              {busy === 'setup' ? 'Setting up…' : 'Set up sync'}
             </Button>
             <Button type="button" variant="ghost" onClick={onCancel} disabled={busy !== null}>
               Cancel
             </Button>
           </div>
         </form>
+      ) : (
+        <div>
+          <div className="mb-5">
+            <SettingsSubsectionHeading className="mb-1 font-display text-lg">
+              Join another device
+            </SettingsSubsectionHeading>
+            <p className="text-sm text-ink-soft">
+              Scan the pairing QR from your other device, or enter its channel details manually.
+            </p>
+          </div>
+          <SegmentedPills
+            label="Pairing method"
+            value={joinMode}
+            options={[
+              { value: 'qr', label: 'QR code' },
+              { value: 'manual', label: 'Enter details' },
+            ]}
+            onChange={(value) => {
+              setFeedback(null);
+              setJoinMode(value);
+            }}
+            className="mb-5"
+          />
+
+          {joinMode === 'qr' ? (
+            <>
+              <div className="mb-4 flex flex-wrap items-center gap-3">
+                <Button
+                  data-scan
+                  variant="secondary"
+                  onClick={scanning ? handleStopScan : handleStartScan}
+                  disabled={!cameraAvailable || busy !== null}
+                >
+                  <CameraIcon width={18} height={18} />
+                  {scanning ? 'Stop scanning' : 'Scan pairing QR'}
+                </Button>
+                {!pairingPayload && (
+                  <Button variant="ghost" onClick={onCancel} disabled={busy !== null}>
+                    Cancel
+                  </Button>
+                )}
+                {!cameraAvailable && (
+                  <span className="text-xs text-ink-faint">
+                    Camera scanning is unavailable in this browser.
+                  </span>
+                )}
+              </div>
+              {scanning && (
+                <div className="mb-4 rounded-xl border border-line-strong bg-black p-3">
+                  <div
+                    id="sync-qr-scanner"
+                    ref={scannerElementRef}
+                    className="mx-auto aspect-square max-w-sm overflow-hidden rounded-lg"
+                  />
+                  <p className="mt-2 text-xs text-white/70">Point the camera at the pairing QR.</p>
+                </div>
+              )}
+              {scanError && (
+                <p role="alert" className="mb-4 text-sm text-negative">
+                  {scanError}
+                </p>
+              )}
+              {pairingPayload && (
+                <form onSubmit={(event) => void handleQrJoin(event)} className="space-y-4">
+                  <div className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
+                    QR read. This device will pair with{' '}
+                    <span className="font-mono text-xs text-ink">{pairingPayload.relayUrl}</span>.
+                  </div>
+                  <SyncField
+                    id="sync-qr-passphrase"
+                    error={fieldError('sync-qr-passphrase')}
+                    label="Recovery passphrase for this device"
+                    value={pairingPassphrase}
+                    onChange={setPairingPassphrase}
+                    type="password"
+                    autoComplete="new-password"
+                  />
+                  <p className="text-xs text-ink-faint">
+                    Choose at least 16 characters to protect this device’s recovery copy. You can
+                    reuse your existing recovery passphrase.
+                  </p>
+                  {formError}
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" variant="primary" disabled={busy !== null}>
+                      {busy === 'join' ? 'Joining…' : 'Join channel'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setPairingPayload(null)}
+                      disabled={busy !== null}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </>
+          ) : (
+            <form onSubmit={(event) => void handleManualJoin(event)} className="space-y-4">
+              <div>
+                <SyncField
+                  id="sync-join-channel"
+                  error={fieldError('sync-join-channel')}
+                  label="Channel id"
+                  value={manualChannelId}
+                  onChange={setManualChannelId}
+                  placeholder="32 lowercase hexadecimal characters"
+                  autoComplete="off"
+                />
+              </div>
+              <SyncField
+                id="sync-join-passphrase"
+                error={fieldError('sync-join-passphrase')}
+                label="Recovery passphrase"
+                value={manualPassphrase}
+                onChange={setManualPassphrase}
+                type="password"
+                autoComplete="current-password"
+              />
+              <p className="text-xs text-ink-faint">
+                Enter the recovery passphrase chosen when sync was first set up. Keep it and the
+                channel id private.
+              </p>
+              {advanced}
+              {formError}
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="primary" disabled={busy !== null}>
+                  {busy === 'join' ? 'Joining…' : 'Join channel'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={onCancel} disabled={busy !== null}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       )}
     </div>
   );

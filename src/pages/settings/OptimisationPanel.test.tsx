@@ -74,16 +74,16 @@ describe('OptimisationPanel', () => {
     );
 
     const summary = screen.getByLabelText('Scheduling optimisation');
-    const disclosure = summary.closest('details');
 
-    expect(disclosure).not.toHaveAttribute('open');
-    expect(screen.getByText('Advanced scheduling')).not.toBe(summary);
+    expect(summary).toHaveAttribute('aria-expanded', 'false');
+    // No eyebrow label sits above the heading (visual design, typography).
+    expect(screen.queryByText('Advanced scheduling')).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 3, name: 'Scheduling optimisation' }),
     ).toBeInTheDocument();
 
     fireEvent.click(summary);
-    expect(disclosure).toHaveAttribute('open');
+    expect(summary).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: 'Reset to defaults' })).toBeInTheDocument();
   });
 

@@ -1,0 +1,1 @@
+- Settings: Pomodoro durations, practice-node defaults and days between lessons no longer jump to their minimum when cleared. They save on Enter or blur, Escape restores the saved value, and an empty or out-of-range entry stays unsaved with its bounds shown (#447).

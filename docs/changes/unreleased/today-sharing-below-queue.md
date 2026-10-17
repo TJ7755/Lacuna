@@ -1,0 +1,1 @@
+- Today: the sharing announcement now sits below the study queue instead of above it, so the day's courses and their Start buttons are always the first thing on the page.

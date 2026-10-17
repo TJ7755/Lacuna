@@ -1,0 +1,1 @@
+- Progress’s 7- and 30-day review activity now fills the card with a compact daily strip, with matching weekday or date labels and sequential keyboard navigation. Longer periods retain the calendar layout.

@@ -54,6 +54,11 @@ release (below); skipping them leaves Mac users on the previous manual-update pa
 
 ## Maintainer commands
 
+For pre-merge package evidence without tagging or publishing, dispatch `electron-e2e.yml` on
+the preparation branch. It builds unsigned Windows, Linux and macOS packages, runs the packaged
+interaction suite on each, and checks native AI on Windows/macOS plus the macOS study smoke.
+These hosted checks do not replace the physical managed-device or signing/notarisation matrix.
+
 Use Node 24, the pinned Bun version and an authenticated GitHub CLI (`gh auth login`, or an
 existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on PATH. Git uses
 the maintainer's existing credentials; the helper does not store credentials or change remotes.

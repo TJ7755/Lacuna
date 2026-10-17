@@ -63,7 +63,7 @@ export function WorkingStudyFace({
   };
 
   return (
-    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 shadow-xl shadow-black/5 md:min-h-[29rem] md:px-12 md:py-14">
+    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 md:min-h-[29rem] md:px-12 md:py-14">
       <div className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl">
         <CardContent card={card} side="front" />
       </div>
@@ -80,7 +80,7 @@ export function WorkingStudyFace({
               <div className="mb-3 text-right text-sm tabular-nums text-ink-soft">
                 {result.marksEarned} / {result.marksAvailable} marks
                 {result.undeterminedLines > 0 && (
-                  <span className="ml-2 font-sans text-xs text-ink-faint">
+                  <span className="ml-2 font-body text-xs text-ink-faint">
                     {result.undeterminedLines === 1
                       ? '1 line unchecked'
                       : `${result.undeterminedLines} lines unchecked`}
@@ -98,7 +98,7 @@ export function WorkingStudyFace({
                   return (
                     <div
                       key={`${index}-${verdict.studentLine}`}
-                      className="rounded-xl border border-line bg-surface-raised px-4 py-3"
+                      className="rounded-2xl bg-ink/[0.04] px-4 py-3"
                     >
                       <div className="flex items-start gap-3">
                         <span
@@ -110,7 +110,7 @@ export function WorkingStudyFace({
                         <span className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
                           {verdict.studentLine}
                           {verdict.undetermined && (
-                            <span className="mt-1 block font-sans text-xs text-ink-faint">
+                            <span className="mt-1 block font-body text-xs text-ink-faint">
                               Lacuna could not check this line, so it earned no marks. Report it if
                               you think it is right.
                             </span>

@@ -1,0 +1,2 @@
+- Replace path-editor modals with sentence editors that bloom from checkpoint/exam, card-practice and Question Set rows, or the Add trigger, and fold back after valid edits. Add a searchable card-exclusion picker and anchored deletion confirmations. Extend the existing native drag interaction to authored path nodes, with spring displacement, edge scrolling, dependency checks and Alt+Arrow/menu alternatives.
+- Keep native lesson touch listeners attached through development refreshes and allow an empty new Question Set editor to close when there are no saved sets to choose.

@@ -1,0 +1,1 @@
+- Clarify study actions, course controls, revision plans and device sync with contextual helper text.

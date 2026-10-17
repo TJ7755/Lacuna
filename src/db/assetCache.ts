@@ -2,10 +2,11 @@
 //
 // Resolving lacuna-asset://<hash> to a blob URL on every card render and revoking
 // it on unmount is wasteful. This module caches one object URL per hash for the
-// lifetime of the app, revoking the lot only at teardown.
+// lifetime of its LRU entry, revoking URLs on eviction or app teardown.
 
 import { db } from './schema';
 import { assetUrl, referencedAssetHashes, toBlob } from './assets';
+import { seedArtworkFor } from './seedArtwork';
 
 const MAX_SIZE = 200;
 
@@ -16,6 +17,32 @@ interface LruNode {
 }
 
 const cache = new Map<string, string>();
+const imageSizes = new Map<string, Readonly<{ width: number; height: number }> | undefined>();
+
+/** Render a warmed asset immediately; a miss still uses the asynchronous resolver. */
+export function peekCachedAssetUrl(hash: string): string | undefined {
+  return cache.get(hash);
+}
+
+/** Intrinsic dimensions reserve the image's frame before the browser loads it. */
+export function cachedAssetImageSize(url: string) {
+  return imageSizes.get(url);
+}
+
+/** Decoding also recovers dimensions missing from older imported asset rows. */
+export function rememberAssetImageSize(url: string, width: number, height: number): void {
+  if (imageSizes.has(url) && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+    imageSizes.set(url, { width, height });
+  }
+}
+
+export function resolveCachedAssetMarkdown(markdown: string): string {
+  for (const hash of referencedAssetHashes(markdown)) {
+    const url = peekCachedAssetUrl(hash);
+    if (url) markdown = markdown.replaceAll(assetUrl(hash), url);
+  }
+  return markdown;
+}
 const nodeMap = new Map<string, LruNode>();
 let head: LruNode | null = null;
 let tail: LruNode | null = null;
@@ -48,7 +75,10 @@ function evictOldest(): void {
   if (!tail) return;
   const oldestKey = tail.key;
   const url = cache.get(oldestKey);
-  if (url) URL.revokeObjectURL(url);
+  if (url) {
+    URL.revokeObjectURL(url);
+    imageSizes.delete(url);
+  }
   cache.delete(oldestKey);
   // Detach tail
   const newTail = tail.prev;
@@ -75,11 +105,22 @@ export async function resolveAssetUrl(hash: string): Promise<string | null> {
 
   const promise = (async () => {
     try {
-      const asset = await db.assets.get(hash);
-      if (!asset) return null;
-      const url = URL.createObjectURL(toBlob(asset.blob, asset.mimeType));
+      // The Welcome drawings show their themed versions; their stored bytes stay as seeded.
+      let blob = seedArtworkFor(hash);
+      let size: { width: number; height: number } | undefined;
+      if (!blob) {
+        const asset = await db.assets.get(hash);
+        if (!asset) return null;
+        blob = toBlob(asset.blob, asset.mimeType);
+        if (typeof asset.width === 'number' && typeof asset.height === 'number' &&
+          Number.isFinite(asset.width) && Number.isFinite(asset.height) && asset.width > 0 && asset.height > 0) {
+          size = { width: asset.width, height: asset.height };
+        }
+      }
+      const url = URL.createObjectURL(blob);
       if (cache.size >= MAX_SIZE) evictOldest();
       cache.set(hash, url);
+      imageSizes.set(url, size);
       addFront(hash);
       return url;
     } finally {
@@ -114,6 +155,7 @@ export function revokeAllCachedUrls(): void {
     URL.revokeObjectURL(url);
   }
   cache.clear();
+  imageSizes.clear();
   nodeMap.clear();
   head = null;
   tail = null;

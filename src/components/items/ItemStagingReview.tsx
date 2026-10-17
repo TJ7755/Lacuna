@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react';
 import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
@@ -249,7 +250,7 @@ export function ItemStagingReview({
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_14rem]">
-        <label className="flex flex-col gap-2 text-sm text-ink-soft">
+        <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
           Generated Question batch
           <textarea
             ref={sourceInputRef}
@@ -257,17 +258,17 @@ export function ItemStagingReview({
             onChange={(event) => setSource(event.target.value)}
             rows={8}
             placeholder={`Paste the block beginning ${BATCH_OUTPUT_START}`}
-            className="resize-y rounded-xl border border-line-strong bg-surface px-4 py-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-accent"
+            className={`${inputFrameClassName} resize-y font-mono text-sm placeholder:font-body placeholder:text-ink-faint`}
           />
         </label>
         <div className="flex flex-col gap-4">
-          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
             Target lesson
             <select
               value={targetLessonId}
               onChange={(event) => setTargetLessonId(event.target.value)}
               disabled={lessons.length === 0}
-              className="min-h-11 rounded-xl border border-line-strong bg-surface px-3 text-ink outline-none focus:border-accent"
+              className={`${inputFrameClassName} min-h-11`}
             >
               {lessons.length === 0 && <option value="">No lessons available</option>}
               {lessons.map((lesson) => (
@@ -328,13 +329,13 @@ export function ItemStagingReview({
             </div>
 
             <AnimatedDisclosure open={batchRevisionOpen && failingCandidates.length > 0}>
-              <div className="rounded-xl border border-line bg-surface-raised p-4">
+              <div className="rounded-2xl bg-ink/[0.04] p-4">
                 <p className="text-sm text-ink-soft">
                   The prompt carries each failing item and its validation errors. Paste the reply
                   back below; the {failingCandidates.length} revised item
                   {failingCandidates.length === 1 ? '' : 's'} replace only those, in order.
                 </p>
-                <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} mt-3 flex flex-col gap-2`}>
                   Anything else to change? (optional)
                   <textarea
                     ref={batchComplaintRef}
@@ -342,17 +343,17 @@ export function ItemStagingReview({
                     onChange={(event) => setBatchComplaint(event.target.value)}
                     rows={2}
                     placeholder="Applies to every item in the prompt…"
-                    className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    className={`${inputFrameClassName} resize-y text-sm leading-6`}
                   />
                 </label>
-                <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} mt-3 flex flex-col gap-2`}>
                   Revised reply
                   <textarea
                     value={batchRevisionSource}
                     onChange={(event) => setBatchRevisionSource(event.target.value)}
                     rows={5}
                     placeholder="Paste the model's reply here"
-                    className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-accent"
+                    className={`${inputFrameClassName} resize-y font-mono text-sm placeholder:font-body placeholder:text-ink-faint`}
                   />
                 </label>
                 <div className="mt-3 flex flex-wrap justify-end gap-2">

@@ -25,6 +25,16 @@ this device) and are skipped inside code. Tables render inside a scrolling card
 wrapper. Lesson notes use the same engine with `allowEmbeds`; the lesson workspace
 is `max-w-4xl` so diagrams and tables stay legible.
 
+Study-session note sections start their mouse disclosure on press; keyboard and touch
+use native click activation. Each section owns its open state and retains its rendered
+body, diagrams and annotation drafts while closed. Closed content is inert and hidden
+from assistive technology. Shared retained disclosures cache their natural height and
+observe content resizes, keeping measurement and Markdown/Mermaid work out of toggles.
+The height spring is critically damped, so closing never overshoots below zero and
+freezes on an invalid CSS height. It follows motion speed and becomes instant with reduced motion.
+Concurrent Mermaid renders and theme updates use distinct SVG IDs so one diagram cannot
+remove another. The development server pre-bundles Mermaid's CommonJS dependencies.
+
 The `MarkdownView` component is backed by a bounded LRU parse cache (parsed HTML
 cached by source string, with five-minute stale eviction and an LRU fallback), so
 re-renders and remounts are O(1) lookups while an entry remains cached; an evicted source
@@ -58,7 +68,13 @@ ordinary `front_back` cards to the scheduler.
 
 - Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
 - **Card type** selector: Basic (front/back), Reversed, Cloze or Audio. Numeric and working
-  application content belongs to the separate Question editor.
+  application content belongs to the separate Question editor. Front / back (the default) and
+  Cloze show first; **More** reveals the rest and, for a new card, **Sequence** and **Image
+  occlusion**, which open their own editors in place of this one (anything typed is kept as a
+  draft). For a new card, **Import cards** is always visible beside More, outside the type
+  selector. It imports into the lesson or, from Cards, the course's unassigned cards.
+  In a lesson, More also reveals **Link existing cards**. Changing
+  type slides the new form in from the side of the chosen pill.
   - **Basic:** standard front/back flashcard.
   - **Reversed:** creates an independent card that tests the back as the prompt.
   - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
@@ -119,6 +135,13 @@ working scheme, and worked explanation. A generated family selects a supported g
 typed configuration. Changing Question form during editing is prohibited: it would be a new
 definition, not a cosmetic edit.
 
+Content leads: the prompt, answer and worked explanation (or the generator configuration) come
+before name, lesson and Concepts, and a new fixed Question opens with focus in the prompt.
+Ctrl/Cmd+Enter saves; for a new Question it is **Save & add another**, which keeps the form, lesson,
+Concept, answer type and tags and starts the next prompt. Escape leaves only while nothing has been
+changed. A save with missing fields reports each at its field, keeps every input and focuses the
+first in page order, without a toast.
+
 Question authoring uses the same local draft store as Card authoring through a typed, generic
 storage boundary. Fixed, working and generated state — including invalid raw working source,
 fixtures and uncommitted Concept text — is isolated by Course and Question identity. Autosave begins
@@ -131,11 +154,44 @@ Questions are post-instruction application practice. They do not appear in the C
 Card study or Course path. Deleting a Question removes the definition and relationship set but
 retains its Attempt receipts as personal evidence.
 
-
 [Specification index](../SPEC.md)
+
+The card editor briefly confirms a save before returning to its origin. Leaving the editor
+or switching to another card cancels that return, including when persistence finishes after
+the editor has closed.
 
 ### Large card lists
 
 Virtualised lists rebuild the heights of mounted rows when the card count changes,
 so adding or deleting cards preserves spacing without waiting for another resize.
 Resize measurements include the full row border box, keeping padding and borders in the layout.
+
+### Question-set composer (`src/pages/QuestionSetEditor.tsx`)
+
+Authored question sets use one continuous, autosaving list of questions, parts and subparts.
+Each leaf has growing Markdown question and mark-scheme textareas, followed by Marks; shared
+stems span both text columns and show their leaf total. Below 720px, the scheme and marks sit
+under the question. New or empty sets focus the first Question field. Populated sets open
+without visible focus; neither entry nor returning from Preview focuses the title.
+
+Tab moves Question → Mark scheme → the next Question, inserting a sibling after the last row.
+Marks stays outside the Tab sequence, with its automatic total and editable override unchanged.
+At the end of an unselected scheme, ArrowRight focuses Marks and selects its override; ArrowLeft
+at the start of Marks, or Shift+Tab there, returns to the scheme's end. Tab in Marks also moves
+to the next Question, inserting one when needed; Enter in Marks always inserts a sibling after
+any parts. Shift+Tab in a Question returns to the preceding scheme, or its Question if it is a
+stem; the first row leaves backwards navigation to the browser. Textarea Enter and Shift+Enter
+insert newlines. Tab on an empty leaf indents to a part or subpart; an existing parent answer
+moves into its first child with an Undo toast. Shift+Tab on an empty part outdents before moving
+backwards, and Backspace deletes an empty leaf. A stem's Tab leads to its first part. Row menus
+are outside the Tab sequence, reached with Context Menu or Shift+F10 from a
+row field; Alt+Up/Down reorders siblings. Menus offer answer type, image, per-point guidance
+and dimension, knowledge links, movement and confirmed deletion. Multiple-choice options and
+correct answers appear inline; switching away from populated options requires confirmation.
+
+The header contains the title, icon-only Set details (name, lessons and exams), Preview and
+Save set. Only Saving… and Could not save are visible save statuses; Saved is announced
+without visual text. Ctrl/Cmd+Enter publishes after existing validation. Failed validation
+shows issues on their rows and focuses the first offending row. Escape leaves through the
+existing draft-flush navigation guard; Preview returns to the same composer. Row transitions,
+active wash, stem totals and disclosures follow motion speed and reduced motion.

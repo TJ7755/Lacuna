@@ -5,17 +5,19 @@ test('makes the revealed answer readable during the deliberate card flip', async
   const frontText = 'Which value is the response marker?';
   await enterFreshLacuna(page);
   await createCourse(page, 'Study response regression');
-  await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(frontText);
   await page.getByRole('textbox', { name: 'Back' }).fill('The response marker is forty-two.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
   await expect(page.locator('[data-card-id]').getByText(frontText, { exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   const reveal = page.getByRole('button', { name: /Show answer/i }).last();
   await expect(reveal).toBeVisible();
   await expect(
@@ -94,7 +96,7 @@ test('makes the revealed answer readable during the deliberate card flip', async
     .toBe(1);
   await page.goto(`/#/course/${courseId}/cards`);
   const frontPrefix = frontText.trim().split(/\s+/).slice(0, 4).join(' ');
-  await page.getByPlaceholder('Search all cards…').fill(frontPrefix);
+  await page.getByLabel('Search all cards').fill(frontPrefix);
   // Hover previews can display the back; the search still identifies this single Card.
   const row = page.locator(`[data-card-id="${reviewedId}"]`);
   await expect(row).toHaveCount(1);

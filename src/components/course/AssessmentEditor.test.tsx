@@ -59,7 +59,13 @@ function card(id: string, lessonId: string, front: string): Card {
 
 const cards = [card('c1', 'l1', 'What is a proton?'), card('c2', 'l2', 'What is a bond?')];
 
-function Harness({ initial = emptyAssessmentDraft(lessons) }: { initial?: AssessmentDraft }) {
+function Harness({
+  initial = emptyAssessmentDraft(lessons),
+  cardList = cards,
+}: {
+  initial?: AssessmentDraft;
+  cardList?: Card[];
+}) {
   const [draft, setDraft] = useState(initial);
   return (
     <AssessmentEditor
@@ -68,13 +74,33 @@ function Harness({ initial = emptyAssessmentDraft(lessons) }: { initial?: Assess
       draft={draft}
       onChange={setDraft}
       lessons={lessons}
-      cards={cards}
+      cards={cardList}
       links={[]}
     />
   );
 }
 
 describe('AssessmentEditor', () => {
+  it.each(['checkpoint', 'final'] as const)(
+    'explains progress only for checkpoints (%s)',
+    (kind) => {
+      render(
+        <AssessmentEditor
+          courseId="c1"
+          kind={kind}
+          draft={emptyAssessmentDraft(lessons)}
+          onChange={() => {}}
+          lessons={lessons}
+          cards={cards}
+          links={[]}
+        />,
+      );
+      const hint = screen.queryByText('Checkpoints never block progress along the course.');
+      if (kind === 'checkpoint') expect(hint).toBeVisible();
+      else expect(hint).not.toBeInTheDocument();
+    },
+  );
+
   it('uses prefix coverage by default and resolves lesson/card counts at the anchor', () => {
     render(<Harness />);
     expect(screen.getByRole('button', { name: 'Everything so far' })).toHaveAttribute(
@@ -131,6 +157,12 @@ describe('AssessmentEditor', () => {
     expect(screen.queryByText('What is a bond?')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('What is a proton?'));
     expect(screen.getByText(/2 lessons · 1 card/)).toBeInTheDocument();
+  });
+
+  it('lists exclusion choices as readable text rather than raw markup', () => {
+    render(<Harness cardList={[card('c3', 'l1', 'The {{c1::nucleus}} holds **$p^+$**')]} />);
+    expect(screen.getByText('The nucleus holds p^+')).toBeInTheDocument();
+    expect(screen.queryByText(/\{\{c1::/)).not.toBeInTheDocument();
   });
 
   it('requires explicit confirmation for a repaired stale assessment', () => {

@@ -1,3 +1,4 @@
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { useEffect, useMemo } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
@@ -5,7 +6,6 @@ import { Button } from '../../components/ui/Button';
 import { Toggle } from '../../components/ui/Toggle';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { useToast } from '../../components/ui/Toast';
-import { ChevronDownIcon } from '../../components/ui/icons';
 import { defaultFsrsParameters } from '../../fsrs/params';
 import { countReviews } from '../../fsrs/optimise';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
@@ -14,7 +14,7 @@ import { optimiseEnabledForDeck, useAutoOptimiseDefault } from '../../state/opti
 import type { Card, FsrsParameters } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
-import { SectionCard } from '../../components/ui/SectionCard';
+import { SettingsCard } from './SettingsUi';
 
 /** Minimal shape an optimisable entity (deck or course) must provide. */
 interface OptimisableEntity {
@@ -41,7 +41,7 @@ export interface OptimisationPanelProps {
  * better), and applies the new weights only on explicit confirmation, taking a
  * restore-point snapshot first. Gated on a minimum review count, and on the
  * per-entity/global "Optimise scheduling" setting. The whole low-level workflow, including its
- * reset path, sits behind an Advanced scheduling disclosure.
+ * reset path, sits behind the card's disclosure.
  */
 export function OptimisationPanel({
   entity,
@@ -133,33 +133,28 @@ export function OptimisationPanel({
   }
 
   return (
-    <SectionCard>
-      <div>
-        <p className="text-sm text-ink-soft">
-          Advanced scheduling
-        </p>
-        <SettingsSectionHeading level={headingLevel} className="mt-1 font-display text-xl">
-          Scheduling optimisation
-        </SettingsSectionHeading>
-      </div>
+    <SettingsCard>
+      {/* Headed like its sibling cards, without an eyebrow label above the heading. */}
+      <SettingsSectionHeading
+        level={headingLevel}
+        className="font-display text-2xl font-semibold tracking-tight"
+      >
+        Scheduling optimisation
+      </SettingsSectionHeading>
 
-      <details className="group">
-        <summary
-          aria-label="Scheduling optimisation"
-          className="mt-1 flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden"
-        >
-          <span className="min-w-0 text-sm text-ink-soft">
-            {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to
-            your review history or reset its weights to the recommended defaults.
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-1 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
-
+      <InlineSettingsDisclosure
+        className="group"
+        label="Scheduling optimisation"
+        headerClassName="mt-1 flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0 text-sm text-ink-soft">
+              {enabled ? 'Enabled' : 'Disabled'} for this {entityLabel}. Open to fit scheduling to
+              your review history or reset its weights to the recommended defaults.
+            </span>
+          </>
+        }
+      >
         <div className="mt-5 border-t border-line pt-5">
           <div className="flex items-start justify-between gap-3">
             <p className="min-w-0 text-sm text-ink-soft">
@@ -294,7 +289,7 @@ export function OptimisationPanel({
             </div>
           )}
         </div>
-      </details>
-    </SectionCard>
+      </InlineSettingsDisclosure>
+    </SettingsCard>
   );
 }

@@ -2,12 +2,17 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
 describe('Vercel configuration', () => {
-  it('installs from the committed Bun lockfile', async () => {
+  it('pins installation and builds to the Bun release required by web typechecking', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       installCommand?: string;
+      buildCommand?: string;
+    };
+    const manifest = JSON.parse(await readFile('package.json', 'utf8')) as {
+      packageManager: string;
     };
 
-    expect(config.installCommand).toBe('bun install --frozen-lockfile');
+    expect(config.installCommand).toBe(`bunx ${manifest.packageManager} install --frozen-lockfile`);
+    expect(config.buildCommand).toBe(`bunx ${manifest.packageManager} run build`);
   });
 
   it('does not rewrite missing hashed assets to the HTML app shell', async () => {
@@ -78,5 +83,26 @@ describe('Vercel configuration', () => {
     };
     expect(headerPolicy).toContain('connect-src');
     expect(connectSources(headerPolicy)).toEqual(connectSources(metaPolicy));
+  });
+
+  it('serves every font from the app origin', async () => {
+    // Fonts are bundled in public/fonts so school networks and offline reloads
+    // never depend on Google Fonts.
+    const config = await readFile('vercel.json', 'utf8');
+    const pages = await Promise.all(
+      ['index.html', 'compare/quizlet/index.html'].map((path) => readFile(path, 'utf8')),
+    );
+    for (const source of [config, ...pages]) {
+      expect(source).not.toMatch(/fonts\.(?:googleapis|gstatic)\.com/);
+    }
+
+    const styles = await readFile('src/index.css', 'utf8');
+    const faces = [...styles.matchAll(/font-family: '([^']+)';\s*src: url\('([^']+)'\)/g)];
+    expect(faces.map(([, family]) => family)).toEqual(
+      expect.arrayContaining(['Instrument Sans', 'Space Grotesk', 'JetBrains Mono']),
+    );
+    for (const [, , url] of faces) {
+      await expect(readFile(`public${url}`)).resolves.toBeInstanceOf(Buffer);
+    }
   });
 });

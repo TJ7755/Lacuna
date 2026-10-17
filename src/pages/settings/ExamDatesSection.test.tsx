@@ -105,7 +105,7 @@ describe('ExamDatesSection', () => {
 
   it('lists existing exam dates', () => {
     render(<ExamDatesSection courseId="course-1" />);
-    const row = screen.getByText('Mock exam').closest('.rounded-lg');
+    const row = screen.getByText('Mock exam').closest('.rounded-2xl');
     expect(row).toBeInTheDocument();
     expect(row).not.toHaveStyle({ opacity: '1' });
     expect(screen.getByRole('button', { name: 'Add checkpoint' }).parentElement).not.toHaveStyle({

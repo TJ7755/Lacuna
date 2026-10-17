@@ -1,0 +1,1 @@
+- Restored sync from `preview.getlacuna.app` by adding its exact origin to the production relay's CORS configuration and redeploying the existing relay source, preserving the normal app origin and legacy relay alias.

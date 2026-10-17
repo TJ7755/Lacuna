@@ -1,0 +1,1 @@
+- Add Settings (Cmd/Ctrl+,) and Keyboard Shortcuts to the desktop app's native menus, routed through one whitelisted menu-command channel that replaces the Help-only channel.

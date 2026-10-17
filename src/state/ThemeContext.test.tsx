@@ -8,6 +8,15 @@ function Consumer() {
 }
 
 describe('ThemeProvider', () => {
+  it('opens a fresh install in Volt dark mode without overriding a saved light theme', () => {
+    localStorage.removeItem('lacuna-theme');
+    const view = render(<ThemeProvider><Consumer /></ThemeProvider>);
+    expect(screen.getByText('dark')).toBeInTheDocument();
+    view.unmount();
+    localStorage.setItem('lacuna-theme', 'light');
+    render(<ThemeProvider><Consumer /></ThemeProvider>);
+    expect(screen.getByText('light')).toBeInTheDocument();
+  });
   it('updates consumers when the system theme changes in auto mode', () => {
     let listener: ((event: MediaQueryListEvent) => void) | undefined;
     const mediaQuery = {

@@ -42,8 +42,8 @@ export function FadeInView({
 
   return (
     <motion.div
-      initial={initial}
-      whileInView={animate}
+      initial={m > 0 ? initial : false}
+      whileInView={m > 0 ? animate : undefined}
       viewport={{ once, amount: 0, margin: '0px 0px 100px 0px' }}
       transition={{
         duration: duration * m,

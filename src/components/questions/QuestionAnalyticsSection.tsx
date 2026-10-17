@@ -1,10 +1,16 @@
+import { useId, useState } from 'react';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { Button } from '../ui/Button';
 import type { QuestionAnalytics, QuestionPerformanceMetric } from '../../questions/analytics';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 
 function percent(value: number | null): string {
   return value === null ? '—' : `${Math.round(value * 100)}%`;
 }
 
 export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAnalytics }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsId = useId();
   const criteria = [...analytics.criteria].sort(
     (left, right) =>
       left.markRate - right.markRate ||
@@ -38,11 +44,11 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
       </h2>
 
       {analytics.inventory.total === 0 && !hasRetainedEvidence ? (
-        <div className="border-y border-line py-8 text-sm text-ink-soft">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} px-6 py-8 text-sm text-ink-soft`}>
           No question attempts yet.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className={`${SECTION_CARD_SURFACE_CLASS} overflow-hidden`}>
           <div className="flex flex-col border-b border-line sm:flex-row sm:items-center">
             <div className="flex items-center justify-between gap-6 bg-accent-soft px-5 py-5 sm:flex-1 sm:px-6">
               <p className="text-sm text-ink-soft">Novel generated accuracy</p>
@@ -118,47 +124,57 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
             </div>
           </div>
 
-          <details className="border-t border-line px-5 py-4 md:px-6">
-            <summary className="cursor-pointer text-sm text-ink-soft marker:text-ink-faint">
+          <div className="border-t border-line px-5 py-3 md:px-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-expanded={detailsOpen}
+              aria-controls={detailsId}
+              onClick={() => setDetailsOpen(!detailsOpen)}
+            >
               Attempt details
-            </summary>
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
-              <div>
-                <dt className="text-xs text-ink-soft">Fixed questions seen</dt>
-                <dd className="mt-1 tabular-nums">
-                  {analytics.fixed.presentedDefinitionCount} / {analytics.fixed.definitionCount}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-ink-soft">Repeated presentations</dt>
-                <dd className="mt-1 tabular-nums">
-                  {analytics.generated.repeatedPresentationCount} /{' '}
-                  {analytics.generated.presentationCount}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-ink-soft">Unique variants seen</dt>
-                <dd className="mt-1 tabular-nums">{analytics.generated.uniqueVariantCount}</dd>
-              </div>
-            </dl>
-            {excludedAttemptCount > 0 && (
-              <>
-                <p className="mt-5 text-sm text-ink-soft">
-                  Excluded attempts · {excludedAttemptCount}
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  <InventoryStat label="Shown" value={analytics.excluded.shown} />
-                  <InventoryStat label="Abandoned" value={analytics.excluded.abandoned} />
-                  <InventoryStat label="Undone" value={analytics.excluded.undone} />
-                  <InventoryStat
-                    label="Checker withheld"
-                    value={analytics.excluded.checkerWithheld}
-                  />
-                  <InventoryStat label="Unscored" value={analytics.excluded.unscored} />
-                </div>
-              </>
-            )}
-          </details>
+            </Button>
+            <div id={detailsId}>
+              <AnimatedDisclosure open={detailsOpen} retainContent>
+                <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
+                  <div>
+                    <dt className="text-xs text-ink-soft">Fixed questions seen</dt>
+                    <dd className="mt-1 tabular-nums">
+                      {analytics.fixed.presentedDefinitionCount} / {analytics.fixed.definitionCount}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-soft">Repeated presentations</dt>
+                    <dd className="mt-1 tabular-nums">
+                      {analytics.generated.repeatedPresentationCount} /{' '}
+                      {analytics.generated.presentationCount}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-ink-soft">Unique variants seen</dt>
+                    <dd className="mt-1 tabular-nums">{analytics.generated.uniqueVariantCount}</dd>
+                  </div>
+                </dl>
+                {excludedAttemptCount > 0 && (
+                  <>
+                    <p className="mt-5 text-sm text-ink-soft">
+                      Excluded attempts · {excludedAttemptCount}
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+                      <InventoryStat label="Shown" value={analytics.excluded.shown} />
+                      <InventoryStat label="Abandoned" value={analytics.excluded.abandoned} />
+                      <InventoryStat label="Undone" value={analytics.excluded.undone} />
+                      <InventoryStat
+                        label="Checker withheld"
+                        value={analytics.excluded.checkerWithheld}
+                      />
+                      <InventoryStat label="Unscored" value={analytics.excluded.unscored} />
+                    </div>
+                  </>
+                )}
+              </AnimatedDisclosure>
+            </div>
+          </div>
 
           {criteria.length > 0 && (
             <div className="border-t border-line p-5 md:p-6">
@@ -168,7 +184,7 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
                   <div key={criterion.id} className="border-t border-line py-4">
                     <div className="flex items-start justify-between gap-3">
                       <p className="text-sm font-medium text-ink">{criterion.label}</p>
-                      <span className="shrink-0 font-mono text-xs text-ink-faint">
+                      <span className="shrink-0 tabular-nums text-xs text-ink-faint">
                         v{criterion.contentVersion} · line {criterion.lineIndex + 1}
                       </span>
                     </div>
@@ -176,9 +192,7 @@ export function QuestionAnalyticsSection({ analytics }: { analytics: QuestionAna
                       {percent(criterion.markRate)} of marks across {criterion.opportunityCount}{' '}
                       {criterion.opportunityCount === 1 ? 'opportunity' : 'opportunities'}
                     </p>
-                    <p className="mt-1 truncate font-mono text-[11px] text-ink-faint">
-                      {criterion.questionId}
-                    </p>
+                    <p className="mt-1 truncate text-xs text-ink-faint">{criterion.questionId}</p>
                   </div>
                 ))}
               </div>
@@ -194,7 +208,7 @@ function InventoryStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="px-3 py-4 text-center">
       <p className="text-xs text-ink-faint">{label}</p>
-      <p className="mt-1 font-mono text-xl tabular-nums text-ink">{value}</p>
+      <p className="mt-1 font-display text-xl tabular-nums text-ink">{value}</p>
     </div>
   );
 }

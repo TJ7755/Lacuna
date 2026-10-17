@@ -64,6 +64,8 @@ export interface SessionCardPoolOptions {
   filters?: readonly CardFilter[];
   /** Reference time for the "due" filter; defaults to now. */
   now?: number;
+  /** The owning Course's leech threshold, so the leech filter agrees with its settings. */
+  leechThreshold?: number;
 }
 
 interface ParsedQuery {
@@ -128,14 +130,19 @@ function parseAdvancedQuery(query: string): ParsedQuery {
 }
 
 /** Whether a single card satisfies one structured filter. */
-function matchesFilter(card: Card, filter: CardFilter, now: number): boolean {
+function matchesFilter(
+  card: Card,
+  filter: CardFilter,
+  now: number,
+  leechThreshold?: number,
+): boolean {
   switch (filter) {
     case 'due':
       return card.due !== null && card.due <= now;
     case 'new':
       return card.lastReviewed === null;
     case 'leech':
-      return isLeech(card);
+      return isLeech(card, leechThreshold);
     case 'flagged':
       return card.flagged === true;
     case 'suspended':
@@ -166,9 +173,11 @@ export function filterSessionCardPool(cards: Card[], options: SessionCardPoolOpt
       const cardTags = (card.tags ?? []).map(normalise);
       if (!cardTags.includes(tag)) return false;
     }
-    return filters.every((filter) => matchesFilter(card, filter, now));
+    return filters.every((filter) => matchesFilter(card, filter, now, options.leechThreshold));
   });
 }
+
+const FRONT_ORDER = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 /**
  * Find cards in a Course/Lesson-aware scope.
@@ -197,7 +206,8 @@ export function searchCardsInScope(
     const contextName = lesson?.name ?? course.name;
 
     // Every active filter must match (AND), narrowing the set before text ranking.
-    if (filters.length && !filters.every((f) => matchesFilter(card, f, now))) continue;
+    if (filters.length && !filters.every((f) => matchesFilter(card, f, now, course.leechThreshold)))
+      continue;
 
     // Inline tag operators (AND between multiple tag: tokens).
     if (parsed?.tags.length) {
@@ -230,8 +240,11 @@ export function searchCardsInScope(
     ranked.push({ result: { kind: 'card', card, course, lesson, contextName }, score });
   }
 
-  // With a query, rank by match quality; filter-only results keep their input order.
-  ranked.sort((a, b) => a.score - b.score);
+  // Rank by match quality, then by front text so equal matches read in a stable, natural
+  // order ("Item 9" before "Item 10") rather than the storage order of random ids.
+  ranked.sort(
+    (a, b) => a.score - b.score || FRONT_ORDER.compare(a.result.card.front, b.result.card.front),
+  );
   return ranked.map(({ result }) => result);
 }
 

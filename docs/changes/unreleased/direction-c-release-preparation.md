@@ -1,0 +1,1 @@
+- Prepare Direction C against current master, retaining redesigned editors and focus behaviour alongside the latest data-safety fixes; run Security on redesign pull requests and align all workflow Bun versions. Refresh the roadmap and record the remaining release acceptance boundaries.

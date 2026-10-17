@@ -3,8 +3,12 @@ import {
   globalTrajectorySeries,
   leechCountByCourse,
   lessonBreakdown,
+  overallRecall,
+  reviewActivityFromHistory,
   reviewVolume,
   retentionByAge,
+  studyTimeSeries,
+  totalStudyMinutes,
 } from './prepare';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import type { Card, Course, Grade, Lesson, ReviewLog, SessionHistoryEntry } from '../../db/types';
@@ -138,8 +142,8 @@ describe('lessonBreakdown', () => {
 describe('leechCountByCourse', () => {
   it('groups leeches by course name and ignores cards without a courseId', () => {
     const courseMap = new Map([
-      ['c1', 'Biology'],
-      ['c2', 'Chemistry'],
+      ['c1', { name: 'Biology' }],
+      ['c2', { name: 'Chemistry' }],
     ]);
     const cards = [
       makeCard({
@@ -158,6 +162,12 @@ describe('leechCountByCourse', () => {
       { name: 'Biology', count: 1 },
       { name: 'Chemistry', count: 1 },
     ]);
+  });
+
+  it("uses each course's own leech threshold", () => {
+    const courseMap = new Map([['c1', { name: 'Biology', leechThreshold: 3 }]]);
+    const cards = [makeCard({ id: 'card1', deckId: 'd1', courseId: 'c1', lapses: 3, reps: 5 })];
+    expect(leechCountByCourse(cards, courseMap)).toEqual([{ name: 'Biology', count: 1 }]);
   });
 });
 
@@ -241,6 +251,31 @@ describe('reviewVolume', () => {
   });
 });
 
+describe('studyTimeSeries', () => {
+  it('keeps short daily sessions instead of rounding each day to zero', () => {
+    const now = Date.UTC(2026, 0, 10, 12);
+    const day = 86_400_000;
+    // Ten days of 20 seconds each: every day rounds to 0 whole minutes on its own.
+    const history = Array.from({ length: 10 }, (_, i) => ({
+      ...makeReview(now - i * day, 3),
+      responseTimeSec: 20,
+    }));
+    const card = makeCard({ id: 'card1', deckId: 'd1', history });
+    const series = studyTimeSeries([card], 30, now);
+
+    expect(series.at(-1)?.minutes).toBeCloseTo(1 / 3);
+    expect(totalStudyMinutes(series)).toBe(3);
+  });
+
+  it('reads any study as at least a minute, and none as zero', () => {
+    const now = Date.UTC(2026, 0, 10, 12);
+    const card = makeCard({ id: 'card1', deckId: 'd1', history: [makeReview(now, 3)] });
+
+    expect(totalStudyMinutes(studyTimeSeries([card], 30, now))).toBe(1);
+    expect(totalStudyMinutes(studyTimeSeries([], 30, now))).toBe(0);
+  });
+});
+
 describe('globalTrajectorySeries', () => {
   it('averages the last per-course snapshot for each day', () => {
     const day = startOfDay(Date.UTC(2026, 0, 15));
@@ -275,5 +310,32 @@ describe('globalTrajectorySeries', () => {
     ];
     const [point] = globalTrajectorySeries(history);
     expect(point.retrievability).toBe(75);
+    expect(point.courses).toBe(2);
+  });
+});
+
+describe('overallRecall', () => {
+  it('weights each age band by its review count', () => {
+    expect(
+      overallRecall([
+        { ageLabel: 'a', retention: 100, count: 1 },
+        { ageLabel: 'b', retention: 50, count: 3 },
+        { ageLabel: 'c', retention: 0, count: 0 },
+      ]),
+    ).toBe(63);
+  });
+
+  it('is null before any review', () => {
+    expect(overallRecall([{ ageLabel: 'a', retention: 0, count: 0 }])).toBeNull();
+  });
+});
+
+describe('reviewActivityFromHistory', () => {
+  it('groups review timestamps by card', () => {
+    const entry = (cardId: string, timestamp: number) =>
+      ({ cardId, timestamp }) as ReviewHistoryEntry;
+    const activity = reviewActivityFromHistory([entry('a', 1), entry('b', 2), entry('a', 3)]);
+    expect(activity.get('a')).toEqual([1, 3]);
+    expect(activity.get('b')).toEqual([2]);
   });
 });

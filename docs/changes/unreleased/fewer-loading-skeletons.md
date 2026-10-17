@@ -1,0 +1,1 @@
+- Keep recently visited course paths live, prefetch likely course routes during idle time, and share course navigation data across tabs. Course and lesson loading now use one delayed skeleton beneath persistent navigation, with a minimum visible lifetime. Today uses the same timing policy, and the sidebar waits for resolved data before showing an empty state.

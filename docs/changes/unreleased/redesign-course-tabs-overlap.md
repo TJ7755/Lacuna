@@ -1,0 +1,1 @@
+- Keep course tabs clickable with enlarged text by reserving space for the adjacent workspace controls and scrolling the existing tab strip when necessary. (#389)

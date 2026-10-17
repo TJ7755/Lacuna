@@ -1,18 +1,19 @@
-import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
-import { QuestionSetChoices } from '../components/question-sets/QuestionSetChoices';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { QuestionSetAttemptList } from '../components/question-sets/QuestionSetAttemptList';
 import { QuestionSetEvidencePanel } from '../components/question-sets/QuestionSetEvidencePanel';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { useState } from 'react';
-import { Button } from '../components/ui/Button';
+import { Button, buttonClassName } from '../components/ui/Button';
+import { ArrowRightIcon } from '../components/ui/icons';
+import { SectionCard } from '../components/ui/SectionCard';
 import {
   listQuestionSetAttempts,
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
 import type { QuestionSetAttemptMode } from '../questions/questionSetAttempts';
-import '../components/question-sets/question-set-practice.css';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { getQuestionSet } from '../questions/questionSetRepository';
 import { flattenQuestionSet } from '../questions/questionSetAuthoring';
 import { questionSetMarks, nodeMarks } from '../components/question-sets/presentation';
@@ -20,6 +21,12 @@ import { useCourse } from '../state/useCourseData';
 import { canEditLessons, resolveLessonViewMode } from '../course/lessonViewMode';
 import { MarkdownView } from '../components/markdown/MarkdownView';
 import '../components/question-sets/question-sets.css';
+import '../components/question-sets/question-composer.css';
+
+const MODE_OPTIONS = [
+  { value: 'practice', label: 'Practice', description: 'Feedback after each question' },
+  { value: 'paper', label: 'Paper', description: 'Feedback at the end' },
+] as const;
 
 export function QuestionSetOverview() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
@@ -29,24 +36,34 @@ export function QuestionSetOverview() {
   const [mode, setMode] = useState<QuestionSetAttemptMode>('practice');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
-  const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId], []);
+  const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId]);
   const content = useLiveQuery(() => getQuestionSet(setId!), [setId]);
-  if (content === undefined || !course) return <p className="p-8">Loading question set…</p>;
+  if (content === undefined || !course || !attempts)
+    return <p className="p-8">Loading question set…</p>;
   const retainedAttempts = attempts.filter((attempt) => attempt.courseId === courseId);
+  const back = (
+    <Link className="qs-back" to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}>
+      ← {origin?.questionSetReturnLabel ?? 'Question sets'}
+    </Link>
+  );
   if (!content && retainedAttempts.length)
     return (
-      <div className="qs-overview">
-        <Link
-          className="qs-back"
-          to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
-        >
-          ← {origin?.questionSetReturnLabel ?? 'Question sets'}
-        </Link>
-        <h1>{retainedAttempts[0].receipt.title}</h1>
-        <p className="qs-muted mb-8">
-          This set has been removed. Your saved attempts remain available.
-        </p>
-        <QuestionSetAttemptList attempts={retainedAttempts} origin={origin} />
+      <div className="qs-editor qs-composer">
+        {back}
+        <header className="qs-composer-header">
+          <div className="min-w-0">
+            <h1 className="font-display text-4xl font-semibold tracking-tight">
+              {retainedAttempts[0].receipt.title}
+            </h1>
+            <p className="mt-2 text-sm text-ink-faint">Set removed</p>
+          </div>
+        </header>
+        <SectionCard className="px-5 pb-6 pt-6 md:px-7 md:pt-7" aria-labelledby="attempts-heading">
+          <h2 id="attempts-heading" className="mb-3.5 font-display text-[22px]">
+            Attempts
+          </h2>
+          <QuestionSetAttemptList attempts={retainedAttempts} origin={origin} />
+        </SectionCard>
       </div>
     );
   if (!content || content.courseId !== courseId)
@@ -55,93 +72,129 @@ export function QuestionSetOverview() {
         Question set not found. <Link to={`/course/${courseId}/questions`}>Back to Questions</Link>
       </p>
     );
+  const unfinished = retainedAttempts
+    .filter((attempt) => attempt.status !== 'complete')
+    .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const marks = questionSetMarks(content);
+  const openAttempt = (id: string) =>
+    navigate(`/course/${courseId}/question-sets/${setId}/attempts/${id}`, { state: origin });
   return (
-    <div className="qs-overview">
-      <Link className="qs-back" to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}>
-        ← {origin?.questionSetReturnLabel ?? 'Question sets'}
-      </Link>
-      <div className="qs-between">
-        <h1>{content.title}</h1>
-        {canEditLessons(course) && resolveLessonViewMode(course) === 'edit' && !course.archived && (
-          <Link
-            className="qs-back"
-            state={origin}
-            to={`/course/${courseId}/question-sets/${setId}/edit`}
+    <div className="qs-editor qs-composer">
+      {back}
+      <header className="qs-composer-header">
+        <div className="min-w-0">
+          <h1 className="font-display text-4xl font-semibold tracking-tight">{content.title}</h1>
+          <p className="mt-2 text-sm text-ink-faint">
+            {content.questions.length} {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
+            {marks} {marks === 1 ? 'mark' : 'marks'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <PillToggleGroup
+            label="Attempt mode"
+            size="sm"
+            options={MODE_OPTIONS}
+            value={mode}
+            onChange={setMode}
+          />
+          <Button
+            variant="primary"
+            size="lg"
+            hoverScale={false}
+            disabled={starting || course.archived}
+            onClick={() => {
+              if (unfinished) {
+                void openAttempt(unfinished.id);
+                return;
+              }
+              setStarting(true);
+              setError('');
+              void startQuestionSetAttempt(setId!, mode)
+                .then((attempt) => openAttempt(attempt.id))
+                .catch((cause) => {
+                  setError(
+                    cause instanceof Error ? cause.message : 'Could not start this attempt.',
+                  );
+                  setStarting(false);
+                });
+            }}
           >
-            Edit set →
-          </Link>
-        )}
-      </div>
-      <p className="qs-muted mb-8">
-        {content.questions.length} {content.questions.length === 1 ? 'question' : 'questions'} ·{' '}
-        {questionSetMarks(content)} {questionSetMarks(content) === 1 ? 'mark' : 'marks'}
-      </p>
-      <div className="qs-start">
-        <QuestionSetChoices
-          label="Session"
-          value={mode}
-          onChange={(value) => setMode(value as QuestionSetAttemptMode)}
-          options={[
-            { value: 'practice', label: 'Practice — feedback after each question' },
-            { value: 'paper', label: 'Paper — feedback at the end' },
-          ]}
-        />
-        <Button
-          variant="primary"
-          disabled={starting || course.archived}
-          onClick={() => {
-            setStarting(true);
-            setError('');
-            void startQuestionSetAttempt(setId!, mode)
-              .then((attempt) =>
-                navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`, {
-                  state: origin,
-                }),
-              )
-              .catch((cause) => {
-                setError(cause instanceof Error ? cause.message : 'Could not start this attempt.');
-                setStarting(false);
-              });
-          }}
-        >
-          {starting ? 'Starting…' : 'Start attempt'}
-        </Button>
-      </div>
+            {unfinished ? 'Resume' : starting ? 'Starting…' : 'Start'}
+            <ArrowRightIcon aria-hidden="true" />
+          </Button>
+          {canEditLessons(course) &&
+            resolveLessonViewMode(course) === 'edit' &&
+            !course.archived && (
+              <Link
+                className={buttonClassName('secondary', 'lg')}
+                state={origin}
+                to={`/course/${courseId}/question-sets/${setId}/edit`}
+              >
+                Edit
+              </Link>
+            )}
+        </div>
+      </header>
       {error && (
         <p className="qs-error" role="alert">
           {error}
         </p>
       )}
-      {attempts.length > 0 && (
-        <section className="qs-history">
-          <h2>Your attempts</h2>
-          <QuestionSetAttemptList attempts={attempts} origin={origin} />
-        </section>
-      )}
-      <QuestionSetEvidencePanel
-        content={content}
-        attempts={attempts}
-        onResume={(attempt) =>
-          navigate(`/course/${courseId}/question-sets/${setId}/attempts/${attempt.id}`, {
-            state: origin,
-          })
-        }
-      />
-      <QuestionSetPanel title="Browse questions">
-        <section className="qs-paper">
-          {flattenQuestionSet(content).map((n) => (
-            <section key={n.id} className="qs-source" style={{ marginLeft: n.depth * 12 }}>
-              <div className="qs-between mb-4">
-                <h2>{n.label}</h2>
-                <span className="qs-muted">
-                  {nodeMarks(n.node)} {nodeMarks(n.node) === 1 ? 'mark' : 'marks'}
-                </span>
-              </div>
-              <MarkdownView enlargeImages source={n.node.prompt} />
-            </section>
-          ))}
-        </section>
-      </QuestionSetPanel>
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-6">
+          <SectionCard
+            className="min-w-0 px-5 pb-3 pt-6 md:px-7 md:pt-7"
+            aria-labelledby="questions-heading"
+          >
+            <h2 id="questions-heading" className="mb-2 font-display text-[22px]">
+              Questions
+            </h2>
+            <ol className="m-0 list-none p-0">
+              {flattenQuestionSet(content).map((row) => {
+                const marks = nodeMarks(row.node);
+                return (
+                  <li
+                    key={row.id}
+                    className="flex min-w-0 items-center gap-[18px] rounded-2xl border border-transparent px-3 py-3.5"
+                    style={{ marginLeft: row.depth * 20 }}
+                  >
+                    <span
+                      className={
+                        row.depth === 0
+                          ? 'grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink text-sm font-bold tabular-nums'
+                          : 'w-9 shrink-0 text-center text-sm text-ink-soft'
+                      }
+                    >
+                      {row.label}
+                    </span>
+                    <MarkdownView
+                      source={row.node.prompt}
+                      className={`qs-question-line min-w-0 flex-1 ${row.depth ? 'text-sm' : 'font-bold'}`}
+                    />
+                    <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint tabular-nums">
+                      {marks} {marks === 1 ? 'mark' : 'marks'}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </SectionCard>
+        </div>
+        {retainedAttempts.length > 0 && (
+          <aside className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+            <SectionCard
+              className="flex flex-col gap-3.5 px-5 pb-6 pt-6 md:px-7 md:pt-7"
+              aria-labelledby="attempts-heading"
+            >
+              <h2 id="attempts-heading" className="font-display text-[22px]">
+                Attempts
+              </h2>
+              <QuestionSetAttemptList attempts={retainedAttempts} origin={origin} />
+              <QuestionSetEvidencePanel content={content} attempts={retainedAttempts} />
+            </SectionCard>
+          </aside>
+        )}
+      </div>
     </div>
   );
 }

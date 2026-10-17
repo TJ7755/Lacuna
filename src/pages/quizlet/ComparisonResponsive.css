@@ -84,26 +84,6 @@
     font-size: 13px;
     margin-block: 24px;
   }
-  .qc-window-bar {
-    height: 34px;
-    padding-inline: 10px;
-    font-size: 8px;
-  }
-  .qc-window-bar > span:first-child {
-    display: none;
-  }
-  .qc-product-screen {
-    border-radius: 8px;
-  }
-  .qc-tour-tabs {
-    margin-bottom: 18px;
-  }
-  .qc-tour-tabs button {
-    flex-direction: column;
-    gap: 7px;
-    padding: 13px 4px;
-    font-size: 10px;
-  }
   .qc-schedule-section {
     grid-template-columns: 1fr;
     gap: 32px;

@@ -1,0 +1,1 @@
+- Course title editing replaces the previous title immediately while animating the incoming control, preventing overlapping headings and retained rename fields. Escape returns keyboard focus to Rename.

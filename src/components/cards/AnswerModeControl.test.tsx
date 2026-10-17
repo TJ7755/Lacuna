@@ -32,7 +32,7 @@ describe('answer-mode author controls', () => {
         onChange={change}
       />,
     );
-    expect(screen.getByRole('option', { name: 'Use lesson setting (Type)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Lesson (Type)' })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), {
       target: { value: 'reveal' },
     });

@@ -1,0 +1,1 @@
+- Sequence and diagram editors now align with the shared course page frame, including their loading states. A single destination-aware Back link replaces duplicated breadcrumbs and meets the 44px target size, while retaining the original lesson or Cards return destination.

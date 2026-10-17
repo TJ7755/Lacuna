@@ -1,0 +1,1 @@
+- Align nested settings, note controls, annotations, pairing QR and assessment drawers with the existing motion reference. Retain settings drafts, keep exiting controls inert, measure the assessment editor's height, and preserve the touch sheet's position through drag dismissal. Mobile navigation fades its scrim independently and scales its existing spring with motion speed.

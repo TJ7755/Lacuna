@@ -1,0 +1,1 @@
+- Spotlight the highest exam-day forecasts first, with matching chart colours and legend order; keep remaining courses as faint context.

@@ -1,0 +1,1 @@
+- Search lists equally good matches in natural order ("Item 9" before "Item 10") instead of an arbitrary one, and arrowing past the shown results now scrolls the newly shown result into view. (#448)

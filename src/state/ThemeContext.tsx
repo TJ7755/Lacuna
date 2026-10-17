@@ -33,7 +33,7 @@ function readStoredTheme(): Theme {
   } catch {
     // Ignore storage access errors and fall back to the default.
   }
-  return 'auto';
+  return 'dark';
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -50,8 +50,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // matches the current palette.
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      const colour = resolvedTheme === 'dark' ? '#0a0a0b' : '#f8f6f3';
-      meta.setAttribute('content', colour);
+      const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+      if (paper) meta.setAttribute('content', `hsl(${paper})`);
     }
   }, [resolvedTheme]);
 

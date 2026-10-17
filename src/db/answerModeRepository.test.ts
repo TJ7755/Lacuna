@@ -47,10 +47,10 @@ describe('authored answer modes', () => {
         await db.courses.update(course.id, { 'distributedCopy.locked': true });
       await expect(
         setAuthoredAnswerMode(course.id, { lessonId: lesson.id }, 'type'),
-      ).rejects.toThrow('Author mode');
+      ).rejects.toThrow('Edit mode');
       await expect(
         setAuthoredAnswerMode(course.id, { cardIds: [card.id] }, 'type'),
-      ).rejects.toThrow('Author mode');
+      ).rejects.toThrow('Edit mode');
       expect((await db.cards.get(card.id))?.answerMode).toBeUndefined();
     },
   );

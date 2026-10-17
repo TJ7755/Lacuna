@@ -1,0 +1,1 @@
+- Study's notes screen and step-completion screen now give keyboard focus to their primary action, so Enter continues instead of leaving focus on the page body.

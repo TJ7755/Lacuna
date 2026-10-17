@@ -1,11 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const COURSE_SECTIONS = [
-  { label: 'Path', heading: 'Course' },
+  { label: 'Path', heading: 'Welcome to Lacuna' },
   { label: 'Cards', heading: 'Cards' },
   { label: 'Questions', heading: 'Questions' },
-  { label: 'Analytics', heading: 'Analytics' },
-  { label: 'Settings', heading: 'Settings' },
+  { label: 'Settings', heading: 'Course settings' },
 ] as const;
 
 for (const width of [390, 1000, 1920]) {
@@ -18,7 +17,8 @@ for (const width of [390, 1000, 1920]) {
     const measure = () =>
       page.locator('[data-course-page-navigation]').evaluate((navigation) => {
         const frame = navigation.parentElement!;
-        const back = navigation.querySelector('a')!.getBoundingClientRect();
+        // The tabs, not the course name, which slides in only once the title scrolls away.
+        const back = navigation.querySelector('nav[aria-label="Course sections"]')!.getBoundingClientRect();
         const title = navigation.closest('main')!.querySelector('h1')!.getBoundingClientRect();
         const bounds = frame.getBoundingClientRect();
         return {
@@ -31,9 +31,6 @@ for (const width of [390, 1000, 1920]) {
         };
       });
     const baseline = await measure();
-    const pathTitle = await page.locator('main h1').boundingBox();
-    const pathSurface = await page.locator('.course-paper').boundingBox();
-    expect(Math.abs(pathTitle!.x - pathSurface!.x)).toBeLessThanOrEqual(1);
     let sectionTitle: { titleX: number; titleY: number } | undefined;
     await page.screenshot({ path: testInfo.outputPath('Path.png') });
     for (const section of COURSE_SECTIONS.slice(1)) {
@@ -48,7 +45,8 @@ for (const width of [390, 1000, 1920]) {
         .poll(
           async () => {
             const actual = await measure();
-            sectionTitle ??= { titleX: actual.titleX, titleY: actual.titleY };
+            // Every section title starts where Path's does; their heights match each other.
+            sectionTitle ??= { titleX: baseline.titleX, titleY: actual.titleY };
             const expected = { ...baseline, ...sectionTitle };
             return Math.max(
               ...Object.keys(expected).map((key) =>
@@ -86,15 +84,17 @@ test('workspace mode is shared by every course section', async ({ page }) => {
     await expect(mode).toBeVisible();
     if (index > 0) {
       await expect(
-        mode.getByRole('button', { name: index % 2 ? 'Author mode' : 'Study mode' }),
+        mode.getByRole('button', { name: index % 2 ? 'Edit mode' : 'View mode' }),
       ).toHaveAttribute('aria-pressed', 'true');
     }
-    const targetMode = mode.getByRole('button', { name: index % 2 ? 'Study mode' : 'Author mode' });
+    const targetMode = mode.getByRole('button', { name: index % 2 ? 'View mode' : 'Edit mode' });
     await targetMode.click();
     await expect(targetMode).toHaveAttribute('aria-pressed', 'true');
   }
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Author mode', exact: true })).toHaveAttribute(
+  // The loop alternates modes, so the last section leaves the mode the reload must keep.
+  const lastMode = (COURSE_SECTIONS.length - 1) % 2 ? 'View mode' : 'Edit mode';
+  await expect(page.getByRole('button', { name: lastMode, exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
@@ -123,7 +123,7 @@ test('course navigation stays mounted while switching sections in both direction
       .click();
     await expect(
       page
-        .getByRole('heading', { name: label === 'Path' ? 'Course' : label, exact: true })
+        .getByRole('heading', { name: label === 'Path' ? 'Welcome to Lacuna' : label, exact: true })
         .first(),
     ).toBeVisible();
     expect(await navigation!.evaluate((element) => element.isConnected)).toBe(true);
@@ -132,7 +132,7 @@ test('course navigation stays mounted while switching sections in both direction
   }
 });
 
-test('course pages slide together in the tab direction beneath stationary navigation', async ({
+test('course pages drift in the tab direction beneath stationary navigation', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -144,31 +144,36 @@ test('course pages slide together in the tab direction beneath stationary naviga
     await expect(page.locator('[data-route-content]')).toHaveCount(1);
     const navigation = page.locator('[data-course-page-navigation]');
     await navigation.evaluate((element, direction) => {
-      element.removeAttribute('data-observed-slide');
+      element.removeAttribute('data-observed-drift');
+      element.removeAttribute('data-observed-overlap');
       element.addEventListener(
         'click',
         () => {
           const deadline = performance.now() + 1500;
           const sample = () => {
             const pages = [...document.querySelectorAll('[data-route-content]')];
-            const offsets = pages.map(
-              (page) => new DOMMatrixReadOnly(getComputedStyle(page).transform).m41,
-            );
-            // popLayout retains the outgoing page first and mounts the incoming page last.
-            if (offsets.length === 2 && offsets[0] * direction < -1 && offsets[1] * direction > 1) {
-              element.setAttribute('data-observed-slide', 'true');
-            } else if (performance.now() < deadline) {
-              requestAnimationFrame(sample);
-            }
+            // The old page leaves at once, so two pages are never visible together.
+            const visible = pages.filter((page) => Number(getComputedStyle(page).opacity) > 0.05);
+            if (visible.length > 1) element.setAttribute('data-observed-overlap', 'true');
+            // The incoming page mounts last; it drifts in while it fades up.
+            const incoming = pages.at(-1);
+            const offset = incoming
+              ? new DOMMatrixReadOnly(getComputedStyle(incoming).transform).m41
+              : 0;
+            if (offset * direction > 1) element.setAttribute('data-observed-drift', 'true');
+            if (performance.now() < deadline) requestAnimationFrame(sample);
           };
           requestAnimationFrame(sample);
         },
         { once: true },
       );
     }, direction);
+    const box = await navigation.boundingBox();
     await navigation.getByRole('link', { name: label, exact: true }).click();
-    await expect(navigation).toHaveAttribute('data-observed-slide', 'true');
+    await expect(navigation).toHaveAttribute('data-observed-drift', 'true');
     await expect(page.locator('[data-route-content]')).toHaveCount(1);
+    await expect(navigation).not.toHaveAttribute('data-observed-overlap', 'true');
+    expect(await navigation.boundingBox()).toEqual(box);
   }
 });
 
@@ -206,9 +211,12 @@ test('course section navigation keeps one stable horizontal position', async ({ 
 async function openSeededCourse(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
-  await page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
+  ).toBeVisible();
 }
 
 test('course controls stay compact and assessments sit beside the path', async ({
@@ -245,7 +253,7 @@ test('dragging the course selection previews then opens the released section', a
   );
   await page.mouse.up();
   await expect(page).toHaveURL(/\/cards$/);
-  await expect(page.getByRole('heading', { name: 'Course', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true })).toHaveCount(0);
   await expect(navigation).toHaveCount(1);
   await expect(navigation.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute(
     'aria-current',
@@ -284,8 +292,9 @@ test('settings retain accessible speed stops and shared switches', async ({ page
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', checked === 'true' ? 'false' : 'true');
   await toggle.screenshot({ path: '/tmp/lacuna-switch.png' });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.getByTestId('motion-speed-thumb')).toHaveCSS('transition-property', 'none');
+  for (const radio of await speeds.getByRole('radio').all()) {
+    expect((await radio.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('the selection follows pointer distance continuously between section centres', async ({
@@ -313,4 +322,26 @@ test('the selection follows pointer distance continuously between section centre
     })
     .toBeLessThan(2);
   await page.mouse.up();
+});
+
+test('a long course name truncates beside the section tabs instead of running under them', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openSeededCourse(page);
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  await page.getByRole('button', { name: 'Rename course', exact: true }).click();
+  const input = page.getByRole('textbox', { name: 'Course name', exact: true });
+  const longName = 'A-level Mathematics: Pure, Statistics and Mechanics (Edexcel 9MA0)';
+  await input.fill(longName);
+  await input.press('Enter');
+  await page
+    .locator('nav[aria-label="Course sections"]:visible')
+    .getByRole('link', { name: 'Cards', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cards', exact: true })).toBeVisible();
+  const navigation = page.locator('[data-course-page-navigation]');
+  const name = await navigation.getByRole('link', { name: longName }).boundingBox();
+  const tabs = await navigation.locator('nav[aria-label="Course sections"]').boundingBox();
+  expect(name!.x + name!.width).toBeLessThanOrEqual(tabs!.x);
 });

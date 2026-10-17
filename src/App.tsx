@@ -1,3 +1,4 @@
+import { buttonClassName } from './components/ui/buttonStyles';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
@@ -7,7 +8,7 @@ import { FontScaleProvider } from './state/FontScaleContext';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
-import { isFirstRun, seedIfFirstRun } from './db/seed';
+import { seedWorkPending } from './db/seedFlags';
 import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
 import { stampMissingLessonViewModes } from './db/courseRepository';
 import { requestPersistentStorage } from './db/persistence';
@@ -178,15 +179,19 @@ export function App() {
         // from the prerendered landing page explicitly chose to enter, so the
         // handover skips the bounce back to the welcome route.
         const enteredFromLanding = consumeLandingHandover();
-        if (
-          (await isFirstRun()) &&
-          !isPublicEntry(window.location.hash) &&
-          !enteredFromLanding
-        ) {
-          window.location.hash = '#/welcome';
-        }
+        // The welcome course's content loads only while seeding work remains.
+        if (seedWorkPending()) {
+          const { isFirstRun, seedIfFirstRun } = await import('./db/seed');
+          if (
+            (await isFirstRun()) &&
+            !isPublicEntry(window.location.hash) &&
+            !enteredFromLanding
+          ) {
+            window.location.hash = '#/welcome';
+          }
 
-        await seedIfFirstRun();
+          await seedIfFirstRun();
+        }
       } catch (error) {
         if (import.meta.env.DEV) {
           console.error('Failed to initialise Lacuna:', error);
@@ -255,7 +260,7 @@ export function App() {
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-contrast transition hover:opacity-90 active:opacity-90"
+            className={buttonClassName('primary')}
           >
             Reload
           </button>

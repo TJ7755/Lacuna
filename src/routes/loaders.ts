@@ -76,8 +76,8 @@ export const loadMcpBridgeController = () =>
 export const loadLanding = () =>
   import('../pages/Landing').then((module) => ({ default: module.Landing }));
 
-export const loadImportPage = () =>
-  import('../pages/ImportPage').then((module) => ({ default: module.ImportPage }));
+export const loadImportPanel = () =>
+  import('../components/import/ImportPanel').then((module) => ({ default: module.ImportPanel }));
 
 export const loadShareLinkPage = () =>
   import('../pages/ShareLinkPage').then((module) => ({ default: module.ShareLinkPage }));

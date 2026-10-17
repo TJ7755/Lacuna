@@ -1,7 +1,14 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SyncState } from '../../db/types';
 import { SyncSection } from './SyncSection';
+
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => Reflect.deleteProperty(Element.prototype, 'animate'));
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 const {
   readSyncStateMock,
@@ -154,6 +161,140 @@ beforeEach(() => {
 });
 
 describe('SyncSection', () => {
+  it('keeps pairing methods in one keyboard stop while arrows retain choice focus', async () => {
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Join another device' }));
+    const qr = await screen.findByRole('radio', { name: 'QR code' });
+    qr.focus();
+    fireEvent.keyDown(qr, { key: 'ArrowRight' });
+    const manual = screen.getByRole('radio', { name: 'Enter details' });
+    expect(manual).toHaveFocus();
+    expect(manual).toHaveAttribute('aria-checked', 'true');
+    expect(qr).toHaveAttribute('tabindex', '-1');
+    fireEvent.keyDown(manual, { key: 'ArrowLeft' });
+    expect(qr).toHaveFocus();
+    expect(qr).toHaveAttribute('aria-checked', 'true');
+  });
+  it('retains private relay values when advanced settings are hidden and reopened', async () => {
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced: use a private relay' }));
+    fireEvent.change(screen.getByLabelText('Relay URL'), {
+      target: { value: 'https://private.example' },
+    });
+    fireEvent.change(screen.getByLabelText('Relay mint secret (private relays only)'), {
+      target: { value: 'private-mint' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Hide advanced' }));
+    expect(screen.getByRole('button', { name: 'Advanced: use a private relay' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced: use a private relay' }));
+    expect(screen.getByLabelText('Relay URL')).toHaveValue('https://private.example');
+    expect(screen.getByLabelText('Relay mint secret (private relays only)')).toHaveValue(
+      'private-mint',
+    );
+  });
+
+  it('restores the setup choice when a pairing form is cancelled', async () => {
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Set up sync' })).toHaveFocus();
+  });
+
+  it('keeps network failures visible with the retry action focused', async () => {
+    setupFirstDeviceMock.mockRejectedValueOnce(new Error('Network unavailable.'));
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
+    fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    fireEvent.change(screen.getByLabelText('Confirm recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Set up sync' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable.');
+    expect(screen.getByRole('button', { name: 'Set up sync' })).toHaveFocus();
+  });
+
+  it('starts default setup on the recovery phrase without exposing relay administration', async () => {
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
+    await waitFor(() => expect(screen.getByLabelText('Recovery passphrase')).toHaveFocus());
+    expect(screen.queryByLabelText('Relay URL')).not.toBeInTheDocument();
+    expect(screen.queryByText(/mint secret is used/)).not.toBeInTheDocument();
+  });
+
+  it('keeps a mismatched confirmation associated with its field and ready to correct', async () => {
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
+    fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    fireEvent.change(screen.getByLabelText('Confirm recovery passphrase'), {
+      target: { value: 'a different recovery phrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Set up sync' }));
+    const confirmation = screen.getByLabelText('Confirm recovery passphrase');
+    expect(confirmation).toHaveFocus();
+    expect(confirmation).toHaveAttribute('aria-invalid', 'true');
+    expect(confirmation).toHaveAccessibleDescription('The recovery passphrases do not match.');
+    expect(setupFirstDeviceMock).not.toHaveBeenCalled();
+  });
+
+  it('persists join failure beside the passphrase and clears it after correction', async () => {
+    joinWithPassphraseMock.mockRejectedValueOnce(new Error('Incorrect recovery passphrase.'));
+    render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Join another device' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Enter details' }));
+    fireEvent.change(screen.getByLabelText('Channel id'), { target: { value: state.channelId } });
+    fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+      target: { value: 'an incorrect recovery phrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Recovery passphrase')).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(screen.getByLabelText('Recovery passphrase')).toHaveFocus();
+    expect(screen.getByRole('alert')).toHaveTextContent('Incorrect recovery passphrase.');
+    expect(notify).not.toHaveBeenCalledWith('Incorrect recovery passphrase.', 'negative');
+    fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+      target: { value: 'a long recovery phrase' },
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
+    await screen.findByText('Paired to a sync channel');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sync now' })).toHaveFocus());
+  });
+
+  it('returns failed unlock focus to a persistently described passphrase field', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    syncWithPassphraseMock.mockRejectedValueOnce(new Error('Incorrect recovery passphrase.'));
+    render(<SyncSection />);
+    const passphrase = await screen.findByLabelText('Recovery passphrase');
+    fireEvent.change(passphrase, { target: { value: 'an incorrect recovery phrase' } });
+    screen.getByRole('button', { name: 'Sync now' }).focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
+    await waitFor(() => expect(passphrase).toHaveAttribute('aria-invalid', 'true'));
+    expect(passphrase).toHaveFocus();
+    expect(passphrase).toHaveAccessibleDescription('Incorrect recovery passphrase.');
+  });
+
   it('keeps failed action preloads retryable without an unhandled rejection', async () => {
     readSyncStateMock.mockResolvedValue(state);
     loadSyncPairingMock
@@ -193,10 +334,13 @@ describe('SyncSection', () => {
   it('offers setup and joining when no channel is configured', async () => {
     render(<SyncSection />);
 
-    expect(await screen.findByRole('heading', { name: 'Device sync' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Another device' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Pair this device' });
+    expect(dialog).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set up sync' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
-    expect(screen.getByText('No sync channel is configured on this device.')).toBeInTheDocument();
   });
 
   it('treats share-link credentials alone as no sync channel', async () => {
@@ -207,15 +351,20 @@ describe('SyncSection', () => {
     } satisfies SyncState);
     render(<SyncSection />);
 
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    const pair = await screen.findByRole('button', { name: 'Pair' });
+    expect(screen.queryByText('Paired to a sync channel')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sync now' })).not.toBeInTheDocument();
+    fireEvent.click(pair);
+    expect(await screen.findByRole('dialog', { name: 'Pair this device' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Set up sync' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join another device' })).toBeInTheDocument();
   });
 
   it('sets up the first device after confirming a strong passphrase', async () => {
     render(<SyncSection />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Set up sync' }));
+    await screen.findByLabelText('Recovery passphrase');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Advanced: use a private relay' }));
     fireEvent.change(screen.getByLabelText('Relay mint secret (private relays only)'), {
@@ -260,12 +409,53 @@ describe('SyncSection', () => {
     expect(await screen.findByTestId('sync-pairing-qr')).toHaveTextContent('pairing-code');
   });
 
+  it('collapses an inert QR on dismissal but removes its key immediately on window blur during exit', async () => {
+    readSyncStateMock.mockResolvedValue(state);
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(
+      <LazyMotion features={domAnimation}>
+        <SyncSection />
+      </LazyMotion>,
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Show pairing QR' }));
+    const qr = await screen.findByTestId('sync-pairing-qr');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide pairing QR' }));
+    expect(qr).toBeInTheDocument();
+    expect(qr.closest('[inert]')).not.toBeNull();
+    fireEvent(window, new Event('blur'));
+    expect(qr).not.toBeInTheDocument();
+  });
+
+  it('keeps channel details behind the encryption disclosure and errors visible', async () => {
+    readSyncStateMock.mockResolvedValue({ ...state, lastError: 'Relay unavailable' });
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(
+      <LazyMotion features={domAnimation}>
+        <SyncSection />
+      </LazyMotion>,
+    );
+    await screen.findByText('Paired to a sync channel');
+
+    const details = screen.getByRole('button', { name: 'End-to-end encrypted' });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('alert')).toHaveTextContent('Relay unavailable');
+    expect(screen.getByRole('button', { name: 'Lock' })).toHaveAttribute(
+      'title',
+      'Unlocked — this device remembers its key, so sync works without the passphrase.',
+    );
+    fireEvent.click(details);
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(screen.getByText(state.relayUrl!)).toBeVisible());
+    expect(screen.getByText(state.channelId!)).toBeVisible();
+    expect(screen.getByText(/Last snapshot: 2.00 MB encrypted/)).toBeVisible();
+  });
+
   it('starts unlocked from the remembered copy and syncs without the passphrase', async () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
     expect(await screen.findByText('Paired to a sync channel')).toBeInTheDocument();
-    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Recovery passphrase')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
@@ -278,23 +468,21 @@ describe('SyncSection', () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
 
     await waitFor(() => expect(deleteChannelMock).toHaveBeenCalledWith(state, credentials));
     expect(notify).not.toHaveBeenCalledWith('Enter a recovery passphrase.', 'negative');
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 
   it('locking forgets the remembered copy and asks for the passphrase again', async () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
 
@@ -308,12 +496,12 @@ describe('SyncSection', () => {
     readRememberedCredentialsMock.mockReturnValue(credentials);
     forgetRememberedCredentialsMock.mockRejectedValue(new Error('storage unavailable'));
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
 
     await waitFor(() => expect(notify).toHaveBeenCalledWith('storage unavailable', 'negative'));
-    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
     expect(clearUnlockedCredentialsMock).toHaveBeenCalledTimes(1);
     expect(publishUnlockedCredentialsMock).toHaveBeenLastCalledWith(credentials);
   });
@@ -323,14 +511,12 @@ describe('SyncSection', () => {
     render(<SyncSection />);
     await screen.findByText('Paired to a sync channel');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unpair this device' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(screen.getByRole('button', { name: 'Unpair' }));
 
     await waitFor(() => expect(unpairMock).toHaveBeenCalledTimes(1));
     expect(deleteChannelMock).not.toHaveBeenCalled();
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 
   it('requires the recovery passphrase before deleting the shared channel', async () => {
@@ -350,8 +536,6 @@ describe('SyncSection', () => {
     await waitFor(() =>
       expect(deleteChannelMock).toHaveBeenCalledWith(state, 'a long recovery phrase'),
     );
-    expect(
-      await screen.findByText('No sync channel is configured on this device.'),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Pair' })).toBeInTheDocument();
   });
 });

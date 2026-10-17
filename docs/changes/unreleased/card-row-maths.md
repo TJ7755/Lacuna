@@ -1,0 +1,2 @@
+- Card list rows clamp their question and answer by line rather than by pixel height, so a fraction in an answer is shown whole instead of clipped, and a cut-off line ends in an ellipsis.
+- Revealed cloze answers no longer carry horizontal padding left over from their old highlight fill, which read as a space before following punctuation ("H2O .").

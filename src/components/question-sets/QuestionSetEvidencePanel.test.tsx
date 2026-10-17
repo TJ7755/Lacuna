@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { QuestionSetEvidencePanel } from './QuestionSetEvidencePanel';
@@ -93,13 +93,12 @@ function attempt(
 describe('QuestionSetEvidencePanel', () => {
   it('shows unknown coverage without treating absent attempts as failure', () => {
     render(<QuestionSetEvidencePanel content={content()} attempts={[]} />);
-    fireEvent.click(screen.getByText('Practice evidence'));
-    expect(screen.getByText('No marked evidence yet.')).toBeInTheDocument();
-    expect(screen.getByText('2 without submitted evidence')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Recorded marks' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
     expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
   });
 
-  it('shows self-marked totals, unresolved marks, dimensions, and assistance', () => {
+  it('shows resolved totals, unresolved marks and available dimensions inline', () => {
     const first = attempt(
       'attempt-1',
       10,
@@ -119,11 +118,12 @@ describe('QuestionSetEvidencePanel', () => {
     ]);
 
     render(<QuestionSetEvidencePanel content={content()} attempts={[repeated, first]} />);
-    fireEvent.click(screen.getByText('Practice evidence'));
 
-    expect(screen.getByText(/self-marked/i)).toBeInTheDocument();
-    expect(screen.getByText(/2 attempts/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 assisted/i)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Self-marked|assisted|Submitted answers only|Coverage records/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('2 of 2 concepts assessed')).toBeInTheDocument();
     expect(screen.getByText('4 / 6')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
@@ -146,45 +146,60 @@ describe('QuestionSetEvidencePanel', () => {
       { allocationId: 'execution', status: 'awarded', marks: 0 },
     ]);
     render(<QuestionSetEvidencePanel content={content()} attempts={[repeated, first]} />);
-    fireEvent.click(screen.getByText('Practice evidence'));
 
-    expect(screen.getByRole('radio', { name: 'All attempts' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'First recorded' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: 'Repeated' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'First recorded' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Repeated' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'First recorded' }));
+    fireEvent.click(screen.getByRole('button', { name: 'First recorded' }));
     expect(screen.getByText('1 / 2')).toBeInTheDocument();
     expect(screen.getByText('0 / 1')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
     expect(within(recordedMarks!).getByText(/2 marks unresolved/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Repeated' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Repeated' }));
     expect(screen.getByText('3 / 4')).toBeInTheDocument();
     expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument();
   });
 });
 
-it('offers marking only for an unfinished attempt in this set', () => {
+it('shows unresolved marks without recording them as zero and hides filters for one attempt', () => {
   const row = attempt('mark-me', 20, []);
-  const onResume = vi.fn();
-  render(<QuestionSetEvidencePanel content={content()} attempts={[row]} onResume={onResume} />);
-  fireEvent.click(screen.getByText('Practice evidence'));
-  fireEvent.click(screen.getByRole('button', { name: 'Continue marking' }));
-  expect(onResume).toHaveBeenCalledWith(row);
+  render(<QuestionSetEvidencePanel content={content()} attempts={[row]} />);
   expect(screen.getAllByText('Not marked yet')).toHaveLength(4);
+  expect(screen.getByText('4 marks unresolved')).toBeInTheDocument();
+  expect(screen.getByText('0 of 2 concepts assessed')).toBeInTheDocument();
   expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('radio', { name: 'Repeated' }));
-  expect(screen.queryByRole('button', { name: 'Continue marking' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
 });
 
-it('does not recommend a completed or unrelated attempt', () => {
-  const row = attempt('complete', 20, [], { status: 'complete' });
+it('excludes unrelated sets and courses and hides unlinked concept coverage', () => {
+  const set = content();
+  set.questions[0].answer!.allocations.forEach((allocation) => {
+    allocation.targetConceptIds = [];
+  });
+  const row = attempt('this-set', 20, [{ allocationId: 'knowledge', status: 'awarded', marks: 1 }]);
   const unrelated = attempt('other', 30, [], { questionSetId: 'other-set' });
-  render(
-    <QuestionSetEvidencePanel content={content()} attempts={[row, unrelated]} onResume={vi.fn()} />,
+  const otherCourse = attempt('other-course', 40, [], { courseId: 'other-course' });
+  render(<QuestionSetEvidencePanel content={set} attempts={[row, unrelated, otherCourse]} />);
+  expect(screen.getByRole('region', { name: 'Recorded marks' })).toHaveTextContent('1 / 1');
+  expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/concepts assessed/)).not.toBeInTheDocument();
+});
+
+it('omits dimensions without submitted marks', () => {
+  const set = content();
+  set.questions[0].answer!.allocations = [set.questions[0].answer!.allocations[0]];
+  const row = attempt(
+    'knowledge-only',
+    20,
+    [{ allocationId: 'knowledge', status: 'awarded', marks: 1 }],
+    { receipt: set },
   );
-  fireEvent.click(screen.getByText('Practice evidence'));
-  expect(screen.queryByRole('button', { name: 'Continue marking' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Resume attempt' })).not.toBeInTheDocument();
+  render(<QuestionSetEvidencePanel content={set} attempts={[row]} />);
+  expect(screen.getByText('Knowledge')).toBeInTheDocument();
+  expect(screen.queryByText('Application')).not.toBeInTheDocument();
+  expect(screen.queryByText('Exam execution')).not.toBeInTheDocument();
+  expect(screen.queryByText('Mixed')).not.toBeInTheDocument();
 });

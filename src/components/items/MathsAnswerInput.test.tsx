@@ -98,6 +98,16 @@ describe('MathsAnswerInput', () => {
     expect(screen.queryByText('Preview')).not.toBeInTheDocument();
   });
 
+  it('shows the symbol chips only while focus is inside the answer control', () => {
+    render(<Harness />);
+    const toolbar = screen.getByRole('toolbar', { name: 'Maths symbols' });
+    const input = screen.getByRole('textbox', { name: 'Answer' });
+
+    expect(toolbar).toHaveClass('opacity-0', 'group-focus-within:opacity-100');
+    expect(input.closest('.group')).toContainElement(toolbar);
+    expect(screen.queryByText(/Use ordinary notation/)).not.toBeInTheDocument();
+  });
+
   it('inserts palette templates at the current cursor position', async () => {
     render(<Harness initialValue="x" />);
     const input = screen.getByRole('textbox', { name: 'Answer' }) as HTMLInputElement;

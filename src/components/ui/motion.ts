@@ -48,12 +48,19 @@ export function scaledSpring(multiplier: number, stiffness: number, damping: num
   };
 }
 
+/** Shared physical spring for surfaces that expand from an action button. */
+export function expandingActionSpring(multiplier: number) {
+  const spring = scaledSpring(multiplier, 420, 36);
+  if (spring.type !== 'spring') return { duration: 0 } as const;
+  return { ...spring, mass: 1 };
+}
+
 /**
  * Shared height-collapse configuration for disclosures: expands to auto height and
- * collapses to zero, scaling timing by the motion multiplier and becoming inert
- * entirely (no enter or exit animation) when reduced motion sets it to zero.
+ * collapses to zero, scaling timing by the motion multiplier and becoming immediate
+ * (no enter or exit animation) when reduced motion sets it to zero.
  */
-export function collapse(multiplier: number, duration = 0.18) {
+export function collapse(multiplier: number) {
   return {
     initial: multiplier > 0 ? { height: 0, opacity: 0 } : (false as const),
     animate: {
@@ -62,6 +69,9 @@ export function collapse(multiplier: number, duration = 0.18) {
       transitionEnd: { overflow: 'visible' as const },
     },
     exit: multiplier > 0 ? { height: 0, opacity: 0, overflow: 'hidden' as const } : undefined,
-    transition: { duration: duration * multiplier, ease: MOTION_EASING.standard },
+    transition: {
+      height: expandingActionSpring(multiplier),
+      opacity: { duration: 0.12 * multiplier },
+    },
   };
 }

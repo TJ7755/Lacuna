@@ -1,0 +1,130 @@
+.study-session > header {
+  flex-shrink: 0;
+}
+
+.study-card-slot {
+  --study-card-max-height: 100cqh;
+  container-type: size;
+  display: grid;
+  align-items: center;
+}
+
+/* The transition area stays fixed; each presentation keeps its own content height. */
+.study-card-slot > div {
+  height: 100%;
+  min-height: 0;
+}
+
+.study-card-slot [data-study-card-id] {
+  height: auto;
+  min-height: 0;
+}
+
+.study-card-slot .study-card-surface {
+  max-height: 100cqh;
+}
+
+/* Measure both faces at their natural height before applying the viewport cap. */
+.study-card-slot [data-study-sizing-face] {
+  height: auto;
+  max-height: none;
+}
+
+@media (min-width: 768px) {
+  .study-card-slot [data-study-sizing-face] {
+    min-height: 18rem;
+  }
+}
+
+.study-card-slot [data-study-face] {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  justify-content: safe center;
+  container-type: size;
+}
+
+.study-card-slot .study-card-surface:has(img, video, canvas) {
+  padding: 1rem;
+}
+
+.study-card-slot [data-study-face] .prose-lacuna img,
+.study-card-slot [data-study-face] video,
+.study-card-slot [data-study-face] canvas {
+  max-height: calc(100cqh - 2.4em);
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.study-card-slot [data-study-face] .study-occlusion {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.study-card-slot [data-study-face] .study-occlusion-diagram {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  container-type: size;
+}
+
+/* The percentage masks must use the fitted image's box, without letterboxing. */
+.study-card-slot [data-study-face] .study-occlusion-diagram > div {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.study-card-slot [data-study-face] .study-occlusion-diagram img {
+  width: auto;
+  max-width: 100%;
+  max-height: 100cqh;
+  object-fit: contain;
+}
+
+.study-controls,
+.study-touch-controls {
+  anchor-name: --study-actions;
+}
+
+.study-controls:has(input) {
+  anchor-name: --study-typing-actions;
+}
+
+.study-session .study-recitation {
+  flex: 1;
+  min-height: 0;
+}
+
+.study-session .study-recitation > ol {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.study-session .study-recitation > div:last-child {
+  flex-shrink: 0;
+  anchor-name: --study-actions;
+}
+
+/* Keep notification surfaces clear of study actions, including touch and typed recall. */
+body:has(.study-session) .toast-stack {
+  pointer-events: none;
+  max-width: calc(100vw - 3rem);
+  top: calc(env(safe-area-inset-top) + 6rem);
+  bottom: auto;
+}
+
+body:has(.study-session) .toast-stack button {
+  pointer-events: auto;
+}
+
+@supports (bottom: anchor(top)) {
+  body:has(.study-session) .toast-stack {
+    top: auto;
+    bottom: calc(anchor(--study-typing-actions top, anchor(--study-actions top, 1.5rem)) + 0.75rem);
+  }
+}

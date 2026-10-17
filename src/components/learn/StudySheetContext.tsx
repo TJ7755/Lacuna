@@ -1,14 +1,16 @@
-// Opening the study sheet from anywhere inside the shell. It is app-level state rather
-// than page state because two very different places raise it — a course's Study button
-// and Review today in the sidebar — and because dismissing it must leave the user
-// exactly where they were, which a route could not do.
-
+// Study buttons and their keyboard shortcuts share one anchored session preview.
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
+export interface StudySheetOptions {
+  /** False when the opener already offers Other ways beside its Study button. */
+  otherWays?: boolean;
+  anchor?: HTMLElement;
+}
+
 interface StudySheetValue {
   /** Pass a course to open at its options, or nothing to ask which course first. */
-  openStudySheet: (courseId?: string | null) => void;
+  openStudySheet: (courseId?: string | null, options?: StudySheetOptions) => void;
 }
 
 const StudySheetContext = createContext<StudySheetValue | null>(null);
@@ -22,22 +24,53 @@ export function useStudySheet(): StudySheetValue {
 export function useStudySheetState(): {
   open: boolean;
   courseId: string | null;
+  otherWays: boolean;
+  anchor: HTMLElement | null;
   close: () => void;
   value: StudySheetValue;
 } {
-  const [state, setState] = useState<{ open: boolean; courseId: string | null }>({
+  const [state, setState] = useState<{
+    open: boolean;
+    courseId: string | null;
+    otherWays: boolean;
+    anchor: HTMLElement | null;
+  }>({
     open: false,
     courseId: null,
+    otherWays: true,
+    anchor: null,
   });
 
-  const openStudySheet = useCallback((courseId?: string | null) => {
-    setState({ open: true, courseId: courseId ?? null });
+  const openStudySheet = useCallback((courseId?: string | null, options?: StudySheetOptions) => {
+    const anchor =
+      options?.anchor ??
+      Array.from(document.querySelectorAll<HTMLElement>('[data-study-trigger]')).find(
+        (element) =>
+          (!courseId || element.dataset.studyTrigger === courseId) &&
+          !element.matches(':disabled') &&
+          !element.closest('[inert]'),
+      );
+    if (!anchor) return;
+    setState({
+      open: true,
+      courseId: courseId ?? null,
+      otherWays: options?.otherWays ?? true,
+      anchor,
+    });
   }, []);
 
-  const close = useCallback(() => setState({ open: false, courseId: null }), []);
+  // Keeps otherWays as it was, so the closing preview does not change while it leaves.
+  const close = useCallback(() => setState((prev) => ({ ...prev, open: false })), []);
   const value = useMemo(() => ({ openStudySheet }), [openStudySheet]);
 
-  return { open: state.open, courseId: state.courseId, close, value };
+  return {
+    open: state.open,
+    courseId: state.courseId,
+    anchor: state.anchor,
+    otherWays: state.otherWays,
+    close,
+    value,
+  };
 }
 
 export function StudySheetProvider({

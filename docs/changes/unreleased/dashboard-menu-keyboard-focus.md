@@ -1,0 +1,1 @@
+- Today course menus announce their expanded state, dismiss on Tab without interrupting native keyboard navigation, and provide a 44px Archive target. Archiving returns focus to the next course action or Today heading without overriding another chosen control.

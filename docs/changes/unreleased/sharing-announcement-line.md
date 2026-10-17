@@ -1,0 +1,1 @@
+- Today's sharing announcement is one slim line ("One link to share it all.") with Explore sharing and Dismiss, in place of the illustrated two-column banner. It measures its own width, so a narrow column beside the desktop sidebar or a phone drops the second sentence, then the icon, rather than wrapping.

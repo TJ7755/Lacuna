@@ -49,9 +49,9 @@ describe('readStored', () => {
     const settings = readStored();
     expect(settings.showDueCounts).toBe(false);
     expect(settings.navItems.length).toBeGreaterThanOrEqual(DEFAULT_NAV_ITEMS.length);
-    expect(settings.navItems.find((item) => item.id === 'today')).toEqual({
-      id: 'today',
-      label: 'Review today',
+    expect(settings.navItems.find((item) => item.id === 'search')).toEqual({
+      id: 'search',
+      label: 'Search',
       visible: true,
     });
   });
@@ -75,7 +75,7 @@ describe('readStored', () => {
     expect(settings.navItems.find((n) => n.id === 'learn')).toBeUndefined();
     // Surviving items keep their stored order and visibility ahead of any merged defaults.
     expect(settings.navItems[0]).toEqual({ id: 'settings', label: 'Settings', visible: false });
-    expect(settings.navItems[1]).toEqual({ id: 'dashboard', label: 'Dashboard', visible: true });
+    expect(settings.navItems[1]).toEqual({ id: 'dashboard', label: 'Today', visible: true });
   });
 });
 

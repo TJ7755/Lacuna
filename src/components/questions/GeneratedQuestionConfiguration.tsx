@@ -1,5 +1,8 @@
-import type { GeneratorDescription } from '../../questions/generators/contracts';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { SectionCard } from '../ui/SectionCard';
+import { Toggle } from '../ui/Toggle';
+import { useId } from 'react';
+import type { GeneratorDescription } from '../../questions/generators/contracts';
 
 interface GeneratedQuestionConfigurationProps {
   generator: GeneratorDescription;
@@ -7,43 +10,42 @@ interface GeneratedQuestionConfigurationProps {
   onChange: (configuration: Record<string, string | number | boolean>) => void;
 }
 
-const inputClass =
-  'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
-
 export function GeneratedQuestionConfiguration({
   generator,
   configuration,
   onChange,
 }: GeneratedQuestionConfigurationProps) {
+  const id = useId();
   const updateField = (key: string, value: number | boolean) => {
     onChange({ ...configuration, [key]: value });
   };
 
   return (
-    <SectionCard compact className="md:p-6">
-      <p className="text-sm text-ink-soft">Built-in family</p>
-      <h2 className="mt-2 font-display text-2xl text-ink">{generator.name}</h2>
+    <SectionCard>
+      <h2 className="font-display text-xl font-semibold tracking-tight text-ink">
+        {generator.name}
+      </h2>
       <p className="mt-2 text-sm leading-6 text-ink-soft">{generator.summary}</p>
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         {generator.configurationFields.map((field) =>
           field.kind === 'boolean' ? (
-            <label
+            <div
               key={field.key}
-              className="flex min-h-11 items-center gap-3 rounded-xl border border-line-strong px-4"
+              className="flex min-h-12 items-center justify-between gap-3 rounded-[14px] bg-ink/[0.04] px-4"
             >
-              <input
-                type="checkbox"
+              <label htmlFor={`${id}-${field.key}`} className={fieldLabelClassName}>
+                {field.label}
+              </label>
+              <Toggle
+                id={`${id}-${field.key}`}
                 checked={Boolean(configuration[field.key])}
-                onChange={(event) => updateField(field.key, event.target.checked)}
-                className="accent-accent"
+                onChange={(checked) => updateField(field.key, checked)}
+                ariaLabel={field.label}
               />
-              <span className="text-sm text-ink">{field.label}</span>
-            </label>
+            </div>
           ) : (
             <label key={field.key} className="block">
-              <span className="mb-2 block text-sm text-ink-soft">
-                {field.label}
-              </span>
+              <span className={`${fieldLabelClassName} mb-2`}>{field.label}</span>
               <input
                 type="number"
                 min={field.minimum}
@@ -51,7 +53,7 @@ export function GeneratedQuestionConfiguration({
                 step="1"
                 value={Number(configuration[field.key])}
                 onChange={(event) => updateField(field.key, Number(event.target.value))}
-                className={inputClass}
+                className={`${inputFrameClassName} min-h-11 w-full`}
               />
             </label>
           ),

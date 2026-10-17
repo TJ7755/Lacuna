@@ -17,7 +17,7 @@ interface UnknownItemFaceProps {
  */
 export function UnknownItemFace({ card }: UnknownItemFaceProps) {
   return (
-    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 shadow-xl shadow-black/5 md:min-h-[29rem] md:px-12 md:py-14">
+    <section className="flex min-h-[22rem] flex-col justify-center rounded-3xl border border-line bg-surface px-6 py-10 md:min-h-[29rem] md:px-12 md:py-14">
       <div className="mx-auto w-full max-w-prose text-center text-lg leading-relaxed md:text-xl">
         <CardContent card={card} side="front" />
       </div>

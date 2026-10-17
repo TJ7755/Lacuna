@@ -1,7 +1,11 @@
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
+import { scaledSpring } from '../ui/motion';
+import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { dialogKeyDown, useEditorKeys } from '../../hooks/dialogKeys';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { checkDuplicatesBatch } from '../../db/cardRepository';
 import {
@@ -10,17 +14,21 @@ import {
   MAX_IMPORT_CARDS,
   type CardImportContent,
 } from '../../db/cardImport';
-import { CloseIcon } from '../ui/icons';
+import { ChevronLeftIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
+import { Toggle } from '../ui/Toggle';
 import { StepSwap } from '../ui/StepSwap';
+import { CountUp } from '../ui/Celebration';
+import { ImportStepper } from './ImportStepper';
 import { useCardImportSource } from './useCardImportSource';
 import { CardImportInput } from './CardImportInput';
 import { CardImportPreview } from './CardImportPreview';
 import './CardImportDialog.css';
+import { countOf } from '../../utils/plural';
 
 export interface CardImportDialogProps {
   initialTitle?: string;
-  presentation?: 'dialog' | 'page';
+  presentation?: 'dialog' | 'page' | 'panel';
   initialFile?: File;
   reviewOptions?: ReactNode;
   canImport?: boolean;
@@ -30,6 +38,9 @@ export interface CardImportDialogProps {
   titleLabel?: 'Course title' | 'Lesson title';
   targetName?: string;
   schedulingUnitId?: string;
+  /** Pasted text kept by the caller across this form's unmount. */
+  initialText?: string;
+  onTextChange?: (text: string) => void;
   onCancel: () => void;
   onImport: (content: CardImportContent, title: string) => Promise<void>;
 }
@@ -45,10 +56,13 @@ export function CardImportDialog({
   titleLabel,
   targetName,
   schedulingUnitId,
+  initialText,
+  onTextChange,
   onCancel,
   onImport,
 }: CardImportDialogProps) {
-  const source = useCardImportSource();
+  const reverseId = useId();
+  const source = useCardImportSource(initialText, onTextChange);
   const loadedFile = useRef<File | undefined>(undefined);
   useEffect(() => {
     if (initialFile && loadedFile.current !== initialFile) {
@@ -57,7 +71,12 @@ export function CardImportDialog({
     }
   }, [initialFile, source]);
   const [title, setTitle] = useState(initialTitle);
-  const [step, setStep] = useState<'input' | 'review'>('input');
+  const [step, setStep] = useState<'input' | 'review' | 'destination'>('input');
+  const [direction, setDirection] = useState(1);
+  const panel = presentation === 'panel';
+  const separateDestination = panel && !!reviewOptions;
+  const finalStep = step === (separateDestination ? 'destination' : 'review');
+  const stepNumber = step === 'input' ? 1 : step === 'review' ? 2 : 3;
   const [reverse, setReverse] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -118,10 +137,17 @@ export function CardImportDialog({
     if (!busyRef.current) onCancel();
   }
   async function confirm() {
-    if (!canContinue || busyRef.current || (step === 'review' && !canImport)) return;
+    if (!canContinue || busyRef.current || (finalStep && !canImport)) return;
     if (step === 'input') {
       setError('');
+      setDirection(1);
       setStep('review');
+      return;
+    }
+    if (step === 'review' && separateDestination) {
+      setError('');
+      setDirection(1);
+      setStep('destination');
       return;
     }
     busyRef.current = true;
@@ -140,94 +166,129 @@ export function CardImportDialog({
       onBusyChange?.(false);
     }
   }
-  const view = (
-    <div
-      ref={trapRef}
-      className={presentation === 'dialog' ? 'card-import-overlay' : 'card-import-page'}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && presentation === 'dialog') {
-          event.stopPropagation();
-          event.preventDefault();
-          cancel();
-        }
-      }}
-    >
-      {presentation === 'dialog' && <div className="card-import-backdrop" aria-hidden="true" />}
-      <motion.section
-        className="card-import-dialog"
-        role={presentation === 'dialog' ? 'dialog' : undefined}
-        aria-modal={presentation === 'dialog' ? true : undefined}
-        aria-labelledby="card-import-heading"
-        aria-busy={busy || source.reading}
-        initial={m ? { opacity: 0, y: 18 } : false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', duration: 0.4 * m, bounce: 0 }}
-      >
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  // As a dialog it owns the keyboard (Escape cancels, Ctrl/Cmd+Enter continues or imports);
+  // inline it leaves keys to the shell and only cancels while nothing has been entered.
+  const dialogKeys = dialogKeyDown({ onCancel: cancel, onSubmit: () => void confirm() });
+  const pageKeys = useEditorKeys({ onCancel: cancel, onSubmit: () => void confirm() });
+  useEffect(() => {
+    if (presentation === 'dialog') return;
+    trapRef.current
+      ?.querySelector<HTMLElement>(titleLabel ? '#card-import-title' : '#card-import-text')
+      ?.focus();
+    // Only on first show: later focus belongs to the person.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const contentView = (
+    <>
+      {presentation === 'dialog' ? (
+        <div>
+          <DialogHeader title="Import cards" onClose={cancel} closeLabel="Close import" />
+          <div className="flex px-6 py-3">
+            <ImportStepper step={step === 'destination' ? 'review' : step} />
+          </div>
+        </div>
+      ) : (
         <header className="card-import-header">
-          <h2 id="card-import-heading">Import cards</h2>
-          <ol className="card-import-steps" aria-label="Import progress">
-            <li aria-current={step === 'input' ? 'step' : undefined}>
-              <b>1</b> Add content
-            </li>
-            <li aria-current={step === 'review' ? 'step' : undefined}>
-              <b>2</b> Review cards
-            </li>
-          </ol>
-          <button type="button" aria-label="Close import" onClick={cancel} disabled={busy}>
-            <CloseIcon width={18} height={18} />
-          </button>
+          {/* On the Import page, the page's own title and Back link already do these jobs. */}
+          <h2 id="card-import-heading" className="sr-only">
+            Import cards
+          </h2>
+          {panel ? (
+            <p className="card-import-progress" aria-label="Import progress">
+              {step === 'input'
+                ? 'Add cards'
+                : step === 'review'
+                  ? 'Review cards'
+                  : 'Choose destination'}
+              <span>
+                {stepNumber} of {separateDestination ? 3 : 2}
+              </span>
+            </p>
+          ) : (
+            <ImportStepper step={step === 'destination' ? 'review' : step} />
+          )}
         </header>
-        <div className="card-import-scroll">
-          <StepSwap stepKey={step} direction={step === 'review' ? 1 : -1} moveFocus>
-            <div className="card-import-body">
-              <div className="card-import-options">
-                <h2 tabIndex={-1}>{step === 'input' ? 'Add content' : 'Review cards'}</h2>
-                {titleLabel ? (
-                  <label className="card-import-title-label" htmlFor="card-import-title">
-                    {titleLabel}
-                    <input
-                      id="card-import-title"
-                      value={title}
-                      onChange={(event) => setTitle(event.target.value)}
-                      disabled={busy}
-                    />
-                  </label>
-                ) : targetName ? (
-                  <div className="card-import-destination">
-                    <span>Adding to</span>
-                    <strong>{targetName}</strong>
-                  </div>
-                ) : null}
-                {step === 'review' && reviewOptions && (
-                  <fieldset disabled={busy}>{reviewOptions}</fieldset>
-                )}
-                {step === 'review' && (
-                  <>
-                    {!source.apkg && (
-                      <label className="card-import-reverse">
-                        <span>Also create reverse</span>
-                        <input
-                          type="checkbox"
-                          checked={reverse}
-                          onChange={(event) => setReverse(event.target.checked)}
-                          disabled={busy || !eligible}
-                        />
-                        <span className="card-import-switch" aria-hidden="true" />
+      )}
+      <div
+        className="card-import-scroll"
+        onKeyDown={(event) => {
+          if (
+            event.key === 'Tab' &&
+            !event.shiftKey &&
+            (event.target as Element).id === 'card-import-text' &&
+            canContinue
+          ) {
+            event.preventDefault();
+            primaryRef.current?.focus();
+          }
+        }}
+      >
+        <StepSwap stepKey={step} direction={direction} moveFocus>
+          <div className="card-import-body" data-step={step}>
+            <div className="card-import-options">
+              {/* The stepper shows the step; this heading stays as the focus target. */}
+              <h2 tabIndex={-1} className="sr-only">
+                {step === 'input'
+                  ? 'Add content'
+                  : step === 'review'
+                    ? 'Review cards'
+                    : 'Choose destination'}
+              </h2>
+              {titleLabel ? (
+                <label
+                  className={`${fieldLabelClassName} card-import-title-label`}
+                  htmlFor="card-import-title"
+                >
+                  {titleLabel}
+                  <input
+                    className={`${inputFrameClassName} w-full`}
+                    id="card-import-title"
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    disabled={busy}
+                  />
+                </label>
+              ) : targetName ? (
+                <div className="card-import-destination">
+                  <span>Adding to</span>
+                  <strong>{targetName}</strong>
+                </div>
+              ) : null}
+              {(separateDestination ? step === 'destination' : step === 'review') &&
+                reviewOptions && <fieldset disabled={busy}>{reviewOptions}</fieldset>}
+              {step === 'review' && (
+                <>
+                  {!source.apkg && (
+                    <div className="card-import-reverse">
+                      <label htmlFor={reverseId} className={fieldLabelClassName}>
+                        Also create reverse
                       </label>
-                    )}
-                    <div className="card-import-total">
-                      <strong>{count}</strong>
-                      <span>
-                        cards
-                        {!source.apkg && (
-                          <small>
-                            {cards.length} original · {reverse ? eligible : 0} reverse
-                          </small>
-                        )}
-                      </span>
+                      <Toggle
+                        id={reverseId}
+                        checked={reverse}
+                        onChange={setReverse}
+                        ariaLabel="Also create reverse"
+                        disabled={busy || !eligible}
+                      />
                     </div>
+                  )}
+                  <div className="card-import-total">
+                    <strong>
+                      <CountUp value={count} multiplier={m} duration={0.7} />
+                    </strong>
+                    <span>
+                      cards
+                      {!source.apkg && (
+                        <small>
+                          {cards.length} original · {reverse ? eligible : 0} reverse
+                        </small>
+                      )}
+                    </span>
+                  </div>
+                  <div className="card-import-notices">
                     {!!duplicates && (
-                      <p className="card-import-notice">
+                      <p className="card-import-notice" data-tone="warning">
                         {duplicates} already exist. Importing will add copies.
                       </p>
                     )}
@@ -240,9 +301,11 @@ export function CardImportDialog({
                         {source.apkg ? 'unsupported cards' : 'rows'} skipped.
                       </p>
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
+            </div>
+            {step !== 'destination' && (
               <div className="card-import-content">
                 {step === 'input' ? (
                   <CardImportInput source={source} preferPackage={preferPackage} />
@@ -254,49 +317,94 @@ export function CardImportDialog({
                   />
                 )}
               </div>
-            </div>
-          </StepSwap>
+            )}
+          </div>
+        </StepSwap>
+      </div>
+      <footer className="card-import-footer">
+        <div className="card-import-feedback">
+          {(error || sourceError || limitError) && (
+            <p role="alert">{error || sourceError || limitError}</p>
+          )}
         </div>
-        <footer className="card-import-footer">
-          <div className="card-import-feedback">
-            {(error || sourceError || limitError) && (
-              <p role="alert">{error || sourceError || limitError}</p>
-            )}
-          </div>
-          <div className="card-import-actions">
-            {step === 'review' ? (
-              <Button
-                variant="ghost"
-                disabled={busy}
-                onClick={() => {
-                  setError('');
-                  setStep('input');
-                }}
-              >
-                Undo
-              </Button>
-            ) : (
-              <Button variant="ghost" disabled={busy} onClick={cancel}>
-                Cancel
-              </Button>
-            )}
-            <span>
-              {step === 'input'
-                ? 'Step 1 of 2'
-                : `${cards.length} original${!source.apkg && reverse ? ` + ${eligible} reverse` : ''}`}
-            </span>
+        <div className="card-import-actions">
+          {step !== 'input' ? (
             <Button
-              variant="primary"
-              disabled={!canContinue || busy || (step === 'review' && !canImport)}
-              onClick={() => void confirm()}
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setError('');
+                setDirection(-1);
+                setStep(step === 'destination' ? 'review' : 'input');
+              }}
             >
-              {busy ? 'Importing…' : step === 'input' ? 'Review cards' : `Import ${count} cards`}
-              <span aria-hidden="true">→</span>
+              <ChevronLeftIcon width={16} height={16} />
+              Back
             </Button>
-          </div>
-        </footer>
+          ) : !panel ? (
+            <Button variant="ghost" disabled={busy} onClick={cancel}>
+              Cancel
+            </Button>
+          ) : null}
+
+          <Button
+            ref={primaryRef}
+            variant="primary"
+            disabled={!canContinue || busy || (finalStep && !canImport)}
+            onClick={() => void confirm()}
+          >
+            {busy
+              ? 'Importing…'
+              : step === 'input'
+                ? 'Review cards'
+                : step === 'review' && separateDestination
+                  ? 'Choose destination'
+                  : `Import ${countOf(count, 'card')}`}
+            <span aria-hidden="true">→</span>
+          </Button>
+        </div>
+      </footer>
+    </>
+  );
+  if (presentation === 'dialog') {
+    return createPortal(
+      <DialogPanel
+        label="Import cards"
+        trapRef={trapRef}
+        onKeyDown={dialogKeys}
+        className="card-import-dialog"
+        overlayClassName="card-import-overlay"
+      >
+        <div
+          className="contents"
+          aria-busy={busy || source.reading}
+          style={{ '--import-motion': m } as React.CSSProperties}
+        >
+          {contentView}
+        </div>
+      </DialogPanel>,
+      document.body,
+    );
+  }
+  return (
+    <div
+      ref={trapRef}
+      className={panel ? 'card-import-panel' : 'card-import-page'}
+      style={{ '--import-motion': m } as React.CSSProperties}
+      onInput={pageKeys.onInput}
+      onClick={pageKeys.onClick}
+      onKeyDown={pageKeys.onKeyDown}
+    >
+      <motion.section
+        className="card-import-dialog"
+        aria-labelledby="card-import-heading"
+        aria-busy={busy || source.reading}
+        initial={m ? { opacity: 0, y: 16 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={scaledSpring(m, 320, 30)}
+      >
+        {contentView}
       </motion.section>
     </div>
   );
-  return presentation === 'dialog' ? createPortal(view, document.body) : view;
 }

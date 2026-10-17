@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useIsPresent } from 'motion/react';
 import { matchPath, Navigate, useLocation, useParams } from 'react-router-dom';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
+import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { useCourse, useLesson } from '../state/useCourseData';
 
 const ARCHIVED_INSPECTION_PATHS = [
@@ -35,13 +36,7 @@ export function ArchivedCourseAccessGuard({ children }: { children: ReactNode })
 
   const resolvingLessonCourse = !courseIdParam && lessonId !== undefined && lesson === undefined;
   if (resolvingLessonCourse || (courseId !== undefined && course === undefined)) {
-    return (
-      <DelayedFallback>
-        <div className="flex min-h-[50vh] items-center justify-center" role="status">
-          <span className="text-sm text-ink-faint">Loading course…</span>
-        </div>
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CoursePathSkeleton />} />;
   }
 
   // Exiting pages retain their route params but observe the new global location.

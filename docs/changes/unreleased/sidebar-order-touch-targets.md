@@ -1,0 +1,1 @@
+- Enlarge Sidebar settings reorder controls to 44px targets in a compact horizontal pair, retaining persisted ordering, disabled boundary actions and reset behaviour.

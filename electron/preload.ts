@@ -186,10 +186,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener('window:maximizedChange', handler);
     };
   },
-  onOpenHelp: (callback: () => void) => {
-    const handler = () => callback();
-    ipcRenderer.on('navigation:open-help', handler);
-    return () => ipcRenderer.removeListener('navigation:open-help', handler);
+  onMenuCommand: (callback: (command: 'help' | 'settings' | 'shortcuts') => void) => {
+    const handler = (_event: unknown, command: unknown) => {
+      if (command === 'help' || command === 'settings' || command === 'shortcuts')
+        callback(command);
+    };
+    ipcRenderer.on('navigation:menu-command', handler);
+    return () => ipcRenderer.removeListener('navigation:menu-command', handler);
   },
   updater: {
     getState: async (): Promise<UpdateState> => {

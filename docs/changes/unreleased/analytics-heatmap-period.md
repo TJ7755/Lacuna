@@ -1,0 +1,1 @@
+- The review calendar now follows Progress’s 7-, 30- and 90-day selector, with matching dates, totals and labels. Short periods use compact calendar cells, and changing period preserves a reachable keyboard tab stop while clearing outdated details.

@@ -47,14 +47,17 @@ test('plays stored audio while authoring and studying in the production build', 
 
   await enterFreshLacuna(page);
   await createCourse(page, 'Audio playback');
-  await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await page.getByRole('button', { name: 'More card types', exact: true }).click();
   await page.getByRole('button', { name: 'Audio', exact: true }).click();
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: 'tone.wav', mimeType: 'audio/wav', buffer: toneWav() });
 
-  const editorPlayer = page.locator('audio');
+  const editorPlayer = page
+    .getByRole('region', { name: 'Card content', exact: true })
+    .locator('audio');
   await expect(editorPlayer).toHaveAttribute('src', /^blob:/);
   const authored = await playsThrough(editorPlayer);
   expect(authored.error).toBeNull();
@@ -65,10 +68,12 @@ test('plays stored audio while authoring and studying in the production build', 
   await expect(page).not.toHaveURL(/\/cards\/new$/);
 
   await page.reload();
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
 
   // Poll the whole study surface so a failure shows what was rendered instead.
   await expect

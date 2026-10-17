@@ -1,3 +1,5 @@
+import { AnimatePresence } from 'motion/react';
+import { DialogPanel } from './DialogPanel';
 import {
   forwardRef,
   useCallback,
@@ -99,9 +101,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     const [explicitAttempt, setExplicitAttempt] = useState(false);
     const blocked = blocker?.state === 'blocked' || explicitAttempt;
     const trapRef = useFocusTrap(blocked, { autoFocusSelector: '[data-guard-stay]' });
-    const id = useId();
-    const titleId = `navigation-guard-title-${id}`;
-    const messageId = `navigation-guard-message-${id}`;
+    const messageId = useId();
 
     useImperativeHandle(
       ref,
@@ -154,48 +154,42 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
       }
     };
 
-    if (!blocked) return null;
-
     return (
-      <div
-        ref={trapRef}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 backdrop-blur-sm"
-        onKeyDown={(event) => {
-          event.stopPropagation();
-          if (event.key === 'Escape' && !confirming) {
-            event.preventDefault();
-            stay();
-          }
-        }}
-      >
-        <section
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          aria-describedby={messageId}
-          className="w-full max-w-md rounded-3xl border border-line-strong bg-paper p-6 shadow-2xl shadow-black/20"
-        >
-          <h2 id={titleId} className="font-display text-2xl text-ink">
-            {title}
-          </h2>
-          <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
-            {message}
-          </p>
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button data-guard-stay="" type="button" onClick={stay} disabled={confirming}>
-              {stayLabel}
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={() => void leave()}
-              disabled={confirming}
-            >
-              {confirming ? 'Leaving…' : leaveLabel}
-            </Button>
-          </div>
-        </section>
-      </div>
+      <AnimatePresence>
+        {blocked && (
+          <DialogPanel
+            label={title}
+            describedBy={messageId}
+            trapRef={trapRef}
+            className="max-w-md overflow-y-auto p-6"
+            onKeyDown={(event) => {
+              event.stopPropagation();
+              if (event.key === 'Escape' && !confirming) {
+                event.preventDefault();
+                stay();
+              }
+            }}
+          >
+            <h2 className="font-display text-xl text-ink">{title}</h2>
+            <p id={messageId} className="mt-2 text-sm leading-6 text-ink-soft">
+              {message}
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button data-guard-stay="" type="button" onClick={stay} disabled={confirming}>
+                {stayLabel}
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void leave()}
+                disabled={confirming}
+              >
+                {confirming ? 'Leaving…' : leaveLabel}
+              </Button>
+            </div>
+          </DialogPanel>
+        )}
+      </AnimatePresence>
     );
   },
 );

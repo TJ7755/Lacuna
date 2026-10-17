@@ -39,6 +39,9 @@ async function expectCardsRouteCached(page: Page) {
     })
     .toEqual(
       expect.arrayContaining([
+        '/fonts/InstrumentSans-Variable.ttf',
+        '/fonts/SpaceGrotesk-Variable.ttf',
+        '/fonts/JetBrainsMono-Variable.ttf',
         expect.stringMatching(/^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/),
         expect.stringMatching(/^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/),
       ]),
@@ -66,8 +69,8 @@ test('reloads a visited card library with persisted data while offline', async (
     await waitForServiceWorkerControl(page);
     await createCourse(page, courseName);
 
-    await page.getByRole('button', { name: 'Author mode' }).click();
-    await page.getByRole('button', { name: 'New card', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit mode' }).click();
+    await page.getByRole('button', { name: 'New card', exact: true }).first().click();
     await page.getByRole('textbox', { name: 'Front' }).fill(front);
     await page.getByRole('textbox', { name: 'Back' }).fill(`Answer for ${identity}`);
     await page.getByRole('button', { name: 'Add card', exact: true }).click();
@@ -76,20 +79,13 @@ test('reloads a visited card library with persisted data while offline', async (
       .getByRole('navigation', { name: 'Course sections' })
       .getByRole('link', { name: 'Cards' })
       .click();
-    const cardsMain = page.locator('main[data-route-path$="/cards"]');
+    const cardsMain = page.locator('main:has([data-route-content$="/cards"])');
     await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
     await expect(cardsMain.getByText(front, { exact: true })).toHaveCount(1);
     await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
     const cardsUrl = page.url();
 
     await expectCardsRouteCached(page);
-    await expect(cachedAssetPaths(page)).resolves.toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/^\/assets\/SharingAnnouncement-[A-Za-z0-9_-]{8}\.js$/),
-        expect.stringMatching(/^\/assets\/SharingAnnouncement-[A-Za-z0-9_-]{8}\.css$/),
-      ]),
-    );
-
     const devtools = await context.newCDPSession(page);
     await devtools.send('Network.enable');
     await devtools.send('Network.clearBrowserCache');
@@ -107,11 +103,18 @@ test('reloads a visited card library with persisted data while offline', async (
 
       await expect(page).toHaveURL(cardsUrl);
       await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
-      await expect(page.getByRole('region', { name: 'New sharing features' })).toBeVisible();
+      // The sharing announcement belongs to Today, so a course page never waits on it.
+      await expect(page.getByRole('region', { name: 'New sharing features' })).toHaveCount(0);
       await expect(cardsMain.getByRole('heading', { name: 'Cards', level: 1 })).toBeVisible();
       await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
 
-      const search = cardsMain.getByPlaceholder('Search all cards…');
+      await page.evaluate(() => document.fonts.ready);
+      expect(await page.evaluate(() => [...document.fonts]
+        .filter((face) => ['Instrument Sans', 'Space Grotesk'].includes(face.family))
+        .map((face) => `${face.family}:${face.status}`).sort()),
+      ).toEqual(['Instrument Sans:loaded', 'Space Grotesk:loaded']);
+
+      const search = cardsMain.getByLabel('Search all cards');
       await search.fill(searchMiss);
       await expect(cardsMain.getByText(/No cards match/)).toBeVisible();
       await search.clear();

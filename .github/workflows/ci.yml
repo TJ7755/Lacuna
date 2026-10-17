@@ -4,7 +4,9 @@ on:
   push:
     branches: [master, main]
   pull_request:
-    branches: [master, main]
+    # Long-lived redesign branches collect stacked work before it reaches master; their
+    # pull requests need the same gates or regressions surface only on the final merge.
+    branches: [master, main, 'redesign/**']
     # Retargeting a stacked pull request onto master, or marking a draft ready, must
     # produce the required checks. `edited` also fires on title and body edits; those
     # rerun the suite rather than skip it, because skipped jobs would satisfy the
@@ -57,7 +59,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -77,7 +79,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run lint
 
@@ -99,7 +101,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
 
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/4
@@ -118,7 +120,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run test:coverage
       - run: bun run test:coverage:recovery
@@ -145,7 +147,7 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         if: matrix.workspace == 'semantic-answer-match'
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: uv run --locked pytest
         working-directory: tooling/${{ matrix.workspace }}
 
@@ -187,7 +189,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test
@@ -206,7 +208,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bun run typecheck
@@ -230,7 +232,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -257,7 +259,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run build:assets
       - run: node --test scripts/public-pages.test.mjs
@@ -282,7 +284,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -312,7 +314,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps webkit
       - run: bun run test:e2e:web -- --project=webkit-mobile --workers=1
@@ -357,7 +359,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
 
@@ -375,7 +377,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run electron:prepare
       - run: bun run build:assets
@@ -405,7 +407,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run electron:build:win
       # The release build enforces the same budget; checking here catches growth before a tag.

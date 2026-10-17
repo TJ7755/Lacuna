@@ -2,23 +2,19 @@ import { expect, test } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const width of [390, 1440]) {
-  test(`compact path, Share alignment and analytics empty states at ${width}px`, async ({
+  test(`compact lesson list, Share alignment and analytics empty states at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
     await enterFreshLacuna(page);
-    await page.getByRole('button', { name: /Exam on .* Welcome to Lacuna/ }).click();
+    await page.getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
     const drawings = page.locator('[data-path-drawing]');
     await expect(drawings).toHaveCount(0);
-    const connectors = page.locator('svg.course-connector');
-    await expect(connectors).toHaveCount(3);
-    expect(await connectors.nth(0).locator('path').getAttribute('d')).not.toBe(
-      await connectors.nth(1).locator('path').getAttribute('d'),
-    );
-    for (const drawing of await connectors.all()) {
-      await expect(drawing).toHaveAttribute('aria-hidden', 'true');
-      await expect(drawing).toHaveCSS('pointer-events', 'none');
-      const bounds = (await drawing.boundingBox())!;
+    const lessons = page.getByRole('list', { name: 'Course path' });
+    await expect(lessons).toBeVisible();
+    for (const row of await lessons.getByRole('listitem').all()) {
+      const bounds = (await row.boundingBox())!;
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(width);
     }
@@ -26,7 +22,6 @@ for (const width of [390, 1440]) {
     await page
       .getByRole('button', { name: 'Core concepts & rendering', exact: true })
       .press('Enter');
-    await page.getByRole('button', { name: 'Open lesson', exact: true }).click();
     await expect(
       page.getByRole('heading', { name: 'Core concepts & rendering', exact: true }),
     ).toBeVisible();
@@ -34,14 +29,14 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Collaborate', { exact: true })).toHaveCount(0);
     const heading = page.getByRole('heading', { name: 'Share', exact: true });
     await expect(heading).toBeVisible();
-    await expect(heading.locator('xpath=ancestor::header[1]').locator('p')).toHaveCount(0);
-    const exportSection = page
-      .getByRole('heading', { name: 'Export a course', exact: true })
+    // The header holds the title and the course being shared, nothing descriptive.
+    await expect(heading.locator('xpath=ancestor::header[1]')).toHaveText('ShareWelcome to Lacuna');
+    const linkSection = page
+      .getByRole('heading', { name: 'Share link', exact: true })
       .locator('xpath=ancestor::section[1]');
-    const exportCopy = page.getByText(/Save a course file to share lessons, cards, question sets and media/);
-    await expect(exportCopy).toBeVisible();
+    await expect(linkSection).toBeVisible();
     expect(
-      Math.abs((await heading.boundingBox())!.x - (await exportSection.boundingBox())!.x),
+      Math.abs((await heading.boundingBox())!.x - (await linkSection.boundingBox())!.x),
     ).toBeLessThan(1);
     await page.screenshot({ animations: 'disabled', path: test.info().outputPath('share.png') });
     await page.goto('/#/analytics');

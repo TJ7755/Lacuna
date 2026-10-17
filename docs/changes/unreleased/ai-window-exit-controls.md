@@ -1,0 +1,1 @@
+- Closing the AI conversation immediately disables its departing controls while preserving the window exit animation, rapid reopening and the existing quick-search interaction guard.

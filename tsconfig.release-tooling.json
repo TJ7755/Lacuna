@@ -10,6 +10,7 @@
     "tests/e2e/**/*.ts",
     "tests/e2e-electron/**/*.ts",
     "tests/config/playwright.*.config.ts",
+    "tests/performance/playwright.*.config.ts",
     "scripts/performance-audit.ts"
   ]
 }

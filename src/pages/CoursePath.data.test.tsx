@@ -14,6 +14,7 @@ vi.mock('../state/motionSpeed', () => ({
 vi.mock('../components/learn/StudySheetContext', () => ({
   useStudySheet: () => ({ openStudySheet: vi.fn() }),
 }));
+vi.mock('../components/cards/LessonCardsSection', () => ({ LessonCardsSection: () => null }));
 vi.mock('../components/course/CourseHeader', () => ({
   CourseHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header>,
 }));
@@ -23,6 +24,7 @@ vi.mock('../components/course/CoursePathSegment', () => ({
 }));
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
@@ -49,4 +51,43 @@ it('reads one course card/history set for the path and its header summary', asyn
   expect(history).toHaveBeenCalledTimes(1);
   expect(courses).toHaveBeenCalledTimes(1);
   expect(assessments).toHaveBeenCalledTimes(1);
+});
+
+it('reuses the ready course snapshot when arriving at a single lesson', async () => {
+  const course = await createCourse('Arrival');
+  await createLesson(course.id, 'Lesson 1');
+  const cards = vi.spyOn(db.cards, 'where');
+  render(
+    <MemoryRouter initialEntries={[`/course/${course.id}`]}>
+      <ToastProvider>
+        <Routes>
+          <Route path="/course/:courseId" element={<CoursePath />} />
+        </Routes>
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  await screen.findByRole('heading', { name: 'Lesson 1' });
+  expect(cards.mock.calls.filter(([index]: unknown[]) => index === 'courseId')).toHaveLength(1);
+});
+
+it('renders a revisited course immediately while its live query revalidates', async () => {
+  const course = await createCourse('Revisit');
+  await createLesson(course.id, 'Cells');
+  await createLesson(course.id, 'Genetics');
+  function Page() {
+    return (
+      <MemoryRouter initialEntries={[`/course/${course.id}`]}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+  }
+  const first = render(<Page />);
+  await screen.findByRole('button', { name: 'Study' });
+  first.unmount();
+  render(<Page />);
+  expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
 });

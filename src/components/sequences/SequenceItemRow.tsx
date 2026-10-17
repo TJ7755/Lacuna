@@ -1,168 +1,191 @@
-// A single item row within SequenceEditor's ordered item list: value editor,
-// optional label, chunk assignment, reorder and delete controls. Extracted
-// from SequenceEditor to keep that page focused on top-level composition —
-// mirrors the notes list's NoteRow split.
+// One line of SequenceEditor's keyboard-first outline: a number, an optional speaker
+// and label, and a growing text field. The row only recognises gestures; the editor
+// owns what they do to the outline (see sequenceOutline.ts).
 
-import { MarkdownEditor } from '../markdown/MarkdownEditor';
-import { Select } from '../ui/Select';
-import { ChevronDownIcon, PlusIcon, TrashIcon } from '../ui/icons';
+import { useLayoutEffect, useRef, type KeyboardEvent, type Ref } from 'react';
+import { CloseIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
-import type { Ref } from 'react';
 import type { SequenceItem } from '../../db/types';
+
+export type RowGesture =
+  | { kind: 'enter'; caret: number }
+  | { kind: 'backspace-start' }
+  | { kind: 'focus'; direction: 'up' | 'down' }
+  | { kind: 'move'; direction: 'up' | 'down' }
+  | { kind: 'paste'; text: string; start: number; end: number };
 
 interface SequenceItemRowProps {
   item: SequenceItem;
   index: number;
-  isFirst: boolean;
-  isLast: boolean;
-  chunkLabels: string[];
-  /** Whether this preset tags items with a speaker (script/dialogue only — see
-   *  sequencePresets.ts's `usesSpeakers`); other lines-mode presets have no speaker field. */
-  showSpeaker?: boolean;
-  /** Singular noun for one item, from the sequence's preset terminology (e.g. "item", "step"). */
-  itemTerm?: string;
+  /** Singular noun for one item, from the sequence's preset terminology. */
+  itemTerm: string;
+  showSpeaker: boolean;
+  /** Id of a datalist of known speakers, offered as the speaker is typed. */
+  speakerListId?: string;
+  /** Script lines: whether this is one of the learner's own lines. */
+  mine?: boolean;
+  showLabel: boolean;
   onChange: (patch: Partial<SequenceItem>) => void;
+  onGesture: (gesture: RowGesture) => void;
   onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onAddAfter: () => void;
   inputRef: Ref<HTMLTextAreaElement>;
-  invalid: boolean;
+}
+
+function caretOnFirstLine(field: HTMLTextAreaElement) {
+  return !field.value.slice(0, field.selectionStart).includes('\n');
+}
+
+function caretOnLastLine(field: HTMLTextAreaElement) {
+  return !field.value.slice(field.selectionEnd).includes('\n');
 }
 
 export function SequenceItemRow({
   item,
   index,
-  isFirst,
-  isLast,
-  chunkLabels,
+  itemTerm,
   showSpeaker,
-  itemTerm = 'item',
+  speakerListId,
+  mine,
+  showLabel,
   onChange,
+  onGesture,
   onDelete,
-  onMoveUp,
-  onMoveDown,
-  onAddAfter,
   inputRef,
-  invalid,
 }: SequenceItemRowProps) {
-  const errorId = `sequence-item-${item.id}-error`;
-  const itemTermCapitalized = itemTerm.charAt(0).toUpperCase() + itemTerm.slice(1);
+  const fieldRef = useRef<HTMLTextAreaElement | null>(null);
+  const name = `${itemTerm.charAt(0).toUpperCase()}${itemTerm.slice(1)} ${index + 1}`;
+
+  // Grow with the text, wrapped lines included, so a long line never scrolls inside its
+  // row; re-measure when the width changes, since that changes the wrapping.
+  useLayoutEffect(() => {
+    const field = fieldRef.current;
+    if (!field) return;
+    const fit = () => {
+      field.style.height = 'auto';
+      if (field.scrollHeight > 0) field.style.height = `${field.scrollHeight}px`;
+    };
+    fit();
+    if (typeof ResizeObserver === 'undefined') return;
+    let width = field.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (field.clientWidth === width) return;
+      width = field.clientWidth;
+      fit();
+    });
+    observer.observe(field);
+    return () => observer.disconnect();
+  }, [item.value]);
+
+  function setRefs(field: HTMLTextAreaElement | null) {
+    fieldRef.current = field;
+    if (typeof inputRef === 'function') inputRef(field);
+    else if (inputRef) inputRef.current = field;
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.nativeEvent.isComposing) return;
+    const field = e.currentTarget;
+    const collapsed = field.selectionStart === field.selectionEnd;
+    const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    let gesture: RowGesture | null = null;
+    if (e.key === 'Enter' && plain && !e.shiftKey) {
+      gesture = { kind: 'enter', caret: field.selectionStart };
+    } else if (e.key === 'Backspace' && plain && collapsed && field.selectionStart === 0) {
+      gesture = { kind: 'backspace-start' };
+    } else if (
+      (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+      e.altKey &&
+      !e.ctrlKey &&
+      !e.metaKey
+    ) {
+      gesture = { kind: 'move', direction: e.key === 'ArrowUp' ? 'up' : 'down' };
+    } else if (e.key === 'ArrowUp' && plain && !e.shiftKey && caretOnFirstLine(field)) {
+      gesture = { kind: 'focus', direction: 'up' };
+    } else if (e.key === 'ArrowDown' && plain && !e.shiftKey && caretOnLastLine(field)) {
+      gesture = { kind: 'focus', direction: 'down' };
+    }
+    if (!gesture) return;
+    e.preventDefault();
+    onGesture(gesture);
+  }
 
   return (
     <div
-      className={cn(
-        'rounded-xl border bg-surface p-4',
-        invalid ? 'border-negative/50' : 'border-line',
-      )}
+      data-sequence-row=""
+      className="group relative flex items-start gap-2 rounded-2xl py-0.5 pl-1 pr-0.5 transition-colors focus-within:bg-ink/[0.045] hover:bg-ink/[0.03]"
     >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="flex h-6 min-w-6 items-center justify-center rounded-lg bg-ink/5 px-1.5 text-xs font-medium text-ink-faint">
-          {index + 1}
-        </span>
-        <span className="text-sm font-medium text-ink-soft">
-          {itemTermCapitalized} {index + 1}
-        </span>
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-0.5">
-          <button
-            type="button"
-            onClick={onAddAfter}
-            title={`Add ${itemTerm} below`}
-            aria-label={`Add ${itemTerm} below ${itemTerm} ${index + 1}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-accent-soft hover:text-accent"
-          >
-            <PlusIcon width={15} height={15} />
-          </button>
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={isFirst}
-            aria-label={`Move ${itemTerm} ${index + 1} up`}
-            title="Move up"
-            className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
-              'disabled:pointer-events-none disabled:opacity-30',
-            )}
-          >
-            <ChevronDownIcon width={14} height={14} className="rotate-180" />
-          </button>
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={isLast}
-            aria-label={`Move ${itemTerm} ${index + 1} down`}
-            title="Move down"
-            className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink',
-              'disabled:pointer-events-none disabled:opacity-30',
-            )}
-          >
-            <ChevronDownIcon width={14} height={14} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            aria-label={`Delete ${itemTerm} ${index + 1}`}
-            title={`Delete ${itemTerm}`}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
-          >
-            <TrashIcon width={14} height={14} />
-          </button>
-        </div>
-      </div>
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      {mine && (
+        <span
+          aria-hidden
+          className="absolute bottom-2.5 left-0 top-2.5 w-1 rounded-full bg-accent"
+        />
+      )}
+      <span
+        aria-hidden
+        className="mt-3 w-7 shrink-0 select-none text-right text-sm tabular-nums text-ink-faint"
+      >
+        {index + 1}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-start sm:gap-2">
         {showSpeaker && (
           <input
             type="text"
             value={item.speaker ?? ''}
             onChange={(e) => onChange({ speaker: e.target.value || undefined })}
+            list={speakerListId}
             placeholder="Speaker"
             aria-label={`Speaker for ${itemTerm} ${index + 1}`}
-            className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm font-medium outline-none focus:border-accent sm:flex-none"
+            className="min-h-11 w-full shrink-0 bg-transparent py-2.5 text-sm font-semibold text-ink outline-none placeholder:font-normal placeholder:text-ink-faint/70 focus-visible:shadow-none sm:w-32"
           />
         )}
-        <input
-          type="text"
-          aria-label={`Label for ${itemTerm} ${index + 1}`}
-          value={item.label ?? ''}
-          onChange={(e) => onChange({ label: e.target.value || undefined })}
-          placeholder="Label (optional)"
-          className="min-h-11 min-w-[10rem] flex-1 rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
-        />
-        {chunkLabels.length > 0 && (
-          <Select
-            value={item.chunkIndex ?? ''}
-            onChange={(e) =>
-              onChange({ chunkIndex: e.target.value === '' ? undefined : Number(e.target.value) })
-            }
-            aria-label={`Chunk for ${itemTerm} ${index + 1}`}
-            className="min-w-[10rem] flex-1 sm:flex-none"
-          >
-            <option value="">No chunk</option>
-            {chunkLabels.map((label, i) => (
-              <option key={i} value={i}>
-                {label}
-              </option>
-            ))}
-          </Select>
+        {showLabel && (
+          <input
+            type="text"
+            value={item.label ?? ''}
+            onChange={(e) => onChange({ label: e.target.value || undefined })}
+            placeholder="Label"
+            aria-label={`Label for ${itemTerm} ${index + 1}`}
+            className="min-h-11 w-full shrink-0 bg-transparent py-2.5 text-sm text-ink-soft outline-none placeholder:text-ink-faint/70 focus-visible:shadow-none sm:w-32"
+          />
         )}
+        <textarea
+          ref={setRefs}
+          rows={1}
+          value={item.value}
+          onChange={(e) => onChange({ value: e.target.value })}
+          onKeyDown={handleKeyDown}
+          onPaste={(e) => {
+            const text = e.clipboardData.getData('text/plain');
+            if (!/\S[^\S\n]*\r?\n[\s\S]*\S/.test(text)) return;
+            e.preventDefault();
+            const field = e.currentTarget;
+            onGesture({
+              kind: 'paste',
+              text,
+              start: field.selectionStart,
+              end: field.selectionEnd,
+            });
+          }}
+          aria-label={`${name} content`}
+          aria-keyshortcuts="Enter Shift+Enter Alt+ArrowUp Alt+ArrowDown"
+          placeholder={index === 0 ? `Type or paste, one ${itemTerm} per line` : undefined}
+          spellCheck
+          className={cn(
+            'min-h-11 w-full min-w-0 resize-none overflow-hidden sm:flex-1 bg-transparent py-2.5 text-[15px] leading-6 outline-none placeholder:text-ink-faint focus-visible:shadow-none',
+            mine === false ? 'text-ink-soft' : 'text-ink',
+          )}
+        />
       </div>
-      <MarkdownEditor
-        inputRef={inputRef}
-        ariaLabel={`${itemTermCapitalized} ${index + 1} content`}
-        ariaInvalid={invalid}
-        ariaDescribedBy={invalid ? errorId : undefined}
-        value={item.value}
-        onChange={(value) => onChange({ value })}
-        onModEnter={onAddAfter}
-        minRows={2}
-        placeholder={`${itemTermCapitalized} content. Markdown, maths and images are supported.`}
-      />
-      {invalid && (
-        <p id={errorId} role="alert" className="mt-2 text-sm text-negative">
-          Enter {itemTerm} content before saving or adding another.
-        </p>
-      )}
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={onDelete}
+        aria-label={`Delete ${itemTerm} ${index + 1}`}
+        title={`Delete ${itemTerm}`}
+        className="touch-visible flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-faint opacity-0 transition-[opacity,background-color,color] hover:bg-negative/10 hover:text-negative focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+      >
+        <CloseIcon width={14} height={14} />
+      </button>
     </div>
   );
 }

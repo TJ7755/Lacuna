@@ -1,12 +1,21 @@
+import { MotionValue } from 'motion/react';
+import type * as MotionReact from 'motion/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { Card } from '../../db/types';
 import { FlipCard } from './FlipCard';
-import type * as MotionSpeedModule from '../../state/motionSpeed';
+import type { Card } from '../../db/types';
+import * as MotionSpeedModule from '../../state/motionSpeed';
+
+const motionAnimate = vi.hoisted(() => ({ animate: vi.fn() }));
+
+vi.mock('motion/react', async (importOriginal) => ({
+  ...(await importOriginal<typeof MotionReact>()),
+  animate: motionAnimate.animate,
+}));
 
 vi.mock('../../state/motionSpeed', async (importOriginal) => ({
   ...(await importOriginal<typeof MotionSpeedModule>()),
-  speedMultiplier: () => 0,
+  speedMultiplier: vi.fn(() => 0),
 }));
 
 vi.mock('../../components/cards/CardContent', () => ({
@@ -48,7 +57,6 @@ function renderRevealed(onAnswer = vi.fn()) {
       isTouchMode={false}
       menuOpen={false}
       editing={false}
-      navOpen={false}
       hintsOpen={false}
       onReveal={vi.fn()}
       onHide={onHide}
@@ -73,9 +81,21 @@ describe('FlipCard reduced-motion swipes', () => {
     const answer = vi.fn();
     renderRevealed(answer);
     swipe(dx);
-    expect(answer).toHaveBeenCalledExactlyOnceWith(dx > 0, 'touch');
+    expect(answer).toHaveBeenCalledExactlyOnceWith(dx > 0, 'touch', expect.any(Number));
     swipe(dx);
     expect(answer).toHaveBeenCalledOnce();
+  });
+
+  it('hands the swipe motion value release velocity to the shared throw', () => {
+    const velocity = vi.spyOn(MotionValue.prototype, 'getVelocity').mockReturnValue(720);
+    try {
+      const answer = vi.fn();
+      renderRevealed(answer);
+      swipe(100);
+      expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch', 720);
+    } finally {
+      velocity.mockRestore();
+    }
   });
 
   it('keeps cancelled and below-threshold swipes ungraded, then accepts a new swipe', () => {
@@ -85,7 +105,72 @@ describe('FlipCard reduced-motion swipes', () => {
     swipe(-100, true);
     expect(answer).not.toHaveBeenCalled();
     swipe(100);
-    expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch');
+    expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch', expect.any(Number));
+  });
+
+  it.each([-1, 1])(
+    'commits a short fast flick in direction %s with its release velocity',
+    (direction) => {
+      const velocity = vi
+        .spyOn(MotionValue.prototype, 'getVelocity')
+        .mockReturnValue(direction * 720);
+      try {
+        const answer = vi.fn();
+        renderRevealed(answer);
+        swipe(direction * 25);
+        expect(answer).toHaveBeenCalledExactlyOnceWith(direction > 0, 'touch', direction * 720);
+      } finally {
+        velocity.mockRestore();
+      }
+    },
+  );
+
+  it('locks a vertical gesture to scrolling without grading or flipping', () => {
+    const answer = vi.fn();
+    const hide = renderRevealed(answer);
+    const target = screen.getByRole('button', { name: 'Hide answer' });
+    fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 205, clientY: 240, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 300, clientY: 245, pointerId: 1 });
+    fireEvent.pointerUp(target, { clientX: 300, clientY: 245, pointerId: 1 });
+    expect(answer).not.toHaveBeenCalled();
+    expect(hide).not.toHaveBeenCalled();
+  });
+});
+
+describe('FlipCard abandoned-swipe return', () => {
+  it('springs back with the motion-scaled, critically damped study spring', () => {
+    const speed = vi.mocked(MotionSpeedModule.speedMultiplier);
+    try {
+      speed.mockReturnValue(1);
+      motionAnimate.animate.mockClear();
+      const answer = vi.fn();
+      renderRevealed(answer);
+      const target = screen.getByRole('button', { name: 'Hide answer' });
+      fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
+      fireEvent.pointerMove(target, { clientX: 240, clientY: 200, pointerId: 1 });
+      fireEvent.pointerUp(target, { clientX: 240, clientY: 200, pointerId: 1 });
+      expect(answer).not.toHaveBeenCalled();
+      expect(motionAnimate.animate).toHaveBeenCalledExactlyOnceWith(expect.anything(), 0, {
+        type: 'spring',
+        stiffness: 480,
+        damping: 2 * Math.sqrt(480),
+      });
+    } finally {
+      speed.mockReturnValue(0);
+    }
+  });
+
+  it('returns an abandoned swipe instantly under reduced motion', () => {
+    motionAnimate.animate.mockClear();
+    const answer = vi.fn();
+    renderRevealed(answer);
+    const target = screen.getByRole('button', { name: 'Hide answer' });
+    fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 240, clientY: 200, pointerId: 1 });
+    fireEvent.pointerUp(target, { clientX: 240, clientY: 200, pointerId: 1 });
+    expect(answer).not.toHaveBeenCalled();
+    expect(motionAnimate.animate).not.toHaveBeenCalled();
   });
 });
 
@@ -129,7 +214,6 @@ describe('FlipCard hint disclosure', () => {
         isTouchMode={false}
         menuOpen={false}
         editing={false}
-        navOpen={false}
         hintsOpen={false}
         onReveal={vi.fn()}
         onHide={vi.fn()}

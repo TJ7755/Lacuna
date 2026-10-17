@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,9 +51,18 @@ describe('CourseTabs', () => {
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('marks Analytics active on the analytics route', () => {
+  it('marks Progress active on the course analytics route, between Questions and Settings', () => {
     renderAt('/course/course-1/analytics');
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('aria-current', 'page');
+    const progress = screen.getByRole('link', { name: 'Progress' });
+    expect(progress).toHaveAttribute('aria-current', 'page');
+    expectAppDestination(progress, '/course/course-1/analytics');
+    expect(screen.getAllByRole('link').map((link) => link.getAttribute('aria-label'))).toEqual([
+      'Path',
+      'Cards',
+      'Questions',
+      'Progress',
+      'Settings',
+    ]);
   });
 
   it('marks Settings active on the settings route', () => {
@@ -62,21 +72,14 @@ describe('CourseTabs', () => {
 
   it('points each tab link at the right course-scoped route', () => {
     renderAt('/course/course-1');
-    expect(screen.getByRole('link', { name: 'Path' })).toHaveAttribute('href', '/course/course-1');
-    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(
-      'href',
-      '/course/course-1/cards',
-    );
-    expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute(
-      'href',
+    expectAppDestination(screen.getByRole('link', { name: 'Path' }), '/course/course-1');
+    expectAppDestination(screen.getByRole('link', { name: 'Cards' }), '/course/course-1/cards');
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Questions' }),
       '/course/course-1/questions',
     );
-    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
-      'href',
-      '/course/course-1/analytics',
-    );
-    expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute(
-      'href',
+    expectAppDestination(
+      screen.getByRole('link', { name: 'Settings' }),
       '/course/course-1/settings',
     );
   });

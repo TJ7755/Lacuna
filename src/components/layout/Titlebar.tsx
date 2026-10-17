@@ -7,47 +7,35 @@ function isElectron(): boolean {
 
 function MinimizeIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect x="1" y="6" width="10" height="1" fill="currentColor" />
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+      <path d="M1 6h10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
 
 function MaximizeIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-      <rect
-        x="1.5"
-        y="1.5"
-        width="9"
-        height="9"
-        rx="0.5"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+      <rect x="1.5" y="1.5" width="9" height="9" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
     </svg>
   );
 }
 
 function RestoreIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" shapeRendering="crispEdges">
-      <path
-        d="M3.5 3.5V1.5h7v7h-2M1.5 3.5h7v7h-7z"
-        stroke="currentColor"
-        strokeWidth="1"
-      />
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
+      <path d="M3.5 3.5V1.5h7v7h-2M1.5 3.5h7v7h-7z" stroke="currentColor" strokeWidth="1.2" />
     </svg>
   );
 }
 
 function CloseIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+    <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
       <path
         d="M2.5 2.5l7 7M9.5 2.5l-7 7"
         stroke="currentColor"
-        strokeWidth="1"
+        strokeWidth="1.2"
         strokeLinecap="round"
       />
     </svg>
@@ -97,7 +85,7 @@ export function Titlebar() {
         data-testid="titlebar-brand"
         className={`titlebar-drag flex items-center gap-2 text-sm text-ink-soft ${isMacOS ? '-translate-y-[3px]' : ''}`}
       >
-        <LacunaIcon width={14} height={14} className="text-accent" />
+        <LacunaIcon width={14} height={14} className="text-accent-ink" />
         <span className="font-display font-medium">Lacuna</span>
       </div>
 
@@ -109,7 +97,7 @@ export function Titlebar() {
             onClick={() => api.minimizeWindow()}
             aria-label="Minimise"
             title="Minimise"
-            className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             <MinimizeIcon />
           </button>
@@ -118,7 +106,7 @@ export function Titlebar() {
             onClick={() => api.maximizeWindow()}
             aria-label={isMaximized ? 'Restore' : 'Maximise'}
             title={isMaximized ? 'Restore' : 'Maximise'}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-ink/5 hover:text-ink active:bg-ink/10"
           >
             {isMaximized ? <RestoreIcon /> : <MaximizeIcon />}
           </button>
@@ -127,7 +115,7 @@ export function Titlebar() {
             onClick={() => api.closeWindow()}
             aria-label="Close"
             title="Close"
-            className="flex h-10 w-10 items-center justify-center rounded-md text-ink-faint transition hover:bg-negative/10 hover:text-negative active:bg-negative/15"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition hover:bg-negative/10 hover:text-negative active:bg-negative/15"
           >
             <CloseIcon />
           </button>

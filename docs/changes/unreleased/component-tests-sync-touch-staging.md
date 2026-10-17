@@ -1,0 +1,1 @@
+- Component tests now cover the sync pairing flow (setup, manual and QR join, validation and failure paths), the touch card-actions sheet (actions, keyboard and drag dismissal), and the staged item editor and candidate row (field edits, fixtures, validation and AI revision)

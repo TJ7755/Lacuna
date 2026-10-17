@@ -1,7 +1,7 @@
 import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { LandingRoot } from './LandingRoot';
 import { markLandingHandover } from '../../landingHandover';
-import { installHostedFontLinks, installSimpleAnalytics, isAppHashRoute } from '../../webBootstrap';
+import { installSimpleAnalytics, isAppHashRoute } from '../../webBootstrap';
 import '../../index.css';
 
 let landingRoot: Root | null = null;
@@ -65,7 +65,6 @@ function prefetchApp(): void {
 
 /** Hydrate the prerendered landing markup; hand over to the app on navigation. */
 export function hydrateLanding(): void {
-  installHostedFontLinks();
   installSimpleAnalytics();
   const container = document.getElementById('root')!;
   if (container.querySelector('.landing-page')) {

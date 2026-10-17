@@ -1,0 +1,1 @@
+- Stop custom-covered lessons that sit after their assessment, after reordering, from feeding practice and exam-date targeting. Thanks to nc-3388 (#503).

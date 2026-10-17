@@ -1,9 +1,9 @@
-import { useState, useMemo, memo, type RefObject } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useMemo, type RefObject } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
+import { MOTION_EASING } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
   ArchiveIcon,
@@ -11,14 +11,15 @@ import {
   ChartIcon,
   CheckIcon,
   CalendarIcon,
-  ChevronDownIcon,
+  ClockIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   DashboardIcon,
+  DownloadIcon,
   FlameIcon,
   HelpIcon,
+  LacunaIcon,
   MoonIcon,
-  PlusIcon,
   SearchIcon,
   SettingsIcon,
   ShareIcon,
@@ -26,348 +27,31 @@ import {
   SunIcon,
 } from '../ui/icons';
 import { useSidebarData } from '../../state/useCourseData';
-import { NewCourseForm } from '../course/NewCourseForm';
 import type { Lesson } from '../../db/types';
-import { prefetchRoute } from '../../routes/prefetch';
-import { formatDate } from '../../utils/datetime';
-import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
+import { calendarDaysUntil, formatDate } from '../../utils/datetime';
+import { glyphLoad } from '../course/CourseGlyph';
+import { NavItem, ActionNavItem, NAV_LABELS, FOOTER_NAV } from './SidebarNavItem';
+import { forecastStatus } from '../dashboard/forecastStatus';
+import { CourseRow, type SidebarGlyph } from './SidebarCourseRow';
+import { SidebarFrame, SidebarLabel } from './SidebarMotion';
+
+/** Expanded desktop footer: the chevron's offset from its collapsed slot to the row's right edge
+ *  (264px rail, 12px footer padding, 44px button, 14px left inset). */
+const DESKTOP_CHEVRON_ROW_X = 264 - 12 - 44 - 14;
 
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapsed: () => void;
   toggleLabel?: string;
-  /** Opens quick search instead of routing to /search. When omitted (surfaces
-   *  without palette wiring, e.g. LearnMode's nav drawer) the item falls back
-   *  to a plain link to the full content-search page. */
-  onOpenPalette?: () => void;
-  /** Raises the study sheet instead of routing to /learn. Omitted on surfaces without
-   *  sheet wiring, where Review today falls back to the full-screen session. */
-  onOpenStudySheet?: () => void;
   collapseControl?: boolean;
+  /** Rendered in the phone drawer, where Today has no room for its Import button. */
+  drawer?: boolean;
   aiAction?: {
     active: boolean;
     onClick: () => void;
     triggerRef: RefObject<HTMLButtonElement | null>;
   };
 }
-
-function NavItem({
-  to,
-  icon,
-  label,
-  collapsed,
-  end,
-  details,
-  compact,
-}: {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-  collapsed: boolean;
-  end?: boolean;
-  details?: SidebarDetail[];
-  compact?: boolean;
-}) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-  return (
-    <SidebarHoverCard title={label} details={details}>
-      <NavLink
-        to={to}
-        end={end}
-        onPointerEnter={() => prefetchRoute(to)}
-        onPointerDown={() => prefetchRoute(to)}
-        onFocus={() => prefetchRoute(to)}
-        title={collapsed ? label : undefined}
-        className={({ isActive }) =>
-          cn(
-            'group relative flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
-            compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-            collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-            isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-          )
-        }
-      >
-        {({ isActive }) => (
-          <>
-            {isActive && (
-              <motion.span
-                layoutId="nav-active"
-                transition={{ duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent"
-              />
-            )}
-            <span className="shrink-0">{icon}</span>
-            {!collapsed && <span className="truncate">{label}</span>}
-          </>
-        )}
-      </NavLink>
-    </SidebarHoverCard>
-  );
-}
-
-/** A sidebar entry that performs an action rather than routing, styled to sit with the
- *  links around it. Used by Review today, which raises the study sheet. */
-function ActionNavItem({
-  onClick,
-  icon,
-  label,
-  collapsed,
-  compact,
-  active,
-  buttonRef,
-}: {
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  collapsed: boolean;
-  compact?: boolean;
-  active?: boolean;
-  buttonRef?: RefObject<HTMLButtonElement | null>;
-}) {
-  return (
-    <button
-      ref={buttonRef}
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      title={collapsed ? label : undefined}
-      className={cn(
-        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
-        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-        active ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-      )}
-    >
-      <span className="shrink-0">{icon}</span>
-      {!collapsed && <span className="flex-1 truncate">{label}</span>}
-    </button>
-  );
-}
-
-/** Opens the palette without leaving the current page. */
-function SearchNavItem({
-  onOpenPalette,
-  collapsed,
-  compact,
-}: {
-  onOpenPalette: () => void;
-  collapsed: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onOpenPalette}
-      title={collapsed ? 'Quick search' : undefined}
-      className={cn(
-        'group flex min-h-11 w-full items-center gap-3 rounded-lg text-left transition-all duration-150',
-        compact ? 'px-3 py-2 text-xs' : 'px-3 py-2.5 text-sm',
-        collapsed ? 'justify-center px-0' : 'hover:translate-x-0.5',
-        'text-ink-soft hover:bg-ink/5 hover:text-ink',
-      )}
-    >
-      <span className="shrink-0">
-        <SearchIcon />
-      </span>
-      {!collapsed && <span className="flex-1 truncate">Quick search</span>}
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Lesson item (inside an expanded course row)
-// ---------------------------------------------------------------------------
-
-function LessonItem({ lesson, compact }: { lesson: Lesson; compact: boolean }) {
-  return (
-    <NavLink
-      to={`/course/${lesson.courseId}/lesson/${lesson.id}`}
-      onPointerEnter={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
-      onPointerDown={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
-      onFocus={() => prefetchRoute(`/course/${lesson.courseId}/lesson/${lesson.id}`)}
-      className={({ isActive }) =>
-        cn(
-          'flex min-h-10 items-center gap-3 rounded-lg transition-all duration-150',
-          compact ? 'py-1.5 pl-9 pr-3 text-xs' : 'py-2 pl-10 pr-3 text-sm',
-          isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-        )
-      }
-    >
-      <span
-        className={cn(
-          'shrink-0 rounded-full bg-current opacity-30',
-          compact ? 'h-1.5 w-1.5' : 'h-2 w-2',
-        )}
-      />
-      <span className="truncate">{lesson.name}</span>
-    </NavLink>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Course row — plain link for single-lesson courses; collapsible for multi.
-// ---------------------------------------------------------------------------
-
-const CourseRow = memo(function CourseRow({
-  courseId,
-  courseName,
-  lessons,
-  details,
-  expanded,
-  onToggle,
-  collapsed,
-  compact,
-  m,
-}: {
-  courseId: string;
-  courseName: string;
-  lessons: Lesson[];
-  details?: SidebarDetail[];
-  expanded: Set<string>;
-  onToggle: (id: string) => void;
-  collapsed: boolean;
-  compact: boolean;
-  m: number;
-}) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isMultiLesson = lessons.length > 1;
-  const isExpanded = expanded.has(courseId);
-  const isCourseActive =
-    location.pathname === `/course/${courseId}` ||
-    location.pathname.startsWith(`/course/${courseId}/`);
-
-  // Collapsed sidebar: icon-only link to the course page for every course.
-  if (collapsed) {
-    return (
-      <SidebarHoverCard title={courseName} details={details}>
-        <NavLink
-          to={`/course/${courseId}`}
-          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-          onFocus={() => prefetchRoute(`/course/${courseId}`)}
-          title={courseName}
-          className={() =>
-            cn(
-              'flex min-h-11 items-center justify-center rounded-lg transition-all duration-150',
-              compact ? 'py-1.5' : 'py-2',
-              isCourseActive
-                ? 'bg-accent-soft text-accent'
-                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-            )
-          }
-        >
-          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-        </NavLink>
-      </SidebarHoverCard>
-    );
-  }
-
-  // Single-lesson course: plain NavLink, no expander.
-  if (!isMultiLesson) {
-    return (
-      <SidebarHoverCard title={courseName} details={details}>
-        <NavLink
-          to={`/course/${courseId}`}
-          onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-          onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-          onFocus={() => prefetchRoute(`/course/${courseId}`)}
-          className={({ isActive }) =>
-            cn(
-              'flex min-h-11 items-center gap-3 rounded-lg transition-all duration-150',
-              compact ? 'px-3 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-              'hover:translate-x-0.5',
-              isActive
-                ? 'bg-accent-soft text-accent'
-                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-            )
-          }
-        >
-          <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-          <span className="flex flex-1 items-center gap-2 min-w-0">
-            <span className="truncate">{courseName}</span>
-          </span>
-        </NavLink>
-      </SidebarHoverCard>
-    );
-  }
-
-  // Multi-lesson course: collapsible header with lesson list beneath.
-  return (
-    <div>
-      <div
-        className={cn(
-          'group flex w-full min-h-11 items-center gap-1 rounded-lg transition-all duration-150',
-          compact ? 'pr-3 py-1.5 text-xs' : 'pr-3 py-2 text-sm',
-          'hover:translate-x-0.5',
-          isCourseActive
-            ? 'bg-accent-soft text-accent'
-            : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-        )}
-      >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggle(courseId);
-          }}
-          aria-expanded={isExpanded}
-          aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
-          className={cn(
-            'flex shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/10 hover:text-ink',
-            compact ? 'ml-1.5 h-6 w-6' : 'ml-2 h-7 w-7',
-          )}
-        >
-          <motion.span
-            animate={{ rotate: isExpanded ? 0 : -90 }}
-            transition={{ duration: 0.15 * m }}
-            className="shrink-0"
-          >
-            <ChevronDownIcon width={12} height={12} />
-          </motion.span>
-        </button>
-        <SidebarHoverCard title={courseName} details={details}>
-          <div
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate(`/course/${courseId}`)}
-            onPointerEnter={() => prefetchRoute(`/course/${courseId}`)}
-            onPointerDown={() => prefetchRoute(`/course/${courseId}`)}
-            onFocus={() => prefetchRoute(`/course/${courseId}`)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                void navigate(`/course/${courseId}`);
-              }
-            }}
-            className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 py-0"
-          >
-            <CardsIcon width={compact ? 14 : 16} height={compact ? 14 : 16} className="shrink-0" />
-            <span className="flex flex-1 items-center gap-2 min-w-0">
-              <span className="truncate">{courseName}</span>
-            </span>
-          </div>
-        </SidebarHoverCard>
-      </div>
-
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={m > 0 ? { opacity: 0 } : undefined}
-            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-          >
-            {lessons.map((lesson) => (
-              <LessonItem key={lesson.id} lesson={lesson} compact={compact} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-});
 
 // ---------------------------------------------------------------------------
 // Main Sidebar component
@@ -377,9 +61,8 @@ export function Sidebar({
   collapsed,
   onToggleCollapsed,
   toggleLabel,
-  onOpenPalette,
-  onOpenStudySheet,
   collapseControl = true,
+  drawer = false,
   aiAction,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -392,7 +75,6 @@ export function Sidebar({
   const m = speedMultiplier(motionSpeed);
 
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set());
-  const [creatingCourse, setCreatingCourse] = useState(false);
 
   const sidebarCourses = useMemo(
     () => courses?.filter((course) => !course.archived) ?? [],
@@ -414,6 +96,71 @@ export function Sidebar({
     return map;
   }, [allLessons]);
 
+  // The glyph shares the dashboard's stop-now forecast, so a course reads
+  // the same everywhere; minutes come from today's workload forecast.
+  const glyphs = useMemo(() => {
+    const now = Date.now();
+    const today = data?.stats?.forecast?.[0];
+    const map = new Map<string, SidebarGlyph>();
+    for (const course of sidebarCourses) {
+      const forecast = data?.forecasts?.[course.id];
+      const hasExam = course.examDate !== undefined && course.examDate > now;
+      map.set(course.id, {
+        days: hasExam ? calendarDaysUntil(course.examDate as number, now) : null,
+        recall: forecast?.ifStopped ?? summaries?.[course.id]?.mastery ?? 0,
+        status: forecast ? forecastStatus(forecast) : hasExam ? 'ahead' : 'steady',
+        load: glyphLoad(today?.byDeck.find((slice) => slice.sourceId === course.id)?.minutes ?? 0),
+      });
+    }
+    return map;
+  }, [sidebarCourses, summaries, data?.stats, data?.forecasts]);
+
+  const visibleNav = sidebarSettings.navItems.filter((n) => n.visible);
+  const renderNavItem = (n: (typeof visibleNav)[number]) => (
+    <NavItem
+      key={n.id}
+      highlightGroup={FOOTER_NAV.has(n.id) ? 'footer' : 'primary'}
+      to={n.id === 'dashboard' ? '/' : `/${n.id}`}
+      end={n.id === 'dashboard'}
+      icon={
+        n.id === 'dashboard' ? (
+          <ClockIcon />
+        ) : n.id === 'search' ? (
+          <SearchIcon />
+        ) : n.id === 'share' ? (
+          <ShareIcon />
+        ) : n.id === 'analytics' ? (
+          <ChartIcon />
+        ) : n.id === 'settings' ? (
+          <SettingsIcon />
+        ) : n.id === 'help' ? (
+          <HelpIcon />
+        ) : (
+          <DashboardIcon />
+        )
+      }
+      label={NAV_LABELS[n.id] ?? n.label}
+      collapsed={collapsed}
+      compact={sidebarSettings.compactMode}
+      details={
+        n.id === 'dashboard' && data?.stats
+          ? [
+              {
+                icon: <FlameIcon width={14} height={14} />,
+                label: 'Day streak',
+                value: data.stats.streak,
+              },
+              {
+                icon: <CheckIcon width={14} height={14} />,
+                label: 'Reviewed today',
+                value: data.stats.reviewedToday,
+              },
+            ]
+          : undefined
+      }
+    />
+  );
+
   function toggleCourse(id: string) {
     setExpandedCourses((prev) => {
       const next = new Set(prev);
@@ -427,9 +174,12 @@ export function Sidebar({
   }
 
   return (
-    <aside
+    <SidebarFrame
+      collapsed={collapsed}
+      drawer={drawer}
+      multiplier={m}
       className={cn(
-        'relative z-20 flex h-full flex-col border-r border-line bg-surface',
+        'relative z-20 flex h-full flex-col bg-chrome',
         'pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]',
         // Grow the box by the left inset. Under border-box the padding would
         // otherwise come out of the chrome (72px / 264px), which clips the
@@ -443,30 +193,32 @@ export function Sidebar({
       <div
         className={cn(
           'flex items-center gap-3',
-          sidebarSettings.compactMode ? 'py-3' : 'py-5',
-          collapsed ? 'justify-center px-0' : sidebarSettings.compactMode ? 'px-4' : 'px-5',
+          sidebarSettings.compactMode ? 'py-3' : 'py-[clamp(0.75rem,2.4dvh,1.25rem)]',
+          drawer
+            ? sidebarSettings.compactMode
+              ? 'px-4'
+              : 'px-5'
+            : sidebarSettings.compactMode
+              ? 'px-5'
+              : 'px-[18px]',
         )}
       >
-        <img
+        <LacunaIcon
           data-testid="sidebar-brand-mark"
-          src={`${import.meta.env.BASE_URL}icon.svg`}
-          alt=""
           aria-hidden="true"
           className={cn(
-            'shrink-0 rounded-[18.75%] bg-[#0a0a0b] p-[3px]',
+            'shrink-0 rounded-[18.75%] bg-accent-ink p-[3px] text-accent dark:bg-accent-soft dark:text-accent-ink',
             sidebarSettings.compactMode ? 'h-8 w-8' : 'h-9 w-9',
           )}
         />
-        {!collapsed && (
-          <span
-            className={cn(
-              'font-brand font-medium leading-none tracking-tight',
-              sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
-            )}
-          >
-            Lacuna
-          </span>
-        )}
+        <SidebarLabel
+          className={cn(
+            'font-brand font-medium leading-none tracking-tight',
+            sidebarSettings.compactMode ? 'text-lg' : 'text-xl',
+          )}
+        >
+          Lacuna
+        </SidebarLabel>
       </div>
 
       {/* Primary nav */}
@@ -474,73 +226,18 @@ export function Sidebar({
         aria-label="Primary navigation"
         className={cn('flex flex-col gap-1 px-3', sidebarSettings.compactMode && 'gap-0')}
       >
-        {sidebarSettings.navItems
-          .filter((n) => n.visible)
-          .map((n) =>
-            n.id === 'search' && onOpenPalette ? (
-              <SearchNavItem
-                key={n.id}
-                onOpenPalette={onOpenPalette}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-              />
-            ) : n.id === 'today' && onOpenStudySheet ? (
-              <ActionNavItem
-                key={n.id}
-                onClick={onOpenStudySheet}
-                icon={<CardsIcon />}
-                label={n.label}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-              />
-            ) : (
-              <NavItem
-                key={n.id}
-                to={n.id === 'dashboard' ? '/' : n.id === 'today' ? '/learn' : `/${n.id}`}
-                end={n.id === 'dashboard'}
-                icon={
-                  n.id === 'dashboard' ? (
-                    <DashboardIcon />
-                  ) : n.id === 'today' ? (
-                    <CardsIcon />
-                  ) : n.id === 'search' ? (
-                    <SearchIcon />
-                  ) : n.id === 'share' ? (
-                    <ShareIcon />
-                  ) : n.id === 'analytics' ? (
-                    <ChartIcon />
-                  ) : n.id === 'settings' ? (
-                    <SettingsIcon />
-                  ) : n.id === 'help' ? (
-                    <HelpIcon />
-                  ) : (
-                    <DashboardIcon />
-                  )
-                }
-                label={n.id === 'search' ? 'Search content' : n.label}
-                collapsed={collapsed}
-                compact={sidebarSettings.compactMode}
-                details={
-                  n.id === 'dashboard' && data?.stats
-                    ? [
-                        {
-                          icon: <FlameIcon width={14} height={14} />,
-                          label: 'Day streak',
-                          value: data.stats.streak,
-                        },
-                        {
-                          icon: <CheckIcon width={14} height={14} />,
-                          label: 'Reviewed today',
-                          value: data.stats.reviewedToday,
-                        },
-                      ]
-                    : undefined
-                }
-              />
-            ),
-          )}
+        {visibleNav.filter((n) => !FOOTER_NAV.has(n.id)).map(renderNavItem)}
+        {drawer && (
+          <NavItem
+            to="/import"
+            icon={<DownloadIcon />}
+            label="Import"
+            collapsed={collapsed}
+            compact={sidebarSettings.compactMode}
+          />
+        )}
         {aiAction && (
-          <div className="mt-2 border-t border-line pt-2">
+          <div>
             <ActionNavItem
               onClick={aiAction.onClick}
               icon={<SparklesIcon />}
@@ -559,42 +256,16 @@ export function Sidebar({
         aria-label="Courses"
         className={cn(
           'flex min-h-0 flex-1 flex-col px-3',
-          sidebarSettings.compactMode ? 'mt-3' : 'mt-6',
+          sidebarSettings.compactMode ? 'mt-3' : 'mt-[clamp(0.5rem,2.4dvh,1.5rem)]',
         )}
       >
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 * m }}
-            className="flex items-center justify-between px-3 pb-2"
-          >
-            <span className="font-display text-sm text-ink-soft">
-              Courses
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreatingCourse(true)}
-              title="New course"
-              aria-label="New course"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
-            >
-              <PlusIcon width={13} height={13} />
-            </button>
-          </motion.div>
-        )}
-        <div className={cn(sidebarSettings.compactMode ? 'mb-1' : 'mb-2')}>
-          <NavItem
-            to="/archived"
-            icon={<ArchiveIcon />}
-            label="Archived"
-            collapsed={collapsed}
-            compact={sidebarSettings.compactMode}
-          />
-        </div>
+        <SidebarLabel className="flex h-11 shrink-0 items-center px-3 pb-2 font-display text-sm text-ink-soft">
+          Courses
+        </SidebarLabel>
         <div
+          // The scrollbar is hidden, so a fade marks the edge with more courses beyond it.
           className={cn(
-            'flex min-h-0 flex-1 flex-col overflow-y-auto pb-2',
+            'scroll-edge-fade flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
             sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
           )}
         >
@@ -602,6 +273,8 @@ export function Sidebar({
             {sidebarCourses.map((course, idx) => (
               <motion.div
                 key={course.id}
+                // Single-line rows at the 44px target; the list scrolls beyond that.
+                className="flex shrink-0 flex-col"
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
@@ -610,11 +283,13 @@ export function Sidebar({
                   delay: Math.min(idx * 0.02, 0.15) * m,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                layout
               >
                 <CourseRow
                   courseId={course.id}
                   courseName={course.name}
+                  glyph={
+                    glyphs.get(course.id) ?? { days: null, recall: 0, status: 'steady', load: 0 }
+                  }
                   lessons={lessonsByCourse.get(course.id) ?? []}
                   details={
                     sidebarSettings.showDueCounts && summaries?.[course.id]
@@ -651,66 +326,101 @@ export function Sidebar({
             ))}
           </AnimatePresence>
 
-          {sidebarCourses.length === 0 && !collapsed && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.2 * m }}
+          {courses !== undefined && sidebarCourses.length === 0 && (
+            <SidebarLabel
               className={cn(
                 'px-3 py-2 text-ink-faint',
                 sidebarSettings.compactMode ? 'text-xs' : 'text-sm',
               )}
             >
-              No courses yet.
-            </motion.p>
+              {courses?.length ? 'No active courses.' : 'No courses yet.'}
+            </SidebarLabel>
           )}
+          <div className="mt-0.5 [&_a]:text-sm [&_a]:text-ink-faint">
+            <NavItem
+              to="/archived"
+              icon={
+                <span
+                  className="grid shrink-0 place-items-center"
+                  style={{ width: drawer ? (sidebarSettings.compactMode ? 28 : 30) : 20 }}
+                >
+                  <ArchiveIcon />
+                </span>
+              }
+              label="Archived"
+              collapsed={collapsed}
+              compact={sidebarSettings.compactMode}
+            />
+          </div>
         </div>
       </nav>
 
-      {/* Footer: theme toggle + collapse button */}
+      {/* Footer: Share, Settings and Help, then the theme toggle and collapse button */}
+      <nav
+        aria-label="More"
+        className={cn('flex flex-col gap-0.5 px-3 pt-2', sidebarSettings.compactMode && 'gap-0')}
+      >
+        {visibleNav.filter((n) => FOOTER_NAV.has(n.id)).map(renderNavItem)}
+      </nav>
       <div
         className={cn(
-          'flex items-center gap-2 border-t border-line px-3',
-          sidebarSettings.compactMode ? 'py-2' : 'py-3',
-          collapsed && 'flex-col',
+          'flex items-center justify-between px-3',
+          sidebarSettings.compactMode ? 'py-2' : 'py-3 short:py-1',
+          drawer ? 'gap-2' : 'flex-col items-start pl-[14px]',
         )}
       >
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title="Toggle colour theme"
-          aria-label="Toggle colour theme"
-          className={cn(
-            'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-            sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
-          )}
+        <motion.div
+          // Desktop keeps the stacked footprint so nothing above shifts. Expanded, the theme
+          // toggle drops into the bottom slot beside the chevron; collapsed, it rises to the
+          // upper slot. Same curve as the width, so reversals stay in step.
+          initial={false}
+          animate={drawer ? undefined : { y: collapsed ? 0 : '100%' }}
+          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+          className={cn(!drawer && 'pb-2')}
         >
-          {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
-        {!collapsed && (
-          <span className="flex-1 text-xs text-ink-faint">
-            {resolvedTheme === 'dark' ? 'Dark mode' : 'Light mode'}
-          </span>
-        )}
-        {collapseControl && (
           <button
             type="button"
-            onClick={onToggleCollapsed}
-            title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
-            aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+            onClick={toggleTheme}
+            title="Toggle colour theme"
+            aria-label="Toggle colour theme"
             className={cn(
-              'flex items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10',
-              sidebarSettings.compactMode ? 'min-h-11 min-w-11' : 'min-h-11 min-w-11',
+              'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+              'text-ink-soft hover:bg-ink/5 hover:text-ink',
+              drawer
+                ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
+                : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
             )}
           >
-            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
+        </motion.div>
+        {collapseControl && (
+          <motion.div
+            // The chevron stays on the bottom line and slides between the rail column and the
+            // row's right edge.
+            initial={false}
+            animate={drawer ? undefined : { x: collapsed ? 0 : DESKTOP_CHEVRON_ROW_X }}
+            transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+            data-testid={drawer ? undefined : 'sidebar-collapse-slot'}
+          >
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+              aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+              className={cn(
+                'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+                'text-ink-soft hover:bg-ink/5 hover:text-ink',
+                drawer
+                  ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
+                  : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
+              )}
+            >
+              {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </button>
+          </motion.div>
         )}
       </div>
-
-      <AnimatePresence>
-        {creatingCourse && <NewCourseForm onClose={() => setCreatingCourse(false)} />}
-      </AnimatePresence>
-    </aside>
+    </SidebarFrame>
   );
 }

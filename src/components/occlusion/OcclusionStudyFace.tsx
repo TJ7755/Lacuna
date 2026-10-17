@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { resolveAssetUrl } from '../../db/assetCache';
+import { cachedAssetImageSize, peekCachedAssetUrl, resolveAssetUrl } from '../../db/assetCache';
 import { resolveOcclusionFace } from '../../db/occlusionGeneration';
 import type { Card, Occlusion } from '../../db/types';
 import { MarkdownView } from '../markdown/MarkdownView';
@@ -31,11 +31,16 @@ export function OcclusionStudyFace({
   // Tri-state: undefined while resolving (renders nothing, avoiding a fallback-text
   // flash before the — typically near-instant, IndexedDB-backed — asset resolves), null
   // once resolution confirms the asset is missing.
-  const [assetUrl, setAssetUrl] = useState<string | null | undefined>(undefined);
+  const [assetUrl, setAssetUrl] = useState<string | null | undefined>(() => peekCachedAssetUrl(occlusion.assetHash));
 
   useEffect(() => {
     if (!hasFace) return;
     let cancelled = false;
+    const cached = peekCachedAssetUrl(occlusion.assetHash);
+    if (cached) {
+      setAssetUrl(cached);
+      return;
+    }
     setAssetUrl(undefined);
     void resolveAssetUrl(occlusion.assetHash).then((url) => {
       if (!cancelled) setAssetUrl(url);
@@ -68,8 +73,10 @@ export function OcclusionStudyFace({
     });
 
   return (
-    <div className={cn('text-left', className)}>
-      <OcclusionMaskLayer assetUrl={assetUrl} alt={occlusion.name} regions={regions} />
+    <div className={cn('study-occlusion text-left', className)}>
+      <div className="study-occlusion-diagram">
+        <OcclusionMaskLayer imageSize={cachedAssetImageSize(assetUrl)} assetUrl={assetUrl} alt={occlusion.name} regions={regions} />
+      </div>
       {side === 'back' && face.answerText !== undefined && (
         <p className="mt-4 text-center text-lg text-ink">{face.answerText}</p>
       )}

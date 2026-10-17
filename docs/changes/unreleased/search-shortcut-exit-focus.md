@@ -1,0 +1,1 @@
+- Quick-search results and the keyboard-shortcuts overlay become inert and hidden from assistive technology as their exit starts, preventing departing controls from remaining available during the animation.

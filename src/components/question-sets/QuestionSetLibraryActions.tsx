@@ -1,6 +1,6 @@
 import { QuestionSetPanel } from './QuestionSetPanel';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { removeAuthoredQuestionSet } from '../../questions/questionSetRepository';
 import { Button } from '../ui/Button';
 import { ConfirmInline } from '../ui/ConfirmInline';

@@ -87,6 +87,20 @@ describe('App initialisation', () => {
     persistence.reject(new Error('denied'));
   });
 
+  it('skips the welcome-course seed once seeding and its asset repair are done', async () => {
+    localStorage.setItem('lacuna-seeded', '1');
+    localStorage.setItem('lacuna-seed-assets-v3', '1');
+    try {
+      render(<App />);
+      await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
+      expect(dependencies.isFirstRun).not.toHaveBeenCalled();
+      expect(dependencies.seedIfFirstRun).not.toHaveBeenCalled();
+    } finally {
+      localStorage.removeItem('lacuna-seeded');
+      localStorage.removeItem('lacuna-seed-assets-v3');
+    }
+  });
+
   it('does not request browser persistence in Electron', async () => {
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
@@ -116,6 +130,12 @@ describe('App initialisation', () => {
       'Free space in your browser or operating system, or leave private browsing, then reload Lacuna.',
     );
     expect(screen.getByRole('button', { name: 'Reload' })).toBeVisible();
+    // The shared primary button: a 44px target in the accent's own text colour (the
+    // hand-written classes named a token that does not exist).
+    expect(screen.getByRole('button', { name: 'Reload' })).toHaveClass(
+      'min-h-11',
+      'text-accent-fg',
+    );
     expect(screen.queryByRole('button', { name: /backup|export/i })).not.toBeInTheDocument();
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });

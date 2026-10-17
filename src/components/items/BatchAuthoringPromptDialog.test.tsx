@@ -77,7 +77,7 @@ describe('BatchAuthoringPromptDialog', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Review response' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review response' }));
     expect(screen.getByText('Generated Question batch')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
     expect(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START))).toHaveFocus();
@@ -122,7 +122,7 @@ describe('BatchAuthoringPromptDialog', () => {
     });
     fireEvent.change(screen.getByPlaceholderText('Demand'), { target: { value: 'Demand' } });
     fireEvent.change(screen.getByPlaceholderText('A level'), { target: { value: 'A level' } });
-    fireEvent.click(screen.getByLabelText('Set generation constraints'));
+    fireEvent.click(screen.getByRole('switch', { name: 'Set generation constraints' }));
     fireEvent.change(screen.getByLabelText(/Maximum items/), { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Copy Question batch prompt' }));
 

@@ -1,3 +1,5 @@
+import { PillToggleGroup } from '../cards/PillToggleGroup';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import type { Lesson } from '../../db/types';
@@ -6,14 +8,14 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { buildBatchGenerationPrompt } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 import { Button } from '../ui/Button';
+import { Toggle } from '../ui/Toggle';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
-import { CloseIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { StepSwap, stepSwapTiming } from '../ui/StepSwap';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { DialogPanel } from '../ui/DialogPanel';
+import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 
 interface BatchAuthoringPromptDialogProps {
   courseId: string;
@@ -27,7 +29,6 @@ interface BatchAuthoringPromptDialogProps {
 
 export function BatchAuthoringPromptDialog({
   courseId,
-  courseName,
   examBoard,
   specification,
   lessons,
@@ -100,57 +101,22 @@ export function BatchAuthoringPromptDialog({
         }
       }}
     >
-      <header className="relative flex items-start justify-between border-b border-line px-6 py-5">
-        <div>
-          <h2 className="font-display text-2xl">Author Question batch</h2>
-          <p className="mt-1 text-sm text-ink-soft">
-            {mode === 'prompt'
-              ? `Build a prompt for ${courseName}.`
-              : `Review generated Questions before adding them to ${courseName}.`}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={requestClose}
-          aria-label="Close"
-          title="Close (Esc)"
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-        >
-          <CloseIcon width={18} height={18} />
-        </button>
-      </header>
+      <DialogHeader title="Author Question batch" onClose={requestClose} closeLabel="Close" />
 
-      <div
-        className="relative flex gap-1 border-b border-line px-6 py-3"
-        role="tablist"
-        aria-label="Batch authoring step"
-      >
-        {(
-          [
-            ['prompt', 'Build prompt'],
-            ['review', 'Review response'],
-          ] as const
-        ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={mode === value}
-            onClick={() => setMode(value)}
-            className={cn(
-              'min-h-11 rounded-lg px-4 text-sm font-medium transition-colors',
-              mode === value
-                ? 'bg-accent-soft text-accent'
-                : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
-            )}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="relative border-b border-line px-6 py-3">
+        <PillToggleGroup
+          label="Batch authoring step"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: 'prompt', label: 'Build prompt' },
+            { value: 'review', label: 'Review response' },
+          ]}
+        />
       </div>
 
       <motion.div
-        layout={multiplier > 0 ? 'size' : undefined}
+        layout={multiplier > 0 ? 'position' : undefined}
         transition={stepSwapTiming(multiplier)}
         className="relative overflow-y-auto"
       >
@@ -169,7 +135,7 @@ export function BatchAuthoringPromptDialog({
             />
           ) : (
             <>
-              <label className="flex flex-col gap-2 text-sm text-ink-soft">
+              <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                 Lesson notes
                 <textarea
                   value={notes}
@@ -177,32 +143,32 @@ export function BatchAuthoringPromptDialog({
                   onChange={(event) => setNotes(event.target.value)}
                   rows={6}
                   placeholder="Paste the notes for one lesson or topic…"
-                  className="resize-y rounded-xl border border-line-strong bg-surface px-4 py-3 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+                  className={`${inputFrameClassName} resize-y placeholder:text-ink-faint`}
                 />
               </label>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                   Topic
                   <input
                     value={topic}
                     onChange={(event) => setTopic(event.target.value)}
                     placeholder="Demand"
-                    className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+                    className={`${inputFrameClassName} placeholder:text-ink-faint`}
                   />
                 </label>
-                <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                   Level
                   <input
                     value={level}
                     onChange={(event) => setLevel(event.target.value)}
                     placeholder="A level"
-                    className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none placeholder:text-ink-faint focus:border-accent"
+                    className={`${inputFrameClassName} placeholder:text-ink-faint`}
                   />
                 </label>
               </div>
 
-              <div className="rounded-xl border border-accent/25 bg-accent-soft/45 px-4 py-3">
+              <div className="rounded-2xl bg-ink/[0.04] px-4 py-3">
                 <p className="text-sm font-medium text-ink">Concept checks, not worksheets</p>
                 <p className="mt-1 text-xs leading-relaxed text-ink-soft">
                   Working items should test a reusable method or derivation. Use symbolic general
@@ -210,23 +176,17 @@ export function BatchAuthoringPromptDialog({
                 </p>
               </div>
 
-              <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line bg-surface-raised px-4 py-3 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  aria-label="Set generation constraints"
+              <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
+                <Toggle
                   checked={showConstraints}
-                  onChange={(event) => setShowConstraints(event.target.checked)}
-                  className="accent-accent"
+                  onChange={setShowConstraints}
+                  label="Set generation constraints"
                 />
-                <span className="font-medium text-ink">Set generation constraints</span>
-                <span className="ml-auto text-xs text-ink-faint">
-                  Otherwise the model chooses
-                </span>
-              </label>
+              </div>
 
               <AnimatedDisclosure open={showConstraints}>
                 <div className="grid gap-4 pt-0.5">
-                  <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                  <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                     Maximum items <span className="text-xs text-ink-faint">Optional</span>
                     <input
                       type="number"
@@ -236,16 +196,11 @@ export function BatchAuthoringPromptDialog({
                       onChange={(event) =>
                         setMaxItems(event.target.value === '' ? '' : Number(event.target.value))
                       }
-                      className="rounded-xl border border-line-strong bg-surface px-4 py-2.5 text-ink outline-none focus:border-accent"
+                      className={`${inputFrameClassName} `}
                     />
                   </label>
                 </div>
               </AnimatedDisclosure>
-
-              <p className="text-xs leading-relaxed text-ink-faint">
-                Lacuna copies a prompt only. Continue the conversation in your chosen chatbot,
-                then paste its structured response into the staging review.
-              </p>
             </>
           )}
         </StepSwap>

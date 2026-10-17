@@ -8,9 +8,11 @@ import { defaultExamDate } from '../utils/datetime';
 import { assetUrl, sha256Blob } from './assets';
 import { schedulingUnitFromCourse, schedulingUnitFromLesson } from './schedulingUnitBuilder';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
+import {
+  SEED_ASSET_REPAIR_FLAG_KEY as ASSET_REPAIR_FLAG_KEY,
+  SEED_FLAG_KEY as FLAG_KEY,
+} from './seedFlags';
 
-const FLAG_KEY = 'lacuna-seeded';
-const ASSET_REPAIR_FLAG_KEY = 'lacuna-seed-assets-v3';
 let seeding = false;
 const emptyStats = {
   runningMeanResponseTime: 0,
@@ -429,7 +431,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonLearn.lesson.id,
         'front_back',
         'How can you switch from silent to manual grading?',
-        'Go to **Settings → Study & scheduling** and enable **manual four-point grading**. When enabled, a study session shows **Again / Hard / Good / Easy** buttons instead of Yes / No.',
+        'Go to **Settings → Study behaviour** and enable **manual four-point grading**. When enabled, a study session shows **Again / Hard / Good / Easy** buttons instead of Yes / No.',
         ['learn', 'grading'],
         20,
       ),

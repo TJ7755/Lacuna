@@ -3,8 +3,12 @@ import { parseImportAuto, detectFormat, type ImportFormat } from '../../db/impor
 import { parseApkg, type ApkgImportResult } from '../../db/apkgImport';
 import { MAX_IMPORT_CHARS } from '../../db/cardImport';
 
-export function useCardImportSource() {
-  const [text, setText] = useState('');
+/**
+ * `initialText` seeds pasted text kept by the caller; `onTextChange` reports what is typed or
+ * pasted (not file contents), so the caller can keep it when this form unmounts.
+ */
+export function useCardImportSource(initialText = '', onTextChange?: (text: string) => void) {
+  const [text, setText] = useState(initialText);
   const [format, setFormat] = useState<ImportFormat | ''>('');
   const [apkg, setApkg] = useState<ApkgImportResult | null>(null);
   const [filename, setFilename] = useState('');
@@ -35,6 +39,7 @@ export function useCardImportSource() {
     setApkg(null);
     setFilename('');
     setText(value);
+    onTextChange?.(value);
   }
   async function readFile(file: File | undefined) {
     if (!file) return;

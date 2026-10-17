@@ -174,6 +174,36 @@ describe('cumulative recitation', () => {
   });
 });
 
+describe('recitation across speakers and chunks', () => {
+  // Alice and Charlie cue; Bob, the learner, replies. Two of Bob's lines per chunk.
+  const script = recitationPlan(
+    sequence(
+      ['Alice', 'Bob', 'Charlie', 'Bob', 'Alice', 'Bob', 'Charlie', 'Bob'].map((speaker) => ({
+        speaker,
+      })),
+      { mySpeaker: 'Bob', recitationChunkSize: 2 },
+    ),
+  );
+
+  it('starts each chunk with the cue leading into its first line', () => {
+    expect(script.chunks).toEqual([
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+    ]);
+  });
+
+  it('presents the newly unlocked line with its own cue, never a later one', () => {
+    const first = initialRecitationState(script);
+    expect(ids(script, presentedLines(script, first.step))).toEqual(['i0', 'i1']);
+    expect(ids(script, targetLines(script, first.step))).toEqual(['i0', 'i1']);
+    const second = check(script, first).state;
+    expect(ids(script, presentedLines(script, second.step))).toEqual(['i2', 'i3']);
+    const nextChunk = check(script, second).state;
+    expect(nextChunk.step).toEqual({ kind: 'build', chunk: 1, unlocked: 1, joinTarget: 1 });
+    expect(ids(script, presentedLines(script, nextChunk.step))).toEqual(['i4', 'i5']);
+  });
+});
+
 describe('inRecitationOrder', () => {
   it('orders a large sequence without repeatedly scanning its full item list', () => {
     const size = 1_000;

@@ -1,0 +1,21 @@
+- Today's sharing announcement reads "Explore sharing" again; the two words had lost their space ("Exploresharing").
+- The exam-day forecast's title keeps to the top of its card, level with the legend's first row, instead of sinking as the legend wraps.
+- A course whose exam is 100 or more days away no longer runs its day count into the sidebar ring.
+- Card rows no longer show a faint red tint at their right-hand corners: the swipe tray behind each row now appears only while the row moves.
+- Course settings' Lesson unlocking options line up as a list again; each radio had taken a text field's full-width styling and the three options scattered across the card.
+- Course settings no longer tells every course it is "managed by its author": the Shared course section and its Detach button appear again only on a locked shared copy.
+- Course settings' Scheduling optimisation card is headed like its neighbours, without the small "Advanced scheduling" label above it.
+- Progress: Workload ahead draws each day's due and new cards as stacked bars, so a course of all-new cards no longer spikes a line against the axis.
+- Course analytics: Lesson breakdown plots only mastery and completion; each lesson's card count moves to its tooltip ("Cell structure · 25 cards") instead of a dotted line on a hidden second scale. Chart tooltips list series in legend order rather than alphabetically.
+- Settings and course settings label every field one way, small semibold ink with a regular hint beneath, where some sections used grey regular labels and others semibold. Selects, the Pomodoro and threshold inputs share the text field's frame, and course settings' fields focus in the accent like the rest.
+- Progress: Course comparison's two pickers share one even row instead of each stretching to its longest course name and wrapping.
+- Dialogs (lesson deletion, card editing, assessments, linking cards and the rest) use the borderless card surface of Quick search instead of an outlined paper panel.
+- Assessment, new-course and date fields follow the same label rule; the assessment editor's Coverage and lesson choices use the Settings choice chips instead of outlined orange buttons, and the date picker, course-name field and card search share the text field's frame.
+- The Welcome course's forgetting-curve and sample-image drawings follow the theme in the Direction C palette instead of sitting in fixed dark stone panels, for existing Welcome courses too. They are swapped in when displayed (`src/db/seedArtwork.ts`), so upgrading rewrites none of a user's records; the 0.90 label no longer runs off the drawing's edge.
+- The app declares its theme's colour scheme, so native scrollbars and select menus match a manually chosen theme rather than the system's.
+- Study works the same everywhere: Today's course rows say **Study** (not Start) and open the same session plan as the course page, with the same button styles; a one-lesson course offers the course page's Study and Other ways rather than its own Review due cards button; Other ways names due review **Only review due cards**, as the session plan does. Large buttons are 48px, level with the full-size menu beside them.
+- Link-styled buttons (Back to Today, Create a course on Today, the date picker's Done, the storage error's Reload) take the shared Button classes (`buttonClassName`). Reload had named a colour that does not exist and stood 36px tall.
+- New question set leads with + like New card and New course.
+- On a phone, a course path's lesson counts drop beneath the lesson name instead of squeezing it until words break mid-word ("Biologic al") in Edit mode.
+- The sidebar names its search entry **Search content**, as the page it opens, the Welcome course and the shortcuts sheet already did.
+- On a lesson of a multi-lesson course, the action that starts that lesson directly is named **Study lesson**, so **Study** always means the course's session plan.

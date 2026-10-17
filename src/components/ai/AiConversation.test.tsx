@@ -59,7 +59,10 @@ describe('AiConversation', () => {
     expect(userMessage).toHaveAttribute('data-speaker', 'user');
     expect(userMessage).toHaveClass('ml-auto');
     expect(assistantMessage).toHaveAttribute('data-speaker', 'assistant');
-    expect(assistantMessage).toHaveClass('mr-auto', 'bg-surface-raised');
+    expect(assistantMessage).toHaveClass('mr-auto', 'bg-ink/[0.04]');
+    // Side and colour name the speaker, so no label repeats it inside the bubble.
+    expect(userMessage).not.toHaveTextContent(/^You/);
+    expect(assistantMessage).not.toHaveTextContent(/^AI/);
   });
 
   it('keeps long and multiline messages constrained for the narrow panel', () => {
@@ -85,7 +88,7 @@ describe('AiConversation', () => {
     const userMessage = screen.getByRole('article', { name: 'Your message' });
     const assistantMessage = screen.getByRole('article', { name: 'AI response' });
     expect(userMessage).toHaveClass('max-w-[88%]');
-    expect(userMessage.querySelector('p.mt-1')).toHaveClass('break-words', 'whitespace-pre-wrap');
+    expect(userMessage.querySelector('p')).toHaveClass('break-words', 'whitespace-pre-wrap');
     expect(assistantMessage).toHaveClass('max-w-[92%]');
     expect(assistantMessage.querySelector('.prose-lacuna')).toHaveClass('break-words');
     expect(screen.getByText(/with a second line/)).toBeInTheDocument();

@@ -1,9 +1,11 @@
+import { DialogPanel } from '../ui/DialogPanel';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useOptionalPomodoroContext, type PomodoroController } from '../../hooks/PomodoroContext';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { Button } from '../ui/Button';
 import { ClockIcon, PlayIcon, PauseIcon, CloseIcon } from '../ui/icons';
 
 /* ─── geometry ─── */
@@ -22,7 +24,7 @@ const label = (p: string) => {
 };
 
 const colour = (p: string) => {
-  if (p === 'focus') return 'text-accent';
+  if (p === 'focus') return 'text-accent-ink';
   if (p === 'shortBreak') return 'text-positive';
   if (p === 'longBreak') return 'text-ink';
   return 'text-ink-faint';
@@ -105,9 +107,10 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
         onClick={() => setOpen((v) => !v)}
         title={compactLabel}
         aria-label={compactLabel}
-        aria-expanded={open}
         aria-haspopup="dialog"
-        className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        aria-expanded={open}
+        // The same round, framed control as the study header's other actions.
+        className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line-strong bg-surface text-ink-soft transition-colors hover:border-ink/40 hover:text-ink"
       >
         <svg width="36" height="36" viewBox="0 0 36 36" className="absolute inset-0 h-full w-full">
           {/* track */}
@@ -173,24 +176,23 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       {/* ===== Expanded popup ===== */}
       <AnimatePresence>
         {open && (
-          <motion.div
-            ref={popupRef}
-            role="dialog"
-            aria-label="Pomodoro timer"
-            initial={{ opacity: 0, y: -6, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.96 }}
-            transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute right-0 top-11 z-30 w-56 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+          <DialogPanel
+            modal={false}
+            trapRef={popupRef}
+            label="Pomodoro timer"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setOpen(false);
+            }}
+            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right"
           >
             <div className="px-4 py-4">
               {/* header */}
               <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm text-ink-soft">
+                <span className="text-sm font-medium text-ink-faint">
                   {breakPending ? 'Break ready' : label(phase)}
                 </span>
                 {sessionsCompleted > 0 && (
-                  <span className="text-[10px] tabular text-ink-faint">
+                  <span className="text-xs tabular text-ink-faint">
                     {sessionsCompleted} session{sessionsCompleted === 1 ? '' : 's'}
                   </span>
                 )}
@@ -251,65 +253,46 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
               <div className="flex justify-center gap-2">
                 {breakPending ? (
                   <>
-                    <button
-                      type="button"
-                      onClick={acceptBreak}
-                      className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
-                    >
+                    <Button variant="primary" size="sm" onClick={acceptBreak}>
                       <PauseIcon width={14} height={14} />
                       Take break
-                    </button>
-                    <button
-                      type="button"
-                      onClick={deferBreak}
-                      className="flex h-11 items-center rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-                    >
+                    </Button>
+                    <Button size="sm" onClick={deferBreak}>
                       Not now
-                    </button>
+                    </Button>
                   </>
                 ) : !active ? (
-                  <button
-                    type="button"
-                    onClick={startFocus}
-                    className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
-                  >
+                  <Button variant="primary" size="sm" onClick={startFocus}>
                     <PlayIcon width={14} height={14} />
                     Start
-                  </button>
+                  </Button>
                 ) : (
                   <>
                     {isRunning ? (
-                      <button
-                        type="button"
-                        onClick={pause}
-                        className="flex h-11 items-center gap-1.5 rounded-lg border border-line px-3 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-                      >
+                      <Button size="sm" onClick={pause}>
                         <PauseIcon width={14} height={14} />
                         Pause
-                      </button>
+                      </Button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={resume}
-                        className="flex h-11 items-center gap-1.5 rounded-lg bg-accent px-3 text-sm font-medium text-accent-fg transition-colors hover:bg-accent/90"
-                      >
+                      <Button variant="primary" size="sm" onClick={resume}>
                         <PlayIcon width={14} height={14} />
                         Resume
-                      </button>
+                      </Button>
                     )}
-                    <button
-                      type="button"
+                    <Button
+                      size="sm"
                       onClick={reset}
                       title="Reset"
-                      className="flex h-11 w-11 items-center justify-center rounded-lg border border-line text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+                      aria-label="Reset timer"
+                      className="px-0"
                     >
                       <CloseIcon width={12} height={12} />
-                    </button>
+                    </Button>
                   </>
                 )}
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         )}
       </AnimatePresence>
     </div>

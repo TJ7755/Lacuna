@@ -1,3 +1,5 @@
+import { useId } from 'react';
+import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '../../db/types';
 import {
@@ -7,19 +9,21 @@ import {
   FocusIcon,
   FullscreenIcon,
   KeyboardIcon,
-  MenuIcon,
   MoreIcon,
   PauseIcon,
   RestoreIcon,
+  CloseIcon,
 } from '../../components/ui/icons';
 import { Button } from '../../components/ui/Button';
+import { STUDY_HEADER_ROW } from '../../components/learn/studyHeaderLayout';
 import { PomodoroTimer } from '../../components/learn/PomodoroTimer';
 import { cn } from '../../components/ui/cn';
+import { scaledSpring } from '../../components/ui/motion';
 import type { CardFilter } from '../../db/search';
 import { TouchMenuSheet } from './TouchMenu';
 import { FILTER_LABELS } from './types';
 import type { LearnModeType, SessionCardOutcome, StudyUnit } from './types';
-import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
+import { SessionSegments } from './SessionSegments';
 
 function computeHeaderInfo({
   singleDeck,
@@ -47,7 +51,8 @@ function computeHeaderInfo({
   switch (mode) {
     case 'simple':
       return {
-        title: 'Simple Learn',
+        // Name what is being studied; the mode's own name is only a fallback.
+        title: unitDisplayName ?? 'Simple Learn',
         subtitle: tagPart,
       };
     case 'cram':
@@ -107,7 +112,6 @@ export function LearnHeader({
   sessionCardOutcomes,
   filterParams,
   tagFilter,
-  onOpenNav,
   onExit,
   focusMode,
   onToggleFocus,
@@ -125,6 +129,8 @@ export function LearnHeader({
   onShowShortcuts,
   m,
   currentCardIds,
+  canUndo = false,
+  onUndo,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -139,7 +145,6 @@ export function LearnHeader({
   sessionCardOutcomes: Map<string, SessionCardOutcome>;
   filterParams: CardFilter[];
   tagFilter: string | null;
-  onOpenNav: () => void;
   onExit: () => void;
   focusMode: boolean;
   onToggleFocus: () => void;
@@ -158,6 +163,9 @@ export function LearnHeader({
   m: number;
   /** Cards in focus: the current card, or every line being recited. */
   currentCardIds: readonly string[];
+  /** Phone undo control; renders only when the parent supplies onUndo. */
+  canUndo?: boolean;
+  onUndo?: () => void;
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -172,47 +180,58 @@ export function LearnHeader({
       ? 1 - revisionSecondsRemaining / revisionWindowBudgetSeconds
       : 0
     : sessionProgress;
+  // Simple Learn names the card's place in the pip bar, as its announcement does. Other
+  // modes count progress through the session: their queues serve cards in their own order.
+  const sessionTotal = sessionCardIds.length;
+  const pipIndex = mode === 'simple' ? sessionCardIds.indexOf(currentCardIds[0]) : -1;
+  const cardPosition =
+    currentCardIds.length > 0 && sessionTotal > 0 && !plannedRevision
+      ? `${
+          pipIndex >= 0
+            ? pipIndex + 1
+            : Math.min(sessionTotal, Math.round(sessionProgress * sessionTotal) + 1)
+        } of ${sessionTotal}`
+      : null;
+  const forecast =
+    mode !== 'simple' && !plannedRevision
+      ? `${Math.round(predictedRecall * 100)}% ${forecastLabel(singleDeck)}`
+      : undefined;
   const progressName = plannedRevision ? 'Revision time used' : 'Session progress';
 
   return (
     <motion.header
-      initial={m > 0 ? { opacity: 0 } : false}
+      initial={false}
       animate={{ opacity: 1 }}
       exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
       onPointerLeave={onPointerLeave}
       className={cn(
-        'left-0 right-0 top-0 z-20 border-b border-line bg-paper',
-        'pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]',
+        'left-0 right-0 top-0 z-20 bg-paper',
+        'pt-[env(safe-area-inset-top)]',
         focusMode ? 'fixed shadow-lg shadow-black/5' : 'sticky',
       )}
     >
-      <div className="flex min-h-[72px] items-center gap-1 px-2 py-2.5 md:gap-5 md:px-6">
-        <button
-          type="button"
-          onClick={onOpenNav}
-          aria-label="Open navigation"
-          title="Open navigation"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      <div className={`${STUDY_HEADER_ROW} gap-2 md:gap-4`}>
+        {/* One Exit for every width, leading the row: a pill with its label, and a
+            round icon button on a phone. */}
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onExit}
+          className="h-11 shrink-0 px-4 max-md:w-11 max-md:px-0"
         >
-          <MenuIcon width={18} height={18} />
-        </button>
-
+          <CloseIcon width={16} height={16} aria-hidden="true" />
+          <span className="max-md:sr-only">Exit</span>
+        </Button>
         <div className="min-w-10 flex-1 overflow-hidden">
-          <h1
-            className="mb-1 truncate text-xs font-semibold text-ink md:text-sm"
-            title={info.title}
-          >
-            {info.title}
-          </h1>
-          {mode !== 'simple' && !plannedRevision && (
-            <div className="mb-1 flex flex-wrap justify-between gap-x-3 text-xs tabular text-ink-faint">
-              <span>{Math.round(displayedProgress * 100)}% complete</span>
-              <span>
-                {Math.round(predictedRecall * 100)}% {forecastLabel(singleDeck)}
-              </span>
-            </div>
-          )}
+          <div className="mb-2 flex min-w-0 items-baseline gap-1 text-[13px] md:text-sm">
+            <h1 className="truncate font-bold text-ink" title={info.title}>
+              {info.title}
+            </h1>
+            {cardPosition && (
+              <span className="shrink-0 text-ink-soft tabular-nums">· {cardPosition}</span>
+            )}
+          </div>
           {info.subtitle && (
             <p className="mb-1 hidden truncate text-xs text-ink-faint md:block">{info.subtitle}</p>
           )}
@@ -223,6 +242,7 @@ export function LearnHeader({
               currentCardIds={currentCardIds}
               value={displayedProgress}
               label={progressName}
+              m={m}
             />
           ) : (
             <SessionProgressTrack value={displayedProgress} label={progressName} m={m} />
@@ -237,19 +257,27 @@ export function LearnHeader({
           </span>
         )}
 
-        <div className="hidden min-[340px]:block">
-          <PomodoroTimer />
-        </div>
-
         <div className="relative">
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Card actions"
+            aria-expanded={menuOpen}
             title="Card actions"
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+            className={cn(
+              'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
+              menuOpen
+                ? 'border-ink bg-ink text-paper'
+                : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+            )}
           >
-            <MoreIcon width={18} height={18} />
+            <motion.span
+              className="inline-flex"
+              animate={{ rotate: menuOpen ? 90 : 0 }}
+              transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <MoreIcon width={18} height={18} />
+            </motion.span>
           </button>
           <AnimatePresence>
             {menuOpen &&
@@ -257,6 +285,7 @@ export function LearnHeader({
               (isTouchMode ? (
                 <TouchMenuSheet
                   current={current}
+                  forecast={forecast}
                   onEdit={onEdit}
                   onToggleFlag={onToggleFlag}
                   onBury={onBury}
@@ -269,12 +298,13 @@ export function LearnHeader({
                 />
               ) : (
                 <motion.div
-                  initial={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : false}
+                  initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.98 } : undefined}
-                  transition={{ duration: 0.12 * m }}
-                  className="absolute right-0 top-11 z-20 w-52 overflow-hidden rounded-xl border border-line-strong bg-surface shadow-xl shadow-black/10"
+                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
+                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
                 >
+                  {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
                   {current.sequenceItemId === undefined &&
                     current.occlusionRegionId === undefined && (
                       <MenuItem
@@ -286,19 +316,24 @@ export function LearnHeader({
                   <MenuItem
                     icon={<FlagIcon width={16} height={16} />}
                     label={current.flagged ? 'Remove flag' : 'Flag card'}
+                    description={
+                      current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
+                    }
                     onClick={onToggleFlag}
                   />
                   <MenuItem
                     icon={<ClockIcon width={16} height={16} />}
                     label="Bury until tomorrow"
+                    description="Back tomorrow."
                     onClick={onBury}
                   />
                   <MenuItem
                     icon={<PauseIcon width={16} height={16} />}
                     label="Suspend card"
+                    description="Out of study until you resume it."
                     onClick={onSuspend}
                   />
-                  <div className="border-t border-line" />
+                  <div className="mx-2 my-1.5 h-px bg-line" />
                   <MenuItem
                     icon={<FocusIcon width={16} height={16} />}
                     label={focusMode ? 'Leave focus mode' : 'Focus mode'}
@@ -331,19 +366,53 @@ export function LearnHeader({
           <button
             type="button"
             onClick={onToggleFocus}
-            aria-label="Exit Focus Mode"
-            title="Exit Focus Mode (F)"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-accent transition-colors hover:bg-ink/5 active:bg-ink/10"
+            aria-label="Leave focus mode"
+            title="Leave focus mode (F)"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-accent-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
           >
             <FocusIcon width={19} height={19} />
           </button>
         )}
 
-        <Button variant="ghost" size="sm" onClick={onExit}>
-          Exit
-        </Button>
+        {onUndo && (
+          <button
+            type="button"
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo last answer"
+            title="Undo"
+            // Always laid out, disabled until there is an answer to undo, so the controls
+            // beside it never shift when the first answer lands.
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-ink transition-colors hover:border-ink/40 active:bg-ink/10 disabled:opacity-40"
+          >
+            <UndoIcon width={18} height={18} />
+          </button>
+        )}
+
+        <div className="hidden shrink-0 min-[340px]:block">
+          <PomodoroTimer />
+        </div>
       </div>
     </motion.header>
+  );
+}
+
+function UndoIcon({ width, height }: { width: number; height: number }) {
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </svg>
   );
 }
 
@@ -366,7 +435,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
     // This track is now the session's only progress indicator, so it carries the
     // accessible name and value that the removed counter ring used to provide.
     <div
-      className="h-2 w-full overflow-hidden rounded-full bg-ink/10"
+      className="h-[5px] w-full overflow-hidden rounded-full bg-ink/10 md:h-2"
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}
@@ -376,84 +445,9 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
       <motion.div
         initial={false}
         animate={{ scaleX: progress }}
-        transition={{ duration: 0.32 * m, ease: [0.16, 1, 0.3, 1] }}
+        transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
         className="h-full w-full origin-left rounded-full bg-accent"
       />
-    </div>
-  );
-}
-
-function SessionSegments({
-  cardIds,
-  outcomes,
-  currentCardIds,
-  value,
-  label,
-}: {
-  cardIds: string[];
-  outcomes: Map<string, SessionCardOutcome>;
-  currentCardIds: readonly string[];
-  value: number;
-  label: string;
-}) {
-  const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
-  const progressAnnouncement =
-    currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
-  const maxSegments = 120;
-  const groupSize = Math.max(1, Math.ceil(cardIds.length / maxSegments));
-  const groups: string[][] = [];
-  for (let index = 0; index < cardIds.length; index += groupSize) {
-    groups.push(cardIds.slice(index, index + groupSize));
-  }
-
-  return (
-    // The pip bar is the session's only progress indicator now that the counter ring
-    // has gone, so it carries the value itself rather than being a decorative group
-    // beside one. The live summary below still reports the per-card breakdown.
-    <div
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(Math.max(0, Math.min(1, value)) * 100)}
-      title={`${cardIds.length} cards in this session`}
-    >
-      <span className="sr-only" aria-live="polite" aria-atomic="true">
-        {progressAnnouncement}
-      </span>
-      <div className="flex h-2 w-full gap-1" aria-hidden="true">
-        {groups.map((group) => {
-          const current = group.some((id) => currentCardIds.includes(id));
-          const groupOutcomes = group.map((id) => outcomes.get(id));
-          const status = groupOutcomes.some((outcome) => outcome === 'wrong')
-            ? 'wrong'
-            : groupOutcomes.every((outcome) => outcome === 'correct')
-              ? 'correct'
-              : current
-                ? 'current'
-                : 'unseen';
-          return (
-            <span
-              key={group[0]}
-              data-session-card-status={status}
-              className={cn(
-                'min-w-px flex-1 rounded-full border transition-colors duration-200',
-                status === 'correct' && 'bg-positive',
-                status === 'wrong' && 'bg-negative',
-                current
-                  ? 'border-accent'
-                  : status === 'correct'
-                    ? 'border-positive'
-                    : status === 'wrong'
-                      ? 'border-negative'
-                      : 'border-transparent',
-                status === 'current' && 'bg-accent/10',
-                status === 'unseen' && 'bg-ink/10',
-              )}
-            />
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -461,20 +455,34 @@ function SessionSegments({
 function MenuItem({
   icon,
   label,
+  description,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   onClick: () => void;
 }) {
+  const descriptionId = useId();
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full min-h-11 items-center gap-3 px-4 py-2.5 text-left text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10"
+      aria-label={description ? label : undefined}
+      aria-describedby={description ? descriptionId : undefined}
+      className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
-      {label}
+      {description ? (
+        <span className="flex flex-col">
+          <strong className="font-bold">{label}</strong>
+          <span id={descriptionId} className="text-[13px] text-ink-faint">
+            {description}
+          </span>
+        </span>
+      ) : (
+        label
+      )}
     </button>
   );
 }

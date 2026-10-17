@@ -1,0 +1,1 @@
+- Use Bun 1.4.3's built-in checker for the web project references, retaining native TypeScript for smaller server/Electron checks and desktop emission; align development, CI, audits and release builds on Bun 1.4.3.

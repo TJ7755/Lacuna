@@ -1,0 +1,1 @@
+- Keep Import cards visible beside More in the New card editor, as a separate rounded button outside the card-type selector.

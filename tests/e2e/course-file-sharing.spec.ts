@@ -7,12 +7,12 @@ test('saves and imports course media on first use while offline', async ({ page,
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
   await page
-    .getByRole('navigation', { name: 'Primary navigation' })
+    .getByRole('navigation', { name: 'More' })
     .getByRole('link', { name: 'Share', exact: true })
     .click();
-  const share = page.locator('main[data-route-path="/share"]');
+  const share = page.locator('main:has([data-route-content="/share"])');
   await expect(share.getByRole('heading', { name: 'Share', exact: true })).toBeVisible();
-  await share.getByRole('button', { name: /Welcome to Lacuna/ }).click();
+  await expect(share.getByText('Welcome to Lacuna', { exact: true })).toBeVisible();
   await share.getByRole('button', { name: 'Course file', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Save course file' })).toBeEnabled();
 
@@ -49,7 +49,10 @@ test('saves and imports course media on first use while offline', async ({ page,
           };
         }),
     );
-    await page.getByLabel('Course file to import').setInputFiles({
+    // Receiving a course happens on Import, which hands a .lacuna file to the course importer.
+    await page.evaluate(() => (location.hash = '#/import'));
+    await expect(page.getByRole('heading', { name: 'Import', level: 1 })).toBeVisible();
+    await page.getByLabel('Import file').setInputFiles({
       name: 'Offline course.lacuna',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(file)),
@@ -58,8 +61,11 @@ test('saves and imports course media on first use while offline', async ({ page,
     await expect(page.getByText(/Offline imported course —/)).toBeVisible();
     await page.getByRole('button', { name: 'Add to my courses' }).click();
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
-    await share.getByRole('button', { name: 'Change course' }).click();
-    await expect(share.getByRole('button', { name: /Offline imported course/ })).toBeVisible();
+    await expect(
+      page
+        .getByRole('navigation', { name: 'Courses' })
+        .getByRole('link', { name: /Offline imported course/ }),
+    ).toBeVisible();
     const restored = await page.evaluate(
       (hash: string) =>
         new Promise<boolean>((resolve, reject) => {

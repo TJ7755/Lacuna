@@ -1,0 +1,1 @@
+- The lesson notes screen before a study session shares one reading column for its header and notes, with the timer at the column edge and a normal-sized Continue beneath the notes.

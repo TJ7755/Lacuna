@@ -1,0 +1,1 @@
+- Redesigned course settings around editable study-goal, daily-workload and target-recall cards, with compact expandable rows for secondary settings and confirmed archive/delete actions below. Existing save rules, validation and final-exam editing links are preserved.

@@ -36,7 +36,7 @@ async function addCard(page: Page, front: string, back: string, withImage = fals
 async function openRecoverySettings(page: Page) {
   await page.goto('/#/settings');
   await expect(page).toHaveURL(/#\/settings$/);
-  const settingsMain = page.locator('main[data-route-path="/settings"]');
+  const settingsMain = page.locator('main:has([data-route-content="/settings"])');
   await expect(settingsMain.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   await expect(settingsMain.locator('#settings-export')).toBeAttached();
 }

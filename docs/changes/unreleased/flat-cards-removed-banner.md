@@ -1,0 +1,1 @@
+- Align the flat-card browser checks with the removed sharing announcement while retaining every surface assertion.

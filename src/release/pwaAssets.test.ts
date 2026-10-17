@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import sharp from 'sharp';
 
 type ManifestIcon = {
   src: string;
@@ -72,4 +73,66 @@ describe('PWA assets', () => {
     const robots = await readFile(resolve(projectRoot, 'public/robots.txt'), 'utf8');
     expect(robots).not.toMatch(/^\s*Disallow:\s*\/(favicon|icon)/im);
   });
+});
+
+describe('brand mark palette', () => {
+  async function landingLime(): Promise<string> {
+    const css = await readFile(resolve(projectRoot, 'src/pages/Landing.css'), 'utf8');
+    const colour = css.match(/--amber:\s*(#[0-9a-f]{6})/i)?.[1];
+    if (!colour) throw new Error('Missing landing mark colour');
+    return colour;
+  }
+
+  it('uses the landing lime in the standalone SVG mark', async () => {
+    const source = await readFile(assetPath('/icon.svg'), 'utf8');
+    expect(source).toContain(await landingLime());
+    expect(source).not.toContain('#e8a43d');
+  });
+
+  it.each([
+    'public/icons/favicon-48.png',
+    'public/icons/favicon-96.png',
+    'public/icons/apple-touch-icon-180.png',
+    'public/icons/icon-192.png',
+    'public/icons/icon-512.png',
+    'public/icons/icon-maskable-512.png',
+    'public/favicon.ico',
+    'electron/assets/icon.png',
+    'electron/assets/portable-splash.bmp',
+  ])('ships the same lime mark in %s', async (filename) => {
+    const colour = await landingLime();
+    const rgb = [1, 3, 5].map((offset) => parseInt(colour.slice(offset, offset + 2), 16));
+    const input = await readFile(resolve(projectRoot, filename));
+    let pixels: Buffer;
+    let channels: number;
+    if (filename.endsWith('.bmp')) {
+      pixels = input.subarray(input.readUInt32LE(10));
+      rgb.reverse();
+      channels = 3;
+    } else {
+      const decoded = await sharp(filename.endsWith('.ico') ? input.subarray(22) : input)
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      pixels = decoded.data;
+      channels = decoded.info.channels;
+    }
+    let matches = 0;
+    for (let i = 0; i < pixels.length; i += channels) {
+      if (rgb.every((value, channel) => pixels[i + channel] === value)) matches++;
+    }
+    expect(matches).toBeGreaterThan(20);
+  });
+});
+
+it('keeps the portable splash mark rounded against its existing canvas', async () => {
+  const bitmap = await readFile(resolve(projectRoot, 'electron/assets/portable-splash.bmp'));
+  const width = bitmap.readInt32LE(18);
+  const height = bitmap.readInt32LE(22);
+  expect([width, height, bitmap.readUInt16LE(28)]).toEqual([560, 260, 24]);
+  const stride = Math.ceil((width * 3) / 4) * 4;
+  const offset = bitmap.readUInt32LE(10) + (height - 62) * stride;
+  expect(bitmap.subarray(offset + 44 * 3, offset + 45 * 3)).toEqual(
+    bitmap.subarray(offset + 43 * 3, offset + 44 * 3),
+  );
 });

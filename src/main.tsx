@@ -1,19 +1,14 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
 import {
-  installHostedFontLinks,
   installSimpleAnalytics,
-  isAppHashRoute,
   registerProductionServiceWorker,
+  shouldHydrateLanding,
 } from './webBootstrap';
 import { renderApp } from './appRoot';
 
-// Mirrors the private FLAG_KEY in src/db/seed.ts. Kept as a literal so the
-// landing decision below never pulls the database into the initial module graph.
-const SEED_FLAG_KEY = 'lacuna-seeded';
 
 installStaleChunkRecovery();
-installHostedFontLinks();
 installSimpleAnalytics();
 void registerProductionServiceWorker();
 
@@ -33,22 +28,6 @@ async function clearDevelopmentPwaState(): Promise<void> {
   } catch {
     // Cache cleanup is best-effort; a browser policy must not prevent development startup.
   }
-}
-
-/** First-visit browsers hydrate the prerendered landing page, including links to
- * its in-page anchors; the packaged app, in-app hash routes and returning
- * browsers boot the study app directly. */
-function shouldHydrateLanding(): boolean {
-  if (window.electronAPI?.isElectron) return false;
-  if (isAppHashRoute(window.location.hash)) return false;
-  try {
-    // A previous start seeded the example course, so this browser already knows
-    // the app: skip the marketing flash and go straight to the dashboard.
-    if (localStorage.getItem(SEED_FLAG_KEY)) return false;
-  } catch {
-    // Storage may be unavailable; fall through to the prerender check.
-  }
-  return !!document.getElementById('root')?.querySelector('.landing-page');
 }
 
 function start(): void {

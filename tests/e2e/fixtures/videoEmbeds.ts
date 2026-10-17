@@ -54,12 +54,12 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   if (navigateToApp) await page.goto('/');
   await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Courses' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+\/lesson\//);
-  await page.getByRole('button', { name: 'Author mode' }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
 
   await page.getByRole('button', { name: 'Add note' }).click();
@@ -69,7 +69,7 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   await expectVideoEmbedDocuments(page);
 
   await page.getByRole('button', { name: 'Add note', exact: true }).click();
-  await page.getByRole('button', { name: 'Provider iframe CSP probe' }).click();
+  await page.getByRole('tab', { name: 'Provider iframe CSP probe' }).click();
   await expectVideoEmbedDocuments(page);
 }
 

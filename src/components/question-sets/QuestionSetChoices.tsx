@@ -6,16 +6,18 @@ export function QuestionSetChoices({
   options,
   onChange,
   disabled = false,
+  describedBy,
 }: {
   label: string;
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
   disabled?: boolean;
+  describedBy?: string;
 }) {
   const name = useId();
   return (
-    <fieldset className="qs-choices" disabled={disabled}>
+    <fieldset className="qs-choices" disabled={disabled} aria-describedby={describedBy}>
       <legend>{label}</legend>
       <div>
         {options.map((option) => (

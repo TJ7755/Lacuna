@@ -1,0 +1,1 @@
+- Pin Vercel installation and builds to Bun 1.4.3 so preview deployments can run the existing web typechecking command.

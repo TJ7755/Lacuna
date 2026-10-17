@@ -27,6 +27,13 @@ the desktop app (`app://.`) and loopback development servers. Set `RELAY_ALLOWED
 comma-separated list to add others, such as a preview or self-hosted web build. Requests without an
 `Origin` header, such as the terminal companion's, are unaffected.
 
+`https://preview.getlacuna.app` uses the production relay. Its exact origin is added through
+`RELAY_ALLOWED_ORIGINS=https://preview.getlacuna.app` in the **Production** environment of
+`lacuna-relay`, not the app project's Preview environment. Preserve any existing entries when
+adding an origin. Redeploy the existing production relay deployment after changing this setting;
+updating the environment alone does not change a running deployment. Both relay aliases must
+continue to serve it. The app preview's Vercel Deployment Protection is separate from relay CORS.
+
 Knowledge of the channel id is the read capability. Writes need the bearer
 token minted with the channel. Creating a channel needs a separate shared
 secret (`RELAY_MINT_SECRET`). `ETag` / `If-Match` is what stops two devices

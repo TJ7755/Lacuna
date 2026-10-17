@@ -115,6 +115,7 @@ describe('AudioCardEditor', () => {
 
     expect(getUserMedia).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Starting…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Choose file' })).toBeDisabled();
 
     grantPermission?.({ getTracks: () => [] } as unknown as MediaStream);
     await waitFor(() =>

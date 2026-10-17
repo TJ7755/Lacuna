@@ -470,6 +470,8 @@ describe('useLearnSession answer boundary', () => {
       nowSpy.mockReturnValue(10_000);
       act(() => rendered.result.current.reveal());
       await waitFor(() => expect(rendered.result.current.phase).toBe('answer'));
+      // Inspecting the answer and dragging to grade must not change inference at reveal.
+      nowSpy.mockReturnValue(30_000);
       await act(async () => {
         await rendered.result.current.answer(true);
       });

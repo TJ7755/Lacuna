@@ -11,7 +11,7 @@ export function PublicHeader() {
     >
       <Link
         to="/welcome"
-        className="flex min-h-11 items-center gap-2.5 rounded-lg font-display text-xl tracking-tight text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        className="flex min-h-11 items-center gap-2.5 rounded-lg font-display text-xl tracking-tight text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
       >
         <span className="grid size-8 place-items-center rounded-lg bg-accent text-accent-fg">
           <LacunaIcon className="size-5" />
@@ -24,8 +24,8 @@ export function PublicHeader() {
           <NavLink
             to="/download"
             className={({ isActive }) =>
-              'hidden min-h-10 items-center rounded-lg px-2 transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 sm:inline-flex ' +
-              (isActive ? 'text-accent' : 'text-ink-soft')
+              'hidden min-h-10 items-center rounded-lg px-2 transition-colors hover:text-accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink sm:inline-flex ' +
+              (isActive ? 'text-accent-ink' : 'text-ink-soft')
             }
           >
             Download
@@ -33,7 +33,7 @@ export function PublicHeader() {
         )}
         <Link
           to="/"
-          className="inline-flex min-h-10 items-center rounded-lg border border-line-strong bg-surface-raised px-3.5 text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+          className="inline-flex min-h-10 items-center rounded-lg border border-line-strong bg-surface-raised px-3.5 text-ink shadow-sm shadow-black/5 transition-colors hover:border-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           Open Lacuna
         </Link>

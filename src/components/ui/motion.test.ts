@@ -1,8 +1,30 @@
 import { describe, expect, it } from 'vitest';
 
-import { MOTION_DURATION, MOTION_EASING, motionDuration, motionTransition } from './motion';
+import {
+  MOTION_DURATION,
+  MOTION_EASING,
+  motionDuration,
+  motionTransition,
+  expandingActionSpring,
+} from './motion';
 
 describe('motion contract', () => {
+  it('uses a physical expansion spring with a stable damping ratio across speeds', () => {
+    const normal = expandingActionSpring(1);
+    const slow = expandingActionSpring(1.4);
+    expect(normal).toEqual(expect.objectContaining({ type: 'spring', mass: 1 }));
+    expect(normal).not.toHaveProperty('visualDuration');
+    expect(normal).not.toHaveProperty('duration');
+    if (!('stiffness' in normal) || !('stiffness' in slow))
+      throw new Error('Expected physical springs');
+    const dampingRatio = normal.damping / (2 * Math.sqrt(normal.stiffness * normal.mass));
+    expect(dampingRatio).toBeGreaterThanOrEqual(0.85);
+    expect(dampingRatio).toBeLessThanOrEqual(1);
+    expect(slow.stiffness).toBeCloseTo(normal.stiffness / 1.4 ** 2);
+    expect(slow.damping).toBeCloseTo(normal.damping / 1.4);
+    expect(slow.damping / (2 * Math.sqrt(slow.stiffness * slow.mass))).toBeCloseTo(dampingRatio);
+    expect(expandingActionSpring(0)).toEqual({ duration: 0 });
+  });
   it('keeps semantic motion tiers ordered by emphasis', () => {
     expect(MOTION_DURATION.feedback).toBeLessThan(MOTION_DURATION.local);
     expect(MOTION_DURATION.local).toBeLessThan(MOTION_DURATION.milestone);

@@ -3,6 +3,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { detectDesktopPlatform, DOWNLOADS, Download } from './Download';
 
+vi.mock('../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 0,
+}));
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });

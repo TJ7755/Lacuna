@@ -1,83 +1,38 @@
+import { searchHelp } from '../../pages/help/searchHelp';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import { useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
-import { useSearchData } from '../../state/useSearchData';
 import {
-  cardEditPath,
-  plainPreview,
-  questionEditPath,
-  searchCardsInScope,
-  searchCourseContent,
-  searchQuestionsInScope,
-  type CourseContentHit,
-  type ScopedSearchResult,
-} from '../../db/search';
-import { SearchIcon, GridIcon, FolderIcon, FileTextIcon } from '../ui/icons';
-import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
+import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
+import { useSearchData } from '../../state/useSearchData';
+import { searchCardsInScope, searchCourseContent, searchQuestionsInScope } from '../../db/search';
+import type { Card, Course, Lesson } from '../../db/types';
+import { SearchIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { StudyDrawing } from '../ui/StudyDrawing';
+import { SearchResultOption } from './SearchResultOption';
+import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
-/** A single ordered list of navigation, Card and Question hits. */
-type PaletteHit = ScopedSearchResult | CourseContentHit;
+/** A single ordered list of Help, navigation, Card and Question hits. */
+type PaletteHit = SearchHit;
 
-/** Where a palette hit deep-links to. */
-function hitPath(hit: PaletteHit): string {
-  switch (hit.kind) {
-    case 'card':
-      return cardEditPath(hit.card);
-    case 'question':
-      return questionEditPath(hit.question);
-    case 'course':
-      return `/course/${hit.course.id}`;
-    case 'lesson':
-    case 'note':
-      return `/course/${hit.course.id}/lesson/${hit.lesson.id}`;
-  }
-}
-
-/** Icon and label for a course/lesson/note hit row. */
-function courseHitMeta(hit: CourseContentHit) {
-  switch (hit.kind) {
-    case 'course':
-      return { icon: GridIcon, title: hit.course.name, subtitle: 'Course' };
-    case 'lesson':
-      return { icon: FolderIcon, title: hit.lesson.name, subtitle: hit.course.name };
-    case 'note':
-      return {
-        icon: FileTextIcon,
-        title: hit.note.name,
-        subtitle: `${hit.course.name} · ${hit.lesson.name}`,
-      };
-  }
+function PaletteResults(props: HTMLMotionProps<'ul'>) {
+  const present = useIsPresent();
+  return <motion.ul {...props} inert={!present} aria-hidden={!present || undefined} />;
 }
 
 const MAX_RESULTS = 40;
 const HINTS_SEEN_KEY = 'lacuna.quickSearchHintsSeen';
-
-/** Highlight every substring in `text` that matches `query` (case-insensitive). */
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  if (!query.trim()) return <>{text}</>;
-  const parts = text.split(new RegExp(`(${escapeRegExp(query.trim())})`, 'gi'));
-  return (
-    <>
-      {parts.map((part, i) =>
-        part.toLowerCase() === query.trim().toLowerCase() ? (
-          <mark key={i} className="rounded bg-accent/15 px-0.5 text-accent">
-            {part}
-          </mark>
-        ) : (
-          <span key={i}>{part}</span>
-        ),
-      )}
-    </>
-  );
-}
-
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /** Quick search: a keyboard-summoned overlay for jumping straight to content. */
 export function CommandPalette({
@@ -90,24 +45,125 @@ export function CommandPalette({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   if (!open) return null;
-  return <CommandPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
+  return <GlobalPaletteDialog onClose={onClose} returnFocusTarget={returnFocusTarget} />;
 }
 
-function CommandPaletteDialog({
+function GlobalPaletteDialog({
   onClose,
   returnFocusTarget,
 }: {
   onClose: () => void;
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
+  const searchData = useSearchData();
+  // Help and course/lesson/note hits precede Question and Card hits, capped together
+  // so the palette never grows unbounded on a broad query.
+  const search = useCallback(
+    (query: string): PaletteHit[] => {
+      const courses = searchData?.courses ?? [];
+      const lessons = searchData?.lessons ?? [];
+      const courseHits = searchCourseContent(query, courses, lessons, searchData?.notes ?? []);
+      const cardHits = searchCardsInScope(query, {
+        cards: searchData?.cards ?? [],
+        courses,
+        lessons,
+      });
+      const questionHits = searchQuestionsInScope(query, {
+        questions: searchData?.questions ?? [],
+        courses,
+        lessons,
+      });
+      const helpHits: PaletteHit[] = query.trim()
+        ? searchHelp(query)
+            .slice(0, 3)
+            .map((topic) => ({ kind: 'help', topic }))
+        : [];
+      return [...helpHits, ...courseHits, ...questionHits, ...cardHits];
+    },
+    [searchData],
+  );
+  return (
+    <CommandPaletteDialog
+      onClose={onClose}
+      returnFocusTarget={returnFocusTarget}
+      label="Quick search"
+      inputLabel="Search all content"
+      placeholder="Search…"
+      search={search}
+      limit={MAX_RESULTS}
+    />
+  );
+}
+
+/**
+ * Quick search narrowed to one lesson's cards, primary and linked, for Ctrl/Cmd+F on a
+ * lesson. Portalled, as page-owned dialogs are, so the page's transforms cannot clip it.
+ */
+export function LessonCardsPalette({
+  cards,
+  course,
+  lesson,
+  navigationState,
+  onClose,
+  returnFocusTarget,
+}: {
+  cards: Card[];
+  course: Course;
+  lesson: Lesson;
+  /** Router state for an opened card, so its editor returns to the lesson. */
+  navigationState?: unknown;
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
+}) {
+  const search = useCallback(
+    (query: string) =>
+      searchCardsInScope(
+        query,
+        { cards, courses: [course], lessons: [lesson] },
+        { parseQuery: true },
+      ),
+    [cards, course, lesson],
+  );
+  return createPortal(
+    <CommandPaletteDialog
+      onClose={onClose}
+      returnFocusTarget={returnFocusTarget}
+      label="Find cards"
+      inputLabel="Find cards in this lesson"
+      placeholder="Find cards in this lesson…"
+      search={search}
+      navigationState={navigationState}
+      scoped
+    />,
+    document.body,
+  );
+}
+
+function CommandPaletteDialog({
+  onClose,
+  returnFocusTarget,
+  label,
+  inputLabel,
+  placeholder,
+  search,
+  limit,
+  navigationState,
+  scoped = false,
+}: {
+  onClose: () => void;
+  returnFocusTarget?: RefObject<HTMLElement | null>;
+  label: string;
+  inputLabel: string;
+  placeholder: string;
+  search: (query: string) => PaletteHit[];
+  /** Caps the list and offers the full results page beyond it. */
+  limit?: number;
+  navigationState?: unknown;
+  /** Ctrl/Cmd+F reselects the field; Ctrl/Cmd+K hands over to Quick search. */
+  scoped?: boolean;
+}) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
-  const searchData = useSearchData();
-  const cards = searchData?.cards;
-  const courses = searchData?.courses;
-  const lessons = searchData?.lessons;
-  const notes = searchData?.notes;
-  const questions = searchData?.questions;
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(
@@ -135,29 +191,19 @@ function CommandPaletteDialog({
     }
   }, []);
 
-  // Course/lesson/note hits are listed ahead of card hits, then both are capped
-  // together so the palette never grows unbounded on a broad query. Deferring
-  // the search keeps input updates urgent without imposing a fixed delay.
-  const results = useMemo((): PaletteHit[] => {
-    const courseHits = searchCourseContent(
-      deferredQuery,
-      courses ?? [],
-      lessons ?? [],
-      notes ?? [],
-    );
-    const cardHits = searchCardsInScope(deferredQuery, {
-      cards: cards ?? [],
-      courses: courses ?? [],
-      lessons: lessons ?? [],
-    });
-    const questionHits = searchQuestionsInScope(deferredQuery, {
-      questions: questions ?? [],
-      courses: courses ?? [],
-      lessons: lessons ?? [],
-    });
-    return [...courseHits, ...questionHits, ...cardHits].slice(0, MAX_RESULTS);
-  }, [deferredQuery, cards, courses, lessons, notes, questions]);
+  // Deferring the search keeps input updates urgent without imposing a fixed delay.
+  const allResults = useMemo(() => search(deferredQuery), [search, deferredQuery]);
+  const results = limit === undefined ? allResults : allResults.slice(0, limit);
   const hasVisibleResults = query.trim() !== '' && results.length > 0;
+  const resultList = useRef<HTMLUListElement>(null);
+  const selectionChanged = useRef(false);
+  useEffect(() => {
+    if (!selectionChanged.current) return;
+    resultList.current
+      ?.querySelector<HTMLElement>(`#palette-option-${active}`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    selectionChanged.current = false;
+  }, [active]);
 
   // Reset and focus when the palette mounts.
   useEffect(() => {
@@ -179,27 +225,54 @@ function CommandPaletteDialog({
     [],
   );
 
-  useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query]);
+  useEffect(() => setActive(results.length > 0 ? 0 : -1), [results.length, query, deferredQuery]);
+
+  function closeForNavigation() {
+    // The destination owns focus; dismissal alone returns it to the opener.
+    returnFocusRef.current = null;
+    onClose();
+  }
 
   function go(index: number) {
     const hit = results[index];
     if (!hit) return;
-    onClose();
-    void navigate(hitPath(hit));
+    closeForNavigation();
+    void navigate(
+      hitPath(hit),
+      navigationState === undefined ? undefined : { state: navigationState },
+    );
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     if (e.key === 'Escape') {
+      // Dismissal belongs to the dialog, not to the page beneath it.
+      e.stopPropagation();
       onClose();
+    } else if (scoped && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      const key = e.key.toLowerCase();
+      if (key === 'f') {
+        e.preventDefault();
+        inputRef.current?.select();
+      } else if (key === 'k') {
+        // AppShell's Quick search takes over and returns focus to this dialog's opener.
+        returnFocusRef.current?.focus();
+        returnFocusRef.current = null;
+        onClose();
+      }
+    } else if (e.target !== inputRef.current) {
+      return;
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
+      selectionChanged.current = true;
       setActive((a) => (results.length > 0 ? Math.min(a + 1, results.length - 1) : -1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      selectionChanged.current = true;
       setActive((a) => (results.length > 0 ? Math.max(a - 1, 0) : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      go(active);
+      if (hasVisibleResults && query === deferredQuery) go(active);
     }
   }
 
@@ -210,7 +283,7 @@ function CommandPaletteDialog({
           ref={trapRef}
           role="dialog"
           aria-modal="true"
-          aria-label="Quick search"
+          aria-label={label}
           className="fixed inset-0 z-50 flex items-start justify-center pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(12vh,env(safe-area-inset-top))]"
         >
           <ModalBackdrop shade={40} onClick={onClose} />
@@ -219,7 +292,7 @@ function CommandPaletteDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl shadow-black/20 will-change-transform-opacity"
+            className="relative w-full max-w-xl overflow-hidden rounded-3xl bg-surface card-surface will-change-transform-opacity"
             onKeyDown={onKeyDown}
           >
             <div className="flex items-center gap-3 border-b border-line px-4 py-3">
@@ -227,7 +300,7 @@ function CommandPaletteDialog({
               <input
                 ref={inputRef}
                 role="combobox"
-                aria-label="Search all content"
+                aria-label={inputLabel}
                 aria-controls={hasVisibleResults ? 'palette-listbox' : undefined}
                 aria-expanded={hasVisibleResults}
                 aria-autocomplete="list"
@@ -238,7 +311,7 @@ function CommandPaletteDialog({
                 }
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search…"
+                placeholder={placeholder}
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
               {showHints && (
@@ -252,7 +325,7 @@ function CommandPaletteDialog({
                 ? 'Type to search'
                 : results.length === 0
                   ? `No results for ${deferredQuery}`
-                  : `${results.length} ${results.length === 1 ? 'result' : 'results'} available`}
+                  : `${results.length < allResults.length ? `${results.length} of ` : ''}${allResults.length} ${allResults.length === 1 ? 'result' : 'results'} available`}
             </div>
 
             <div className="max-h-[50vh] overflow-y-auto">
@@ -280,7 +353,8 @@ function CommandPaletteDialog({
                     Nothing matches &ldquo;{deferredQuery}&rdquo;.
                   </motion.p>
                 ) : (
-                  <motion.ul
+                  <PaletteResults
+                    ref={resultList}
                     key="results"
                     id="palette-listbox"
                     role="listbox"
@@ -288,116 +362,44 @@ function CommandPaletteDialog({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.12 * m }}
-                    className="py-1"
+                    // Inset rounded rows, as in every other menu; 6px + 10px keeps the
+                    // text on the search field's 16px edge.
+                    className="p-1.5"
                   >
                     {results.map((hit, i) => {
-                      const key =
-                        hit.kind === 'card'
-                          ? hit.card.id
-                          : hit.kind === 'question'
-                            ? hit.question.id
-                            : hit.kind === 'course'
-                              ? hit.course.id
-                              : hit.kind === 'lesson'
-                                ? hit.lesson.id
-                                : hit.note.id;
                       return (
-                        <motion.li
-                          key={`${hit.kind}-${key}`}
-                          role="presentation"
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.12 * m, delay: Math.min(i * 0.015, 0.15) * m }}
-                        >
-                          <button
-                            type="button"
-                            role="option"
+                        <li key={hitKey(hit)} role="presentation">
+                          <SearchResultOption
+                            index={i}
+                            hit={hit}
+                            query={deferredQuery}
                             id={`palette-option-${i}`}
-                            aria-selected={i === active}
-                            onMouseEnter={() => setActive(i)}
-                            onClick={() => go(i)}
-                            className={
-                              'flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-all duration-150 ' +
-                              (i === active ? 'bg-accent-soft' : 'hover:bg-ink/5')
-                            }
-                          >
-                            {hit.kind === 'card' ? (
-                              <span className="flex min-w-0 flex-col gap-0.5">
-                                <span className="truncate text-sm text-ink">
-                                  <HighlightedText
-                                    text={plainPreview(hit.card.front, 90) || '(empty front)'}
-                                    query={query}
-                                  />
-                                </span>
-                                <span className="flex items-center gap-2 text-xs text-ink-faint">
-                                  <span className="truncate">{hit.contextName}</span>
-                                  {(hit.card.tags ?? []).length > 0 && (
-                                    <span className="truncate">· {hit.card.tags!.join(', ')}</span>
-                                  )}
-                                  {hit.card.sequenceItemId !== null &&
-                                    hit.card.sequenceItemId !== undefined && (
-                                      <GeneratedCardBadge kind="sequence" />
-                                    )}
-                                  {hit.card.occlusionRegionId !== null &&
-                                    hit.card.occlusionRegionId !== undefined && (
-                                      <GeneratedCardBadge kind="occlusion" />
-                                    )}
-                                </span>
-                              </span>
-                            ) : hit.kind === 'question' ? (
-                              <>
-                                <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent">
-                                  <FileTextIcon width={14} height={14} />
-                                </span>
-                                <span className="flex min-w-0 flex-col gap-0.5">
-                                  <span className="truncate text-sm text-ink">
-                                    <HighlightedText
-                                      text={
-                                        hit.question.kind === 'fixed'
-                                          ? plainPreview(hit.question.prompt, 90) ||
-                                            hit.question.name
-                                          : hit.question.name
-                                      }
-                                      query={query}
-                                    />
-                                  </span>
-                                  <span className="flex items-center gap-2 text-xs text-ink-faint">
-                                    <span className="truncate">{hit.contextName}</span>
-                                    <span>· Question</span>
-                                    {hit.question.kind === 'generated' && (
-                                      <span>· Generated family</span>
-                                    )}
-                                  </span>
-                                </span>
-                              </>
-                            ) : (
-                              (() => {
-                                const { icon: HitIcon, title, subtitle } = courseHitMeta(hit);
-                                return (
-                                  <>
-                                    <span className="grid h-7 w-7 flex-none place-items-center rounded-md bg-accent-soft text-accent">
-                                      <HitIcon width={14} height={14} />
-                                    </span>
-                                    <span className="flex min-w-0 flex-col gap-0.5">
-                                      <span className="truncate text-sm text-ink">
-                                        <HighlightedText text={title} query={query} />
-                                      </span>
-                                      <span className="truncate text-xs text-ink-faint">
-                                        {subtitle}
-                                      </span>
-                                    </span>
-                                  </>
-                                );
-                              })()
-                            )}
-                          </button>
-                        </motion.li>
+                            selected={i === active}
+                            onSelect={() => setActive(i)}
+                            onOpen={() => go(i)}
+                          />
+                        </li>
                       );
                     })}
-                  </motion.ul>
+                  </PaletteResults>
                 )}
               </AnimatePresence>
             </div>
+
+            {hasVisibleResults && limit !== undefined && allResults.length > limit && (
+              <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
+                <span>
+                  {results.length} of {allResults.length} results
+                </span>
+                <Link
+                  to={`/search?${new URLSearchParams({ q: query })}`}
+                  onClick={closeForNavigation}
+                  className="inline-flex min-h-11 items-center rounded-full px-3 text-sm text-accent-ink"
+                >
+                  See all results
+                </Link>
+              </div>
+            )}
 
             {/* Footer shortcuts */}
             {showHints && (

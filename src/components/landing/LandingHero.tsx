@@ -34,10 +34,10 @@ export function LandingHero() {
       </div>
       <a
         className="motion-opening-discover"
-        href="#landing-product"
+        href="#how-it-works"
         onClick={(event) => {
           event.preventDefault();
-          const product = document.getElementById('landing-product');
+          const product = document.getElementById('how-it-works');
           product?.focus({ preventScroll: true });
           product?.scrollIntoView({ behavior: multiplier === 0 ? 'instant' : 'smooth' });
         }}

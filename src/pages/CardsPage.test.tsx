@@ -59,13 +59,13 @@ vi.mock('../components/cards/CardList', () => ({
     cards,
     courseId,
     assignableLessons,
-    onNewCard,
     context,
+    heading,
   }: {
+    heading?: React.ReactNode;
     cards: Card[];
     courseId?: string;
     assignableLessons?: { id: string; name: string }[];
-    onNewCard?: () => void;
     context?: {
       importTargetName: string;
       onImport: unknown;
@@ -83,24 +83,20 @@ vi.mock('../components/cards/CardList', () => ({
     }
     return (
       <div data-testid="card-list">
+        {heading}
         <span data-testid="card-list-count">{cards.length}</span>
         <span data-testid="card-list-course">{courseId}</span>
         <span data-testid="card-list-assignable">
           {assignableLessons?.map((l) => l.name).join(',')}
         </span>
-        {onNewCard && (
-          <button type="button" onClick={onNewCard}>
-            new-card
-          </button>
-        )}
       </div>
     );
   },
 }));
 
 vi.mock('../components/ui/Button', () => ({
-  Button: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...props}>
       {children}
     </button>
   ),
@@ -110,6 +106,8 @@ vi.mock('../components/ui/icons', () => ({
   ChevronLeftIcon: () => <svg data-testid="chevron-left" />,
   PlusIcon: () => <svg data-testid="plus-icon" />,
   SearchIcon: () => <svg data-testid="search-icon" />,
+  MoreIcon: () => <svg data-testid="more-icon" />,
+  ChevronDownIcon: () => <svg data-testid="chevron-down" />,
 }));
 
 const course: Course = {
@@ -186,9 +184,9 @@ function makeCard(overrides: Partial<Card>): Card {
   };
 }
 
-function renderPage() {
+function renderPage(entry = '/course/course-1/cards') {
   return render(
-    <MemoryRouter initialEntries={['/course/course-1/cards']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/course/:courseId/cards" element={<CardsPage />} />
         <Route path="/course/:courseId/cards/new" element={<p>Card editor</p>} />
@@ -229,23 +227,20 @@ describe('CardsPage', () => {
     const emptyPanel = emptyMessage.parentElement;
     expect(emptyPanel).not.toBeNull();
     expect(screen.getAllByRole('button', { name: 'New card' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'New sequence' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'New occlusion' })).toHaveLength(1);
     expect(within(emptyPanel!).queryByRole('button')).not.toBeInTheDocument();
     expect(within(emptyPanel!).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('keeps the common content types directly available from one labelled action group', () => {
+  it('adds every kind of content through New card, whose editor offers the rarer types', () => {
     mockCourse = course;
     mockLessons = [];
     mockCards = [makeCard({ id: 'c1' })];
 
     renderPage();
 
-    const addContent = screen.getByRole('group', { name: 'Add content' });
-    expect(addContent).toHaveTextContent('New card');
-    expect(addContent).toHaveTextContent('New sequence');
-    expect(addContent).toHaveTextContent('New occlusion');
+    expect(screen.queryByRole('button', { name: /More ways to add/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'New card' }));
+    expect(screen.getByText('Card editor')).toBeInTheDocument();
   });
 
   it('groups cards by lesson and shows counts', () => {
@@ -260,6 +255,16 @@ describe('CardsPage', () => {
     expect(screen.getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /Supply/ })).toBeInTheDocument();
     expect(screen.getByText('(2)', { exact: false })).toBeInTheDocument();
+  });
+
+  it('hands each group heading to its card list, sharing a row with the list actions', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    renderPage();
+    const list = screen.getByTestId('card-list');
+    expect(within(list).getByRole('heading', { name: /Demand/ })).toBeInTheDocument();
+    expect(within(list).getByRole('link', { name: 'Open lesson' })).toBeInTheDocument();
   });
 
   it('shows an Unassigned bucket for cards with no primaryLessonId', () => {
@@ -329,5 +334,67 @@ describe('CardsPage', () => {
       target: { value: 'apple' },
     });
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+  });
+
+  it('finds course cards through the shared tag syntax and restores shortcut focus', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple', tags: ['fruit'] }),
+      makeCard({ id: 'c2', primaryLessonId: 'lesson-1', front: 'Stone', tags: ['mineral'] }),
+    ];
+    renderPage();
+    const trigger = screen.getAllByText('New card')[0];
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'f', ctrlKey: true });
+    const input = screen.getByRole('searchbox', { name: 'Search all cards' });
+    expect(input).toHaveFocus();
+    fireEvent.change(input, { target: { value: 'tag:fruit' } });
+    expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(input).toHaveValue('');
+    expect(trigger).toHaveFocus();
+  });
+
+  it('narrows the list with a filter chip and shows its count', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [
+      makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple', flagged: true }),
+      makeCard({ id: 'c2', primaryLessonId: 'lesson-1', front: 'Banana' }),
+    ];
+    renderPage();
+    expect(screen.getByTestId('card-list-count').textContent).toBe('2');
+    const chip = screen.getByRole('button', { name: /Flagged/ });
+    expect(chip).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+    fireEvent.click(chip);
+    expect(screen.getByTestId('card-list-count').textContent).toBe('2');
+  });
+
+  it('offers to clear a search and filters that match nothing', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple' })];
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Leech/ }));
+    expect(screen.getByText('No cards match.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
+    expect(screen.getByTestId('card-list-count').textContent).toBe('1');
+  });
+
+  it('restores search and filters from the address, so a return keeps them', () => {
+    mockCourse = course;
+    mockLessons = [lesson1];
+    mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1' })];
+    renderPage('/course/course-1/cards?q=supply&f=due');
+    expect(screen.getByRole('searchbox', { name: 'Search all cards' })).toHaveValue('supply');
+    expect(
+      within(screen.getByRole('group', { name: 'Filter cards' })).getByRole('button', {
+        name: /Due/,
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
   });
 });

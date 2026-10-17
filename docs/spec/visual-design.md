@@ -1,37 +1,75 @@
 # 3. Visual design system
 
-### 3.1 Palette ("quiet laboratory")
+### 3.1 Palette ("Direction C")
 
 Defined as raw HSL triples in `:root` and overridden under `.dark`, then exposed as Tailwind
 colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 
-- **Light:** warm off-white paper (`--paper`), near-white surfaces, dark warm ink. Subtle.
-- **Dark (default):** near-black charcoal paper, charcoal surfaces, warm off-white ink.
+- **Light:** pale green paper (`--paper`), near-white surfaces (`--surface`), green-black ink. The
+  sidebar sits on a slightly darker `--chrome` ground.
+- **Dark (default):** near-black paper and chrome ground, with the Volt neon foreground retained so icons stay defined, pale green ink.
 - **Accent triad:** `--accent`, `--accent-soft`, `--accent-ink`, `--accent-fg`. The default
-  is amber; the user may pick **red, rose, pink, violet, blue, teal or green**. Selecting one
+  is **Volt lime**; the user may pick **amber, red, rose, pink, violet, blue, teal or green**. Selecting one
   sets `data-accent` on the root and overrides just the accent triad, with separate light and
   dark recipes so each accent reads correctly in both themes.
-- **Semantic:** `--positive` (green) and `--negative` (red) for success/failure states.
-- **Atmosphere:** the body carries a faint radial-dot paper grain (`--grain-opacity`,
-  stronger in dark mode) rather than a flat fill; theme-aware thin scrollbars; accent-tinted
-  text selection.
+  Use `accent` for filled actions and decorative highlights, `accent-fg` for their labels,
+  and `accent-ink` for readable text, charts and keyboard focus. Neutral dividers carry only
+  a faint green tint; warning colours retain their semantic role.
+- **Semantic:** `--positive` (green), `--negative` (red) and `--warning` / `--warning-fg`
+  (orange) for on-track, failure and behind-target states. Filled semantic badges use
+  theme-inverting paper foregrounds; arbitrary course colours mark neutral comparison badges with
+  a coloured border so their labels remain readable.
+- **Chart series:** `--series-1` to `--series-5` follow `accent-ink` as categorical colours where
+  lines stand for things rather than states (the exam-day forecast's courses), with separate
+  light and dark values.
+- **Surfaces:** cards and panels are flat (`rounded-3xl bg-surface card-surface`) with one
+  1px hairline border (`--card-border`, drawn from `--line`) and no drop shadow or tinted
+  halo. The neutral boundary follows light and dark themes across every accent, including
+  Volt, violet and amber. Controls whose only boundary is the card edge add
+  `card-surface-control`, using `--ink-faint` for at least 3:1 non-text contrast against
+  paper, surface and raised surface. Keyboard focus rings remain visible. The study card
+  retains its existing treatment, dimensions and motion. Buttons are pills; the primary
+  button carries no shadow.
+  Large buttons are 48px, level with a full-size menu, and link-styled buttons share
+  `buttonClassName`; squared buttons are caught by `src/designRules.test.ts`. Opening an inline
+  form never stretches its sibling buttons: closed actions keep their height throughout.
+  Segmented controls are a pill track with a white pill that slides between options; when the
+  options cannot sit side by side (a narrow screen or enlarged text), the track stacks them
+  vertically at full width rather than overflowing its card. Settings, card and individual-question
+  choices share one implementation, retaining radio or pressed-button semantics as appropriate.
+  Choice chips wrap. The
+  paper grain is off (`--grain-opacity: 0`).
 
 ### 3.2 Typography
 
-- **Display (`font-display`, Instrument Sans):** headings (`h1`–`h4`), default weight 400, slight
-  negative letter-spacing. Page titles are `text-4xl`/`text-5xl`.
-- **Body (`font-body`, Instrument Sans):** all running text, weight 400. The font is bundled
-  locally and shared with the landing page.
-- **Brand (`font-brand`, Fraunces):** the Lacuna wordmark and the Fieldnotes course overview title.
-- **Mono (`font-mono`, JetBrains Mono):** code, and `.tabular` numerals (progress %, stats,
-  streak, timers) via `font-variant-numeric: tabular-nums`.
-- No eyebrow labels: never use small uppercase, widely tracked caption text. Name things with
-  real headings in the display face, and put secondary context in sentence-case body text.
+- **Display (`font-display`, Space Grotesk):** headings (`h1`–`h4`) and large figures,
+  weight 600 with tight negative letter-spacing. Page titles are `text-4xl` to `44px`.
+- **Body (`font-body`, Instrument Sans):** all running text, including the landing page.
+  Both faces are bundled locally (OFL) and precached so they work offline.
+- **Brand (`font-brand`, Space Grotesk):** the Lacuna wordmark and course overview title.
+  App sidebar, mobile-header and desktop-titlebar marks use the shared `LacunaIcon` with
+  `accent-ink`, following the active theme and accent. Standalone favicon, PWA and desktop
+  artwork uses the landing mark’s default Volt lime; `icons:generate` also refreshes the
+  existing portable-splash mark without altering its wordmark or copy.
+- **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
+  or display face; axis and metadata labels are never monospace.
+- Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a
+  number to a sentence. Nothing in the app is set in capitals or letter-spaced, and no
+  eyebrow label sits above a heading: the heading names the screen on its own
+  (`src/designRules.test.ts` enforces the capitals rule).
+- One name per action: **Study** always opens the session plan, a lesson page's direct action is
+  **Study lesson**, and path practice kinds are **Card practice** and **Practice questions**.
+  Counts pluralise ("1 card").
 - A global font-scale control multiplies all text (see §15).
+
+Choice architecture follows _Nudge_: a reversible default, the same mapping for the same
+action everywhere, and an empty panel offers its next action (an empty lesson leads with
+New card; controls with nothing to manage are hidden). Charts plot daily counts as bars and
+continuous measures as lines, and never draw counts against a percentage axis.
 
 Dashboard and course/lesson headings sit directly on the page without decorative panel
 frames. Course cards and functional grouping retain their boundaries. Empty-course and
-session-report states use small amber SVG line drawings in the landing page’s illustration
+session-report states use small accent-coloured SVG line drawings in the landing page’s illustration
 style, without changing their controls or motion. The course overview uses a compact winding
 path without decorative study scenes. Neutral curved SVG strokes connect stops; completed
 lesson nodes use the configured accent. Analytics empty states use drawings appropriate to
@@ -48,36 +86,128 @@ so the app can be as snappy or as gentle as the user prefers.
 Shared conventions:
 
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
-- Springs for tactile controls and shared-layout indicators.
+- Springs for tactile controls and shared-layout indicators. Shared progress fills, swipe returns
+  and decorative spring acknowledgements also scale their physics through `scaledSpring`, with
+  immediate updates at a zero motion multiplier.
+- Expanding action surfaces and disclosures share a physical spring with stiffness 420,
+  damping 36 and mass 1. Motion speed scales stiffness by the inverse square of the
+  multiplier and damping by its inverse, preserving the damping ratio. Reduced motion
+  removes the interpolation; text remains at its natural size as the surface expands.
+  Disclosure opacity takes 120ms times the motion multiplier. Nested settings retain
+  mounted drafts while closed and inert. Note controls and annotation panels keep
+  decoration and spacing inside the zero-height wrapper. Assessment editor step changes
+  measure their height locally; StepSwap itself remains a content transition. The mobile drawer
+  scrim fades independently of its opaque surface; mobile navigation retains its
+  260/30 spring, scaled with motion speed. The touch sheet uses one position value for
+  entrance, direct dragging, spring return and dismissal.
 - Staggered list/grid reveals with a small per-item delay, capped so long lists do not crawl.
 - `LayoutGroup` coordinates reflow animations across sibling elements (e.g. Settings' and
   Help's active-tab underline).
+- Layout animation (`layout`, `layoutId`) comes from motion's `domMax` features, which the
+  app's `LazyMotion` loads asynchronously (`src/motionFeatures.ts`) straight after first paint.
+  Anything holding text animates with `layout="position"`, never `size`, so text is never
+  scaled mid-animation; only text-free indicators (the sliding pills) animate their size.
+
+- Celebration primitives (`components/ui/Celebration.tsx`): `CountUp` counts a figure up
+  once (assistive technology reads only the final value) and `Burst` throws a short
+  confetti burst. Both render statically or not at all when the multiplier is 0.
 
 Specific motion (current state of the app):
 
-- **Page transitions:** shell pages crossfade in place through `AppShell` (`popLayout`, so
-  the outgoing page is taken out of flow and the two never stack). A fade writes opacity
-  only — never a transform — so `position: fixed` descendants stay viewport-fixed.
-  Moving between a course's sections still slides sideways in the direction of travel.
-  Full-screen landing, method, conductor and Learn routes use the outer `RouteTransition`
-  boundary, also a crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip
-  enter/exit when `prefers-reduced-motion` is on. The main scroll area resets to the top
-  on every navigation. Incoming page content sits still inside that fade — settings
-  sections, dashboard cards, editor shells, Help and Share no longer hop up after the
-  route has already arrived.
-- **Shared controls:** `Button` scales to 1.02 on hover and 0.96 on press; `Toggle`, `Menu`
+- **Page transitions:** shell pages fade in through `AppShell` (`popLayout`) while the
+  outgoing page leaves at once, so two pages never show together. The fade writes opacity
+  only, and the tab drift below settles with no transform left behind, so `position: fixed`
+  descendants stay viewport-fixed. Moving between adjacent course sections adds a 24px drift
+  in the direction of travel (`TAB_DRIFT_PX`), not a full-width slide. Full-screen landing,
+  method, conductor and Learn routes use the outer `RouteTransition` boundary, also a
+  crossfade, with `AnimatePresence mode="wait"`. Starting from the Study sheet instead
+  reuses the landing cover: sheet contents fade over 90ms while its surface expands from
+  its rendered bounds with a 380ms, zero-bounce spring, blends to paper and loses its radius.
+  The shell dims by 4%, without scaling. Covered study arrivals mount synchronously and
+  release the cover only once session content is ready. The session header fades over 140ms;
+  the first three content blocks rise 8px over 220ms, starting at 20ms with a 40ms stagger
+  (320ms total). Finished blocks retain no transform. Direct study entries retain the outer
+  route fade and share this entrance. All timings scale with motion speed and become instant
+  under reduced motion. Both boundaries skip enter/exit when
+  `prefers-reduced-motion` is on. Incoming page content sits still inside that fade:
+  sections may fade on a short stagger (`Rise`, settings cards, Import); study uses the entrance above.
+  The first route appears immediately; this does not suppress entrances for content opened later.
+  Course and lesson workspaces fade together over the local motion duration once their
+  core records and notes are ready, with no section rise or stagger. New course warms
+  both destination modules while the form is open; its inline lesson reuses the course's
+  ready snapshot. Forecasts, scheduling configuration and related question sets do not
+  delay the workspace. Live updates do not replay its entrance; reduced motion shows it
+  immediately, and controls remain usable throughout the fade.
+- **Course title:** section changes within the same course carry the name between the
+  Path heading and persistent navigation, reversing when returning to Path. A reload,
+  entry from Today or entry from another course shows the title in place. The travelling
+  overlay clips the live endpoints until it settles; their own entrance fades cannot
+  reveal duplicate titles. Inline single-lesson courses retain their navigation identity.
+  Titles that fit on one line at both ends stay together during travel; multiline headings
+  can wrap, with no clipping against the overlay's interpolated height. Departing headings
+  stay hidden while their route finishes exiting.
+  Reduced motion switches endpoints immediately.
+- **Today’s Import action:** the neutral button expands into its own source chooser and
+  import form using the same surface and spring as New course. Today stays in place.
+  Cold opens wait for the form module while the trigger shows loading feedback; content
+  is measured at its final width so both dimensions expand together. Source selection
+  and All sources use opposite short slides with a crossfade, including the back button,
+  while the panel height follows its content with the same spring. Text and Anki imports
+  use compact input, review and destination steps without a panel scrollbar. The panel
+  restores trigger focus on close and cannot close during an import write. Reduced motion removes the interpolation.
+- **Scroll memory (`scrollMemory.ts`):** a new page starts at the top; returning to a page,
+  by browser Back or Forward or by an in-app return (`state.returning`), restores where it
+  was left, keyed by path and query. A query change on the same page keeps its place.
+- **Shared controls:** ordinary `Button` controls scale to 1.02 on hover and 0.96 on press.
+  Morphing triggers do not press-scale: the surface growing from their resting bounds is
+  the press feedback, for pointer and keyboard activation. Study also keeps its resting
+  size on hover. `Toggle`, `Menu`
   and assessment sheets use the same global motion multiplier for their springs, fades and
   CSS transitions. Reduced motion removes these transforms and entrances. Every Button
   variant enforces a 44px minimum touch height.
+- **Press feedback (`pressFeedback.ts`):** every other control (plain buttons, links, tabs,
+  menu items, switches) sinks about 5px on press and springs back on release, so large
+  surfaces dip as gently as pills. It animates the standalone `scale` property, so it
+  composes with a control's own transform. Controls that animate their own press carry
+  `data-press` to opt out of pointer feedback; `data-press="none"` also skips keyboard scaling.
+- **Typing feedback (`typingFeedback.ts`):** typing in a text field, textarea or editable
+  region gives a soft accent glow round the field that fades back to its resting style. Only
+  the box shadow animates, so text, caret and layout stay still; a burst of typing shares one
+  glow. It follows the motion-speed setting, and fields carry `data-no-typing-feedback` to
+  opt out.
 - **Progress bar (`ProgressBar`):** the fill animates to its new width on a spring; a slow,
   looping sheen sweeps across any non-empty bar for a sense of depth.
-- **Sidebar:** width animates on collapse/expand (spring); the active-item marker is a
-  shared-layout element (`layoutId="nav-active"`) that slides between items; items nudge
-  right slightly on hover. Expanding a course's lesson list fades in place rather than
-  tweening height. A collapsible drawer on mobile (§4.1); the drawer overlay and panel
+- **Sidebar:** desktop width changes between 72px and 264px over 280ms with the standard
+  easing curve, including safe-area padding. Real width drives the adjacent content and
+  active pill in the same frame. Icons stay centred 36px from the inner left edge in both
+  states, as does the theme toggle. When expanded, the theme toggle and collapse chevron share
+  the footer's bottom line, theme at the left and chevron at the right edge, with the spare
+  height as a gap above them. On collapsing, the chevron stays on that line and slides left into
+  the rail column whilst the theme toggle rises into the slot above it, ending stacked. Both
+  move on the width's easing curve (instantly under reduced motion, and reversibly
+  mid-animation) and the footer keeps one height, so Share, Settings and Help never move. The
+  mobile drawer keeps its side-by-side row. Mounted, single-line labels clip
+  at the moving edge, fading out over 120ms or in over 180ms after a 60ms delay. Hidden
+  labels, course expanders and retained lesson lists are inert and hidden from assistive
+  technology. Hover cards close during resizing and work again on the settled rail.
+  Timings scale with motion speed and become instant at zero. The active-item marker slides
+  within Today/Search content/Progress or within Share/Settings/Help, using separate
+  shared-layout identities for those groups. Leaving a group selects the destination
+  directly, without travelling or leaving an outgoing highlight. Course rows (including
+  nested routes), Archived and the drawer's Import select directly. Pointer and keyboard
+  navigation follow the same rule. The glide retains
+  stiffness 500 and damping 38, with a sidebar-only 1.2 timing multiplier applied alongside
+  motion speed through `scaledSpring`, preserving the damping ratio. Course lesson lists
+  retain their measured height and spring open or closed, with closing 20% quicker.
+  Lessons fade and slide 4px with a short stagger, reversed on close; the chevron rotates
+  with a spring. Other courses and Archived follow the changing height in normal flow,
+  without a separate layout animation or group fade. Mid-animation toggles retarget the
+  retained panel. The desktop rail folds the same panel without losing its expanded state;
+  the mobile drawer uses the same motion. Reduced motion switches instantly.
+  A collapsible drawer on mobile (§4.1); the drawer overlay and panel
   skip enter/exit when the motion multiplier is 0.
 - **Course cards** (dashboard grid): no arrival stagger (that competed with the shell
-  fade). A `whileHover` lift (`y: -4`) with a smooth shadow/border transition; a
+  fade). A `whileHover` lift (`y: -4`) with a smooth surface-colour transition; a
   `whileTap` scale-down confirms the press. They do not carry swipe gestures — that
   affordance lives on card-list rows instead (below). Hover detail still grows the
   card by height so the grid can follow the pointer.
@@ -85,20 +215,32 @@ Specific motion (current state of the app):
   gesture** — drag left past a threshold to spring open a per-card action tray, drag right
   to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
   snap-back below the threshold.
-- **Learn answer feedback:** after the card departs, a soft glow confirms the grade —
-  green for correct, muted red for incorrect — with a radial pulse from the centre.
-  Swipe feedback comes from the corresponding side; keyboard feedback rises from the foot
-  of the screen. Both remain decorative (`pointer-events-none`) and independent of the write.
-- **Study card hand-off:** swipe, button and keyboard grades carry the card fully beyond
-  the appropriate viewport edge in 200 ms before grading advances the session. Repeated
-  inputs are ignored during departure, and unmounting cancels a pending grade. Incoming
-  cards rise 20 px and settle from 97% scale over 280 ms, including repeated cards.
-  The motion-speed setting scales these timings; reduced motion grades immediately.
+- **Learn answer feedback:** the departing card carries a positive/negative inner rim,
+  fading through an opacity-only layer over 320 ms. The corresponding grade button
+  compresses to 97% and briefly fills with its outcome colour over 240 ms, including
+  keyboard grades. There is no page-wide grading glow. Touch drag hints remain on-card.
+- **Study preview:** a single opaque neutral surface expands from the Study button and
+  contracts back into it using the shared expansion spring. Only the button's own fill
+  and label fade over 180ms times the motion multiplier, from its actual rendered colours
+  into the card header and back on dismissal. The closed primary button remains Volt.
+  The trailing arrow morphs into a cross using the same two SVG strokes and reverses
+  on dismissal; it never swaps sides or mounts a different icon.
+  The full-width body stays right-anchored and clipped, fading in place without a slide.
+  Reduced motion applies the final appearance and geometry immediately.
+- **Study card hand-off:** correct grades throw right, incorrect grades left, with a
+  restrained 3-degree tilt, 102% lift and a non-bouncing 300/35 spring. Swipe release
+  velocity feeds the throw. Persistence starts 70 ms into the lift; the card stays visible
+  until the next presentation is ready, then throws as that card enters from 96% scale,
+  12 px below, at 65% opacity. There is no inter-card pause or speculative queue read.
+  Repeated card ids receive distinct presentations; repeated grades are ignored and
+  Undo cancels pending motion. Settled wrappers retain no transform. The header progress
+  track and outcome fills use a critically damped 300/34.64 spring. All durations and spring physics scale
+  with motion speed; reduced motion commits synchronously and skips presence retention.
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
   Swipes follow the pointer directly, with a compact Yes/No cue on the card. Abandoned
   swipes spring back; accepted swipes retain their offset through the shared departure.
 - **In-place steps:** picker-to-options sheets, Learn reveal-to-grade, Question checking,
-  Numeric/Working results, Lesson Study/Author mode and other same-surface steps keep their
+  Numeric/Working results, Lesson Study/Edit mode and other same-surface steps keep their
   chrome still and crossfade the step (`StepSwap`). Forward and back take a short sideways
   step; phase changes fade in place. Note, annotation, optional-constraint and staging panels
   also interpolate height instead of snapping open or shut.
@@ -110,15 +252,38 @@ Specific motion (current state of the app):
 - **Tabs / chips:** active-tab underlines and pills are shared-layout elements, including
   Settings, Help and the Course tabs. Batch-authoring workflow tabs use the same continuity.
 - **Reordering and replacement:** lesson rows animate to their new positions; shared inline
-  confirmations crossfade and resize while restoring focus to the exact trigger on cancel.
+  confirmations crossfade and resize while restoring focus to the exact trigger on cancel. Destructive
+  confirmations use a contained rounded panel with a subtle negative-tinted surface and
+  border, the existing consequence text, and grouped rounded destructive and secondary
+  Cancel buttons. Narrow panels stack text above actions; non-destructive variants remain
+  neutral. Returned promises disable both actions until settled, preventing repeat submits;
+  existing caller busy states and error presentation remain authoritative.
+  Lesson rows reserve their lifted border while resting so their bounds stay fixed during a drag.
 - **Toasts:** slide in from the right with a slight scale.
+- **Today’s arrival:** the exam-day forecast surface (chart, legend and week figures)
+  waits for its review history and chart module, then fades in whole; the course rows
+  follow, fading top to bottom 50ms apart, with rows past the fifth arriving together.
+  Neither moves on entry. A forecast still pending after 600ms gives way: the rows appear
+  beneath a placeholder that holds the surface's room, and a failed chart load shows the
+  rows without it. The chart is measured before its first paint. Live updates never replay
+  the entrance, and reduced motion shows everything at once.
 - **Dashboard streak:** the flame icon gently pulses/rotates while a streak is alight; the
   streak number springs when it changes.
 - **Pomodoro timer:** the compact face in the Learn header is a 36px SVG ring with a
   progress arc; the expanded popup is a 160px circular timer with a smooth 1Hz tick.
 - **Mobile drawer:** scrim fade plus a spring slide-in of the sidebar.
 - **Splash / route fallback:** the initial "Lacuna" wordmark fades up and breathes while the
-  database opens; lazy routes show a pulsing "Loading…".
+  database opens. Course sections and lessons share one loading boundary across access checks,
+  lazy chunks and page data. It waits 200 ms before showing the shared course/lesson skeleton,
+  then keeps it for at least 200 ms from its React commit. Navigation and View/Edit controls
+  remain outside the loading boundary. Today uses the same timing policy for its queue;
+  its forecast retains its separate progressive placeholder. Unresolved sidebar data never
+  produces an empty-course message. Other lazy routes retain their delayed generic skeleton.
+  Course Path retains up to five recently visited live snapshots for five idle minutes;
+  mutations, archival and deletion continue to update them. The study conductor still uses
+  fresh reads and its original refresh-generation contract. Existing hover/focus prefetching
+  is supplemented by idle prefetching for Path from Today, the five course sections and the
+  first lesson from Path.
 
 ### 3.4 Touch-first design system
 
@@ -152,8 +317,8 @@ keyboard shortcuts on keyboard).
   visible on `(hover: none)` devices (no-hover media query), so they cannot be hidden
   from touch users.
 - **Input-mode awareness.** The `useIsTouchMode` hook (`src/state/inputMode.ts`) reads the
-  user's setting and resolves `auto` to `touch` or `keyboard` based on the device's touch
-  capability. Components use it to switch between bottom sheets and dropdowns, show or
+  user's setting and resolves `auto` initially from the primary pointer, then from
+  mouse/keyboard or touch/pen activity. Components use it to switch between bottom sheets and dropdowns, show or
   hide swipe hints, and swap hover-only styles for always-visible ones.
 
 ### 3.5 Layout grid & surfaces
@@ -161,18 +326,106 @@ keyboard shortcuts on keyboard).
 - Content is centred in a max-width frame per page: dashboard `max-w-6xl`; course overview
   Cards, Questions, Analytics, Settings and persistent course navigation 1190px;
   lesson view `max-w-3xl`;
-  editor `max-w-4xl`; learn/report/search `max-w-3xl`. Horizontal padding responds to
+  editor `max-w-4xl`; learn/report `max-w-3xl`. Study headers use a separate
+  `max-w-6xl` frame and safe-area-aware 24px gutters, with the timer last at the right edge
+  throughout notes, cards and between-step screens. Card actions sit before the timer;
+  absent controls never need invisible spacers. The default header shows the course title
+  and session progress; forecast recall lives in the card actions menu on desktop and touch.
+  Search uses a centred `max-w-3xl` column
+  within the shared page frame, with a centred
+  heading and filters and a pill-shaped search field. Results use the same compact inset
+  rows and active highlight as Quick search inside one rounded surface. Hover selects
+  a row without lifting it. Newly appearing rows share Quick search’s gentle 6px upward arrival
+  with a damped spring and eased fade, staggered by 18ms with a 90ms cap and scaled by motion speed; reduced motion
+  shows them immediately. Existing rows do not replay on selection. Clear filters occupies a separate status row, so filter positions
+  remain stable. Results retain reading alignment.
+  Share uses the course-page frame, gutters and header spacing: its heading sits left and
+  its course picker right on desktop, wrapping naturally on phones. The link card and Other ways
+  align beneath the heading. Course switches keep the outer surfaces visible; only course-specific
+  controls reset, while link height changes ease the alternatives into position without scaling text.
+  Horizontal padding responds to
   screen width. The course overview pairs a compact winding path with a lesson companion
   on desktop and stacks those surfaces below 900px. All surfaces inherit Settings colours.
-- Cards/sections: `rounded-2xl border border-line bg-surface p-5/6`, soft black shadows on
-  hover. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
+- Course sections share their heading size (36px, rising to 44px on desktop), top spacing
+  and content edges. Course Settings uses the full frame for an asymmetric grid: a large study-goal and dates
+  card beside stacked daily-workload and target-recall cards, followed by compact expanding rows.
+  These cards stack on narrower screens. Settings keeps three overview cards in the same asymmetric grid, then
+  expanding rows at every viewport size. Help shares the heading rhythm and frame, with a search pill
+  above Settings-style cards containing grouped question disclosures. From 1100px, two fixed
+  columns place Getting started and Studying on the left and Cards and content, Progress and
+  Your data on the right; narrower screens stack them in that order. Cards keep their natural
+  heights, and question text aligns with heading text. Answers stay brief, with small inline
+  examples and pill links; searching expands ranked matches in one full-width Results card. Persistent course navigation shows the course name only when the page's course
+  heading is out of view, including headings loaded asynchronously. The course name travels
+  and shrinks from the Path heading into this persistent identity when changing sections,
+  then returns to the heading on Path. One visual layer stays outside the route fade and
+  clipping; the real heading and link keep their semantics and interaction. Wrapped titles
+  reflow as their text size and available bounds change. Reduced motion switches endpoints
+  immediately. Inline single-lesson courses keep their course identity in navigation.
+- Cards/sections: the shared `SectionCard` uses `rounded-3xl bg-surface p-5/6` with a
+  single hairline border and no shadow. Settings cards share its surface tokens, as does `DialogPanel`. Use `SectionCard` (`compact` for `p-5`) rather than writing the classes out.
 - Shared primitives in `src/components/ui/`: `Field` and `Input` for labelled form
-  controls (label, hint, error), `Skeleton` for loading placeholders, and `DialogPanel`
-  with `DialogHeader` for centred modal dialogs (overlay, backdrop, paper panel and a
-  44px close button).
+  controls (label, hint, error). A label above its control is small semibold ink
+  (`fieldLabelClassName`), its hint regular and faint; `Select` and inputs laid out in a row
+  share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
+  for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, a
+  flat hairline card-surface panel like Quick search's, and a 44px close button).
+  Shortcut help, shortcut capture, leave confirmations, final-exam decisions, desktop update
+  readiness, MCP consent and lazy-overlay recovery share this primitive and its speed-scaled
+  320/30 spring. Modal panels stay within safe-area gutters; long shortcut lists scroll beneath
+  a fixed header. Departing dialogs become inert immediately and release focus to their trigger.
+  Pomodoro uses the same primitive in anchored, non-modal mode. Reduced motion removes
+  interpolation. Error diagnostics and update notes use the shared animated disclosure.
+- Loading placeholders follow their destination's frame and grouping: the course lesson list
+  with companion and summary, Study's wider pill header, the asymmetric course-settings grid
+  and the specialised editors' content groups. Missing records share a framed recovery link.
+  Archive and empty-card states use the existing Study drawings without additional copy.
+  Notifications and desktop update notices use flat surfaces and safe-area placement; their
+  actions and Windows/Linux titlebar controls have 44px targets.
+- Markdown diagrams resolve their palette from the current theme and accent tokens; syntax
+  highlighting uses readable semantic and chart colours in both themes. Diagram source and
+  chart data use shared pill disclosures with measured height motion and inert closed content.
+  Note title, content and annotation fields share the form label and frame recipes; highlight
+  deletion uses the shared inline confirmation. Enlarged images use the shared dialog surface
+  and entrance/exit spring, with a scaled layout spring between fitted and actual size.
+  These transitions follow motion speed and become immediate with reduced motion. Image alt
+  text remains available to assistive technology without a duplicate visible caption.
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.
-
+  Card repeat-save spans its action column above natural-width Cancel/Done and Add card;
+  the added tally reserves space before the first save. Touch uses a compact two-row dock
+  that follows the visible viewport above a keyboard and restores its navigation/safe-area
+  offset when the keyboard closes. Answer-mode labels sit above their controls; reverse
+  creation shares the responsive field grid. Compact card toolbars expose extra formatting
+  through More and scroll their compact row at narrow widths rather than orphaning an action.
 
 [Specification index](../SPEC.md)
+
+Creation actions share Today’s neutral 44px pill: raised surface, inset strong-line ring,
+ink label and plus icon. Name-first creation expands from that pill with the shared expansion
+spring; the plus rotates to close, Escape dismisses and focus returns to the trigger. Closed
+forms are inert and hidden from assistive technology. Full-editor creation keeps immediate
+navigation with the same pill and a motion-scaled 0.97 press. Embedded menu and compact
+editor-toolbar actions retain their local layout.
+
+- **Path editing:** checkpoint/exam, manual practice and Question Set editors use the shared
+  width/height spring to grow their surface from the opening row or Add trigger. The editor
+  overlays the path card,
+  with a quiet paper-coloured scrim and no background blur. Below 640px it ends as a bottom
+  sheet using the same surface growth. Inline sentence fields and chip popovers replace modal forms;
+  lesson pills disclose on the shared spring. Popovers scale from 94% with a quick spring.
+  Saving folds the retained sentence back into its source. Path drag lifts the whole row to
+  102% with the raised shadow, tracks vertical movement directly, and springs neighbours
+  aside. Drop carries presented positions across the repository update before settling with
+  the release velocity. These transitions honour motion speed and become instant at zero.
+
+### Public utility pages
+
+Download and Method use the current theme tokens. Download choices, comparison demo controls
+and Method metrics reuse the shared pill buttons; their panels use the shared flat card surface.
+Installation help and Method weights use measured disclosures. Benchmark changes use scaled
+springs, while chart dragging follows the pointer directly. Comparison screenshots open in the
+shared dialog with trapped focus, Escape/backdrop dismissal and focus returned to the trigger.
+Landing, Method and Download navigation targets are at least 44 px high. Unknown route paths wrap even without spaces.
+The landing hero and lower editorial sections retain their separate treatment.

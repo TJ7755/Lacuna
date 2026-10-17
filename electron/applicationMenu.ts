@@ -20,25 +20,63 @@ function createViewSubmenu(development: boolean): MenuItemConstructorOptions[] {
   ];
 }
 
+/** Existing Lacuna actions the native menu may open; the renderer owns what each does. */
+export type MenuCommand = 'help' | 'settings' | 'shortcuts';
+
 /** Build the platform-native command surface without exposing development tools in releases. */
 export function createApplicationMenuTemplate(
   platform: NodeJS.Platform,
   development: boolean,
-  openHelp: () => void = () => undefined,
+  run: (command: MenuCommand) => void = () => undefined,
 ): MenuItemConstructorOptions[] {
+  const mac = platform === 'darwin';
+  const settings: MenuItemConstructorOptions = {
+    label: mac ? 'Settings…' : '&Settings',
+    accelerator: 'CmdOrCtrl+,',
+    click: () => run('settings'),
+  };
   return [
-    ...(platform === 'darwin' ? [{ role: 'appMenu' as const }] : []),
-    { role: 'fileMenu' },
+    ...(mac
+      ? [
+          {
+            role: 'appMenu' as const,
+            submenu: [
+              { role: 'about' as const },
+              { type: 'separator' as const },
+              settings,
+              { type: 'separator' as const },
+              { role: 'services' as const },
+              { type: 'separator' as const },
+              { role: 'hide' as const },
+              { role: 'hideOthers' as const },
+              { role: 'unhide' as const },
+              { type: 'separator' as const },
+              { role: 'quit' as const },
+            ],
+          },
+          { role: 'fileMenu' as const },
+        ]
+      : [
+          {
+            role: 'fileMenu' as const,
+            submenu: [settings, { type: 'separator' as const }, { role: 'quit' as const }],
+          },
+        ]),
     { role: 'editMenu' },
-    { label: platform === 'darwin' ? 'View' : '&View', submenu: createViewSubmenu(development) },
+    { label: mac ? 'View' : '&View', submenu: createViewSubmenu(development) },
     { role: 'windowMenu' },
     {
       role: 'help',
       submenu: [
         {
           label: 'Lacuna Help',
-          accelerator: platform === 'darwin' ? 'Cmd+Shift+/' : 'F1',
-          click: openHelp,
+          accelerator: mac ? 'Cmd+Shift+/' : 'F1',
+          click: () => run('help'),
+        },
+        // No accelerator: "?" already opens the panel inside Lacuna and must stay typeable.
+        {
+          label: mac ? 'Keyboard Shortcuts' : '&Keyboard shortcuts',
+          click: () => run('shortcuts'),
         },
       ],
     },

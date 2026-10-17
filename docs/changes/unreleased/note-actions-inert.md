@@ -1,0 +1,1 @@
+- Take departing note actions out of the keyboard and accessibility tree while they fade, so Add note is never announced twice.

@@ -29,7 +29,9 @@ declare global {
       closeWindow: () => void;
       isMaximized: () => Promise<boolean>;
       onMaximizedChange: (callback: (isMaximized: boolean) => void) => () => void;
-      onOpenHelp?: (callback: () => void) => () => void;
+      onMenuCommand?: (
+        callback: (command: 'help' | 'settings' | 'shortcuts') => void,
+      ) => () => void;
       updater?: {
         getState: () => Promise<DesktopUpdateState>;
         checkForUpdates: () => Promise<void>;

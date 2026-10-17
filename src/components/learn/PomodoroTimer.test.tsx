@@ -46,6 +46,21 @@ describe('PomodoroTimer', () => {
       screen.getByRole('button', { name: 'Focus · 120:00' }).querySelector('text'),
     ).toHaveAttribute('font-size', '7');
   });
+
+  it('opens a named timer panel from a round trigger that reports its state', () => {
+    formattedTime = '24:54';
+    render(<PomodoroTimer />);
+    const button = screen.getByRole('button', { name: 'Focus · 24:54' });
+    expect(button).toHaveClass('rounded-full');
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(button);
+
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const panel = screen.getByRole('dialog', { name: 'Pomodoro timer' });
+    expect(panel).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset timer' })).toHaveClass('rounded-full');
+  });
 });
 
 
@@ -55,7 +70,7 @@ it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
   trigger.focus();
   fireEvent.click(trigger);
   const pause = screen.getByRole('button', { name: 'Pause' });
-  const reset = screen.getByRole('button', { name: 'Reset' });
+  const reset = screen.getByRole('button', { name: 'Reset timer' });
   expect(document.activeElement).toBe(pause);
   reset.focus();
   fireEvent.keyDown(reset, { key: 'Tab' });

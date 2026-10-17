@@ -56,7 +56,9 @@ describe('DesktopUpdateController', () => {
     expect(screen.getByText('Offline courses').tagName).toBe('STRONG');
     expect(dialog.querySelector('script, img, iframe, a[href^="javascript:"]')).toBeNull();
     fireEvent.click(toggle);
-    expect(screen.queryByText('Improved imports')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Changes in version 0.2.4' }),
+    ).not.toBeInTheDocument();
   });
 
   it('omits missing notes, traps focus and restores it after Escape', async () => {
@@ -127,7 +129,7 @@ describe('DesktopUpdateController', () => {
       'aria-valuenow',
       '42',
     );
-    expect(screen.getByText('25 MB of 100 MB')).toBeInTheDocument();
+    expect(screen.queryByText('25 MB of 100 MB')).not.toBeInTheDocument();
   });
 
   it('shows an actionable error when a background check fails', async () => {

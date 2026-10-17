@@ -10,6 +10,8 @@ vi.mock('../../db/assets', () => ({
 }));
 
 vi.mock('../../db/assetCache', () => ({
+  resolveCachedAssetMarkdown: (md: string) => md,
+  cachedAssetImageSize: () => undefined,
   resolveAssetMarkdownCached: vi.fn((md: string) => Promise.resolve(md)),
 }));
 

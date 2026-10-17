@@ -24,4 +24,25 @@ describe('ErrorBoundary', () => {
     reload.mockRestore();
     errorLog.mockRestore();
   });
+
+  it('leads with recovery, keeps diagnostics behind Technical details and reports copy failure', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+    render(
+      <ErrorBoundary onReset={vi.fn()}>
+        <BrokenLazyContent />
+      </ErrorBoundary>,
+    );
+    expect(screen.getByRole('heading', { name: 'Something went wrong' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Technical details' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    fireEvent.click(screen.getByText('Technical details'));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostic details' }));
+    expect(
+      await screen.findByText('Could not copy. Download the bundle instead.'),
+    ).toBeInTheDocument();
+    errorLog.mockRestore();
+  });
 });

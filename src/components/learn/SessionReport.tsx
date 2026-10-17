@@ -1,8 +1,12 @@
-import { useMemo } from 'react';
+import { useId, useMemo, useState, type CSSProperties } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../ui/Button';
 import { ProgressBar } from '../ui/ProgressBar';
 import { useChartColours } from '../analytics/useChartColours';
+import { Burst, CountUp } from '../ui/Celebration';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { STUDY_COLUMN } from './studyHeaderLayout';
 import type { SessionSummary } from './types';
 import './SessionReport.css';
 
@@ -19,6 +23,10 @@ export function SessionReport({
   onContinue?: () => void;
 }) {
   const c = useChartColours();
+  const [motionSpeed] = useMotionSpeed();
+  const m = speedMultiplier(motionSpeed);
+  const detailsId = useId();
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const { events } = summary;
 
   // Retries are further answers to the same card, not more cards: count each card once,
@@ -51,8 +59,15 @@ export function SessionReport({
   const delta = Math.round((summary.masteryAfter - summary.masteryBefore) * 100);
 
   return (
-    <main className="session-report" aria-label="Session report">
-      <h1>
+    <main
+      className={`session-report ${STUDY_COLUMN}`}
+      style={{ '--session-motion': m } as CSSProperties}
+      aria-label="Session report"
+    >
+      <h1 className="relative">
+        {total > 0 && (summary.reachedGoal || accuracy >= 80) && (
+          <Burst trigger="session" multiplier={m} count={26} spread={150} />
+        )}
         {summary.reachedGoal
           ? 'Goal reached.'
           : summary.timeLimitReached
@@ -71,12 +86,14 @@ export function SessionReport({
       <dl className="session-report-facts">
         <div>
           <dt>{cardCount === 1 ? 'Card reviewed' : 'Cards reviewed'}</dt>
-          <dd>{cardCount}</dd>
+          <dd>
+            <CountUp value={cardCount} multiplier={m} />
+          </dd>
         </div>
         <div>
           <dt>Accuracy</dt>
           <dd>
-            {accuracy}
+            <CountUp value={accuracy} multiplier={m} />
             <span>%</span>
           </dd>
         </div>
@@ -87,7 +104,15 @@ export function SessionReport({
           <span>{summary.objectiveLabel}</span>
           <span className="tabular-nums">
             {Math.round(summary.masteryBefore * 100)}% →{' '}
-            <strong>{Math.round(summary.masteryAfter * 100)}%</strong>
+            <strong>
+              <CountUp
+                value={Math.round(summary.masteryAfter * 100)}
+                from={Math.round(summary.masteryBefore * 100)}
+                multiplier={m}
+                duration={1.4}
+                suffix="%"
+              />
+            </strong>
           </span>
         </div>
         <ProgressBar
@@ -98,82 +123,100 @@ export function SessionReport({
         />
       </div>
 
-      <details className="session-report-details">
-        <summary>
-          Session details <span aria-hidden="true">+</span>
-        </summary>
-        <div className="session-report-detail-content">
-          <dl>
-            <div>
-              <dt>Mean time</dt>
-              <dd>{meanResponse.toFixed(1)}s</dd>
-            </div>
-            <div>
-              <dt>Focus</dt>
-              <dd>{Math.round(summary.focusFraction * 100)}%</dd>
-            </div>
-            <div>
-              <dt>Progress this session</dt>
-              <dd>
-                {delta >= 0 ? '+' : ''}
-                {delta} percentage points
-              </dd>
-            </div>
-          </dl>
-          {/* Keep the first-pass report focused on correct and remaining cards. */}
-          {!summary.simpleMode && (
-            <div className="mt-6">
-              <h2 className="mb-4 font-display text-xl">How you rated</h2>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height={192}>
-                  <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                    <XAxis
-                      dataKey="grade"
-                      stroke={c.inkFaint}
-                      tick={{ fill: c.inkFaint, fontSize: 12 }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke={c.inkFaint}
-                      tick={{ fill: c.inkFaint, fontSize: 11 }}
-                      tickLine={false}
-                      width={32}
-                    />
-                    <Tooltip
-                      cursor={{ fill: c.line, opacity: 0.4 }}
-                      contentStyle={{
-                        background: c.surface,
-                        border: `1px solid ${c.line}`,
-                        borderRadius: 10,
-                        color: c.ink,
-                        fontSize: 13,
-                      }}
-                      formatter={(v) => [v, 'Cards']}
-                    />
-                    <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
-                      {gradeData.map((d) => (
-                        <Cell key={d.g} fill={gradeColour(d.g)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+      <div className="session-report-details">
+        <button
+          type="button"
+          className="session-report-details-trigger"
+          aria-expanded={detailsOpen}
+          aria-controls={detailsId}
+          onClick={() => setDetailsOpen((value) => !value)}
+        >
+          Session details{' '}
+          <span className="session-report-plus" aria-hidden="true">
+            +
+          </span>
+        </button>
+        <AnimatedDisclosure open={detailsOpen} retainContent id={detailsId}>
+          <div className="session-report-detail-content">
+            <dl>
+              <div>
+                <dt>Mean time</dt>
+                <dd>{meanResponse.toFixed(1)}s</dd>
               </div>
-            </div>
-          )}
+              <div>
+                <dt>Focus</dt>
+                <dd>{Math.round(summary.focusFraction * 100)}%</dd>
+              </div>
+              <div>
+                <dt>Progress this session</dt>
+                <dd>
+                  {delta >= 0 ? '+' : ''}
+                  {delta} percentage points
+                </dd>
+              </div>
+            </dl>
+            {/* Keep the first-pass report focused on correct and remaining cards. */}
+            {!summary.simpleMode && (
+              <div className="mt-6">
+                <h2 className="mb-4 font-display text-xl">How you rated</h2>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height={192}>
+                    <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis
+                        dataKey="grade"
+                        stroke={c.inkFaint}
+                        tick={{ fill: c.inkFaint, fontSize: 12 }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={c.inkFaint}
+                        tick={{ fill: c.inkFaint, fontSize: 11 }}
+                        tickLine={false}
+                        width={32}
+                      />
+                      <Tooltip
+                        separator=": "
+                        cursor={{ fill: c.line, opacity: 0.4 }}
+                        contentStyle={{
+                          background: c.surface,
+                          border: `1px solid ${c.line}`,
+                          borderRadius: 10,
+                          color: c.ink,
+                          fontSize: 13,
+                        }}
+                        formatter={(v) => [v, 'Cards']}
+                      />
+                      <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
+                        {gradeData.map((d) => (
+                          <Cell key={d.g} fill={gradeColour(d.g)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
-          {distractions > 0 && (
-            <p className="session-report-distractions">
-              You left the page during {distractions} of {total}{' '}
-              {total === 1 ? 'answer' : 'answers'}. Your grades were unaffected; the timing may be
-              less representative.
-            </p>
-          )}
-        </div>
-      </details>
+            {distractions > 0 && (
+              <p className="session-report-distractions">
+                You left the page during {distractions} of {total}{' '}
+                {total === 1 ? 'answer' : 'answers'}. Your grades were unaffected; the timing may be
+                less representative.
+              </p>
+            )}
+          </div>
+        </AnimatedDisclosure>
+      </div>
 
       <div className="session-report-actions">
-        <Button variant="primary" size="lg" onClick={onReturn} className="session-report-done">
+        <Button
+          variant="primary"
+          size="lg"
+          hoverScale={false}
+          onClick={onReturn}
+          className="session-report-done"
+        >
           Done
           <svg
             className="session-report-arrow"
@@ -193,7 +236,7 @@ export function SessionReport({
           </svg>
         </Button>
         {onContinue && (
-          <Button variant="ghost" size="lg" onClick={onContinue}>
+          <Button variant="ghost" size="lg" hoverScale={false} onClick={onContinue}>
             {summary.limitReached || summary.timeLimitReached ? 'Continue anyway' : 'Keep studying'}
           </Button>
         )}
