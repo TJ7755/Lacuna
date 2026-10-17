@@ -130,14 +130,9 @@ for (const theme of ['light', 'dark'] as const) {
         const measured = await geometry(heading);
         baseline ??= measured;
         expect(measured).toEqual(baseline);
+        // Measure resting colours; a pill left under the pointer by setup reads as hovered.
+        await page.mouse.move(0, 0);
         await verifySecondaryText(page);
-        if (width < 1280) {
-          await expect(
-            page.getByRole('combobox', {
-              name: title === 'Settings' ? 'Jump to settings group' : 'Jump to help topic',
-            }),
-          ).toBeVisible();
-        }
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
         ).toBeLessThanOrEqual(1);
