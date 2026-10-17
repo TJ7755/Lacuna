@@ -117,7 +117,7 @@ Schema **v24** separates direct-recall Cards from post-instruction application Q
 `concepts`, `questions`, `questionConcepts` and `questionAttempts`, and assigns each surviving Card
 one stable `conceptId`. Question contracts live in `src/questions/types.ts`; the canonical domain
 terms and rationale are defined in
-[Domain glossary](../domain-language.md) and [`docs/plans/question-mode.md`](../plans/question-mode.md).
+[Domain glossary](../domain-language.md) and the [Questions study contract](learn-mode.md#structured-item-verification).
 
 A `Concept` is a stable knowledge identity. New Concepts are course-scoped; migrated Cards outside
 a Course retain compatibility-only Concepts scoped to their legacy scheduling unit, which Questions
@@ -482,10 +482,26 @@ validate same-course references and save a complete revision atomically. Existin
 Concept identities connect allocations to Cards without changing Card FSRS state.
 
 Schema v28 adds an empty store. It does not convert or rewrite legacy Questions,
-their schedules or attempts. Personal set attempts remain a separate implementation stage. Future attempts must retain
-their own immutable content/scheme receipt; current set records contain no learner
-answers or marks. See the [persistence contract](../plans/question-sets-persistence.md)
-and [implementation checklist](../plans/question-sets-implementation.md).
+their schedules or attempts. Current set records contain no learner answers or marks.
+
+`src/questions/questionSetRepository.ts` owns authored-content writes. Updates check
+`expectedContentRevisionId`; identical content preserves the existing revision. Changed
+content advances its revision and mutation timestamp, even when the clock moves backwards.
+Deletion writes a tombstone; restoring content advances its timestamp beyond the deletion.
+Nested authored IDs and array order survive edits and portability.
+
+Personal attempts live separately in `questionSetAttempts`, introduced in schema v29.
+`src/questions/questionSetAttemptRepository.ts` creates the immutable content/scheme
+receipt in the same transaction that reads its Course and set. Responses remain editable
+until the relevant Practice question or Paper submission. Corrections, comments, marking
+decisions, reflection and assistance do not overwrite submitted originals. Zero is an
+explicit award; missing and unsure decisions remain unresolved.
+
+Peer sync and recovery share `src/questions/questionSetAttemptMerge.ts`. Conflicting
+receipts, identities, submitted originals or unequal same-revision payloads are hard
+conflicts; timestamps cannot select a replacement. Compatible evidence is retained and
+submitted lifecycle state cannot regress. Attempt receipts keep their media reachable
+after authored content is deleted; Course deletion and undo include attempts.
 
 Author drafts use device-local `appState` entries keyed by encoded Course and set IDs.
 They allow incomplete documents, retain the saved content revision they were based on,

@@ -556,6 +556,13 @@ uses.
 
 ### Question-set integration limits
 
+Full backups and peer sync include authored sets and personal attempts; course shares
+carry authored content and media only. Historical inputs without these collections
+normalise to empty collections. Each added collection or row variant requires an envelope
+and validation boundary that older readers reject rather than silently discard. Current
+markers and schemas live in `src/db/backupValidation.ts`, `backupRecordSchemas.ts` and
+`backupStateSchemas.ts`.
+
 Ordinary course-file imports carry assessment-linked sets. Published export and lineage import
 reject those links until assessment lineage is supported. Published set updates track the last
 accepted revision and reject conflicting local edits or deletions atomically. MCP lineage

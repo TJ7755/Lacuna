@@ -1,0 +1,1 @@
+- Reduced AGENTS.md to universal rules and repository pointers, and removed MEMORIES.md without adding duplicate repository skills.

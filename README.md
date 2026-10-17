@@ -69,9 +69,9 @@ see [desktop and AI setup](docs/desktop.md).
 
 ## Documentation
 
-- [Documentation index](docs/README.md): current references and historical evidence.
+- [Documentation index](docs/README.md): current contracts, operating procedures and measurements.
 - [Specification](docs/SPEC.md) and [domain language](docs/domain-language.md): delivered behaviour.
-- [Maintenance roadmap](docs/next_plan.md): the active work queue and rollout gates.
+- [GitHub issues](https://github.com/TJ7755/Lacuna/issues): active work.
 - [Changes](docs/CHANGES.md): release history and unreleased work.
 - [Release maintenance](docs/maintenance/release.md), [security](SECURITY.md) and
   [governance](docs/maintenance/governance.md): operating and contribution boundaries.

@@ -1,5 +1,5 @@
 /**
- * Pure diff engine for Arc 7's classroom-distribution merge path (docs/archive/roadmap-2026-08-11.md §7.3).
+ * Pure diff engine for the classroom-distribution merge path (docs/spec/portability.md).
  *
  * Generalises `diffRegeneration`'s shape (`sequenceGeneration.ts:217`) — "one sequence's
  * cards, keyed on the stable `sequenceItemId`" — to "a lineage's lessons, notes, and
@@ -17,10 +17,8 @@ import type { CardType, ItemPayload } from './types';
 
 // --- Incoming payload shapes -----------------------------------------------------------
 //
-// Mirrors the `i`-bearing `ShareCard`/`ShareNote`/`ShareLesson` extension described in
-// docs/archive/roadmap-2026-08-11.md §7.2, defined locally per this task's brief (Task 3 lands the real
-// zod-schema versions in `src/db/share.ts`; these are structurally compatible so that
-// reconciliation there is a type-only rename, not a shape change).
+// Local diff inputs adapt the originating IDs from the share schemas in src/db/share.ts.
+// See docs/spec/portability.md for the classroom-distribution contract.
 
 export interface ShareCardInput {
   am?: 'reveal' | 'type';
@@ -96,9 +94,8 @@ export interface ExistingCard {
 }
 
 /**
- * The adopted-id membership registry (docs/archive/roadmap-2026-08-11.md §7.2's `LineageIdMapping`), defined
- * locally per this task's brief — Task 1 lands the real Dexie-schema version in
- * `src/db/types.ts`/`src/db/schema.ts`. Purely a membership check ("has this id already
+ * The adopted-id membership registry (docs/spec/portability.md), structurally matching
+ * the Dexie record in `src/db/types.ts`. Purely a membership check ("has this id already
  * been adopted"), never a translation table, since incoming id and local id are the same
  * value by construction (§7.1).
  */
