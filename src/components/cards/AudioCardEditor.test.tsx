@@ -60,6 +60,31 @@ describe('AudioCardEditor', () => {
     );
   });
 
+  it.each([
+    ['', 'Prompt (optional)'],
+    ['Translate this', 'Answer'],
+  ])('restores the next field when replacing a clip with prompt %j', async (prompt, target) => {
+    const onFrontChange = vi.fn();
+    const marker = `![audio](lacuna-asset://${'a'.repeat(64)})`;
+    render(
+      <AudioCardEditor
+        front={prompt ? `${prompt}\n\n${marker}` : marker}
+        back=""
+        onFrontChange={onFrontChange}
+        onBackChange={vi.fn()}
+        onError={vi.fn()}
+      />,
+    );
+    (await screen.findByRole('button', { name: 'Replace' })).focus();
+    fireEvent.change(screen.getByLabelText('Replace'), {
+      target: { files: [new File(['replacement'], 'replacement.mp3', { type: 'audio/mpeg' })] },
+    });
+    await waitFor(() => expect(screen.getByRole('textbox', { name: target })).toHaveFocus());
+    expect(onFrontChange).toHaveBeenCalledWith(
+      `${prompt ? `${prompt}\n\n` : ''}![audio](lacuna-asset://${'b'.repeat(64)})`,
+    );
+  });
+
   it('keeps the prompt editable after an asset has been selected', async () => {
     const hash = 'a'.repeat(64);
     const onFrontChange = vi.fn();

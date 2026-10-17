@@ -101,7 +101,7 @@ export function AudioCardEditor({
       if (!mountedRef.current) return;
       onFrontChange(buildAudioCardFront(parsed?.prompt ?? front.trim(), asset.hash));
       attachmentFocus.restore(
-        parsed?.prompt || front.trim() ? answerInput.current : promptInput.current,
+        (parsed?.prompt ?? front.trim()) ? answerInput.current : promptInput.current,
       );
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Could not store that audio file.');
