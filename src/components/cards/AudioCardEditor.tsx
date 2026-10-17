@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useEffect, useRef, useState } from 'react';
 import { MAX_AUDIO_BYTES, storeAudioBlob } from '../../db/assets';
 import { resolveAssetUrl } from '../../db/assetCache';
@@ -36,6 +37,7 @@ export function AudioCardEditor({
   const [recording, setRecording] = useState(false);
   const [startingRecording, setStartingRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startingRecordingRef = useRef(false);
@@ -145,24 +147,31 @@ export function AudioCardEditor({
               Choose or record an audio clip.
             </span>
           )}
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-2 text-sm text-ink-soft transition-colors hover:border-line-strong hover:text-ink">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || recording || startingRecording}
+            onClick={() => fileRef.current?.click()}
+          >
             <UploadIcon width={16} height={16} />
             {parsed ? 'Replace' : 'Choose file'}
-            <input
-              type="file"
-              accept={AUDIO_ACCEPT}
-              className="sr-only"
-              disabled={busy || recording || startingRecording}
-              onChange={(event) => chooseFile(event.target.files?.[0])}
-            />
-          </label>
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={AUDIO_ACCEPT}
+            aria-label={parsed ? 'Replace' : 'Choose file'}
+            className="hidden"
+            disabled={busy || recording || startingRecording}
+            onChange={(event) => chooseFile(event.target.files?.[0])}
+          />
           <Button
             type="button"
             variant={recording ? 'primary' : 'secondary'}
             disabled={busy || startingRecording}
             onClick={() => (recording ? stopRecording() : void startRecording())}
           >
-            {recording && <PauseIcon width={15} height={15} />}
+            {recording && <PauseIcon width={16} height={16} />}
             {recording ? 'Stop recording' : startingRecording ? 'Starting…' : 'Record'}
           </Button>
         </div>
@@ -172,9 +181,7 @@ export function AudioCardEditor({
       </div>
 
       <label>
-        <span className="mb-2 block text-sm text-ink-soft">
-          Prompt (optional)
-        </span>
+        <span className={`${fieldLabelClassName} mb-2`}>Prompt (optional)</span>
         <textarea
           value={parsed?.prompt ?? front.replace(/!\[audio\][^\n]*/i, '').trim()}
           onChange={(event) => {
@@ -183,20 +190,18 @@ export function AudioCardEditor({
           }}
           rows={3}
           placeholder="Listen and translate:"
-          className="w-full resize-y rounded-xl border border-line bg-surface px-4 py-3 text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
+          className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>
 
       <label>
-        <span className="mb-2 block text-sm text-ink-soft">
-          Answer
-        </span>
+        <span className={`${fieldLabelClassName} mb-2`}>Answer</span>
         <textarea
           value={back}
           onChange={(event) => onBackChange(event.target.value)}
           rows={5}
           placeholder="The expected answer."
-          className="w-full resize-y rounded-xl border border-line bg-surface px-4 py-3 text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent"
+          className={`${inputFrameClassName} w-full resize-y transition-colors placeholder:text-ink-faint`}
         />
       </label>
     </div>

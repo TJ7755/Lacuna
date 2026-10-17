@@ -5,12 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-}
-.card-import-backdrop {
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--ink) / 0.34);
+  padding: 16px;
 }
 .card-import-dialog {
   position: relative;
@@ -20,7 +15,7 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
-  border-radius: 28px;
+  border-radius: 24px;
   background: hsl(var(--surface));
   border: var(--card-border);
   box-shadow: none;
@@ -37,11 +32,11 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 20px 28px;
+  padding: 16px 24px;
 }
 .card-import-header h2 {
   font-family: var(--font-display);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.025em;
 }
@@ -82,12 +77,12 @@
   background: hsl(var(--ink) / 0.07);
   color: hsl(var(--ink-soft));
   transition:
-    background-color 0.3s,
-    color 0.3s;
+    background-color calc(0.16s * var(--import-motion, 1)),
+    color calc(0.16s * var(--import-motion, 1));
 }
 .card-import-steps b {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
 }
 .card-import-steps [aria-current] {
   color: hsl(var(--ink));
@@ -131,7 +126,7 @@
   min-height: 440px;
 }
 .card-import-options {
-  padding: 28px;
+  padding: 24px;
   background: hsl(var(--paper) / 0.55);
 }
 .card-import-options h2 {
@@ -147,10 +142,8 @@
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
-.card-import-title-label input,
-.card-import-input select,
 .import-destination select,
 .import-destination > label input {
   width: 100%;
@@ -158,19 +151,17 @@
   height: 48px;
   padding: 0 14px;
   border: 1.5px solid hsl(var(--line));
-  border-radius: 14px;
+  border-radius: 12px;
   background: hsl(var(--surface));
   color: hsl(var(--ink));
   font: inherit;
   font-weight: 400;
   outline: none;
-  transition: border-color 0.16s;
+  transition: border-color calc(0.16s * var(--import-motion, 1));
 }
-.card-import-title-label input:focus,
-.card-import-input select:focus,
 .import-destination select:focus,
 .import-destination > label input:focus {
-  border-color: hsl(var(--ink));
+  border-color: hsl(var(--accent));
 }
 .card-import-destination {
   display: flex;
@@ -179,15 +170,15 @@
 }
 .card-import-destination span {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--ink-faint));
 }
 .card-import-destination strong {
-  font-weight: 700;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 .card-import-content {
-  padding: 28px;
+  padding: 24px;
   min-width: 0;
 }
 .card-import-input-label {
@@ -198,44 +189,18 @@
   margin-bottom: 12px;
 }
 .card-import-input-label label {
-  font-weight: 700;
-}
-.card-import-input-label button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 999px;
-  background: hsl(var(--ink) / 0.06);
-  font-size: 14px;
   font-weight: 600;
-  color: hsl(var(--ink));
-}
-.card-import-input-label button:hover:not(:disabled) {
-  background: hsl(var(--ink) / 0.1);
 }
 .card-import-input textarea {
   width: 100%;
   height: 260px;
   min-height: 180px;
   resize: vertical;
-  padding: 18px;
-  border: 0;
-  border-radius: 18px;
-  background: hsl(var(--paper) / 0.7);
-  color: hsl(var(--ink));
   font: 14px/1.7 var(--font-body);
   tab-size: 20;
-  outline: none;
-  transition:
-    background-color 0.16s,
-    box-shadow 0.16s;
 }
-.card-import-input textarea:focus,
 .card-import-input[data-dragging='true'] textarea {
-  background: hsl(var(--surface));
-  box-shadow: 0 0 0 2px hsl(var(--ink));
+  border-color: hsl(var(--accent));
 }
 .card-import-input[data-dragging='true'] .card-import-package {
   background: hsl(var(--accent-soft));
@@ -249,7 +214,7 @@
   color: hsl(var(--ink-faint));
 }
 .card-import-source-meta span:last-child {
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--ink-soft));
 }
 .card-import-input details {
@@ -261,7 +226,7 @@
   min-height: 44px;
   display: flex;
   align-items: center;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--ink));
 }
 .card-import-input details label {
@@ -272,12 +237,10 @@
 }
 .card-import-input details select {
   width: auto;
-  height: 40px;
-  border-radius: 12px;
 }
 .card-import-package {
   min-height: 260px;
-  border-radius: 18px;
+  border-radius: 24px;
   background: hsl(var(--paper) / 0.7);
   padding: 24px;
   display: flex;
@@ -287,7 +250,7 @@
   gap: 6px;
   text-align: center;
   overflow-wrap: anywhere;
-  transition: background-color 0.16s;
+  transition: background-color calc(0.16s * var(--import-motion, 1));
 }
 .card-import-package-icon {
   display: grid;
@@ -297,7 +260,6 @@
   margin-bottom: 8px;
   border-radius: 16px;
   background: hsl(var(--surface));
-  box-shadow: 0 1px 2px hsl(var(--ink) / 0.08);
 }
 .card-import-package p {
   font-size: 14px;
@@ -309,7 +271,7 @@
   min-height: 44px;
   padding: 0 14px;
   margin-top: 6px;
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -321,7 +283,7 @@
   gap: 12px;
   margin-top: 20px;
   min-height: 44px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 .card-import-total {
@@ -356,7 +318,7 @@
 }
 .card-import-notice {
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: hsl(var(--ink) / 0.06);
   color: hsl(var(--ink-soft));
   font-size: 14px;
@@ -389,7 +351,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: hsl(var(--ink-soft));
   margin: 0 8px 10px;
 }
@@ -422,7 +384,7 @@
   margin: 6px auto 0;
   padding: 0 14px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -452,7 +414,7 @@
   background: hsl(var(--ink) / 0.12);
 }
 .card-import-footer {
-  padding: 14px 20px 14px 28px;
+  padding: 16px 24px;
   background: hsl(var(--surface));
 }
 .card-import-feedback p {
@@ -462,6 +424,7 @@
 }
 .card-import-actions {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 16px;
 }
@@ -479,7 +442,7 @@
     height: 100%;
   }
   .card-import-header {
-    padding: 14px 16px;
+    padding: 16px 24px;
     gap: 12px;
   }
   .card-import-header h2 {
@@ -512,7 +475,7 @@
     grid-template-columns: 1fr;
   }
   .card-import-footer {
-    padding: 12px 14px;
+    padding: 16px 24px;
   }
   .card-import-actions {
     gap: 8px;
@@ -572,7 +535,6 @@
   height: 140px;
   min-height: 100px;
   resize: none;
-  padding: 12px 16px;
 }
 .card-import-panel .card-import-input-label {
   margin-bottom: 8px;

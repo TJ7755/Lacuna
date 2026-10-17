@@ -77,7 +77,7 @@ describe('BatchAuthoringPromptDialog', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Review response' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review response' }));
     expect(screen.getByText('Generated Question batch')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Target lesson' })).toBeDisabled();
     expect(screen.getByPlaceholderText(new RegExp(BATCH_OUTPUT_START))).toHaveFocus();

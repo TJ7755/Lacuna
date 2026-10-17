@@ -1,4 +1,4 @@
-import { Input } from '../ui/Field';
+import { Input, fieldLabelClassName } from '../ui/Field';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -472,7 +472,7 @@ export function CardList({
                     transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   >
                     <div>
-                      <label className="block text-sm text-ink-soft">
+                      <label className={fieldLabelClassName}>
                         Tag for {countOf(selected.size, 'card')}
                         <Input
                           autoFocus
@@ -486,7 +486,6 @@ export function CardList({
                             }
                           }}
                           placeholder="Type a tag…"
-                          className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none focus:border-accent"
                         />
                         <datalist id="bulk-tag-suggestions">
                           {tagSuggestions.map((t) => (
@@ -531,7 +530,7 @@ export function CardList({
                   >
                     <div>
                       <fieldset className="space-y-2">
-                        <legend className="mb-2 text-sm text-ink-soft">
+                        <legend className={`${fieldLabelClassName} mb-2`}>
                           Reschedule {countOf(selected.size, 'card')}
                         </legend>
                         <label className="flex items-center gap-2 text-sm text-ink">
@@ -580,7 +579,7 @@ export function CardList({
                     transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
                   >
                     <div>
-                      <label className="block text-sm text-ink-soft">
+                      <label className={fieldLabelClassName}>
                         Assign {selected.size} card{selected.size === 1 ? '' : 's'} to
                         <Select
                           value={assignTarget}

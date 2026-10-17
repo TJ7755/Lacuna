@@ -1,4 +1,5 @@
 import { MissingRecord } from '../components/course/MissingRecord';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -242,7 +243,7 @@ export function QuestionEditor() {
   ) {
     return (
       <DelayedFallback>
-        <div className="mx-auto max-w-4xl px-6 py-10">
+        <div className={`${COURSE_PAGE_FRAME} py-8`}>
           <Skeleton className="h-12 w-72 rounded-xl bg-ink/10" />
         </div>
       </DelayedFallback>
@@ -263,7 +264,7 @@ export function QuestionEditor() {
   const saveLabel = saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question';
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 pb-32 md:px-10" {...editorKeys}>
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`} {...editorKeys}>
       <NavigationGuard
         active={draft.shouldBlock}
         onAttempt={draft.flushDraft}
@@ -304,7 +305,7 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className="mb-2 font-display text-base text-ink">Question form</legend>
+            <legend className={labelClass}>Question form</legend>
             <QuestionSegmented
               label="Question form"
               value={kind}
@@ -418,8 +419,8 @@ export function QuestionEditor() {
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+      <div className="pointer-events-none sticky bottom-0 z-20 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-3">
           {editable && editing ? (
             <ConfirmInlineSwap
               active={confirmingDelete}

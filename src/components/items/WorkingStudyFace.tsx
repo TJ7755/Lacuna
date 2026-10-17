@@ -80,7 +80,7 @@ export function WorkingStudyFace({
               <div className="mb-3 text-right text-sm tabular-nums text-ink-soft">
                 {result.marksEarned} / {result.marksAvailable} marks
                 {result.undeterminedLines > 0 && (
-                  <span className="ml-2 font-sans text-xs text-ink-faint">
+                  <span className="ml-2 font-body text-xs text-ink-faint">
                     {result.undeterminedLines === 1
                       ? '1 line unchecked'
                       : `${result.undeterminedLines} lines unchecked`}
@@ -110,7 +110,7 @@ export function WorkingStudyFace({
                         <span className="min-w-0 flex-1 break-words font-mono text-sm text-ink">
                           {verdict.studentLine}
                           {verdict.undetermined && (
-                            <span className="mt-1 block font-sans text-xs text-ink-faint">
+                            <span className="mt-1 block font-body text-xs text-ink-faint">
                               Lacuna could not check this line, so it earned no marks. Report it if
                               you think it is right.
                             </span>
