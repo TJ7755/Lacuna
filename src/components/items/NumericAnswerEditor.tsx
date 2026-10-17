@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Button } from '../ui/Button';
 import type { NumericAnswerSpec } from '../../db/types';
 import { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
@@ -12,6 +13,9 @@ interface NumericAnswerEditorProps {
   value: NumericAnswerSpec;
   onChange: (value: NumericAnswerSpec) => void;
   invalid?: boolean;
+  inputRef?: Ref<HTMLInputElement>;
+  onTabForward?: () => void;
+  onTabBackward?: () => void;
 }
 
 const ANSWER_KINDS = [
@@ -30,7 +34,21 @@ export function NumericAnswerEditor({
   value,
   onChange,
   invalid = false,
+  inputRef,
+  onTabForward,
+  onTabBackward,
 }: NumericAnswerEditorProps) {
+  const invalidAlternative =
+    value.kind === 'matches-one-of'
+      ? value.values.findIndex(
+          (candidate) => !numericAnswerSpecIsValid({ kind: 'exact', value: candidate }),
+        )
+      : -1;
+  const focusTolerance =
+    invalid &&
+    value.kind === 'within' &&
+    numericAnswerSpecIsValid({ kind: 'exact', value: value.value }) &&
+    !numericAnswerSpecIsValid(value);
   const selectKind = (kind: NumericAnswerSpec['kind']) => {
     const current = firstValue(value);
     if (kind === 'exact') onChange({ kind, value: current });
@@ -76,6 +94,13 @@ export function NumericAnswerEditor({
               {value.values.map((candidate, index) => (
                 <div key={index} className="relative">
                   <MathsAnswerInput
+                    ref={
+                      index === (invalid && invalidAlternative >= 0 ? invalidAlternative : 0)
+                        ? inputRef
+                        : undefined
+                    }
+                    onTabForward={onTabForward}
+                    onTabBackward={onTabBackward}
                     label={`Accepted answer ${index + 1}`}
                     value={candidate}
                     onChange={(next) => updateMatch(index, next)}
@@ -106,10 +131,14 @@ export function NumericAnswerEditor({
           ) : (
             <div
               className={cn(
-                value.kind === 'within' && 'grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_9rem]',
+                value.kind === 'within' &&
+                  'grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_9rem]',
               )}
             >
               <MathsAnswerInput
+                ref={focusTolerance ? undefined : inputRef}
+                onTabForward={onTabForward}
+                onTabBackward={onTabBackward}
                 label="Expected answer"
                 value={value.value}
                 onChange={(next) => onChange({ ...value, value: next })}
@@ -118,6 +147,7 @@ export function NumericAnswerEditor({
                 <label className="block">
                   <span className={`${fieldLabelClassName} mb-2`}>Plus or minus</span>
                   <input
+                    ref={focusTolerance ? inputRef : undefined}
                     type="number"
                     aria-label="Plus or minus"
                     min="0"

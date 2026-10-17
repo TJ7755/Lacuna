@@ -1,0 +1,1 @@
+- Extend rapid Card entry to the retained Numeric, Working and Audio editors: direct Tab paths, invalid-field focus, useful audio attachment/repeat focus and fresh Working checker state. Preserve native traversal for incomplete drafts, leave microphone activation explicit, guard pending saves and retain failed drafts for retry. (#438)

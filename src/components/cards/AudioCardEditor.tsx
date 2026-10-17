@@ -1,9 +1,10 @@
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject, type KeyboardEvent } from 'react';
 import { MAX_AUDIO_BYTES, storeAudioBlob } from '../../db/assets';
 import { resolveAssetUrl } from '../../db/assetCache';
 import { buildAudioCardFront, parseAudioCardFront } from '../../media/audio';
 import { Button } from '../ui/Button';
+import { useActionFocus } from '../../hooks/useActionFocus';
 import { PauseIcon, UploadIcon } from '../ui/icons';
 
 const AUDIO_ACCEPT =
@@ -24,13 +25,41 @@ export function AudioCardEditor({
   onFrontChange,
   onBackChange,
   onError,
+  autoFocus = false,
+  entryRef,
+  promptRef,
+  answerRef,
+  onTabForward,
 }: {
+  autoFocus?: boolean;
+  entryRef?: RefObject<HTMLButtonElement | null>;
+  promptRef?: RefObject<HTMLTextAreaElement | null>;
+  answerRef?: RefObject<HTMLTextAreaElement | null>;
+  onTabForward?: () => void;
   front: string;
   back: string;
   onFrontChange: (front: string) => void;
   onBackChange: (back: string) => void;
   onError: (message: string) => void;
 }) {
+  const localPromptRef = useRef<HTMLTextAreaElement>(null);
+  const localAnswerRef = useRef<HTMLTextAreaElement>(null);
+  const promptInput = promptRef ?? localPromptRef;
+  const answerInput = answerRef ?? localAnswerRef;
+  const attachmentFocus = useActionFocus();
+  const handleTab = (event: KeyboardEvent<HTMLTextAreaElement>, moveFocus?: () => void) => {
+    if (
+      event.defaultPrevented ||
+      event.nativeEvent.isComposing ||
+      event.nativeEvent.keyCode === 229 ||
+      event.key !== 'Tab'
+    )
+      return;
+    if (moveFocus) {
+      moveFocus();
+      if (document.activeElement !== event.currentTarget) event.preventDefault();
+    }
+  };
   const parsed = parseAudioCardFront(front);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +98,11 @@ export function AudioCardEditor({
     setBusy(true);
     try {
       const asset = await storeAudioBlob(blob, mimeType);
+      if (!mountedRef.current) return;
       onFrontChange(buildAudioCardFront(parsed?.prompt ?? front.trim(), asset.hash));
+      attachmentFocus.restore(
+        parsed?.prompt || front.trim() ? answerInput.current : promptInput.current,
+      );
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Could not store that audio file.');
     } finally {
@@ -95,6 +128,7 @@ export function AudioCardEditor({
       onError('Audio recording is not supported in this browser.');
       return;
     }
+    attachmentFocus.remember();
     startingRecordingRef.current = true;
     setStartingRecording(true);
     try {
@@ -150,8 +184,14 @@ export function AudioCardEditor({
           <Button
             type="button"
             variant="secondary"
+            ref={entryRef}
+            autoFocus={autoFocus}
             disabled={busy || recording || startingRecording}
-            onClick={() => fileRef.current?.click()}
+            onFocus={attachmentFocus.remember}
+            onClick={() => {
+              attachmentFocus.remember();
+              fileRef.current?.click();
+            }}
           >
             <UploadIcon width={16} height={16} />
             {parsed ? 'Replace' : 'Choose file'}
@@ -183,6 +223,10 @@ export function AudioCardEditor({
       <label>
         <span className={`${fieldLabelClassName} mb-2`}>Prompt (optional)</span>
         <textarea
+          ref={promptInput}
+          onKeyDown={(event) =>
+            handleTab(event, event.shiftKey ? undefined : () => answerInput.current?.focus())
+          }
           value={parsed?.prompt ?? front.replace(/!\[audio\][^\n]*/i, '').trim()}
           onChange={(event) => {
             if (parsed) onFrontChange(buildAudioCardFront(event.target.value, parsed.assetHash));
@@ -197,6 +241,10 @@ export function AudioCardEditor({
       <label>
         <span className={`${fieldLabelClassName} mb-2`}>Answer</span>
         <textarea
+          ref={answerInput}
+          onKeyDown={(event) =>
+            handleTab(event, event.shiftKey ? () => promptInput.current?.focus() : onTabForward)
+          }
           value={back}
           onChange={(event) => onBackChange(event.target.value)}
           rows={5}

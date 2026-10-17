@@ -12,6 +12,8 @@ import { draftKey, loadDraft, saveDraft } from '../utils/drafts';
 
 const mockNavigate = vi.fn();
 let mockIsPresent = true;
+let mockRealMarkdown = false;
+const notify = vi.fn();
 
 vi.mock('motion/react', async () => ({
   ...(await vi.importActual<typeof MotionReact>('motion/react')),
@@ -55,7 +57,7 @@ vi.mock('../state/useCourseData', () => ({
 }));
 
 vi.mock('../components/ui/Toast', () => ({
-  useToast: () => ({ notify: vi.fn() }),
+  useToast: () => ({ notify }),
 }));
 
 vi.mock('../db/cardRepository', () => ({
@@ -71,19 +73,23 @@ vi.mock('../db/cardRepository', () => ({
 
 // Stub the Markdown editor and viewer: fast, focuses the test on CardEditor's own
 // wiring, mirroring SequenceEditor.test.tsx's MarkdownEditor stub.
-vi.mock('../components/markdown/MarkdownEditor', () => ({
-  MarkdownEditor: ({
-    value,
-    onChange,
-    placeholder,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    placeholder?: string;
-  }) => (
-    <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
-  ),
-}));
+vi.mock('../components/markdown/MarkdownEditor', async () => {
+  const actual = await vi.importActual<typeof import('../components/markdown/MarkdownEditor')>(
+    '../components/markdown/MarkdownEditor',
+  );
+  return {
+    MarkdownEditor: (props: React.ComponentProps<typeof actual.MarkdownEditor>) =>
+      mockRealMarkdown ? (
+        <actual.MarkdownEditor {...props} />
+      ) : (
+        <textarea
+          value={props.value}
+          onChange={(e) => props.onChange(e.target.value)}
+          placeholder={props.placeholder}
+        />
+      ),
+  };
+});
 
 vi.mock('../components/markdown/MarkdownView', () => ({
   MarkdownView: ({ source }: { source: string }) => <div data-testid="markdown-view">{source}</div>,
@@ -213,6 +219,8 @@ afterEach(() => vi.useRealTimers());
 beforeEach(() => {
   localStorage.clear();
   mockIsPresent = true;
+  mockRealMarkdown = false;
+  notify.mockClear();
   mockCourse = course;
   mockCard = undefined;
   mockSequences = [];
@@ -223,7 +231,7 @@ beforeEach(() => {
   updateCard.mockClear();
   checkDuplicate.mockClear();
   checkDuplicate.mockResolvedValue(null);
-  createCourseCard.mockClear();
+  createCourseCard.mockReset().mockResolvedValue(undefined);
   writeClipboardText.mockClear();
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
@@ -441,6 +449,9 @@ describe('CardEditor — live preview', () => {
       'true',
     );
     expect(screen.queryByRole('group', { name: 'Preview side' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Check a number or expression, for example: 8 / 2 = 4.'),
+    ).toBeInTheDocument();
   });
 
   it('announces a save', async () => {
@@ -1151,5 +1162,92 @@ describe('CardEditor — published-course lock', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     });
     expect(updateCard).toHaveBeenCalledWith('card-1', expect.any(Object));
+  });
+});
+
+describe('CardEditor — real specialised authoring controls', () => {
+  beforeEach(() => {
+    mockRealMarkdown = true;
+  });
+
+  function fillNumeric() {
+    renderNew();
+    chooseType('Numeric answer');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: '2 + 2?' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Expected answer' }), {
+      target: { value: '4' },
+    });
+  }
+
+  it('blocks repeated keyboard and pointer saves during a pending write', async () => {
+    let complete!: () => void;
+    createCourseCard.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    fillNumeric();
+    const answer = screen.getByRole('textbox', { name: 'Expected answer' });
+    fireEvent.keyDown(answer, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(answer, { key: 'Enter', ctrlKey: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
+    expect(createCourseCard).toHaveBeenCalledTimes(1);
+    await act(async () => complete());
+    expect(screen.getByText('1 added', { exact: true })).toBeInTheDocument();
+  });
+
+  it('retains a failed numeric save, explains it and allows retry', async () => {
+    createCourseCard.mockRejectedValueOnce(new Error('Disk full'));
+    fillNumeric();
+    fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith('Could not save the card. Try again.', 'negative'),
+    );
+    expect(screen.getByRole('textbox', { name: 'Expected answer' })).toHaveValue('4');
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('2 + 2?');
+    fireEvent.click(screen.getByRole('button', { name: 'Save & add another' }));
+    await screen.findByText('1 added', { exact: true });
+    expect(createCourseCard).toHaveBeenCalledTimes(2);
+  });
+
+  it('focuses and explains the first invalid field on a save shortcut', async () => {
+    renderNew();
+    chooseType('Numeric answer');
+    let prompt = screen.getByRole('textbox', { name: 'Question' });
+    fireEvent.keyDown(prompt, { key: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Question' })).toHaveFocus());
+    expect(notify).toHaveBeenLastCalledWith('Enter a question or prompt.', 'negative');
+    prompt = screen.getByRole('textbox', { name: 'Question' });
+    fireEvent.change(prompt, { target: { value: '2 + 2?' } });
+    fireEvent.keyDown(prompt, { key: 'Enter', ctrlKey: true });
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Expected answer' })).toHaveFocus(),
+    );
+    expect(notify).toHaveBeenLastCalledWith(
+      'Enter at least one valid numeric answer without variables.',
+      'negative',
+    );
+    expect(createCourseCard).not.toHaveBeenCalled();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+    expect(screen.getByRole('textbox', { name: 'Expected answer' })).toHaveFocus();
+  });
+
+  it('leaves composing mark-scheme suggestion keys to the input method', () => {
+    renderNew();
+    chooseType('Working');
+    const source = screen.getByRole('textbox', { name: 'Scheme source' });
+    fireEvent.change(source, { target: { value: '[', selectionStart: 1 } });
+    fireEvent.keyDown(source, { key: 'Enter', isComposing: true, keyCode: 229 });
+    expect(source).toHaveValue('[');
+    fireEvent.keyDown(source, { key: 'Tab', keyCode: 229 });
+    expect(source).toHaveValue('[');
+    fireEvent.keyDown(source, { key: 'Enter', ctrlKey: true });
+    expect(source).toHaveValue('[1] ');
+    expect(createCourseCard).not.toHaveBeenCalled();
   });
 });

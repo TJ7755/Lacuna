@@ -95,7 +95,9 @@ describe('AudioCardEditor', () => {
       ondataavailable: ((event: BlobEvent) => void) | null = null;
       onstop: (() => void) | null = null;
       start() {}
-      stop() {}
+      stop() {
+        this.onstop?.();
+      }
     }
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } });
     vi.stubGlobal('MediaRecorder', FakeMediaRecorder);
@@ -110,6 +112,8 @@ describe('AudioCardEditor', () => {
     );
 
     const record = screen.getByRole('button', { name: 'Record' });
+    expect(getUserMedia).not.toHaveBeenCalled();
+    record.focus();
     fireEvent.click(record);
     fireEvent.click(record);
 
@@ -121,5 +125,50 @@ describe('AudioCardEditor', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Stop recording' })).toBeEnabled(),
     );
+    fireEvent.click(screen.getByRole('button', { name: 'Stop recording' }));
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'Prompt (optional)' })).toHaveFocus(),
+    );
   });
+});
+
+it('focuses the next audio entry field after attachment without stealing a later choice', async () => {
+  const { rerender } = render(
+    <AudioCardEditor
+      front=""
+      back=""
+      onFrontChange={vi.fn()}
+      onBackChange={vi.fn()}
+      onError={vi.fn()}
+    />,
+  );
+  const choose = screen.getByRole('button', { name: 'Choose file' });
+  choose.focus();
+  fireEvent.change(screen.getByLabelText('Choose file'), {
+    target: { files: [new File(['clip'], 'clip.mp3', { type: 'audio/mpeg' })] },
+  });
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'Prompt (optional)' })).toHaveFocus(),
+  );
+  rerender(
+    <AudioCardEditor
+      front="Translate this"
+      back=""
+      onFrontChange={vi.fn()}
+      onBackChange={vi.fn()}
+      onError={vi.fn()}
+    />,
+  );
+  choose.focus();
+  fireEvent.change(screen.getByLabelText('Choose file'), {
+    target: { files: [new File(['clip'], 'clip.mp3', { type: 'audio/mpeg' })] },
+  });
+  await waitFor(() => expect(screen.getByRole('textbox', { name: 'Answer' })).toHaveFocus());
+  choose.focus();
+  fireEvent.change(screen.getByLabelText('Choose file'), {
+    target: { files: [new File(['clip'], 'clip.mp3', { type: 'audio/mpeg' })] },
+  });
+  screen.getByRole('textbox', { name: 'Prompt (optional)' }).focus();
+  await waitFor(() => expect(choose).toBeEnabled());
+  expect(screen.getByRole('textbox', { name: 'Prompt (optional)' })).toHaveFocus();
 });
