@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
     const queue = page.getByRole('region', { name: 'Today, most urgent first' });
-    const course = queue.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
+    const course = queue.getByRole('button', { name: 'Welcome to Lacuna', exact: true });
     const more = queue.getByRole('button', { name: 'More for Welcome to Lacuna' });
     await expect(more).toHaveAttribute('aria-expanded', 'false');
     await course.focus();
@@ -58,6 +58,7 @@ for (const width of [390, 1440]) {
     await enterFreshLacuna(page);
     await page.goto('/#/settings');
     await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Appearance & access/ }).click();
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%';
     });

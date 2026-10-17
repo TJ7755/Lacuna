@@ -52,6 +52,7 @@ test('Electron connects to the hosted service and shows its streamed reply', asy
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Integrations/ }).click();
     await page.getByRole('radio', { name: 'Built-in AI' }).click();
     await page.getByRole('switch', { name: 'Enable AI' }).click();
     await page.getByRole('button', { name: 'AI', exact: true }).first().click();

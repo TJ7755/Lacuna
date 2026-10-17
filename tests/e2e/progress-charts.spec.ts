@@ -25,7 +25,7 @@ test('Workload ahead draws each day as a bar', async ({ page }) => {
 test('Lesson breakdown keeps card counts off the percentage axis', async ({ page }) => {
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.goto(`${page.url()}/analytics`);
   const card = await chartCard(page, 'Lesson breakdown');

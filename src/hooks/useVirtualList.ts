@@ -92,10 +92,20 @@ export function useVirtualList({
     };
     root.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
+    // Loading content or measuring an earlier lesson can move this list without a
+    // scroll event. Observe the shared layout so off-screen lessons keep their range.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onScroll);
+    let ancestor: HTMLElement | null = el;
+    while (ancestor) {
+      observer?.observe(ancestor);
+      if (ancestor === root) break;
+      ancestor = ancestor.parentElement;
+    }
     onScroll();
     return () => {
       root.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
+      observer?.disconnect();
       if (raf !== null) cancelAnimationFrame(raf);
     };
   }, [enabled]);

@@ -6,9 +6,10 @@ test('Leech count links to the leech cards it counts', async ({ page }) => {
   await enterFreshLacuna(page);
   await openImport(page);
   await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
-  const importer = page.locator('.card-import-page');
+  const importer = page.locator('.card-import-panel');
   await importer.getByLabel('Paste your cards').fill('Stubborn fact\tanswer\nEasy fact\tanswer');
   await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+  await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
   await importer.getByLabel('Course title').fill('Leech check');
   const steady = importer.getByRole('radio', { name: /Steady retention/ });
   await steady.focus();

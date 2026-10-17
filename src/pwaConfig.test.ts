@@ -8,6 +8,13 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches deferred Quick search and its dependencies before first offline use', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/CommandPalette-SEARCH01.js', isEntry: false, imports: ['assets/search-SEARCH02.js'] },
+      { fileName: 'assets/search-SEARCH02.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/CommandPalette-SEARCH01.js', 'assets/search-SEARCH02.js']);
+  });
   it('precaches on-demand course actions and their static dependencies before first offline use', () => {
     expect(collectAppShellScripts([
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },

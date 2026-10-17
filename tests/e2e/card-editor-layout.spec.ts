@@ -50,6 +50,7 @@ for (const width of [320, 390, 768, 1063, 1440]) {
         await page.evaluate(() => document.fonts.ready);
 
         const actions = page.getByRole('region', { name: 'Card editor actions' });
+        await expect(actions.locator('../..')).toHaveCSS('transform', 'none');
         await actions.scrollIntoViewIfNeeded();
         const repeat = actions.getByRole('button', { name: 'Save & add another' });
         const add = actions.getByRole('button', { name: 'Add card', exact: true });

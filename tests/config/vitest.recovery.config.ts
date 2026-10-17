@@ -15,6 +15,8 @@ export default defineConfig({
     include: [
       'src/db/persistence.test.ts',
       'src/sync/manualMerge.test.ts',
+      'src/sync/manualMerge.restorePoint.test.ts',
+      'src/sync/manualMerge.review-convergence.test.ts',
       'src/hooks/useStorageQuotaWarning.test.ts',
       'src/db/backups.test.ts',
       'src/db/backupSnapshot.test.ts',

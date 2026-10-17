@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const height of [650, 900]) {
-  test(`sidebar course and archive labels align without horizontal scrolling at ${height}px`, async ({
+  test(`sidebar course and archive glyphs align without horizontal scrolling at ${height}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height });
@@ -11,11 +11,10 @@ for (const height of [650, 900]) {
     const courses = page.getByRole('navigation', { name: 'Courses' });
     const course = courses.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
     const archive = courses.getByRole('link', { name: 'Archived', exact: true });
-    const name = course.getByText('Welcome to Lacuna', { exact: true });
-    const archiveName = archive.getByText('Archived', { exact: true });
-    expect(
-      Math.abs((await name.boundingBox())!.x - (await archiveName.boundingBox())!.x),
-    ).toBeLessThanOrEqual(1);
+    const glyph = (await course.locator('svg').boundingBox())!;
+    const archiveIcon = (await archive.locator('svg').boundingBox())!;
+    expect(Math.abs(glyph.x + glyph.width / 2 - archiveIcon.x - archiveIcon.width / 2))
+      .toBeLessThanOrEqual(1);
     expect(
       await courses.evaluate((element) => {
         const scroller = element.querySelector('.overflow-y-auto')!;
@@ -33,7 +32,7 @@ for (const width of [390, 1440]) {
     for (const [route, title] of [
       ['/', 'Today'],
       ['/share', 'Share'],
-      ['/import', 'Import'],
+      ['/?import=1', 'Today'],
       ['/analytics', 'Progress'],
       ['/settings', 'Settings'],
       ['/help', 'Help'],
@@ -54,52 +53,62 @@ for (const width of [390, 1440]) {
 
 test('Progress fits a phone, with today in view on the 30-day strip', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.goto('/#/analytics');
   const strip = page.getByRole('grid', { name: 'Review activity over the last 30 days' });
   await expect(strip).toBeVisible();
-  expect(
-    await strip.evaluate((grid) => {
-      const scroller = grid.parentElement!;
-      return scroller.scrollWidth - scroller.clientWidth;
-    }),
-  ).toBeLessThanOrEqual(1);
+  await expect.poll(() => strip.evaluate((grid) => {
+    const scroller = grid.parentElement!;
+    return scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft;
+  })).toBeLessThanOrEqual(1);
+  const today = strip.getByRole('gridcell').last();
+  await expect(today).toBeInViewport();
+  const bounds = (await today.boundingBox())!;
+  expect(bounds.width).toBeGreaterThanOrEqual(44);
+  expect(bounds.height).toBeGreaterThanOrEqual(44);
   expect(
     await page.locator('main').evaluate((main) => main.scrollWidth - main.clientWidth),
   ).toBeLessThanOrEqual(1);
 });
 
-test('sidebar course names wrap to a second line instead of truncating', async ({ page }) => {
+test('sidebar course names keep a single 44px row with the full accessible name', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   const courses = page.getByRole('navigation', { name: 'Courses' });
   const link = courses.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
   const name = link.getByText('Welcome to Lacuna', { exact: true });
-  expect(
-    await name.evaluate(
-      (element) =>
-        element.scrollWidth <= element.clientWidth && element.scrollHeight <= element.clientHeight,
-    ),
-  ).toBe(true);
-  // The glyph already sets the row height, so the second line costs no space.
-  expect((await link.boundingBox())!.height).toBeLessThanOrEqual(56);
-  expect((await name.boundingBox())!.height).toBeGreaterThan(30);
+  await expect(link).toHaveAccessibleName('Welcome to Lacuna');
+  await expect(name).toHaveCSS('white-space', 'nowrap');
+  await expect(name).toHaveCSS('overflow', 'hidden');
+  expect((await link.locator('..').boundingBox())!.height).toBe(44);
+  const label = (await name.boundingBox())!;
+  const navigation = (await courses.boundingBox())!;
+  expect(label.x + label.width).toBeLessThanOrEqual(navigation.x + navigation.width);
 });
 
-test('Today keeps its counts and New course on one line on a phone', async ({ page }) => {
+test('Today keeps New course and Import together beneath its counts on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   const main = page.locator('main');
-  await expect(main.getByRole('button', { name: 'Import' })).toBeHidden();
+  const importer = main.getByRole('button', { name: 'Import', exact: true });
+  await expect(importer).toBeVisible();
   const counts = (await main.getByLabel(/^Today: /).boundingBox())!;
   const create = (await main.getByRole('button', { name: 'New course' }).boundingBox())!;
-  expect(Math.abs(counts.y + counts.height / 2 - (create.y + create.height / 2))).toBeLessThanOrEqual(2);
-  // Import moves to the navigation drawer.
+  const importBounds = (await importer.boundingBox())!;
+  expect(counts.y + counts.height).toBeLessThanOrEqual(create.y);
+  expect(Math.abs(create.y - importBounds.y)).toBeLessThanOrEqual(1);
+  expect(create.x + create.width).toBeLessThanOrEqual(importBounds.x);
+  expect(importBounds.x + importBounds.width).toBeLessThanOrEqual(390);
+  await importer.click();
+  await expect(page.locator('.import-panel')).toBeVisible();
+  await main.getByRole('button', { name: 'Close', exact: true }).click();
+  // The navigation drawer reaches the same inline import surface.
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('dialog', { name: 'Navigation' }).getByRole('link', { name: 'Import' }).click();
-  await expect(page).toHaveURL(/#\/import$/);
+  await expect(page).toHaveURL(/#\/\?import=1$/);
 });
 
 test('card row actions meet the 44px target on a phone', async ({ page }) => {
@@ -107,7 +116,7 @@ test('card row actions meet the 44px target on a phone', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await page.getByRole('link', { name: 'Cards', exact: true }).first().click();
   // A phone reaches a card's actions by opening the row, where they are full buttons.
   const row = page.locator('[data-card-id]').first();
@@ -128,7 +137,7 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   const course = new URL(page.url()).hash.slice(1);
   const short: string[] = [];
@@ -196,19 +205,23 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
   expect(short).toEqual([]);
 });
 
-test('the study sheet is a bounded panel on a wide window', async ({ page }) => {
+test('the session preview stays bounded beside its Study trigger on a wide window', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
-  await page.locator('main').getByRole('button', { name: /^Study/ }).first().click();
-  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await expect(sheet).toBeVisible();
-  const panel = (await sheet.locator(':scope > div').last().boundingBox())!;
-  expect(panel.width).toBeLessThanOrEqual(672);
-  expect(Math.abs(panel.x + panel.width / 2 - 720)).toBeLessThanOrEqual(1);
-  expect(panel.y + panel.height).toBeLessThan(900);
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
+  const study = page.locator('main').getByRole('button', { name: 'Study', exact: true });
+  const anchor = (await study.boundingBox())!;
+  await study.click();
+  const preview = page.getByRole('region', { name: 'Session preview' });
+  await expect(preview).toBeVisible();
+  const panel = (await preview.boundingBox())!;
+  expect(panel.width).toBeLessThanOrEqual(448);
+  expect(Math.abs(panel.x + panel.width - anchor.x - anchor.width)).toBeLessThanOrEqual(1);
+  expect(panel.x).toBeGreaterThanOrEqual(16);
+  expect(panel.y).toBeGreaterThanOrEqual(16);
+  expect(panel.y + panel.height).toBeLessThanOrEqual(884);
 });
 
 test('the course bar stays at the top while a course page scrolls', async ({ page }) => {
@@ -216,7 +229,7 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await page
     .getByRole('navigation', { name: 'Course sections' })
     .getByRole('link', { name: 'Settings', exact: true })
@@ -224,7 +237,8 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
   await expect(page).toHaveURL(/\/course\/[^/]+\/settings$/);
   const bar = page.locator('[data-course-page-navigation]');
   // Settings loads after the URL changes; scrolling an unloaded page has nowhere to go.
-  await expect(page.locator('#course-settings-content')).toBeVisible();
+  await expect(page.locator('#course-settings-study')).toBeVisible();
+  await page.getByRole('button', { name: /^Lessons / }).click();
   const main = page.locator('main');
   await main.evaluate((element) => element.scrollTo({ top: 900, behavior: 'instant' }));
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThanOrEqual(900);
@@ -260,14 +274,11 @@ for (const width of [390, 1280]) {
       ['/analytics', 'Progress'],
       ['/share', 'Share'],
       ['/help', 'Help'],
-      ['/import', 'Import'],
     ]) {
       await page.goto(`/#${route}`);
       const title = page.getByRole('heading', { level: 1, name, exact: true });
       await expect(title).toBeVisible();
-      await page.evaluate(() =>
-        Promise.allSettled(document.getAnimations().map((animation) => animation.finished)),
-      );
+      await page.evaluate(() => document.fonts.ready.then(() => undefined));
       heights[name] = Math.round((await title.boundingBox())!.y);
     }
     expect(new Set(Object.values(heights)).size, JSON.stringify(heights)).toBe(1);

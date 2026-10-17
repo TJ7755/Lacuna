@@ -14,7 +14,7 @@ async function openNewOcclusion(page: Page, width: number) {
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.goto(`${page.url()}/cards`);
   await page.getByRole('button', { name: 'More ways to add', exact: true }).click();

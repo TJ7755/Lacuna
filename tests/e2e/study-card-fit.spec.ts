@@ -239,6 +239,7 @@ for (const theme of ['light', 'dark']) {
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       const back = page.locator('[data-study-face="back"]');
       await expect(back.getByText('Diagram note')).toBeVisible();
+      await expect(back.locator('..')).toHaveCSS('transform', 'none');
       await expect(back.getByRole('img')).toBeInViewport({ ratio: 1 });
       expect(await back.evaluate((body) => body.scrollHeight <= body.clientHeight + 1)).toBe(true);
       await capture(page, `${name}-revealed`);

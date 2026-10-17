@@ -23,7 +23,7 @@ for (const theme of ['light', 'dark'] as const) {
       });
       const dashboardUrl = page.url();
       await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
       const course = page.getByRole('heading', {
         name: 'Welcome to Lacuna',
         exact: true,
@@ -65,7 +65,7 @@ test('an empty study session uses the minimal report with accessible details', a
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/learn`);
   await expect(page.getByRole('heading', { name: 'Nice work' })).toBeVisible();
@@ -73,13 +73,17 @@ test('an empty study session uses the minimal report with accessible details', a
   await expect(report.locator('svg[viewBox="0 0 88 82"]')).toHaveCount(0);
   await expect(report.getByText('Session complete', { exact: true })).toHaveCount(0);
   await expect(report.getByRole('heading', { name: 'Goal reached.' })).toHaveCount(0);
-  await expect(report.getByText('Mean time', { exact: true })).toBeHidden();
-  await report.locator('summary').focus();
+  const details = report.getByRole('button', { name: 'Session details' });
+  const panel = report.locator(`[id="${await details.getAttribute('aria-controls')}"]`);
+  await expect(details).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel).toHaveAttribute('aria-hidden', 'true');
+  await details.focus();
   await page.keyboard.press('Enter');
   await expect(report.getByText('Mean time', { exact: true })).toBeVisible();
   await expect(report.getByText('0.0s', { exact: true })).toBeVisible();
-  await report.locator('summary').press('Enter');
-  await expect(report.getByText('Mean time', { exact: true })).toBeHidden();
+  await details.press('Enter');
+  await expect(details).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel).toHaveAttribute('aria-hidden', 'true');
   await expect(report.getByRole('button', { name: 'Done', exact: true })).toBeVisible();
   await page.screenshot({ animations: 'disabled', path: test.info().outputPath('session.png') });
 });
@@ -89,7 +93,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/#/landing');
     const faq = page.getByRole('region', { name: 'A few questions.' });
-    await expect(faq.locator('details')).toHaveCount(4);
+    await expect(faq.locator('details')).toHaveCount(3);
     const question = faq.locator('summary').first();
     await question.focus();
     await question.press('Enter');

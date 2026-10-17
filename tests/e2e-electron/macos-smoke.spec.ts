@@ -73,7 +73,7 @@ test('macOS packaged Electron launches, stores a course and completes a study st
       .click();
     await page.getByRole('button', { name: 'Study', exact: true }).last().click();
     await page
-      .getByRole('dialog', { name: 'Choose what to study' })
+      .getByRole('region', { name: 'Session preview' })
       .getByRole('button', { name: 'Start session' })
       .first()
       .click();

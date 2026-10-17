@@ -30,7 +30,7 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
   await page.waitForFunction(() => window.location.hash === '#/' || window.location.hash === '');
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .waitFor({ state: 'visible' });
   await twoAnimationFrames(page);
@@ -57,7 +57,7 @@ async function resetToSeededDashboard(page: Page): Promise<void> {
   }
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .waitFor({ state: 'visible' });
   await twoAnimationFrames(page);
@@ -161,7 +161,7 @@ async function performInteraction(page: Page, scenario: InteractionScenario): Pr
   }
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .first()
     .click();
 }

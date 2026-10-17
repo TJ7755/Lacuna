@@ -165,6 +165,8 @@ the editor has closed.
 Virtualised lists rebuild the heights of mounted rows when the card count changes,
 so adding or deleting cards preserves spacing without waiting for another resize.
 Resize measurements include the full row border box, keeping padding and borders in the layout.
+When surrounding content changes size, each list recalculates its visible range without
+requiring a scroll, so later lessons retain only their off-screen overscan rows.
 
 ### Question-set composer (`src/pages/QuestionSetEditor.tsx`)
 

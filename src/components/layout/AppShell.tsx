@@ -14,7 +14,6 @@ import { useScrollMemory } from './scrollMemory';
 import { RouteTransitions } from './RouteTransitions';
 import { ErrorBoundary } from './ErrorBoundary';
 import { OverlayLoadBoundary } from './OverlayLoadBoundary';
-import { CommandPalette } from '../search/CommandPalette';
 import { StudySheetProvider, useStudySheetState } from '../learn/StudySheetContext';
 import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
@@ -37,6 +36,9 @@ import { FinalExamLifecycleController } from '../course/FinalExamLifecycleContro
 import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 
 const AiPanel = lazy(loadAiPanel);
+const CommandPalette = lazy(() =>
+  import('../search/CommandPalette').then((module) => ({ default: module.CommandPalette })),
+);
 const StudySheet = lazy(() =>
   import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
 );
@@ -493,11 +495,17 @@ function AppShellLayout() {
           )}
         </AnimatePresence>
       </div>
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        returnFocusTarget={paletteReturnFocusRef}
-      />
+      {paletteOpen && (
+        <OverlayLoadBoundary label="Quick search" onClose={() => setPaletteOpen(false)}>
+          <Suspense fallback={null}>
+            <CommandPalette
+              open={paletteOpen}
+              onClose={() => setPaletteOpen(false)}
+              returnFocusTarget={paletteReturnFocusRef}
+            />
+          </Suspense>
+        </OverlayLoadBoundary>
+      )}
       <FinalExamLifecycleController />
       {hintsLoaded && (
         <OverlayLoadBoundary

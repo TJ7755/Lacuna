@@ -66,7 +66,8 @@ and Learn experiences, which live outside the shell. The shell is a flex row:
   Find remains available outside these card views and on a lesson without cards.
 - **Global keyboard shortcuts** (within the shell): `Ctrl/Cmd+K` toggles **Quick search**;
   `/` opens **Search content**; `?` toggles the keyboard-hints overlay. Single-key
-  shortcuts are inert while typing in an input/textarea. Quick search focuses its search field on
+  shortcuts are inert while typing in an input/textarea. Quick search loads on demand and is
+  precached with its static dependencies so its first use works offline. It focuses its search field on
   opening; Escape closes it and restores focus to the control that opened it.
   Opening quick search from the mobile drawer replaces the drawer and returns focus
   to the navigation opener when search closes.

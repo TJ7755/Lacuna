@@ -21,7 +21,7 @@ for (const width of [320, 390]) {
       await page.goto('/');
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
       await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-      await page.goto('/#/settings');
+      await page.goto('/#/settings#settings-study');
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
       await expect(page.getByRole('radiogroup', { name: 'Audio playback speed' })).toBeVisible();
 
@@ -40,7 +40,7 @@ for (const width of [320, 390]) {
           const right = box.right - parseFloat(style.paddingRight) + 1;
           for (const control of card.querySelectorAll<HTMLElement>('button, [role="radiogroup"]')) {
             const rect = control.getBoundingClientRect();
-            if (rect.width === 0 || control.closest('details:not([open])')) continue;
+            if (rect.width === 0 || control.closest('details:not([open]), [inert]')) continue;
             if (rect.left < left || rect.right > right) {
               const name = control.getAttribute('aria-label') ?? control.textContent?.trim();
               problems.push(
@@ -56,10 +56,7 @@ for (const width of [320, 390]) {
       // Labels and their controls never overlap, and explanations keep a reading width.
       for (const name of ['Audio playback speed', 'Grading strictness']) {
         const label = page.locator('main').getByText(name, { exact: true });
-        const group =
-          name === 'Grading strictness'
-            ? page.getByRole('button', { name: 'lenient', exact: true }).locator('..')
-            : page.getByRole('radiogroup', { name });
+        const group = page.getByRole('radiogroup', { name });
         const [labelBox, groupBox] = await Promise.all([label.boundingBox(), group.boundingBox()]);
         const overlaps =
           labelBox!.x < groupBox!.x + groupBox!.width &&

@@ -6,7 +6,7 @@ async function openCourse(page: Page, width: number) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Study', exact: true })).toBeVisible();
 }
 

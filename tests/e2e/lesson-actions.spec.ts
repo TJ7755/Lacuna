@@ -6,7 +6,7 @@ async function openWelcomeInEditMode(page: Page) {
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
 }

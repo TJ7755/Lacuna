@@ -16,7 +16,7 @@ for (const width of [390, 1440]) {
       // Use the real importer so Cards retain their normal Course/Lesson ownership.
       await openImport(page);
       await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
-      const importer = page.locator('.card-import-page');
+      const importer = page.locator('.card-import-panel');
       await importer
         .getByLabel('Paste your cards')
         .fill(
@@ -26,6 +26,7 @@ for (const width of [390, 1440]) {
           ).join('\n'),
         );
       await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+      await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
       await importer.getByLabel('Course title').fill('Search regression');
       const steady = importer.getByRole('radio', { name: /Steady retention/ });
       await steady.focus();
@@ -65,11 +66,18 @@ for (const width of [390, 1440]) {
       await expect(input).toHaveValue('Palatine');
       await expect(input).toBeFocused();
       await expect(page.getByRole('option')).toHaveCount(80);
-      await expect(page.getByRole('status').filter({ hasText: 'results' })).toHaveText('80 of 100 results');
+      await expect(page.getByRole('status').filter({ hasText: 'results' })).toHaveText(
+        '80 of 100 results',
+      );
       // Filters remain ordinary Tab controls, outside the result-navigation arrows.
       await input.press('Tab');
       await expect(page.getByRole('button', { name: 'Due now' })).toBeFocused();
       await page.getByRole('button', { name: 'New', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'New', exact: true })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      await expect(page.getByRole('option', { selected: true })).toHaveText(/Palatine 000/);
       await input.focus();
       for (let i = 0; i < 80; i++) await input.press('ArrowDown');
       await expect(page.getByRole('option')).toHaveCount(100);

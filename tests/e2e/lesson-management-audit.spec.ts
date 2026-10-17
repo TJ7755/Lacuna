@@ -10,10 +10,11 @@ for (const width of [390, 1440]) {
     await enterFreshLacuna(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
     await page.goto(`${page.url()}/settings`);
     await expect(page.getByRole('heading', { name: 'Course settings', exact: true })).toBeVisible();
+    await page.getByRole('heading', { name: /^Lessons/ }).getByRole('button').click();
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
 
     const actions = page.getByRole('button', { name: /^Move .+ (up|down)$/ });

@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 async function openSeededDashboard(page: Page) {
   await page.goto('/');
-  await expect(page.getByRole('region', { name: 'From familiarity to recall' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }

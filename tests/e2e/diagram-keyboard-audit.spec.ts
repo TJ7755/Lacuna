@@ -24,7 +24,7 @@ for (const width of [390, 1440]) {
     await enterFreshLacuna(page);
     const course = page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('link', { name: 'Welcome to Lacuna', exact: true });
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true });
     await course.focus();
     await course.press('Enter');
     const courseUrl = page.url();

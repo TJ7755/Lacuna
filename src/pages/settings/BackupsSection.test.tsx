@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { backupFolderName } from '../../db/backupFolder';
 import { BackupsSection } from './BackupsSection';
 
@@ -47,6 +47,13 @@ vi.mock('../../components/ui/Toast', () => ({
 
 describe('BackupsSection', () => {
   beforeEach(() => {
+    const nativeAnimate = Element.prototype.animate;
+    vi.spyOn(Element.prototype, 'animate').mockImplementation(function (this: Element, ...args) {
+      const animation = nativeAnimate.apply(this, args);
+      // Happy DOM rejects cancelled animation promises when Motion tears down a card.
+      void animation.finished.catch(() => {});
+      return animation;
+    });
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
       value: undefined,
@@ -69,6 +76,8 @@ describe('BackupsSection', () => {
     ];
     window.location.hash = '#/';
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it('shows three recent points and keeps older actions behind More', async () => {
     mockBackups = Array.from({ length: 8 }, (_, index) => ({

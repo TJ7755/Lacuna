@@ -5,7 +5,7 @@ test('a listed lesson opens its real workspace; Add creates a real lesson', asyn
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   const courseUrl = page.url();
   await page.getByRole('button', { name: 'Scheduling philosophy', exact: true }).click();
@@ -32,7 +32,7 @@ test('Add returns to its own corner without enlarging its disappearing text', as
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   const add = page.getByRole('button', { name: 'Add', exact: true });
@@ -99,7 +99,7 @@ test('narrow-screen keyboard activation opens the focused lesson', async ({ page
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   const stop = page.getByRole('button', { name: 'Scheduling philosophy', exact: true });
   await stop.focus();
@@ -115,7 +115,7 @@ test('reduced motion changes Add dimensions without interpolating', async ({ pag
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
@@ -149,20 +149,24 @@ test('practice editing keeps an unobstructed 44px touch target with a long name'
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit mode' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Card practice', exact: true }).click();
   const name = 'Practice with a long name covering several lines';
   await page.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
-  await page.getByRole('combobox', { name: 'Position on the path' }).selectOption('');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  const edit = page.getByRole('button', { name: `Edit ${name}`, exact: true });
-  await expect(edit).toBeVisible();
-  const bounds = await edit.boundingBox();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  const actions = page.getByRole('button', { name: `Practice actions: ${name}`, exact: true });
+  await expect(actions).toBeVisible();
+  await actions.scrollIntoViewIfNeeded();
+  const bounds = await actions.boundingBox();
   expect(bounds!.width).toBeGreaterThanOrEqual(44);
   expect(bounds!.height).toBeGreaterThanOrEqual(44);
-  const next = await edit.locator('xpath=ancestor::li[1]/following-sibling::li[1]').boundingBox();
-  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(next!.y);
+  const row = actions.locator('xpath=ancestor::li[1]');
+  const previous = await row.locator('xpath=preceding-sibling::li[1]').boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(previous!.y + previous!.height);
+  await actions.click();
+  await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(name);
 });

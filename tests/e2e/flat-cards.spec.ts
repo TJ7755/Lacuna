@@ -52,7 +52,7 @@ for (const theme of ['light', 'dark'] as const) {
     });
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
     await expect(page.getByRole('heading', { name: 'Lessons', exact: true })).toBeVisible();
     for (const accent of accents) {

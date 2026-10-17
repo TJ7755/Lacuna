@@ -9,7 +9,7 @@ for (const width of [1440, 1920]) {
     await enterFreshLacuna(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
-      .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
     const courseTitle = page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna' });
     await expect(courseTitle).toBeVisible();

@@ -8,7 +8,7 @@ for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     await enterFreshLacuna(page);
     await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
     const drawings = page.locator('[data-path-drawing]');
     await expect(drawings).toHaveCount(0);
     const lessons = page.getByRole('list', { name: 'Course path' });

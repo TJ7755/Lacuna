@@ -139,6 +139,7 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await page.waitForURL((url) => url.hash === '#/');
     await expect(page.getByRole('link', { name: 'Settings', exact: true }).first()).toBeVisible();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+    await page.getByRole('button', { name: /^Integrations/ }).click();
 
     await expect(page.getByRole('heading', { name: 'Install & updates' })).toBeVisible();
     await expect(
@@ -150,6 +151,7 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     await enableAi.click();
     await expect(enableAi).toHaveAttribute('aria-checked', 'true');
     await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /^Integrations/ }).click();
     await expect(enableAi).toHaveAttribute('aria-checked', 'true');
 
     const openAi = page.getByRole('button', { name: 'AI', exact: true }).first();
@@ -236,6 +238,7 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     const reconnecting = client.callTool({ name: 'lacuna.connect', arguments: {} });
     await page.waitForLoadState('domcontentloaded');
     expect(toolData(await reconnecting).connectionId).toEqual(expect.any(String));
+    await page.getByRole('button', { name: /^Integrations/ }).click();
 
     await expect(enableAi).toHaveAttribute('aria-checked', 'true');
     await expect(openAi).toBeVisible();

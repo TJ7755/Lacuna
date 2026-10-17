@@ -51,7 +51,7 @@ test('saves and imports course media on first use while offline', async ({ page,
     );
     // Receiving a course happens on Import, which hands a .lacuna file to the course importer.
     await page.evaluate(() => (location.hash = '#/import'));
-    await expect(page.getByRole('heading', { name: 'Import', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Import', level: 2 })).toBeVisible();
     await page.getByLabel('Import file').setInputFiles({
       name: 'Offline course.lacuna',
       mimeType: 'application/json',

@@ -4,7 +4,7 @@ test('opening the course rename field focuses and selects its title', async ({ p
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true }).click();
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
   await page.getByRole('button', { name: 'Rename course', exact: true }).click();

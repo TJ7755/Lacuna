@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { addLessonNote, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const width of [1280, 390]) {
-  test(`keeps optional Simple Learn tucked inside Study at ${width}px`, async ({
+  test(`keeps optional Simple Learn inside Other ways at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 844 });
@@ -11,16 +11,20 @@ for (const width of [1280, 390]) {
     await addLessonNote(page, 'Overview');
     await page.setViewportSize({ width, height: 844 });
     await page.getByRole('button', { name: 'Study', exact: true }).click();
-    const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-    await expect(sheet).toBeVisible();
-    await expect(sheet.getByRole('button', { name: 'Start practising' })).toBeHidden();
-    await sheet.locator('summary').filter({ hasText: 'Practise until all correct' }).click();
-    const scope = sheet.getByLabel('What to practise');
+    const preview = page.getByRole('region', { name: 'Session preview' });
+    await expect(preview).toBeVisible();
+    await expect(preview.getByText('Practise until all correct')).toBeHidden();
+    await page.keyboard.press('Escape');
+    await expect(preview).toBeHidden();
+    await page.getByRole('button', { name: 'Other ways to study' }).click();
+    await page.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+    const practice = page.getByRole('group', { name: 'Other ways to study' });
+    const scope = practice.getByLabel('What to practise');
     await expect(scope).toHaveCSS('appearance', 'base-select');
     await expect(scope).toHaveValue('');
     await scope.selectOption({ label: 'Lesson 1' });
 
-    await expect(sheet.getByRole('button', { name: 'Start practising' })).toBeInViewport();
+    await expect(practice.getByRole('button', { name: 'Start practising' })).toBeInViewport();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
@@ -29,8 +33,9 @@ for (const width of [1280, 390]) {
     await page.screenshot({ path: testInfo.outputPath(`simple-learn-${width}.png`) });
     await page.keyboard.press('Escape');
 
-    await sheet.getByRole('button', { name: 'Start practising' }).click();
+    await expect(practice).toBeVisible();
+    await practice.getByRole('button', { name: 'Start practising' }).click();
     await expect(page).toHaveURL(/#\/lesson\/[^/]+\/learn\?mode=simple$/);
-    await expect(sheet).toBeHidden();
+    await expect(practice).toBeHidden();
   });
 }

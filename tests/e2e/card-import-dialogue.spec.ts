@@ -39,25 +39,28 @@ for (const width of [1280, 390]) {
     const before = (await importedCards(page)).length;
     await openImport(page);
     await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
-    const importer = page.locator('.card-import-page');
+    const importer = page.locator('.card-import-panel');
     await importer
       .getByLabel('Paste your cards')
       .fill('Import greeting\thello\n{{c1::Paris}} is in France');
     await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+    await importer.getByRole('switch', { name: 'Also create reverse' }).click();
+    await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
     await importer.getByLabel('Course title').fill('Import regression');
     const steady = importer.getByRole('radio', { name: /Steady retention/ });
     await steady.focus();
     await steady.press('Space');
     await expect(steady).toBeChecked();
-    await importer.getByRole('checkbox', { name: 'Also create reverse' }).check();
     await expect(importer.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
+    await importer.getByRole('button', { name: 'Back', exact: true }).click();
     await importer.getByRole('button', { name: 'Back', exact: true }).click();
     await expect(importer.getByLabel('Paste your cards')).toHaveValue(
       'Import greeting\thello\n{{c1::Paris}} is in France',
     );
     expect((await importedCards(page)).length).toBe(before);
     await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
-    await expect(importer.getByRole('checkbox')).toBeChecked();
+    await expect(importer.getByRole('switch', { name: 'Also create reverse' })).toBeChecked();
+    await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
     await expect(importer.getByLabel('Course title')).toHaveValue('Import regression');
     await importer.getByRole('button', { name: 'Import 3 cards' }).click();
     await expect(importer).toBeHidden();

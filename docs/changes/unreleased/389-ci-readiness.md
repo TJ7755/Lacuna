@@ -1,0 +1,1 @@
+- Load Quick search on demand whilst retaining first-use offline support, keeping launch assets within budget. Update redesign validation for the current landing page, import flow and settings disclosures, and include live peer-merge recovery tests in the coverage gate. (#389)

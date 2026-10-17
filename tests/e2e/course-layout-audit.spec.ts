@@ -74,7 +74,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /dark/ : /^(?!.*\bdark\b)/);
       await page
         .getByRole('region', { name: 'Today, most urgent first' })
-        .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+        .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
         .click();
       // Measure resting colours; the preceding click can hover a filter after navigation.
       await page.mouse.move(0, 0);
@@ -155,7 +155,8 @@ for (const width of [390, 1440]) {
     for (const [route, title] of [
       ['/', 'Today'],
       ['/share', 'Share'],
-      ['/import', 'Import'],
+      // Import is a panel on Today, so it is checked open there.
+      ['/?import=1', 'Today'],
       ['/analytics', 'Progress'],
       ['/settings', 'Settings'],
       ['/help', 'Help'],
@@ -164,6 +165,8 @@ for (const width of [390, 1440]) {
       await page.goto(`/#${route}`);
       await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
       await expect(page.locator('html')).toHaveClass(/dark/);
+      // A control beneath the pointer can legitimately use its hover colour after navigation.
+      await page.mouse.move(0, 0);
       await verifySecondaryText(page);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),

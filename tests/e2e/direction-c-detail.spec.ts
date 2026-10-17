@@ -7,7 +7,7 @@ async function openWelcomeCourse(page: Page, width: number) {
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   return new URL(page.url()).hash.slice(1);
@@ -238,7 +238,7 @@ test('the course tab pill glides between sections rather than jumping', async ({
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   const course = new URL(page.url()).hash.slice(1);

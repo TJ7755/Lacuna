@@ -34,7 +34,7 @@ test('opens course navigation and returns to the dashboard', async ({ page }) =>
   await enterFreshLacuna(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   const sections = page.getByRole('navigation', { name: 'Course sections' });
   await sections.getByRole('link', { name: 'Cards' }).click();
