@@ -1,79 +1,16 @@
 import 'fake-indexeddb/auto';
 import { createFixedQuestion } from '../questions/repository.authoring';
 import { createConcept } from '../questions/repository.concepts';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { db } from '../db/schema';
-import { createCourse } from '../db/courseRepository';
 import { createLesson } from '../db/lessonRepository';
 import { createCourseAssessment } from '../db/assessmentRepository';
-import {
-  createEmptyQuestionSetDraft,
-  loadQuestionSetDraft,
-  saveQuestionSetDraft,
-} from '../questions/questionSetDrafts';
-import { QuestionSetEditor } from './QuestionSetEditor';
-import { ToastProvider } from '../components/ui/Toast';
-import { QuestionsPage } from './QuestionsPage';
+import { loadQuestionSetDraft, saveQuestionSetDraft } from '../questions/questionSetDrafts';
+import { open, resetEditorData, setup } from './questionSetEditorTestSupport';
 
-// The question bank fades in, which jsdom never completes; render it at rest.
-vi.mock('../state/motionSpeed', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  speedMultiplier: () => 0,
-}));
-
-vi.mock('../components/markdown/MarkdownEditor', () => ({
-  MarkdownEditor: ({
-    value,
-    onChange,
-    ariaLabel,
-  }: {
-    value: string;
-    onChange: (v: string) => void;
-    ariaLabel: string;
-  }) => (
-    <textarea aria-label={ariaLabel} value={value} onChange={(e) => onChange(e.target.value)} />
-  ),
-}));
-
-async function setup() {
-  const course = await createCourse('Biology');
-  await db.courses.update(course.id, { lessonViewMode: 'edit' });
-  const draft = createEmptyQuestionSetDraft(course.id, 'paper-set');
-  draft.content.questions = [{ id: 'q1', prompt: '', parts: [] }];
-  await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
-  return course;
-}
-function open(courseId: string, path = 'question-sets/paper-set/edit') {
-  return render(
-    <ToastProvider>
-      <RouterProvider
-        router={createMemoryRouter(
-          [
-            { path: '/course/:courseId/question-sets/:setId/edit', element: <QuestionSetEditor /> },
-            { path: '/course/:courseId/question-sets/:setId', element: <p>Published overview</p> },
-            { path: '/course/:courseId/questions', element: <QuestionsPage /> },
-          ],
-          { initialEntries: [`/course/${courseId}/${path}`] },
-        )}
-      />
-    </ToastProvider>,
-  );
-}
 describe('Paper question set authoring', () => {
-  beforeEach(async () => {
-    await Promise.all([
-      db.courses.clear(),
-      db.questionSets.clear(),
-      db.appState.clear(),
-      db.questions.clear(),
-      db.lessons.clear(),
-      db.concepts.clear(),
-      db.cards.clear(),
-      db.courseAssessments.clear(),
-    ]);
-  });
+  beforeEach(resetEditorData);
   it('uses concise captions for all three composer columns', async () => {
     const course = await setup();
     const { container } = open(course.id);
@@ -84,26 +21,6 @@ describe('Paper question set authoring', () => {
         (span) => span.textContent,
       ),
     ).toEqual(['', 'Question', 'Mark scheme', 'Marks', '']);
-  });
-
-  it('opens on the first question without focusing the title and supports the writing loop', async () => {
-    const course = await setup();
-    open(course.id);
-    const question = await screen.findByLabelText('Q1 question');
-    expect(question).toHaveFocus();
-    expect(screen.getByRole('heading', { level: 1 })).not.toHaveFocus();
-    fireEvent.change(question, { target: { value: 'Name the organelle.' } });
-    fireEvent.keyDown(question, { key: 'Tab' });
-    expect(screen.getByLabelText('Q1 mark scheme')).toHaveFocus();
-    fireEvent.change(screen.getByLabelText('Q1 mark scheme'), { target: { value: 'Nucleus' } });
-    fireEvent.keyDown(screen.getByLabelText('Q1 mark scheme'), { key: 'Tab' });
-    expect(screen.getByLabelText('Q1 marks')).toHaveFocus();
-    fireEvent.keyDown(screen.getByLabelText('Q1 marks'), { key: 'Enter' });
-    expect(screen.getByLabelText('Q2 question')).toHaveFocus();
-    expect(screen.getByRole('button', { name: 'Q1 row options' })).toHaveAttribute(
-      'tabindex',
-      '-1',
-    );
   });
 
   it('indents an empty row, moves its parent scheme and offers a working Undo', async () => {
