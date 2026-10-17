@@ -6,9 +6,23 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { animate, AnimatePresence, m as motion, useMotionValue } from 'motion/react';
+import {
+  animate,
+  AnimatePresence,
+  m as motion,
+  useMotionValue,
+  usePresence,
+  useTransform,
+} from 'motion/react';
 import { scaledSpring } from '../../components/ui/motion';
 import type { Phase } from './types';
+import { StudyCardMotionContext } from './studyCardMotion';
+
+interface Departure {
+  correct: boolean;
+  x: number;
+  velocity: number;
+}
 
 export interface StudyCardTransitionHandle {
   dismiss: (
@@ -30,11 +44,7 @@ export const StudyCardTransition = forwardRef<
   const commitTimer = useRef<number | null>(null);
   const [presentation, setPresentation] = useState({ cardId, phase, serial: 0 });
   const [reset, setReset] = useState(0);
-  const [departure, setDeparture] = useState<{
-    correct: boolean;
-    x: number;
-    velocity: number;
-  } | null>(null);
+  const [departure, setDeparture] = useState<Departure | null>(null);
 
   // A repeated id is still a new presentation when grading returns to the question.
   // Adjust before React commits, so presence retains the previous answer and its props.
@@ -71,10 +81,10 @@ export const StudyCardTransition = forwardRef<
         commit();
         return true;
       }
-      const bounds = element.current.getBoundingClientRect();
       setDeparture({
         correct,
-        x: correct ? window.innerWidth - bounds.left + 64 : -bounds.right - 64,
+        // Include the full card width and its rotated corners, even after a long drag.
+        x: (correct ? 1 : -1) * (window.innerWidth + element.current.offsetWidth + 64),
         velocity,
       });
       // Begin persistence while the card is still visible. No speculative queue read,
@@ -95,50 +105,86 @@ export const StudyCardTransition = forwardRef<
     );
   }
 
-  const target = departure
-    ? { x: departure.x, y: -6, scale: 1.02, rotate: departure.correct ? 3 : -3, opacity: 1 }
-    : { x: 0, y: 0, scale: 1, rotate: 0, opacity: 1 };
-  const spring = scaledSpring(m, 300, 35);
-  const transition = {
-    ...spring,
-    scale: scaledSpring(m, 650, 51),
-    opacity: { duration: 0.16 * m },
-  };
-
   return (
     <div className="relative grid w-full">
       <AnimatePresence key={reset} initial={false} mode="popLayout">
-        <motion.div
+        <StudyCardPresentation
           key={`${cardId}:${presentation.serial}`}
           ref={(node) => {
             // Presence unmounts the old node after the new one has claimed this ref.
             if (node && !departure) element.current = node;
           }}
           data-study-card-id={cardId}
-          className="relative col-start-1 row-start-1 w-full self-center"
-          initial={m > 0 ? { y: 12, scale: 0.96, opacity: 0.65 } : false}
-          animate={{ ...target, x: 0 }}
-          exit={
-            departure
-              ? {
-                  ...target,
-                  transition: {
-                    ...transition,
-                    x: { ...spring, velocity: departure.velocity / m },
-                  },
-                }
-              : { opacity: 0 }
-          }
-          transition={transition}
-          inert={departure !== null}
-          aria-hidden={departure !== null || undefined}
-          style={{ zIndex: departure ? 1 : 0, pointerEvents: departure ? 'none' : undefined }}
+          departure={departure}
+          m={m}
         >
           {children}
-          {departure && <StudyGradeRim correct={departure.correct} m={m} />}
-        </motion.div>
+        </StudyCardPresentation>
       </AnimatePresence>
     </div>
+  );
+});
+
+const StudyCardPresentation = forwardRef<
+  HTMLDivElement,
+  { 'data-study-card-id': string; departure: Departure | null; m: number; children: ReactNode }
+>(function StudyCardPresentation({ departure, m, children, ...attributes }, ref) {
+  const x = useMotionValue(0);
+  const rotate = useTransform(x, (offset) => offset / 100);
+  const opacity = useTransform(x, (offset) =>
+    departure ? Math.max(0, 1 - (offset / departure.x) ** 4) : 1,
+  );
+  const [present, safeToRemove] = usePresence();
+  const flight = useRef<ReturnType<typeof animate> | null>(null);
+
+  useLayoutEffect(() => {
+    if (!departure) return;
+    // Start on acceptance, not after the database has supplied the next card.
+    // The same value already contains the drag offset, so release never changes owners.
+    const animation = animate(x, departure.x, {
+      ...scaledSpring(m, 300, 35),
+      velocity: departure.velocity,
+    });
+    flight.current = animation;
+    return () => animation.stop();
+  }, [departure, m, x]);
+
+  useLayoutEffect(() => {
+    if (present) return;
+    let cancelled = false;
+    if (flight.current)
+      void flight.current.then(() => {
+        if (!cancelled) safeToRemove?.();
+      });
+    else safeToRemove?.();
+    return () => {
+      cancelled = true;
+    };
+  }, [present, safeToRemove]);
+
+  return (
+    <StudyCardMotionContext.Provider value={x}>
+      <motion.div
+        {...attributes}
+        ref={ref}
+        className="relative col-start-1 row-start-1 w-full self-center"
+        initial={{ y: 12, scale: 0.96 }}
+        animate={{ y: 0, scale: 1 }}
+        transition={scaledSpring(m, 300, 35)}
+        inert={departure !== null || !present}
+        aria-hidden={departure !== null || !present || undefined}
+        style={{
+          x,
+          rotate,
+          opacity,
+          zIndex: departure ? 1 : 0,
+          pointerEvents: departure ? 'none' : undefined,
+        }}
+      >
+        {children}
+        {departure && <StudyGradeRim correct={departure.correct} m={m} />}
+      </motion.div>
+    </StudyCardMotionContext.Provider>
   );
 });
 

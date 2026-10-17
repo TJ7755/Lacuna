@@ -99,6 +99,35 @@ describe('FlipCard reduced-motion swipes', () => {
     swipe(100);
     expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch', expect.any(Number));
   });
+
+  it.each([-1, 1])(
+    'commits a short fast flick in direction %s with its release velocity',
+    (direction) => {
+      const velocity = vi
+        .spyOn(MotionValue.prototype, 'getVelocity')
+        .mockReturnValue(direction * 720);
+      try {
+        const answer = vi.fn();
+        renderRevealed(answer);
+        swipe(direction * 25);
+        expect(answer).toHaveBeenCalledExactlyOnceWith(direction > 0, 'touch', direction * 720);
+      } finally {
+        velocity.mockRestore();
+      }
+    },
+  );
+
+  it('locks a vertical gesture to scrolling without grading or flipping', () => {
+    const answer = vi.fn();
+    const hide = renderRevealed(answer);
+    const target = screen.getByRole('button', { name: 'Hide answer' });
+    fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 205, clientY: 240, pointerId: 1 });
+    fireEvent.pointerMove(target, { clientX: 300, clientY: 245, pointerId: 1 });
+    fireEvent.pointerUp(target, { clientX: 300, clientY: 245, pointerId: 1 });
+    expect(answer).not.toHaveBeenCalled();
+    expect(hide).not.toHaveBeenCalled();
+  });
 });
 
 describe('FlipCard audio replay', () => {
