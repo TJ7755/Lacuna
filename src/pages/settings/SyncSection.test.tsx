@@ -426,12 +426,36 @@ describe('SyncSection', () => {
     expect(qr).not.toBeInTheDocument();
   });
 
+  it('keeps channel details behind the encryption disclosure and errors visible', async () => {
+    readSyncStateMock.mockResolvedValue({ ...state, lastError: 'Relay unavailable' });
+    readRememberedCredentialsMock.mockReturnValue(credentials);
+    render(
+      <LazyMotion features={domAnimation}>
+        <SyncSection />
+      </LazyMotion>,
+    );
+    await screen.findByText('Paired to a sync channel');
+
+    const details = screen.getByRole('button', { name: 'End-to-end encrypted' });
+    expect(details).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('alert')).toHaveTextContent('Relay unavailable');
+    expect(screen.getByRole('button', { name: 'Lock' })).toHaveAttribute(
+      'title',
+      'Unlocked — this device remembers its key, so sync works without the passphrase.',
+    );
+    fireEvent.click(details);
+    expect(details).toHaveAttribute('aria-expanded', 'true');
+    await waitFor(() => expect(screen.getByText(state.relayUrl!)).toBeVisible());
+    expect(screen.getByText(state.channelId!)).toBeVisible();
+    expect(screen.getByText(/Last snapshot: 2.00 MB encrypted/)).toBeVisible();
+  });
+
   it('starts unlocked from the remembered copy and syncs without the passphrase', async () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
     expect(await screen.findByText('Paired to a sync channel')).toBeInTheDocument();
-    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Recovery passphrase')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sync now' }));
@@ -444,7 +468,7 @@ describe('SyncSection', () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
@@ -458,7 +482,7 @@ describe('SyncSection', () => {
     readSyncStateMock.mockResolvedValue(state);
     readRememberedCredentialsMock.mockReturnValue(credentials);
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
 
@@ -472,12 +496,12 @@ describe('SyncSection', () => {
     readRememberedCredentialsMock.mockReturnValue(credentials);
     forgetRememberedCredentialsMock.mockRejectedValue(new Error('storage unavailable'));
     render(<SyncSection />);
-    await screen.findByText(/this device remembers its key/);
+    await screen.findByRole('button', { name: 'Lock' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
 
     await waitFor(() => expect(notify).toHaveBeenCalledWith('storage unavailable', 'negative'));
-    expect(screen.getByText(/this device remembers its key/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
     expect(clearUnlockedCredentialsMock).toHaveBeenCalledTimes(1);
     expect(publishUnlockedCredentialsMock).toHaveBeenLastCalledWith(credentials);
   });

@@ -70,6 +70,54 @@ describe('BackupsSection', () => {
     window.location.hash = '#/';
   });
 
+  it('shows three recent points and keeps older actions behind More', async () => {
+    mockBackups = Array.from({ length: 8 }, (_, index) => ({
+      id: index + 1,
+      createdAt: Date.UTC(2026, 7, 28) - index * 60_000,
+      deckCount: 1,
+      cardCount: 2,
+    }));
+    render(<BackupsSection />);
+
+    expect(await screen.findAllByRole('button', { name: 'Restore' })).toHaveLength(3);
+    const more = screen.getByRole('button', { name: 'More restore points' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(more);
+    expect(screen.getAllByRole('button', { name: 'Restore' })).toHaveLength(8);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Restore' })[7]);
+    const dialog = await screen.findByRole('alertdialog', { name: /^Go back to/ });
+    expect(mockRestoreBackup).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(mockRestoreBackup).toHaveBeenCalledWith(8));
+    fireEvent.click(more);
+    expect(screen.getAllByRole('button', { name: 'Restore' })).toHaveLength(3);
+  });
+
+  it('returns focus after an older point moves into the recent list', async () => {
+    mockBackups = Array.from({ length: 5 }, (_, index) => ({
+      id: index + 1,
+      createdAt: Date.UTC(2026, 7, 28) - index * 60_000,
+      deckCount: 1,
+      cardCount: 2,
+    }));
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
+    mockBackups = mockBackups.slice(1);
+    view.rerender(
+      <LazyMotion features={domAnimation}>
+        <BackupsSection />
+      </LazyMotion>,
+    );
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(3));
+    const trigger = screen.getAllByRole('button', { name: 'Delete' })[2];
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Delete' })[2]).toHaveFocus());
+  });
+
   it('requires explicit confirmation before deleting a restore point from Lacuna', async () => {
     render(<BackupsSection />);
 
@@ -252,7 +300,10 @@ describe('BackupsSection', () => {
     vi.mocked(backupFolderName).mockRejectedValueOnce(new Error('denied'));
     render(<BackupsSection />);
     await waitFor(() =>
-      expect(mockNotify).toHaveBeenCalledWith('Could not read the backup folder setting.', 'negative'),
+      expect(mockNotify).toHaveBeenCalledWith(
+        'Could not read the backup folder setting.',
+        'negative',
+      ),
     );
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onUnhandled).not.toHaveBeenCalled();

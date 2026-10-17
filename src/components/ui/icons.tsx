@@ -259,6 +259,14 @@ export const MenuIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const UnlockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="10" width="16" height="11" rx="2" />
+    <path d="M8 10V6a4 4 0 0 1 8 0" />
+    <line x1="12" y1="14" x2="12" y2="17" />
+  </Icon>
+);
+
 export const InfoIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="10" />
