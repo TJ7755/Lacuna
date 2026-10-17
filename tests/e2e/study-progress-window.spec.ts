@@ -97,12 +97,16 @@ for (const viewport of [
       await expect(card).not.toHaveAttribute('data-study-card-id', oldCard!);
     };
     await page.screenshot({ path: testInfo.outputPath('start.png') });
-    for (let index = 0; index < trigger - 1; index += 1) await answer();
+    for (let index = 0; index < trigger - 1; index += 1) {
+      await answer();
+      if (index + 1 === Math.floor(geometry.size * 0.5)) {
+        await page.screenshot({ path: testInfo.outputPath('halfway.png') });
+      }
+    }
     expect(await position()).toBe(0);
     await expect(
       page.locator('header').getByText(`· ${trigger} of 322`, { exact: true }),
     ).toBeVisible();
-    await page.screenshot({ path: testInfo.outputPath('near-80-percent.png') });
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
     const frames = await page
