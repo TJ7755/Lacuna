@@ -141,9 +141,9 @@ describe('Sidebar', () => {
 
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
     expect(mark).not.toHaveAttribute('src');
-    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-accent-soft');
+    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-accent-ink', 'dark:bg-accent-soft');
     expect(screen.getByText('Lacuna')).toHaveClass('text-xl');
   });
 
@@ -152,7 +152,7 @@ describe('Sidebar', () => {
 
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
     expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-9', 'w-9');
     expect(mark.parentElement).toHaveClass('px-[18px]');
@@ -174,7 +174,7 @@ describe('Sidebar', () => {
 
     const mark = screen.getByTestId('sidebar-brand-mark');
     expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
     expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-8', 'w-8');
     expect(screen.getByText('Lacuna')).toHaveClass('text-lg');
