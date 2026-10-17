@@ -25,6 +25,7 @@ import {
   verdict,
 } from './backupRecordSchemas';
 import { isAgentMemory } from './agentMemoryRecord';
+import { specificationPointIdsSchema } from '../specifications/links';
 
 const projection = z.discriminatedUnion('projectionMode', [
   object({ projectionMode: z.literal('memory-model'), memoryModelVersion: text }),
@@ -174,6 +175,7 @@ export const stateSchemas = {
       provisional: flag,
       scope: z.literal('course'),
       courseId: id,
+      specificationPointIds: specificationPointIdsSchema.optional(),
     }),
     object({
       ...timestamps,
@@ -184,6 +186,7 @@ export const stateSchemas = {
       scope: z.literal('legacy-scheduling-unit'),
       courseId: z.null(),
       legacySchedulingUnitId: id,
+      specificationPointIds: z.never().optional(),
     }),
   ]),
   questions: z.discriminatedUnion('kind', [

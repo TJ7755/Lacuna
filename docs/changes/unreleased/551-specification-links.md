@@ -1,0 +1,1 @@
+- Store Course specification selections and qualified specification-point links on Concepts, preserving them through backups, device sync, course files, share codes and published-course updates. Add pure helpers to review existing specification tags and identify retained links outside the current selection. (#551)

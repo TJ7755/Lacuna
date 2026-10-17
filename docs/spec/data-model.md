@@ -20,9 +20,32 @@ course kept it as a per-lesson override. Migration mapping lives in
 `courseId?`, all stamped during the upgrade.
 
 A course's static metadata includes `name`, `description`, and optional `examBoard` and
-`specification` plain strings. The provenance fields are unindexed, additive metadata edited in
-Course Settings and included in batch-generation prompt context only when present; they do not
-create a first-class exam-board or specification entity.
+`specification` plain strings. Those strings remain the Custom fallback, edited in Course Settings
+and included in batch-generation prompt context when present. Optional `specificationRef` stores
+`{ specificationId, tier?, routeIds? }` for a bundled specification; setting or clearing it never
+deletes the fallback strings or a Concept's existing point links. Selection UI is a separate stage.
+
+### Specification links (schema v30)
+
+Course-scoped Concepts may carry `specificationPointIds?: string[]`. Each entry is qualified as
+`<specificationId>:<pointId>`, using the catalogue's lower-case kebab/dotted ID grammar. Both
+route IDs and point links are unique within their arrays. Compatibility-only legacy-scheduling-unit
+Concepts cannot carry specification links. Cards and Questions inherit links through their Concept;
+links are not copied onto each presentation or Question.
+
+The v30 migration only adds the multi-entry `*specificationPointIds` Concept index, without
+rewriting existing records. `setCourseSpecificationReference` and `setConceptSpecificationPoints`
+validate and stamp writes within the existing repository transaction boundaries and reject edits
+to locked published copies. `getConceptsForSpecificationPoint` uses the index and restricts results
+to the requested Course. Unknown but syntactically valid IDs are retained, including links to a
+different specification or a point outside the current tier/route selection.
+
+`src/specifications/tagResolver.ts` provides pure review helpers. `resolveSpecPointTags` proposes
+qualified links from `spec:<ref>` and `spec:<code>:<ref>` Card tags. References match the published
+reference exactly; qualification codes match without regard to case. Ambiguous references and
+unmatched specification tags are returned separately, and repeated identical tags on one Card
+produce one result. No tag or Concept changes automatically. `unavailableSpecificationPointLinks`
+reports retained links to another specification, unknown points and points outside the selection.
 
 The React-free persistence modules in `src/db/` expose course operations. Card, review, Course,
 Lesson and assessment writes live in `cardRepository.ts`, `reviewRepository.ts`,
@@ -388,11 +411,11 @@ history[], scheduleEdits?, createdAt`
   and records protected by unresolved distribution state. New numeric and working content is
   authored as Questions, not Cards. Recognised legacy payloads remain readable; unsupported
   versions do not gain a grading path by accident.
-- `tags` remain free-form strings. Specification-point provenance uses the manual `spec:3.4.1`
-  convention; there is no separate specification-point model or batch-generation field.
+- `tags` remain free-form strings. The manual `spec:3.4.1` and `spec:<code>:<ref>` conventions
+  remain accepted as provenance and can be resolved into proposed Concept links for review.
   `src/specifications/catalogue.ts` defines and validates the read-only specification catalogue
   format (tiers, routes, spec points, papers, assessment objectives and command words); no
-  entries ship yet and nothing links records to it.
+  entries ship yet. Course references and Concept links are additive stored metadata.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
@@ -466,7 +489,6 @@ questionConcepts, questionAttempts, courseExamDates? }` — the
   or Folder rows are refused.
 - `AppStateEntry { key, value }` — small persistent app state (e.g. the backup folder
   handle, sidebar settings, input mode, motion speed).
-
 
 ### Authored question sets (schema v28)
 

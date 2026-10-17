@@ -1304,6 +1304,11 @@ class LacunaDatabase extends Dexie {
     this.version(29).stores({
       questionSetAttempts: 'id, courseId, questionSetId, status, updatedAt',
     });
+
+    // Version 30: optional qualified specification links, indexed without rewriting Concepts.
+    this.version(30).stores({
+      concepts: 'id, scopeKey, courseId, updatedAt, *specificationPointIds',
+    });
   }
 }
 
@@ -1325,7 +1330,7 @@ function containsReviewProjection(
   return true;
 }
 
-const CURRENT_SCHEMA_VERSION = 28;
+const CURRENT_SCHEMA_VERSION = 30;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 export const db = new LacunaDatabase();

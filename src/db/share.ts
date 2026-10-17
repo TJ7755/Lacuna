@@ -76,6 +76,11 @@ import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
 import { importSharedQuestionSets, packQuestionSetMedia } from '../questions/questionSetShare';
+import {
+  specificationPointIdsSchema,
+  specificationRefSchema,
+  type SpecificationReference,
+} from '../specifications/links';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -256,6 +261,9 @@ const ShareCourseSchema = z
   .object({
     n: z.string().min(1),
     d: z.string().optional(), // description
+    specificationRef: specificationRefSchema.optional(),
+    examBoard: z.string().optional(),
+    specification: z.string().optional(),
     o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
     c: z.number(), // createdAt
     e: z.number().optional(), // examDate (primary date due)
@@ -400,6 +408,7 @@ const ShareConceptSchema = z.object({
   id: z.string().min(1),
   n: z.string().min(1),
   p: z.literal(1).optional(),
+  specificationPointIds: specificationPointIdsSchema.optional(),
 });
 
 const ShareFixedQuestionSchema = z.object({
@@ -532,6 +541,9 @@ export interface ShareLesson {
 interface ShareCourse {
   n: string; // name
   d?: string; // description
+  specificationRef?: SpecificationReference;
+  examBoard?: string;
+  specification?: string;
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
   c: number; // createdAt
   e?: number; // examDate (primary date due)
@@ -645,6 +657,7 @@ interface ShareConcept {
   id: string;
   n: string;
   p?: 1;
+  specificationPointIds?: string[];
 }
 
 type ShareQuestion =
@@ -1192,6 +1205,9 @@ export async function buildCourseSharePayload(
   const shareCourse: ShareCourse = {
     n: course.name,
     ...(course.description ? { d: course.description } : {}),
+    ...(course.specificationRef === undefined ? {} : { specificationRef: course.specificationRef }),
+    ...(course.examBoard === undefined ? {} : { examBoard: course.examBoard }),
+    ...(course.specification === undefined ? {} : { specification: course.specification }),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
     c: course.createdAt,
     ...(finalAssessment.examDate === undefined ? {} : { e: finalAssessment.examDate }),
@@ -1350,6 +1366,9 @@ export async function buildCourseSharePayload(
       id: concept.id,
       n: concept.name,
       ...(concept.provisional ? { p: 1 as const } : {}),
+      ...(concept.specificationPointIds === undefined
+        ? {}
+        : { specificationPointIds: concept.specificationPointIds }),
     })),
     questions: shareQuestions,
     questionSets: questionSets.map((record) => packQuestionSetMedia(record, includeMedia)),
@@ -1446,6 +1465,13 @@ async function importCourseSharePayload(
 
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
+        ...(payload.course.specificationRef === undefined
+          ? {}
+          : { specificationRef: payload.course.specificationRef }),
+        ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
+        ...(payload.course.specification === undefined
+          ? {}
+          : { specification: payload.course.specification }),
         examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
         createdAt: payload.course.c,
         schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
@@ -1479,6 +1505,9 @@ async function importCourseSharePayload(
             courseId: course.id,
             name: concept.n,
             provisional: concept.p === 1,
+            ...(concept.specificationPointIds === undefined
+              ? {}
+              : { specificationPointIds: concept.specificationPointIds }),
             createdAt: importedAt + index,
             updatedAt: importedAt + index,
           };

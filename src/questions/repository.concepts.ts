@@ -1,5 +1,10 @@
-import { clearTombstone, recordTombstone } from '../db/mutationStamp';
+import { canEditLessons } from '../course/lessonViewMode';
+import { clearTombstone, recordTombstone, stampUpdatedAt } from '../db/mutationStamp';
 import { db, makeId } from '../db/schema';
+import {
+  qualifiedSpecificationPointIdSchema,
+  specificationPointIdsSchema,
+} from '../specifications/links';
 import type { Concept } from './types';
 import { cleanName } from './repository.shared';
 import { referencedQuestionSetConceptIds } from './questionSetRepository';
@@ -54,6 +59,41 @@ export async function updateConcept(
     await db.concepts.put(updated);
     return updated;
   });
+}
+
+export async function setConceptSpecificationPoints(
+  conceptId: string,
+  ids: string[],
+  now = Date.now(),
+): Promise<Concept> {
+  const specificationPointIds = specificationPointIdsSchema.parse(ids);
+  return db.transaction('rw', [db.courses, db.concepts], async () => {
+    const concept = await db.concepts.get(conceptId);
+    if (!concept) throw new Error('Concept not found.');
+    if (concept.scope === 'legacy-scheduling-unit') {
+      throw new Error('A legacy scheduling-unit Concept cannot link to specification points.');
+    }
+    const course = await db.courses.get(concept.courseId);
+    if (!course) throw new Error('Course not found.');
+    if (!canEditLessons(course)) throw new Error('This published course is locked.');
+    const updated: Concept = stampUpdatedAt({ ...concept, specificationPointIds }, now);
+    await db.concepts.put(updated);
+    return updated;
+  });
+}
+
+export async function getConceptsForSpecificationPoint(
+  courseId: string,
+  qualifiedId: string,
+): Promise<Concept[]> {
+  const id = qualifiedSpecificationPointIdSchema.parse(qualifiedId);
+  return (
+    await db.concepts
+      .where('specificationPointIds')
+      .equals(id)
+      .filter((concept) => concept.scope === 'course' && concept.courseId === courseId)
+      .toArray()
+  ).sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
 
 export async function deleteConcept(conceptId: string, now = Date.now()): Promise<void> {

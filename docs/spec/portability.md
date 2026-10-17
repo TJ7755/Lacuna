@@ -177,6 +177,13 @@ A single, reusable export UI offering multiple output formats:
   later collections and backfilled timestamps; v11 requires its four Question-mode
   collections. Additive unknown fields are retained, and non-empty legacy Deck/Folder
   collections still trigger the pre-v22 refusal.
+- **Specification metadata:** Course `specificationRef` and course-scoped Concept
+  `specificationPointIds` travel unchanged through backup export/restore and sync snapshots.
+  Malformed references, duplicate route/point IDs and links on legacy-scheduling-unit Concepts
+  are rejected before writes. Unknown but valid catalogue IDs remain portable; changing a
+  Course's selection never silently removes its Concepts' links. Device sync resolves concurrent
+  link edits by the existing whole-Concept last-writer rule, rather than unioning removed links
+  back into the record. The existing deterministic tie-break applies to equal timestamps.
 - **Import modes:**
   - **Replace** — wipe the tables represented by the backup, then restore exactly. The UI
     calls this **Replace local data**, explains that there is no account or cloud copy, and
@@ -252,7 +259,7 @@ The recipient confirms before any data is written. Published files use the same 
 matching and update review as share codes.
 
 The file is a versioned JSON envelope (`format: "lacuna-course"`, `version: 1`) containing
-the current v4 course-share payload and its referenced media as `BackupAsset` records.
+the current v5 course-share payload and its referenced media as `BackupAsset` records.
 Card, note, Question and authored Question Set media references remain intact. Occlusion diagrams are gathered
 from their asset hashes, and each required image or audio asset is included once. The
 content scope matches course share codes, including their exclusion of unassigned bank
@@ -333,7 +340,7 @@ copy-and-paste (or scannable) **code** and rebuilds a course from one. It is dis
 backup export: a share code carries only the **material** needed to recreate the course,
 never one person's scheduling progress or review history.
 
-- **What a code contains (current, v4 payload):** course metadata (name, exam objective,
+- **What a code contains (current, v5 payload):** course metadata (name, exam objective,
   date created, an exam date or steady-retention marker, target retention, new-card cap), its ordered lessons each with
   their notes and cards (type, front, back, tags), and current `CourseAssessment`
   checkpoints. **Sequences**
@@ -357,6 +364,15 @@ never one person's scheduling progress or review history.
   rest of the Course. `PracticeNode`, lesson exposures, Question Attempts, Question scheduling,
   cardless-lesson completions and Practice milestones are deliberately out of scope — a shared Course carries
   material structure, not one learner's practice-path state.
+- **Specification provenance:** optional Course `specificationRef`, the Custom `examBoard` and
+  `specification` strings, and each Concept's qualified `specificationPointIds` survive share-code
+  and course-file round trips. These are additive keys on the existing payload; older codes
+  without them still import. Concept IDs are remapped on ordinary imports, but qualified
+  catalogue point IDs remain unchanged. Published-course imports retain the fields in their
+  source metadata: later teacher corrections update an unchanged selection, while a learner's
+  changed selection remains local. Concept point links follow the existing published Concept
+  content update policy; Question schedules, Attempts and Card review history remain personal.
+  Transport versions and encryption are unchanged.
 - **What it omits — media, deliberately and loudly.** `stripAssetMedia` replaces every asset
   reference in card and note Markdown with placeholder text (`[Image omitted from share
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
