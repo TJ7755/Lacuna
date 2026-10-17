@@ -1121,6 +1121,8 @@ describe('LearnMode course/lesson scope', () => {
     expect(
       await screen.findByRole('progressbar', { name: 'Session progress' }),
     ).toHaveAttribute('aria-valuenow', '0');
+    // The recall forecast lives in the card actions menu.
+    fireEvent.click(screen.getByRole('button', { name: 'Card actions' }));
     expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
