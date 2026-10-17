@@ -8,7 +8,7 @@ test('the hero mark hands over to the centred fixed header when scrolling', asyn
   await expect(brand).toHaveCSS('opacity', '1');
   const mark = nav.locator('.motion-nav-mark');
   await expect(mark).toHaveCSS('opacity', '0');
-  await page.getByRole('region', { name: 'Ready to make it stick?' }).scrollIntoViewIfNeeded();
+  await page.getByRole('region', { name: 'Your exam has a date. Start there.' }).scrollIntoViewIfNeeded();
   await expect(mark).toHaveCSS('opacity', '1');
   await expect(brand).toHaveCSS('opacity', '0');
   await expect(brand).toHaveAttribute('tabindex', '-1');
@@ -51,118 +51,7 @@ test('landing keeps a stable promise, accessible motion control and direct entry
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
   await hero.getByRole('link', { name: 'See how it works' }).click();
-  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'Scheduled for your exam, not for ever.' })).toBeInViewport();
   await hero.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
-});
-
-test('exam introduction explains one idea at a time', async ({ page }) => {
-  await page.goto('/#/landing');
-  const scene = page.locator('#landing-product');
-  await expect(scene.locator('.calendar-recall')).toHaveCount(1);
-  await expect(page.locator('.exam-projection')).toHaveCount(0);
-  await expect(scene.locator('p')).toHaveCount(1);
-  await expect(scene.locator('.exam-fit-time-beat p')).toHaveText('Set a session time limit.');
-  await expect(scene.locator('.exam-fit-exam-beat p')).toHaveCount(0);
-  expect(
-    await page.locator('main').evaluate((main) => {
-      const sections = [...main.children];
-      return (
-        sections[1].id === 'landing-product' &&
-        sections[2].classList.contains('landing-walkthrough')
-      );
-    }),
-  ).toBe(true);
-  const time = scene.locator('.exam-fit-time-beat');
-  const exam = scene.locator('.exam-fit-exam-beat');
-  const scrollTo = async (progress: number) => {
-    await scene.evaluate(
-      (el, value) =>
-        window.scrollTo({
-          top: scrollY + el.getBoundingClientRect().top + (el.clientHeight - innerHeight) * value,
-          behavior: 'instant',
-        }),
-      progress,
-    );
-  };
-  for (const progress of [0, 0.3, 0.5, 0.7, 1, 0]) {
-    await scrollTo(progress);
-    await expect
-      .poll(() => scene.evaluate((el) => Number(getComputedStyle(el).getPropertyValue('--fit'))))
-      .toBeCloseTo(progress, 2);
-    const opacity = await scene.evaluate((el) =>
-      [...el.querySelectorAll('.exam-fit-beat')].map((beat) =>
-        Number(getComputedStyle(beat).opacity),
-      ),
-    );
-    expect(opacity.filter((value) => value > 0.01).length).toBeLessThanOrEqual(1);
-    if (progress === 0) {
-      await expect(time).toHaveCSS('opacity', '1');
-      await expect(exam).toHaveAttribute('aria-hidden', 'true');
-    }
-    if (progress === 1) {
-      await expect(exam).toHaveCSS('opacity', '1');
-      await expect(time).toHaveAttribute('aria-hidden', 'true');
-    }
-  }
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await scene.scrollIntoViewIfNeeded();
-  await expect(scene.locator('.exam-fit-stage')).toHaveCSS('position', 'relative');
-  await expect(time).toHaveCSS('opacity', '1');
-  await expect(exam).toHaveCSS('opacity', '1');
-  await expect(scene.getByRole('heading')).toHaveCount(2);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-
-test('landing ends with a clear choice to start or download', async ({ page }) => {
-  await page.goto('/#/landing');
-  const ending = page.getByRole('region', { name: 'Ready to make it stick?' });
-  await ending.scrollIntoViewIfNeeded();
-  await expect(ending.getByRole('heading')).toBeInViewport();
-  await expect(ending.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
-  await expect(ending.getByRole('link', { name: 'Download for desktop' })).toHaveAttribute(
-    'href',
-    '#/download',
-  );
-  await page.setViewportSize({ width: 390, height: 844 });
-  await ending.scrollIntoViewIfNeeded();
-  await expect(ending.getByRole('link', { name: 'Download for desktop' })).toBeInViewport();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await ending.getByRole('link', { name: 'Start revising' }).click();
-  await expect(page).toHaveURL(/#\/$/);
-});
-
-test('availability controls the schedule and curve while the exam stays fixed', async ({
-  page,
-}) => {
-  await page.goto('/#/landing');
-  const scene = page.locator('#landing-product');
-  await expect(scene.locator('.exam-fit-exam-beat')).toHaveAttribute('inert', '');
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  const calendar = scene.getByRole('region', { name: 'Choose available days and times' });
-  await calendar.scrollIntoViewIfNeeded();
-  const examDate = await scene.locator('.exam-calendar-day[data-exam="true"]').innerText();
-  const curve = scene.locator('.calendar-curve-line');
-  const initial = await curve.getAttribute('d');
-  const selected = calendar.getByRole('button', { pressed: true });
-  while (await selected.count()) await selected.first().click();
-  await expect(scene.locator('.exam-calendar-slot[data-planned="true"]')).toHaveCount(0);
-  await expect(curve).not.toHaveAttribute('d', initial!);
-  await expect(scene.getByText('Tap the times you’re free', { exact: true })).toBeVisible();
-  await expect(scene.locator('.exam-calendar-footer')).toHaveCount(0);
-  const free = calendar.getByRole('button').nth(4);
-  await free.focus();
-  await page.keyboard.press('Space');
-  await expect(free).toHaveAttribute('aria-pressed', 'true');
-  await expect(free).toHaveAttribute('data-planned', 'true');
-  await expect(scene.locator('.exam-calendar-day[data-exam="true"]')).toHaveText(examDate, {
-    useInnerText: true,
-  });
-  await expect(scene.locator('input[type="date"]')).toHaveCount(0);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await scene.locator('.calendar-recall').scrollIntoViewIfNeeded();
-  await expect(scene.locator('.calendar-recall')).toBeInViewport();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await expect(curve).toHaveCSS('animation-name', 'none');
 });

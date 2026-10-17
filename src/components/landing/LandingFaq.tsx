@@ -1,9 +1,5 @@
 const questions = [
   ['Is Lacuna free?', 'Yes. Lacuna is free and open source, with no subscription.'],
-  [
-    'Do I need an exam date?',
-    'No. Choose steady retention to revise without a deadline, or set an exam date to schedule towards it.',
-  ],
   ['Can I bring my Anki decks?', 'Yes. Import an Anki .apkg file to bring your cards into Lacuna.'],
   [
     'Can I study offline?',
@@ -20,7 +16,9 @@ export function LandingFaq() {
           <details key={question}>
             <summary>
               {question}
-              <span aria-hidden="true">+</span>
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 20 20" fill="none">
+                <path d="M4 10h12M10 4v12" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
             </summary>
             <p>{answer}</p>
           </details>

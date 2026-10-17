@@ -5,14 +5,14 @@ const homepage = readFileSync('dist/index.html', 'utf8');
 
 for (const scenario of [
   { name: 'first visit', hash: '', hidden: false },
-  { name: 'first-visit anchor', hash: '#landing-product', hidden: false },
+  { name: 'first-visit anchor', hash: '#how-it-works', hidden: false },
   { name: 'returning browser', hash: '', seeded: '1', hidden: true },
   { name: 'light-theme returning browser', hash: '', seeded: '1', theme: 'light', hidden: true },
   { name: 'returning browser with an empty seed flag', hash: '', seeded: '', hidden: true },
-  { name: 'returning browser anchor', hash: '#landing-product', seeded: '1', hidden: true },
+  { name: 'returning browser anchor', hash: '#how-it-works', seeded: '1', hidden: true },
   { name: 'app hash route', hash: '#/cards', hidden: true },
   { name: 'storage denied', hash: '', storageDenied: true, hidden: false },
-  { name: 'storage-denied anchor', hash: '#landing-product', storageDenied: true, hidden: false },
+  { name: 'storage-denied anchor', hash: '#how-it-works', storageDenied: true, hidden: false },
   { name: 'storage-denied app route', hash: '#/', storageDenied: true, hidden: true },
   { name: 'packaged app', hash: '', isElectron: true, hidden: true },
 ]) {
