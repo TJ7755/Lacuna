@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../db/repository';
@@ -178,10 +178,40 @@ describe('QuestionSetPractice', () => {
     });
   });
 
+  it('keeps a later navigation focus choice when a slow retry succeeds', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    let finish!: () => void;
+    vi.spyOn(attemptRepository, 'getQuestionSetAttempt')
+      .mockRejectedValueOnce(new Error('Attempt transaction refused'))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = () => resolve(attempt);
+          }),
+      );
+    open(course.id, set.id, attempt.id);
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    const navigation = document.createElement('button');
+    navigation.textContent = 'Persistent navigation';
+    document.body.append(navigation);
+    try {
+      navigation.focus();
+      await act(async () => finish());
+      await screen.findByLabelText('Your answer');
+      expect(navigation).toHaveFocus();
+    } finally {
+      navigation.remove();
+    }
+  });
+
   it('offers a return action for a missing attempt without pretending it is still loading', async () => {
     const { course, set } = await fixture();
     const { router } = open(course.id, set.id, 'missing');
-    expect(await screen.findByRole('heading', { name: 'Attempt not found' })).toHaveFocus();
+    await screen.findByRole('heading', { name: 'Attempt not found' });
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Attempt not found' })).toHaveFocus(),
+    );
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Back to question set' }));
     expect(router.state.location.pathname).toBe(`/course/${course.id}/question-sets/${set.id}`);

@@ -4,7 +4,7 @@ import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   questionSetPrimaryKey,
   useQuestionSetBlankConfirmation,
@@ -47,6 +47,7 @@ import '../components/question-sets/question-set-practice.css';
 export function QuestionSetPractice() {
   const { courseId = '', setId = '', attemptId = '' } = useParams();
   const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
+  const retryFocusOwner = useRef<Element | null | undefined>(undefined);
   const backTo = `/course/${courseId}/question-sets/${setId}`;
   if (missing)
     return (
@@ -66,16 +67,31 @@ export function QuestionSetPractice() {
         backTo={backTo}
         backLabel="Back to question set"
         detail={error}
-        onRetry={retryLoad}
+        onRetry={() => {
+          retryFocusOwner.current = document.activeElement;
+          retryLoad();
+        }}
       >
         The saved attempt could not be read. Try again; your saved answers have not been removed.
       </QuestionSetUnavailable>
     );
   if (!session) return <QuestionSetLoading label="Loading attempt" />;
-  return <PracticeWorkspace key={attemptId} session={session} />;
+  return (
+    <PracticeWorkspace
+      key={attemptId}
+      session={session}
+      initialFocusOwner={retryFocusOwner.current}
+    />
+  );
 }
 
-function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) {
+function PracticeWorkspace({
+  session,
+  initialFocusOwner,
+}: {
+  session: QuestionSetAttemptSession;
+  initialFocusOwner?: Element | null;
+}) {
   const [formDirty, setFormDirty] = useState(false);
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
@@ -132,6 +148,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
     marking,
     attempt.status === 'complete',
     busy || acting,
+    initialFocusOwner,
   );
   async function perform(work: () => Promise<unknown>) {
     setActionError('');

@@ -211,7 +211,10 @@ describe('QuestionSetOverview', () => {
     view.unmount();
     await db.questionSets.clear();
     open(course.id);
-    expect(await screen.findByRole('heading', { name: 'Question set not found' })).toHaveFocus();
+    await screen.findByRole('heading', { name: 'Question set not found' });
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Question set not found' })).toHaveFocus(),
+    );
     expect(screen.getByRole('link', { name: 'Back to Questions' })).toBeVisible();
   });
 });

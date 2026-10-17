@@ -26,7 +26,7 @@ describe('Paper question set authoring', () => {
     const heading = await screen.findByRole('heading', {
       name: 'Could not open this question set',
     });
-    expect(heading).toHaveFocus();
+    await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.getByText(detail)).not.toBeVisible();
     fireEvent.click(screen.getByText('Technical details'));
     expect(screen.getByText(detail)).toBeVisible();
@@ -47,7 +47,7 @@ describe('Paper question set authoring', () => {
     open(course.id);
 
     const heading = await screen.findByRole('heading', { name: 'Question set not found' });
-    expect(heading).toHaveFocus();
+    await waitFor(() => expect(heading).toHaveFocus());
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Back to Questions' }));
     expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
