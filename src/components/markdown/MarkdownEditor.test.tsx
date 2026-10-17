@@ -57,7 +57,7 @@ describe('MarkdownEditor accessible name', () => {
     render(<MarkdownEditor label="Front" value="" onChange={vi.fn()} />);
 
     expect(screen.getByRole('textbox', { name: 'Front' })).toBeInTheDocument();
-    expect(screen.getByText('Front')).toHaveClass('text-sm', 'text-ink-soft');
+    expect(screen.getByText('Front')).toHaveClass('text-sm', 'font-semibold', 'text-ink');
   });
 
   it('prefers an explicit accessible name over the visible label', () => {

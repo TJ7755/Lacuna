@@ -1,0 +1,68 @@
+/* Syntax colours share the readable light/dark chart and semantic tokens. */
+.prose-lacuna .hljs {
+  color: hsl(var(--ink));
+}
+.prose-lacuna
+  :is(
+    .hljs-doctag,
+    .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_
+  ) {
+  color: hsl(var(--series-3));
+}
+.prose-lacuna :is(.hljs-title, .hljs-section) {
+  color: hsl(var(--accent-ink));
+}
+.prose-lacuna
+  :is(
+    .hljs-attr,
+    .hljs-attribute,
+    .hljs-literal,
+    .hljs-meta,
+    .hljs-number,
+    .hljs-operator,
+    .hljs-variable,
+    .hljs-selector-attr,
+    .hljs-selector-class,
+    .hljs-selector-id
+  ) {
+  color: hsl(var(--series-1));
+}
+.prose-lacuna
+  :is(
+    .hljs-regexp,
+    .hljs-string,
+    .hljs-meta .hljs-string,
+    .hljs-name,
+    .hljs-quote,
+    .hljs-selector-tag,
+    .hljs-selector-pseudo
+  ) {
+  color: hsl(var(--positive));
+}
+.prose-lacuna :is(.hljs-built_in, .hljs-symbol, .hljs-bullet) {
+  color: hsl(var(--warning-fg));
+}
+.prose-lacuna :is(.hljs-comment, .hljs-code, .hljs-formula) {
+  color: hsl(var(--ink-faint));
+}
+.prose-lacuna :is(.hljs-subst, .hljs-emphasis, .hljs-strong) {
+  color: hsl(var(--ink));
+}
+.prose-lacuna .hljs-emphasis {
+  font-style: italic;
+}
+.prose-lacuna :is(.hljs-strong, .hljs-section) {
+  font-weight: 600;
+}
+.prose-lacuna .hljs-addition {
+  color: hsl(var(--positive));
+  background: hsl(var(--positive) / 0.08);
+}
+.prose-lacuna .hljs-deletion {
+  color: hsl(var(--negative));
+  background: hsl(var(--negative) / 0.08);
+}

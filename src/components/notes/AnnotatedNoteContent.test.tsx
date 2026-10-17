@@ -104,7 +104,7 @@ describe('AnnotatedNoteContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete annotation for zeta' }));
     expect(screen.getByText('Delete this highlight?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Cancel' }), { key: 'Escape' });
     expect(screen.getByRole('button', { name: 'Delete annotation for zeta' })).toHaveFocus();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete annotation for zeta' }));

@@ -4,6 +4,10 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { ConfirmInline } from '../ui/ConfirmInline';
+import { fieldLabelClassName, inputClassName, inputFrameClassName } from '../ui/Field';
+import { motionTransition } from '../ui/motion';
+import { cn } from '../ui/cn';
 import {
   createNoteAnnotation,
   deleteNoteAnnotation,
@@ -27,10 +31,7 @@ const EMPTY_ANNOTATIONS: NoteAnnotation[] = [];
 export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
-  const transition = {
-    duration: 0.18 * multiplier,
-    ease: [0.16, 1, 0.3, 1] as const,
-  };
+  const transition = motionTransition('feedback', multiplier);
   const queryResult = useLiveQuery(() => listNoteAnnotations(note.id), [note.id], []);
   const annotations = Array.isArray(queryResult) ? queryResult : EMPTY_ANNOTATIONS;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -150,31 +151,30 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
       </div>
 
       <AnimatedDisclosure open={!!selectionError}>
-            <div className="mt-3 flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.04] px-3 py-2">
-              <p role="status" className="text-xs text-ink-soft">
-                {selectionError}
-              </p>
-              <button
-                type="button"
-                onClick={() => setSelectionError(null)}
-                className="shrink-0 text-xs font-medium text-ink-soft hover:text-ink"
-              >
-                Dismiss
-              </button>
-            </div>
+        <div className="mt-3 flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.04] px-3 py-2">
+          <p role="status" className="text-xs text-ink-soft">
+            {selectionError}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectionError(null)}
+            className="shrink-0"
+          >
+            Dismiss
+          </Button>
+        </div>
       </AnimatedDisclosure>
 
       <AnimatedDisclosure open={!!pendingAnchor}>
         {pendingAnchor && (
-          <div className="mt-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          <div className="mt-4 rounded-3xl bg-surface p-5 card-surface">
             <p className="border-l-2 border-accent/50 pl-3 text-sm text-ink">
               {pendingAnchor.selectedText}
             </p>
-            <label
-              className="mt-3 block text-xs font-medium text-ink-soft"
-              htmlFor={`annotation-${note.id}`}
-            >
-              Annotation <span className="font-normal text-ink-faint">(optional)</span>
+            <label className={cn(fieldLabelClassName, 'mt-4')} htmlFor={`annotation-${note.id}`}>
+              Annotation
             </label>
             <textarea
               id={`annotation-${note.id}`}
@@ -182,7 +182,7 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
               onChange={(event) => setDraftBody(event.target.value)}
               rows={2}
               autoFocus
-              className="mt-1.5 w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/15"
+              className={cn(inputClassName, 'resize-y text-sm placeholder:text-ink-faint')}
               placeholder="Add a note to this highlight"
             />
             <div className="mt-3 flex justify-end gap-2">
@@ -223,9 +223,9 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
               return (
                 <motion.li
                   key={annotation.id}
-                  layout="position"
+                  layout={multiplier > 0 ? 'position' : false}
                   transition={transition}
-                  className="rounded-2xl bg-ink/[0.04] px-3 py-3"
+                  className="rounded-3xl bg-surface p-5 card-surface"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -246,8 +246,10 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                           transition={transition}
                           className="flex shrink-0 gap-1"
                         >
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             data-annotation-action="edit"
                             data-annotation-id={annotation.id}
                             onClick={() => {
@@ -255,24 +257,25 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
                               setEditBody(annotation.body ?? '');
                               setDeletingId(null);
                             }}
-                            className="min-h-11 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                             aria-label={`Edit annotation for ${annotation.selectedText}`}
                           >
                             Edit
-                          </button>
-                          <button
+                          </Button>
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             data-annotation-action="delete"
                             data-annotation-id={annotation.id}
                             onClick={() => {
                               setDeletingId(annotation.id);
                               setEditingId(null);
                             }}
-                            className="min-h-11 rounded-md px-2 text-xs font-medium text-ink-soft hover:bg-negative/10 hover:text-negative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-negative/50"
+                            className="hover:bg-negative/10 hover:text-negative"
                             aria-label={`Delete annotation for ${annotation.selectedText}`}
                           >
                             Delete
-                          </button>
+                          </Button>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -280,74 +283,58 @@ export function AnnotatedNoteContent({ note }: AnnotatedNoteContentProps) {
 
                   <AnimatedDisclosure open={editing}>
                     <div className="mt-3">
-                        <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
-                          Annotation text
-                        </label>
-                        <textarea
-                          id={`edit-annotation-${annotation.id}`}
-                          value={editBody}
-                          onChange={(event) => setEditBody(event.target.value)}
-                          rows={2}
-                          autoFocus
-                          className="w-full resize-y rounded-lg border border-line-strong bg-paper px-3 py-2 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/15"
-                        />
-                        <div className="mt-2 flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => {
-                              returnFocusAction.current = {
-                                id: annotation.id,
-                                action: 'edit',
-                              };
-                              setEditingId(null);
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="primary"
-                            size="sm"
-                            disabled={busy}
-                            onClick={() => saveEdit(annotation)}
-                          >
-                            Save
-                          </Button>
-                        </div>
-                    </div>
-                  </AnimatedDisclosure>
-                  <AnimatedDisclosure open={!editing && deleting}>
-                    <div className="mt-3 flex items-center justify-end gap-2">
-                      <span className="mr-auto text-xs text-ink-soft">Delete this highlight?</span>
+                      <label htmlFor={`edit-annotation-${annotation.id}`} className="sr-only">
+                        Annotation text
+                      </label>
+                      <textarea
+                        id={`edit-annotation-${annotation.id}`}
+                        value={editBody}
+                        onChange={(event) => setEditBody(event.target.value)}
+                        rows={2}
+                        autoFocus
+                        className={cn(inputFrameClassName, 'w-full resize-y text-sm')}
+                      />
+                      <div className="mt-2 flex justify-end gap-2">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          autoFocus
                           disabled={busy}
                           onClick={() => {
                             returnFocusAction.current = {
                               id: annotation.id,
-                              action: 'delete',
+                              action: 'edit',
                             };
-                            setDeletingId(null);
+                            setEditingId(null);
                           }}
                         >
                           Cancel
                         </Button>
                         <Button
                           type="button"
-                          variant="danger"
+                          variant="primary"
                           size="sm"
                           disabled={busy}
-                          onClick={() => confirmDelete(annotation.id)}
+                          onClick={() => saveEdit(annotation)}
                         >
-                          Delete
+                          Save
                         </Button>
+                      </div>
                     </div>
+                  </AnimatedDisclosure>
+                  <AnimatedDisclosure open={!editing && deleting}>
+                    <ConfirmInline
+                      className="mt-3"
+                      message="Delete this highlight?"
+                      confirmLabel="Delete"
+                      disabled={busy}
+                      focusOnMount="cancel"
+                      onCancel={() => {
+                        returnFocusAction.current = { id: annotation.id, action: 'delete' };
+                        setDeletingId(null);
+                      }}
+                      onConfirm={() => confirmDelete(annotation.id)}
+                    />
                   </AnimatedDisclosure>
                   <AnimatedDisclosure open={!editing && !deleting && !!annotation.body}>
                     <p className="mt-2 text-sm text-ink-soft">{annotation.body}</p>

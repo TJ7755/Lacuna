@@ -1,10 +1,20 @@
-import { useEffect, useRef, useState, type DragEvent, type ReactNode, type Ref } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { fieldLabelClassName } from '../ui/Field';
+import { Button } from '../ui/Button';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { modifierShortcutLabel } from '../../electron/runtime';
@@ -367,15 +377,21 @@ export function MarkdownEditor({
     if (e.dataTransfer.files.length) await insertImageFiles(e.dataTransfer.files);
   }
 
+  const labelId = useId();
   const rows = Math.max(minRows, value.split('\n').length + 1);
   const showsMathsPreview =
     !hidePreview && layout !== 'split' && mobileTab === 'write' && /\$[^$\n]+\$/.test(value);
 
   return (
     // The whole field, toolbar included, marks focus in its text, as a plain input's border does.
-    <div className="rounded-xl border border-line bg-surface transition-colors has-[textarea:focus]:border-accent has-[textarea:focus]:ring-2 has-[textarea:focus]:ring-accent/20">
+    <div className="rounded-xl border-[1.5px] border-line bg-surface transition-colors has-[textarea:focus]:border-accent">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-sm text-ink-soft">{label}</div>
+        <label
+          htmlFor={labelId}
+          className={cn(fieldLabelClassName, 'border-b border-line px-3.5 py-2.5')}
+        >
+          {label}
+        </label>
       )}
 
       {/* Toolbar */}
@@ -393,64 +409,70 @@ export function MarkdownEditor({
               ['Bold', 'Italic', 'Link', 'Inline maths'].includes(a.title),
           )
           .map((a) => (
-            <button
+            <Button
               key={a.title}
               type="button"
+              variant="ghost"
+              size="sm"
               aria-label={a.title}
               title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
-              className={cn(
-                'min-h-11 min-w-11 shrink-0 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10',
-                typeof a.label === 'string' && /^[^A-Za-z]/.test(a.label) && 'font-mono',
-                typeof a.label !== 'string' && 'text-sm',
-              )}
+              className="shrink-0"
             >
               {a.label}
-            </button>
+            </Button>
           ))}
         {compactToolbar && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title="More formatting"
             aria-expanded={moreTools}
             onClick={() => setMoreTools(!moreTools)}
             aria-label="More formatting"
-            className="min-h-11 min-w-11 shrink-0 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
+            className="shrink-0"
           >
             {moreTools ? 'Less' : 'More'}
-          </button>
+          </Button>
         )}
         {allowCloze && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title={clozeAction.title}
             onClick={() => runAction(clozeAction)}
-            className="min-h-11 min-w-11 shrink-0 rounded-md px-2 font-mono text-xs text-accent-ink transition-colors hover:bg-accent-soft active:bg-accent-soft"
+            className="shrink-0 text-accent-ink"
           >
             {clozeAction.label}
-          </button>
+          </Button>
         )}
         {allowEmbeds &&
           embedActions.map((a) => (
-            <button
+            <Button
               key={a.title}
               type="button"
+              variant="ghost"
+              size="sm"
               title={a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 shrink-0 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
+              className="shrink-0"
             >
               {a.label}
-            </button>
+            </Button>
           ))}
         {allowImages && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent-ink active:bg-ink/10"
+            className="shrink-0"
           >
             <ImageIcon width={15} height={15} />
-          </button>
+          </Button>
         )}
         <input
           ref={fileInputRef}
@@ -470,18 +492,20 @@ export function MarkdownEditor({
           )}
         >
           {(['write', 'preview'] as const).map((tab) => (
-            <button
+            <Button
               key={tab}
               type="button"
+              variant="ghost"
+              size="sm"
               aria-pressed={mobileTab === tab}
               onClick={() => setMobileTab(tab)}
               className={cn(
-                'min-h-11 rounded-md px-2 text-xs capitalize',
+                'capitalize',
                 mobileTab === tab ? 'bg-accent-soft text-accent-ink' : 'text-ink-faint',
               )}
             >
               {tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -495,6 +519,7 @@ export function MarkdownEditor({
           )}
         >
           <textarea
+            id={labelId}
             ref={setTextareaRef}
             autoFocus={autoFocus}
             value={value}

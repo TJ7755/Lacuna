@@ -339,6 +339,14 @@ keyboard shortcuts on keyboard).
   share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
   for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, a
   flat hairline card-surface panel like Quick search's, and a 44px close button).
+- Markdown diagrams resolve their palette from the current theme and accent tokens; syntax
+  highlighting uses readable semantic and chart colours in both themes. Diagram source and
+  chart data use shared pill disclosures with measured height motion and inert closed content.
+  Note title, content and annotation fields share the form label and frame recipes; highlight
+  deletion uses the shared inline confirmation. Enlarged images use the shared dialog surface
+  and entrance/exit spring, with a scaled layout spring between fitted and actual size.
+  These transitions follow motion speed and become immediate with reduced motion. Image alt
+  text remains available to assistive technology without a duplicate visible caption.
 - Pills/chips: `rounded-full border` with accent-soft active state.
 - Sticky action bars (editor, course settings) pin to the bottom of the content column; the
   editor's bar fades up from the paper via a gradient so it never sits on a hard slab.

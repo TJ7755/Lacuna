@@ -13,6 +13,8 @@ describe('LessonNoteEditor', () => {
   it('associates note title label with its input', () => {
     setup();
     expect(screen.getByLabelText('Title')).toBeInTheDocument();
+    const content = screen.getByRole('textbox', { name: 'Content' }) as HTMLTextAreaElement;
+    expect(content.labels?.[0]?.textContent).toBe('Content');
   });
 
   it('names the title field for assistive technology', () => {

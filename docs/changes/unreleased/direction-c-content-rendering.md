@@ -1,0 +1,1 @@
+- Bring Markdown diagrams, syntax highlighting, enlarged images, note editing and annotations into Direction C using theme-aware colours, shared fields and pill controls. Animate image viewing, diagram source and chart data with shared motion helpers that honour motion speed and reduced motion; remove duplicate image captions.
