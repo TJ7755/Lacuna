@@ -7,6 +7,9 @@ import { RouteTransition } from '../components/layout/RouteTransition';
 import { Dashboard } from '../pages/Dashboard';
 import { NotFound } from '../pages/NotFound';
 import { LazyRoute } from './LazyRoute';
+import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
+import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
+import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
 import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
 import {
@@ -82,6 +85,16 @@ function isolatedRoute(label: string, child: ReactNode) {
   return <ErrorBoundary label={label}>{child}</ErrorBoundary>;
 }
 
+function workspaceRoute(Component: ComponentType, lesson = false) {
+  return (
+    <PageLoadingBoundary fallback={lesson ? <LessonViewSkeleton /> : <CoursePathSkeleton />}>
+      <ArchivedCourseAccessGuard>
+        <Component />
+      </ArchivedCourseAccessGuard>
+    </PageLoadingBoundary>
+  );
+}
+
 function courseAccessRoute(child: ReactNode) {
   return <ArchivedCourseAccessGuard>{child}</ArchivedCourseAccessGuard>;
 }
@@ -106,19 +119,19 @@ export const router = createHashRouter([
           { path: 'archived', element: lazyRoute(ArchivedCourses) },
           { path: 'help', element: lazyRoute(HelpPage) },
           { path: 'study', element: <Navigate to="/" replace /> },
-          { path: 'course/:courseId', element: courseAccessRoute(lazyRoute(CoursePath)) },
+          { path: 'course/:courseId', element: workspaceRoute(CoursePath) },
           {
             path: 'course/:courseId/lesson/:lessonId',
-            element: courseAccessRoute(lazyRoute(LessonView)),
+            element: workspaceRoute(LessonView, true),
           },
           {
             path: 'course/:courseId/bank',
             element: courseAccessRoute(<LegacyBankRedirect />),
           },
-          { path: 'course/:courseId/cards', element: courseAccessRoute(lazyRoute(CardsPage)) },
+          { path: 'course/:courseId/cards', element: workspaceRoute(CardsPage) },
           {
             path: 'course/:courseId/questions',
-            element: courseAccessRoute(lazyRoute(QuestionsPage)),
+            element: workspaceRoute(QuestionsPage),
           },
           { path: 'course/:courseId/question-sets/:setId/edit', element: courseAccessRoute(lazyRoute(QuestionSetEditor)) },
           { path: 'course/:courseId/question-sets/:setId/attempts/:attemptId', element: courseAccessRoute(lazyRoute(QuestionSetPractice)) },
@@ -141,11 +154,11 @@ export const router = createHashRouter([
           },
           {
             path: 'course/:courseId/settings',
-            element: courseAccessRoute(lazyRoute(CourseSettings)),
+            element: workspaceRoute(CourseSettings),
           },
           {
             path: 'course/:courseId/analytics',
-            element: courseAccessRoute(lazyRoute(CourseAnalytics)),
+            element: workspaceRoute(CourseAnalytics),
           },
           {
             path: 'course/:courseId/updates',

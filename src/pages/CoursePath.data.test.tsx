@@ -69,3 +69,25 @@ it('reuses the ready course snapshot when arriving at a single lesson', async ()
   await screen.findByRole('heading', { name: 'Lesson 1' });
   expect(cards.mock.calls.filter(([index]: unknown[]) => index === 'courseId')).toHaveLength(1);
 });
+
+it('renders a revisited course immediately while its live query revalidates', async () => {
+  const course = await createCourse('Revisit');
+  await createLesson(course.id, 'Cells');
+  await createLesson(course.id, 'Genetics');
+  function Page() {
+    return (
+      <MemoryRouter initialEntries={[`/course/${course.id}`]}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>
+    );
+  }
+  const first = render(<Page />);
+  await screen.findByRole('button', { name: 'Study' });
+  first.unmount();
+  render(<Page />);
+  expect(screen.getByRole('button', { name: 'Study' })).toBeInTheDocument();
+});

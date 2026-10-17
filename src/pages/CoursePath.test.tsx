@@ -1,6 +1,7 @@
 import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi, beforeEach } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -22,6 +23,15 @@ import type {
 } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import { practiceScopeVersion } from '../course/studyPools';
+
+// Use the same motion provider as the app and the JS engine used by path-editor tests.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 const mockNavigate = vi.fn();
 const {
@@ -116,7 +126,7 @@ vi.mock('../state/useCourseData', () => ({
 }));
 
 vi.mock('../state/useCourseStudyFlowRecords', () => ({
-  useCourseStudyFlowRecords: () => {
+  useCoursePathRecords: () => {
     if (
       mockCourse === undefined ||
       mockLessons === undefined ||
@@ -270,17 +280,19 @@ function renderPage(search = '') {
   return render(
     <MemoryRouter initialEntries={[`/course/course-1${search}`]}>
       <ToastProvider>
-        <Routes>
-          <Route
-            path="/course/:courseId"
-            element={
-              <>
-                <CourseSectionNavigation courseId="course-1" />
-                <CoursePath />
-              </>
-            }
-          />
-        </Routes>
+        <LazyMotion features={domAnimation}>
+          <Routes>
+            <Route
+              path="/course/:courseId"
+              element={
+                <>
+                  <CourseSectionNavigation courseId="course-1" />
+                  <CoursePath />
+                </>
+              }
+            />
+          </Routes>
+        </LazyMotion>
       </ToastProvider>
     </MemoryRouter>,
   );

@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
 import type { Course } from '../../db/types';
 
-let mockCourses: Course[] = [];
+let mockCourses: Course[] | undefined = [];
 let mockEligible = 0;
 let mockStreak = 0;
 
@@ -48,6 +48,11 @@ afterEach(() => {
 });
 
 describe('Sidebar', () => {
+  it('does not claim there are no courses before the query resolves', () => {
+    mockCourses = undefined;
+    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+    expect(screen.queryByText('No courses yet.')).not.toBeInTheDocument();
+  });
   it.each([false, true])(
     'shares highlights only within their navigation group (collapsed: %s)',
     (collapsed) => {

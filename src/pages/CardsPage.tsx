@@ -14,7 +14,7 @@ import {
   COURSE_PAGE_HEADER,
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -171,11 +171,7 @@ export function CardsPage() {
     sequences === undefined ||
     occlusions === undefined
   ) {
-    return (
-      <DelayedFallback>
-        <CardsPageSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CardsPageSkeleton />} />;
   }
   if (course === null) {
     return (

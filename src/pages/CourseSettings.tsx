@@ -7,13 +7,12 @@ import {
   COURSE_PAGE_HEADER,
   COURSE_PAGE_TITLE,
 } from '../components/course/coursePageLayout';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   useCourse,
   useCourseCards,
   useCourseReviewHistory,
-  useCourseAssessments,
 } from '../state/useCourseData';
 import {
   PillSwitch,
@@ -54,8 +53,6 @@ export function CourseSettings() {
   const course = useCourse(courseId);
   const cards = useCourseCards(courseId);
   const reviewHistory = useCourseReviewHistory(courseId);
-  const assessments = useCourseAssessments(courseId);
-  const finalExam = assessments?.find((assessment) => assessment.kind === 'final');
   const {
     name,
     setName,
@@ -95,11 +92,7 @@ export function CourseSettings() {
   } = useCourseSettingsForm(course, courseId);
 
   if (course === undefined) {
-    return (
-      <DelayedFallback>
-        <CourseSettingsSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CourseSettingsSkeleton />} />;
   }
   if (course === null) {
     return (
@@ -124,12 +117,10 @@ export function CourseSettings() {
               <div>
                 <p className="text-sm text-ink-soft">Final exam</p>
                 <p className="mt-2 font-display text-4xl font-semibold tracking-tight">
-                  {assessments === undefined ? (
-                    <Skeleton className="h-10 w-56 max-w-full rounded-xl bg-ink/10" />
-                  ) : finalExam?.examDate === undefined ? (
+                  {course.examDate === undefined ? (
                     'Steady retention'
                   ) : (
-                    formatDate(finalExam.examDate, finalExam.timeZone ?? timeZone)
+                    formatDate(course.examDate, course.timeZone ?? timeZone)
                   )}
                 </p>
               </div>

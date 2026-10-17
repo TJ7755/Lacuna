@@ -21,6 +21,7 @@ vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => [] }));
 
 let mockCourse: Course | null | undefined;
 let mockCards: Card[] | undefined;
+let mockAssessmentsPending = false;
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -41,7 +42,7 @@ vi.mock('../state/useCourseData', () => ({
   useCourseCards: () => mockCards,
   useCourseReviewHistory: () => [],
   useCourseAssessments: () =>
-    mockCourse
+    mockAssessmentsPending ? undefined : mockCourse
       ? [
           {
             id: 'final-1',
@@ -141,6 +142,7 @@ function renderPage(path = '/course/course-1/settings') {
 }
 
 beforeEach(() => {
+  mockAssessmentsPending = false;
   mockMotion.multiplier = 1;
   mockCourse = course;
   mockCards = [];
@@ -220,6 +222,13 @@ describe('CourseSettings', () => {
     mockCourse = undefined;
     renderPage();
     expect(screen.queryByDisplayValue('Original course')).not.toBeInTheDocument();
+  });
+
+  it('does not flash an exam placeholder when the hydrated course already supplies its date', () => {
+    mockAssessmentsPending = true;
+    const { container } = renderPage();
+    expect(screen.getByRole('heading', { name: 'Course settings' })).toBeInTheDocument();
+    expect(container.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
 
   it('shows a not-found state when the course is missing', () => {

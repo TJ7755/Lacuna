@@ -3,6 +3,11 @@ import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps } from
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
+import {
+  CourseNavigationDataProvider,
+  useNavigationCourses,
+} from '../../state/CourseNavigationData';
+import { useIdleRoutePrefetch } from '../../routes/useIdleRoutePrefetch';
 import { Sidebar } from './Sidebar';
 import { Titlebar } from './Titlebar';
 import { useScrollMemory } from './scrollMemory';
@@ -46,13 +51,16 @@ const AI_DESKTOP_QUERY = '(min-width: 1024px)';
 export function AppShell() {
   const { pathname } = useLocation();
   return (
-    <ShellCourseDataProvider includeDashboard={pathname === '/'}>
-      <AppShellLayout />
-    </ShellCourseDataProvider>
+    <CourseNavigationDataProvider>
+      <ShellCourseDataProvider includeDashboard={pathname === '/'}>
+        <AppShellLayout />
+      </ShellCourseDataProvider>
+    </CourseNavigationDataProvider>
   );
 }
 
 function AppShellLayout() {
+  const navigationCourses = useNavigationCourses();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   // Sync sidebar collapsed state across tabs.
@@ -77,6 +85,14 @@ function AppShellLayout() {
   const [hintsOpen, setHintsOpen] = useState(false);
   const [hintsLoaded, setHintsLoaded] = useState(false);
   const location = useLocation();
+  useIdleRoutePrefetch(
+    location.pathname === '/'
+      ? (navigationCourses ?? [])
+          .filter((course) => !course.archived)
+          .slice(0, 1)
+          .map((course) => `/course/${course.id}`)
+      : [],
+  );
   const navigate = useNavigate();
   const outlet = useOutlet();
   const mainRef = useRef<HTMLElement>(null);

@@ -262,7 +262,17 @@ Specific motion (current state of the app):
   progress arc; the expanded popup is a 160px circular timer with a smooth 1Hz tick.
 - **Mobile drawer:** scrim fade plus a spring slide-in of the sidebar.
 - **Splash / route fallback:** the initial "Lacuna" wordmark fades up and breathes while the
-  database opens; lazy routes show a pulsing "Loading…".
+  database opens. Course sections and lessons share one loading boundary across access checks,
+  lazy chunks and page data. It waits 200 ms before showing the shared course/lesson skeleton,
+  then keeps it for at least 200 ms from its React commit. Navigation and View/Edit controls
+  remain outside the loading boundary. Today uses the same timing policy for its queue;
+  its forecast retains its separate progressive placeholder. Unresolved sidebar data never
+  produces an empty-course message. Other lazy routes retain their delayed generic skeleton.
+  Course Path retains up to five recently visited live snapshots for five idle minutes;
+  mutations, archival and deletion continue to update them. The study conductor still uses
+  fresh reads and its original refresh-generation contract. Existing hover/focus prefetching
+  is supplemented by idle prefetching for Path from Today, the five course sections and the
+  first lesson from Path.
 
 ### 3.4 Touch-first design system
 

@@ -37,7 +37,7 @@ describe('RouteTransitions', () => {
     });
   });
 
-  it.each(['/course/c1', '/course/c1/cards', '/course/c1/analytics'])(
+  it.each(['/course/c1', '/course/c1/cards', '/course/c1/analytics', '/course/c1/lesson/l1'])(
     'keeps the course bar on %s',
     (pathname) => {
       render(
@@ -53,11 +53,11 @@ describe('RouteTransitions', () => {
     },
   );
 
-  it('leaves deeper course pages to draw their own bar', () => {
+  it('leaves card editors to draw their own bar', () => {
     render(
       <MemoryRouter>
         <LazyMotion features={domAnimation}>
-          <RouteTransitions pathname="/course/c1/lesson/l1" direction={0} multiplier={0}>
+          <RouteTransitions pathname="/course/c1/cards/card1/edit" direction={0} multiplier={0}>
             <p>page</p>
           </RouteTransitions>
         </LazyMotion>

@@ -1,7 +1,7 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDelayedPending } from '../hooks/useDelayedPending';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -12,7 +12,12 @@ import { forecastStatus } from '../components/dashboard/forecastStatus';
 import type { ForecastLine } from '../components/dashboard/ForecastChart';
 import { useForecastChart } from '../components/dashboard/useForecastChart';
 import { WeekPanel } from '../components/dashboard/WeekPanel';
-import { leadStudyRow, queueState, TodayQueue, type QueueRow } from '../components/dashboard/TodayQueue';
+import {
+  leadStudyRow,
+  queueState,
+  TodayQueue,
+  type QueueRow,
+} from '../components/dashboard/TodayQueue';
 import { useStudySheet } from '../components/learn/StudySheetContext';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { CardsIcon, ClockIcon } from '../components/ui/icons';
@@ -160,7 +165,10 @@ export function Dashboard() {
   const { Chart: ForecastChart, settled: chartSettled } = useForecastChart(anyForecast);
   const forecastSettled =
     !anyForecast || (histories !== undefined && (lines.length === 0 || chartSettled));
-  const forecastOverdue = useDelayedPending(rows !== undefined && !forecastSettled, FORECAST_WAIT_MS);
+  const forecastOverdue = useDelayedPending(
+    rows !== undefined && !forecastSettled,
+    FORECAST_WAIT_MS,
+  );
   // Once Today has arrived it stays: live updates never send it back to the skeleton.
   const [arrived, setArrived] = useState(false);
   const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
@@ -231,61 +239,67 @@ export function Dashboard() {
         <SyncStatus />
         <div className="ml-auto flex shrink-0 gap-2">
           <div inert={importing}>
-            <NewCourseControl open={creatingCourse && !importing} onOpenChange={setCreatingCourse} />
+            <NewCourseControl
+              open={creatingCourse && !importing}
+              onOpenChange={setCreatingCourse}
+            />
           </div>
           <ImportControl onOpen={() => setCreatingCourse(false)} />
         </div>
       </div>
 
-      {!rows || !ready ? (
-        <DelayedFallback>
-          <CourseSkeleton />
-        </DelayedFallback>
-      ) : rows.length === 0 ? (
-        <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
-      ) : (
-        <div className="flex flex-col gap-6">
-          {/* The forecast arrives whole, fading in place, and holds its room while late. */}
-          {!forecastSettled ? (
-            <ForecastPlaceholder />
-          ) : (
-            showForecast && (
-              <motion.section
-                aria-label="Forecast and this week"
-                className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                transition={{ duration: MOTION_DURATION.local * m, ease: MOTION_EASING.emphasised }}
-              >
-                {ForecastChart && lines.length > 0 && (
-                  <ForecastChart
-                    lines={lines}
-                    now={Date.now()}
-                    past={chartWindow.past}
-                    future={chartWindow.future}
-                    multiplier={m}
-                  />
-                )}
-                {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
-              </motion.section>
-            )
-          )}
-          {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
-          <TodayQueue
-            rows={rows}
-            delay={showForecast ? MOTION_DURATION.local * 0.6 : 0}
-            openMenuId={courseMenu?.course.id}
-            multiplier={m}
-            onStudy={(id) => openStudySheet(id)}
-            onMenu={(id, position, trigger) => {
-              const course = activeCourses?.find((entry) => entry.id === id);
-              if (!course) return;
-              setArchiveTarget(null);
-              setCourseMenu({ course, position, trigger });
-            }}
-          />
-        </div>
-      )}
+      <PageLoadingBoundary fallback={<CourseSkeleton />}>
+        {!rows || !ready ? (
+          <PageLoading />
+        ) : rows.length === 0 ? (
+          <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
+        ) : (
+          <div className="flex flex-col gap-6">
+            {/* The forecast arrives whole, fading in place, and holds its room while late. */}
+            {!forecastSettled ? (
+              <ForecastPlaceholder />
+            ) : (
+              showForecast && (
+                <motion.section
+                  aria-label="Forecast and this week"
+                  className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
+                  initial={m > 0 ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  transition={{
+                    duration: MOTION_DURATION.local * m,
+                    ease: MOTION_EASING.emphasised,
+                  }}
+                >
+                  {ForecastChart && lines.length > 0 && (
+                    <ForecastChart
+                      lines={lines}
+                      now={Date.now()}
+                      past={chartWindow.past}
+                      future={chartWindow.future}
+                      multiplier={m}
+                    />
+                  )}
+                  {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
+                </motion.section>
+              )
+            )}
+            {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
+            <TodayQueue
+              rows={rows}
+              delay={showForecast ? MOTION_DURATION.local * 0.6 : 0}
+              openMenuId={courseMenu?.course.id}
+              multiplier={m}
+              onStudy={(id) => openStudySheet(id)}
+              onMenu={(id, position, trigger) => {
+                const course = activeCourses?.find((entry) => entry.id === id);
+                if (!course) return;
+                setArchiveTarget(null);
+                setCourseMenu({ course, position, trigger });
+              }}
+            />
+          </div>
+        )}
+      </PageLoadingBoundary>
 
       {courseMenu && (
         <Suspense fallback={null}>

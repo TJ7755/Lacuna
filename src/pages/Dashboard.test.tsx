@@ -207,7 +207,7 @@ describe('Dashboard', () => {
     try {
       render(<Dashboard />);
       // Verify the actual delay, independently of load on the machine running the suite.
-      await act(() => vi.advanceTimersByTime(249));
+      await act(() => vi.advanceTimersByTime(199));
       expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
       await act(() => vi.advanceTimersByTime(1));
       expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
@@ -486,7 +486,10 @@ describe('Dashboard', () => {
       expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
 
       act(() => {
-        vi.advanceTimersByTime(1000);
+        vi.advanceTimersByTime(200);
+      });
+      act(() => {
+        vi.advanceTimersByTime(800);
       });
       expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
       expect(screen.queryByRole('region', { name: 'Forecast and this week' })).not.toBeInTheDocument();

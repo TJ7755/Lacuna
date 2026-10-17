@@ -1,6 +1,6 @@
 import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { Skeleton } from '../components/ui/Skeleton';
+import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
@@ -16,7 +16,7 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // British English throughout.
 
 import { useRef, useState, type ReactNode } from 'react';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLessonViewData, type InlineLessonData } from '../state/useLessonViewData';
@@ -31,7 +31,6 @@ import { updateCourse } from '../db/courseRepository';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import { AddLessonControl } from '../components/course/AddLessonControl';
 import { AddCourseControl } from '../components/course/AddCourseControl';
-import { CoursePageNavigation } from '../components/course/CoursePageNavigation';
 import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
@@ -161,11 +160,7 @@ export function LessonView({
     lessonCards === undefined ||
     !studyReady
   ) {
-    return (
-      <DelayedFallback>
-        <LessonViewSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<LessonViewSkeleton />} />;
   }
 
   // Not found.
@@ -186,11 +181,7 @@ export function LessonView({
     );
   }
 
-  // Back link: course path when navigating normally; dashboard when rendered inline
-  // for a single-lesson course (no path to navigate back to).
   const archived = course.archived === true;
-  const backTo = archived ? '/archived' : isInline ? '/' : `/course/${courseId}`;
-  const backLabel = archived ? 'Archived courses' : isInline ? 'Today' : 'Course';
 
   // Header figures, scoped to this lesson's own cards (reusing the same FSRS
   // helpers CoursePath uses at course scope — see CoursePath.tsx and
@@ -245,27 +236,6 @@ export function LessonView({
       key={lesson.id}
       className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}
     >
-      {!isInline && (
-        <CoursePageNavigation
-          courseId={courseId ?? ''}
-          course={course}
-          backTo={backTo}
-          backLabel={backLabel}
-          archived={archived}
-          identity={archived ? undefined : { name: course.name, back: true }}
-          className="mb-6"
-          trailing={
-            archived || canEditLessons(course) ? undefined : (
-              <Link
-                to={`/course/${courseId}/settings`}
-                className="hidden text-xs text-ink-faint underline decoration-dotted underline-offset-2 transition-colors hover:text-ink sm:inline"
-              >
-                Authoring is locked for shared courses
-              </Link>
-            )
-          }
-        />
-      )}
       <div className="flex flex-col gap-6">
         <div>
           <LessonHeader
@@ -429,21 +399,5 @@ export function LessonView({
         </div>
       </div>
     </CoursePageArrival>
-  );
-}
-
-function LessonViewSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} py-8`}>
-      <Skeleton className="mb-6 h-11 w-24 rounded-full bg-ink/10" />
-      <div className="mb-6 flex flex-col gap-3">
-        <Skeleton className="h-11 w-72 max-w-full rounded-xl bg-ink/10" />
-        <Skeleton className="h-4 w-52 rounded bg-ink/10" />
-      </div>
-      <div className="flex flex-wrap gap-6">
-        <Skeleton className="h-80 flex-[3_1_560px] rounded-3xl bg-ink/[0.06]" />
-        <Skeleton className="h-80 flex-[2_1_340px] rounded-3xl bg-ink/[0.06]" />
-      </div>
-    </div>
   );
 }

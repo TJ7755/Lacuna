@@ -1,3 +1,5 @@
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
+import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import {
   COURSE_PAGE_FRAME,
   COURSE_PAGE_HEADER,
@@ -96,7 +98,9 @@ export function QuestionsPage() {
     `question-set-library-scroll:${courseId}:${search}`,
     !!course && !!data,
   );
-  if (!course || !data) return <p className="p-8 text-ink-soft">Loading Questions…</p>;
+  if (course === undefined || data === undefined)
+    return <PageLoading fallback={<CoursePathSkeleton />} />;
+  if (!course || !data) return <p className="p-8 text-ink-soft">This course could not be found.</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
   const progress = new Map<string, QuestionSetProgress>();
