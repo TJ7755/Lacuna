@@ -89,6 +89,8 @@ describe('specification backup portability', () => {
     { field: 'specificationPointIds', value: ['science:point:extra'] },
     { field: 'specificationPointIds', value: ['science:point', 'science:point'] },
     { field: 'specificationPointIds', value: [1] },
+    { field: 'specificationRef', value: { specificationId: 'science', routeIds: new Array(1) } },
+    { field: 'specificationPointIds', value: new Array(1) },
   ])('rejects malformed $field $value before any writes', async ({ field, value }) => {
     const backup = await linkedLibrary();
     const malformed =
