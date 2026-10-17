@@ -269,7 +269,7 @@ export function Sidebar({
               <motion.div
                 key={course.id}
                 // Single-line rows at the 44px target; the list scrolls beyond that.
-                className={sidebarSettings.compactMode ? undefined : 'flex shrink-0 flex-col'}
+                className="flex shrink-0 flex-col"
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
@@ -278,7 +278,6 @@ export function Sidebar({
                   delay: Math.min(idx * 0.02, 0.15) * m,
                   ease: [0.16, 1, 0.3, 1],
                 }}
-                layout="position"
               >
                 <CourseRow
                   courseId={course.id}

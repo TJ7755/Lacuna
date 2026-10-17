@@ -49,6 +49,29 @@ describe('animatedDisclosureTiming', () => {
 });
 
 describe('AnimatedDisclosure', () => {
+  it('leaves opacity to the children when a retained disclosure disables its fade', async () => {
+    motion.multiplier = 0;
+    try {
+      const view = (open: boolean) => (
+        <LazyMotion features={domAnimation}>
+          <AnimatedDisclosure id="lessons" open={open} retainContent fade={false}>
+            <p>Individually animated rows</p>
+          </AnimatedDisclosure>
+        </LazyMotion>
+      );
+      const { rerender } = render(view(true));
+      const panel = document.getElementById('lessons')!;
+      rerender(view(false));
+      await waitFor(() => expect(panel.style.height).toBe('0px'));
+      expect(panel.style.opacity).toBe('1');
+      expect(panel).toHaveAttribute('inert');
+      rerender(view(true));
+      expect(panel.style.opacity).toBe('1');
+    } finally {
+      motion.multiplier = 1;
+    }
+  });
+
   it('caches retained height between toggles and updates it when closed content resizes', async () => {
     let measuredHeight = 120;
     let resize = () => {};
