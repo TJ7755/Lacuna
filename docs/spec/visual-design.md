@@ -297,8 +297,8 @@ keyboard shortcuts on keyboard).
   and content edges. Course Settings uses the full frame for an asymmetric grid: a large study-goal and dates
   card beside stacked daily-workload and target-recall cards, followed by compact expanding rows.
   These cards stack on narrower screens. Settings and Help use the same heading
-  rhythm, left section rail and card surfaces; below 1280px, both expose the compact section
-  jumper. Persistent course navigation shows the course name only when the page's course
+  rhythm, card surfaces and layout: three overview cards in the same asymmetric grid, then
+  expanding rows at every viewport size. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously. The course name travels
   and shrinks from the Path heading into this persistent identity when changing sections,
   then returns to the heading on Path. One visual layer stays outside the route fade and

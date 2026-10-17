@@ -7,44 +7,42 @@ async function openSeededDashboard(page: Page) {
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
-async function expectBalancedDesktopColumns(page: Page, headingName: string) {
-  const heading = page.getByRole('heading', { level: 1, name: headingName });
-  const header = heading.locator('xpath=ancestor::header');
-  const rail = page.getByRole('complementary', { name: 'Page sections' });
-  await expect(heading).toHaveCount(1);
-  await expect(rail).toHaveCount(1);
-  const [headerBounds, railBounds] = await Promise.all([header.boundingBox(), rail.boundingBox()]);
-
-  expect(headerBounds).not.toBeNull();
-  expect(railBounds).not.toBeNull();
-  expect(headerBounds!.width).toBeGreaterThan(railBounds!.width * 3.5);
+async function expectCardsThenRows(page: Page, headingName: string, row: string) {
+  await expect(page.getByRole('heading', { level: 1, name: headingName })).toHaveCount(1);
+  await expect(page.getByRole('complementary', { name: 'Page sections' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: new RegExp(row) })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
 }
 
-test('Settings and Help use balanced desktop rails and responsive content', async ({ page }) => {
+test('Settings and Help share overview cards above expanding rows', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await openSeededDashboard(page);
 
   await page.goto('/#/settings');
   await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
   await expect(page.getByText('Preferences', { exact: true })).toHaveCount(0);
-  await expectBalancedDesktopColumns(page, 'Settings');
+  await expectCardsThenRows(page, 'Settings', 'Your data');
   await expect(page.locator('main header').getByText(/^Version /)).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('settings-version.png'), animations: 'disabled' });
+  await page.screenshot({
+    path: test.info().outputPath('settings-version.png'),
+    animations: 'disabled',
+  });
 
   await page.goto('/#/help');
   await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
   await expect(page.getByText('Documentation', { exact: true })).toHaveCount(0);
-  await expectBalancedDesktopColumns(page, 'Help');
+  await expectCardsThenRows(page, 'Help', 'Cards & content');
+
+  await page.goto('/#/help#occlusions');
+  await expect(page.getByRole('heading', { name: 'Sharing a diagram' })).toBeVisible();
 
   await page.setViewportSize({ width: 900, height: 900 });
-  await page.goto('/#/settings');
-  await expect(page.getByLabel('Jump to settings group')).toBeVisible();
-  await expect(page.getByText('Settings groups', { exact: true })).toHaveCount(0);
-
-  await page.goto('/#/help');
-  await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
-  await expect(page.getByText('On this page', { exact: true })).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
+  for (const route of ['/#/settings', '/#/help']) {
+    await page.goto(route);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+  }
 });

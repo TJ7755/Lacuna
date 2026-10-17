@@ -496,8 +496,11 @@ caption that repeats them.
 Sequence and diagram editors share the course page frame in loaded, loading and not-found states.
 Their single 44px Back link names and retains the originating lesson or Cards destination,
 without repeating a breadcrumb or the task title above the main heading.
-Help and Settings topic links read the final fragment of the hash route, validate it
-against their section IDs and follow later fragment changes through the same shared hook.
+Help opens with Basics, Studying and Shortcuts cards (Shortcuts lists the essential keys, or
+the gestures in touch mode), followed by expanding rows for Courses & lessons, Studying,
+Shortcuts & gestures, Progress & scheduling, Cards & content, and Tips & best practice.
+Help and Settings topic links read the final fragment of the hash route and open the row
+containing that topic, then scroll to it; later fragment changes are followed the same way.
 
 
 [Specification index](../SPEC.md)

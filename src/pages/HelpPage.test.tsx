@@ -9,30 +9,13 @@ vi.mock('../state/motionSpeed', () => ({
   speedMultiplier: () => 1,
 }));
 
-vi.mock('../state/inputMode', () => ({ useIsTouchMode: () => false }));
-
-class MockIntersectionObserver {
-  observe() {}
-  disconnect() {}
-}
-
-function createMediaQueryList(matches: boolean) {
-  return {
-    matches,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  };
-}
+let touchMode = false;
+vi.mock('../state/inputMode', () => ({ useIsTouchMode: () => touchMode }));
 
 describe('HelpPage', () => {
   beforeEach(() => {
+    touchMode = false;
     window.history.replaceState(null, '', '/');
-    Object.defineProperty(globalThis, 'IntersectionObserver', {
-      configurable: true,
-      value: MockIntersectionObserver,
-    });
-    window.matchMedia = vi.fn().mockReturnValue(createMediaQueryList(true));
   });
 
   it('opens a recognised topic from the final HashRouter fragment and follows changes', () => {
@@ -60,53 +43,36 @@ describe('HelpPage', () => {
     expect(scroll).toHaveBeenCalledTimes(calls);
   });
 
-  it('uses the shared balanced rail layout without a decorative header eyebrow', () => {
+  it('follows the Settings layout: overview cards, then closed topic rows', () => {
     render(
       <MemoryRouter>
         <HelpPage />
       </MemoryRouter>,
     );
 
-    const heading = screen.getByRole('heading', { level: 1, name: 'Help' });
-    const header = heading.closest('header');
-    const contentColumn = screen
-      .getByRole('heading', { name: 'Courses & lessons' })
-      .closest('section')?.parentElement?.parentElement?.parentElement;
-    const rail = screen.getByRole('button', { name: 'Courses & lessons' }).closest('aside');
+    expect(screen.getByRole('heading', { level: 1, name: 'Help' })).toBeInTheDocument();
+    for (const name of ['Basics', 'Studying', 'Shortcuts']) {
+      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole('combobox', { name: 'Jump to help topic' })).not.toBeInTheDocument();
 
-    expect(screen.queryByText('Documentation')).not.toBeInTheDocument();
-    expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
-    expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
-    expect(contentColumn).not.toHaveClass('max-w-4xl');
-    expect(rail).toHaveClass('w-[200px]');
-    expect(screen.queryByText('On this page')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/Everything you need to know about using Lacuna/),
-    ).not.toBeInTheDocument();
-
-    const courseSection = screen
-      .getByRole('heading', { name: 'Courses & lessons' })
-      .closest('section');
-    const sectionCard = courseSection?.firstElementChild;
-    const courseExplanation = screen.getByRole('heading', { name: 'Courses' }).parentElement;
-    expect(sectionCard).toHaveClass('rounded-3xl', 'bg-surface', 'p-6', 'md:p-7');
-    expect(sectionCard).not.toHaveClass('border');
-    expect(courseExplanation).not.toHaveClass('rounded-xl', 'bg-surface-raised', 'p-5');
+    const row = screen.getByRole('button', { name: /Courses & lessons/ });
+    expect(row).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(row);
+    expect(row).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('heading', { level: 3, name: 'Courses' })).toBeInTheDocument();
   });
 
-  it('offers the same compact section jumper as Settings on smaller screens', () => {
-    window.matchMedia = vi.fn().mockReturnValue(createMediaQueryList(false));
-    const scroll = vi.fn();
-    HTMLElement.prototype.scrollIntoView = scroll;
+  it('shows the gestures instead of keys in touch mode', () => {
+    touchMode = true;
     render(
       <MemoryRouter>
         <HelpPage />
       </MemoryRouter>,
     );
-    fireEvent.change(screen.getByRole('combobox', { name: 'Jump to help topic' }), {
-      target: { value: 'card-types' },
-    });
-    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    const card = screen.getByRole('heading', { level: 2, name: 'Shortcuts' }).closest('section')!;
+    expect(within(card).getByText('Swipe right')).toBeInTheDocument();
+    expect(within(card).queryByText('Space')).not.toBeInTheDocument();
   });
 
   it('provides a single keyboard target for each footer destination', () => {
@@ -153,6 +119,7 @@ describe('HelpPage', () => {
         <HelpPage />
       </MemoryRouter>,
     );
+    fireEvent.click(screen.getByRole('button', { name: /Shortcuts & gestures/ }));
     const region = screen.getByRole('region', { name: 'Keyboard shortcuts table' });
     expect(region).toHaveAttribute('tabindex', '0');
     expect(region).toHaveClass('overflow-x-auto');
@@ -164,6 +131,7 @@ describe('HelpPage', () => {
         <HelpPage />
       </MemoryRouter>,
     );
+    fireEvent.click(screen.getByRole('button', { name: /Cards & content/ }));
     const guidance = screen.getByRole('heading', { name: 'Sharing a diagram' }).parentElement;
     expect(guidance).not.toBeNull();
     expect(within(guidance!).getByText(/Share → Other ways → Course file/)).toBeInTheDocument();
