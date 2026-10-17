@@ -10,6 +10,14 @@ The merged editor already uses **Enter to add/split an item** and **Ctrl/Cmd+Ent
 save the whole sequence**. These are the accepted shortcuts for this audit. The issue's
 Ctrl/Cmd+Enter-to-add wording is obsolete.
 
+Parent acceptance resolution, 17 October 2026: the delivered outline also supersedes
+the historical per-empty-row invalidation and script paste-replacement warning criteria.
+Blank scaffolding is omitted from preview, generated cards and save; an all-empty form
+must still validate and remain unsaved. Paste inserts at the current selection while
+preserving surrounding items, so a whole-script replacement warning is not applicable.
+These safer delivered behaviours preserve the fast item loop. Do not restore the old
+dialog or invalidate harmless blank scaffolding.
+
 `93ce819f` already fixes the narrow/enlarged action dock. `bb599586` already assigns
 leading speaker cues to the next learner line's chunk, trims later cues from unlocked
 prefixes, presents the new learner line, and keeps focus in view through reflow. Both
@@ -118,7 +126,13 @@ Desktop exports remain capped; the 1920px viewport is not a 1920px screenshot. M
 exports retain the native 2× pixels. `sips -g pixelWidth -g pixelHeight` verified the
 dimensions; the capture files were not transformed.
 
-## Remaining acceptance limits
+## Acceptance outcome and external verification limits
+
+Issue #442's implementation acceptance is met under the parent-approved current workflow:
+Enter adds, Ctrl/Cmd+Enter saves, harmless blank scaffolding is omitted, all-empty content
+still validates, and paste inserts at the selection. The residual last-item Tab-to-save
+defect is fixed with red-to-green evidence. Historical wording no longer defers closure.
+PR #567 can close #442 when the user reviews and merges it.
 
 No further application defect was reproduced in the exercised paths. This evidence
 does not establish real phone touch input, an on-screen keyboard, OS zoom, OS reduced
@@ -126,9 +140,9 @@ motion, screen-reader operation, Windows Electron, Linux or macOS packages. The 
 change adds no animation; existing reduced-motion and motion-speed code is unchanged.
 It measures focused-control bounds, not operating-system caret geometry.
 
-The original issue also describes per-empty-row invalidation and a script paste-replacement
-warning. The merged outline deliberately drops blank scaffolding and pastes at the current
-selection; its separate replacement dialog is gone. The maintainer should reconcile those
-historical acceptance statements with the delivered outline before closing #442. This PR
-does not reintroduce them or automatically close the issue. No schema, backup/import,
+External human, accessibility and native-platform gates are owned by
+[#456](https://github.com/TJ7755/Lacuna/issues/456), not deferred #442 implementation
+acceptance. User review and merge remain human actions. Keep PR #567 open on its current
+base until the parent confirms master has advanced after #564; then rebase and inspect CI.
+This acceptance clarification changes documentation only. No schema, backup/import,
 wire format, permission, scheduling or generated-card/history ownership code changes.

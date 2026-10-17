@@ -289,8 +289,13 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   saves the whole sequence, including from an item; it never adds another item.
   Empty items are scaffolding: preview and save omit them, and save explains a missing
   name, missing script part or lack of generated cards. Name and missing-part errors return
-  focus to the relevant control. Multiline paste inserts at the current selection, preserving
+  focus to the relevant control. No empty item generates a card; an all-empty outline
+  must still fail validation rather than saving an empty sequence.
+  Multiline paste inserts at the current selection, preserving
   surrounding items and parsing script speakers; there is no whole-outline replacement dialog.
+  For #442, these delivered behaviours supersede the historical per-empty-row invalidation
+  and paste-replacement warning criteria: harmless blank scaffolding must not interrupt the
+  entry loop, and insertion at the selection does not replace the whole script.
   The action bar follows the shared page-frame bounds, including at 320px with Larger text.
 
 ### Occlusions — image occlusion (schema v19)
