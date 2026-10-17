@@ -496,12 +496,15 @@ caption that repeats them.
 Sequence and diagram editors share the course page frame in loaded, loading and not-found states.
 Their single 44px Back link names and retains the originating lesson or Cards destination,
 without repeating a breadcrumb or the task title above the main heading.
-Help opens with Basics, Studying and Shortcuts cards (Shortcuts lists the essential keys, or
-the gestures in touch mode), followed by expanding rows for Courses & lessons, Studying,
-Shortcuts & gestures, Progress & scheduling, Cards & content, and Tips & best practice.
-Help and Settings topic links read the final fragment of the hash route and open the row
-containing that topic, then scroll to it; later fragment changes are followed the same way.
-
+Help opens with Search help and short questions grouped under Getting started, Studying,
+Cards and content, Progress and Your data. Each question expands to a brief answer and,
+where a fixed destination exists, a direct action link. Search matches every query word
+across questions, answers and keywords, showing matching answers expanded in a flat list.
+Keyboard shortcuts use the same customised bindings as the study sheet. Small examples
+illustrate card types and touch gestures inside their answers.
+Help and Settings topic links read the final fragment of the hash route and open the
+relevant topic, then scroll to it; later fragment changes are followed the same way.
+Help preserves previous topic anchors and maps old group anchors to individual questions.
 
 [Specification index](../SPEC.md)
 

@@ -16,7 +16,7 @@ async function expectCardsThenRows(page: Page, headingName: string, row: string)
   );
 }
 
-test('Settings and Help share overview cards above expanding rows', async ({ page }) => {
+test('Settings and Help keep clear headings and expandable guidance', async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   await openSeededDashboard(page);
 
@@ -33,10 +33,21 @@ test('Settings and Help share overview cards above expanding rows', async ({ pag
   await page.goto('/#/help');
   await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();
   await expect(page.getByText('Documentation', { exact: true })).toHaveCount(0);
-  await expectCardsThenRows(page, 'Help', 'Cards & content');
+  await expectCardsThenRows(page, 'Help', 'Which card type should I use?');
+  await expect(page.getByRole('searchbox', { name: 'Search help' })).toBeVisible();
+  await page.getByRole('button', { name: 'Which card type should I use?' }).click();
+  await expect(page.getByLabel('Card examples')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search help' }).fill('picture sharing');
+  await expect(page.getByText(/Share → Other ways → Course file/)).toBeVisible();
 
   await page.goto('/#/help#occlusions');
-  await expect(page.getByRole('heading', { name: 'Sharing a diagram' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'How do I make diagram cards?' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
+  await expect(page.getByText(/Upload a labelled diagram/)).toBeVisible();
+  await page.getByRole('button', { name: 'How do I share a diagram with its image?' }).click();
+  await expect(page.getByText(/Share → Other ways → Course file/)).toBeVisible();
 
   await page.setViewportSize({ width: 900, height: 900 });
   for (const route of ['/#/settings', '/#/help']) {

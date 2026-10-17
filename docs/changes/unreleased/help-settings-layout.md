@@ -1,1 +1,1 @@
-- Lay out Help like Settings: Basics, Studying and Shortcuts cards above expanding topic rows, replacing the section rail. Existing topic links open the right row.
+- Replace dense Help reference sections with short, searchable task questions, shared customised shortcuts and direct Help results in Quick search.

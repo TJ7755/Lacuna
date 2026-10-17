@@ -1,8 +1,8 @@
 import { ModalBackdrop } from './ModalBackdrop';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import type { RefObject } from 'react';
-import { SHORTCUT_GROUPS } from '../../state/shortcuts';
-import { loadBindings, keyMatches, formatBinding } from '../../state/shortcutBindings';
+import { shortcutGroups } from '../../state/shortcutGroups';
+import { loadBindings, keyMatches } from '../../state/shortcutBindings';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { CloseIcon } from './icons';
 
@@ -25,51 +25,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
   // A read-only view must refresh on reopen without persisting stale overrides.
   const bindings = loadBindings();
 
-  // Build shortcut groups from live bindings so the cheatsheet never drifts.
-  const liveGroups = SHORTCUT_GROUPS.map((group) => ({
-    ...group,
-    shortcuts: group.shortcuts.map((s) => {
-      // Replace hardcoded keys with custom bindings for the Learn actions.
-      const description = s.description.toLowerCase();
-      if (description.includes('show this help')) {
-        return { ...s, keys: [formatBinding(bindings.help)] };
-      }
-      if (description.includes('show the answer')) {
-        return { ...s, keys: [formatBinding(bindings.reveal)] };
-      }
-      if (description.includes('hide the answer')) {
-        return { ...s, keys: ['Down'] };
-      }
-      if (description.includes('mark correct') && !description.includes('manual')) {
-        return { ...s, keys: [formatBinding(bindings.yes)] };
-      }
-      if (description.includes('mark incorrect')) {
-        return { ...s, keys: [formatBinding(bindings.no)] };
-      }
-      if (description.includes('again')) {
-        return { ...s, keys: [formatBinding(bindings.again)] };
-      }
-      if (description.includes('hard')) {
-        return { ...s, keys: [formatBinding(bindings.hard)] };
-      }
-      if (description.includes('good')) {
-        return { ...s, keys: [formatBinding(bindings.good)] };
-      }
-      if (description.includes('easy')) {
-        return { ...s, keys: [formatBinding(bindings.easy)] };
-      }
-      if (description.includes('edit the current card')) {
-        return { ...s, keys: [formatBinding(bindings.edit)] };
-      }
-      if (description.includes('toggle focus')) {
-        return { ...s, keys: [formatBinding(bindings.focus)] };
-      }
-      if (description.includes('undo')) {
-        return { ...s, keys: [formatBinding(bindings.undo)] };
-      }
-      return s;
-    }),
-  }));
+  const liveGroups = shortcutGroups(bindings);
 
   return (
     <AnimatePresence>
@@ -121,9 +77,7 @@ export function KeyHints({ open, onClose }: { open: boolean; onClose: () => void
             <div className="grid gap-6 px-6 py-6 sm:grid-cols-2">
               {liveGroups.map((group) => (
                 <div key={group.title}>
-                  <h3 className="mb-2 font-display text-lg text-ink">
-                    {group.title}
-                  </h3>
+                  <h3 className="mb-2 font-display text-lg text-ink">{group.title}</h3>
                   <ul className="flex flex-col gap-2">
                     {group.shortcuts.map((s) => (
                       <li

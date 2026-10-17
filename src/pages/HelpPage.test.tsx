@@ -6,15 +6,11 @@ import { HelpPage } from './HelpPage';
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => 0,
 }));
-
-let touchMode = false;
-vi.mock('../state/inputMode', () => ({ useIsTouchMode: () => touchMode }));
 
 describe('HelpPage', () => {
   beforeEach(() => {
-    touchMode = false;
     window.history.replaceState(null, '', '/');
   });
 
@@ -28,11 +24,26 @@ describe('HelpPage', () => {
       </MemoryRouter>,
     );
     expect(scroll).toHaveBeenCalledWith({ block: 'start' });
+    expect(screen.getByRole('button', { name: 'Which card type should I use?' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     expect(scroll.mock.instances.at(-1)).toBe(document.getElementById('card-types'));
 
     window.history.replaceState(null, '', '/#/help#%6f%63clusions');
     fireEvent(window, new Event('hashchange'));
     expect(scroll.mock.instances.at(-1)).toBe(document.getElementById('occlusions'));
+    expect(screen.getByRole('button', { name: 'How do I make diagram cards?' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    window.history.replaceState(null, '', '/#/help#tips');
+    fireEvent(window, new Event('hashchange'));
+    expect(scroll.mock.instances.at(-1)).toBe(document.getElementById('exam-date'));
+    expect(screen.getByRole('button', { name: 'How do I set an exam date?' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
     const calls = scroll.mock.calls.length;
     window.history.replaceState(null, '', '/#/help#%invalid');
     fireEvent(window, new Event('hashchange'));
@@ -43,36 +54,39 @@ describe('HelpPage', () => {
     expect(scroll).toHaveBeenCalledTimes(calls);
   });
 
-  it('follows the Settings layout: overview cards, then closed topic rows', () => {
+  it('groups questions and expands a topic row', () => {
     render(
       <MemoryRouter>
         <HelpPage />
       </MemoryRouter>,
     );
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Help' })).toBeInTheDocument();
-    for (const name of ['Basics', 'Studying', 'Shortcuts']) {
-      expect(screen.getByRole('heading', { level: 2, name })).toBeInTheDocument();
-    }
-    expect(screen.queryByRole('combobox', { name: 'Jump to help topic' })).not.toBeInTheDocument();
-
-    const row = screen.getByRole('button', { name: /Courses & lessons/ });
+    expect(screen.getByRole('heading', { level: 2, name: 'Getting started' })).toBeInTheDocument();
+    const row = screen.getByRole('button', { name: 'How do I create a course and lessons?' });
     expect(row).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(row);
     expect(row).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('heading', { level: 3, name: 'Courses' })).toBeInTheDocument();
+    expect(screen.getByText(/Choose New course on Today/)).toBeVisible();
   });
 
-  it('shows the gestures instead of keys in touch mode', () => {
-    touchMode = true;
+  it('searches all words across questions, answers and keywords, ignoring case', () => {
     render(
       <MemoryRouter>
         <HelpPage />
       </MemoryRouter>,
     );
-    const card = screen.getByRole('heading', { level: 2, name: 'Shortcuts' }).closest('section')!;
-    expect(within(card).getByText('Swipe right')).toBeInTheDocument();
-    expect(within(card).queryByText('Space')).not.toBeInTheDocument();
+    const search = screen.getByRole('searchbox', { name: 'Search help' });
+    fireEvent.change(search, { target: { value: 'PICTURE sharing' } });
+    expect(
+      screen.getByRole('button', { name: 'How do I share a diagram with its image?' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.queryByRole('button', { name: 'How do I start studying?' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/Share → Other ways → Course file/)).toBeVisible();
+    fireEvent.change(search, { target: { value: 'picture nonexistent' } });
+    expect(screen.getByText('No matching topics.')).toBeInTheDocument();
+    fireEvent.change(search, { target: { value: '' } });
+    expect(screen.getByRole('heading', { level: 2, name: 'Getting started' })).toBeInTheDocument();
   });
 
   it('provides a single keyboard target for each footer destination', () => {
@@ -102,42 +116,21 @@ describe('HelpPage', () => {
     expectAppDestination(screen.getByRole('link', { name: 'How the scheduler works' }), '/method');
   });
 
-  it('describes study entry with the controls the study sheet shows', () => {
+  it('shows customised shortcuts from the shared sheet source in a keyboard-scrollable region', () => {
+    localStorage.setItem('lacuna-shortcut-bindings', JSON.stringify({ reveal: 'j' }));
     render(
       <MemoryRouter>
         <HelpPage />
       </MemoryRouter>,
     );
-    expect(screen.queryByText(/Review today/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Study all cards')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Start session').length).toBeGreaterThan(0);
-  });
-
-  it('lets the shortcuts table scroll within itself from the keyboard', () => {
-    render(
-      <MemoryRouter>
-        <HelpPage />
-      </MemoryRouter>,
+    fireEvent.click(
+      screen.getByRole('button', { name: 'How do I see or customise keyboard shortcuts?' }),
     );
-    fireEvent.click(screen.getByRole('button', { name: /Shortcuts & gestures/ }));
     const region = screen.getByRole('region', { name: 'Keyboard shortcuts table' });
     expect(region).toHaveAttribute('tabindex', '0');
     expect(region).toHaveClass('overflow-x-auto');
-  });
-
-  it('explains how to share diagrams with their media using a course file', () => {
-    render(
-      <MemoryRouter>
-        <HelpPage />
-      </MemoryRouter>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: /Cards & content/ }));
-    const guidance = screen.getByRole('heading', { name: 'Sharing a diagram' }).parentElement;
-    expect(guidance).not.toBeNull();
-    expect(within(guidance!).getByText(/Share → Other ways → Course file/)).toBeInTheDocument();
-    expect(within(guidance!).getByText(/preserves the diagram and its image/)).toBeInTheDocument();
-    expect(
-      within(guidance!).getByText(/Share codes cannot carry image or audio files/),
-    ).toBeInTheDocument();
+    expect(within(region).getByText('j')).toBeInTheDocument();
+    expect(within(region).getByText('Open quick search')).toBeInTheDocument();
+    localStorage.removeItem('lacuna-shortcut-bindings');
   });
 });

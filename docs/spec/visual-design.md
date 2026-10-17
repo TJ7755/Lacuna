@@ -296,9 +296,10 @@ keyboard shortcuts on keyboard).
 - Course sections share their heading size (36px, rising to 44px on desktop), top spacing
   and content edges. Course Settings uses the full frame for an asymmetric grid: a large study-goal and dates
   card beside stacked daily-workload and target-recall cards, followed by compact expanding rows.
-  These cards stack on narrower screens. Settings and Help use the same heading
-  rhythm, card surfaces and layout: three overview cards in the same asymmetric grid, then
-  expanding rows at every viewport size. Persistent course navigation shows the course name only when the page's course
+  These cards stack on narrower screens. Settings keeps three overview cards in the same asymmetric grid, then
+  expanding rows at every viewport size. Help shares the heading rhythm and frame, with a search pill
+  above grouped question disclosures. Answers stay brief, with small inline examples and pill links;
+  searching shows matching answers expanded without group headings. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously. The course name travels
   and shrinks from the Path heading into this persistent identity when changing sections,
   then returns to the heading on Path. One visual layer stays outside the route fade and

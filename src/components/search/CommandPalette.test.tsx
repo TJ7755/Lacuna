@@ -126,6 +126,17 @@ afterAll(() => {
 });
 
 describe('CommandPalette', () => {
+  it('finds help topics and opens their deep link', async () => {
+    const router = createMemoryRouter([
+      { path: '*', element: <CommandPalette open onClose={vi.fn()} /> },
+    ]);
+    render(<RouterProvider router={router} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'exam date' } });
+    const option = await screen.findByRole('option', { name: /How do I set an exam date/ });
+    fireEvent.click(option);
+    expect(router.state.location.pathname + router.state.location.hash).toBe('/help#exam-date');
+  });
+
   it('shows the capped mixed count and continues to full search with the same query', async () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: Array.from({ length: 45 }, (_, i) => ({
@@ -186,7 +197,11 @@ describe('CommandPalette', () => {
     });
     render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'resume' } });
-    expect((await screen.findByRole('option')).querySelector('mark')).toHaveTextContent('Résumé');
+    expect(
+      (await screen.findByRole('option', { name: /Palatine hill fortifications/ })).querySelector(
+        'mark',
+      ),
+    ).toHaveTextContent('Résumé');
   });
 
   it.each([{ isComposing: true }, { keyCode: 229 }])(

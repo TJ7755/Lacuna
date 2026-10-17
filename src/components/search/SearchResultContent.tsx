@@ -1,4 +1,4 @@
-import { FileTextIcon, FolderIcon, GridIcon, FlagIcon, TagIcon } from '../ui/icons';
+import { HelpIcon, FileTextIcon, FolderIcon, GridIcon, FlagIcon, TagIcon } from '../ui/icons';
 import { GeneratedCardBadge } from '../cards/GeneratedCardBadge';
 import { memo } from 'react';
 import { HighlightedText, hasTextMatch, matchPreview, type SearchHit } from './searchPresentation';
@@ -18,6 +18,21 @@ export const SearchResultContent = memo(function SearchResultContent({
   const secondaryClass = compact
     ? 'truncate text-xs text-ink-faint'
     : 'break-words text-sm text-ink-faint';
+  if (hit.kind === 'help') {
+    return (
+      <>
+        <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-accent-soft text-accent-ink">
+          <HelpIcon width={14} height={14} />
+        </span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className={titleClass}>
+            <HighlightedText text={hit.topic.question} query={query} />
+          </span>
+          <span className="text-xs text-ink-faint">Help · {hit.topic.group}</span>
+        </span>
+      </>
+    );
+  }
   if (hit.kind === 'course' || hit.kind === 'lesson' || hit.kind === 'note') {
     const Icon =
       hit.kind === 'course' ? GridIcon : hit.kind === 'lesson' ? FolderIcon : FileTextIcon;

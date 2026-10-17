@@ -18,9 +18,15 @@ interface AnimatedDisclosureProps {
   innerClassName?: string;
   retainContent?: boolean;
   initial?: boolean;
+  onAnimationComplete?: () => void;
 }
 
-export function AnimatedDisclosure({ open, retainContent = false, initial = false, ...props }: AnimatedDisclosureProps) {
+export function AnimatedDisclosure({
+  open,
+  retainContent = false,
+  initial = false,
+  ...props
+}: AnimatedDisclosureProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const enabled = multiplier > 0;
@@ -38,6 +44,7 @@ export function AnimatedDisclosure({ open, retainContent = false, initial = fals
           transitionEnd: { overflow: open ? 'visible' : 'hidden' },
         }}
         transition={animatedDisclosureTiming(multiplier)}
+        onAnimationComplete={props.onAnimationComplete}
         className={cn('overflow-hidden', props.className)}
       >
         <div className={cn('flow-root', props.innerClassName)}>{props.children}</div>
@@ -58,6 +65,7 @@ function DisclosureContent({
   innerClassName,
   enabled,
   multiplier,
+  onAnimationComplete,
 }: Omit<AnimatedDisclosureProps, 'open'> & { enabled: boolean; multiplier: number }) {
   const present = useIsPresent();
   return (
@@ -68,6 +76,7 @@ function DisclosureContent({
       animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
       exit={enabled ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
       transition={animatedDisclosureTiming(multiplier)}
+      onAnimationComplete={onAnimationComplete}
       className={cn(enabled ? 'overflow-hidden' : 'overflow-visible', className)}
     >
       <div className={cn('flow-root', innerClassName)}>{children}</div>

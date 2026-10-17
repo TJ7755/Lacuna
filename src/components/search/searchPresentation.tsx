@@ -1,3 +1,4 @@
+import type { HelpTopic } from '../../pages/help/helpTopics';
 import {
   plainPreview,
   cardEditPath,
@@ -6,10 +7,12 @@ import {
   type ScopedSearchResult,
 } from '../../db/search';
 
-export type SearchHit = CourseContentHit | ScopedSearchResult;
+export type SearchHit = CourseContentHit | ScopedSearchResult | { kind: 'help'; topic: HelpTopic };
 
 export function hitPath(hit: SearchHit): string {
   switch (hit.kind) {
+    case 'help':
+      return `/help#${hit.topic.id}`;
     case 'card':
       return cardEditPath(hit.card);
     case 'question':
@@ -23,6 +26,7 @@ export function hitPath(hit: SearchHit): string {
 }
 
 export function hitKey(hit: SearchHit): string {
+  if (hit.kind === 'help') return `help-${hit.topic.id}`;
   const id =
     hit.kind === 'card'
       ? hit.card.id

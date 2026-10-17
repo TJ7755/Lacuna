@@ -1,3 +1,4 @@
+import { searchHelp } from '../../pages/help/searchHelp';
 import { ModalBackdrop } from '../ui/ModalBackdrop';
 import {
   useCallback,
@@ -22,7 +23,7 @@ import { StudyDrawing } from '../ui/StudyDrawing';
 import { SearchResultOption } from './SearchResultOption';
 import { hitKey, hitPath, type SearchHit } from './searchPresentation';
 
-/** A single ordered list of navigation, Card and Question hits. */
+/** A single ordered list of Help, navigation, Card and Question hits. */
 type PaletteHit = SearchHit;
 
 function PaletteResults(props: HTMLMotionProps<'ul'>) {
@@ -55,8 +56,8 @@ function GlobalPaletteDialog({
   returnFocusTarget?: RefObject<HTMLElement | null>;
 }) {
   const searchData = useSearchData();
-  // Course/lesson/note hits are listed ahead of Question and Card hits, then capped
-  // together so the palette never grows unbounded on a broad query.
+  // Help and course/lesson/note hits precede Question and Card hits, capped together
+  // so the palette never grows unbounded on a broad query.
   const search = useCallback(
     (query: string): PaletteHit[] => {
       const courses = searchData?.courses ?? [];
@@ -72,7 +73,12 @@ function GlobalPaletteDialog({
         courses,
         lessons,
       });
-      return [...courseHits, ...questionHits, ...cardHits];
+      const helpHits: PaletteHit[] = query.trim()
+        ? searchHelp(query)
+            .slice(0, 3)
+            .map((topic) => ({ kind: 'help', topic }))
+        : [];
+      return [...helpHits, ...courseHits, ...questionHits, ...cardHits];
     },
     [searchData],
   );

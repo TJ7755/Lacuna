@@ -94,7 +94,7 @@
   on Tab before native navigation continues from their trigger.
 - Settings groups use native disclosure buttons at every viewport size; closed panels
   remain mounted but inert and hidden from assistive technology. Deep links open their
-  containing group. Help retains its native section selector below desktop widths.
+  containing group. Help uses grouped question disclosures with 44px buttons and a labelled search field; searching expands matching answers.
 
 Course navigation reserves the width of adjacent controls; its tab strip scrolls when enlarged text would otherwise overlap them.
 

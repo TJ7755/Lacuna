@@ -37,6 +37,8 @@
   matches in long answers, descriptions and note bodies, alongside ownership and
   generated-card badges. Polite count announcements change with the result set,
   without announcing each arrow movement as a new count.
+- Quick search also lists up to three Help topics using Help’s all-word, case-insensitive
+  question/answer/keyword matching; selecting one opens its expanded answer at `/help#<id>`.
 - Quick search shows at most 40 mixed results, reports shown/total counts from the
   already computed matches, and offers **See all results** with the same query.
   Full-page search defers matching and initially renders 80 rows; **Show more results**
@@ -160,6 +162,5 @@ state and keyboard-accessible **View data** tables for the plotted values and un
 animation on approach (`viewport amount: 0` with a 100px bottom margin) so
 charts below the fold are never invisible. Each chart container is `h-64` with
 `min-w-0` so a chart cannot push its grid track wider than its share.
-
 
 [Specification index](../SPEC.md)
