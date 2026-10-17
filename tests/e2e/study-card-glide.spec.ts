@@ -215,27 +215,34 @@ test('vertical touch scrolling leaves the answer ungraded', async ({ page }) => 
   const control = page
     .getByRole('button', { name: 'Hide answer', exact: true })
     .filter({ has: page.locator('[data-study-face]') });
-  // Give the real study page enough content to scroll on this small viewport.
-  await control
-    .locator('[data-study-face]')
-    .locator('..')
-    .evaluate((node) => {
-      (node as HTMLElement).style.minHeight = '1600px';
-    });
+  // The session fills the viewport, so the answer face is the vertical scroller.
+  // Give it more content than fits on this small viewport.
+  const face = page.locator('[data-study-face="back"]');
+  await face.evaluate((node) => {
+    const spacer = document.createElement('div');
+    spacer.style.height = '1600px';
+    spacer.style.flexShrink = '0';
+    node.append(spacer);
+  });
   const session = await page.context().newCDPSession(page);
-  const before = await page.evaluate(() => scrollY);
+  const scrolled = () => face.evaluate((node) => node.scrollTop);
+  const before = await scrolled();
+  // Start low on the face so the upward drag has a full gesture's travel.
+  const box = (await face.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const start = box.y + box.height - 12;
   await session.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
-    touchPoints: [{ x: 195, y: 600 }],
+    touchPoints: [{ x, y: start }],
   });
-  for (const y of [580, 550, 510, 460]) {
+  for (const travel of [20, 50, 90, 140]) {
     await session.send('Input.dispatchTouchEvent', {
       type: 'touchMove',
-      touchPoints: [{ x: 195, y }],
+      touchPoints: [{ x, y: start - travel }],
     });
   }
   await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before + 50);
+  await expect.poll(scrolled).toBeGreaterThan(before + 50);
   await expect(control).toHaveCount(1);
   await expect(page.locator('[data-study-face="back"]')).toHaveCount(1);
   await expect(page.locator('[data-study-card-id]')).toHaveCSS('transform', 'none');
