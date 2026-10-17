@@ -25,16 +25,21 @@ async function tabTo(page: Page, target: Locator) {
   await expect(target).toBeFocused();
 }
 
-test('Search and Share keep the same page-frame left edge', async ({ page }) => {
+test('Search centres its reading column inside the shared page frame', async ({ page }) => {
   await enterFreshLacuna(page);
   await page.goto('/#/share');
   const share = page.getByRole('heading', { level: 1, name: 'Share', exact: true });
   await expect(share).toBeVisible({ timeout: 15000 });
-  const shareLeft = (await share.boundingBox())!.x;
+  const shareFrame = (await share.locator('../..').boundingBox())!;
   await page.goto('/#/search');
   const search = page.getByRole('heading', { level: 1, name: 'Search content', exact: true });
   await expect(search).toBeVisible();
-  expect(Math.abs((await search.boundingBox())!.x - shareLeft)).toBeLessThanOrEqual(1);
+  const column = (await search.locator('../..').boundingBox())!;
+  const frame = (await search.locator('../../..').boundingBox())!;
+  expect(Math.abs(frame.x - shareFrame.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(frame.width - shareFrame.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(column.x + column.width / 2 - frame.x - frame.width / 2)).toBeLessThanOrEqual(1);
+  expect(column.width).toBe(768);
 });
 
 test('Search names its field, provides full-size keyboard filters and keeps Clear focus', async ({
@@ -67,7 +72,9 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
     .getByRole('option', { name: /^Welcome to Lacuna/ })
     .first();
   await expect(course).toBeVisible();
-  await expect.poll(() => course.evaluate((element) => getComputedStyle(element).opacity)).toBe('1');
+  await expect
+    .poll(() => course.evaluate((element) => getComputedStyle(element).opacity))
+    .toBe('1');
   await page.screenshot({ path: testInfo.outputPath('search-results.png') });
   await course.focus();
   await course.press('Enter');
@@ -79,12 +86,13 @@ test('Import keeps its heading still and returns keyboard focus to the chosen so
 }, testInfo) => {
   await enterFreshLacuna(page);
   await page.goto('/#/import');
-  const heading = page.getByRole('heading', { level: 1, name: 'Import', exact: true });
+  const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
   await expect(heading).toBeVisible();
   const headingTop = () =>
     heading.evaluate(
       (element) => element.getBoundingClientRect().top + (element.closest('main')?.scrollTop ?? 0),
     );
+  await expect.poll(async () => (await heading.boundingBox())!.width).toBeGreaterThan(0);
   const originalTop = await headingTop();
   const source = page.getByRole('button', { name: /Text or spreadsheet/ });
   await source.focus();

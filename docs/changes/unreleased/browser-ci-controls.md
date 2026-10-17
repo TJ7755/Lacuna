@@ -1,0 +1,1 @@
+- Update browser checks to follow the delivered authoring, navigation, disclosure, search and study controls while retaining focus, geometry, recovery and synchronisation assertions.

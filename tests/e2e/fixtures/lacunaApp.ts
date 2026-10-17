@@ -14,9 +14,8 @@ export async function enterFreshLacuna(page: Page) {
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
-/** Opens Import from Today, or from the navigation drawer on a phone, where Today hides it. */
+/** Exercises Today import on desktop and the navigation-drawer entry on phones. */
 export async function openImport(page: Page) {
-  // Matches Tailwind's sm breakpoint, below which Today hides its Import button.
   if (page.viewportSize()!.width >= 640) {
     await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
   } else {
