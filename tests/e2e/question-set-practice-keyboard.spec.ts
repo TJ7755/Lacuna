@@ -132,7 +132,7 @@ for (const mode of ['practice', 'paper'] as const) {
       if (mode === 'practice') {
         await expect(page.getByRole('radio', { name: 'Not marked' })).toBeFocused();
         await markAndContinue(page, '1 / 1');
-        await expect(page.getByText('Criterion 2 of 2')).toBeVisible();
+        await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
         await expect(page.getByRole('radio', { name: 'Not marked' })).toBeFocused();
         await markAndContinue(page, '0 / 1');
       }
@@ -152,15 +152,15 @@ for (const mode of ['practice', 'paper'] as const) {
       if (mode === 'paper') {
         const activePaper = page.locator('article.qs-paper:not([inert], [inert] *)');
         await expect(activePaper).toHaveCount(1);
-        const marks = activePaper.locator('.qs-marking-criterion');
-        const original = activePaper.locator('.qs-marking-answer');
+        const marks = activePaper.locator('.qs-marking-criterion:not([inert] *)');
+        const original = activePaper.locator('.qs-marking-answer:not([inert] *)');
         expect((await marks.boundingBox())!.y).toBeLessThan((await original.boundingBox())!.y);
         expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
           320,
         );
         await page.screenshot({ path: testInfo.outputPath('marking-320.png') });
         await markAndContinue(page, '1 / 1');
-        await expect(page.getByText('Criterion 2 of 3')).toBeVisible();
+        await expect(page.getByRole('button', { name: /criterion 2 of 3/ })).toBeVisible();
         await markAndContinue(page, '0 / 1');
       }
       await expect(page.getByText('1 criterion remaining', { exact: true })).toBeVisible();

@@ -132,7 +132,7 @@ function open(
 
 async function answerAndAdvance(value: string, nextHeading: string) {
   fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value } });
-  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+  await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
   const next = screen.getByRole('button', { name: 'Next' });
   await waitFor(() => expect(next).not.toBeDisabled());
   fireEvent.click(next);
@@ -147,6 +147,35 @@ describe('QuestionSetPractice', () => {
     db.close();
     await db.delete();
     await db.open();
+  });
+
+  it('keeps practice progression inside the card without submission captions or saved chrome', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    open(course.id, set.id, attempt.id);
+    const answer = await screen.findByRole('textbox', { name: 'Your answer' });
+    const card = answer.closest('article')!;
+    const primary = screen.getByRole('button', { name: 'Next part' });
+    expect(card).toContainElement(primary);
+    expect(card).toContainElement(screen.getByRole('navigation', { name: 'Answer parts' }));
+    const earlySubmit = screen.getByRole('button', { name: 'Submit question' });
+    expect(card).toContainElement(earlySubmit);
+    expect(earlySubmit).not.toHaveAttribute('data-attempt-primary');
+    expect(primary).toHaveAttribute('data-attempt-primary');
+    expect(
+      screen.queryByText('Submit all parts of this question before opening its mark scheme.'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Your answer')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    const stepper = screen.getByRole('button', { name: 'Practice, part 1 of 3' });
+    expect(stepper).toHaveAttribute('aria-haspopup', 'menu');
+    fireEvent.click(stepper);
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Q1 (b)' }));
+    await screen.findByRole('heading', { name: 'Q1 (b)' });
+    const submit = screen.getByRole('button', { name: 'Submit question' });
+    expect(submit).toHaveAttribute('data-attempt-primary');
+    expect(submit.closest('article')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Next part' })).not.toBeInTheDocument();
   });
 
   it('focuses the answer and progresses with Ctrl+Enter without submitting the paper early', async () => {
@@ -205,14 +234,14 @@ describe('QuestionSetPractice', () => {
     await waitFor(() => expect(screen.getByRole('radio', { name: 'Not marked' })).toHaveFocus());
     const unmarked = screen.getByRole('radio', { name: 'Not marked' });
     fireEvent.keyDown(unmarked, { key: 'Enter', ctrlKey: true });
-    expect(screen.getByText('Criterion 1 of 3')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /criterion 1 of 3/ })).toBeInTheDocument();
     for (const count of [1, 2, 3]) {
       const award = screen.getByRole('radio', { name: '1 / 1' });
       fireEvent.click(award);
-      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+      await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
       fireEvent.keyDown(award, { key: 'Enter', ctrlKey: true });
       if (count < 3) {
-        await screen.findByText(`Criterion ${count + 1} of 3`);
+        await screen.findByRole('button', { name: new RegExp(`criterion ${count + 1} of 3`) });
         await waitFor(() =>
           expect(screen.getByRole('radio', { name: 'Not marked' })).toHaveFocus(),
         );
@@ -322,7 +351,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'A persisted response.' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     const save = screen.getByRole('button', { name: 'Save and finish later' });
     await waitFor(() => expect(save).not.toBeDisabled());
     fireEvent.click(save);
@@ -363,7 +392,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
   });
@@ -433,7 +462,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'),
@@ -453,7 +482,7 @@ describe('QuestionSetPractice', () => {
       ),
     );
     fireEvent.click(screen.getByRole('button', { name: /next criterion/i }));
-    await screen.findByText('Criterion 2 of 3');
+    await screen.findByRole('button', { name: /criterion 2 of 3/ });
     fireEvent.click(screen.getByRole('radio', { name: '1 / 1' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
@@ -461,7 +490,7 @@ describe('QuestionSetPractice', () => {
       ),
     );
     fireEvent.click(screen.getByRole('button', { name: /next criterion/i }));
-    await screen.findByText('Criterion 3 of 3');
+    await screen.findByRole('button', { name: /criterion 3 of 3/ });
     fireEvent.click(screen.getByRole('radio', { name: '1 / 1' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual(
@@ -489,7 +518,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
     await waitFor(async () =>
@@ -517,7 +546,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
     await waitFor(async () =>
@@ -547,7 +576,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Original two' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'));
+    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit question' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
     expect(screen.queryByText('Describes selective permeability.')).not.toBeInTheDocument();

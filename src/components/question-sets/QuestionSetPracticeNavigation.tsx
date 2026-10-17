@@ -1,6 +1,7 @@
 import { Button } from '../ui/Button';
+import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons';
 
-/** Optional browsing follows the primary task controls in the keyboard order. */
+/** Quiet browsing shares the card footer with the primary task. */
 export function QuestionSetPracticeNavigation({
   rows,
   index,
@@ -18,18 +19,22 @@ export function QuestionSetPracticeNavigation({
   return (
     <nav className="qs-preview-nav" aria-label={marking ? 'Marking criteria' : 'Answer parts'}>
       <Button
-        variant="secondary"
+        variant="ghost"
+        className="h-11 w-11 p-0"
+        aria-label={marking ? 'Previous criterion' : 'Previous'}
         disabled={blocked || index <= 0}
         onClick={() => onMove(rows[index - 1].nodeId, rows[index - 1].allocationId)}
       >
-        {marking ? 'Previous criterion' : 'Previous'}
+        <ChevronLeftIcon width={18} height={18} aria-hidden="true" />
       </Button>
       <Button
-        variant="secondary"
+        variant="ghost"
+        className="h-11 w-11 p-0"
+        aria-label={marking ? 'Next criterion' : 'Next'}
         disabled={blocked || index >= rows.length - 1}
         onClick={() => onMove(rows[index + 1].nodeId, rows[index + 1].allocationId)}
       >
-        {marking ? 'Next criterion' : 'Next'}
+        <ChevronRightIcon width={18} height={18} aria-hidden="true" />
       </Button>
     </nav>
   );

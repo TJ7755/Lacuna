@@ -247,6 +247,18 @@ the attempt rows; unresolved marks stay labelled separately. Linked concept cove
 one line, and the **All / First recorded / Repeated** filter appears only after a repeated attempt.
 Removed sets retain their title and attempt links in the same page frame.
 
+Question-set attempts use one header for the set back link, part-stepper menu and
+**Save and finish later**. The stepper announces the mode, current part and marking criterion;
+its dots distinguish the current and submitted parts. Save status appears only while saving or
+on error. The course-style question card holds the question label and marks, muted shared
+context, part prompt and an accessibly named answer field. Written answers grow from four
+lines to a viewport cap, then scroll inside the field. Quiet previous/next chevrons share the
+card footer with the primary action and its platform-specific keycap. Practice advances with
+**Next part** and submits the question on its final part; early question or paper submission
+remains available as a quiet secondary action.
+Marking and reflection use the same surfaces and spacing without dividing rules or explanatory
+captions. Short answering screens fit desktop and phone viewports without page scrolling.
+
 "Due" has one definition (`courseDueReviewCards`), shared by the course and lesson
 headers, path lesson rows, the session preview and the **Review due cards** session: cards
 introduced in reached lessons whose scheduled review has passed and which remain below
