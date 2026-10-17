@@ -61,8 +61,8 @@ const NAV_LABELS: Record<string, string> = {
 /** Entries that sit at the foot of the sidebar rather than at the top. */
 const FOOTER_NAV = new Set(['share', 'settings', 'help']);
 
-/** The course glyph tracks the window height so rows can give up space as they shrink. */
-const GLYPH_SIZE = 'clamp(28px, 4.6dvh, 40px)';
+/** The course glyph sits comfortably inside a single-line 44px row. */
+const GLYPH_SIZE = 30;
 
 /** Static (non-shared-layout) active state: the white pill, as NavItem draws it. */
 const ACTIVE_PILL = 'bg-surface font-semibold text-ink shadow-[0_1px_2px_hsl(var(--ink)/0.06)]';
@@ -282,9 +282,8 @@ const CourseRow = memo(function CourseRow({
           <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
           <span
             className={cn(
-              'min-w-0 flex-1 font-semibold',
-              // Two lines fit beside the glyph without growing the row.
-              compact ? 'truncate' : 'line-clamp-2 leading-tight [overflow-wrap:anywhere]',
+              // One line keeps rows even; the hover card carries the full name.
+              'min-w-0 flex-1 truncate font-semibold',
             )}
           >
             {courseName}
@@ -302,7 +301,7 @@ const CourseRow = memo(function CourseRow({
           'group flex w-full items-center gap-1 rounded-xl transition-colors duration-150',
           compact
             ? 'min-h-11 py-1.5 pl-3 pr-1 text-xs'
-            : 'min-h-11 flex-1 py-1 pl-3 pr-1 text-[15px] short:min-h-10',
+            : 'min-h-11 pl-3 pr-1 text-[15px]',
           isCourseActive ? ACTIVE_PILL : 'text-ink hover:bg-ink/5',
         )}
       >
@@ -317,9 +316,8 @@ const CourseRow = memo(function CourseRow({
             <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
             <span
               className={cn(
-                'min-w-0 flex-1 font-semibold',
-                // Two lines fit beside the glyph without growing the row.
-                compact ? 'truncate' : 'line-clamp-2 leading-tight [overflow-wrap:anywhere]',
+                // One line keeps rows even; the hover card carries the full name.
+                'min-w-0 flex-1 truncate font-semibold',
               )}
             >
               {courseName}
@@ -579,9 +577,9 @@ export function Sidebar({
           </motion.div>
         )}
         <div
-          // The scrollbar is hidden, so a shadow marks the edge with more courses beyond it.
+          // The scrollbar is hidden, so a fade marks the edge with more courses beyond it.
           className={cn(
-            'scroll-edge-shadows flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            'scroll-edge-fade flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
             sidebarSettings.compactMode ? 'gap-0' : 'gap-0.5',
           )}
         >
@@ -589,13 +587,9 @@ export function Sidebar({
             {sidebarCourses.map((course, idx) => (
               <motion.div
                 key={course.id}
-                // Rows start at the board's 56px and give up height (never below 44px)
-                // so the whole course list fits the window; an expanded course keeps
-                // its natural height.
+                // Single-line rows at the 44px target; the list scrolls beyond that.
                 className={
-                  sidebarSettings.compactMode
-                    ? undefined
-                    : 'flex min-h-11 shrink basis-14 flex-col short:min-h-10 has-[[aria-expanded=true]]:shrink-0 has-[[aria-expanded=true]]:basis-auto'
+                  sidebarSettings.compactMode ? undefined : 'flex shrink-0 flex-col'
                 }
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}

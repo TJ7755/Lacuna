@@ -123,10 +123,10 @@ describe('Sidebar', () => {
     rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
     expectAppDestination(screen.getByRole('link', { name: 'Import' }), '/import');
   });
-  it('shades the hidden edges of its scrollbar-less course list', () => {
+  it('fades the hidden edges of its scrollbar-less course list', () => {
     render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
     const archived = screen.getByRole('link', { name: 'Archived' });
-    expect(archived.closest('.scroll-edge-shadows')).not.toBeNull();
+    expect(archived.closest('.scroll-edge-fade')).not.toBeNull();
   });
 
   it('shows the brand without a tagline', () => {

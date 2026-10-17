@@ -322,6 +322,34 @@
   }
 }
 
+/* Edge-fade lengths for `.scroll-edge-fade`, registered so they can animate. */
+@property --scroll-fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-edge-fade {
+  from {
+    --scroll-fade-top: 0px;
+    --scroll-fade-bottom: 36px;
+  }
+  8% {
+    --scroll-fade-top: 36px;
+  }
+  92% {
+    --scroll-fade-bottom: 36px;
+  }
+  to {
+    --scroll-fade-top: 36px;
+    --scroll-fade-bottom: 0px;
+  }
+}
+
 @layer utilities {
   /* A compact control keeps its look but takes a 44px target, centred on it. */
   .hit-target {
@@ -351,18 +379,23 @@
   }
 
   /*
-   * Shadows at a scroller's hidden edges, for lists whose scrollbar is hidden. The chrome-coloured
-   * covers scroll with the content and hide each shadow once its edge is reached: no script.
+   * Fades a scroller's content out at whichever edge has more beyond it, for lists whose
+   * scrollbar is hidden. A scroll-driven animation grows each fade from nothing once there is
+   * somewhere to scroll and removes it at that end, so a list that fits is never faded.
+   * Masking blends into whatever sits behind, so no shadow colour can glow in dark mode.
    */
-  .scroll-edge-shadows {
-    background:
-      linear-gradient(hsl(var(--chrome)) 40%, hsl(var(--chrome) / 0)) top / 100% 28px no-repeat local,
-      linear-gradient(hsl(var(--chrome) / 0), hsl(var(--chrome)) 60%) bottom / 100% 28px no-repeat
-        local,
-      radial-gradient(farthest-side at 50% 0, hsl(var(--ink) / 0.22), transparent) top / 100% 12px
-        no-repeat scroll,
-      radial-gradient(farthest-side at 50% 100%, hsl(var(--ink) / 0.22), transparent) bottom / 100%
-        12px no-repeat scroll;
+  @supports (animation-timeline: scroll()) {
+    .scroll-edge-fade {
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 var(--scroll-fade-top),
+        #000 calc(100% - var(--scroll-fade-bottom)),
+        transparent
+      );
+      animation: scroll-edge-fade linear both;
+      animation-timeline: scroll(self);
+    }
   }
 
   /* The shell's first Tab stop; hidden until it receives focus. */

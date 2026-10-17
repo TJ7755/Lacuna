@@ -163,8 +163,10 @@ arriving from Anki. Cross-course due review is opened from the sidebar's **Revie
 not a separate Dashboard "Study all" button. Empty state invites creating the first course. All
 transitions between these regions are coordinated by `LayoutGroup` so adding or reordering
 courses does not stutter. Archived courses are excluded from the active grid and normal sidebar
-course list. The sidebar's fixed **Archived** destination (`/archived`) sits beneath the
-**Courses** heading outside the active-course scroll region. Restoring a course confirms it with
+course list. Sidebar course rows are a single 44px line (a 30px glyph and the name, cut short with
+an ellipsis; the hover card gives the full name), and the list scrolls without a scrollbar, fading
+out at whichever edge has more courses beyond it. The sidebar's fixed **Archived** destination
+(`/archived`) closes the course list, after the last active course. Restoring a course confirms it with
 an **Open** action rather than navigating, so focus stays with the next restore; the empty page
 offers **Back to Today**. Its cards open the existing course
 path in an explicit read-only state; every lesson and course analytics remain inspectable, while
