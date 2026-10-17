@@ -1,1 +1,0 @@
-- Condensed the Direction C next-session brief into the visual design and accessibility specifications and removed the finished plan.

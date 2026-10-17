@@ -1,1 +1,0 @@
-- Use the standard segmented pills for AI connection, audio speed, grading strictness and Question-set response modes, and standard switches for binary authoring and import options. Align the AI settings rows with the other Settings cards while preserving labels, saved values and keyboard controls.

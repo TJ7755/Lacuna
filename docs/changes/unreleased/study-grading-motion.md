@@ -1,1 +1,0 @@
-- Rework study grading with weighted spring departures, overlapping card arrivals, card-local colour and matching button feedback for keyboard grades; carry swipe velocity into the throw and critically damp progress. Preserve immediate reduced-motion grading, repeated cards and Undo, and handle cancelled entrance animation promises.

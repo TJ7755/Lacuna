@@ -1,1 +1,0 @@
-- Fix sharing actions remaining in their loading state after React replays mount effects in development.

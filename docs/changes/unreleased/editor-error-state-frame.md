@@ -1,1 +1,0 @@
-- Missing-course, missing-lesson and missing-record states in sequence and diagram editors now retain the shared page frame and full-size Back controls, preserving each original return destination.

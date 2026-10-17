@@ -1,1 +1,0 @@
-- Simplify the Study session preview to the course, next steps and card counts, one total time and Start session. Remove numbered badges, repeated timings and duplicate Cancel actions; keep alternative study choices behind Other ways. (#389)

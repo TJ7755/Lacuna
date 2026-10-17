@@ -1,1 +1,0 @@
-- Kept course-title visibility tracking attached to the header while renaming, so the persistent course name no longer reappears beside the inline editor.

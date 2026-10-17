@@ -1,1 +1,0 @@
-- Replace dense Help reference sections with short, searchable task questions in Settings-style cards, arranged in two fixed columns on wide screens. Rank direct answers first, share customised shortcuts and show up to three Help results in Quick search and Search content. Update guidance for grading, scheduling, exam dates and revision.

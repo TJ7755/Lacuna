@@ -1,1 +1,0 @@
-- Settings reflows with its own text-size setting on narrow screens: segmented controls stack their options vertically when they cannot fit side by side, and the audio playback speed and grading strictness choices wrap beneath their labels, so nothing overflows its card or squeezes the grading explanation into a narrow column (#458)

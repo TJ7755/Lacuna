@@ -1,1 +1,0 @@
-- Contain inline confirmations in rounded panels with existing semantic colours, grouped destructive and Cancel buttons, and narrow-width wrapping. Preserve neutral permission prompts, focus return and reduced motion; prevent repeat submission while returned promises are pending.

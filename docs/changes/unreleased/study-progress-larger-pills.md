@@ -1,1 +1,0 @@
-- Enlarge the study progress pills by limiting roomier strips to about 17 visible cards, with slightly taller pills and wider gaps. Narrow strips retain their current sizing, and the header height and window glide stay unchanged.

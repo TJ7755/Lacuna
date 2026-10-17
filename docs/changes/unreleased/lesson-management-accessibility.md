@@ -1,1 +1,0 @@
-- Give lesson settings reorder controls 44px targets, the shared press animation and keyboard focus rings. Name the inline lesson editor and return focus to Rename when it closes without taking focus from another chosen control.

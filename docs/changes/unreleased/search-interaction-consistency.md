@@ -1,2 +1,0 @@
-- Align Search with Quick search using shared compact result rows, hover selection and active highlights. Move Clear out of the filter row without clearing the query or shifting the chips.
-- Share Quick search’s gently staggered spring-and-fade entrance with Search results, scaled by motion speed and disabled for reduced motion.

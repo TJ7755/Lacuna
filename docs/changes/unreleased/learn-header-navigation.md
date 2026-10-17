@@ -1,1 +1,0 @@
-- Remove the study header’s navigation button and unused session drawer; Exit returns to app navigation.

@@ -1,1 +1,0 @@
-- Restore Today's documented right-click, context-menu key and Shift+F10 course actions through the existing visible menu, sharing native text-editing protections with lesson actions without adding database code to the dashboard.

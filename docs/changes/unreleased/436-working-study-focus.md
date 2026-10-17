@@ -1,1 +1,0 @@
-- Working-card study keeps its answer field focused on entry and after moving to the next card, without selecting a departing inert field or changing marking and study pacing. (#436)

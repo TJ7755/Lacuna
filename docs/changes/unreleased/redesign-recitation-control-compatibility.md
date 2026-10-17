@@ -1,1 +1,0 @@
-- Apply the redesign’s existing button-shape rule to the imported recitation marking control. (#389)

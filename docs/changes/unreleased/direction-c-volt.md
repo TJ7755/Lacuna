@@ -1,2 +1,0 @@
-- Direction C now uses Volt: charcoal and lime with Space Grotesk headings and Instrument Sans body text. Dividers, default course accents and Welcome drawings carry a restrained green tint; readable accent text and focus rings adapt to light and dark mode. Both fonts are bundled and precached for offline use.
-- Saved amber changes to Volt once; other accents and saved theme choices are preserved. Fresh installs open in dark mode, and Amber remains available in Appearance settings.

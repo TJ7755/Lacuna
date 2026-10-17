@@ -1,1 +1,0 @@
-- In View mode a lesson with no notes no longer shows an empty Notes panel; its cards take the width. Edit mode keeps the panel, where the first note is added.

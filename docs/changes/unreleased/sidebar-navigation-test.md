@@ -1,1 +1,0 @@
-- Verify sidebar search navigation through the actual destination rather than an href omitted by the app's navigation links.

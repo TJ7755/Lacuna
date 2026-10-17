@@ -1,1 +1,0 @@
-- Today: with many courses, the exam-day forecast colours and labels only the three most urgent; the rest stay faint behind a "more" toggle until chosen. Today's percentages match their line's colour and no longer cover the chart.

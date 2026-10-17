@@ -1,3 +1,0 @@
-- Fix Mermaid dependency loading in the development server so note diagrams render instead of silently falling back to source.
-- Give concurrent Mermaid renders distinct IDs so one diagram cannot erase another and leave an empty Diagram source box.
-- Start study note disclosures on the mouse press, retain rendered Markdown and diagrams between toggles, and cache disclosure heights without changing the expansion spring or reduced-motion behaviour.

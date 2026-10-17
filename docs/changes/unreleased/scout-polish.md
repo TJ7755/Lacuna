@@ -1,1 +1,0 @@
-- Align remaining badges, card actions, forecasts, analytics, Settings forms, date/time controls and export tiles with direction C. Unify responsive pill choices, enlarge heatmap day targets and the touch action-sheet handle, and respect motion speed and reduced motion in shared progress and decorative springs.

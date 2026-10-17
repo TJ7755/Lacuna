@@ -1,1 +1,0 @@
-- Recover failed lazy-route imports with one guarded page reload, then retain the existing error boundary if loading still fails. Pre-bundle QR and Markdown dependencies to avoid late development-server optimiser generations.

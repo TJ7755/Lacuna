@@ -1,1 +1,0 @@
-- Wait for the update dialog's initial focus in its unit test, which a loaded runner could check before the focus effect ran.

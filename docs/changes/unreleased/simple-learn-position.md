@@ -1,1 +1,0 @@
-- Simple Learn's header counter now names the current card's place in the session, matching the pip bar and its screen-reader announcement, instead of counting cards cleared.

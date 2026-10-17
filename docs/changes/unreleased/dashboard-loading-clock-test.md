@@ -1,1 +1,0 @@
-- Verify Today's delayed loading placeholder against a controlled clock, retaining both its 250ms delay and immediate-load suppression without depending on test-machine load.

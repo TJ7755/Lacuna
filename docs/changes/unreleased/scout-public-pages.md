@@ -1,1 +1,0 @@
-- Align the Download page, comparison demos and screenshot dialog, public navigation and Method diagrams with the shared palette, pill controls and flat surfaces. Respect motion preferences in disclosures and benchmark changes, remove redundant diagram captions, and wrap long missing-page paths without clipping. Landing hero and lower sections are unchanged.

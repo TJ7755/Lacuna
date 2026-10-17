@@ -1,1 +1,0 @@
-- Improve the date and time picker with continuous keyboard date navigation, month and year paging that preserves the focused day, a left-aligned month label with adjacent navigation arrows, and one today shortcut that preserves the chosen time.

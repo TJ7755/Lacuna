@@ -1,1 +1,0 @@
-- Show toast notifications immediately when motion is disabled, keeping actions such as Undo visible.

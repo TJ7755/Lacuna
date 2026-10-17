@@ -1,1 +1,0 @@
-- Today course titles retain their hover underline and open without the browser URL preview, using a button with Enter and Space support.

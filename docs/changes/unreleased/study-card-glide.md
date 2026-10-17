@@ -1,1 +1,0 @@
-- Make study cards follow horizontal drags directly and glide away in one continuous motion, carrying flick velocity through grading without waiting for the next card to load. Cancelled drags spring back; vertical scrolling, reduced motion, grading timings and Undo retain their existing behaviour.

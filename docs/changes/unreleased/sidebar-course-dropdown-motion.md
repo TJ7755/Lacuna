@@ -1,1 +1,0 @@
-- Animate sidebar course lessons through measured, reversible height springs, staggered lesson rows and a rotating chevron. Courses below and Archived move with the panel, including in the mobile drawer; motion speed and reduced motion are respected.

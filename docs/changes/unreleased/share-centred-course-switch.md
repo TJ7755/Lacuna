@@ -1,1 +1,0 @@
-- Share follows the course-page frame and header spacing, with a left-aligned title and content and a right-aligned course picker that wraps on phones. Course switches keep the card surfaces and Other ways heading visible while smoothly adjusting link height and immediately clearing previous outputs and actions; reduced motion remains supported.
