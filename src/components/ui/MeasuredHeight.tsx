@@ -12,9 +12,11 @@ export function MeasuredHeight({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const element = content.current;
     if (!element) return;
-    const measure = () => setHeight(element.getBoundingClientRect().height);
-    measure();
-    const observer = new ResizeObserver(measure);
+    // Layout height, not the transformed bounding box: an ancestor mid-scale would shrink it.
+    setHeight(element.offsetHeight);
+    const observer = new ResizeObserver((entries) => {
+      setHeight(entries?.[0]?.borderBoxSize?.[0]?.blockSize ?? element.offsetHeight);
+    });
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
