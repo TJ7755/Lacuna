@@ -913,10 +913,11 @@ describe('CoursePath Edit mode', () => {
     });
   });
 
-  it('opens the editor from the practice-node pencil', () => {
+  it('opens the editor from the practice-node menu', () => {
     mockPracticeNodes = [practiceNode];
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Weekly review' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Practice actions: Weekly review' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
     expect(screen.getByRole('dialog', { name: 'Edit card practice' })).toBeInTheDocument();
   });
 

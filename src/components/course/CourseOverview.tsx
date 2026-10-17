@@ -11,7 +11,8 @@ import { cn } from '../ui/cn';
 import { AddCourseControl, type CourseAddKind } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
-import { CardsIcon, CheckIcon, ChevronRightIcon, EditIcon, FlagIcon } from '../ui/icons';
+import { CardsIcon, CheckIcon, ChevronRightIcon, FlagIcon } from '../ui/icons';
+import { PathNodeActionsMenu } from './PathNodeActionsMenu';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
 import {
   focusAfterLessonDeletion,
@@ -55,8 +56,7 @@ interface CourseOverviewProps {
   summary?: (cardClassName: string) => ReactNode;
 }
 
-const CARD =
-  'rounded-3xl bg-surface card-surface';
+const CARD = 'rounded-3xl bg-surface card-surface';
 const SECURE = 90;
 
 /**
@@ -75,6 +75,7 @@ export function CourseOverview(props: CourseOverviewProps) {
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
   const lessonMenus = useRef(new Map<string, MenuHandle>());
+  const lessons = nodes.flatMap((node) => (node.nodeType === 'lesson' ? [node.lesson] : []));
   let lessonNumber = 0;
 
   return (
@@ -138,15 +139,24 @@ export function CourseOverview(props: CourseOverviewProps) {
                 if (node.nodeType === 'checkpoint') {
                   const date = node.assessment.examDate;
                   return (
-                    <motion.li key={node.id} {...arrive} className="my-1.5 ml-[18px]">
-                      <div className="flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm">
+                    <motion.li
+                      key={node.id}
+                      {...arrive}
+                      className="relative my-1.5 ml-[18px] has-[[aria-expanded=true]]:z-20"
+                    >
+                      <div
+                        className={cn(
+                          'flex items-center gap-3 rounded-2xl bg-ink/[0.05] px-3.5 py-2.5 text-sm',
+                          authoring && 'pr-[60px]',
+                        )}
+                      >
                         <FlagIcon width={16} height={16} className="shrink-0 text-ink-soft" />
                         <button
                           type="button"
                           disabled={archived}
                           onClick={() => props.onAssessmentOpen(node.assessment.id)}
                           aria-label={`${archived ? 'Archived' : authoring ? 'Edit' : 'Open'} checkpoint: ${node.assessment.name}`}
-                          className="min-h-11 flex-1 text-left"
+                          className="min-h-11 min-w-0 flex-1 break-words text-left"
                         >
                           <strong className="font-bold">{node.assessment.name}</strong>
                           {date !== undefined && (
@@ -166,16 +176,30 @@ export function CourseOverview(props: CourseOverviewProps) {
                           </button>
                         )}
                       </div>
+                      {authoring && !archived && (
+                        <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                          <PathNodeActionsMenu
+                            node={node}
+                            lessons={lessons}
+                            onEdit={() => props.onAssessmentOpen(node.assessment.id)}
+                          />
+                        </div>
+                      )}
                     </motion.li>
                   );
                 }
 
                 if (node.nodeType === 'practice-question-set') {
                   return (
-                    <motion.li key={node.id} {...arrive} className="relative flex flex-col">
+                    <motion.li
+                      key={node.id}
+                      {...arrive}
+                      className="relative flex flex-col has-[[aria-expanded=true]]:z-20"
+                    >
                       <QuestionSetCourseRow
                         node={node}
                         index={index}
+                        lessons={lessons}
                         authoring={authoring && !archived}
                       />
                     </motion.li>
@@ -265,9 +289,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                         'hover:bg-ink/[0.03] disabled:cursor-default',
                         authoring && (lesson || practice) && 'pr-[60px]',
                         // Reserve the lifted border so dragging cannot change the row's bounds.
-                        reorder?.lifted
-                          ? 'bg-surface card-surface'
-                          : 'border border-transparent',
+                        reorder?.lifted ? 'bg-surface card-surface' : 'border border-transparent',
                       )}
                     >
                       <span
@@ -362,15 +384,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                         />
                       </div>
                     )}
-                    {authoring && practice && (
-                      <button
-                        type="button"
-                        aria-label={`Edit ${name}`}
-                        onClick={() => props.onPracticeEdit(practice)}
-                        className="absolute right-1.5 top-1/2 grid h-12 w-11 -translate-y-1/2 place-items-center rounded-full text-ink-faint hover:bg-ink/5 hover:text-ink"
-                      >
-                        <EditIcon width={14} height={14} />
-                      </button>
+                    {authoring && !archived && practice?.practiceNode && (
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                        <PathNodeActionsMenu
+                          node={practice}
+                          lessons={lessons}
+                          onEdit={() => props.onPracticeEdit(practice)}
+                        />
+                      </div>
                     )}
                     {reorder?.dropMarker && (
                       <div
@@ -403,40 +424,61 @@ export function CourseOverview(props: CourseOverviewProps) {
               const date = assessment.examDate;
               const zone = assessment.timeZone ?? props.timeZone;
               return (
-                <button
+                <div
                   key={assessment.id}
-                  type="button"
-                  disabled={archived}
-                  onClick={() => props.onAssessmentOpen(assessment.id)}
-                  className="-mx-2 flex min-h-11 items-center gap-3.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-ink/[0.03]"
+                  className="relative flex items-center has-[[aria-expanded=true]]:z-20"
                 >
-                  <span className="w-11 shrink-0 text-center leading-tight">
-                    {date === undefined ? (
-                      <FlagIcon width={18} height={18} className="mx-auto text-ink-soft" />
-                    ) : (
-                      <>
-                        <span className="block font-display text-[22px] font-semibold tracking-tight tabular-nums">
-                          {new Date(date).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            timeZone: zone,
-                          })}
-                        </span>
-                        <span className="text-xs text-ink-faint">
-                          {new Date(date).toLocaleDateString('en-GB', {
-                            month: 'short',
-                            timeZone: zone,
-                          })}
-                        </span>
-                      </>
+                  <button
+                    type="button"
+                    disabled={archived}
+                    onClick={() => props.onAssessmentOpen(assessment.id)}
+                    className={cn(
+                      '-mx-2 flex min-h-11 min-w-0 flex-1 items-center gap-3.5 rounded-xl px-2 py-1 text-left transition-colors hover:bg-ink/[0.03]',
+                      authoring && 'pr-[60px]',
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <strong className="block truncate font-bold">{assessment.name}</strong>
-                    <span className="text-sm text-ink-faint">
-                      {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
+                  >
+                    <span className="w-11 shrink-0 text-center leading-tight">
+                      {date === undefined ? (
+                        <FlagIcon width={18} height={18} className="mx-auto text-ink-soft" />
+                      ) : (
+                        <>
+                          <span className="block font-display text-[22px] font-semibold tracking-tight tabular-nums">
+                            {new Date(date).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              timeZone: zone,
+                            })}
+                          </span>
+                          <span className="text-xs text-ink-faint">
+                            {new Date(date).toLocaleDateString('en-GB', {
+                              month: 'short',
+                              timeZone: zone,
+                            })}
+                          </span>
+                        </>
+                      )}
                     </span>
-                  </span>
-                </button>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate font-bold">{assessment.name}</strong>
+                      <span className="text-sm text-ink-faint">
+                        {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
+                      </span>
+                    </span>
+                  </button>
+                  {authoring && !archived && (
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                      <PathNodeActionsMenu
+                        node={{
+                          id: assessment.id,
+                          nodeType: 'checkpoint',
+                          assessment,
+                          afterLessonId: assessment.afterLessonId,
+                        }}
+                        lessons={lessons}
+                        onEdit={() => props.onAssessmentOpen(assessment.id)}
+                      />
+                    </div>
+                  )}
+                </div>
               );
             })}
           </section>

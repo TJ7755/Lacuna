@@ -16,6 +16,11 @@
   navigable into its read-only content. Practice, checkpoints and every study, authoring, settings,
   update-review or mutation route remain inaccessible until restoration; direct URLs return to the
   course overview. Read-only course analytics remain available.
+  In Edit mode, manual card practice, Question Set activities and checkpoints expose the same
+  trailing actions menu as lessons: Edit, Move up/down between lesson anchors, and confirmed
+  deletion. Deleting an activity retains its cards or question set and attempts. View mode has
+  no authoring menus. Assessment rows also expose Edit; the required final assessment cannot
+  be moved or deleted.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
   cards. The course-level conductor owns guided session entry and embeds this lesson's
   notes-first teaching flow when it is the next available path step. In Edit mode, the card
@@ -69,6 +74,5 @@
   `CardList` groups a sequence's generated cards under its name (`GeneratedCardGroup`)
   and excludes them from bulk-select, since they can only be edited or deleted through the
   sequence.
-
 
 [Specification index](../SPEC.md)

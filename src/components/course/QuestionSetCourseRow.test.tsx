@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import type { QuestionSetPathNode } from '../../course/path';
+import { ToastProvider } from '../ui/Toast';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
 
 const mocks = vi.hoisted(() => ({ activityData: undefined as unknown }));
@@ -53,7 +54,11 @@ function renderRow(authoring: boolean) {
       <Routes>
         <Route
           path="/course/course-1"
-          element={<QuestionSetCourseRow node={node} index={0} authoring={authoring} />}
+          element={
+            <ToastProvider>
+              <QuestionSetCourseRow node={node} index={0} authoring={authoring} lessons={[]} />
+            </ToastProvider>
+          }
         />
         <Route path="*" element={<Location />} />
       </Routes>
@@ -68,20 +73,25 @@ describe('QuestionSetCourseRow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Cell structure' }));
 
-    expect(screen.getByTestId('location')).toHaveTextContent('/course/course-1/question-sets/set-1');
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/course/course-1/question-sets/set-1',
+    );
   });
 
   it('offers editing only while authoring', () => {
     mocks.activityData = { content, attempt: null, exam: undefined };
     renderRow(false);
-    expect(screen.queryByRole('button', { name: 'Edit Cell structure' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Question set actions: Practice Qs' }),
+    ).not.toBeInTheDocument();
   });
 
   it('opens the activity editor from Edit while authoring', () => {
     mocks.activityData = { content, attempt: null, exam: undefined };
     renderRow(true);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Cell structure' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Question set actions: Practice Qs' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
 
     expect(screen.getByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
   });
