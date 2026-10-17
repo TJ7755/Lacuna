@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { useRevealOnScroll } from '../../hooks/useRevealOnScroll';
+import { m as motion } from 'motion/react';
+import { Button } from '../ui/Button';
+import { scaledSpring } from '../ui/motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { SECTION_CARD_SURFACE_CLASS } from '../ui/SectionCard';
 
 /** Hold-out results from tooling/short-term-memory/BENCHMARK.md, verbatim. */
 const MODELS = [
   { name: 'FSRS-6', note: 'old baseline', barClass: 'bg-negative/70' },
-  { name: 'Half-life-logistic', note: 'selected', barClass: 'bg-accent' },
+  { name: 'Half-life-logistic', note: 'selected', barClass: 'bg-accent-ink' },
   { name: 'ACT-R multi-trace', note: 'runner-up', barClass: 'bg-ink-faint/60' },
 ] as const;
 
@@ -38,34 +42,29 @@ const METRICS: Record<
 
 /**
  * Overall hold-out scores as one chart with a metric switch. Bars re-scale
- * with an eased transition when the metric changes, so the comparison stays
+ * with a scaled spring when the metric changes, so the comparison stays
  * in one place instead of three stacked charts.
  */
 export function OverallResults() {
-  const { ref, visible } = useRevealOnScroll<HTMLDivElement>();
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
   const [metric, setMetric] = useState<MetricKey>('logLoss');
   const { values, decimals, caption } = METRICS[metric];
   const max = Math.max(...values);
 
   return (
-    <div ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Benchmark metric">
+    <div className={`${SECTION_CARD_SURFACE_CLASS} mt-6 p-5 sm:p-6`}>
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Benchmark metric">
         {(Object.keys(METRICS) as MetricKey[]).map((key) => (
-          <button
+          <Button
             key={key}
             type="button"
-            role="tab"
-            aria-selected={metric === key}
+            aria-pressed={metric === key}
             onClick={() => setMetric(key)}
-            className={
-              'hit-target rounded-full border px-3.5 py-1.5 text-xs transition-colors ' +
-              (metric === key
-                ? 'border-accent bg-accent-soft/70 text-accent-ink'
-                : 'border-line text-ink-soft hover:border-line-strong hover:text-ink')
-            }
+            variant={metric === key ? 'inverse' : 'secondary'}
           >
             {METRICS[key].label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -75,18 +74,19 @@ export function OverallResults() {
           return (
             <li key={m.name}>
               <div className="mb-1 flex items-baseline justify-between gap-4">
-                <span className="font-mono text-[11px] text-ink-soft">
+                <span className="font-body text-sm text-ink-soft">
                   {m.name} <span className="text-ink-faint">· {m.note}</span>
                 </span>
-                <span className="font-mono text-[11px] tabular-nums text-ink">{value.toFixed(decimals)}</span>
+                <span className="font-body text-sm tabular-nums text-ink">
+                  {value.toFixed(decimals)}
+                </span>
               </div>
               <div className="h-4 rounded-sm bg-ink/[0.04]">
-                <div
+                <motion.div
+                  initial={false}
                   className={'h-full rounded-sm ' + m.barClass}
-                  style={{
-                    width: visible ? `${(value / max) * 100}%` : 0,
-                    transition: `width 800ms cubic-bezier(0.22, 1, 0.36, 1) ${i * 100}ms`,
-                  }}
+                  animate={{ width: `${(value / max) * 100}%` }}
+                  transition={scaledSpring(multiplier, 320, 30)}
                 />
               </div>
             </li>
@@ -122,28 +122,24 @@ function lagY(v: number): number {
 }
 
 /**
- * Grouped bars, growing up from the baseline in a stagger as the chart
- * scrolls into view. The amber-red bars are the old day-only baseline; the
+ * Grouped bars by time since last review. The negative-colour bars are the old day-only baseline; the
  * accent bars are the shipped short-term model.
  */
 export function LagResults() {
-  const { ref, visible } = useRevealOnScroll<HTMLElement>();
-
-  const bar = (x: number, v: number, fill: string, delay: number, key: string) => (
+  const bar = (x: number, v: number, fill: string, key: string) => (
     <rect
       key={key}
       x={x}
       width={BAR_W}
       fill={fill}
       rx="2"
-      y={visible ? lagY(v) : PLOT_BOTTOM}
-      height={visible ? PLOT_BOTTOM - lagY(v) : 0}
-      style={{ transition: `y 700ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms, height 700ms cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms` }}
+      y={lagY(v)}
+      height={PLOT_BOTTOM - lagY(v)}
     />
   );
 
   return (
-    <figure ref={ref} className="mt-6 rounded-[10px] border border-line bg-surface p-5 shadow-paper">
+    <figure className={`${SECTION_CARD_SURFACE_CLASS} mt-6 p-5 sm:p-6`}>
       <svg
         viewBox="0 0 560 290"
         className="w-full"
@@ -151,11 +147,33 @@ export function LagResults() {
         aria-label="Log loss by time since last review: FSRS-6 spikes to 6.03 under a minute while the short-term model stays near 0.5; the two agree by one week"
       >
         {[1, 2, 3, 4, 5, 6].map((l) => (
-          <line key={l} x1={PLOT_LEFT} y1={lagY(l)} x2={548} y2={lagY(l)} stroke="hsl(var(--line))" strokeDasharray="2 4" />
+          <line
+            key={l}
+            x1={PLOT_LEFT}
+            y1={lagY(l)}
+            x2={548}
+            y2={lagY(l)}
+            stroke="hsl(var(--line))"
+            strokeDasharray="2 4"
+          />
         ))}
-        <line x1={PLOT_LEFT} y1={PLOT_BOTTOM} x2={548} y2={PLOT_BOTTOM} stroke="hsl(var(--line-strong))" />
+        <line
+          x1={PLOT_LEFT}
+          y1={PLOT_BOTTOM}
+          x2={548}
+          y2={PLOT_BOTTOM}
+          stroke="hsl(var(--line-strong))"
+        />
         {[2, 4, 6].map((l) => (
-          <text key={l} x={PLOT_LEFT - 6} y={lagY(l) + 3} textAnchor="end" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">
+          <text
+            key={l}
+            x={PLOT_LEFT - 6}
+            y={lagY(l) + 3}
+            textAnchor="end"
+            fontFamily="var(--font-body)"
+            fontSize="12"
+            fill="hsl(var(--ink-faint))"
+          >
             {l}
           </text>
         ))}
@@ -164,16 +182,15 @@ export function LagResults() {
           const gx = PLOT_LEFT + 12 + i * GROUP_W;
           return (
             <g key={b.label}>
-              {bar(gx, b.fsrs, 'hsl(var(--negative) / 0.7)', 100 + i * 70, 'f')}
-              {bar(gx + BAR_W + 6, b.halfLife, 'hsl(var(--accent))', 160 + i * 70, 'h')}
+              {bar(gx, b.fsrs, 'hsl(var(--negative) / 0.7)', 'f')}
+              {bar(gx + BAR_W + 6, b.halfLife, 'hsl(var(--accent-ink))', 'h')}
               <text
                 x={gx + BAR_W / 2}
                 y={lagY(b.fsrs) - 6}
                 textAnchor="middle"
-                fontFamily="var(--font-mono)"
-                fontSize="10"
+                fontFamily="var(--font-body)"
+                fontSize="12"
                 fill="hsl(var(--ink-soft))"
-                style={{ opacity: visible ? 1 : 0, transition: `opacity 500ms ease ${500 + i * 70}ms` }}
               >
                 {b.fsrs.toFixed(2)}
               </text>
@@ -181,27 +198,33 @@ export function LagResults() {
                 x={gx + BAR_W + 6 + BAR_W / 2}
                 y={lagY(b.halfLife) - 6}
                 textAnchor="middle"
-                fontFamily="var(--font-mono)"
-                fontSize="10"
+                fontFamily="var(--font-body)"
+                fontSize="12"
                 fill="hsl(var(--ink-soft))"
-                style={{ opacity: visible ? 1 : 0, transition: `opacity 500ms ease ${560 + i * 70}ms` }}
               >
                 {b.halfLife.toFixed(2)}
               </text>
-              <text x={gx + BAR_W + 3} y={PLOT_BOTTOM + 18} textAnchor="middle" fontFamily="var(--font-mono)" fontSize="10" fill="hsl(var(--ink-faint))">
+              <text
+                x={gx + BAR_W + 3}
+                y={PLOT_BOTTOM + 18}
+                textAnchor="middle"
+                fontFamily="var(--font-body)"
+                fontSize="12"
+                fill="hsl(var(--ink-faint))"
+              >
                 {b.label}
               </text>
             </g>
           );
         })}
       </svg>
-      <figcaption className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 font-mono text-[11px] text-ink-faint">
+      <figcaption className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 font-body text-sm text-ink-faint">
         <span className="inline-flex items-center gap-2">
           <span className="inline-block size-2.5 rounded-sm bg-negative/70" aria-hidden />
           FSRS-6 · log loss, lower is better
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="inline-block size-2.5 rounded-sm bg-accent" aria-hidden />
+          <span className="inline-block size-2.5 rounded-sm bg-accent-ink" aria-hidden />
           half-life-logistic
         </span>
       </figcaption>

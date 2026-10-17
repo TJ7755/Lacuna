@@ -14,12 +14,10 @@
 .qc-teachers-panel {
   display: grid;
   grid-template-columns: 1fr 1.2fr;
-  border: 1px solid hsl(var(--line));
-  border-radius: 18px;
   overflow: hidden;
 }
 .qc-teachers-copy {
-  padding: 44px;
+  padding: 24px;
   background: hsl(var(--surface));
 }
 .qc-teachers-copy h3 {
@@ -28,19 +26,9 @@
 }
 .qc-teachers-options {
   display: flex;
-  gap: 24px;
-  border-bottom: 1px solid hsl(var(--line));
-  margin-top: 30px;
-}
-.qc-teachers-options button {
-  padding: 12px 0;
-  border-bottom: 2px solid transparent;
-  font-size: 13px;
-  color: hsl(var(--ink-soft));
-}
-.qc-teachers-options button[aria-pressed='true'] {
-  border-color: hsl(var(--accent));
-  color: hsl(var(--ink));
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
 }
 .qc-teachers-detail {
   min-height: 160px;
@@ -55,8 +43,8 @@
   font-size: 13px;
 }
 .qc-teachers-flow {
-  background: hsl(var(--accent-soft));
-  padding: 44px 30px;
+  background: hsl(var(--chrome));
+  padding: 24px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -65,11 +53,8 @@
 .qc-teacher-course {
   width: 86%;
   align-self: center;
-  border: 1px solid hsl(var(--accent) / 0.2);
-  border-radius: 12px;
   padding: 22px;
   background: hsl(var(--surface));
-  box-shadow: 0 8px 25px hsl(var(--ink) / 0.04);
 }
 .qc-teacher-course-heading {
   display: flex;
@@ -92,12 +77,6 @@
 .qc-teacher-new-lesson {
   color: hsl(var(--accent-ink));
   font-weight: 600;
-}
-.qc-teacher-material {
-  font-size: 10px;
-  color: hsl(var(--ink-soft));
-  padding-top: 12px;
-  border-top: 1px solid hsl(var(--line));
 }
 .qc-teacher-link {
   display: flex;
@@ -136,8 +115,6 @@
   position: relative;
   background: hsl(var(--surface));
   padding: 15px 5px;
-  border: 1px solid hsl(var(--accent) / 0.2);
-  border-radius: 9px;
   text-align: center;
 }
 .qc-teacher-student::before {
@@ -156,9 +133,8 @@
   font-weight: 500;
   font-size: 12px;
 }
-.qc-teacher-student span,
-.qc-teacher-student small {
-  font-size: 9px;
+.qc-teacher-student span {
+  font-size: 12px;
   color: hsl(var(--ink-soft));
 }
 .qc-teachers-flow > p {

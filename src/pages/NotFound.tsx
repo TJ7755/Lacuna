@@ -18,7 +18,7 @@ export function NotFound() {
             </h1>
             <p className="max-w-lg text-ink-soft">
               Lacuna could not find{' '}
-              <code className="rounded bg-ink/5 px-1.5 py-0.5 text-sm text-ink">
+              <code className="[overflow-wrap:anywhere] rounded bg-ink/5 px-1.5 py-0.5 text-sm text-ink">
                 {location.pathname}
               </code>
               .

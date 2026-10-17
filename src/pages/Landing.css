@@ -236,3 +236,26 @@
     width: 16px;
   }
 }
+
+.landing-nav .landing-brand,
+.landing-nav .landing-github,
+.landing-nav .motion-header-download,
+.landing-nav .landing-cta {
+  min-height: 44px;
+}
+.landing-nav .landing-cta {
+  border-radius: 999px;
+  font-size: 14px;
+}
+.landing-nav .landing-cta-arrow {
+  transition: none;
+}
+.motion-header .motion-nav-mark {
+  width: 44px;
+  height: 44px;
+}
+.landing-motion .motion-header,
+.motion-header .landing-brand,
+.motion-header .motion-nav-mark {
+  transition: none;
+}
