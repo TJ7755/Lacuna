@@ -617,6 +617,12 @@ Sidebar selection glides only within Today/Search content/Progress or Share/Sett
 Keep their shared-layout identities separate; courses, Archived and drawer Import select
 directly. The sidebar's local 1.2 spring multiplier is deliberate (16 October 2026).
 
+## Browser navigation assertions
+
+AppLink deliberately omits internal hrefs to suppress the browser's hover destination overlay.
+Browser tests must activate the link and check the destination; unit tests use
+`expectAppDestination`. Requiring an href tests a behaviour the application deliberately removed.
+
 ## Study header geometry
 
 Notes, cards and between-step screens share `studyHeaderLayout.ts`. Keep the Pomodoro
