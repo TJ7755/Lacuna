@@ -508,8 +508,11 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - **Mode-aware session progress:** Simple Learn uses a segmented strip because its stopping rule is
   rigid: each card is green after a correct result, red after an incorrect result, accent-outlined
   while current, and muted while unseen. Sessions that fit retain a full-width strip. Larger sessions
-  show a width-aware window with pills at least 16px wide and 4px gaps. At roughly 80% of the window,
-  the whole row glides left to put the current card near 20%, stopping at the final full window.
+  show a width-aware window capped at 17 pills. Strips at least 360px wide use 10px-high pills and
+  6px gaps; narrower strips retain 8px-high pills, 4px gaps and a 16px minimum width. Short sessions
+  fill the strip only when their pills fit at that size. The header height is unchanged. At roughly
+  80% of the window, the whole row glides left to put the current card near 20%, stopping at the
+  final full window.
   Subtle edge masks indicate hidden cards. Undo, retries and other index changes select the same
   window for that index; reduced motion and viewport resizing snap to the correct position.
   FSRS, assessment-revision and filtered sessions instead show the live

@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse } from './fixtures/lacunaApp';
 
 for (const viewport of [
   { width: 1440, height: 900 },
+  { width: 2000, height: 1170 },
   { width: 390, height: 844 },
 ]) {
   test(`keeps a 322-card progress strip readable at ${viewport.width}px`, async ({
@@ -13,7 +14,9 @@ for (const viewport of [
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
     await createCourse(page, 'Biology');
     const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
     await page.getByRole('button', { name: 'Edit mode' }).click();
@@ -52,6 +55,8 @@ for (const viewport of [
     }, courseId);
     await page.setViewportSize(viewport);
     await page.goto(`/#/course/${courseId}/learn?mode=simple`);
+    const card = page.locator('[data-study-card-id]:not([inert])');
+    await expect(card).toHaveCount(1);
     const pips = page.locator('[data-session-card-status]');
     await expect(pips).toHaveCount(322);
     expect(
@@ -61,21 +66,35 @@ for (const viewport of [
     const geometry = await row.evaluate((row) => {
       const width = row.parentElement!.clientWidth;
       const pillWidth = row.firstElementChild!.getBoundingClientRect().width;
-      return { width, pillWidth, size: Math.floor((width + 4) / 20) };
+      const gap = Number.parseFloat(getComputedStyle(row).columnGap);
+      const bounds = row.parentElement!.getBoundingClientRect();
+      const visibleCount = Array.from(row.children).filter((pill) => {
+        const rect = pill.getBoundingClientRect();
+        return rect.left >= bounds.left - 0.5 && rect.right <= bounds.right + 0.5;
+      }).length;
+      return {
+        width,
+        pillWidth,
+        gap,
+        height: bounds.height,
+        headerHeight: document.querySelector('header')!.getBoundingClientRect().height,
+        size: Math.round((width + gap) / (pillWidth + gap)),
+        visibleCount,
+      };
     });
+    expect(geometry.visibleCount).toBe(viewport.width === 390 ? 6 : 17);
+    expect(geometry.height).toBe(viewport.width === 390 ? 8 : 10);
+    expect(geometry.headerHeight).toBe(84);
     const trigger = Math.floor(geometry.size * 0.8);
     const stride = trigger - Math.floor(geometry.size * 0.2);
-    const target = -stride * (geometry.pillWidth + 4);
+    const target = -stride * (geometry.pillWidth + geometry.gap);
     const position = () =>
       row.evaluate((row) => new DOMMatrixReadOnly(getComputedStyle(row).transform).m41);
     const answer = async () => {
-      const oldCard = await page.locator('[data-study-card-id]').getAttribute('data-study-card-id');
+      const oldCard = await card.getAttribute('data-study-card-id');
       await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
       await page.getByRole('button', { name: 'Yes', exact: true }).click();
-      await expect(page.locator('[data-study-card-id]')).not.toHaveAttribute(
-        'data-study-card-id',
-        oldCard!,
-      );
+      await expect(card).not.toHaveAttribute('data-study-card-id', oldCard!);
     };
     await page.screenshot({ path: testInfo.outputPath('start.png') });
     for (let index = 0; index < trigger - 1; index += 1) await answer();

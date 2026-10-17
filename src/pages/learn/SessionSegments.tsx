@@ -4,7 +4,7 @@ import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
 import { countOf } from '../../utils/plural';
 import type { SessionCardOutcome } from './types';
-import { SESSION_SEGMENT_GAP, sessionSegmentWindow } from './sessionSegmentWindow';
+import { sessionSegmentWindow } from './sessionSegmentWindow';
 
 export function SessionSegments({
   cardIds,
@@ -28,13 +28,13 @@ export function SessionSegments({
   const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
     currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
-  const { size, start, segmentWidth } = sessionSegmentWindow(
+  const { size, start, segmentWidth, gap } = sessionSegmentWindow(
     cardIds.length,
     currentCardIds.length === 0 ? cardIds.length - 1 : currentIndex,
     width,
   );
   const windowed = size < cardIds.length;
-  const offset = -start * (segmentWidth + SESSION_SEGMENT_GAP);
+  const offset = -start * (segmentWidth + gap);
 
   useLayoutEffect(() => {
     const element = viewport.current;
@@ -77,7 +77,7 @@ export function SessionSegments({
       </span>
       <div
         ref={viewport}
-        className="h-2 w-full overflow-hidden"
+        className={cn('w-full overflow-hidden', gap === 6 ? 'h-2.5' : 'h-2')}
         aria-hidden="true"
         style={{
           maskImage: windowed ? `linear-gradient(to right, ${fadeLeft}, ${fadeRight})` : undefined,
@@ -85,12 +85,11 @@ export function SessionSegments({
       >
         <motion.div
           data-session-segment-row=""
-          className="relative flex h-full gap-1"
+          className="relative flex h-full"
           style={{
             x,
-            width: windowed
-              ? cardIds.length * (segmentWidth + SESSION_SEGMENT_GAP) - SESSION_SEGMENT_GAP
-              : '100%',
+            gap,
+            width: windowed ? cardIds.length * (segmentWidth + gap) - gap : '100%',
           }}
         >
           {cardIds.map((id) => {
