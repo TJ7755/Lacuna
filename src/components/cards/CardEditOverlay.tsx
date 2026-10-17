@@ -93,9 +93,7 @@ export function CardEditOverlay({
 
   /** Moves the type form the way the full editor does: forward or back along the picker order. */
   function changeType(next: CardType) {
-    setFormDirection(
-      Math.sign(EDITOR_TYPE_ORDER.indexOf(next) - EDITOR_TYPE_ORDER.indexOf(type)),
-    );
+    setFormDirection(Math.sign(EDITOR_TYPE_ORDER.indexOf(next) - EDITOR_TYPE_ORDER.indexOf(type)));
     setType(next);
   }
 
@@ -162,7 +160,7 @@ export function CardEditOverlay({
                   allowCloze
                   clozePreview={showBackCloze ? 'back' : 'front'}
                   placeholder="The chemical symbol for water is {{c1::H2O}}."
-                  onError={(mm) => notify(mm, 'negative')}
+                  onError={(message) => notify(message, 'negative')}
                 />
                 <Toggle
                   checked={showBackCloze}
@@ -186,7 +184,7 @@ export function CardEditOverlay({
                   onChange={setFront}
                   minRows={6}
                   placeholder="Question or prompt"
-                  onError={(mm) => notify(mm, 'negative')}
+                  onError={(message) => notify(message, 'negative')}
                   onTabForward={() => backRef.current?.focus()}
                 />
                 <MarkdownEditor
@@ -196,7 +194,7 @@ export function CardEditOverlay({
                   onChange={setBack}
                   minRows={6}
                   placeholder="Answer"
-                  onError={(mm) => notify(mm, 'negative')}
+                  onError={(message) => notify(message, 'negative')}
                   onTabBackward={() => frontRef.current?.focus()}
                 />
               </>

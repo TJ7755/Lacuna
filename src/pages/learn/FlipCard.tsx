@@ -372,10 +372,7 @@ export function FlipCard({
                   ? undefined
                   : `min(${stableHeight}px, var(--study-card-max-height, ${stableHeight}px))`,
             }}
-            className={cn(
-              'relative z-10 ' + surfaceClassName,
-              CARD_SURFACE_CLASS,
-            )}
+            className={cn('relative z-10 ' + surfaceClassName, CARD_SURFACE_CLASS)}
           >
             {/* Keep drag feedback attached to the card throughout the throw. */}
             {swipe.hint && (

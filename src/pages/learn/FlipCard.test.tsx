@@ -1,4 +1,5 @@
 import { MotionValue } from 'motion/react';
+import type * as MotionReact from 'motion/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FlipCard } from './FlipCard';
@@ -8,7 +9,7 @@ import * as MotionSpeedModule from '../../state/motionSpeed';
 const motionAnimate = vi.hoisted(() => ({ animate: vi.fn() }));
 
 vi.mock('motion/react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('motion/react')>()),
+  ...(await importOriginal<typeof MotionReact>()),
   animate: motionAnimate.animate,
 }));
 
@@ -150,11 +151,11 @@ describe('FlipCard abandoned-swipe return', () => {
       fireEvent.pointerMove(target, { clientX: 240, clientY: 200, pointerId: 1 });
       fireEvent.pointerUp(target, { clientX: 240, clientY: 200, pointerId: 1 });
       expect(answer).not.toHaveBeenCalled();
-      expect(motionAnimate.animate).toHaveBeenCalledExactlyOnceWith(
-        expect.anything(),
-        0,
-        { type: 'spring', stiffness: 480, damping: 2 * Math.sqrt(480) },
-      );
+      expect(motionAnimate.animate).toHaveBeenCalledExactlyOnceWith(expect.anything(), 0, {
+        type: 'spring',
+        stiffness: 480,
+        damping: 2 * Math.sqrt(480),
+      });
     } finally {
       speed.mockReturnValue(0);
     }
