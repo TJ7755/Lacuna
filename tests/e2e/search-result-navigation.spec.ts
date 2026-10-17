@@ -45,6 +45,7 @@ for (const width of [390, 1440]) {
       await expect(dialog.locator('[aria-live="polite"]')).toHaveText(
         '40 of 100 results available',
       );
+      await page.mouse.move(0, 0);
       for (let i = 0; i < 39; i++) await quickInput.press('ArrowDown');
       const activeQuick = dialog.getByRole('option', { selected: true });
       await expect(activeQuick).toHaveText(/Palatine 039/);
@@ -78,6 +79,8 @@ for (const width of [390, 1440]) {
         'true',
       );
       await expect(page.getByRole('option', { selected: true })).toHaveText(/Palatine 000/);
+      // Keep scrolling from turning this keyboard check into pointer-hover selection.
+      await page.mouse.move(0, 0);
       await input.focus();
       for (let i = 1; i <= 80; i++) {
         await input.press('ArrowDown');

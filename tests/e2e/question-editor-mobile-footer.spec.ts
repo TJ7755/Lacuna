@@ -23,7 +23,8 @@ test('the Question editor footer clears the phone course bar', async ({ page }) 
   await expect(save).toBeVisible();
 
   const sectionBar = page.locator('nav[aria-label="Course sections"]:visible');
-  const footer = save.locator('xpath=ancestor::div[contains(@class,"fixed")][1]');
+  const footer = save.locator('xpath=ancestor::div[contains(@class,"sticky")][1]');
+  await expect(footer).toHaveCSS('position', 'sticky');
   const barTop = (await sectionBar.boundingBox())!.y;
   const footerBottom = await footer.evaluate((el) => el.getBoundingClientRect().bottom);
   expect(footerBottom).toBeLessThanOrEqual(barTop + 0.5);

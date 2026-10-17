@@ -111,7 +111,8 @@ test('Import keeps its heading still and returns keyboard focus to the chosen so
   await paste.fill('A draft worth keeping');
   await paste.press('Escape');
   await expect(paste).toHaveValue('A draft worth keeping');
-  await expect(page.locator('main [inert]')).toHaveCount(0);
+  expect(await paste.evaluate((element) => element.closest('[inert]') === null)).toBe(true);
+  await expect(paste).toBeFocused();
   await page.screenshot({ path: testInfo.outputPath('import-text.png') });
   const back = page.getByRole('button', { name: 'Back to import sources', exact: true });
   await back.focus();

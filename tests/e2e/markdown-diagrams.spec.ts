@@ -42,7 +42,7 @@ test('renders Mermaid notes with safe fallback and theme updates', async ({ page
   await page.evaluate(() => document.documentElement.classList.toggle('dark'));
   await expect(diagram).toHaveAttribute(
     'data-mermaid-theme',
-    previousTheme === 'dark' ? 'light' : 'dark',
+    previousTheme?.startsWith('dark:') ? /^light:/ : /^dark:/,
   );
   await expect
     .poll(() => diagram.locator('.lacuna-mermaid-rendered > svg').evaluate((svg) => svg.outerHTML))
