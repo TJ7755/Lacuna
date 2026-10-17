@@ -390,6 +390,9 @@ history[], scheduleEdits?, createdAt`
   versions do not gain a grading path by accident.
 - `tags` remain free-form strings. Specification-point provenance uses the manual `spec:3.4.1`
   convention; there is no separate specification-point model or batch-generation field.
+  `src/specifications/catalogue.ts` defines and validates the read-only specification catalogue
+  format (tiers, routes, spec points, papers, assessment objectives and command words); no
+  entries ship yet and nothing links records to it.
 - `stability` (days; the interval at which R = 0.90), `difficulty` (in [1,10]),
   `lastReviewed`, `due` are all `null` until the first review.
 - `reps, lapses, state, scheduledDays, learningSteps, due` mirror ts-fsrs's card fields.
