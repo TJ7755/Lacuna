@@ -1,7 +1,7 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -108,6 +108,15 @@ export function QuestionEditor() {
   const [attempted, setAttempted] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLDivElement>(null);
+  const numericAnswerRef = useRef<HTMLInputElement>(null);
+  const [numericFocusAttempt, setNumericFocusAttempt] = useState(0);
+  useLayoutEffect(() => {
+    // The numeric editor publishes its invalid target after the error state commits.
+    if (numericFocusAttempt === 0) return;
+    const target = numericAnswerRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'center' });
+  }, [numericFocusAttempt]);
   const configurationRef = useRef<HTMLElement>(null);
   const explanationRef = useRef<HTMLTextAreaElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -161,14 +170,23 @@ export function QuestionEditor() {
           ),
         ],
         ['prompt', promptRef.current],
-        ['answer', answerRef.current?.querySelector<HTMLElement>('input, textarea, select')],
+        [
+          'answer',
+          answerKind === 'numeric'
+            ? null
+            : answerRef.current?.querySelector<HTMLElement>('input, textarea, select'),
+        ],
         ['explanation', explanationRef.current],
         ['name', nameRef.current],
         ['concept', conceptRef.current],
       ] as const
     ).find(([key]) => allErrors[key]);
     if (first) {
-      first[1]?.focus();
+      if (first[0] === 'answer' && answerKind === 'numeric') {
+        setNumericFocusAttempt((attempt) => attempt + 1);
+      } else {
+        first[1]?.focus();
+      }
       return;
     }
     setSaving(true);
@@ -368,6 +386,7 @@ export function QuestionEditor() {
                 <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
                   {answerKind === 'numeric' ? (
                     <NumericAnswerEditor
+                      inputRef={numericAnswerRef}
                       value={numericAnswer}
                       invalid={Boolean(errors.answer)}
                       onChange={(value) => draft.update({ numericAnswer: value })}

@@ -209,6 +209,70 @@ describe('QuestionEditor', () => {
     expect(mocks.notify).not.toHaveBeenCalled();
   });
 
+  it.each(['alternative', 'tolerance'] as const)(
+    'focuses the invalid %s through the numeric editor and preserves it for correction',
+    async (kind) => {
+      renderEditor();
+      const prompt = await screen.findByRole('textbox', { name: 'Prompt' });
+      fireEvent.change(prompt, { target: { value: 'Give an accepted value.' } });
+      fireEvent.change(screen.getByRole('textbox', { name: 'Expected answer' }), {
+        target: { value: '4' },
+      });
+      fireEvent.change(screen.getByRole('textbox', { name: 'Worked explanation' }), {
+        target: { value: 'Use the accepted values.' },
+      });
+      const name = screen.getByPlaceholderText('Completing the square');
+      fireEvent.change(name, { target: { value: 'Precise numeric focus' } });
+      chooseConcept();
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: kind === 'alternative' ? 'One of' : 'Tolerance',
+        }),
+      );
+      if (kind === 'alternative') {
+        fireEvent.click(screen.getByRole('button', { name: 'Add accepted answer' }));
+      }
+      const invalid =
+        kind === 'alternative'
+          ? screen.getByRole('textbox', { name: 'Accepted answer 2' })
+          : screen.getByRole('spinbutton', { name: 'Plus or minus' });
+      if (kind === 'tolerance') fireEvent.change(invalid, { target: { value: '-1' } });
+
+      name.focus();
+      fireEvent.keyDown(name, { key: 'Enter', ctrlKey: true, isComposing: true, keyCode: 229 });
+      expect(name).toHaveFocus();
+      expect(screen.queryByText('Add a valid answer.')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+      await waitFor(() => expect(invalid).toHaveFocus());
+      expect(prompt).toHaveValue('Give an accepted value.');
+      expect(mocks.createFixed).not.toHaveBeenCalled();
+      name.focus();
+      fireEvent.keyDown(name, { key: 'Enter', metaKey: true });
+      await waitFor(() => expect(invalid).toHaveFocus());
+
+      fireEvent.change(invalid, { target: { value: kind === 'alternative' ? '5' : '0.1' } });
+      fireEvent.keyDown(invalid, { key: 'Enter', ctrlKey: true });
+      await waitFor(() =>
+        expect(mocks.createFixed).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'Precise numeric focus',
+            targetConceptId: 'concept-1',
+            payload: {
+              v: 1,
+              kind: 'numeric',
+              answer:
+                kind === 'alternative'
+                  ? { kind: 'matches-one-of', values: ['4', '5'] }
+                  : { kind: 'within', value: '4', tolerance: 0.1 },
+            },
+          }),
+        ),
+      );
+      await waitFor(() => expect(prompt).toHaveValue(''));
+      await waitFor(() => expect(prompt).toHaveFocus());
+    },
+  );
+
   it('saves on Ctrl+Enter and readies another Question in the same Concept', async () => {
     const router = renderEditor();
     const prompt = await screen.findByLabelText('Prompt');

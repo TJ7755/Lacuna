@@ -179,3 +179,63 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     ).toHaveValue(/.+/);
   });
 }
+
+for (const reducedMotion of ['reduce', 'no-preference'] as const) {
+  for (const kind of ['alternative', 'tolerance'] as const) {
+    test(`Question save focuses the invalid ${kind} after answer transitions (${reducedMotion})`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion });
+      await enterFreshLacuna(page);
+      await createCourse(page, 'Numeric focus');
+      const courseId = new URL(page.url()).hash.split('/')[2];
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`/#/course/${courseId}/questions/new`);
+      const prompt = page.getByRole('textbox', { name: 'Prompt', exact: true });
+      const expected = page.getByRole('textbox', { name: 'Expected answer', exact: true });
+      await prompt.fill('Give an accepted value.');
+      await expected.fill('4');
+      const outgoingId = await expected.getAttribute('id');
+      await page
+        .getByRole('textbox', { name: 'Worked explanation', exact: true })
+        .fill('Use the accepted values.');
+      await page.getByPlaceholder('Completing the square').fill('Precise numeric focus');
+      await page.getByPlaceholder('A single piece of knowledge').fill('Accepted values');
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await page
+        .getByRole('button', { name: kind === 'alternative' ? 'One of' : 'Tolerance', exact: true })
+        .click();
+      if (kind === 'alternative') {
+        await page.getByRole('button', { name: 'Add accepted answer' }).click();
+      }
+      const invalid =
+        kind === 'alternative'
+          ? page.getByRole('textbox', { name: 'Accepted answer 2', exact: true })
+          : page.getByRole('spinbutton', { name: 'Plus or minus', exact: true });
+      if (kind === 'tolerance') await invalid.fill('-1');
+      // The outgoing input must finish unmounting before the ref is exercised.
+      await expect(page.locator(`[id="${outgoingId}"]`)).toHaveCount(0);
+      await page.getByRole('button', { name: 'Create Question' }).click();
+      await expect(invalid).toBeFocused();
+      const inputBounds = (await invalid.boundingBox())!;
+      const saveBounds = (await page
+        .getByRole('button', { name: 'Create Question' })
+        .boundingBox())!;
+      expect(inputBounds.y).toBeGreaterThanOrEqual(56);
+      expect(inputBounds.y + inputBounds.height).toBeLessThan(saveBounds.y);
+      await expect(prompt).toHaveValue('Give an accepted value.');
+      await expect(page.getByText('Add a valid answer.', { exact: true })).toBeVisible();
+      const primary =
+        kind === 'alternative'
+          ? page.getByRole('textbox', { name: 'Accepted answer 1', exact: true })
+          : expected;
+      await expect(primary).toHaveValue('4');
+      await invalid.fill(kind === 'alternative' ? '5' : '0.1');
+      await page.getByRole('button', { name: 'Create Question' }).click();
+      await expect(page.getByRole('heading', { name: 'Individual questions' })).toBeVisible();
+      await page.getByRole('link', { name: 'Edit Precise numeric focus', exact: true }).click();
+      await expect(invalid).toHaveValue(kind === 'alternative' ? '5' : '0.1');
+      await expect(primary).toHaveValue('4');
+    });
+  }
+}
