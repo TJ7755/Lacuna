@@ -8,7 +8,7 @@ export function useUnclaimedFocus(container: RefObject<HTMLElement | null>, read
   useEffect(() => {
     if (!ready) return;
     const active = document.activeElement;
-    if (active !== null && active !== document.body) return;
+    if (active !== null && active !== document.body && !active.closest('[inert]')) return;
     container.current
       ?.querySelector<HTMLElement>('button:not(:disabled)')
       ?.focus({ preventScroll: true });

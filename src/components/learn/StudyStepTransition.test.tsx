@@ -53,6 +53,17 @@ function renderTransition(
 }
 
 describe('StudyStepTransition', () => {
+  it('claims focus from the inert outgoing step during the crossfade', () => {
+    const outgoing = document.createElement('div');
+    const oldAction = document.createElement('button');
+    outgoing.append(oldAction);
+    document.body.append(outgoing);
+    oldAction.focus();
+    outgoing.inert = true;
+    renderTransition();
+    expect(screen.getByRole('button', { name: /^Continue/ })).toHaveFocus();
+    outgoing.remove();
+  });
   it('hands the keyboard to the primary action once the next step is planned', () => {
     const { rerender } = renderTransition({ planningNextStep: true });
     expect(document.body).toHaveFocus();
