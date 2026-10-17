@@ -55,3 +55,16 @@ it('keeps correct-answer selections independent across multiple questions', () =
     within(screen.getByRole('region', { name: 'second' })).getByLabelText('Option 2 is correct'),
   ).toBeChecked();
 });
+
+it('uses keyboard mode choices and clears correct answers when changing selection mode', () => {
+  render(<Answer id="modes" />);
+  const selection = screen.getByRole('radiogroup', { name: 'Selection' });
+  fireEvent.keyDown(within(selection).getByRole('radio', { name: 'Choose one' }), { key: 'End' });
+  expect(within(selection).getByRole('radio', { name: 'Choose several' })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Option 1 is correct' })).not.toBeChecked();
+  fireEvent.keyDown(screen.getByRole('radio', { name: 'Multiple choice' }), { key: 'Home' });
+  expect(screen.getByRole('button', { name: 'Change format' })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Change format' }));
+  expect(screen.getByRole('radio', { name: 'Written answer' })).toBeChecked();
+  expect(screen.queryByLabelText('Option 1 is correct')).not.toBeInTheDocument();
+});

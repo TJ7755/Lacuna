@@ -84,7 +84,7 @@ async function reviewText(reverse = false) {
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
   expect(await screen.findByRole('button', { name: 'Choose destination' })).toBeEnabled();
   expect(screen.queryByLabelText('Course title')).not.toBeInTheDocument();
-  if (reverse) fireEvent.click(screen.getByRole('checkbox', { name: 'Also create reverse' }));
+  if (reverse) fireEvent.click(screen.getByRole('switch', { name: 'Also create reverse' }));
   fireEvent.click(screen.getByRole('button', { name: 'Choose destination' }));
   await screen.findByLabelText('Course title');
 }
@@ -98,12 +98,12 @@ it('reviews before asking for a destination, retaining the draft on Undo and fai
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByRole('button', { name: 'Choose destination' })).toBeEnabled();
   expect(screen.queryByLabelText('Course title')).not.toBeInTheDocument();
-  expect(screen.getByRole('checkbox', { name: 'Also create reverse' })).toBeChecked();
+  expect(screen.getByRole('switch', { name: 'Also create reverse' })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
   expect(mocks.importCards).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Review cards' }));
-  expect(await screen.findByRole('checkbox', { name: 'Also create reverse' })).toBeChecked();
+  expect(await screen.findByRole('switch', { name: 'Also create reverse' })).toBeChecked();
   fireEvent.click(screen.getByRole('button', { name: 'Choose destination' }));
   expect(await screen.findByLabelText('Course title')).toHaveValue('French basics');
   mocks.importCards.mockRejectedValueOnce(new Error('Storage full'));

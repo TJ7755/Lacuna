@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiSection } from './AiSection';
 
@@ -31,9 +31,13 @@ describe('AiSection', () => {
 
   it('offers built-in AI while keeping the external client selected for existing users', () => {
     render(<AiSection />);
-    expect(screen.getByRole('radio', { name: 'External AI client' })).toBeChecked();
-    fireEvent.click(screen.getByRole('radio', { name: 'Built-in AI' }));
+    const group = screen.getByRole('radiogroup', { name: 'AI connection' });
+    const external = within(group).getByRole('radio', { name: 'External AI client' });
+    expect(external).toBeChecked();
+    expect(external).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(external, { key: 'ArrowRight' });
     expect(state.update).toHaveBeenCalledWith({ provider: 'hosted' });
+    expect(within(group).getByRole('radio', { name: 'Built-in AI' })).toHaveFocus();
   });
 
   it('makes the hidden-by-default opt-in and teaching method explicit', () => {

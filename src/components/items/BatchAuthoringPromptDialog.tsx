@@ -6,6 +6,7 @@ import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { buildBatchGenerationPrompt } from '../../items/prompts';
 import { ItemStagingReview } from './ItemStagingReview';
 import { Button } from '../ui/Button';
+import { Toggle } from '../ui/Toggle';
 import { ConfirmInline } from '../ui/ConfirmInline';
 import { useToast } from '../ui/Toast';
 import { CloseIcon } from '../ui/icons';
@@ -210,19 +211,16 @@ export function BatchAuthoringPromptDialog({
                 </p>
               </div>
 
-              <label className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  aria-label="Set generation constraints"
+              <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm text-ink-soft">
+                <Toggle
                   checked={showConstraints}
-                  onChange={(event) => setShowConstraints(event.target.checked)}
-                  className="accent-accent"
+                  onChange={setShowConstraints}
+                  label="Set generation constraints"
                 />
-                <span className="font-medium text-ink">Set generation constraints</span>
                 <span className="ml-auto text-xs text-ink-faint">
                   Otherwise the model chooses
                 </span>
-              </label>
+              </div>
 
               <AnimatedDisclosure open={showConstraints}>
                 <div className="grid gap-4 pt-0.5">

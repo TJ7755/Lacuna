@@ -46,7 +46,7 @@ describe('CardImportDialog', () => {
     paste('bonjour\thello');
     fireEvent.change(screen.getByLabelText('Format'), { target: { value: 'tsv' } });
     await review();
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Also create reverse' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Also create reverse' }));
     expect(screen.getByRole('button', { name: 'Import 2 cards' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
@@ -54,7 +54,7 @@ describe('CardImportDialog', () => {
     expect(screen.getByLabelText('Format')).toHaveValue('tsv');
     expect(onImport).not.toHaveBeenCalled();
     await review();
-    expect(screen.getByRole('checkbox')).toBeChecked();
+    expect(screen.getByRole('switch')).toBeChecked();
     fireEvent.click(screen.getByRole('button', { name: 'Import 2 cards' }));
     await waitFor(() =>
       expect(onImport).toHaveBeenCalledWith(
@@ -78,7 +78,7 @@ describe('CardImportDialog', () => {
     );
     paste();
     await review();
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('switch'));
     expect(screen.getByRole('button', { name: 'Import 3 cards' })).toBeEnabled();
     await waitFor(() =>
       expect(mocks.duplicates).toHaveBeenLastCalledWith(
@@ -91,7 +91,7 @@ describe('CardImportDialog', () => {
     render(<CardImportDialog targetName="French" onCancel={vi.fn()} onImport={vi.fn()} />);
     paste(Array.from({ length: 2501 }, (_, i) => `${i}\tanswer`).join('\n'));
     await review();
-    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('switch'));
     expect(screen.getByRole('button', { name: 'Import 5,002 cards' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('5,002');
   });
@@ -133,7 +133,7 @@ describe('CardImportDialog', () => {
     });
     await screen.findByText('CARDS.APKG');
     await review();
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     await screen.findByText('CARDS.APKG');
     await review();
