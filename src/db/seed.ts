@@ -431,7 +431,7 @@ export async function seedIfFirstRun(): Promise<void> {
         lessonLearn.lesson.id,
         'front_back',
         'How can you switch from silent to manual grading?',
-        'Go to **Settings → Study & scheduling** and enable **manual four-point grading**. When enabled, a study session shows **Again / Hard / Good / Easy** buttons instead of Yes / No.',
+        'Go to **Settings → Study behaviour** and enable **manual four-point grading**. When enabled, a study session shows **Again / Hard / Good / Easy** buttons instead of Yes / No.',
         ['learn', 'grading'],
         20,
       ),

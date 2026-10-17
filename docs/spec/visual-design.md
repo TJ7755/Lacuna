@@ -298,8 +298,11 @@ keyboard shortcuts on keyboard).
   card beside stacked daily-workload and target-recall cards, followed by compact expanding rows.
   These cards stack on narrower screens. Settings keeps three overview cards in the same asymmetric grid, then
   expanding rows at every viewport size. Help shares the heading rhythm and frame, with a search pill
-  above grouped question disclosures. Answers stay brief, with small inline examples and pill links;
-  searching shows matching answers expanded without group headings. Persistent course navigation shows the course name only when the page's course
+  above Settings-style cards containing grouped question disclosures. From 1100px, two fixed
+  columns place Getting started and Studying on the left and Cards and content, Progress and
+  Your data on the right; narrower screens stack them in that order. Cards keep their natural
+  heights, and question text aligns with heading text. Answers stay brief, with small inline
+  examples and pill links; searching expands ranked matches in one full-width Results card. Persistent course navigation shows the course name only when the page's course
   heading is out of view, including headings loaded asynchronously. The course name travels
   and shrinks from the Path heading into this persistent identity when changing sections,
   then returns to the heading on Path. One visual layer stays outside the route fade and

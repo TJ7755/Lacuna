@@ -61,7 +61,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Studying',
     question: 'How do I revise before an exam?',
     answer:
-      'Choose Assessment revision from a relevant Card practice stop, checkpoint or Study sheet. Set your available time to plan revision of covered material you have reached and studied. You can leave and resume the plan later.',
+      'Choose Assessment revision from a relevant Card practice stop, checkpoint or Study sheet. Set your available time to revise material you have already studied. You can leave and resume the plan later.',
     keywords: ['assessment', 'exam', 'time', 'budget', 'checkpoint'],
   },
   {
@@ -77,7 +77,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Studying',
     question: 'How should I grade an answer?',
     answer:
-      'Try to recall the answer before revealing it, then grade honestly: if you were not sure, mark it wrong. Silent grading uses Yes or No and your response time; manual grading lets you choose Again, Hard, Good or Easy. Change grading mode in Settings under Study & scheduling.',
+      'Try to recall the answer before revealing it, then grade honestly: if you were not sure, mark it wrong. Silent grading uses Yes or No and your response time; manual grading lets you choose Again, Hard, Good or Easy. Change grading mode in Settings under Study behaviour.',
     keywords: ['correct', 'incorrect', 'silent', 'manual', 'reveal'],
     action: { label: 'Study settings', to: '/settings#settings-study' },
   },
@@ -177,7 +177,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Progress',
     question: 'How do I set an exam date?',
     answer:
-      'Set the date and time in course settings. Lacuna uses it to prioritise cards likely to be weakest on exam day; without one, it uses a rolling study horizon.',
+      'Set the date and time in course settings. Lacuna then prioritises the reviews predicted to help most on exam day. Without an exam date, it uses a rolling study horizon.',
     keywords: ['exam', 'date', 'assessment', 'deadline', 'time'],
   },
   {
@@ -203,9 +203,9 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Progress',
     question: 'How do I optimise scheduling for me?',
     answer:
-      'Run Scheduling optimisation in course settings to fit scheduling to your review history. You can also enable automatic optimisation in Settings under Study & scheduling.',
+      'Run Scheduling optimisation in course settings to fit scheduling to your review history. You can also enable automatic optimisation in Settings under Course defaults → Advanced scheduling → Optimise scheduling.',
     keywords: ['optimise', 'weights', 'personal', 'fsrs', 'automatic'],
-    action: { label: 'Study settings', to: '/settings#settings-study' },
+    action: { label: 'Course defaults', to: '/settings#settings-course-defaults' },
   },
   {
     id: 'backups',

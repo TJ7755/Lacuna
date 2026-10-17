@@ -53,9 +53,9 @@ export function TouchExample() {
   return (
     <div
       aria-hidden="true"
-      className="mt-4 flex h-28 max-w-sm items-center justify-between gap-4 overflow-hidden rounded-xl border border-line px-5 text-xs text-ink-soft"
+      className="mt-4 flex h-28 max-w-sm items-center justify-between gap-3 overflow-hidden rounded-xl border border-line px-3 text-xs text-ink-soft"
     >
-      <span>
+      <span className="shrink-0 whitespace-nowrap">
         No <span className="text-ink-faint">←</span>
       </span>
       <motion.div
@@ -63,14 +63,14 @@ export function TouchExample() {
         animate={
           multiplier === 0
             ? { x: 0, rotate: 0 }
-            : { x: [0, 32, 0, -32, 0], rotate: [0, 6, 0, -6, 0] }
+            : { x: [0, 16, 0, -16, 0], rotate: [0, 6, 0, -6, 0] }
         }
         transition={{ duration: 4 * multiplier, times: [0, 0.2, 0.5, 0.7, 1] }}
-        className="flex h-16 w-24 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-surface text-sm text-ink"
+        className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-surface text-sm text-ink sm:w-24"
       >
         Answer
       </motion.div>
-      <span>
+      <span className="shrink-0 whitespace-nowrap">
         <span className="text-ink-faint">→</span> Yes
       </span>
     </div>

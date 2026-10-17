@@ -127,6 +127,23 @@ vi.mock('../state/useSearchData', () => ({
 }));
 
 describe('SearchPage', () => {
+  it('shows ranked Help results, caps them at three and opens their topic', () => {
+    const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+      initialEntries: ['/search?q=swipe'],
+    });
+    render(<RouterProvider router={router} />);
+    expect(screen.queryByText('No results')).not.toBeInTheDocument();
+    const gesture = screen.getByRole('option', { name: /How do I study with touch gestures/ });
+    expect(gesture).toHaveTextContent('Help · Studying');
+    fireEvent.keyDown(screen.getByRole('combobox'), { key: 'Enter' });
+    expect(router.state.location.pathname).toBe('/help');
+    expect(router.state.location.hash).toBe('#touch-gestures');
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'exam' } });
+    const options = screen.getAllByRole('option');
+    expect(options).toHaveLength(3);
+    expect(options[0]).toHaveTextContent(/How do I (set an exam date|revise before an exam)/);
+  });
+
   it('navigates highlighted results from the field whilst leaving filters in normal keyboard access', () => {
     dataHooks.useSearchData.mockReturnValue({
       cards: [mockCard, { ...mockCard, id: 'card-2', front: 'Palatine second' }],
@@ -284,7 +301,7 @@ describe('SearchPage', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Search content' }), {
       target: { value: 'resume' },
     });
-    const result = screen.getByRole('option');
+    const result = screen.getByRole('option', { name: /Palatine hill fortifications/ });
     expect(result.querySelector('mark')).toHaveTextContent('Résumé');
     expect(result).toHaveTextContent('conclusion.');
   });

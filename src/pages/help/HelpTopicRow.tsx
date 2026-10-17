@@ -34,7 +34,7 @@ export function HelpTopicRow({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={onToggle}
-          className="flex min-h-11 w-full items-center gap-4 rounded-xl px-2 py-4 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]"
+          className="flex min-h-11 w-full items-center gap-4 rounded-xl pl-[calc(18px+0.625rem)] pr-2 py-4 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]"
         >
           <span className="min-w-0 flex-1">{topic.question}</span>
           <motion.span
@@ -49,7 +49,7 @@ export function HelpTopicRow({
       </h3>
       <div id={panelId}>
         <AnimatedDisclosure open={open} onAnimationComplete={open ? onRevealed : undefined}>
-          <div className="select-text px-2 pb-5 text-sm leading-relaxed text-ink-soft">
+          <div className="select-text break-words pl-[calc(18px+0.625rem)] pr-2 pb-5 text-sm leading-relaxed text-ink-soft">
             <p className="max-w-prose">{topic.answer}</p>
             {topic.id === 'keyboard-shortcuts' && <HelpShortcuts />}
             {topic.id === 'touch-gestures' && <TouchExample />}

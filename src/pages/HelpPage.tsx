@@ -3,10 +3,26 @@ import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useLocation } from 'react-router-dom';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { AppLink as Link } from '../components/ui/AppLink';
-import { ChartIcon, SearchIcon, SettingsIcon, SparklesIcon } from '../components/ui/icons';
+import {
+  CardsIcon,
+  ChartIcon,
+  PlayIcon,
+  SearchIcon,
+  SettingsIcon,
+  SparklesIcon,
+} from '../components/ui/icons';
 import { HELP_ALIASES, HELP_GROUPS, helpTopics } from './help/helpTopics';
 import { searchHelp } from './help/searchHelp';
 import { HELP_LINK_CLASS, HelpTopicRow } from './help/HelpTopicRow';
+import {
+  SettingsArrivalProvider,
+  SettingsCard,
+  SETTINGS_HEADING_ROW_CLASS,
+} from './settings/SettingsUi';
+import { SettingsSectionHeading } from './settings/SettingsSectionHeading';
+
+const GROUP_ICONS = [SparklesIcon, PlayIcon, CardsIcon, ChartIcon, SettingsIcon];
+const GROUP_COLUMNS = [HELP_GROUPS.slice(0, 2), HELP_GROUPS.slice(2)];
 
 function fragment() {
   try {
@@ -77,7 +93,7 @@ export function HelpPage() {
       <header className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Help</h1>
       </header>
-      <label className="relative mb-7 block max-w-xl">
+      <label className="relative mb-7 block min-[1100px]:max-w-[calc((100%-1.25rem)/2)]">
         <SearchIcon
           width={18}
           height={18}
@@ -92,28 +108,52 @@ export function HelpPage() {
           className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink card-surface card-surface-control outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent-ink"
         />
       </label>
-      {searching ? (
-        <div>
-          {topics.length ? (
-            topics.map(row)
-          ) : (
-            <p role="status" className="py-6 text-sm text-ink-soft">
-              No matching topics.
-            </p>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-7">
-          {HELP_GROUPS.map((group) => (
-            <section key={group}>
-              <h2 className="mb-2 px-2 font-display text-xl font-semibold tracking-tight text-ink">
-                {group}
-              </h2>
-              {topics.filter((topic) => topic.group === group).map(row)}
-            </section>
-          ))}
-        </div>
-      )}
+      <SettingsArrivalProvider>
+        {searching ? (
+          <SettingsCard className="mb-0! min-w-0">
+            <div className={`${SETTINGS_HEADING_ROW_CLASS} mb-2`}>
+              <SearchIcon width={18} height={18} className="shrink-0" />
+              <SettingsSectionHeading
+                level={2}
+                className="font-display text-xl font-semibold tracking-tight"
+              >
+                Results
+              </SettingsSectionHeading>
+            </div>
+            {topics.length ? (
+              topics.map(row)
+            ) : (
+              <p role="status" className="py-6 pl-[calc(18px+0.625rem)] text-sm text-ink-soft">
+                No matching topics.
+              </p>
+            )}
+          </SettingsCard>
+        ) : (
+          <div className="grid items-start gap-5 min-[1100px]:grid-cols-2">
+            {GROUP_COLUMNS.map((groups, index) => (
+              <div key={index} className="flex min-w-0 flex-col gap-5">
+                {groups.map((group) => {
+                  const Icon = GROUP_ICONS[HELP_GROUPS.indexOf(group)];
+                  return (
+                    <SettingsCard key={group} className="mb-0! min-w-0">
+                      <div className={`${SETTINGS_HEADING_ROW_CLASS} mb-2`}>
+                        <Icon width={18} height={18} className="shrink-0" />
+                        <SettingsSectionHeading
+                          level={2}
+                          className="font-display text-xl font-semibold tracking-tight"
+                        >
+                          {group}
+                        </SettingsSectionHeading>
+                      </div>
+                      {topics.filter((topic) => topic.group === group).map(row)}
+                    </SettingsCard>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsArrivalProvider>
 
       <div className="mt-4 border-t border-line py-10 text-left">
         <div className="flex flex-wrap gap-2">

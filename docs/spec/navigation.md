@@ -497,9 +497,13 @@ Sequence and diagram editors share the course page frame in loaded, loading and 
 Their single 44px Back link names and retains the originating lesson or Cards destination,
 without repeating a breadcrumb or the task title above the main heading.
 Help opens with Search help and short questions grouped under Getting started, Studying,
-Cards and content, Progress and Your data. Each question expands to a brief answer and,
+Cards and content, Progress and Your data. Groups use Settings-style cards in two columns
+on wide screens (from 1100px), with Getting started and Studying on the left and the
+remaining groups on the right. Cards stack in that order on narrower screens. Each question expands to a brief answer and,
 where a fixed destination exists, a direct action link. Search matches every query word
-across questions, answers and keywords, showing matching answers expanded in a flat list.
+across questions, answers and keywords, ranking question matches above keywords and
+answer-only matches. Matching answers expand in a full-width Results card. Quick search
+and Search content include up to three ranked Help results linking directly to topics.
 Keyboard shortcuts use the same customised bindings as the study sheet. Small examples
 illustrate card types and touch gestures inside their answers.
 Help and Settings topic links read the final fragment of the hash route and open the

@@ -1,3 +1,4 @@
+import { searchHelp } from './help/searchHelp';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,7 +18,7 @@ import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import { hitKey, hitPath } from '../components/search/searchPresentation';
+import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -53,7 +54,7 @@ export function SearchPage() {
   const selectionChanged = useRef(false);
   const criteria = `${deferredQuery}:${[...filters].join(',')}`;
 
-  const results = useMemo(() => {
+  const results = useMemo<SearchHit[]>(() => {
     const scope = {
       cards: searchData?.cards ?? [],
       courses: searchData?.courses ?? [],
@@ -61,6 +62,11 @@ export function SearchPage() {
     };
     // Structured filters narrow only Cards; a text query still matches other content.
     return [
+      ...(deferredQuery.trim()
+        ? searchHelp(deferredQuery)
+            .slice(0, 3)
+            .map((topic): SearchHit => ({ kind: 'help', topic }))
+        : []),
       ...searchCourseContent(deferredQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
       ...searchQuestionsInScope(deferredQuery, {
         ...scope,

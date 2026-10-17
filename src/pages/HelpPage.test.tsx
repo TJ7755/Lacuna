@@ -61,6 +61,19 @@ describe('HelpPage', () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole('heading', { level: 2, name: 'Getting started' })).toBeInTheDocument();
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      'Getting started',
+      'Studying',
+      'Cards and content',
+      'Progress',
+      'Your data',
+    ]);
+    for (const heading of headings) {
+      const card = heading.closest('section');
+      expect(card).toHaveClass('card-surface');
+      expect(within(card!).getAllByRole('heading', { level: 3 }).length).toBeGreaterThan(0);
+    }
     const row = screen.getByRole('button', { name: 'How do I create a course and lessons?' });
     expect(row).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(row);
@@ -83,6 +96,9 @@ describe('HelpPage', () => {
       screen.queryByRole('button', { name: 'How do I start studying?' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/Share → Other ways → Course file/)).toBeVisible();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Results' }).closest('section'),
+    ).toHaveClass('card-surface');
     fireEvent.change(search, { target: { value: 'picture nonexistent' } });
     expect(screen.getByText('No matching topics.')).toBeInTheDocument();
     fireEvent.change(search, { target: { value: '' } });
