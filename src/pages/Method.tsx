@@ -1,8 +1,11 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LandingNav } from '../components/landing/LandingNav';
 import { LandingCta } from '../components/welcome/LandingCta';
-import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { Button } from '../components/ui/Button';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
+import { getMotionMultiplier } from '../state/motionSpeed';
 import './Landing.css';
 import './Method.css';
 import { SigmoidExplorer } from '../components/method/SigmoidExplorer';
@@ -38,7 +41,7 @@ function Formula({ children, label }: { children: ReactNode; label: string }) {
     <div
       role="img"
       aria-label={label}
-      className="mt-5 overflow-x-auto rounded-[10px] border border-line bg-surface-raised px-5 py-4 font-mono text-sm text-ink shadow-paper"
+      className={`${SECTION_CARD_SURFACE_CLASS} mt-5 overflow-x-auto px-5 py-4 font-mono text-sm text-ink`}
     >
       {children}
     </div>
@@ -46,7 +49,7 @@ function Formula({ children, label }: { children: ReactNode; label: string }) {
 }
 
 export function Method() {
-  useSmoothScroll(true);
+  const [weightsOpen, setWeightsOpen] = useState(false);
   const contentRef = useRef<HTMLElement>(null);
   // A fresh page in the same document — start at the top, not wherever the
   // landing page's scroll position happened to be.
@@ -66,21 +69,20 @@ export function Method() {
             the model’s limits lie.
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="lg"
           className="method-explore"
           onClick={() => {
             contentRef.current?.scrollIntoView({
-              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
-                ? 'instant'
-                : 'smooth',
+              behavior: getMotionMultiplier() === 0 ? 'instant' : 'smooth',
               block: 'start',
             });
             contentRef.current?.focus({ preventScroll: true });
           }}
         >
           Explore the method <span aria-hidden="true">↓</span>
-        </button>
+        </Button>
       </header>
       <main ref={contentRef} tabIndex={-1} className="method-content">
         <Part n="01" title="First, a naming correction">
@@ -116,25 +118,36 @@ export function Method() {
           </p>
           <SigmoidExplorer />
 
-          <details className="method-details">
-            <summary>
-              The ten weights, exactly as shipped <span aria-hidden="true">+</span>
-            </summary>
-            <div className="method-details-content">
-              <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
-                These are the fitted coefficients from the model running in the app, not a sketch.
-                Bars to the right push predicted recall up; bars to the left push it down. Select
-                any row for the plain-language reading.
-              </p>
-              <WeightsChart />
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-faint">
-                Notice that succeeded and failed are exact mirror images. That is not a coincidence:
-                the two features are perfect complements, so on their own they would have infinitely
-                many equally valid weight pairs. The small ridge penalty described in Part 04 is
-                what forces the fit onto the symmetric, smallest-magnitude pair.
-              </p>
+          <div className="method-details">
+            <Button
+              variant="ghost"
+              className="w-full text-left"
+              hoverScale={false}
+              pressScale={false}
+              aria-expanded={weightsOpen}
+              aria-controls="method-weights"
+              onClick={() => setWeightsOpen(!weightsOpen)}
+            >
+              The ten weights, exactly as shipped{' '}
+              <span aria-hidden="true">{weightsOpen ? '−' : '+'}</span>
+            </Button>
+            <div id="method-weights">
+              <AnimatedDisclosure open={weightsOpen} innerClassName="method-details-content">
+                <p className="mt-3 max-w-2xl leading-relaxed text-ink-soft">
+                  These are the fitted coefficients from the model running in the app, not a sketch.
+                  Bars to the right push predicted recall up; bars to the left push it down. Select
+                  any row for the plain-language reading.
+                </p>
+                <WeightsChart />
+                <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-faint">
+                  Notice that succeeded and failed are exact mirror images. That is not a
+                  coincidence: the two features are perfect complements, so on their own they would
+                  have infinitely many equally valid weight pairs. The small ridge penalty described
+                  in Part 04 is what forces the fit onto the symmetric, smallest-magnitude pair.
+                </p>
+              </AnimatedDisclosure>
             </div>
-          </details>
+          </div>
         </Part>
 
         <Part n="03" title="The scoring rule that decided the contest">
@@ -214,10 +227,10 @@ export function Method() {
                 label: 'of those fall inside the seven-day window that matters for cramming',
               },
             ].map((s) => (
-              <div key={s.num} className="rounded-[10px] border border-line bg-surface-raised p-4">
+              <div key={s.num} className={`${SECTION_CARD_SURFACE_CLASS} p-5`}>
                 <dt className="sr-only">{s.label}</dt>
                 <dd>
-                  <span className="font-mono text-xl text-accent">{s.num}</span>
+                  <span className="font-display text-xl tabular-nums text-accent-ink">{s.num}</span>
                   <span className="mt-1.5 block text-sm leading-snug text-ink-soft">{s.label}</span>
                 </dd>
               </div>

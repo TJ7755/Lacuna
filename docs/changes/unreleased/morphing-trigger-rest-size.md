@@ -1,0 +1,1 @@
+- Keep morphing triggers at their resting size on press, including keyboard activation, so Study, menus, creation, Import and path editors expand without an initial shrink. Ordinary buttons retain their press feedback; Study also stays the same size on hover.

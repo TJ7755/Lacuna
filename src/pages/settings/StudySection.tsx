@@ -1,6 +1,7 @@
-import { ChevronDownIcon, FlameIcon } from '../../components/ui/icons';
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
+import { FlameIcon } from '../../components/ui/icons';
+import { NumberField } from './NumberField';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
-import { Toggle } from '../../components/ui/Toggle';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
 import { useStartInFocusMode } from '../../state/focusModePreference';
@@ -9,9 +10,13 @@ import { useRecitationInput } from '../../state/recitationInput';
 import { useAutoOptimiseDefault } from '../../state/optimiseSetting';
 import { usePracticeDefaults } from '../../state/practiceDefaults';
 import { cn } from '../../components/ui/cn';
-import { AUDIO_PLAYBACK_SPEEDS, useAudioSettings } from '../../state/audioSettings';
+import {
+  AUDIO_PLAYBACK_SPEEDS,
+  useAudioSettings,
+  type AudioPlaybackSpeed,
+} from '../../state/audioSettings';
 import { useAfterFinalExamPolicy, type AfterFinalExamPolicy } from '../../state/finalExamLifecycle';
-import { SectionCard } from '../../components/ui/SectionCard';
+import { PillSwitch, SegmentedPills, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
 const FINAL_EXAM_POLICIES: Array<{
   value: AfterFinalExamPolicy;
@@ -31,10 +36,10 @@ export function StudySection() {
   const [recitationInput, setRecitationInput] = useRecitationInput();
 
   return (
-    <SectionCard id="settings-study" className="mb-8">
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-study">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <FlameIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
           Session behaviour
         </SettingsSectionHeading>
       </div>
@@ -53,57 +58,43 @@ export function StudySection() {
         checked={audioSettings.autoplay}
         onChange={(autoplay) => setAudioSettings({ ...audioSettings, autoplay })}
       />
-      <div className="mt-5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm">Audio playback speed</div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-48">
+          <div className="font-semibold text-ink">Audio playback speed</div>
         </div>
-        <div className="flex shrink-0 gap-1" role="radiogroup" aria-label="Audio playback speed">
-          {AUDIO_PLAYBACK_SPEEDS.map((speed) => (
-            <button
-              key={speed}
-              type="button"
-              role="radio"
-              aria-checked={audioSettings.playbackSpeed === speed}
-              onClick={() => setAudioSettings({ ...audioSettings, playbackSpeed: speed })}
-              className={cn(
-                'min-h-11 rounded-lg border px-3 py-1.5 text-xs transition-colors',
-                audioSettings.playbackSpeed === speed
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
-            >
-              {speed}×
-            </button>
-          ))}
-        </div>
+        <SegmentedPills
+          label="Audio playback speed"
+          value={String(audioSettings.playbackSpeed)}
+          options={AUDIO_PLAYBACK_SPEEDS.map((speed) => ({
+            value: String(speed),
+            label: `${speed}×`,
+          }))}
+          onChange={(speed) =>
+            setAudioSettings({
+              ...audioSettings,
+              playbackSpeed: Number(speed) as AudioPlaybackSpeed,
+            })
+          }
+        />
       </div>
 
-      <div className="mt-5 flex items-center justify-between gap-3 pl-0">
-        <div className="min-w-0">
-          <div className="text-sm">Grading strictness</div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-64">
+          <div className="font-semibold text-ink">Grading strictness</div>
           <p className="mt-1 text-sm text-ink-soft">
             How closely a typed answer must match. Lenient ignores case and punctuation, standard
             ignores case only, exact requires both to match.
           </p>
         </div>
-        <div className="flex shrink-0 gap-1">
-          {(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => (
-            <button
-              key={level}
-              type="button"
-              onClick={() => setAnswerStrictness(level)}
-              aria-pressed={answerStrictness === level}
-              className={cn(
-                'rounded-lg border px-3 py-1.5 text-xs capitalize transition-colors',
-                answerStrictness === level
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
+        <SegmentedPills
+          label="Grading strictness"
+          value={answerStrictness}
+          options={(['lenient', 'standard', 'exact'] as AnswerStrictness[]).map((level) => ({
+            value: level,
+            label: <span className="capitalize">{level}</span>,
+          }))}
+          onChange={setAnswerStrictness}
+        />
       </div>
 
       <SettingToggle
@@ -114,23 +105,23 @@ export function StudySection() {
         onChange={(checked) => setRecitationInput(checked ? 'aloud' : 'type')}
       />
 
-      <div className="mt-6 flex items-start justify-between gap-3 border-t border-line pt-5">
+      <div className="mt-6 flex items-start justify-between gap-3 pt-0">
         <div className="min-w-0">
-          <label htmlFor="start-in-focus-mode" className="text-sm">
-            Start Learn sessions in Focus Mode
+          <label htmlFor="start-in-focus-mode" className="font-semibold text-ink">
+            Start Learn sessions in focus mode
           </label>
           <p className="mt-1 text-sm text-ink-soft">
             Hides session controls on open. Press Esc to leave.
           </p>
         </div>
-        <Toggle
+        <PillSwitch
           id="start-in-focus-mode"
           checked={startInFocusMode}
-          ariaLabel="Start Learn sessions in Focus Mode"
+          ariaLabel="Start Learn sessions in focus mode"
           onChange={setStartInFocusMode}
         />
       </div>
-    </SectionCard>
+    </SettingsCard>
   );
 }
 
@@ -140,13 +131,10 @@ export function CourseDefaultsSection() {
   const [afterFinalExam, setAfterFinalExam] = useAfterFinalExamPolicy();
 
   return (
-    <SectionCard
-      id="settings-course-defaults"
-      className="mb-8"
-    >
-      <div className="mb-5 flex items-center gap-2 text-accent">
+    <SettingsCard id="settings-course-defaults">
+      <div className={cn('mb-5', SETTINGS_HEADING_ROW_CLASS)}>
         <FlameIcon width={18} height={18} />
-        <SettingsSectionHeading className="font-display text-xl">
+        <SettingsSectionHeading className="font-display text-xl font-semibold tracking-tight">
           Scheduling &amp; practice
         </SettingsSectionHeading>
       </div>
@@ -156,11 +144,8 @@ export function CourseDefaultsSection() {
         onChange={(checked) => setPracticeDefaults({ ...practiceDefaults, autoPractice: checked })}
       />
 
-      <div className="mt-6 border-t border-line pt-5">
-        <div className="text-sm">After the final exam</div>
-        <p className="mt-1 text-sm text-ink-soft">
-          Decide what happens after a course’s final exam. Checkpoints never trigger this.
-        </p>
+      <div className="mt-6 pt-0">
+        <div className="font-semibold text-ink">After the final exam</div>
         <div className="mt-3 grid gap-2" role="radiogroup" aria-label="After the final exam">
           {FINAL_EXAM_POLICIES.map((policy) => (
             <button
@@ -183,22 +168,21 @@ export function CourseDefaultsSection() {
         </div>
       </div>
 
-      <details className="group mt-6 border-t border-line pt-5">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
-            <span className="mt-1 block text-sm text-ink-soft">
-              Fit default scheduling to your review history.
+      <InlineSettingsDisclosure
+        className="group mt-6 pt-0"
+        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
+              <span className="mt-1 block text-sm text-ink-soft">
+                Fit default scheduling to your review history.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
-        <div className="mt-5 rounded-xl border border-line bg-surface-raised/50 p-4">
+          </>
+        }
+      >
+        <div className="mt-5 rounded-2xl bg-ink/[0.04] p-4">
           <SettingToggle
             title="Optimise scheduling"
             description={`Fits FSRS weights after ${MIN_OPTIMISE_REVIEWS} reviews. Changes require confirmation and can be overridden per course.`}
@@ -206,23 +190,22 @@ export function CourseDefaultsSection() {
             onChange={setAutoOptimise}
           />
         </div>
-      </details>
+      </InlineSettingsDisclosure>
 
-      <details className="group mt-6 border-t border-line pt-5">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-            <span className="mt-1 block text-sm text-ink-soft">
-              Adjust when practice nodes appear on course paths.
+      <InlineSettingsDisclosure
+        className="group mt-6 pt-0"
+        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+              <span className="mt-1 block text-sm text-ink-soft">
+                Adjust when practice nodes appear on course paths.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
+          </>
+        }
+      >
         <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <NumberField
             label="Threshold (far)"
@@ -230,8 +213,11 @@ export function CourseDefaultsSection() {
             suffix="min"
             min={1}
             max={999}
-            onChange={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesFar: value })
+            onCommit={(value) =>
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceThresholdMinutesFar: value,
+              })
             }
           />
           <NumberField
@@ -240,8 +226,11 @@ export function CourseDefaultsSection() {
             suffix="min"
             min={1}
             max={999}
-            onChange={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceThresholdMinutesNear: value })
+            onCommit={(value) =>
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceThresholdMinutesNear: value,
+              })
             }
           />
           <NumberField
@@ -250,8 +239,11 @@ export function CourseDefaultsSection() {
             suffix="days"
             min={0}
             max={365}
-            onChange={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceUrgentWindowDays: value })
+            onCommit={(value) =>
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceUrgentWindowDays: value,
+              })
             }
           />
           <NumberField
@@ -260,8 +252,11 @@ export function CourseDefaultsSection() {
             suffix="lessons"
             min={1}
             max={99}
-            onChange={(value) =>
-              setPracticeDefaults({ ...practiceDefaults, practiceMaxGap: value })
+            onCommit={(value) =>
+              setPracticeDefaults({
+                ...practiceDefaults,
+                practiceMaxGap: value,
+              })
             }
           />
         </div>
@@ -269,8 +264,8 @@ export function CourseDefaultsSection() {
           The near threshold applies once an exam is within the revision period; the far threshold
           applies otherwise. Max gap forces a practice node after this many lessons without one.
         </p>
-      </details>
-    </SectionCard>
+      </InlineSettingsDisclosure>
+    </SettingsCard>
   );
 }
 
@@ -288,54 +283,12 @@ function SettingToggle({
   bordered?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        'flex items-start justify-between gap-3',
-        bordered && 'mt-6 border-t border-line pt-5',
-      )}
-    >
+    <div className={cn('flex items-start justify-between gap-3', bordered && 'mt-6 pt-0')}>
       <div className="min-w-0">
-        <div className="text-sm">{title}</div>
+        <div className="font-semibold text-ink">{title}</div>
         {description && <p className="mt-1 text-sm text-ink-soft">{description}</p>}
       </div>
-      <Toggle checked={checked} onChange={onChange} ariaLabel={title} />
+      <PillSwitch checked={checked} onChange={onChange} ariaLabel={title} />
     </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  suffix,
-  min,
-  max,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  suffix: string;
-  min: number;
-  max: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="block text-sm text-ink-soft">
-      {label}
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          type="number"
-          aria-label={label}
-          min={min}
-          max={max}
-          value={value}
-          onChange={(event) => {
-            const next = Number(event.target.value);
-            if (!Number.isNaN(next)) onChange(Math.max(min, Math.min(max, next)));
-          }}
-          className="w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink outline-none transition-colors focus:border-accent"
-        />
-        <span className="shrink-0 text-xs text-ink-faint">{suffix}</span>
-      </div>
-    </label>
   );
 }

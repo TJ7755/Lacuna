@@ -1,0 +1,1 @@
+- Bring Direction C up to date with the shared UI primitives, session completion and continuous Practice. Shared cards and inputs retain the redesign styling, while dialogs and loading states use the common implementations. (#389)

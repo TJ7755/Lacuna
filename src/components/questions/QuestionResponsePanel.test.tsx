@@ -64,7 +64,7 @@ describe('QuestionResponsePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
 
     expect(screen.getByLabelText('Checker result')).toHaveTextContent('0 / 1 marks');
-    fireEvent.click(screen.getByRole('button', { name: 'Checker got this wrong' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Marked unfairly?' }));
     fireEvent.click(screen.getByRole('button', { name: 'Show worked feedback' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
@@ -103,5 +103,33 @@ describe('QuestionResponsePanel', () => {
     expect(screen.getByLabelText('Your working')).toHaveValue('2 + 2 = 5');
     expect(screen.queryByLabelText('Checker result')).not.toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('offers New numbers only for generated families and highlights their values', () => {
+    const onReroll = vi.fn();
+    const generated = attempt({
+      renderedPrompt: 'A cell is 12 mm long.',
+      parameters: { length: 12 },
+    });
+    const { rerender } = render(<QuestionResponsePanel attempt={generated} onSubmit={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'New numbers' })).not.toBeInTheDocument();
+
+    rerender(<QuestionResponsePanel attempt={generated} onSubmit={vi.fn()} onReroll={onReroll} />);
+    fireEvent.click(screen.getByRole('button', { name: 'New numbers' }));
+    expect(onReroll).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('12').tagName).toBe('STRONG');
+  });
+
+  it('marks a wrong check with the wrong tone and a full-marks check with the right tone', () => {
+    const { container } = render(
+      <QuestionResponsePanel attempt={attempt()} onSubmit={vi.fn()} />,
+    );
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    expect(container.querySelector('[data-result-tone="right"]')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit answer' }));
+    fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+    expect(container.querySelector('[data-result-tone="wrong"]')).not.toBeNull();
   });
 });

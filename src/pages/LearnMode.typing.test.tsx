@@ -35,7 +35,7 @@ describe('typed study accessibility', () => {
         </ToastProvider>
       </ThemeProvider>,
     );
-    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    // A lesson without notes starts on its first card.
     const input = await screen.findByRole('textbox', { name: 'Your answer' });
     fireEvent.change(input, { target: { value: 'chat' } });
     expect(screen.getByText('Your answer', { selector: 'label' })).toBeVisible();

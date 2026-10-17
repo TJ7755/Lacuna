@@ -1,0 +1,2 @@
+- The study sheet previews today's session before you start: the next step (for example "Learn Cell structure: 9 cards, 5 new, 3 min") and the due reviews offered after it, each with an estimate and a total. One **Start session** button replaces "Continue: …"; due review on its own, assessment revision and Practise until all correct sit under **Other ways**.
+- Estimates use the course's mean review time and count a new card as three reviews, since it is introduced and then recalled at least twice.

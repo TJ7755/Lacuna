@@ -1,9 +1,6 @@
 .qc-page main {
   animation: qc-enter 0.45s both;
 }
-.qc-tour-panel {
-  animation: qc-enter 0.35s both;
-}
 .qc-timeline-draw {
   stroke-dasharray: 800;
   animation: qc-draw 5s ease-in-out infinite;

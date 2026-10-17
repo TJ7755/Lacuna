@@ -4,9 +4,37 @@ import {
   collectAppShellScripts,
   collectAppShellStyles,
   collectOfflineCardsDependencies,
+  collectOfflineImportRoute,
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches deferred Quick search and its dependencies before first offline use', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/CommandPalette-SEARCH01.js', isEntry: false, imports: ['assets/search-SEARCH02.js'] },
+      { fileName: 'assets/search-SEARCH02.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/CommandPalette-SEARCH01.js', 'assets/search-SEARCH02.js']);
+  });
+  it('precaches on-demand course actions and their static dependencies before first offline use', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/CourseActions-ACTIONS1.js', isEntry: false, imports: ['assets/action-ui-ACTION01.js'] },
+      { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/CourseActions-ACTIONS1.js', 'assets/action-ui-ACTION01.js']);
+  });
+  it('precaches the welcome-course seed that start-up loads on demand', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/seed-SEEDCHK1.js', isEntry: false, imports: [] },
+    ])).toContain('assets/seed-SEEDCHK1.js');
+  });
+  it('precaches the motion features that start-up loads straight after first paint', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/motionFeatures-MOTION01.js', isEntry: false, imports: ['assets/features-max-FEATMAX1.js'] },
+      { fileName: 'assets/features-max-FEATMAX1.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/motionFeatures-MOTION01.js', 'assets/features-max-FEATMAX1.js']);
+  });
   it('leaves worker registration to the protocol-aware application bootstrap', () => {
     expect(pwaInjectRegister).toBeNull();
   });
@@ -85,25 +113,6 @@ describe('service-worker asset caching', () => {
     ]);
   });
 
-  it('precaches the optional sharing announcement needed for an offline shell', () => {
-    expect(
-      collectAppShellScripts([
-        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
-        {
-          fileName: 'assets/SharingAnnouncement-SHARING1.js',
-          isEntry: false,
-          imports: ['assets/icons-ICONS001.js'],
-        },
-        { fileName: 'assets/icons-ICONS001.js', isEntry: false, imports: [] },
-      ]),
-    ).toEqual([
-      'assets/app-ENTRY001.js',
-      'assets/SharingAnnouncement-SHARING1.js',
-      'assets/icons-ICONS001.js',
-    ]);
-    expect(workbox.globPatterns).toContain('assets/SharingAnnouncement-*.css');
-  });
-
   it('retains shared Cards imports loaded before worker control without precaching the route', () => {
     const chunks = [
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
@@ -125,6 +134,27 @@ describe('service-worker asset caching', () => {
     expect(collectOfflineCardsDependencies(chunks)).toEqual([
       'assets/cardCore-CORE0001.js',
       'assets/validation-VALID001.js',
+    ]);
+  });
+
+  it('precaches the Import route so a course file can be received on first use offline', () => {
+    const chunks = [
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: ['assets/shared-SHARED01.js'] },
+      { fileName: 'assets/shared-SHARED01.js', isEntry: false, imports: [] },
+      {
+        fileName: 'assets/ImportPanel-IMPORT01.js',
+        isEntry: false,
+        imports: ['assets/shared-SHARED01.js', 'assets/courseFile-COURSE01.js'],
+        viteMetadata: { importedCss: new Set(['assets/ImportPanel-IMPORT01.css']) },
+      },
+      { fileName: 'assets/courseFile-COURSE01.js', isEntry: false, imports: [] },
+      { fileName: 'assets/MarkdownView-MARKDOWN.js', isEntry: false, imports: [] },
+    ];
+
+    expect(collectOfflineImportRoute(chunks)).toEqual([
+      'assets/ImportPanel-IMPORT01.js',
+      'assets/courseFile-COURSE01.js',
+      'assets/ImportPanel-IMPORT01.css',
     ]);
   });
 
@@ -151,14 +181,6 @@ describe('service-worker asset caching', () => {
         url: new URL('https://lacuna.example/styles.css'),
       }),
     ).toBe(false);
-  });
-
-  it('reuses the hosted font stylesheet without a repeat network request', () => {
-    const stylesheetRule = workbox.runtimeCaching?.find(
-      (rule) => rule.options?.cacheName === 'font-stylesheet-cache',
-    );
-
-    expect(stylesheetRule).toMatchObject({ handler: 'CacheFirst' });
   });
 
   it('caches only the exact content-addressed WASM URL requested by its bundle', () => {

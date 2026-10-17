@@ -28,6 +28,15 @@ export function formatDate(ms: number, timeZone?: string): string {
   });
 }
 
+/** A compact date for chart axes and tight rows, e.g. "12 Jun". */
+export function formatShortDate(ms: number, timeZone?: string): string {
+  return new Date(ms).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: timeZone ?? getLocalTimeZone(),
+  });
+}
+
 /** Coarse relative-time buckets, largest first, used by {@link formatRelativeTime}. */
 const RELATIVE_TIME_UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
   { unit: 'year', ms: 365 * MS_PER_DAY },
@@ -263,15 +272,22 @@ export function startOfDay(ms: number, timeZone?: string): number {
   return d.getTime();
 }
 
+/** Whole calendar days from today to the target's day (negative once it has passed). */
+export function calendarDaysUntil(
+  targetMs: number,
+  nowMs: number = Date.now(),
+  timeZone?: string,
+): number {
+  return Math.round((startOfDay(targetMs, timeZone) - startOfDay(nowMs, timeZone)) / MS_PER_DAY);
+}
+
 /** A short relative description of a future exam date, e.g. "in 7 days" or "today". */
 export function relativeExam(
   targetMs: number,
   nowMs: number = Date.now(),
   timeZone?: string,
 ): string {
-  const targetDay = startOfDay(targetMs, timeZone);
-  const today = startOfDay(nowMs, timeZone);
-  const days = Math.round((targetDay - today) / MS_PER_DAY);
+  const days = calendarDaysUntil(targetMs, nowMs, timeZone);
   if (days < 0) return 'past';
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';

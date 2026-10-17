@@ -21,6 +21,7 @@ export default [
   {
     ignores: [
       '**/dist/**',
+      'electron/dist-electron/**',
       '**/node_modules/**',
       // Separate packages with their own manifests and configs.
       'relay/**',

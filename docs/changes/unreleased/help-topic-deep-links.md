@@ -1,0 +1,1 @@
+- Help now recognises topic links inside the app’s hash route and follows topic-fragment changes. Help and Settings share the existing validated section-link handling, including encoded fragments and listener cleanup.

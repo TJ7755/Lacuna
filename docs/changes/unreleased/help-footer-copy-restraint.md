@@ -1,0 +1,1 @@
+- Help now presents its Settings, Analytics and scheduler destinations directly, removing a redundant descriptive footer caption and decorative icon while retaining the links and their keyboard targets.

@@ -57,6 +57,60 @@ export const ACTION_LABELS: Record<LearnAction, string> = {
   help: 'Show keyboard shortcuts',
 };
 
+// Fixed aliases are handled separately from configurable study actions.
+const RESERVED_BINDINGS: Record<string, { action?: LearnAction; label: string }> = {
+  ArrowUp: { action: 'reveal', label: 'showing the answer' },
+  ArrowDown: { label: 'hiding the answer' },
+  ArrowRight: { action: 'yes', label: 'marking correct' },
+  ArrowLeft: { action: 'no', label: 'marking incorrect' },
+  '/': { label: 'search' },
+  h: { label: 'line hints' },
+  r: { label: 'audio replay' },
+  Escape: { label: 'cancelling and closing' },
+  Tab: { label: 'moving keyboard focus' },
+  F1: { label: 'Lacuna Help' },
+};
+
+const UNASSIGNABLE_BINDINGS = new Set([
+  'Shift',
+  'Control',
+  'Alt',
+  'Meta',
+  'AltGraph',
+  'CapsLock',
+  'Dead',
+  'Process',
+  'Unidentified',
+]);
+
+function normaliseBinding(key: string): string {
+  if (key === ' ' || key === 'Spacebar') return 'Space';
+  return key.length === 1 ? key.toLowerCase() : key;
+}
+
+/** Validate a single-key assignment against fixed aliases and the other study bindings. */
+export function bindingError(
+  action: LearnAction,
+  key: string,
+  bindings?: ShortcutBindings,
+): string | null {
+  const normalised = normaliseBinding(key);
+  const reserved = RESERVED_BINDINGS[normalised];
+  if (reserved && reserved.action !== action) return `That key is reserved for ${reserved.label}.`;
+  if (
+    !normalised ||
+    UNASSIGNABLE_BINDINGS.has(normalised) ||
+    (normalised.length > 1 && /[+\s]/.test(normalised))
+  )
+    return 'Choose a single character or a named key such as Space or Enter.';
+  const conflict =
+    bindings &&
+    (Object.keys(bindings) as LearnAction[]).find(
+      (candidate) => candidate !== action && normaliseBinding(bindings[candidate]) === normalised,
+    );
+  return conflict ? `That key is already assigned to ${ACTION_LABELS[conflict]}.` : null;
+}
+
 function readStoredBindings(): Partial<ShortcutBindings> {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -67,7 +121,7 @@ function readStoredBindings(): Partial<ShortcutBindings> {
       const bindings: Partial<ShortcutBindings> = {};
       for (const action of Object.keys(DEFAULT_BINDINGS) as LearnAction[]) {
         const value = stored[action];
-        if (typeof value === 'string' && value.length > 0) bindings[action] = value;
+        if (typeof value === 'string' && !bindingError(action, value)) bindings[action] = value;
       }
       return bindings;
     }
@@ -139,7 +193,9 @@ export function useShortcutBindings() {
   }, [bindings]);
 
   const setBinding = useCallback((action: LearnAction, key: string) => {
-    setBindingsState((prev) => ({ ...prev, [action]: key }));
+    setBindingsState((prev) =>
+      bindingError(action, key, prev) ? prev : { ...prev, [action]: key },
+    );
   }, []);
 
   const reset = useCallback(() => {

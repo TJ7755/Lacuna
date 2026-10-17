@@ -1,7 +1,17 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { KeyHints } from './KeyHints';
 import { loadBindings, saveBindings, DEFAULT_BINDINGS } from '../../state/shortcutBindings';
+
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 vi.mock('../../state/shortcuts', () => ({
   SHORTCUT_GROUPS: [
@@ -25,6 +35,23 @@ vi.mock('../../state/shortcuts', () => ({
 beforeEach(() => localStorage.clear());
 
 describe('KeyHints', () => {
+  it('retires the closing overlay and revives its controls on rapid reopening', async () => {
+    const view = (open: boolean) => (
+      <LazyMotion features={domAnimation}>
+        <KeyHints open={open} onClose={vi.fn()} />
+      </LazyMotion>
+    );
+    const { rerender } = render(view(true));
+    const close = screen.getByRole('button', { name: 'Close' });
+    rerender(view(false));
+    expect(close).toBeInTheDocument();
+    expect(close.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    rerender(view(true));
+    expect(screen.getByRole('button', { name: 'Close' })).toBe(close);
+    expect(close.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  });
   it('renders nothing when closed', () => {
     const { container } = render(<KeyHints open={false} onClose={vi.fn()} />);
     expect(container.firstChild).toBeNull();
@@ -36,6 +63,17 @@ describe('KeyHints', () => {
     expect(dialog).toHaveAttribute('role', 'dialog');
     expect(dialog).toHaveAttribute('aria-modal', 'true');
     expect(dialog).toHaveAttribute('aria-label', 'Keyboard shortcuts');
+  });
+
+  it('keeps one bounded dialog with a separately scrollable shortcut list', () => {
+    render(<KeyHints open onClose={vi.fn()} />);
+    const dialogs = screen.getAllByRole('dialog', { name: 'Keyboard shortcuts' });
+    expect(dialogs).toHaveLength(1);
+    expect(dialogs[0]).toHaveClass('min-h-0', 'max-h-full');
+    expect(screen.getAllByRole('list')[0].parentElement?.parentElement).toHaveClass(
+      'min-h-0',
+      'overflow-y-auto',
+    );
   });
 
   it('shows the title and group headings', () => {
@@ -80,7 +118,9 @@ it('does not overwrite newer bindings from a closed help view', async () => {
     const { unmount } = render(<KeyHints open={false} onClose={vi.fn()} />);
     const updated = { ...DEFAULT_BINDINGS, help: 'b', yes: 'j' };
     saveBindings(updated);
-    await act(async () => { await vi.advanceTimersByTimeAsync(350); });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(350);
+    });
     expect(loadBindings()).toEqual(updated);
     unmount();
   } finally {

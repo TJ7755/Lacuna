@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardEditOverlay } from './CardEditOverlay';
 import type { Card } from '../../db/types';
@@ -15,15 +15,22 @@ vi.mock('../markdown/MarkdownEditor', () => ({
     label,
     value,
     onChange,
+    clozePreview,
   }: {
     inputRef?: React.RefObject<HTMLTextAreaElement>;
     label: string;
     value: string;
     onChange: (value: string) => void;
+    clozePreview?: 'front' | 'back';
   }) => (
     <label>
       {label}
-      <textarea ref={inputRef} value={value} onChange={(event) => onChange(event.target.value)} />
+      <textarea
+        ref={inputRef}
+        value={value}
+        data-cloze-preview={clozePreview}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </label>
   ),
 }));
@@ -91,7 +98,53 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+describe('CardEditOverlay type picker', () => {
+  it('picks the card type with the full editor pill track and swaps the fields with it', () => {
+    const { getByRole, getByLabelText, queryByLabelText } = render(
+      <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,
+    );
+    const group = getByRole('group', { name: 'Card type' });
+    expect(within(group).getByRole('button', { name: 'Front / back' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(group).getByRole('button', { name: 'Cloze deletion' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    fireEvent.click(within(group).getByRole('button', { name: 'Cloze deletion' }));
+
+    expect(within(group).getByRole('button', { name: 'Cloze deletion' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveValue('Front');
+    expect(queryByLabelText('Back')).not.toBeInTheDocument();
+  });
+});
+
 describe('CardEditOverlay draft scope', () => {
+  it('switches the cloze preview between the prompt and the revealed answer', () => {
+    const { getByRole, getByLabelText } = render(
+      <CardEditOverlay
+        card={{ ...card, type: 'cloze', front: 'Water is {{c1::H2O}}.' }}
+        onSaved={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+    const control = getByRole('switch', { name: 'Preview revealed answer' });
+    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveAttribute(
+      'data-cloze-preview',
+      'front',
+    );
+    fireEvent.click(control);
+    expect(control).toBeChecked();
+    expect(getByLabelText('Text (use the Cloze button to hide answers)')).toHaveAttribute(
+      'data-cloze-preview',
+      'back',
+    );
+  });
   it('wraps focus between the save and close controls', () => {
     const { getByRole } = render(
       <CardEditOverlay card={card} onSaved={vi.fn()} onCancel={vi.fn()} />,

@@ -1,0 +1,1 @@
+- Dark mode keeps the near-black ground with the Volt neon foreground retained, so banner edges and icons stay defined while light mode is unchanged (#537)

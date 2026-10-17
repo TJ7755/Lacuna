@@ -1,5 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
-import { loadBindings, saveBindings, resetBindings, keyMatches, formatBinding, DEFAULT_BINDINGS } from './shortcutBindings';
+import {
+  loadBindings,
+  saveBindings,
+  resetBindings,
+  keyMatches,
+  formatBinding,
+  DEFAULT_BINDINGS,
+} from './shortcutBindings';
 
 const STORAGE_KEY = 'lacuna-shortcut-bindings';
 
@@ -87,8 +94,9 @@ it.each([null, false, 42, [], {}, ''])(
   (reveal) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ reveal, yes: 'j', unknown: 'x' }));
     expect(loadBindings()).toEqual({ ...DEFAULT_BINDINGS, yes: 'j' });
-    expect(() => keyMatches(new KeyboardEvent('keydown', { key: 'j' }), loadBindings().reveal))
-      .not.toThrow();
+    expect(() =>
+      keyMatches(new KeyboardEvent('keydown', { key: 'j' }), loadBindings().reveal),
+    ).not.toThrow();
   },
 );
 
@@ -96,3 +104,44 @@ it.each([null, ['Enter'], 'Enter', 42])('ignores a non-object bindings record %j
   localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
   expect(loadBindings()).toEqual(DEFAULT_BINDINGS);
 });
+
+it.each([
+  'ArrowDown',
+  'ArrowUp',
+  'ArrowLeft',
+  '/',
+  'h',
+  'r',
+  'Tab',
+  'Escape',
+  'F1',
+  'Control',
+  'Ctrl+q',
+  'Dead',
+  'Process',
+  'Unidentified',
+])('ignores reserved or unsupported saved keys without discarding valid overrides: %s', (key) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ yes: key, again: 'a' }));
+  expect(loadBindings()).toEqual({ ...DEFAULT_BINDINGS, again: 'a' });
+});
+
+it('retains fixed aliases assigned to their own actions', () => {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ reveal: 'ArrowUp', yes: 'ArrowRight', no: 'ArrowLeft' }),
+  );
+  expect(loadBindings()).toEqual({
+    ...DEFAULT_BINDINGS,
+    reveal: 'ArrowUp',
+    yes: 'ArrowRight',
+    no: 'ArrowLeft',
+  });
+});
+
+it.each(['Enter', 'Home', 'Pause', 'Clear', 'F25', '+'])(
+  'retains valid character and named-key overrides: %s',
+  (key) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ yes: key }));
+    expect(loadBindings().yes).toBe(key);
+  },
+);

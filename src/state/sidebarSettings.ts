@@ -15,11 +15,10 @@ export interface SidebarSettings {
 }
 
 export const DEFAULT_NAV_ITEMS: SidebarNavItem[] = [
-  { id: 'dashboard', label: 'Dashboard', visible: true },
-  { id: 'today', label: 'Review today', visible: true },
+  { id: 'dashboard', label: 'Today', visible: true },
   { id: 'search', label: 'Search', visible: true },
   { id: 'share', label: 'Share', visible: true },
-  { id: 'analytics', label: 'Analytics', visible: true },
+  { id: 'analytics', label: 'Progress', visible: true },
   { id: 'settings', label: 'Settings', visible: true },
   { id: 'help', label: 'Help', visible: true },
 ];
@@ -43,7 +42,10 @@ const setting = createLocalSetting<SidebarSettings>({
         // Drop stored items whose id no longer exists as a default (e.g. a removed nav
         // entry), then merge in any newly added defaults — preserving the stored order
         // and visibility of everything that survives.
-        const merged = navItems.filter((n) => DEFAULT_NAV_ITEMS.some((def) => def.id === n.id));
+        const merged = navItems.flatMap((n) => {
+          const def = DEFAULT_NAV_ITEMS.find((item) => item.id === n.id);
+          return def ? [{ ...n, label: def.label }] : [];
+        });
         for (const def of DEFAULT_NAV_ITEMS) {
           if (!merged.find((n) => n.id === def.id)) {
             merged.push(def);
@@ -65,10 +67,7 @@ export function writeSidebarSettings(settings: Partial<SidebarSettings>): void {
   setting.write({ ...setting.read(), ...settings });
 }
 
-export function useSidebarSettings(): [
-  SidebarSettings,
-  (patch: Partial<SidebarSettings>) => void,
-] {
+export function useSidebarSettings(): [SidebarSettings, (patch: Partial<SidebarSettings>) => void] {
   const [settings, setSettings] = setting.use();
   return [settings, (patch) => setSettings({ ...setting.read(), ...patch })];
 }

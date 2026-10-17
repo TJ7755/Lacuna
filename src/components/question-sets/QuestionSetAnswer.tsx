@@ -1,6 +1,8 @@
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
 import type { QuestionSet } from '../../questions/questionSets';
 import { MarkdownView } from '../markdown/MarkdownView';
+import { useId } from 'react';
+import { ComposerTextarea } from './ComposerTextarea';
 
 /** The same question and response controls serve author previews and real attempts. */
 export function QuestionSetAnswer({
@@ -16,6 +18,7 @@ export function QuestionSetAnswer({
   onChange: (value: string | string[]) => void;
   readOnly?: boolean;
 }) {
+  const headingId = useId();
   const nodes = flattenQuestionSet(content);
   const active = nodes.find((node) => node.id === nodeId);
   if (!active?.node.answer) return null;
@@ -28,7 +31,9 @@ export function QuestionSetAnswer({
   return (
     <>
       <header className="qs-part-bar">
-        <h2 tabIndex={-1}>{label}</h2>
+        <h2 id={headingId} tabIndex={-1} className="focus-visible:shadow-none">
+          {label}
+        </h2>
         <span className="qs-muted">
           {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
         </span>
@@ -52,6 +57,7 @@ export function QuestionSetAnswer({
                 name={active.id}
                 id={`${active.id}-${option.id}`}
                 aria-labelledby={`${active.id}-${option.id}-content`}
+                aria-describedby={headingId}
                 checked={Array.isArray(value) && value.includes(option.id)}
                 onChange={() => {
                   if (readOnly) return;
@@ -75,18 +81,18 @@ export function QuestionSetAnswer({
           ))}
         </fieldset>
       ) : (
-        <label className="qs-field">
-          {format.kind === 'calculation' ? 'Your working and answer' : 'Your answer'}
-          <textarea
+        <div className="qs-answer-field">
+          <ComposerTextarea
             className="qs-preview-answer"
-            rows={8}
+            aria-label={format.kind === 'calculation' ? 'Your working and answer' : 'Your answer'}
+            aria-describedby={headingId}
             readOnly={readOnly}
             value={typeof value === 'string' ? value : ''}
             onChange={(event) => {
               if (!readOnly) onChange(event.target.value);
             }}
           />
-        </label>
+        </div>
       )}
     </>
   );

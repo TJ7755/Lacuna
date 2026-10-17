@@ -1,0 +1,1 @@
+- Dashboard course menus and archive confirmations remain available on their first use offline, while retaining deferred loading during application startup. Production browser coverage checks keyboard operation and focus restoration without a network connection.

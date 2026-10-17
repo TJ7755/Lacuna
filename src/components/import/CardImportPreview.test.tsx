@@ -9,6 +9,7 @@ vi.mock('../../state/motionSpeed', () => ({
   speedMultiplier: () => 0,
 }));
 vi.mock('../../db/assetCache', () => ({
+  cachedAssetImageSize: () => undefined,
   resolveAssetMarkdownCached: vi.fn(() => {
     throw new Error('Preview must not read persisted assets');
   }),

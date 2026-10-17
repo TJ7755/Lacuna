@@ -1,6 +1,11 @@
+import { MissingRecord } from '../components/course/MissingRecord';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { useCardSaveConfirmation } from './useCardSaveConfirmation';
+import { Skeleton } from '../components/ui/Skeleton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCard } from '../state/useData';
 import {
@@ -16,6 +21,15 @@ import {
 import { canEditLessons, isLessonAuthoringMode } from '../course/lessonViewMode';
 import { CardAnswerModeField } from '../components/cards/AnswerModeControl';
 import { Button } from '../components/ui/Button';
+import {
+  CardTypePicker,
+  EDITOR_TYPE_ORDER,
+  type EditorCardType,
+} from '../components/cards/CardTypePicker';
+import { CardSources } from '../components/cards/CardSources';
+import { CardPreview, type PreviewSide } from '../components/cards/CardPreview';
+import { CardEditorActions } from '../components/cards/CardEditorActions';
+import { riseIn } from '../components/course/riseIn';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
 import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
@@ -45,16 +59,22 @@ import { AudioCardEditor } from '../components/cards/AudioCardEditor';
 import { ChevronLeftIcon, CheckIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
+import { scaledSpring } from '../components/ui/motion';
 import { useIsTouchMode } from '../state/inputMode';
-import { useEditorReturn } from '../hooks/useEditorReturn';
 import { saveDraft, loadDraft, clearDraft, draftKey } from '../utils/drafts';
-import type { EditorOriginState } from '../utils/editorOrigin';
-import type { AnswerMode, Card, CardType, ItemFixture, ItemPayload, NumericAnswerSpec } from '../db/types';
+import { useReturn } from '../utils/editorOrigin';
+import type {
+  AnswerMode,
+  Card,
+  CardType,
+  ItemFixture,
+  ItemPayload,
+  NumericAnswerSpec,
+} from '../db/types';
 import { isAudioCardFront } from '../media/audio';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
 
-type EditorCardType = CardType | 'numeric' | 'working' | 'audio';
+/** Shared card-surface treatment: rounded, flat, with a theme-token hairline. */
+const CARD_SURFACE = 'card-surface';
 
 const EMPTY_NUMERIC_ANSWER: NumericAnswerSpec = { kind: 'exact', value: '' };
 
@@ -76,7 +96,6 @@ export function CardEditor() {
   const bankMode = !lessonMode;
   const navigate = useNavigate();
   const location = useLocation();
-  const scheduleReturn = useEditorReturn(`${courseId}:${lessonId}:${cardId}`);
   const { notify } = useToast();
 
   const course = useCourse(courseId);
@@ -100,6 +119,8 @@ export function CardEditor() {
   const occlusions = useOcclusions(courseId);
 
   const [type, setType] = useState<EditorCardType>('front_back');
+  // Which way the form moves when the type changes: towards the pill that was chosen.
+  const [formDirection, setFormDirection] = useState(0);
   const [answerMode, setAnswerMode] = useState<AnswerMode>();
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
@@ -108,7 +129,8 @@ export function CardEditor() {
   const [workingFixtures, setWorkingFixtures] = useState<ItemFixture[]>([]);
   const workingCompilation = useMemo(() => compileMarkScheme(workingSource), [workingSource]);
   const [tags, setTags] = useState<string[]>([]);
-  const [showBackCloze, setShowBackCloze] = useState(false);
+  // Which side of the live preview is showing. Preview-only: never an authoring change.
+  const [previewSide, setPreviewSide] = useState<PreviewSide>('front');
   // When set (new front/back cards only), saving also creates an independent reverse card.
   const [alsoReverse, setAlsoReverse] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -187,8 +209,7 @@ export function CardEditor() {
   const focusSaveButton = () => (saveAddRef.current ?? saveRef.current)?.focus();
 
   // Brief "Saved" flourish shown in the action bar after each quick-capture save.
-  const [showSaved, setShowSaved] = useState(false);
-  const savedTimer = useRef<number | undefined>(undefined);
+  const { showSaved, flashSaved, afterSaved } = useCardSaveConfirmation(currentDraftKey);
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [shakeNonce, setShakeNonce] = useState(0);
   const shakeTimer = useRef<number | undefined>(undefined);
@@ -202,12 +223,6 @@ export function CardEditor() {
     setDraftDirty(true);
   }
 
-  function flashSaved() {
-    window.clearTimeout(savedTimer.current);
-    setShowSaved(true);
-    savedTimer.current = window.setTimeout(() => setShowSaved(false), 1200);
-  }
-
   async function copyMarkSchemePrompt() {
     if (!front.trim()) return;
     try {
@@ -217,7 +232,6 @@ export function CardEditor() {
       notify('Could not copy the mark-scheme prompt.', 'negative');
     }
   }
-  useEffect(() => () => window.clearTimeout(savedTimer.current), []);
 
   // Existing tags across the lesson or bank, offered as suggestions in the tag input.
   const tagSuggestions = useMemo(() => {
@@ -273,6 +287,7 @@ export function CardEditor() {
   const applyDraft = () => {
     const draft = loadDraft(draftKeyRef.current);
     if (!draft) return;
+    setFormDirection(0);
     setType(
       draft.itemKind === 'numeric' || draft.itemKind === 'working' || draft.itemKind === 'audio'
         ? draft.itemKind
@@ -374,20 +389,22 @@ export function CardEditor() {
 
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/cards`;
-  // Where the caller navigated from, when that differs from what the route alone
-  // implies (e.g. a lesson-owned card opened for editing from Cards).
-  // Absent on direct loads and hard refreshes, which drop router state — the
-  // route-derived default below covers that case.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  // Where Cancel, post-save navigation and the breadcrumb "back" target all point.
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  // Cancel, post-save navigation and the breadcrumb all return to where the learner
+  // came from (see src/utils/editorOrigin.ts), or to the route's own default after a
+  // deep link or refresh.
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
 
   if (
     (lessonMode
       ? course === undefined || lesson === undefined || lessonCards === undefined
       : course === undefined) ||
-    (editing && card === undefined && !loaded)
+    // Hold the form until a card's type is seeded, so it does not arrive as a type change.
+    (editing && card !== null && !loaded)
   ) {
     return (
       <DelayedFallback>
@@ -397,32 +414,26 @@ export function CardEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
-        </Link>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-          {courseId ? 'Back to course' : 'Back to dashboard'}
-        </Link>
-      </div>
+      <MissingRecord
+        message="This lesson could not be found."
+        to={courseId ? `/course/${courseId}` : '/'}
+      >
+        {courseId ? 'Back to course' : 'Back to Today'}
+      </MissingRecord>
     );
   }
   if (editing && card === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This card could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
-          Back to {backLabel}
-        </Link>
-      </div>
+      <MissingRecord message="This card could not be found." to={backPath}>
+        Back to {backLabel}
+      </MissingRecord>
     );
   }
 
@@ -448,39 +459,26 @@ export function CardEditor() {
         ? `/course/${courseId}/occlusion/${owningOcclusion.id}/edit`
         : undefined;
     return (
-      <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-        <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-          <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-            {course?.name}
-          </Link>
-          <ChevronRight />
-          <Link to={backPath} className="transition-colors hover:text-ink">
-            {backLabel}
-          </Link>
-          <ChevronRight />
-          <span className="text-ink-soft">Card</span>
-        </nav>
-
-        <div>
-          <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-            <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-            <div className="relative">
-              <Link
-                to={backPath}
-                className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-              >
-                <ChevronLeftIcon width={16} height={16} />
-                Back
-              </Link>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-display text-4xl tracking-tight md:text-5xl">Card</h1>
-                <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
-              </div>
+      <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+        <div className="flex flex-col gap-6">
+          <header className="flex flex-col gap-2">
+            <Link
+              {...returnTo.linkProps}
+              className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+            >
+              <ChevronLeftIcon width={14} height={14} />
+              {backLabel ?? 'Back'}
+            </Link>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-4xl font-semibold leading-[1.02] tracking-tight md:text-[44px]">
+                Card
+              </h1>
+              <GeneratedCardBadge kind={isSequenceGenerated ? 'sequence' : 'occlusion'} />
             </div>
           </header>
 
-          <div className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3">
-            <span className="text-sm text-accent">
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-accent-soft px-4 py-3">
+            <span className="text-sm text-accent-ink">
               This card is generated from{' '}
               {owningSequence
                 ? `the sequence “${owningSequence.name}”`
@@ -504,35 +502,32 @@ export function CardEditor() {
             )}
           </div>
 
-          <div className="flex flex-col gap-5">
-            <div className="rounded-xl border border-line bg-surface p-5">
-              <h2 className="mb-2 font-display text-lg tracking-tight">Front</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className={`rounded-3xl bg-surface p-7 ${CARD_SURFACE}`}>
+              <h2 className="mb-3 font-display text-lg tracking-tight">Front</h2>
               <div className="text-ink-soft">
                 <CardContent card={card} side="front" />
               </div>
             </div>
-            <div className="rounded-xl border border-line bg-surface p-5">
-              <h2 className="mb-2 font-display text-lg tracking-tight">Back</h2>
+            <div className={`rounded-3xl bg-surface p-7 ${CARD_SURFACE}`}>
+              <h2 className="mb-3 font-display text-lg tracking-tight">Back</h2>
               <div className="text-ink">
                 <CardContent card={card} side="back" />
               </div>
             </div>
-            {(card.tags ?? []).length > 0 && (
-              <div>
-                <h2 className="mb-2 font-display text-lg tracking-tight">Tags</h2>
-                <div className="flex flex-wrap gap-1.5">
-                  {(card.tags ?? []).map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-lg border border-line px-2 py-0.5 text-[11px] text-ink-soft"
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
+          {(card.tags ?? []).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {(card.tags ?? []).map((t) => (
+                <span
+                  key={t}
+                  className="rounded-full bg-ink/[0.06] px-3 py-1 text-[13px] text-ink-soft"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -554,6 +549,26 @@ export function CardEditor() {
   const numericValid = !isNumeric || numericAnswerSpecIsValid(numericAnswer);
   const editable = Boolean(course && canEditLessons(course));
   const canSave = editable && frontValid && backValid && clozeValid && numericValid && workingValid;
+  const canReverse = !editing && !isCloze && !isBasicReversed && !isStructured && !isAudio;
+  // Front / back and Basic (reversed) share a form; every other type has its own.
+  const formKind = isBasicReversed ? 'front_back' : type;
+
+  // Another kind of authoring takes over from this page; anything typed stays as a draft.
+  function leaveForm(go: () => void) {
+    window.clearTimeout(draftTimer.current);
+    if (loaded && draftDirty && !draftPrompt) persistDraft();
+    go();
+  }
+  // The chosen editor replaces this one, so its Back returns to this page's origin.
+  const openOtherEditor = (kind: 'sequence' | 'occlusion') =>
+    leaveForm(() =>
+      navigate(
+        lessonMode
+          ? `/course/${courseId}/lesson/${lessonId}/${kind}/new`
+          : `/course/${courseId}/${kind}/new`,
+        { replace: true, state: location.state },
+      ),
+    );
 
   async function handleSave(andAnother = false) {
     if (!editable) return;
@@ -570,9 +585,14 @@ export function CardEditor() {
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const storedAnswerMode = course && !course.archived && isLessonAuthoringMode(course)
-      ? (isStructured ? undefined : answerMode)
-      : (editing ? card?.answerMode : undefined);
+    const storedAnswerMode =
+      course && !course.archived && isLessonAuthoringMode(course)
+        ? isStructured
+          ? undefined
+          : answerMode
+        : editing
+          ? card?.answerMode
+          : undefined;
     const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
     const backValue = isCloze || isStructured ? '' : back;
     const payload: ItemPayload | undefined = isNumeric
@@ -588,7 +608,14 @@ export function CardEditor() {
           }
         : undefined;
     if (editing && card) {
-      await updateCard(card.id, { type: storedType, front, back: backValue, tags, payload, answerMode: storedAnswerMode });
+      await updateCard(card.id, {
+        type: storedType,
+        front,
+        back: backValue,
+        tags,
+        payload,
+        answerMode: storedAnswerMode,
+      });
       // If this is a basic_reversed card, update its reverse partner too.
       if (card.type === 'basic_reversed' && card.reverseCardId) {
         await updateCard(card.reverseCardId, { front: backValue, back: front });
@@ -597,9 +624,9 @@ export function CardEditor() {
       setDraftDirty(false);
       flashSaved();
       // Let the confirmation flourish play briefly before leaving the page.
-      scheduleReturn(() => {
+      afterSaved(() => {
         notify('Card updated.', 'positive');
-        void navigate(backPath);
+        returnTo.goBack();
       });
       return;
     }
@@ -607,18 +634,49 @@ export function CardEditor() {
     const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
     if (lessonMode) {
       if (isBasicReversed) {
-        await createLessonBasicReversedPair(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
+        await createLessonBasicReversedPair(
+          courseId!,
+          lessonId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+        );
       } else if (reversed) {
-        await createLessonCardWithReverse(courseId!, lessonId!, front, backValue, tags, storedAnswerMode);
+        await createLessonCardWithReverse(
+          courseId!,
+          lessonId!,
+          front,
+          backValue,
+          tags,
+          storedAnswerMode,
+        );
       } else {
-        await createLessonCard(courseId!, lessonId!, storedType, front, backValue, tags, payload, storedAnswerMode);
+        await createLessonCard(
+          courseId!,
+          lessonId!,
+          storedType,
+          front,
+          backValue,
+          tags,
+          payload,
+          storedAnswerMode,
+        );
       }
     } else if (isBasicReversed) {
       await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
     } else if (reversed) {
       await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
     } else {
-      await createCourseCard(courseId!, storedType, front, backValue, tags, payload, storedAnswerMode);
+      await createCourseCard(
+        courseId!,
+        storedType,
+        front,
+        backValue,
+        tags,
+        payload,
+        storedAnswerMode,
+      );
     }
     clearDraft(draftKeyRef.current);
     setDraftDirty(false);
@@ -635,53 +693,46 @@ export function CardEditor() {
       flashSaved();
     } else {
       flashSaved();
-      scheduleReturn(() => {
+      afterSaved(() => {
         notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        void navigate(backPath);
+        returnTo.goBack();
       });
     }
   }
 
   return (
     <div
-      className={cn('mx-auto max-w-4xl px-6 pt-8 md:px-10', isTouchMode ? 'pb-24' : 'pb-10')}
+      className={cn(COURSE_PAGE_FRAME, 'pt-8', isTouchMode ? 'pb-40' : 'pb-10')}
       onKeyDown={(e) => {
+        if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)
+          return;
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
           // In new-card mode, Cmd/Ctrl+Enter saves and keeps going for fast capture.
           void handleSave(!editing);
+        } else if (e.key === 'Escape' && !e.defaultPrevented) {
+          // Nested popovers consume Escape first; otherwise it cancels, like the dialogs do.
+          returnTo.goBack();
         }
       }}
     >
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-          {course?.name}
-        </Link>
-        <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
-          {backLabel}
-        </Link>
-        <ChevronRight />
-        <span className="text-ink-soft">{editing ? 'Edit card' : 'New card'}</span>
-      </nav>
-
-      <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-          <div className="relative">
-            <Link
-              to={backPath}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-            >
-              <ChevronLeftIcon width={16} height={16} />
-              Back
-            </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-              {editing ? 'Edit card' : 'New card'}
-            </h1>
-          </div>
-        </header>
+      <div className="flex flex-col gap-6">
+        <motion.header {...riseIn(0, m)} className="flex flex-col gap-2">
+          <Link
+            {...returnTo.linkProps}
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm text-ink-soft transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          >
+            <ChevronLeftIcon width={14} height={14} />
+            {backLabel ?? 'Back'}
+          </Link>
+          <h1 className="font-display text-4xl font-semibold leading-[1.02] tracking-tight md:text-[44px]">
+            {editing ? 'Edit card' : 'New card'}
+          </h1>
+          {/* Announces a save to assistive technology; the sighted cue is the tick on the preview. */}
+          <span role="status" className="sr-only">
+            {showSaved ? 'Saved' : ''}
+          </span>
+        </motion.header>
 
         <AnimatePresence>
           {draftPrompt && (
@@ -690,375 +741,333 @@ export function CardEditor() {
               animate={{ opacity: 1 }}
               exit={m > 0 ? { opacity: 0 } : undefined}
               transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-              className="mb-5 flex items-center gap-3 rounded-xl border border-accent/20 bg-accent-soft px-4 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-2xl bg-accent-soft px-4 py-3"
             >
-              <span className="text-sm text-accent">
+              <span className="text-sm text-accent-ink">
                 A saved draft from a previous session was found.
               </span>
-              <div className="ml-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={discardDraft}
-                  className="rounded-lg px-3 py-1.5 text-sm text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-                >
+              <div className="ml-auto flex items-center gap-1">
+                <Button variant="ghost" size="sm" onClick={discardDraft}>
                   Discard
-                </button>
-                <button
-                  type="button"
-                  onClick={applyDraft}
-                  className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg transition-colors hover:bg-accent-hover"
-                >
+                </Button>
+                <Button variant="primary" size="sm" onClick={applyDraft}>
                   Restore draft
-                </button>
+                </Button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        <div className="flex flex-col gap-5">
-          {/* Duplicate warning */}
-          <AnimatePresence>
-            {duplicateWarning && (
-              <motion.div
-                initial={m > 0 ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                exit={m > 0 ? { opacity: 0 } : undefined}
-                transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
-                className="flex items-center gap-3 rounded-xl border border-warning/20 bg-warning/5 px-4 py-3"
-              >
-                <span className="text-sm text-warning-fg">
-                  A card with identical content already exists in this course.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setDuplicateWarning(null)}
-                  className="ml-auto rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
-                >
-                  Dismiss
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {!isStructured && (
-            <CardAnswerModeField
-              courseId={courseId}
-              lessonId={lessonId ?? card?.primaryLessonId ?? undefined}
-              value={answerMode}
-              onChange={(value) => modifyDraftField(setAnswerMode, value)}
-            />
-          )}
-
-          {/* Card type selector */}
-          <div>
-            <div className="mb-2 text-sm text-ink-soft">Card type</div>
-            <div className={cn('grid grid-cols-2 gap-2 md:grid-cols-3', isTouchMode && 'gap-3')}>
-              {[
-                { key: 'front_back' as const, label: 'Front / Back' },
-                { key: 'cloze' as const, label: 'Cloze deletion' },
-                { key: 'basic_reversed' as const, label: 'Basic (reversed)' },
-                { key: 'numeric' as const, label: 'Numeric answer' },
-                { key: 'working' as const, label: 'Working' },
-                { key: 'audio' as const, label: 'Audio' },
-              ].map((t) => (
-                <motion.button
-                  key={t.key}
-                  type="button"
-                  onClick={() => {
-                    setType(t.key);
-                    setDraftDirty(true);
-                  }}
-                  aria-pressed={type === t.key}
-                  whileTap={{ scale: 0.96 }}
-                  className={cn(
-                    'flex-1 rounded-lg border px-4 py-2.5 text-sm transition-colors',
-                    type === t.key
-                      ? 'border-accent bg-accent-soft text-accent'
-                      : 'border-line text-ink-soft hover:border-line-strong active:bg-ink/10',
-                    isTouchMode && 'min-h-14 text-base',
-                    !isTouchMode && 'min-h-11',
-                  )}
-                >
-                  {t.label}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-
-          {isCloze ? (
-            <>
-              <div
-                key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
-                className={cn(
-                  shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
-                )}
-              >
-                <MarkdownEditor
-                  key={`cloze-${formKey}`}
-                  inputRef={frontRef}
-                  autoFocus={!editing}
-                  label="Text (use the Cloze button to hide answers)"
-                  value={front}
-                  onChange={(value) => modifyDraftField(setFront, value)}
-                  minRows={8}
-                  allowCloze
-                  clozePreview={showBackCloze ? 'back' : 'front'}
-                  placeholder="The chemical symbol for water is {{c1::H2O}}."
-                  onError={(m) => notify(m, 'negative')}
-                  onTabForward={focusSaveButton}
-                />
-              </div>
-              <label className="flex items-center gap-2 text-sm text-ink-soft">
-                <input
-                  type="checkbox"
-                  checked={showBackCloze}
-                  onChange={(e) => setShowBackCloze(e.target.checked)}
-                  className="accent-accent"
-                />
-                Preview revealed answer
-              </label>
-              {!clozeValid && front.trim().length > 0 && (
-                <p className="text-sm text-negative">
-                  Add at least one cloze deletion using the Cloze button, e.g.{' '}
-                  <code className="font-mono">{'{{c1::answer}}'}</code>.
-                </p>
-              )}
-            </>
-          ) : isAudio ? (
-            <div
-              key={`audio-${formKey}`}
-              className={cn(shakeField === 'front' || shakeField === 'back' ? 'shake-field' : '')}
+        <AnimatePresence>
+          {duplicateWarning && (
+            <motion.div
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              exit={m > 0 ? { opacity: 0 } : undefined}
+              transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center gap-3 rounded-2xl bg-warning/10 px-4 py-3"
             >
-              <AudioCardEditor
-                front={front}
-                back={back}
-                onFrontChange={(value) => modifyDraftField(setFront, value)}
-                onBackChange={(value) => modifyDraftField(setBack, value)}
-                onError={(message) => notify(message, 'negative')}
+              <span className="text-sm text-warning-fg">
+                A card with identical content already exists in this course.
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
+                onClick={() => setDuplicateWarning(null)}
+              >
+                Dismiss
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div {...riseIn(1, m)}>
+          <CardTypePicker
+            value={type}
+            onChange={(next) => {
+              setFormDirection(
+                Math.sign(EDITOR_TYPE_ORDER.indexOf(next) - EDITOR_TYPE_ORDER.indexOf(type)),
+              );
+              setType(next);
+              setDraftDirty(true);
+            }}
+            onNewSequence={editing ? undefined : () => openOtherEditor('sequence')}
+            onNewOcclusion={editing ? undefined : () => openOtherEditor('occlusion')}
+            sources={
+              editing
+                ? undefined
+                : (revealed) =>
+                    lessonMode
+                      ? lesson &&
+                        lessonCards && (
+                          <CardSources
+                            courseId={courseId!}
+                            lessonId={lesson.id}
+                            targetName={lesson.name}
+                            lessonCards={lessonCards}
+                            schedulingUnitId={lessonDeck?.id}
+                            showLink={revealed}
+                            onAdded={() => leaveForm(returnTo.goBack)}
+                          />
+                        )
+                      : course && (
+                          <CardSources
+                            courseId={course.id}
+                            targetName={course.name}
+                            schedulingUnitId={bankDeck?.id}
+                            onAdded={() => leaveForm(returnTo.goBack)}
+                          />
+                        )
+            }
+          />
+        </motion.div>
+
+        <motion.div {...riseIn(2, m)} className="grid items-start gap-6 lg:grid-cols-5">
+          <section
+            aria-label="Card content"
+            className={`flex min-w-0 flex-col gap-5 rounded-3xl bg-surface p-5 md:p-7 lg:col-span-3 ${CARD_SURFACE}`}
+          >
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={formKind}
+                initial={m > 0 ? { opacity: 0, x: 16 * formDirection } : false}
+                animate={{ opacity: 1, x: 0 }}
+                transition={scaledSpring(m, 380, 38)}
+                className="flex flex-col gap-5"
+              >
+                {isCloze ? (
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
+                      className={cn(
+                        shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
+                      )}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`cloze-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Text (use the Cloze button to hide answers)"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={8}
+                        allowCloze
+                        clozePreview={previewSide === 'back' ? 'back' : 'front'}
+                        placeholder="The chemical symbol for water is {{c1::H2O}}."
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={focusSaveButton}
+                      />
+                    </div>
+                    {!clozeValid && front.trim().length > 0 && (
+                      <p className="text-sm text-negative">
+                        Add at least one cloze deletion using the Cloze button, e.g.{' '}
+                        <code className="font-mono">{'{{c1::answer}}'}</code>.
+                      </p>
+                    )}
+                  </>
+                ) : isAudio ? (
+                  <div
+                    key={`audio-${formKey}`}
+                    className={cn(
+                      shakeField === 'front' || shakeField === 'back' ? 'shake-field' : '',
+                    )}
+                  >
+                    <AudioCardEditor
+                      front={front}
+                      back={back}
+                      onFrontChange={(value) => modifyDraftField(setFront, value)}
+                      onBackChange={(value) => modifyDraftField(setBack, value)}
+                      onError={(message) => notify(message, 'negative')}
+                    />
+                  </div>
+                ) : isNumeric || isWorking ? (
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`structured-front-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Question"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={8}
+                        placeholder="Question or prompt"
+                        onError={(message) => notify(message, 'negative')}
+                      />
+                    </div>
+                    {isNumeric ? (
+                      <div
+                        key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
+                        className={cn(shakeField === 'answer' ? 'shake-field' : '')}
+                      >
+                        <NumericAnswerEditor
+                          value={numericAnswer}
+                          onChange={(value) => modifyDraftField(setNumericAnswer, value)}
+                          invalid={shakeField === 'answer'}
+                        />
+                      </div>
+                    ) : (
+                      <div
+                        key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
+                        className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
+                      >
+                        <MarkSchemeEditor
+                          value={workingSource}
+                          onChange={(value) => modifyDraftField(setWorkingSource, value)}
+                          fixtures={workingFixtures}
+                          onFixturesChange={(fixtures) => {
+                            setWorkingFixtures(fixtures);
+                            setDraftDirty(true);
+                          }}
+                          onDraftMarkScheme={() => void copyMarkSchemePrompt()}
+                          draftDisabled={!front.trim()}
+                          invalid={shakeField === 'scheme'}
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div
+                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        key={`front-${formKey}`}
+                        inputRef={frontRef}
+                        autoFocus={!editing}
+                        label="Front"
+                        value={front}
+                        onChange={(value) => modifyDraftField(setFront, value)}
+                        minRows={6}
+                        placeholder="Question or prompt"
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={() => backRef.current?.focus()}
+                      />
+                    </div>
+                    <div
+                      key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
+                      className={cn(shakeField === 'back' ? 'shake-field' : '')}
+                    >
+                      <MarkdownEditor
+                        compactToolbar
+                        hidePreview
+                        inputRef={backRef}
+                        label="Back"
+                        value={back}
+                        onChange={(value) => modifyDraftField(setBack, value)}
+                        minRows={6}
+                        placeholder="Answer"
+                        onError={(m) => notify(m, 'negative')}
+                        onTabForward={focusSaveButton}
+                        onTabBackward={() => frontRef.current?.focus()}
+                      />
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            <div>
+              <div className="mb-2 text-sm text-ink-soft">Tags</div>
+              <TagInput
+                tags={tags}
+                onChange={(nextTags) => {
+                  setTags(nextTags);
+                  setDraftDirty(true);
+                }}
+                suggestions={tagSuggestions}
+                placeholder="Add tags"
               />
             </div>
-          ) : isNumeric || isWorking ? (
-            <>
-              <div
-                key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                className={cn(shakeField === 'front' ? 'shake-field' : '')}
-              >
-                <MarkdownEditor
-                  key={`structured-front-${formKey}`}
-                  inputRef={frontRef}
-                  autoFocus={!editing}
-                  label="Question"
-                  value={front}
-                  onChange={(value) => modifyDraftField(setFront, value)}
-                  minRows={8}
-                  placeholder="Question or prompt. Markdown, maths and images are supported."
-                  onError={(message) => notify(message, 'negative')}
-                />
-              </div>
-              {isNumeric ? (
-                <div
-                  key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
-                  className={cn(shakeField === 'answer' ? 'shake-field' : '')}
-                >
-                  <NumericAnswerEditor
-                    value={numericAnswer}
-                    onChange={(value) => modifyDraftField(setNumericAnswer, value)}
-                    invalid={shakeField === 'answer'}
+
+            {(!isStructured || canReverse) && (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] items-end gap-4 border-t border-line pb-1 pt-5">
+                {!isStructured && (
+                  <CardAnswerModeField
+                    courseId={courseId}
+                    lessonId={lessonId ?? card?.primaryLessonId ?? undefined}
+                    value={answerMode}
+                    onChange={(value) => modifyDraftField(setAnswerMode, value)}
                   />
-                </div>
-              ) : (
-                <div
-                  key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
-                  className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
-                >
-                  <MarkSchemeEditor
-                    value={workingSource}
-                    onChange={(value) => modifyDraftField(setWorkingSource, value)}
-                    fixtures={workingFixtures}
-                    onFixturesChange={(fixtures) => {
-                      setWorkingFixtures(fixtures);
+                )}
+                {canReverse && (
+                  <motion.button
+                    type="button"
+                    onClick={() => {
+                      setAlsoReverse((v) => !v);
                       setDraftDirty(true);
                     }}
-                    onDraftMarkScheme={() => void copyMarkSchemePrompt()}
-                    draftDisabled={!front.trim()}
-                    invalid={shakeField === 'scheme'}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              <div
-                key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                className={cn(shakeField === 'front' ? 'shake-field' : '')}
-              >
-                <MarkdownEditor
-                  key={`front-${formKey}`}
-                  inputRef={frontRef}
-                  autoFocus={!editing}
-                  label="Front"
-                  value={front}
-                  onChange={(value) => modifyDraftField(setFront, value)}
-                  minRows={8}
-                  placeholder="Question or prompt. Markdown, maths and images are supported."
-                  onError={(m) => notify(m, 'negative')}
-                  onTabForward={() => backRef.current?.focus()}
-                />
+                    data-press=""
+                    whileTap={m > 0 ? { scale: 0.96 } : undefined}
+                    aria-pressed={alsoReverse}
+                    title="Also create a card testing the back side"
+                    className={cn(
+                      'inline-flex min-h-11 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink active:bg-ink/10',
+                      alsoReverse
+                        ? 'border-accent/30 bg-accent-soft text-accent-ink'
+                        : 'border-line bg-surface text-ink hover:border-ink/40',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors',
+                        alsoReverse ? 'bg-accent text-accent-fg' : 'bg-ink/15',
+                      )}
+                    >
+                      <AnimatePresence>
+                        {alsoReverse && (
+                          <motion.span
+                            initial={m > 0 ? { scale: 0, rotate: -25 } : false}
+                            animate={{ scale: 1, rotate: 0 }}
+                            exit={m > 0 ? { scale: 0 } : undefined}
+                            transition={scaledSpring(m, 600, 16)}
+                            className="inline-flex"
+                          >
+                            <CheckIcon width={11} height={11} />
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </span>
+                    Also create reverse
+                  </motion.button>
+                )}
               </div>
-              <div
-                key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
-                className={cn(shakeField === 'back' ? 'shake-field' : '')}
-              >
-                <MarkdownEditor
-                  inputRef={backRef}
-                  label="Back"
-                  value={back}
-                  onChange={(value) => modifyDraftField(setBack, value)}
-                  minRows={8}
-                  placeholder="Answer. Markdown, maths and images are supported."
-                  onError={(m) => notify(m, 'negative')}
-                  onTabForward={focusSaveButton}
-                  onTabBackward={() => frontRef.current?.focus()}
-                />
-              </div>
-            </>
-          )}
+            )}
+          </section>
 
-          {/* Tags */}
-          <div>
-            <div className="mb-2 text-sm text-ink-soft">Tags</div>
-            <TagInput
-              tags={tags}
-              onChange={(nextTags) => {
-                setTags(nextTags);
-                setDraftDirty(true);
-              }}
-              suggestions={tagSuggestions}
-              placeholder="Add tags to group cards for filtered study…"
+          <div className="flex min-w-0 flex-col gap-5 lg:sticky lg:top-6 lg:col-span-2">
+            <CardPreview
+              type={isStructured || isAudio ? 'front_back' : type}
+              front={front}
+              back={back}
+              side={previewSide}
+              onSideChange={setPreviewSide}
+              canFlip={!isStructured}
+              saved={showSaved}
+            />
+            <CardEditorActions
+              editing={editing}
+              canSave={canSave}
+              addedCount={addedCount}
+              isTouchMode={isTouchMode}
+              onCancel={returnTo.goBack}
+              onSave={(andAnother) => void handleSave(andAnother)}
+              saveAddRef={saveAddRef}
+              saveRef={saveRef}
             />
           </div>
-        </div>
-      </div>
-
-      {/* Sticky action bar — fades into the page rather than sitting on a hard white slab.
-          The wrapper ignores pointer events so the transparent fade never blocks the
-          content scrolling beneath it; the button row re-enables themotion.
-          In touch mode, the bar becomes a floating bottom-sheet with larger controls. */}
-      <div
-        role="region"
-        aria-label="Card editor actions"
-        className={cn(
-          'pointer-events-none z-30 mt-8',
-          isTouchMode
-            ? 'fixed inset-x-0 bottom-[calc(3.25rem+env(safe-area-inset-bottom))] rounded-t-3xl border-t border-line-strong bg-surface pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-5 pb-5 shadow-2xl shadow-black/15 sm:bottom-0 sm:pb-[calc(1.25rem+env(safe-area-inset-bottom))]'
-            : 'sticky bottom-0 -mx-6 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10',
-        )}
-      >
-        <div
-          className={cn(
-            'pointer-events-auto flex flex-wrap items-center gap-3',
-            isTouchMode && 'max-w-3xl mx-auto',
-          )}
-        >
-          {!editing && !isCloze && !isBasicReversed && !isStructured && !isAudio && (
-            <motion.button
-              type="button"
-              onClick={() => {
-                setAlsoReverse((v) => !v);
-                setDraftDirty(true);
-              }}
-              whileTap={{ scale: 0.96 }}
-              aria-pressed={alsoReverse}
-              title="Also create a card testing the back side"
-              className={cn(
-                'inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors',
-                alsoReverse
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
-            >
-              <span
-                className={cn(
-                  'grid h-4 w-4 place-items-center rounded-full border transition-colors',
-                  alsoReverse ? 'border-accent bg-accent text-accent-fg' : 'border-line-strong',
-                )}
-              >
-                <AnimatePresence>
-                  {alsoReverse && (
-                    <motion.span
-                      initial={m > 0 ? { scale: 0, rotate: -25 } : false}
-                      animate={{ scale: 1, rotate: 0 }}
-                      exit={m > 0 ? { scale: 0 } : undefined}
-                      transition={
-                        m > 0 ? { type: 'spring', stiffness: 600, damping: 16 } : { duration: 0 }
-                      }
-                      className="inline-flex"
-                    >
-                      <CheckIcon width={11} height={11} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </span>
-              Also create reverse
-            </motion.button>
-          )}
-          {!editing && addedCount > 0 && (
-            <span className="text-sm text-ink-faint">
-              {addedCount} card{addedCount === 1 ? '' : 's'} added this sitting
-            </span>
-          )}
-          <AnimatePresence>
-            {showSaved && (
-              <motion.span
-                initial={m > 0 ? { scale: 0.6, opacity: 0 } : false}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={m > 0 ? { scale: 0.6, opacity: 0 } : undefined}
-                transition={
-                  m > 0 ? { type: 'spring', stiffness: 500, damping: 20 } : { duration: 0 }
-                }
-                className="inline-flex items-center gap-1.5 rounded-lg bg-positive/15 px-3 py-1 text-sm font-medium text-positive"
-              >
-                <motion.span
-                  initial={m > 0 ? { scale: 0, rotate: -25 } : false}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={
-                    m > 0
-                      ? { delay: 0.06 * m, type: 'spring', stiffness: 600, damping: 16 }
-                      : { duration: 0 }
-                  }
-                  className="inline-flex"
-                >
-                  <CheckIcon width={16} height={16} />
-                </motion.span>
-                Saved
-              </motion.span>
-            )}
-          </AnimatePresence>
-          <div className="ml-auto flex items-center gap-3">
-            <Button variant="ghost" onClick={() => navigate(backPath)}>
-              {!editing && addedCount > 0 ? 'Done' : 'Cancel'}
-            </Button>
-            {!editing && (
-              <Button
-                ref={saveAddRef}
-                variant="secondary"
-                onClick={() => handleSave(true)}
-                disabled={!canSave}
-                title="Save and add another (Ctrl/Cmd+Enter)"
-              >
-                Save &amp; add another
-              </Button>
-            )}
-            <Button
-              ref={saveRef}
-              variant="primary"
-              onClick={() => handleSave(false)}
-              disabled={!canSave}
-            >
-              {editing ? 'Save changes' : 'Add card'}
-            </Button>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -1066,31 +1075,14 @@ export function CardEditor() {
 
 function CardEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-24" />
-      <SectionCard as="div" className="mb-8">
-        <Skeleton className="mb-1 h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </SectionCard>
-      <div className="flex flex-col gap-5">
-        <div>
-          <Skeleton className="mb-2 h-3 w-20" />
-          <div className="flex gap-2">
-            <Skeleton className="h-10 flex-1 rounded-lg" />
-            <Skeleton className="h-10 flex-1 rounded-lg" />
-          </div>
-        </div>
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <div>
-          <Skeleton className="mb-2 h-3 w-12" />
-          <Skeleton className="h-10 w-full rounded-lg" />
-        </div>
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+      <Skeleton className="mb-2 h-11 w-24 rounded-full bg-ink/10" />
+      <Skeleton className="mb-6 h-11 w-56 rounded-xl bg-ink/10" />
+      <Skeleton className="mb-6 h-11 w-96 max-w-full rounded-full bg-ink/[0.06]" />
+      <div className="grid gap-6 lg:grid-cols-5">
+        <Skeleton className="h-96 rounded-3xl bg-ink/[0.06] lg:col-span-3" />
+        <Skeleton className="h-72 rounded-3xl bg-ink/[0.06] lg:col-span-2" />
       </div>
     </div>
   );
-}
-
-function ChevronRight() {
-  return <span className="text-ink-faint/60">/</span>;
 }

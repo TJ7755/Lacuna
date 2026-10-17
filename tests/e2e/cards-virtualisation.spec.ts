@@ -33,18 +33,22 @@ test('bounds off-screen lesson rows and reveals later cards when scrolling', asy
   });
   await expect.poll(() => rows.count()).toBeLessThanOrEqual(22);
 
-  const main = page.locator('main[data-route-path$="/cards"]');
-  await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await expect(page.getByText(
+  const main = page.locator('main:has([data-route-content$="/cards"])');
+  const lastCard = page.getByText(
     'Recall item 0-1-99: explain the relationship between energy and motion.', { exact: true },
-  )).toBeVisible();
+  );
+  // Newly measured rows can change the estimated end of the list after a large jump.
+  await expect(async () => {
+    await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect(lastCard).toBeInViewport({ timeout: 500 });
+  }).toPass({ timeout: 5000 });
   await expect.poll(() => rows.count()).toBeLessThanOrEqual(22);
 
   await main.evaluate((element) => { element.scrollTop = 0; });
   await expect(page.getByText(
     'Recall item 0-0-0: explain the relationship between energy and motion.', { exact: true },
-  )).toBeVisible();
-  await page.getByPlaceholder('Search all cards…').fill('Recall item 0-1-99');
+  )).toBeInViewport();
+  await page.getByLabel('Search all cards').fill('Recall item 0-1-99');
   await expect(rows).toHaveCount(1);
   await rows.first().click();
   await expect(rows.first().getByRole('button', { name: /^Card details:/ })).toHaveAttribute('aria-expanded', 'true');

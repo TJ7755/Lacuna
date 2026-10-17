@@ -11,6 +11,16 @@ time limit, a due break, an assessment, a lesson or the end of the flow still pa
 
 ### Session lifecycle
 
+Card presentations use a `100dvh` column: the header and answer/grade controls reserve
+their space, and a content-sized card sits centred in the remaining area. Short desktop
+cards are approximately 300px tall; larger cards grow up to the available height. Both
+faces share the larger natural height, capped to the viewport, and the controls stay in
+place between differently sized cards. Images scale proportionally to fit;
+occlusion masks share the fitted image's coordinate box. Media cards use compact padding.
+Long text scrolls inside the card body rather than scrolling the page. Simple Learn uses
+the same layout. Review notifications sit above the study actions and their surfaces pass
+pointer input through; the existing Undo action remains interactive.
+
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
    filter narrows a single-deck session). Build a `SessionContext` (one objective
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.
@@ -18,6 +28,17 @@ time limit, a due break, an assessment, a lesson or the end of the flow still pa
    **report**.
 3. Otherwise **serve** cards one at a time until the captured work is cleared, the
    remaining objective is met, a configured limit is reached, or the user exits.
+
+The session preview prefetches study code without awaiting it. Session history reads use
+concurrent exact-card queries in one read transaction, preserving canonical/legacy merge
+precedence and event ordering. The current card never waits for later images. After its
+first paint, a speculative window warms at most two upcoming cards and six asset images;
+failed or cancelled preloads cannot stop study. Lookahead uses separate FSRS engines so
+scoring cannot change the active engine's fuzz seed, queue or review evidence.
+Warmed image URLs are available in the first render. Stored or already decoded natural
+image dimensions reserve the frame immediately; images do not gate the incoming card's
+entrance. Dimension metadata expires with its object URL. Background decoding can recover
+missing dimensions for older imports without updating the original asset row.
 
 The top bar shows **session completion**, starting at zero for outstanding work and
 reaching 100% when that work is finished. A captured card counts as cleared once it
@@ -52,6 +73,7 @@ learner may highlight source text and attach optional free-text annotations befo
 the card loop. Highlights and annotations persist on this device but are excluded from every
 portability format. The card loop then contains only lesson members without an exposure for
 that lesson, including both primary and explicitly linked cards.
+A lesson with cards but no notes starts directly on its first card.
 If the lesson has no cards, **Continue** records `LessonCompletion` and advances the path.
 Lesson authoring should favour fewer cards per pass and more lesson units where necessary;
 the aim is lower working-memory load, not less course content.
@@ -153,7 +175,7 @@ Authors choose **Reveal answers** or **Type answers** on a lesson's card section
 editor/creator and card-list selection controls offer **Use lesson setting**, **Reveal
 answer** and **Type answer**. `Card.answerMode` is an optional override; clearing it
 restores inheritance. Unconfigured lessons and unassigned cards default to reveal.
-These controls are available only in Author mode on editable, active courses.
+These controls are available only in Edit mode on editable, active courses.
 
 Lesson sessions use the active lesson's default (including linked cards); course-wide
 and daily reviews use the card's primary lesson. An explicit card override wins in every
@@ -331,15 +353,15 @@ criteria. Fixed Questions report first-presentation and repeat performance separ
 families report novel and repeated fingerprints separately. Shown, abandoned, undone,
 checker-withheld and unscored Attempts are explicit exclusions rather than fabricated failures.
 
-### Study mode (`src/state/studyMode.ts`)
+### View mode (`src/state/studyMode.ts`)
 
 Two modes reach Learn mode (ordinary sessions default to **FSRS**; lessons default to
 Simple mode). Course settings expose **Learn first**, enabled by default. Turning it off admits new cards from unlocked lessons directly into FSRS, with daily new-card pacing and no fabricated exposure or review records:
 
 - **FSRS (default):** the full spaced-repetition scheduler with all memory-state tracking,
   review logging, and objective-driven ordering.
-- **Anytime Simple Learn:** the Study sheet has a collapsed Simple Learn option for the whole
-  course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
+- **Anytime Simple Learn:** the Study sheet has a collapsed **Practise until all correct** option
+  (Simple Learn) for the whole course or a chosen lesson; lesson pages preselect their own lesson. Explicit `?mode=simple`
   sessions include all cards in that scope regardless of introduction, due date, lesson lock,
   readiness or daily limits. Suspended and buried cards remain excluded; archived courses
   remain read-only. These optional passes record FSRS reviews but do not write lesson exposures,
@@ -371,15 +393,17 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   method (`recitationFlow.ts`). The sequence is split into chunks: `Sequence.recitationChunkSize`
   mine lines (2-8) when set, otherwise its stanzas (`SequenceItem.chunkIndex`), otherwise 4.
   Each new line is presented once, then every unlocked line of the chunk is recalled with the
-  source hidden. Other speakers' lines stay visible as cues. Once a chunk is complete, all
+  source hidden. Other speakers' lines stay visible as cues; the cues leading into a mine line
+  belong to its chunk and are presented with it, never with the line before. The focused answer
+  is kept in view as lines appear and reflow. Once a chunk is complete, all
   chunks so far are recited once from the top; an error there returns to the chunk holding
   the first error, fully unlocked. A failed check retries the same lines without unlocking more.
 - Recall is typed by default (one field per line, Enter moves on), or aloud when Settings'
   **Recite poems and scripts aloud** is on (`lacuna.recitationInput`). The view is one card
   showing only the lines and the action; the sequence name and verse/line position remain
-  available to screen readers. **Check** reveals the source beside the typed answer, without
-  automatic comparison or punctuation highlighting. Typed and aloud recall are both marked
-  by hand: tap any missed line, then confirm **All correct** or **Try again**. A matching
+  available to screen readers. **Check** reveals the source; the typed answer appears beneath
+  a line only when it differs beyond case and punctuation, with no highlighting. Typed and aloud recall are both marked
+  by hand: tap any missed line (or press its number), then confirm **All correct** or **Try again**. A matching
   answer never skips the marking step. The learner's mark is the only grade.
 - The Simple-mode progress bar holds each sequence's lines together in poem order, and the
   pips outlined in accent are the lines being presented or recited. Each confirmed manual
@@ -397,9 +421,10 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 
 ### The invisible timer & grading (`src/fsrs/grading.ts`, silent mode)
 
-- The response timer **starts on reveal** ("Show answer") and **stops when the answer
-  is graded**; it runs continuously and never pauses. (Opening the in-session editor
-  rebases the timer so editing time is excluded.)
+- The response timer starts when the question is presented and is captured on reveal
+  ("Show answer"). Inspecting the answer, dragging to grade and the departure animation
+  do not change that captured time. Machine-marked cards capture time at submission.
+  Opening the in-session editor rebases the timer so editing time is excluded.
 - "No" -> grade **1 (Again)**. "Yes" maps to Easy/Good/Hard by speed:
   - **Calibration** (`totalCorrectReviews < 20`): `< 3 s -> Easy(4)`,
     `> 8 s -> Hard(2)`, else `Good(3)`.
@@ -447,6 +472,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - **Flag** (toggle), **Bury until tomorrow** (`buriedUntil = startOfDay(now) + 1 day`),
   **Suspend** — all drop the card from the live pool (and the denominator) and move
   on.
+  The desktop and touch actions describe Flag as “Find it later; its schedule is unchanged.”,
+  Bury as “Back tomorrow.” and Suspend as “Out of study until you resume it.”, with each
+  helper exposed through `aria-describedby`.
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
   events list, and deletes the written `SessionHistory` row. The restored question clears
@@ -479,15 +507,34 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - The **card-actions menu** is also a bottom sheet in touch mode (a dropdown on
   keyboard). Both are wired to `useFocusTrap(true)`.
 - The **flip card accepts swipes**: a left swipe (past 60px) commits "No"; a right
-  swipe commits "Yes". The first successful swipe hides the persistent swipe hints
-  via a `localStorage` flag (`lacuna.learnHints`).
+  swipe commits "Yes". A flick also commits after 12px when release velocity exceeds
+  650px/s in that direction. Horizontal drags follow the pointer directly, with rotation
+  derived from the offset; vertical gestures retain page scrolling. Cancelled drags spring
+  back, and committed drags carry their release velocity into the same departure used by
+  buttons and keyboard. Translation, rotation and fading share one position-driven motion,
+  starting before persistence supplies the next card. An exit from rest accelerates over a
+  330ms flight to just beyond the viewport; flicks inherit capped release velocity with
+  flights bounded to 220–280ms, including slow releases. The incoming card settles over
+  280ms with an ease-out and no bounce, overlapping the departure while persistence
+  supplies the next card. Both follow the motion-speed setting; reduced motion skips the
+  departure.
+  The first successful swipe hides the persistent swipe
+  hints via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study
   mode (amber for assessment revision, green for simple, red for leech filter, etc.), and a label
   pill (Question / Answer / Fill the gap / Type the answer) animates in with the card
   face to orient the user.
 - **Mode-aware session progress:** Simple Learn uses a segmented strip because its stopping rule is
   rigid: each card is green after a correct result, red after an incorrect result, accent-outlined
-  while current, and muted while unseen. FSRS, assessment-revision and filtered sessions instead show the live
+  while current, and muted while unseen. Sessions that fit retain a full-width strip. Larger sessions
+  show a width-aware window capped at 17 pills. Strips at least 360px wide use 10px-high pills and
+  6px gaps; narrower strips retain 8px-high pills, 4px gaps and a 16px minimum width. Short sessions
+  fill the strip only when their pills fit at that size. The header height is unchanged. At roughly
+  80% of the window, the whole row glides left to put the current card near 20%, stopping at the
+  final full window.
+  Subtle edge masks indicate hidden cards. Undo, retries and other index changes select the same
+  window for that index; reduced motion and viewport resizing snap to the correct position.
+  FSRS, assessment-revision and filtered sessions instead show the live
   objective value from `sessionProgress`, labelled as predicted score or secured progress, so the
   header and scheduler cannot disagree.
 - **Continuous practice chrome:** Yes and No replace only the card surface; the Learn header and
@@ -552,7 +599,7 @@ badge; otherwise "Keep studying" is offered.
 
 `Space`/`Up` reveal; after reveal `Y`/`Right` = Yes, `N`/`Left` = No; `E` edit,
 `U` undo, `F` focus mode, `?` help (also accessible from the 3-dot menu as
-"Keyboard shortcuts"), `Esc` closes overlays/drawer.
+"Keyboard shortcuts"), `Esc` closes overlays. The session has no navigation drawer; **Exit** returns to app navigation.
 
 ### Exam date
 
@@ -562,5 +609,6 @@ date-times. The date and time are editable in Course Settings' scheduling fields
 additional checkpoints live in its Assessments section. The legacy `Deck.examDatePromptDismissed`
 field remains only for migration compatibility; the current Course UI has no `ExamDateBanner`.
 
+Optional Simple Learn remains available in the Study sheet when the course page provides the scheduled alternatives in its Other ways menu.
 
 [Specification index](../SPEC.md)

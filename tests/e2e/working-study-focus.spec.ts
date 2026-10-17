@@ -1,0 +1,37 @@
+import { expect, test } from '@playwright/test';
+import { chooseScheduledStudy, createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+
+test('Working study focuses the answer on entry and the next card', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Working focus');
+  const coursePath = new URL(page.url()).hash;
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
+  await page.getByRole('button', { name: 'More card types', exact: true }).click();
+  await page.getByRole('button', { name: 'Working', exact: true }).click();
+  const prompt = page.getByRole('textbox', { name: 'Question', exact: true });
+  const scheme = page.getByRole('textbox', { name: 'Scheme source', exact: true });
+  await prompt.fill('Solve 2x = 8.');
+  await scheme.fill('[1] substitution :: 2x = 8\n[1] answer :: equals :: 4');
+  await page.getByRole('button', { name: 'Save & add another' }).click();
+  await expect(prompt).toHaveValue('');
+  await prompt.fill('Solve 2x = 10.');
+  await scheme.fill('[1] substitution :: 2x = 10\n[1] answer :: equals :: 5');
+  await page.getByRole('button', { name: 'Add card', exact: true }).click();
+  await expect(page).not.toHaveURL(/\/cards\/new$/);
+  await page.goto(`/${coursePath}`);
+  await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await chooseScheduledStudy(page);
+  const working = page.getByRole('textbox', { name: 'Your working', exact: true });
+  await expect(working).toBeFocused();
+  const card = page.locator('[data-study-card-id]');
+  const first = await card.getAttribute('data-study-card-id');
+  await page.keyboard.insertText('2x = 8\n4');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Check working', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(card).not.toHaveAttribute('data-study-card-id', first!);
+  await expect(working).toHaveValue('');
+  await expect(working).toBeFocused();
+});

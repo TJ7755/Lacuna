@@ -1,8 +1,11 @@
+import { PillToggleGroup } from '../cards/PillToggleGroup';
+import { MeasuredHeight } from '../ui/MeasuredHeight';
+import { StepSwap } from '../ui/StepSwap';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useState } from 'react';
 import type { NumericAnswerSpec } from '../../db/types';
 import type { BatchCandidate } from '../../items/batchStaging';
 import { Button } from '../ui/Button';
-import { cn } from '../ui/cn';
 import { MarkSchemeEditor } from './MarkSchemeEditor';
 import { NumericAnswerEditor } from './NumericAnswerEditor';
 import { SectionCard } from '../ui/SectionCard';
@@ -77,78 +80,73 @@ export function StagedItemEditor({ candidate, onApply, onCancel }: StagedItemEdi
   return (
     <div className="mt-4 space-y-5 border-t border-line pt-5">
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_15rem]">
-        <label className="flex flex-col gap-2 text-sm text-ink-soft">
+        <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
           Question
           <textarea
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             rows={4}
-            className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className={`${inputFrameClassName} resize-y text-sm leading-6`}
           />
         </label>
         <fieldset>
-          <legend className="mb-2 text-sm text-ink-soft">Item type</legend>
-          <div className="grid grid-cols-2 gap-1 rounded-lg bg-ink/5 p-1">
-            {(['numeric', 'working'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={kind === option}
-                onClick={() => setKind(option)}
-                className={cn(
-                  'min-h-11 rounded-md px-3 text-sm capitalize transition-colors',
-                  kind === option
-                    ? 'bg-surface text-ink shadow-sm'
-                    : 'text-ink-soft hover:text-ink',
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          <legend className={`${fieldLabelClassName} mb-2`}>Item type</legend>
+          <PillToggleGroup
+            label="Item type"
+            value={kind}
+            onChange={setKind}
+            options={[
+              { value: 'numeric', label: 'numeric' },
+              { value: 'working', label: 'working' },
+            ]}
+          />
         </fieldset>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-ink-soft">
+        <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
           Worked explanation
           <textarea
             value={explanation}
             onChange={(event) => setExplanation(event.target.value)}
             rows={4}
-            className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className={`${inputFrameClassName} resize-y text-sm leading-6`}
           />
         </label>
         <div className="space-y-4">
-          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
             Primary target Concept
             <input
               value={targetConcept}
               onChange={(event) => setTargetConcept(event.target.value)}
-              className="min-h-11 rounded-xl border border-line-strong bg-paper px-3 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className={`${inputFrameClassName} min-h-11`}
             />
           </label>
-          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
             Prerequisite Concepts
             <textarea
               value={prerequisiteConcepts}
               onChange={(event) => setPrerequisiteConcepts(event.target.value)}
               rows={3}
               placeholder="One Concept per line"
-              className="resize-y rounded-xl border border-line-strong bg-paper px-3 py-2 text-ink outline-none placeholder:text-ink-faint focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className={`${inputFrameClassName} resize-y placeholder:text-ink-faint`}
             />
           </label>
         </div>
       </div>
 
-      {kind === 'numeric' ? (
-        <NumericAnswerEditor value={answer} onChange={setAnswer} />
-      ) : (
-        <>
-          <MarkSchemeEditor value={scheme} onChange={setScheme} />
-          <FixtureEditor fixtures={fixtures} onChange={setFixtures} />
-        </>
-      )}
+      <MeasuredHeight>
+        <StepSwap stepKey={kind}>
+          {kind === 'numeric' ? (
+            <NumericAnswerEditor value={answer} onChange={setAnswer} />
+          ) : (
+            <>
+              <MarkSchemeEditor value={scheme} onChange={setScheme} />
+              <FixtureEditor fixtures={fixtures} onChange={setFixtures} />
+            </>
+          )}
+        </StepSwap>
+      </MeasuredHeight>
 
       <div className="flex justify-end gap-2 border-t border-line pt-4">
         <Button size="sm" variant="ghost" onClick={onCancel}>
@@ -185,18 +183,12 @@ function FixtureEditor({
   };
 
   return (
-    <SectionCard compact
-      className="md:p-6"
-      aria-labelledby="staged-fixtures-heading"
-    >
+    <SectionCard compact className="md:p-6" aria-labelledby="staged-fixtures-heading">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="staged-fixtures-heading" className="font-display text-xl text-ink">
             Validation fixtures
           </h2>
-          <p className="mt-1 text-sm text-ink-faint">
-            Sample answers that guard the mark scheme against regressions.
-          </p>
         </div>
         <Button
           size="sm"
@@ -214,19 +206,19 @@ function FixtureEditor({
       ) : (
         <div className="mt-4 space-y-3">
           {fixtures.map((fixture, index) => (
-            <div key={fixture.id} className="rounded-xl border border-line bg-surface-raised p-4">
+            <div key={fixture.id} className="rounded-2xl bg-ink/[0.04] p-4">
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_9rem]">
-                <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                   Sample answer {index + 1}
                   <textarea
                     value={fixture.studentAnswer}
                     onChange={(event) => update(index, { studentAnswer: event.target.value })}
                     rows={4}
                     placeholder="One working step per line"
-                    className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    className={`${inputFrameClassName} resize-y font-mono text-sm leading-6`}
                   />
                 </label>
-                <label className="flex flex-col gap-2 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
                   Expected marks
                   <input
                     type="number"
@@ -239,18 +231,18 @@ function FixtureEditor({
                           event.target.value === '' ? Number.NaN : Number(event.target.value),
                       })
                     }
-                    className="min-h-11 rounded-xl border border-line-strong bg-paper px-3 font-mono text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    className={`${inputFrameClassName} min-h-11 font-mono`}
                   />
                 </label>
               </div>
               <div className="mt-3 flex flex-wrap items-end gap-3">
-                <label className="min-w-0 flex-1 text-sm text-ink-soft">
+                <label className={`${fieldLabelClassName} min-w-0 flex-1`}>
                   <span className="sr-only">Fixture {index + 1} note</span>
                   <input
                     value={fixture.note}
                     onChange={(event) => update(index, { note: event.target.value })}
                     placeholder="Optional note"
-                    className="min-h-11 w-full rounded-xl border border-line-strong bg-paper px-3 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    className={`${inputFrameClassName} min-h-11 w-full`}
                   />
                 </label>
                 <Button

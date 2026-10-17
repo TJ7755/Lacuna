@@ -1,0 +1,3 @@
+- The last squared buttons are pills (dialog and shortcut-sheet close buttons, card row and sequence item actions, date picker controls, import, occlusion, mark scheme, assistant and error-screen buttons), and list rows use the menu's rounded row. Today's course menu uses the shared menu surface.
+- A new `hit-target` utility gives compact controls a centred 44 pixel target without changing their look; the toast Dismiss, assistant Send, date picker Now and Done, and the small import, assessment, practice and results toggles use it.
+- `src/designRules.test.ts` now fails on any button or link with a squared `rounded-lg` corner outside the landing pages.

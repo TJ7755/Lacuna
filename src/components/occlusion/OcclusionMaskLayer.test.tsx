@@ -8,13 +8,36 @@ const REGIONS: OcclusionMaskRegion[] = [
 ];
 
 describe('OcclusionMaskLayer', () => {
+  it('names each interactive region and identifies the selected region', () => {
+    render(
+      <OcclusionMaskLayer
+        assetUrl="blob:diagram"
+        alt="Plant cell"
+        regions={[{ ...REGIONS[0], visual: 'selected' }, REGIONS[1]]}
+        onRegionClick={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Region 1' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Region 2' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
   it('conceals labels with opaque theme fills and distinguishes the active target', () => {
     const { container } = render(
       <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} />,
     );
     const [target, masked] = container.querySelectorAll('.absolute');
     expect(target).toHaveClass('bg-accent-soft', 'border-accent');
-    expect(masked).toHaveClass('bg-paper', 'border-line-strong', 'dark:bg-[hsl(38_33%_96%)]', 'dark:border-ink-soft');
+    expect(masked).toHaveClass(
+      'bg-paper',
+      'border-line-strong',
+      'dark:bg-[hsl(38_33%_96%)]',
+      'dark:border-ink-soft',
+    );
     expect(masked).not.toHaveClass('dark:bg-ink');
     for (const overlay of [target, masked]) {
       // Alpha fills can leak the printed answer, especially on high-contrast diagrams.
@@ -52,8 +75,14 @@ describe('OcclusionMaskLayer', () => {
       'src',
       'blob:diagram',
     );
-    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute('loading', 'lazy');
-    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute('decoding', 'async');
+    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute(
+      'loading',
+      'lazy',
+    );
+    expect(screen.getByRole('img', { name: 'Labelled plant cell' })).toHaveAttribute(
+      'decoding',
+      'async',
+    );
   });
 
   it('shows a "?" mark on ringed target regions only', () => {
@@ -106,7 +135,12 @@ describe('OcclusionMaskLayer', () => {
 
   it('shows a visible focus ring on the interactive (authoring) path only', () => {
     const { container: interactiveContainer } = render(
-      <OcclusionMaskLayer assetUrl="blob:diagram" alt="Diagram" regions={REGIONS} onRegionClick={vi.fn()} />,
+      <OcclusionMaskLayer
+        assetUrl="blob:diagram"
+        alt="Diagram"
+        regions={REGIONS}
+        onRegionClick={vi.fn()}
+      />,
     );
     const interactiveOverlay = interactiveContainer.querySelector('.absolute') as HTMLElement;
     expect(interactiveOverlay.className).toContain('focus-visible:ring-2');

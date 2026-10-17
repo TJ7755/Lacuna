@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import 'highlight.js/styles/github-dark.css';
+@import './components/markdown/syntax.css';
 
 /* Instrument Sans is shared with the landing page and available offline. */
 @font-face {
@@ -10,8 +10,30 @@
   font-display: swap;
 }
 
+/* Volt's display face is bundled alongside Instrument Sans for offline use. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk-Variable.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Code and tabular figures use JetBrains Mono, also bundled so no font request leaves the app. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Short windows driven by a mouse or trackpad: navigation tightens so the whole
+   sidebar fits without scrolling. Touch screens keep full-size targets. */
+@custom-variant short (@media (max-height: 760px) and (pointer: fine));
 
 /* Native keyboard handling and top-layer placement, with Lacuna's colours.
    Browsers without customisable selects retain their platform picker. */
@@ -50,7 +72,7 @@
   .simple-learn-select option:hover,
   .simple-learn-select option:focus-visible {
     background: hsl(var(--ink) / 0.07);
-    outline: 2px solid hsl(var(--accent));
+    outline: 2px solid hsl(var(--accent-ink));
     outline-offset: -2px;
   }
 
@@ -60,77 +82,97 @@
 }
 
 /*
- * "Quiet laboratory" palette. Light = warm off-white paper; dark = near-black charcoal.
- * A single warm amber accent carries every interactive and success state.
+ * Volt: pale green paper in light mode; near-black ground in dark mode.
+ * `--chrome` is the slightly darker ground behind the sidebar.
+ * Volt neon foreground is retained; accent-ink keeps text and fine strokes legible in both themes.
  * Defined as raw custom properties so they can switch with the `.dark` class, then
  * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
  */
 :root {
-  --paper: 38 33% 96%;
-  --surface: 40 30% 99%;
-  --surface-raised: 0 0% 100%;
-  --ink: 30 12% 14%;
-  --ink-soft: 30 8% 38%;
-  --ink-faint: 30 6% 42%;
-  --line: 34 14% 86%;
-  --line-strong: 34 12% 78%;
-  --accent: 32 90% 48%;
-  --accent-soft: 32 85% 92%;
-  --accent-ink: 28 60% 24%;
-  --accent-fg: 28 60% 14%;
-  --positive: 150 45% 38%;
-  --negative: 6 62% 48%;
-  --warning: 38 92% 50%;
-  --warning-fg: 32 70% 24%;
-  --grain-opacity: 0.025;
+  /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
+     the app's theme rather than the system's, which can differ when the theme is chosen. */
+  color-scheme: light;
+  --paper: 82 30% 94%;
+  --surface: 75 45% 99%;
+  --surface-raised: 75 45% 99%;
+  --chrome: 80 40% 87%;
+  --ink: 92 30% 10%;
+  --ink-soft: 95 17% 24%;
+  --ink-faint: 95 15% 29%;
+  --line: 80 20% 78%;
+  --line-strong: 80 18% 68%;
+  --accent: 73 100% 59%;
+  --accent-soft: 75 85% 82%;
+  --accent-ink: 90 52% 19%;
+  --accent-fg: 92 40% 10%;
+  --positive: 148 75% 25%;
+  --negative: 3 70% 40%;
+  --warning: 28 90% 36%;
+  --warning-fg: 28 80% 30%;
+  /* Categorical chart series after the accent, distinct in hue and readable on the surface. */
+  --series-1: 205 100% 35%;
+  --series-2: 18 85% 45%;
+  --series-3: 290 45% 45%;
+  --series-4: 180 70% 28%;
+  --series-5: 38 95% 38%;
+  --grain-opacity: 0;
+  --card-border: 1px solid hsl(var(--line));
 }
 
 .dark {
-  --paper: 30 8% 7%;
-  --surface: 30 7% 9%;
-  --surface-raised: 30 6% 12%;
-  --ink: 36 20% 92%;
-  --ink-soft: 34 10% 66%;
-  --ink-faint: 34 8% 60%;
-  --line: 30 6% 18%;
-  --line-strong: 30 6% 26%;
-  --accent: 34 92% 56%;
-  --accent-soft: 32 40% 18%;
-  --accent-ink: 36 90% 70%;
-  --positive: 150 40% 55%;
-  --negative: 6 70% 62%;
-  --warning: 38 92% 56%;
-  --warning-fg: 36 90% 70%;
-  --grain-opacity: 0.04;
+  color-scheme: dark;
+  --paper: 90 10% 4%;
+  --surface: 90 22% 12%;
+  --surface-raised: 90 20% 16%;
+  --chrome: 90 10% 3%;
+  --ink: 81 75% 93%;
+  --ink-soft: 80 18% 80%;
+  --ink-faint: 80 15% 71%;
+  --line: 90 20% 22%;
+  --line-strong: 90 17% 30%;
+  --accent: 73 100% 62%;
+  --accent-soft: 80 48% 18%;
+  --accent-ink: 73 100% 76%;
+  --accent-fg: 92 40% 10%;
+  --positive: 155 65% 67%;
+  --negative: 7 100% 75%;
+  --warning: 35 100% 71%;
+  --warning-fg: 35 100% 76%;
+  --series-1: 205 85% 70%;
+  --series-2: 18 95% 68%;
+  --series-3: 290 60% 75%;
+  --series-4: 175 60% 55%;
+  --series-5: 42 95% 62%;
+  --grain-opacity: 0;
 }
 
 /*
- * Selectable accent colours. The base palette above is amber; choosing another
- * accent sets `data-accent` on the root and overrides just the accent triad.
- * Each accent carries a light variant (on :root) and a dark variant (on .dark),
- * following the same lightness/saturation recipe as the original amber so every
- * accent reads correctly in both themes.
+ * Volt is the base accent. Named alternatives override only the accent tokens,
+ * with separate light and dark recipes.
  */
-:root[data-accent='red']    { --accent: 6 90% 48%;   --accent-soft: 6 85% 92%;   --accent-ink: 6 60% 24%;   --accent-fg: 6 60% 14%; }
-:root[data-accent='rose']   { --accent: 340 90% 48%; --accent-soft: 340 85% 93%; --accent-ink: 340 60% 26%; --accent-fg: 340 60% 14%; }
-:root[data-accent='pink']   { --accent: 320 80% 50%; --accent-soft: 320 80% 93%; --accent-ink: 320 55% 28%; --accent-fg: 320 55% 14%; }
-:root[data-accent='violet'] { --accent: 265 80% 55%; --accent-soft: 265 75% 94%; --accent-ink: 265 55% 32%; --accent-fg: 265 55% 16%; }
-:root[data-accent='blue']   { --accent: 217 90% 52%; --accent-soft: 213 85% 93%; --accent-ink: 217 60% 30%; --accent-fg: 217 60% 14%; }
-:root[data-accent='teal']   { --accent: 186 90% 36%; --accent-soft: 186 70% 90%; --accent-ink: 186 70% 20%; --accent-fg: 186 70% 12%; }
-:root[data-accent='green']  { --accent: 150 70% 36%; --accent-soft: 150 60% 90%; --accent-ink: 150 60% 20%; --accent-fg: 150 60% 12%; }
+:root[data-accent='amber']  { --accent: 32 90% 48%; --accent-soft: 32 85% 92%; --accent-ink: 28 60% 24%; --accent-fg: 28 60% 14%; }
+:root[data-accent='red']    { --accent: 6 90% 48%;   --accent-soft: 6 85% 92%;   --accent-ink: 6 60% 24%;   --accent-fg: 0 0% 0%; }
+:root[data-accent='rose']   { --accent: 340 90% 48%; --accent-soft: 340 85% 93%; --accent-ink: 340 60% 26%; --accent-fg: 0 0% 0%; }
+:root[data-accent='pink']   { --accent: 320 80% 50%; --accent-soft: 320 80% 93%; --accent-ink: 320 55% 28%; --accent-fg: 0 0% 0%; }
+:root[data-accent='violet'] { --accent: 265 80% 55%; --accent-soft: 265 75% 94%; --accent-ink: 265 55% 32%; --accent-fg: 0 0% 100%; }
+:root[data-accent='blue']   { --accent: 217 90% 52%; --accent-soft: 213 85% 93%; --accent-ink: 217 60% 30%; --accent-fg: 0 0% 100%; }
+:root[data-accent='teal']   { --accent: 186 90% 36%; --accent-soft: 186 70% 90%; --accent-ink: 186 70% 20%; --accent-fg: 0 0% 5%; }
+:root[data-accent='green']  { --accent: 150 70% 36%; --accent-soft: 150 60% 90%; --accent-ink: 150 60% 20%; --accent-fg: 0 0% 5%; }
 
-.dark[data-accent='red']    { --accent: 6 85% 60%;   --accent-soft: 6 40% 18%;   --accent-ink: 6 85% 72%; }
-.dark[data-accent='rose']   { --accent: 340 85% 62%; --accent-soft: 340 35% 18%; --accent-ink: 340 85% 76%; }
-.dark[data-accent='pink']   { --accent: 320 80% 64%; --accent-soft: 320 35% 18%; --accent-ink: 320 80% 78%; }
-.dark[data-accent='violet'] { --accent: 265 85% 70%; --accent-soft: 265 35% 22%; --accent-ink: 265 85% 80%; }
-.dark[data-accent='blue']   { --accent: 213 90% 64%; --accent-soft: 215 40% 20%; --accent-ink: 213 90% 76%; }
-.dark[data-accent='teal']   { --accent: 186 80% 48%; --accent-soft: 186 40% 16%; --accent-ink: 186 80% 66%; }
-.dark[data-accent='green']  { --accent: 150 65% 50%; --accent-soft: 150 35% 15%; --accent-ink: 150 70% 66%; }
+.dark[data-accent='amber']  { --accent: 34 92% 56%; --accent-soft: 32 40% 18%; --accent-ink: 36 90% 70%; --accent-fg: 28 60% 14%; }
+.dark[data-accent='red']    { --accent: 6 85% 60%;   --accent-soft: 6 40% 18%;   --accent-ink: 6 85% 72%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='rose']   { --accent: 340 85% 62%; --accent-soft: 340 35% 18%; --accent-ink: 340 85% 76%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='pink']   { --accent: 320 80% 64%; --accent-soft: 320 35% 18%; --accent-ink: 320 80% 78%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='violet'] { --accent: 265 85% 70%; --accent-soft: 265 35% 22%; --accent-ink: 265 85% 80%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='blue']   { --accent: 213 90% 64%; --accent-soft: 215 40% 20%; --accent-ink: 213 90% 76%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='teal']   { --accent: 186 80% 48%; --accent-soft: 186 40% 16%; --accent-ink: 186 80% 66%; --accent-fg: 92 40% 10%; }
+.dark[data-accent='green']  { --accent: 150 65% 50%; --accent-soft: 150 35% 15%; --accent-ink: 150 70% 66%; --accent-fg: 92 40% 10%; }
 
 @theme inline {
   --color-paper: hsl(var(--paper));
   --color-surface: hsl(var(--surface));
   --color-surface-raised: hsl(var(--surface-raised));
+  --color-chrome: hsl(var(--chrome));
   --color-ink: hsl(var(--ink));
   --color-ink-soft: hsl(var(--ink-soft));
   --color-ink-faint: hsl(var(--ink-faint));
@@ -145,10 +187,20 @@
   --color-warning: hsl(var(--warning));
   --color-warning-fg: hsl(var(--warning-fg));
 
-  --font-brand: 'Fraunces', 'Georgia', serif;
-  --font-display: 'Instrument Sans', sans-serif;
-  --font-body: 'Instrument Sans', sans-serif;
+  --font-brand: 'Space Grotesk', 'Instrument Sans', sans-serif;
+  --font-display: 'Space Grotesk', 'Instrument Sans', sans-serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Cards and panels share one flat boundary across every accent palette. */
+@utility card-surface {
+  border: var(--card-border);
+}
+
+/* A control that relies on its boundary needs non-text contrast, not a quiet divider. */
+@utility card-surface-control {
+  --card-border: 1px solid hsl(var(--ink-faint));
 }
 
 @layer base {
@@ -210,8 +262,8 @@
 
   h1, h2, h3, h4 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.025em;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   ::selection {
@@ -255,7 +307,7 @@
   /* Consistent, theme-aware focus rings for keyboard navigation. */
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px hsl(var(--accent) / 0.5);
+    box-shadow: 0 0 0 2px hsl(var(--accent-ink));
     border-radius: 6px;
   }
   button:focus-visible,
@@ -264,14 +316,54 @@
   }
   /* A focus-within wrapper owns the outer indicator; suppressing the nested
      control's shadow avoids the double ring without removing keyboard focus. */
-  [class*='focus-within:ring-'] > input:focus-visible,
-  [class*='focus-within:ring-'] > textarea:focus-visible,
-  [class*='focus-within:ring-'] > select:focus-visible {
+  :is([class*='focus-within:ring-'], [class*='focus-within:shadow-'])
+    > :is(input, textarea, select):focus-visible {
     box-shadow: none;
   }
 }
 
+/* Edge-fade lengths for `.scroll-edge-fade`, registered so they can animate. */
+@property --scroll-fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-edge-fade {
+  from {
+    --scroll-fade-top: 0px;
+    --scroll-fade-bottom: 36px;
+  }
+  8% {
+    --scroll-fade-top: 36px;
+  }
+  92% {
+    --scroll-fade-bottom: 36px;
+  }
+  to {
+    --scroll-fade-top: 36px;
+    --scroll-fade-bottom: 0px;
+  }
+}
+
 @layer utilities {
+  /* A compact control keeps its look but takes a 44px target, centred on it. */
+  .hit-target {
+    position: relative;
+  }
+  .hit-target::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
   .text-balance {
     text-wrap: balance;
   }
@@ -284,6 +376,47 @@
   }
   .will-change-transform-opacity {
     will-change: transform, opacity;
+  }
+
+  /*
+   * Fades a scroller's content out at whichever edge has more beyond it, for lists whose
+   * scrollbar is hidden. A scroll-driven animation grows each fade from nothing once there is
+   * somewhere to scroll and removes it at that end, so a list that fits is never faded.
+   * Masking blends into whatever sits behind, so no shadow colour can glow in dark mode.
+   */
+  @supports (animation-timeline: scroll()) {
+    .scroll-edge-fade {
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 var(--scroll-fade-top),
+        #000 calc(100% - var(--scroll-fade-bottom)),
+        transparent
+      );
+      animation: scroll-edge-fade linear both;
+      animation-timeline: scroll(self);
+    }
+  }
+
+  /* The shell's first Tab stop; hidden until it receives focus. */
+  .skip-link:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .skip-link:focus {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    border-radius: 9999px;
+    padding: 0.625rem 1rem;
+    background: hsl(var(--ink));
+    color: hsl(var(--paper));
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   /* Electron titlebar drag regions. */
@@ -321,21 +454,6 @@
   .shadow-paper-hover:hover {
     box-shadow: 5px 5px 0px hsl(var(--line-strong));
     transform: translateY(-2px);
-  }
-
-  /* Subtle dot-grid background for hero sections and atmospheric panels. */
-  .bg-dot-grid {
-    background-image: radial-gradient(
-      hsl(var(--ink) / 0.08) 1px,
-      transparent 1px
-    );
-    background-size: 20px 20px;
-  }
-  .dark .bg-dot-grid {
-    background-image: radial-gradient(
-      hsl(var(--ink) / 0.12) 1px,
-      transparent 1px
-    );
   }
 
   /* Form-field shake animation for inline validation feedback. */
@@ -408,6 +526,10 @@
 .prose-lacuna > :first-child { margin-top: 0; }
 .prose-lacuna > :last-child { margin-bottom: 0; }
 .prose-lacuna p { margin: 0.6em 0; }
+/* Card-list previews: compact lines for text, while KaTeX keeps its own line height so a
+   fraction is shown whole rather than clipped. The height cap stops images growing a row. */
+.card-row-clamp { line-height: 1.25rem; }
+.card-row-clamp :not(.katex, .katex *) { line-height: inherit; }
 .prose-lacuna h1, .prose-lacuna h2, .prose-lacuna h3 { margin: 0.8em 0 0.4em; line-height: 1.2; }
 .prose-lacuna h1 { font-size: 1.5em; }
 .prose-lacuna h2 { font-size: 1.3em; }
@@ -415,7 +537,7 @@
 .prose-lacuna ul, .prose-lacuna ol { margin: 0.5em 0; padding-left: 1.4em; }
 .prose-lacuna ul { list-style: disc; }
 .prose-lacuna ol { list-style: decimal; }
-.prose-lacuna li { margin: 0.2em 0; }  .prose-lacuna a { color: hsl(var(--accent)); text-decoration: underline; text-underline-offset: 2px; transition: opacity 150ms ease; }
+.prose-lacuna li { margin: 0.2em 0; }  .prose-lacuna a { color: hsl(var(--accent-ink)); text-decoration: underline; text-underline-offset: 2px; transition: opacity 150ms ease; }
   .prose-lacuna a:hover { opacity: 0.8; }
 .prose-lacuna strong { font-weight: 600; color: hsl(var(--ink)); }
 .prose-lacuna em { font-style: italic; }
@@ -451,6 +573,10 @@
   border-radius: 10px;
   border: 1px solid hsl(var(--line));
   margin: 0.6em 0;
+}
+/* A study face centres its text; images are blocks, so they need their own centring. */
+[data-study-face] .prose-lacuna img {
+  margin-inline: auto;
 }
 .prose-lacuna table {
   border-collapse: collapse;
@@ -515,11 +641,11 @@
 }
 
 /* Mermaid diagrams sit in the same card language as tables and images. */
-pre.lacuna-mermaid {
-  background-color: hsl(var(--surface-raised));
+.prose-lacuna pre.lacuna-mermaid {
+  background-color: hsl(var(--surface));
   border: 1px solid hsl(var(--line));
-  border-radius: 14px;
-  padding: 1rem 1.1rem;
+  border-radius: 24px;
+  padding: 1.25rem;
 }
 pre.lacuna-mermaid[data-mermaid-error='true'] {
   border-color: hsl(var(--warning) / 0.6);
@@ -537,15 +663,23 @@ pre.lacuna-mermaid[data-mermaid-error='true'] {
 }
 .lacuna-mermaid-source {
   margin-top: 0.7rem;
-  font-size: 0.78em;
-  color: hsl(var(--ink-faint));
+  font-family: var(--font-body);
+  white-space: normal;
+  color: hsl(var(--ink-soft));
 }
 .lacuna-mermaid-source > summary {
   cursor: pointer;
   width: fit-content;
+  min-height: 44px;
+  align-content: center;
+  border-radius: 9999px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
 }
 .lacuna-mermaid-source pre {
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
+  white-space: pre;
 }
 
 /* Revealed cloze answer: highlighted inline within the full sentence.
@@ -553,26 +687,22 @@ pre.lacuna-mermaid[data-mermaid-error='true'] {
    text-shadow) rather than background-color. This is deliberate: the
    global ::selection rule paints a translucent accent fill on selected
    text, and if the cloze element also had a background fill, the two
-   near-identical amber layers stacked into a muddy double-highlight. With
+   near-identical accent layers stacked into a muddy double-highlight. With
    no element background, ::selection paints cleanly across selected cloze
    text. The explicit ::selection override below makes the selection
    clearly visible against the cloze mark without competing with it. */
 .cloze-reveal {
   color: hsl(var(--accent-ink));
   font-weight: 600;
-  padding: 0.05em 0.3em;
-  border-radius: 4px;
   text-decoration: underline 0.16em hsl(var(--accent) / 0.55);
   text-decoration-skip-ink: auto;
   text-underline-offset: 0.18em;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
 }
 .cloze-reveal::selection {
   background-color: hsl(var(--accent) / 0.45);
   color: inherit;
 }
 .cloze-blank {
-  color: hsl(var(--accent));
+  color: hsl(var(--accent-ink));
   font-weight: 600;
 }

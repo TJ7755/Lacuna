@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { EditIcon, PlusIcon, TrashIcon } from '../../components/ui/icons';
 import { motionTransition } from '../../components/ui/motion';
+import { MeasuredHeight } from '../../components/ui/MeasuredHeight';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { useToast } from '../../components/ui/Toast';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
@@ -140,11 +141,6 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-xs text-ink-faint">
-        Place assessments on the path, then choose everything taught so far or an explicit set of
-        lessons. Assessments never lock later lessons.
-      </p>
-
       <AnimatePresence initial={false} mode="popLayout">
         {loaded &&
           assessments.map((assessment) => {
@@ -157,13 +153,13 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                 animate={motionMultiplier > 0 ? { opacity: 1, y: 0 } : undefined}
                 exit={motionMultiplier > 0 ? { opacity: 0, y: -4 } : undefined}
                 transition={motionTransition('feedback', motionMultiplier)}
-                className="flex items-start justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3"
+                className="flex items-start justify-between gap-3 rounded-2xl bg-ink/[0.03] px-4 py-3"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-sm text-ink">
                     <span>{assessment.name}</span>
                     {assessment.kind === 'final' && (
-                      <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent">
+                      <span className="rounded-lg bg-accent-soft px-2 py-0.5 text-[0.65rem] text-accent-ink">
                         Final
                       </span>
                     )}
@@ -222,7 +218,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
           })}
       </AnimatePresence>
 
-      <div>
+      <MeasuredHeight>
         <StepSwap stepKey={editingId ? `editor-${editingId}` : 'add'}>
           {editingId && draft && loaded ? (
             <div
@@ -230,7 +226,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
                 if (panel) editorPanels.current.set(editingId, panel);
                 else editorPanels.current.delete(editingId);
               }}
-              className="flex flex-col gap-4 rounded-lg border border-line-strong bg-surface px-4 py-4"
+              className="flex flex-col gap-4 rounded-2xl bg-ink/[0.04] px-4 py-4"
             >
               <AssessmentEditor
                 courseId={courseId}
@@ -290,7 +286,7 @@ export function ExamDatesSection({ courseId, timeZone, editFinalOnMount }: ExamD
             </Button>
           )}
         </StepSwap>
-      </div>
+      </MeasuredHeight>
     </div>
   );
 }

@@ -65,7 +65,20 @@ function definition(): QuestionDefinition {
 }
 
 describe('QuestionsPage', () => {
-  it('offers the independent default-ten and All-due Question sessions', async () => {
+  it('offers one way to create the first Question', () => {
+    mocks.data = { questions: [], conceptSets: [], concepts: [], attempts: [] };
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/questions']}>
+        <Routes>
+          <Route path="/course/:courseId/questions" element={<QuestionsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: /Create a Question/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /New question/ })).not.toBeInTheDocument();
+  });
+
+  it('offers the independent default and All-due Question sessions', async () => {
     const question = definition();
     mocks.data = {
       questions: [question],
@@ -106,13 +119,17 @@ describe('QuestionsPage', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Individual questions' })).toBeInTheDocument();
-    expect(screen.getByText('Primary skill practised: Solving quadratics')).toBeInTheDocument();
+    expect(screen.getByText('Solving quadratics')).toBeInTheDocument();
+    expect(screen.getByText('Solve it.')).toBeInTheDocument();
+    expect(screen.getByText('Due today')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Last five attempts/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Fresh numbers|One question/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /All due/ })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Build batch prompt' }));
     expect(screen.getByRole('dialog', { name: 'Generate Question batch' })).toHaveTextContent(
       '1 existing Question',
     );
-    fireEvent.click(screen.getByRole('button', { name: /Practise 10/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Practise 1/ }));
     expect(await screen.findByText('Question session')).toBeInTheDocument();
   });
 });

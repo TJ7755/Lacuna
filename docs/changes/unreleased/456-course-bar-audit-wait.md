@@ -1,0 +1,1 @@
+- Make the sticky course bar audit wait for course Settings to load before scrolling, so it no longer races the page. (#456, #477)

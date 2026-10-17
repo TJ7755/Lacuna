@@ -2,19 +2,30 @@
 // source document that derives ordinary front/back FSRS cards). Mirrors
 // CardEditor's shape: the route decides create vs edit mode, a sticky action
 // bar drives save/cancel, and deletion (edit mode only) uses the app's
-// undo-toast idiom via DangerZoneSection.
+// undo-toast idiom via DangerZoneSection. Items are written in a keyboard-first
+// outline (SequenceOutlineEditor); settings with good defaults wait under Options.
 // Route: course/:courseId/sequence/new, course/:courseId/sequence/:sequenceId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { m as motion, AnimatePresence } from 'motion/react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEditorKeys } from '../hooks/dialogKeys';
+import { useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { useCourse, useLesson, useSequence } from '../state/useCourseData';
 import { canEditLessons } from '../course/lessonViewMode';
 import { Button } from '../components/ui/Button';
-import { ConfirmInline } from '../components/ui/ConfirmInline';
 import { Select } from '../components/ui/Select';
+import { SectionCard } from '../components/ui/SectionCard';
+import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
+import { Toggle } from '../components/ui/Toggle';
+import {
+  Input,
+  fieldHintClassName,
+  fieldLabelClassName,
+  inputFrameClassName,
+} from '../components/ui/Field';
+import { choiceChipClass } from '../components/ui/choiceChip';
 import {
   DEFAULT_RECITATION_CHUNK_SIZE,
   MAX_RECITATION_CHUNK_SIZE,
@@ -23,11 +34,11 @@ import {
 } from './learn/recitation/recitationFlow';
 import { useToast } from '../components/ui/Toast';
 import { DangerZoneSection } from './settings/DangerZoneSection';
-import { SequenceItemRow } from '../components/sequences/SequenceItemRow';
-import { ScriptPasteImport } from '../components/sequences/ScriptPasteImport';
-import { ChevronLeftIcon, PlusIcon } from '../components/ui/icons';
+import { SequenceOutlineEditor } from '../components/sequences/SequenceOutlineEditor';
+import { compactSections, type Outline } from '../components/sequences/sequenceOutline';
+import { ChevronDownIcon, ChevronLeftIcon } from '../components/ui/icons';
 import { cn } from '../components/ui/cn';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { useIsTouchMode } from '../state/inputMode';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/sequenceGeneration';
 import { SEQUENCE_PRESETS, getPreset, presetForSequence } from '../db/sequencePresets';
@@ -39,10 +50,18 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/sequenceRepository';
-import type { EditorOriginState } from '../utils/editorOrigin';
-import type { SequenceItem, SequencePresetId } from '../db/types';
+import { useReturn } from '../utils/editorOrigin';
+import type { SequencePresetId } from '../db/types';
 import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+
+/** Empty items are scaffolding, never content: they are not previewed or saved. */
+function withoutEmptyItems(outline: Outline): Outline {
+  return compactSections({
+    items: outline.items.filter((item) => item.value.trim()),
+    chunkLabels: outline.chunkLabels,
+  });
+}
 
 export function SequenceEditor() {
   const { sequenceId, courseId, lessonId } = useParams<{
@@ -51,9 +70,8 @@ export function SequenceEditor() {
     lessonId?: string;
   }>();
   const lessonMode = Boolean(lessonId);
-  const navigate = useNavigate();
-  const location = useLocation();
   const { notify } = useToast();
+  const touch = useIsTouchMode();
 
   const course = useCourse(courseId);
   const lesson = useLesson(lessonId);
@@ -62,44 +80,39 @@ export function SequenceEditor() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [items, setItems] = useState<SequenceItem[]>([]);
+  const [outline, setOutline] = useState<Outline>({ items: [], chunkLabels: [] });
   const [cueWindow, setCueWindow] = useState(2);
-  const [chunkLabels, setChunkLabels] = useState<string[]>([]);
   const [generateLabelCards, setGenerateLabelCards] = useState(false);
   const [presetId, setPresetId] = useState<SequencePresetId>('list');
   const [mySpeaker, setMySpeaker] = useState('');
   const [recitationChunkSize, setRecitationChunkSize] = useState<number | undefined>();
-  const [showScriptPaste, setShowScriptPaste] = useState(false);
-  const [confirmingPasteScript, setConfirmingPasteScript] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [invalidItems, setInvalidItems] = useState<Set<string>>(() => new Set());
   const [nameError, setNameError] = useState<string | null>(null);
+  const [speakerError, setSpeakerError] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const preset = getPreset(presetId);
   const mode = preset.mode;
   const usesSpeakers = preset.usesSpeakers;
-  const itemInputs = useRef(new Map<string, HTMLTextAreaElement>());
-  const pendingItemFocus = useRef<string | null>(null);
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-  const reduceMotion = m === 0;
+  const { item: itemTerm, itemPlural, chunkLabel } = preset.terminology;
+  const partRef = useRef<HTMLDivElement>(null);
 
   // Seed the form from the sequence being edited once it has loaded (new sequences start
-  // with one blank item, since a sequence with zero items generates no cards).
+  // with one blank item to type into).
   useEffect(() => {
     if (loaded) return;
     if (!editing) {
-      setItems([{ id: makeId(), value: '' }]);
+      setOutline({ items: [{ id: makeId(), value: '' }], chunkLabels: [] });
       setLoaded(true);
       return;
     }
     if (sequence) {
       setName(sequence.name);
       setDescription(sequence.description ?? '');
-      setItems(sequence.items);
+      setOutline({ items: sequence.items, chunkLabels: sequence.chunkLabels ?? [] });
       setCueWindow(sequence.cueWindow);
-      setChunkLabels(sequence.chunkLabels ?? []);
       setGenerateLabelCards(sequence.generateLabelCards ?? false);
       setPresetId(presetForSequence(sequence).id);
       setMySpeaker(sequence.mySpeaker ?? '');
@@ -108,42 +121,35 @@ export function SequenceEditor() {
     }
   }, [editing, sequence, loaded]);
 
-  // Adding an item is a quick-capture operation: keep the author at the working
-  // position, then focus and reveal the new value editor after React mounts it.
-  useEffect(() => {
-    const id = pendingItemFocus.current;
-    if (!id) return;
-    const input = itemInputs.current.get(id);
-    if (!input) return;
-    pendingItemFocus.current = null;
-    input.focus({ preventScroll: true });
-    input.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
-  }, [items, reduceMotion]);
-
   const lessonPath = `/course/${courseId}/lesson/${lessonId}`;
   const bankPath = `/course/${courseId}/cards`;
   // Where the caller navigated from, when that differs from what the route alone
   // implies. Sequence editing has no lesson-scoped edit route (only "new" does),
   // so origin state is the only signal that an edit was opened from a lesson —
   // absent on direct loads and hard refreshes, which fall back to the bank.
-  const origin = (location.state as EditorOriginState | null)?.origin;
-  const backPath = origin?.path ?? (lessonMode ? lessonPath : bankPath);
-  const backLabel = origin?.label ?? (lessonMode ? lesson?.name : 'Cards');
+  const returnTo = useReturn({
+    path: lessonMode ? lessonPath : bankPath,
+    label: (lessonMode ? lesson?.name : 'Cards') ?? 'Back',
+  });
+  const backPath = returnTo.to;
+  const backLabel = returnTo.label;
+
+  const saved = useMemo(() => withoutEmptyItems(outline), [outline]);
 
   // Distinct speakers seen across items, in order of first appearance, for the
-  // "my speaker" picker — populated by whichever items already carry a speaker,
-  // whether typed by hand or produced by the script paste flow.
+  // "your part" choice and the speaker suggestions.
   const speakers = useMemo(() => {
     const seen = new Set<string>();
     const order: string[] = [];
-    for (const item of items) {
-      if (item.speaker && !seen.has(item.speaker)) {
-        seen.add(item.speaker);
-        order.push(item.speaker);
+    for (const item of outline.items) {
+      const speaker = item.speaker?.trim();
+      if (speaker && !seen.has(speaker)) {
+        seen.add(speaker);
+        order.push(speaker);
       }
     }
     return order;
-  }, [items]);
+  }, [outline.items]);
 
   const preview = useMemo(() => {
     if (!loaded) return [];
@@ -154,9 +160,9 @@ export function SequenceEditor() {
       name: name.trim() || 'Untitled sequence',
       description,
       mode,
-      items,
+      items: saved.items,
       cueWindow,
-      chunkLabels,
+      chunkLabels: saved.chunkLabels,
       generateLabelCards,
       mySpeaker: usesSpeakers ? mySpeaker || undefined : undefined,
       createdAt: sequence?.createdAt ?? 0,
@@ -170,9 +176,8 @@ export function SequenceEditor() {
     name,
     description,
     mode,
-    items,
+    saved,
     cueWindow,
-    chunkLabels,
     generateLabelCards,
     mySpeaker,
     usesSpeakers,
@@ -184,11 +189,27 @@ export function SequenceEditor() {
     const nextPreset = getPreset(id);
     setPresetId(id);
     setCueWindow(nextPreset.defaultCueWindow);
+    // Sections still carrying their automatic name ("Verse 2") follow the new type's term.
+    const automatic = new RegExp(`^${preset.terminology.chunkLabel} (\\d+)$`);
+    setOutline((prev) => ({
+      ...prev,
+      chunkLabels: prev.chunkLabels.map((label) =>
+        label.replace(automatic, `${nextPreset.terminology.chunkLabel} $1`),
+      ),
+    }));
     if (!nextPreset.usesSpeakers) {
-      setItems((prev) => prev.map(({ speaker: _speaker, ...item }) => item));
+      setOutline((prev) => ({
+        ...prev,
+        items: prev.items.map(({ speaker: _speaker, ...item }) => item),
+      }));
       setMySpeaker('');
     }
   }
+
+  const editorKeys = useEditorKeys({
+    onCancel: returnTo.goBack,
+    onSubmit: () => void handleSave(),
+  });
 
   if (
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
@@ -202,29 +223,38 @@ export function SequenceEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent underline">
-          Back to dashboard
+        <Link
+          to="/"
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          Back to Today
         </Link>
       </div>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent underline">
-          {courseId ? 'Back to course' : 'Back to dashboard'}
+        <Link
+          to={courseId ? `/course/${courseId}` : '/'}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          {courseId ? 'Back to course' : 'Back to Today'}
         </Link>
       </div>
     );
   }
   if (editing && sequence === null) {
     return (
-      <div className="p-10">
+      <div className={`${COURSE_PAGE_FRAME} py-10`}>
         <p className="mb-4 text-ink-soft">This sequence could not be found.</p>
-        <Link to={backPath} className="text-accent underline">
+        <Link
+          to={backPath}
+          className="inline-flex min-h-11 items-center text-sm text-ink-faint transition-colors hover:text-ink"
+        >
           Back to {backLabel}
         </Link>
       </div>
@@ -232,135 +262,35 @@ export function SequenceEditor() {
   }
 
   const editable = Boolean(course && canEditLessons(course));
-  const canSave =
-    name.trim().length > 0 &&
-    items.length > 0 &&
-    items.every((i) => i.value.trim().length > 0) &&
-    (!usesSpeakers || mySpeaker.trim().length > 0) &&
-    preview.length > 0;
-
-  function updateItem(id: string, patch: Partial<SequenceItem>) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
-    if (patch.value?.trim()) {
-      setInvalidItems((prev) => {
-        if (!prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-  }
-
-  function addItem(afterId?: string) {
-    const precedingItem = afterId
-      ? items.find((item) => item.id === afterId)
-      : items[items.length - 1];
-    if (precedingItem && !precedingItem.value.trim()) {
-      setInvalidItems((prev) => new Set(prev).add(precedingItem.id));
-      itemInputs.current.get(precedingItem.id)?.focus();
-      return;
-    }
-    const item = { id: makeId(), value: '' };
-    pendingItemFocus.current = item.id;
-    setItems((prev) => {
-      if (!afterId) return [...prev, item];
-      const index = prev.findIndex((candidate) => candidate.id === afterId);
-      if (index === -1) return [...prev, item];
-      const next = [...prev];
-      next.splice(index + 1, 0, item);
-      return next;
-    });
-  }
-
-  function deleteItem(id: string) {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    setInvalidItems((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-
-  function moveItem(id: string, direction: 'up' | 'down') {
-    setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === id);
-      if (idx === -1) return prev;
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
-      const next = [...prev];
-      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
-      return next;
-    });
-  }
-
-  function addChunkLabel() {
-    setChunkLabels((prev) => [...prev, `${preset.terminology.chunkLabel} ${prev.length + 1}`]);
-  }
-
-  function renameChunkLabel(index: number, label: string) {
-    setChunkLabels((prev) => prev.map((l, i) => (i === index ? label : l)));
-  }
-
-  function deleteChunkLabel(index: number) {
-    setChunkLabels((prev) => prev.filter((_, i) => i !== index));
-    // Items referencing this or a later chunk lose/shift their assignment so
-    // indices stay in sync with the (now shorter) chunkLabels array.
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.chunkIndex === undefined) return item;
-        if (item.chunkIndex === index) return { ...item, chunkIndex: undefined };
-        if (item.chunkIndex > index) return { ...item, chunkIndex: item.chunkIndex - 1 };
-        return item;
-      }),
-    );
-  }
-
-  function handlePasteScriptClick() {
-    // Re-pasting a script while editing replaces the whole item list with fresh
-    // ids, so saving treats every existing card as delete+create and wipes its
-    // FSRS study progress. Warn before opening the modal when that's at stake.
-    if (editing && items.length > 0) {
-      setConfirmingPasteScript(true);
-      return;
-    }
-    setShowScriptPaste(true);
-  }
-
-  function confirmPasteScript() {
-    setConfirmingPasteScript(false);
-    setShowScriptPaste(true);
-  }
 
   async function handleSave() {
     if (!editable || saving || !courseId) return;
 
-    const emptyItemIds = new Set(items.filter((item) => !item.value.trim()).map((item) => item.id));
     const missingName = name.trim().length === 0;
-    const missingItems = items.length === 0 || emptyItemIds.size > 0;
-    const missingCards = items.length > 0 && emptyItemIds.size === 0 && preview.length === 0;
     const missingSpeaker = usesSpeakers && mySpeaker.trim().length === 0;
+    const missingCards = !missingSpeaker && preview.length === 0;
 
-    setNameError(missingName ? 'Enter a sequence name before saving.' : null);
-    setInvalidItems(emptyItemIds);
+    setNameError(missingName ? 'Enter a name before saving.' : null);
+    setSpeakerError(missingSpeaker);
     setSaveError(
-      missingItems
-        ? null
+      missingSpeaker
+        ? 'Choose your part before saving.'
         : missingCards
-          ? `Add at least two ${preset.terminology.itemPlural.toLowerCase()} to generate cards.`
-          : missingSpeaker
-            ? 'Choose which speaker you are learning before saving.'
-            : null,
+          ? usesSpeakers && saved.items.length > 0
+            ? `None of the ${itemPlural.toLowerCase()} are ${mySpeaker}’s.`
+            : `Add your first ${itemTerm} to make cards.`
+          : null,
     );
 
-    if (missingName || missingItems || missingCards || missingSpeaker || !canSave) {
-      if (missingName) {
-        document.getElementById('sequence-name')?.focus();
-      } else if (emptyItemIds.size > 0) {
-        itemInputs.current.get(emptyItemIds.values().next().value as string)?.focus();
-      }
+    if (missingName) {
+      document.getElementById('sequence-name')?.focus();
       return;
     }
+    if (missingSpeaker) {
+      partRef.current?.querySelector('input')?.focus();
+      return;
+    }
+    if (missingCards) return;
 
     setSaving(true);
     try {
@@ -369,63 +299,55 @@ export function SequenceEditor() {
         mode,
         presetId,
         cueWindow,
-        chunkLabels: chunkLabels.length > 0 ? chunkLabels : undefined,
+        chunkLabels: saved.chunkLabels.length > 0 ? saved.chunkLabels : undefined,
         generateLabelCards,
         mySpeaker: usesSpeakers ? mySpeaker.trim() : undefined,
         recitationChunkSize: mode === 'lines' ? recitationChunkSize : undefined,
       };
       if (editing && sequence) {
-        await updateSequence({ ...sequence, name: name.trim(), items, ...opts });
+        await updateSequence({ ...sequence, name: name.trim(), items: saved.items, ...opts });
         notify('Sequence updated.', 'positive');
       } else {
-        await createSequence(courseId, lessonId ?? null, name, items, opts);
+        await createSequence(courseId, lessonId ?? null, name, saved.items, opts);
         notify('Sequence added.', 'positive');
       }
-      void navigate(backPath);
+      returnTo.goBack();
     } finally {
       setSaving(false);
     }
   }
 
+  const cardCount = `${preview.length} card${preview.length === 1 ? '' : 's'}`;
+  const chunkChoice =
+    recitationChunkSize !== undefined
+      ? String(recitationChunkSize)
+      : hasStanzas(saved)
+        ? 'stanza'
+        : String(DEFAULT_RECITATION_CHUNK_SIZE);
+
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      {/* Breadcrumb */}
-      <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-ink-faint">
-        <Link to={`/course/${courseId}`} className="transition-colors hover:text-ink">
-          {course?.name}
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`} {...editorKeys}>
+      <header className="mb-8">
+        <Link
+          {...returnTo.linkProps}
+          className="mb-3 inline-flex min-h-11 items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
+        >
+          <ChevronLeftIcon width={16} height={16} />
+          Back to {backLabel}
         </Link>
-        <ChevronRight />
-        <Link to={backPath} className="transition-colors hover:text-ink">
-          {backLabel}
-        </Link>
-        <ChevronRight />
-        <span className="text-ink-soft">{editing ? 'Edit sequence' : 'New sequence'}</span>
-      </nav>
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
+          {editing ? 'Edit sequence' : 'New sequence'}
+        </h1>
+      </header>
 
-      <div>
-        <header className="relative mb-8 overflow-hidden rounded-2xl border border-line bg-surface p-6 md:p-8">
-          <div className="absolute inset-0 bg-dot-grid opacity-30" aria-hidden="true" />
-          <div className="relative">
-            <Link
-              to={backPath}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-            >
-              <ChevronLeftIcon width={16} height={16} />
-              Back
-            </Link>
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">
-              {editing ? 'Edit sequence' : 'New sequence'}
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-ink-soft">{preset.description}</p>
-          </div>
-        </header>
-
-        <div className="flex flex-col gap-5">
-          <div>
-            <div className="mb-2 text-sm text-ink-soft">Name</div>
-            <input
+      <div className="flex flex-col gap-5">
+        <SectionCard className="flex flex-col gap-5">
+          <label className={fieldLabelClassName}>
+            Name
+            <Input
               id="sequence-name"
               aria-label="Sequence name"
+              autoFocus
               type="text"
               value={name}
               onChange={(e) => {
@@ -435,369 +357,342 @@ export function SequenceEditor() {
               aria-invalid={nameError ? 'true' : undefined}
               aria-describedby={nameError ? 'sequence-name-error' : undefined}
               placeholder="e.g. The Krebs cycle"
-              className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
             />
             {nameError && (
-              <p id="sequence-name-error" role="alert" className="mt-2 text-sm text-negative">
+              <span
+                id="sequence-name-error"
+                role="alert"
+                className="mt-1 block text-xs font-normal text-negative"
+              >
                 {nameError}
+              </span>
+            )}
+          </label>
+
+          {!editing ? (
+            <ChipChoice
+              legend="Type"
+              name="sequence-type"
+              value={presetId}
+              options={SEQUENCE_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
+              onChange={(id) => selectPreset(id as SequencePresetId)}
+              hint={preset.description}
+            />
+          ) : (
+            <div>
+              <div className={fieldLabelClassName}>Type</div>
+              <p className="mt-1 text-sm text-ink-soft">{preset.name}</p>
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard aria-labelledby="sequence-items-heading">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2
+              id="sequence-items-heading"
+              className="font-display text-xl font-semibold tracking-tight"
+            >
+              {itemPlural}{' '}
+              <span className="font-body text-sm font-normal tabular-nums text-ink-faint">
+                {saved.items.length}
+              </span>
+            </h2>
+            {!touch && (
+              <p className="text-xs text-ink-faint">
+                Enter for the next {itemTerm}, twice for a new {chunkLabel.toLowerCase()}.
+                Shift+Enter breaks a {itemTerm}.
               </p>
             )}
           </div>
-          <div>
-            <div className="mb-2 text-sm text-ink-soft">
-              Description <span className="normal-case text-ink-faint/70">(optional)</span>
-            </div>
-            <input
-              aria-label="Sequence description"
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What this sequence covers…"
-              className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
-            />
-          </div>
 
-          {/* Preset */}
-          {!editing ? (
-            <div>
-              <div className="mb-2 text-sm text-ink-soft">Type</div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {SEQUENCE_PRESETS.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selectPreset(p.id)}
-                    aria-pressed={presetId === p.id}
-                    className={cn(
-                      'rounded-xl border p-3 text-left transition-colors',
-                      presetId === p.id
-                        ? 'border-accent bg-accent-soft'
-                        : 'border-line hover:border-line-strong',
-                    )}
-                  >
-                    <div className="text-sm font-medium text-ink">{p.name}</div>
-                    <div className="mt-0.5 text-xs text-ink-faint">{p.description}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="w-fit rounded-lg bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
-              {preset.name}
+          {usesSpeakers && (
+            <div ref={partRef} className="mb-4">
+              {speakers.length > 0 ? (
+                <ChipChoice
+                  legend="Your part"
+                  name="sequence-part"
+                  value={mySpeaker}
+                  options={speakers.map((speaker) => ({ value: speaker, label: speaker }))}
+                  onChange={(speaker) => {
+                    setMySpeaker(speaker);
+                    setSpeakerError(false);
+                    setSaveError(null);
+                  }}
+                  hint="Only your lines become cards; the others cue them."
+                  invalid={speakerError}
+                />
+              ) : (
+                <p className={fieldHintClassName}>
+                  Type “NAME: line”, or paste a script, and choose your part here.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Chunks */}
-          <div className="rounded-xl border border-line bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-lg tracking-tight">
-                {preset.terminology.chunkLabel}s{' '}
-                <span className="text-sm font-body text-ink-soft">(optional)</span>
-              </h2>
-              <Button variant="ghost" size="sm" onClick={addChunkLabel}>
-                <PlusIcon width={14} height={14} />
-                Add {preset.terminology.chunkLabel.toLowerCase()}
-              </Button>
-            </div>
-            {chunkLabels.length === 0 ? (
-              <p className="text-sm text-ink-faint">
-                Group {preset.terminology.itemPlural.toLowerCase()} into named{' '}
-                {preset.terminology.chunkLabel.toLowerCase()}s to label their cards.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <AnimatePresence initial={false}>
-                  {chunkLabels.map((label, i) => (
-                    <motion.div
-                      key={i}
-                      initial={m > 0 ? { opacity: 0 } : false}
-                      animate={{ opacity: 1 }}
-                      exit={m > 0 ? { opacity: 0 } : undefined}
-                      transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          aria-label={`${preset.terminology.chunkLabel} ${i + 1}`}
-                          value={label}
-                          onChange={(e) => renameChunkLabel(i, e.target.value)}
-                          className="flex-1 rounded-lg border border-line bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-accent"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => deleteChunkLabel(i)}
-                          title="Delete chunk"
-                          className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:bg-negative/10 hover:text-negative"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
+          <SequenceOutlineEditor
+            outline={outline}
+            onChange={setOutline}
+            preset={preset}
+            mySpeaker={usesSpeakers ? mySpeaker : undefined}
+            speakers={speakers}
+            showLabels={generateLabelCards}
+          />
+        </SectionCard>
 
-          {/* Settings */}
-          <div className="flex flex-wrap items-center gap-6 rounded-xl border border-line bg-surface p-4">
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              Cue window
-              <input
-                type="number"
-                aria-label="Cue window"
-                min={1}
-                max={items.length || 1}
-                value={cueWindow}
-                onChange={(e) => setCueWindow(Math.max(1, Number(e.target.value) || 1))}
-                className="w-16 rounded-lg border border-line bg-transparent px-2 py-1 text-center outline-none focus:border-accent"
+        <Disclosure
+          title="Options"
+          summary={`Cue: ${cueWindow} ${cueWindow === 1 ? itemTerm : itemPlural.toLowerCase()}`}
+          open={optionsOpen}
+          onToggle={() => setOptionsOpen((open) => !open)}
+        >
+          <div className="flex flex-col gap-5">
+            <label className={fieldLabelClassName}>
+              Description
+              <Input
+                aria-label="Sequence description"
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What this sequence covers"
               />
-              <span className="text-ink-faint">
-                preceding{' '}
-                {cueWindow === 1
-                  ? preset.terminology.item
-                  : preset.terminology.itemPlural.toLowerCase()}{' '}
-                shown as cue
+            </label>
+            <label className={fieldLabelClassName}>
+              Cue
+              <span className="mt-2 flex flex-wrap items-center gap-2 font-normal text-ink-soft">
+                Show the previous
+                <input
+                  type="number"
+                  aria-label="Cue window"
+                  min={1}
+                  max={Math.max(1, saved.items.length - 1)}
+                  value={cueWindow}
+                  onChange={(e) => setCueWindow(Math.max(1, Number(e.target.value) || 1))}
+                  className={cn(inputFrameClassName, 'min-h-11 w-20 text-center tabular-nums')}
+                />
+                {cueWindow === 1 ? itemTerm : itemPlural.toLowerCase()} before each card
               </span>
             </label>
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <input
-                type="checkbox"
-                aria-label="Also generate label to value cards"
-                checked={generateLabelCards}
-                onChange={(e) => setGenerateLabelCards(e.target.checked)}
-                className="accent-accent"
-              />
-              Also generate label → value cards
-            </label>
             {mode === 'lines' && (
-              <label className="flex items-center gap-2 text-sm text-ink-soft">
+              <label className={fieldLabelClassName}>
                 Learn in
                 <Select
                   aria-label="Learn in"
-                  value={
-                    recitationChunkSize !== undefined
-                      ? String(recitationChunkSize)
-                      : hasStanzas({ items })
-                        ? 'stanza'
-                        : String(DEFAULT_RECITATION_CHUNK_SIZE)
-                  }
+                  aria-describedby="sequence-learn-in-hint"
+                  value={chunkChoice}
                   onChange={(e) =>
-                    setRecitationChunkSize(e.target.value === 'stanza' ? undefined : Number(e.target.value))
+                    setRecitationChunkSize(
+                      e.target.value === 'stanza' ? undefined : Number(e.target.value),
+                    )
                   }
+                  className="mt-2 block font-normal"
                 >
-                  {hasStanzas({ items }) && (
-                    <option value="stanza">{preset.terminology.chunkLabel.toLowerCase()}s</option>
-                  )}
+                  {hasStanzas(saved) && <option value="stanza">{chunkLabel.toLowerCase()}s</option>}
                   {Array.from(
                     { length: MAX_RECITATION_CHUNK_SIZE - MIN_RECITATION_CHUNK_SIZE + 1 },
                     (_, i) => MIN_RECITATION_CHUNK_SIZE + i,
                   ).map((size) => (
                     <option key={size} value={size}>
-                      {size} {preset.terminology.itemPlural.toLowerCase()}
+                      {size} {itemPlural.toLowerCase()}
                     </option>
                   ))}
                 </Select>
-              </label>
-            )}
-            {usesSpeakers && (
-              <label className="flex items-center gap-2 text-sm text-ink-soft">
-                My speaker
-                <Select
-                  aria-label="My speaker"
-                  value={mySpeaker}
-                  onChange={(e) => setMySpeaker(e.target.value)}
-                  className="min-w-[8rem]"
-                >
-                  <option value="">Choose…</option>
-                  {speakers.map((speaker) => (
-                    <option key={speaker} value={speaker}>
-                      {speaker}
-                    </option>
-                  ))}
-                  {mySpeaker && !speakers.includes(mySpeaker) && (
-                    <option value={mySpeaker}>{mySpeaker}</option>
-                  )}
-                </Select>
-                <span className="text-ink-faint">— only these lines get recall cards</span>
-              </label>
-            )}
-          </div>
-
-          {/* Items */}
-          <div>
-            <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
-              <h2 className="font-display text-lg tracking-tight">
-                {preset.terminology.itemPlural}{' '}
-                <span className="text-sm font-body text-ink-soft">({items.length})</span>
-              </h2>
-              <div className="flex items-center gap-3">
-                {usesSpeakers &&
-                  (confirmingPasteScript ? (
-                    <ConfirmInline
-                      message="Reset study progress?"
-                      confirmLabel="Replace"
-                      onConfirm={confirmPasteScript}
-                      onCancel={() => setConfirmingPasteScript(false)}
-                    />
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={handlePasteScriptClick}>
-                      Paste script&hellip;
-                    </Button>
-                  ))}
-                <span className="text-xs text-ink-faint">
-                  Ctrl/Cmd+Enter adds the next {preset.terminology.item}
+                <span id="sequence-learn-in-hint" className={fieldHintClassName}>
+                  How many lines to practise together, or your named sections.
                 </span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <AnimatePresence initial={false}>
-                {items.map((item, i) => (
-                  <motion.div
-                    key={item.id}
-                    layout={reduceMotion ? undefined : 'position'}
-                    initial={m > 0 ? { opacity: 0 } : false}
-                    animate={{ opacity: 1 }}
-                    exit={m > 0 ? { opacity: 0 } : undefined}
-                    transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <SequenceItemRow
-                      item={item}
-                      index={i}
-                      isFirst={i === 0}
-                      isLast={i === items.length - 1}
-                      chunkLabels={chunkLabels}
-                      showSpeaker={usesSpeakers}
-                      itemTerm={preset.terminology.item}
-                      onChange={(patch) => updateItem(item.id, patch)}
-                      onDelete={() => deleteItem(item.id)}
-                      onMoveUp={() => moveItem(item.id, 'up')}
-                      onMoveDown={() => moveItem(item.id, 'down')}
-                      onAddAfter={() => addItem(item.id)}
-                      invalid={invalidItems.has(item.id)}
-                      inputRef={(input) => {
-                        if (input) itemInputs.current.set(item.id, input);
-                        else itemInputs.current.delete(item.id);
-                      }}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => addItem()}
-                title={`Add another ${preset.terminology.item} (Ctrl/Cmd+Enter while editing an item)`}
-                className="w-full border border-dashed border-line-strong text-ink-faint hover:border-accent/50 hover:text-accent"
-              >
-                <PlusIcon width={14} height={14} />
-                Add another {preset.terminology.item}
-              </Button>
-            </div>
-          </div>
-
-          {/* Preview */}
-          <div className="rounded-xl border border-line bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-lg tracking-tight">Preview</h2>
-              <span
-                className={cn(
-                  'rounded-lg px-3 py-1 text-sm font-medium',
-                  preview.length > 30
-                    ? 'bg-warning/10 text-warning-fg'
-                    : 'bg-accent-soft text-accent',
-                )}
-              >
-                {preview.length} card{preview.length === 1 ? '' : 's'} generated
-              </span>
-            </div>
-            {preview.length === 0 ? (
-              <p className="text-sm text-ink-faint">
-                Add items to see the cards this sequence will generate.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {preview.map((payload, i) => (
-                  <div key={i} className="rounded-lg border border-line px-3 py-2 text-sm">
-                    <div className="whitespace-pre-wrap text-ink-soft">{payload.front}</div>
-                    <div className="mt-1 border-t border-line pt-1 text-ink">{payload.back}</div>
-                  </div>
-                ))}
-              </div>
+              </label>
             )}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className={fieldLabelClassName}>Label cards</div>
+                <p className={fieldHintClassName}>
+                  Give {itemPlural.toLowerCase()} a label, such as 11 for sodium, and recall each
+                  from its label too.
+                </p>
+              </div>
+              <Toggle
+                checked={generateLabelCards}
+                onChange={setGenerateLabelCards}
+                ariaLabel="Also generate label to value cards"
+              />
+            </div>
           </div>
+        </Disclosure>
 
-          {editable && editing && sequence && (
-            <DangerZoneSection
-              entityLabel="sequence"
-              entityName={sequence.name}
-              description="Deletes this sequence and every card it generated."
-              snapshot={() => snapshotSequence(sequence.id)}
-              onDelete={async () => {
-                if (editable) await deleteSequence(sequence.id);
-              }}
-              onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
-              onDeleted={() => navigate(backPath)}
-            />
+        <Disclosure
+          title="Preview"
+          summary={cardCount}
+          open={previewOpen}
+          onToggle={() => setPreviewOpen((open) => !open)}
+        >
+          {preview.length === 0 ? (
+            <p className="text-sm text-ink-faint">
+              Cards appear here as you add {itemPlural.toLowerCase()}.
+            </p>
+          ) : (
+            <ol className="flex flex-col gap-2">
+              {preview.map((payload, i) => (
+                <li key={i} className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm">
+                  <div className="whitespace-pre-wrap text-ink-soft">{payload.front}</div>
+                  <div className="mt-2 font-medium text-ink">{payload.back}</div>
+                </li>
+              ))}
+            </ol>
           )}
-        </div>
+        </Disclosure>
+
+        {editable && editing && sequence && (
+          <DangerZoneSection
+            entityLabel="sequence"
+            entityName={sequence.name}
+            description="Deletes this sequence and every card it generated."
+            snapshot={() => snapshotSequence(sequence.id)}
+            onDelete={() => deleteSequence(sequence.id)}
+            onRestore={(snap) => restoreSequence(snap as SequenceSnapshot)}
+            onDeleted={returnTo.goBack}
+          />
+        )}
       </div>
 
       {/* Sticky action bar */}
       <div
         role="region"
         aria-label="Sequence editor actions"
-        className="pointer-events-none sticky bottom-0 z-30 -mx-6 mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-6 pb-5 pt-12 md:-mx-10 md:px-10"
+        // Bleeds to exactly the page frame's padding at each width (PAGE_FRAME), so it never
+        // overhangs the page when that padding is fixed and the text is enlarged.
+        className="pointer-events-none sticky bottom-0 z-30 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10"
       >
-        <div className="pointer-events-auto ml-auto flex w-fit items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate(backPath)}>
-            Cancel
-          </Button>
-          {saveError && (
+        <div className="pointer-events-auto ml-auto flex w-fit max-w-full flex-wrap items-center justify-end gap-3">
+          {saveError ? (
             <p role="alert" className="max-w-xs text-right text-sm text-negative">
               {saveError}
             </p>
+          ) : (
+            <p aria-live="polite" className="text-sm tabular-nums text-ink-faint">
+              {cardCount}
+            </p>
           )}
+          <Button variant="ghost" onClick={returnTo.goBack}>
+            Cancel
+          </Button>
           <Button
             variant="primary"
             onClick={handleSave}
-            disabled={!editable || saving || (usesSpeakers && (!mySpeaker.trim() || preview.length === 0))}
+            disabled={!editable || saving}
+            className="whitespace-nowrap"
           >
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>
       </div>
-
-      {showScriptPaste && (
-        <ScriptPasteImport
-          onImport={(imported) => {
-            setItems(imported);
-            setShowScriptPaste(false);
-          }}
-          onCancel={() => setShowScriptPaste(false)}
-        />
-      )}
     </div>
+  );
+}
+
+/** A labelled row of chips backed by native radios, so arrow keys choose. */
+function ChipChoice({
+  legend,
+  name,
+  value,
+  options,
+  onChange,
+  hint,
+  invalid,
+}: {
+  legend: string;
+  name: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+  hint?: ReactNode;
+  invalid?: boolean;
+}) {
+  return (
+    <fieldset aria-invalid={invalid || undefined}>
+      <legend className={fieldLabelClassName}>{legend}</legend>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((option) => (
+          <label
+            key={option.value}
+            className={cn(
+              choiceChipClass(option.value === value),
+              'cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink',
+              invalid && 'ring-1 ring-negative/60',
+            )}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={option.value === value}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+            />
+            {option.label}
+          </label>
+        ))}
+      </div>
+      {hint && <p className={fieldHintClassName}>{hint}</p>}
+    </fieldset>
+  );
+}
+
+/** A compact card whose heading opens its body, with a one-line summary when shut. */
+function Disclosure({
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  summary: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <SectionCard compact className="py-2">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={onToggle}
+          className="flex min-h-11 w-full items-center gap-3 text-left"
+        >
+          <span className="font-display text-lg font-semibold tracking-tight">{title}</span>
+          <span className="text-sm tabular-nums text-ink-faint">{summary}</span>
+          <ChevronDownIcon
+            width={16}
+            height={16}
+            className={cn('ml-auto text-ink-faint transition-transform', open && 'rotate-180')}
+          />
+        </button>
+      </h2>
+      <AnimatedDisclosure open={open} innerClassName="pb-4 pt-3">
+        {children}
+      </AnimatedDisclosure>
+    </SectionCard>
   );
 }
 
 function SequenceEditorSkeleton() {
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-10 pt-8 md:px-10">
-      <Skeleton className="mb-6 h-4 w-24" />
-      <SectionCard as="div" className="mb-8">
-        <Skeleton className="mb-1 h-3 w-20" />
-        <Skeleton className="h-10 w-48" />
-      </SectionCard>
-      <div className="flex flex-col gap-5">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
+      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
+      <Skeleton className="mb-8 h-10 w-48" />
+      <div className="space-y-5">
+        <SectionCard className="space-y-5">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-11 w-full rounded-xl" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-11 w-72 max-w-full rounded-full" />
+        </SectionCard>
+        <SectionCard>
+          <Skeleton className="mb-5 h-6 w-48" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </SectionCard>
       </div>
     </div>
   );
-}
-
-function ChevronRight() {
-  return <span className="text-ink-faint/60">/</span>;
 }

@@ -62,25 +62,31 @@ app:
   back is a front/back card; a single column containing cloze notation becomes a
   cloze card; otherwise the row is skipped.
 
-### Import screen (`src/pages/ImportPage.tsx`)
+### Import panel (`src/components/import/ImportPanel.tsx`)
 
-**Import** beside **New course** on Courses opens a dedicated screen. Choose a Lacuna
-course (file, share code or QR), an Anki package, or text/spreadsheet cards. Dropping
-or choosing a file selects its import path automatically. The welcome import link
-opens the same screen. Each selected import path uses the editors’ muted left-chevron Back control above
-the title. Its navigation row stays reserved on the chooser so the heading and content
-do not shift when moving between import paths. New course remains focused on creating an empty course.
+**Import** beside **New course** on Today expands a neutral panel from its button.
+Choose a Lacuna course (file, share code or QR), an Anki package, or text/spreadsheet
+cards. Dropping or choosing a file selects its import path automatically. Existing
+`/import` links redirect to `/?import=1`, opening this same panel, including from the
+phone navigation drawer. There is no separate Import page.
 
-The screen reuses the card import dialogue's input and review components inline.
-After reviewing content, choose a new course with an explicit study target, a new
+Source changes use the shared step crossfade. Back and an empty-form Escape return
+keyboard focus to the source that opened the form. Close returns focus to the trigger;
+closing is disabled during a write. Text and Anki imports use three compact steps:
+**Add cards → Review cards → Choose destination**. Each step fits the panel without a
+panel scrollbar; long pasted text and card faces retain their own content scrolling. Motion honours the user's speed
+and reduced-motion setting. New course remains focused on creating an empty course.
+
+The panel reuses the card import dialogue's input and review components inline.
+After reviewing content, choose a new course (Steady retention unless Exam date is chosen), a new
 lesson in an existing active course, or an existing lesson. Undo retains the content
 and destination settings. Confirmation imports through the existing atomic writer
 and opens the destination. Anki scheduling and media are preserved.
 
-Lacuna files and codes reuse the Share page's shared-course importer, including
+Lacuna files and codes use the shared-course importer (`SharedCourseImport`), including
 preview, media validation, QR scanning and published-course update matching. A
-successful import opens its course. The Share page retains the same component for
-existing entry points; backup restoration remains separate.
+successful import opens its course. The share-link route uses the same component;
+the Share page only sends. Backup restoration remains separate.
 
 ### Card import dialogue (`src/components/import/CardImportDialog.tsx`)
 
@@ -89,10 +95,13 @@ The central area scrolls within the available viewport; the header, footer and o
 bounds remain stable between steps. The input supports pasted text, uploaded files,
 drag and drop, automatic format detection and a manual format override.
 
-- The dedicated Import screen configures new courses during review and creates an
+- The Import panel configures new courses in its separate destination step and creates an
   initial Lesson 1 with their imported cards.
 - Add lesson offers **Import cards** with an editable lesson title. Existing-lesson
   and course-bank imports display their destination without renaming it.
+- Going back to **All sources** keeps pasted text, which returns when Text or spreadsheet is
+  chosen again. Shared-course import keeps unreadable codes, course files and failed imports as
+  an inline alert beside the task until the next attempt or edit.
 - **Undo** on the review step means return to Add content. It preserves the title,
   text/file, manual format and reverse setting. It does not mutate or delete records.
 - **Also create reverse** applies only to non-empty, plain front/back cards without
@@ -114,7 +123,7 @@ drag and drop, automatic format detection and a manual format override.
   persistence transaction, then scheduling/history and card records commit together.
   Failures preserve the draft for correction/retry. Closing and duplicate submissions
   are blocked during a write. Success closes the dialogue and confirms the card count.
-- Share codes use **Import → Lacuna course** or the Share page, preserving
+- Share codes use **Import → Lacuna course**, preserving
   lineage/update routing; full backup restoration remains a separate operation.
 
 ### Unified export panel (`src/components/import/UnifiedExportPanel.tsx`)
@@ -255,6 +264,26 @@ missing media and media whose SHA-256 hash does not match its bytes are rejected
 and course content commit together; a failed import leaves neither partial content nor
 new orphaned assets. Export refuses missing media instead of producing an incomplete file.
 
+### The Share page (`SharePage`, `src/components/share/`, `/share`)
+
+The page sends one course. It opens on the requested course (`?courseId=`), else
+one already being shared, else the first active course; a menu beneath the centred title
+switches course when there is more than one. The share link is the default and
+the one primary action, because it carries media and updates in place. A course
+file, share code, QR code and plain text sit under **Other ways**, one open at a
+time; outputs survive switching between them and clear for another course. When
+a link's uploaded revision is behind the course, **Send revision n** becomes the
+primary action. Course changes clear previous controls immediately and animate the
+link surface's measured height, including asynchronous credential changes, so the
+alternatives move smoothly. Reduced motion removes that interpolation.
+Receiving lives on **Import → Lacuna course**.
+
+This applies the choice-architecture principles of structuring complex choices and
+providing feedback: one recommended route stays prominent, alternatives remain
+available, and results and revision status explain what an action produced. These
+are design principles, rather than a claim that this particular interface has been
+experimentally validated. See [Thaler, Sunstein and Balz, Choice Architecture](https://dl1.cuni.cz/pluginfile.php/958113/mod_resource/content/0/06%20Thaler%2C%20Sunstein%2C%20Balz%20%282012%29%20Choice%20Architecture.pdf).
+
 ### Share links (`relay/src/shares.ts`, `src/shareLinks/`, `/s/:code`)
 
 A hosted variant of the course file for classroom distribution. The teacher
@@ -333,7 +362,8 @@ never one person's scheduling progress or review history.
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is
   not a Markdown reference at all and likewise never travels: its `assetHash` will not resolve
   for the recipient, and the study face falls back to each card's plain-text content. The
-  Share page names affected cards and directs users to **Save course file** to include media.
+  Share page's code, QR and text options name affected cards and point to a course file or the
+  share link to include media.
   This limitation applies to text/QR codes; course files and full backups carry the assets.
 - **What it omits:** personal FSRS memory state, Card review history, Question Attempts and Question
   scheduling state, plus suspended/buried/flag state on Cards.
@@ -451,14 +481,14 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
      `sequenceItemId`/`occlusionRegionId`. Without that skip the merge both adopted the
      packed copy under its originating id and regenerated the same card, leaving two cards
      per item with the adopted one frozen at the publishing revision.
-  5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
+     5a. **Bank cards and links.** The payload's linked `bankCards` are adopted, tracked and
      diffed like lesson cards, with no lesson. Lesson-card `links` take a deterministic
      `lineage-link:` id and are made to match the payload on every import, never queued:
      they are display-only, and only links carrying that id prefix are touched. A note's or
      card's lesson membership counts as content, so a teacher moving one to another lesson
      is an update; a card move goes through `assignCardsToLesson` so its backing deck
      follows.
-  5b. **Course details.** The teacher's course name, description and unlock mode are
+     5b. **Course details.** The teacher's course name, description and unlock mode are
      applied directly (never queued), except a detail the learner has changed since the
      last import: `distributedCopy.source` records the teacher's values as last imported,
      and a local value that no longer matches it is kept.
@@ -496,13 +526,26 @@ publishedAt: number }`.** Absent until the teacher clicks **Publish** at least o
   "no lineage, treat as new" fallback a pre-v18 course already takes on import.
 - **Review panel (`MergeReviewPanel`, `src/components/import/MergeReviewPanel.tsx`)** — a
   course-scoped `/course/:courseId/updates` route reached from a quiet accent **"Update
-  available"** badge on the dashboard course card (`CourseCard.tsx`) and a **"Review
+  available"** badge on the course's row on Today (`TodayQueue.tsx`) and a **"Review
   updates"** entry point in the `CoursePath` header, both shown iff a `pendingMergeReviews`
   row exists for the course. Renders three sections — Updates, Removals, Conflicts — each
-  row offering the accept/reject action pair, plus a bottom bar with a bulk **Accept all**.
+  row offering the accept/reject action pair, plus an in-flow, wrapping footer with a bulk
+  **Accept all**, clear of the mobile course navigation and its safe area. Collapsed rows
+  label Current and Incoming and name changed fields; expanded comparisons label additions,
+  removals and unchanged context, keeping original Markdown and assets readable and selectable.
+  The shared disclosure animates below the row's controls without moving the active target.
+  Local consequence text explains replacement versus retention. Decisions remain explicit;
+  keeping an upstream removal is emphasised as the safe choice.
   Conflict rows flip the emphasis: **"Keep mine"** (reject) is the emphasised default
   action and **"Take theirs"** (accept) the secondary one, matching the student-wins policy
   above.
+  Resolving a row announces the result and remaining count, moves keyboard focus to the next
+  row's primary action (or the previous row when resolving the last one), and returns it to
+  **Back to course** on completion. Focus deliberately moved elsewhere whilst applying stays
+  there. Failed writes leave the queue and choices available, announce retry guidance and
+  return focus to the initiating action when appropriate. Pending decisions cannot overlap.
+  **Accept all** explains that conflicts remain for individual decisions, and is disabled
+  when only conflicts remain. All resolution still uses the existing atomic repository path.
 - **Resolution functions (`src/db/mergeImport.ts`)** — `acceptMergeReviewItems`/
   `rejectMergeReviewItems(reviewId, refs)` resolve a specific set of items; `acceptAllMergeReview`/
   `rejectAllMergeReview(reviewId)` resolve everything outstanding. All four route through the
@@ -576,7 +619,6 @@ Full backups and course shares preserve `Lesson.answerMode` defaults and optiona
 Shared-course updates treat these as authored content, preserving learner review history.
 Standalone JSON card exports include each card's resolved mode; re-import keeps that
 explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
-
 
 ### MCP Card import matching
 

@@ -1,0 +1,1 @@
+- Direction C cards and panels use a single theme-token hairline border without drop shadows across every accent in light and dark. Interactive card boundaries retain non-text contrast; the study card and sharing banner keep their existing behaviour.

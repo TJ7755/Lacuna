@@ -87,13 +87,7 @@ describe('RemovedQuestionSetAttempts', () => {
     render(<RouterProvider router={router} />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Attempts from removed sets · 1' }));
-    const title = await screen.findByRole('heading', { name: 'Cell structure' });
-    const link = title.closest('a');
-    expect(link).toHaveAttribute(
-      'href',
-      `/course/${course.id}/question-sets/${set.id}/attempts/${attempt.id}`,
-    );
-    link?.click();
+    fireEvent.click(await screen.findByRole('link', { name: /Cell structure/ }));
 
     await waitFor(() =>
       expect(screen.getByLabelText('Attempt route state')).toHaveTextContent(

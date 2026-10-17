@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useLocation, useOutlet } from 'react-router-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
@@ -43,11 +43,23 @@ export function routeTransitionTiming(multiplier: number) {
  * dropping in. Route changes inside the shell remain the responsibility of AppShell.
  */
 export function RouteTransition() {
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
   const location = useLocation();
   const outlet = useOutlet();
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const covered = hasLandingArrival();
+  const presenceKey = useRef('routes');
+  const previousLocationKey = useRef(location.key);
+  // A solid cover replaces the outgoing tree outright, including nested sheet exits.
+  // Keep this key after reveal so removing the cover cannot remount the session.
+  if (previousLocationKey.current !== location.key) {
+    previousLocationKey.current = location.key;
+    if (covered) presenceKey.current = location.key;
+  }
   const motionEnabled = multiplier > 0 && !covered;
 
   return (
@@ -55,11 +67,11 @@ export function RouteTransition() {
       <Suspense fallback={null}>
         <RouteAnnouncement pathname={location.pathname} />
       </Suspense>
-      <AnimatePresence mode="wait" initial={false} custom={covered}>
+      <AnimatePresence key={presenceKey.current} mode="wait" custom={covered}>
         <motion.div
           key={routeTransitionKey(location.pathname)}
           className="min-h-screen"
-          initial={motionEnabled ? { opacity: 0 } : false}
+          initial={{ opacity: motionEnabled && mounted.current ? 0 : 1 }}
           animate={{ opacity: 1 }}
           variants={EXIT}
           exit={multiplier > 0 ? 'exit' : undefined}

@@ -1,0 +1,1 @@
+- Individual Question editor: the prompt and answer now lead, with name, lesson and Concepts after; a new Question opens in its prompt; Ctrl/Cmd+Enter saves, and Save & add another keeps the lesson, Concept, form and tags for the next one; missing fields are reported at the field with focus on the first instead of a toast (#439).

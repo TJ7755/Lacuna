@@ -15,7 +15,11 @@ export function useStudyFocus(cardId: string | undefined, phase: Phase, overlayO
     if (!main) return;
     const focused = document.activeElement;
     if (!before.overlayOpen && focused !== document.body && !main.contains(focused)) return;
-    const answer = main.querySelector<HTMLInputElement>('#study-typed-answer');
+    const answer = Array.from(
+      main.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        '#study-typed-answer, #working-answer',
+      ),
+    ).find((field) => !field.closest('[inert]'));
     (answer ?? main).focus({ preventScroll: true });
   }, [cardId, phase, overlayOpen]);
   return mainRef;

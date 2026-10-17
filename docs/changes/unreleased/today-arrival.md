@@ -1,0 +1,1 @@
+- Today arrives in order: the exam-day forecast appears whole rather than in pieces, then the course rows fade in from the top. A slow forecast no longer holds the rows for long or pushes them down when it lands.

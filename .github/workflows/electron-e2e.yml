@@ -1,7 +1,7 @@
 name: Electron e2e
 
 # The Electron AI and macOS smoke specs skip on Linux, and CI runs them only for pull
-# requests into master. This manual run tests the branch or tag it is dispatched on,
+# requests into master or redesign branches. This manual run tests the branch or tag it is dispatched on,
 # including branches without CI, and adds the macOS AI run that CI leaves to the release
 # operator. It deliberately takes no ref input: checking out an arbitrary ref in the
 # default branch's context would let untrusted code poison its caches.
@@ -12,6 +12,52 @@ permissions:
   contents: read
 
 jobs:
+  packaged-interactions:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            build: electron:build:win
+          - os: ubuntu-latest
+            build: electron:build:linux
+          - os: macos-latest
+            build: electron:build:mac
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      - if: runner.os == 'Linux'
+        run: bunx playwright install --with-deps chromium
+      - run: bun run ${{ matrix.build }}
+      - name: Configure the Linux sandbox helper
+        if: runner.os == 'Linux'
+        run: |
+          sudo chown root:root release/linux-unpacked/chrome-sandbox
+          sudo chmod 4755 release/linux-unpacked/chrome-sandbox
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a bun run test:e2e:electron-package
+      - if: runner.os != 'Linux'
+        run: bun run test:e2e:electron-package
+      - name: Preserve packaged interaction evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packaged-interactions-${{ matrix.os }}
+          path: test-results/
+          if-no-files-found: ignore
+
   electron-ai:
     strategy:
       fail-fast: false
@@ -28,7 +74,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
       - name: Preserve Electron AI evidence
@@ -51,7 +97,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - run: bun run electron:prepare
       - run: bun run build:assets

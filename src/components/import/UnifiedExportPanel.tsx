@@ -182,15 +182,16 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
 
   return (
     <div className="flex flex-col gap-5">
-      <SettingsSubsectionHeading className="font-display text-lg text-ink">{heading}</SettingsSubsectionHeading>
+      <SettingsSubsectionHeading className="font-display text-lg text-ink">
+        {heading}
+      </SettingsSubsectionHeading>
 
-      {/* Format grid — rounded-2xl cards with soft shadows per SPEC §3.4 */}
       <div className="grid gap-3 sm:grid-cols-2">
         {formats.map((format, i) => (
           <motion.button
             key={format.id}
             type="button"
-            initial={{ opacity: 0, y: 6 }}
+            initial={m > 0 ? { opacity: 0, y: 6 } : false}
             animate={{ opacity: 1, y: 0 }}
             transition={{
               duration: 0.2 * m,
@@ -200,16 +201,16 @@ export function UnifiedExportPanel({ heading = 'Export your data' }: UnifiedExpo
             onClick={() => void handleExport(format)}
             disabled={busy}
             className={cn(
-              'group flex items-start gap-3.5 rounded-2xl border border-line bg-surface p-4 text-left transition-all',
-              'hover:border-line-strong hover:bg-surface-raised/40 hover:shadow-sm hover:shadow-black/5',
+              'group flex items-start gap-3.5 rounded-3xl card-surface card-surface-control bg-surface p-5 md:p-6 text-left transition-colors',
+              'hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
               'disabled:opacity-40 disabled:pointer-events-none',
             )}
           >
-            <div className="mt-0.5 rounded-xl border border-line bg-surface-raised p-2 text-ink-faint transition-all group-hover:border-accent/30 group-hover:bg-accent-soft/30 group-hover:text-accent">
+            <div className="mt-0.5 rounded-full bg-ink/[0.04] p-2 text-ink-faint transition-colors group-hover:bg-accent-soft/30 group-hover:text-accent-ink">
               {format.icon}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-medium text-ink transition-colors group-hover:text-ink">
+              <div className="text-sm font-semibold text-ink transition-colors group-hover:text-ink">
                 {format.label}
               </div>
               <p className="mt-1 text-xs leading-relaxed text-ink-faint">{format.description}</p>

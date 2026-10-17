@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="theme-color" content="#0A0B09" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,7 +16,7 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' blob: data: https://queue.simpleanalyticscdn.com; media-src 'self' blob:; connect-src 'self' https://queue.simpleanalyticscdn.com https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' blob: data: https://queue.simpleanalyticscdn.com; media-src 'self' blob:; connect-src 'self' https://queue.simpleanalyticscdn.com https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;"
     />
     <!-- Keep the relay, hosted AI and video origins in step with src/sync/pairingConfig.ts and
          electron/securityPolicy.ts. -->
@@ -41,6 +41,11 @@
         "inLanguage": "en-GB"
       }
     </script>
+    <style>
+      html[data-app-starting] { background: hsl(82 30% 94%); color-scheme: light; }
+      html.dark[data-app-starting] { background: #0A0B09; color-scheme: dark; }
+      html[data-app-starting] #root { display: none; }
+    </style>
     <script>
       // Apply the stored theme before first paint to avoid a flash of the wrong colour scheme.
       (function () {
@@ -54,6 +59,18 @@
         } catch (e) {
           document.documentElement.classList.add('dark');
         }
+        // Match the study-app startup decision before the prerender can paint.
+        var appStart = window.location.hash.indexOf('#/') === 0 ||
+          window.location.protocol === 'app:' ||
+          window.electronAPI && window.electronAPI.isElectron === true;
+        if (!appStart) {
+          try {
+            appStart = localStorage.getItem('lacuna-seeded') !== null;
+          } catch (e) {
+            // A first visit still shows the landing page when storage is denied.
+          }
+        }
+        if (appStart) document.documentElement.setAttribute('data-app-starting', '');
       })();
     </script>
   </head>

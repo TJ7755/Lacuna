@@ -12,7 +12,8 @@ const FOCUSABLE_SELECTOR = [
 
 /**
  * Traps keyboard focus inside a container element while it is mounted.
- * - On mount, focuses the first focusable child (or the element matching `autoFocusSelector`).
+ * - On mount, focuses the element matching `autoFocusSelector`, else the first focusable child
+ *   that is not a dialog close button, so a form opens on its first field.
  * - Tab on the last focusable element cycles back to the first.
  * - Shift+Tab on the first focusable element cycles to the last.
  * - On unmount, focus is returned to the trigger element (the element that was focused
@@ -46,11 +47,19 @@ export function useFocusTrap(
     const autoFocus = options.autoFocusSelector
       ? container.querySelector<HTMLElement>(options.autoFocusSelector)
       : null;
-    (autoFocus ?? focusables[0])?.focus();
+    // A dialog's close button (marked `data-dialog-close`) is never the useful first stop.
+    const firstUseful = focusables.find((el) => !el.hasAttribute('data-dialog-close'));
+    (autoFocus ?? firstUseful ?? focusables[0])?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!container) return;
+      if (!container || container.closest('[inert]')) return;
       if (e.key !== 'Tab' || e.defaultPrevented) return;
+      const activeDialog = document.activeElement?.closest('[role="dialog"]');
+      const ownDialog = container.matches('[role="dialog"]')
+        ? container
+        : container.querySelector('[role="dialog"]');
+      // A portalled child picker owns its own trap until it closes.
+      if (activeDialog && container.contains(activeDialog) && activeDialog !== ownDialog) return;
 
       const elements = Array.from(
         container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),

@@ -1,0 +1,1 @@
+- Primary button labels now meet 4.5:1 contrast for every alternative accent in both themes, keeping the selected accent colours unchanged.

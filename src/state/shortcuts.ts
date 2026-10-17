@@ -19,6 +19,25 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Ctrl/Cmd', 'K'], description: 'Open quick search' },
       { keys: ['/'], description: 'Open Search content' },
       { keys: ['?'], description: 'Show this help' },
+      { keys: ['Ctrl/Cmd', ','], description: 'Open Settings (desktop app)' },
+    ],
+  },
+  {
+    title: 'Pages',
+    shortcuts: [
+      { keys: ['S'], description: 'Study (Today, course and lesson pages)' },
+      { keys: ['N'], description: 'New card (Cards page, lesson in edit mode)' },
+      { keys: ['/'], description: 'Search cards (Cards page)' },
+      { keys: ['Shift', 'F10'], description: 'Lesson actions (lesson or path row, edit mode)' },
+      { keys: ['Alt', 'Up/Down'], description: 'Move a lesson (path, edit mode)' },
+    ],
+  },
+  {
+    title: 'Dialogs and editors',
+    shortcuts: [
+      { keys: ['Ctrl/Cmd', 'Enter'], description: 'Save or submit' },
+      { keys: ['Enter'], description: 'Submit a single-line form' },
+      { keys: ['Esc'], description: 'Cancel and close' },
     ],
   },
   {

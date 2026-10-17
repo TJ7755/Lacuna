@@ -1,46 +1,13 @@
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
 import {
   installSimpleAnalytics,
-  installHostedFontLinks,
-  isAppHashRoute,
   registerProductionServiceWorker,
+  shouldHydrateLanding,
 } from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
-  it('treats only #/ fragments as study-app routes', () => {
-    expect(isAppHashRoute('#/')).toBe(true);
-    expect(isAppHashRoute('#/course/abc')).toBe(true);
-    expect(isAppHashRoute('#landing-product')).toBe(false);
-    expect(isAppHashRoute('')).toBe(false);
-  });
-
-  it('does not request hosted fonts from a packaged app origin', () => {
-    const { document, links } = fakeDocument();
-
-    installHostedFontLinks(document, 'app:');
-
-    expect(links).toHaveLength(0);
-  });
-
-  it('loads the hosted font stylesheet for HTTP pages', () => {
-    const { document, links } = fakeDocument();
-
-    installHostedFontLinks(document, 'https:');
-
-    expect(links).toContainEqual(
-      expect.objectContaining({
-        rel: 'stylesheet',
-        href: expect.stringContaining('https://fonts.googleapis.com/css2'),
-      }),
-    );
-    const stylesheet = links.find((link) => link.rel === 'stylesheet')!;
-    expect(new URL(stylesheet.href).searchParams.getAll('family')).toEqual([
-      'Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700',
-      'JetBrains Mono:wght@400;500;600',
-    ]);
-  });
-
   it('does not attempt service-worker registration from a packaged app origin', async () => {
     const register = vi.fn().mockResolvedValue(undefined);
 
@@ -65,20 +32,6 @@ describe('hosted web bootstrap', () => {
     expect(register).toHaveBeenCalledWith('/sw.js');
   });
 });
-
-function fakeDocument(): { document: Document; links: HTMLLinkElement[] } {
-  const links: HTMLLinkElement[] = [];
-  const document = {
-    createElement: () => ({}) as HTMLLinkElement,
-    head: {
-      append: (...elements: HTMLLinkElement[]) => {
-        links.push(...elements);
-      },
-    },
-  } as unknown as Document;
-  return { document, links };
-}
-
 
 describe('Simple Analytics bootstrap', () => {
   it('loads the asynchronous script once on the production website', () => {
@@ -113,3 +66,54 @@ describe('Simple Analytics bootstrap', () => {
     expect(html).toMatch(/img-src[^;]*https:\/\/queue.simpleanalyticscdn.com/);
   });
 });
+
+describe('landing hydration decision', () => {
+  const firstVisit = {
+    hash: '',
+    isElectron: false,
+    seedFlagPresent: false,
+    landingMarkupPresent: true,
+  };
+
+  it('hydrates the prerendered landing page on a first visit', () => {
+    expect(shouldHydrateLanding(firstVisit)).toBe(true);
+  });
+
+  it('keeps in-page anchors such as #landing-product on the landing page', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#landing-product' })).toBe(true);
+  });
+
+  it('boots the study app for hash routes', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/cards' })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/' })).toBe(false);
+  });
+
+  it('boots the study app for Electron, seeded browsers and missing markup', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, isElectron: true })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, seedFlagPresent: true })).toBe(false);
+    expect(shouldHydrateLanding({ ...firstVisit, landingMarkupPresent: false })).toBe(false);
+  });
+
+  it('honours the pre-paint app decision if storage changes before modules load', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, appStartPending: true })).toBe(false);
+  });
+});
+
+it.each(['script', 'SCRIPT'])(
+  'suppresses the packaged app prerender before its preload API is available (%s tags)',
+  (tagName) => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    const html = readFileSync('index.html', 'utf8')
+      .replaceAll('<script>', `<${tagName}>`)
+      .replaceAll('</script>', `</${tagName}>`);
+    const sourceDocument = new DOMParser().parseFromString(html, 'text/html');
+    const script = sourceDocument.querySelector('script:not([type]):not([src])')!.textContent;
+    runInNewContext(script, {
+      document: targetDocument,
+      window: { location: { hash: '', protocol: 'app:' } },
+      localStorage: { getItem() { throw new Error('Storage denied'); } },
+    });
+    expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
+    expect(targetDocument.documentElement.classList.contains('dark')).toBe(true);
+  },
+);

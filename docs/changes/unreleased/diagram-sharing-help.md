@@ -1,0 +1,1 @@
+- Corrected Help’s diagram-sharing instructions to point to course files, which retain diagrams and media. Full backups remain the option for moving every course and its study history.

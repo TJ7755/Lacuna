@@ -1,0 +1,1 @@
+- Find cards in the current lesson with Ctrl/Command+F or the search button beside its cards. It opens the Quick search dialogue narrowed to the lesson's cards; Course Cards uses the same shortcut and search matching, while Quick search remains global.

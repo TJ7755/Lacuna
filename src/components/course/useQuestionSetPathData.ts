@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
-import type { PathNode, QuestionSetPathNode } from '../../course/path';
+import type { QuestionSetPathNode } from '../../course/path';
 import { getQuestionSet } from '../../questions/questionSetRepository';
 import { listQuestionSetAttempts } from '../../questions/questionSetAttemptRepository';
 
@@ -27,22 +27,4 @@ export function useQuestionSetPathData(node: QuestionSetPathNode) {
       ),
     [node.questionSetId, courseId],
   );
-}
-
-/** Set titles for the Practice Qs stops on a path, keyed by question set id. */
-export function useQuestionSetTitles(nodes: PathNode[]): Map<string, string> {
-  const ids = nodes.flatMap((node) =>
-    node.nodeType === 'practice-question-set' ? [node.questionSetId] : [],
-  );
-  const key = ids.join('\n');
-  const rows = useLiveQuery(
-    async () =>
-      ids.length === 0
-        ? []
-        : (await db.questionSets.bulkGet(ids)).flatMap((set) =>
-            set ? [[set.id, set.title] as const] : [],
-          ),
-    [key],
-  );
-  return new Map(rows ?? []);
 }

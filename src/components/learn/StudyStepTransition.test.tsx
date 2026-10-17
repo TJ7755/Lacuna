@@ -53,6 +53,48 @@ function renderTransition(
 }
 
 describe('StudyStepTransition', () => {
+  it('claims focus from the inert outgoing step during the crossfade', () => {
+    const outgoing = document.createElement('div');
+    const oldAction = document.createElement('button');
+    outgoing.append(oldAction);
+    document.body.append(outgoing);
+    oldAction.focus();
+    outgoing.inert = true;
+    renderTransition();
+    expect(screen.getByRole('button', { name: /^Continue/ })).toHaveFocus();
+    outgoing.remove();
+  });
+  it('hands the keyboard to the primary action once the next step is planned', () => {
+    const { rerender } = renderTransition({ planningNextStep: true });
+    expect(document.body).toHaveFocus();
+    rerender(
+      <StudyStepTransition
+        completedLabel="The blood"
+        nextLabel="Practice"
+        summary={summary(true)}
+        canReviewDueCards
+        breakPending={false}
+        planningNextStep={false}
+        {...callbacks()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /^Continue/ })).toHaveFocus();
+  });
+
+  it('offers the break first when one is due', () => {
+    renderTransition({ breakPending: true });
+    expect(screen.getByRole('button', { name: 'Take a break' })).toHaveFocus();
+  });
+
+  it('keeps focus on a control the learner already chose', () => {
+    const other = document.createElement('button');
+    document.body.append(other);
+    other.focus();
+    renderTransition();
+    expect(other).toHaveFocus();
+    other.remove();
+  });
+
   it('presents the freshly planned next step and delegates every available action', () => {
     const actions = callbacks();
     render(
@@ -167,6 +209,10 @@ describe('StudyStepTransition', () => {
     expect(screen.getByText('Plan updated: the assessment deadline moved.')).toBeInTheDocument();
     expect(screen.getByText('Not reached')).toBeInTheDocument();
     expect(screen.queryByText(/predicted|readiness|mark/i)).not.toBeInTheDocument();
+    // Each figure sits in the tinted well, not an outlined box.
+    const fact = screen.getByText('Not reached').parentElement;
+    expect(fact).toHaveClass('bg-ink/[0.04]');
+    expect(fact).not.toHaveClass('border');
   });
 
   it('shows readiness only when the model supplies prediction uncertainty', () => {

@@ -1,0 +1,316 @@
+.landing-feature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(40px, 6vw, 96px);
+  min-height: 70svh;
+  padding: 72px var(--landing-gutter);
+  scroll-margin-top: 96px;
+}
+.landing-feature-copy {
+  max-width: 30rem;
+}
+.landing-feature h2,
+.landing-faq h2,
+.landing-ending h2 {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 2.8vw, 42px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.landing-feature-copy > p {
+  margin-top: 24px;
+  color: var(--stone);
+  font-size: 18px;
+  line-height: 1.7;
+}
+.landing-feature:nth-of-type(odd):not(.landing-feature-centred) {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+.landing-feature:nth-of-type(odd) > .landing-feature-copy {
+  grid-column: 2;
+  grid-row: 1;
+}
+.landing-feature:nth-of-type(odd) > .landing-feature-visual {
+  grid-column: 1;
+  grid-row: 1;
+}
+.landing-feature-visual {
+  min-width: 0;
+  pointer-events: none;
+}
+.landing-schedule {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+.landing-due-queue,
+.landing-forecast {
+  position: relative;
+  height: 270px;
+}
+.landing-due-queue {
+  padding-top: 40px;
+  color: var(--stone);
+}
+.landing-due-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 42px;
+}
+.landing-due-text {
+  height: 5px;
+  width: 30%;
+  background: var(--stone);
+  opacity: 0.3;
+  border-radius: 3px;
+}
+.landing-due-row:nth-child(odd) .landing-due-text {
+  width: 22%;
+}
+.landing-interval {
+  position: absolute;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--stone) 12%, var(--cinema));
+  font-size: 13px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.landing-exam-marker {
+  position: absolute;
+  inset: 36px auto 0 76%;
+  width: 1px;
+  background: color-mix(in srgb, var(--stone) 30%, transparent);
+}
+.landing-exam-marker > span {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: var(--stone);
+}
+.landing-forecast .landing-exam-marker {
+  left: 88.46%;
+}
+.landing-forecast svg {
+  position: absolute;
+  width: 100%;
+  height: 250px;
+  bottom: 0;
+  overflow: visible;
+}
+.landing-chart-axis {
+  stroke: var(--stone);
+  stroke-opacity: 0.2;
+}
+.landing-chart-target {
+  stroke: var(--ivory);
+  stroke-opacity: 0.7;
+}
+.landing-chart-line {
+  stroke: var(--amber);
+}
+.landing-chart-dot {
+  position: absolute;
+  left: 88.46%;
+  /* Match the SVG endpoint without stretching its dot at narrow widths. */
+  top: calc(24.8% + 15.04px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--amber);
+  transform: translate(-50%, -50%);
+}
+.landing-chart-value {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: -0.04em;
+  color: var(--amber);
+}
+.landing-forecast-number {
+  font-family: var(--font-display);
+  font-size: clamp(120px, 16vw, 230px);
+  font-weight: 500;
+  letter-spacing: -0.08em;
+  line-height: 1;
+  color: var(--amber);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.landing-learn {
+  max-width: 470px;
+  margin-inline: auto;
+}
+.landing-learn-card,
+.landing-question {
+  background: color-mix(in srgb, var(--ivory) 4%, var(--cinema));
+  border: 1px solid color-mix(in srgb, var(--stone) 18%, transparent);
+  border-radius: 24px;
+}
+.landing-learn-card {
+  min-height: 270px;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  font-size: clamp(24px, 2.4vw, 34px);
+}
+.landing-learn-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+.landing-learn-actions > span {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  min-height: 48px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ivory) 8%, var(--cinema));
+  font-size: 16px;
+}
+.landing-learn-actions > span:last-child {
+  background: var(--amber);
+  color: var(--cinema);
+}
+.landing-question {
+  padding: clamp(24px, 3vw, 40px);
+}
+.landing-question-prompt {
+  font-size: 22px;
+  font-weight: 500;
+}
+.landing-question-answer {
+  margin-top: 24px;
+  color: var(--stone);
+  font-size: 15px;
+  line-height: 1.8;
+}
+.landing-mark-scheme {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid color-mix(in srgb, var(--stone) 18%, transparent);
+  list-style: none;
+}
+.landing-mark-scheme li {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--stone);
+}
+.landing-mark-scheme svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-self: center;
+}
+.landing-mark-scheme [data-awarded='true'] svg {
+  color: var(--amber);
+}
+.landing-question-score {
+  margin-top: 24px;
+  text-align: right;
+  color: var(--amber);
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: -0.04em;
+}
+.landing-feature.landing-feature-centred {
+  display: block;
+  min-height: 0;
+  padding-block: 80px;
+  text-align: center;
+}
+.landing-feature-centred .landing-feature-copy {
+  max-width: 38rem;
+  margin-inline: auto;
+}
+.landing-ending {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 100px var(--landing-gutter);
+  text-align: center;
+}
+.landing-ending h2 {
+  max-width: 32rem;
+}
+.landing-ending .landing-cta {
+  min-height: 52px;
+  min-width: 184px;
+  border-radius: 40px;
+  font-size: 15px;
+}
+@media (max-width: 800px) {
+  .landing-feature,
+  .landing-feature:nth-of-type(odd):not(.landing-feature-centred) {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    gap: 44px;
+    padding-block: 64px;
+  }
+  .landing-feature:nth-of-type(odd) > .landing-feature-copy,
+  .landing-feature:nth-of-type(odd) > .landing-feature-visual {
+    grid-column: auto;
+    grid-row: auto;
+  }
+  .landing-feature-copy {
+    max-width: none;
+  }
+  .landing-feature-copy > p {
+    margin-top: 20px;
+    font-size: 17px;
+  }
+  .landing-feature-visual {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
+  .landing-schedule {
+    gap: 20px;
+  }
+  .landing-due-queue,
+  .landing-forecast {
+    height: 250px;
+  }
+  .landing-forecast svg {
+    height: 230px;
+  }
+  .landing-chart-value {
+    top: 35px;
+    font-size: 24px;
+  }
+  .landing-interval {
+    font-size: 12px;
+    padding-inline: 5px;
+  }
+  .landing-forecast-number {
+    font-size: clamp(120px, 38vw, 220px);
+    padding-block: 12px;
+  }
+  .landing-learn-card {
+    min-height: 230px;
+  }
+  .landing-question-answer {
+    font-size: 14px;
+  }
+  .landing-mark-scheme li {
+    font-size: 13px;
+  }
+  .landing-ending {
+    padding-block: 80px;
+  }
+}

@@ -1,875 +1,176 @@
-import { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Button } from '../components/ui/Button';
-import { SectionRail } from '../components/ui/SectionRail';
+import { useEffect, useState } from 'react';
+import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { useLocation } from 'react-router-dom';
+import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
+import { AppLink as Link } from '../components/ui/AppLink';
 import {
-  PlayIcon,
-  CheckIcon,
-  FlameIcon,
-  KeyboardIcon,
-  InfoIcon,
-  ImageIcon,
-  SparklesIcon,
-  ChevronLeftIcon,
-  SettingsIcon,
-  ChartIcon,
   CardsIcon,
+  ChartIcon,
+  PlayIcon,
+  SearchIcon,
+  SettingsIcon,
+  SparklesIcon,
 } from '../components/ui/icons';
+import { HELP_ALIASES, HELP_GROUPS, helpTopics } from './help/helpTopics';
+import { searchHelp } from './help/searchHelp';
+import { HELP_LINK_CLASS, HelpTopicRow } from './help/HelpTopicRow';
+import {
+  SettingsArrivalProvider,
+  SettingsCard,
+  SETTINGS_HEADING_ROW_CLASS,
+} from './settings/SettingsUi';
+import { SettingsSectionHeading } from './settings/SettingsSectionHeading';
 
-type Section = {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  content: React.ReactNode;
-};
+const GROUP_ICONS = [SparklesIcon, PlayIcon, CardsIcon, ChartIcon, SettingsIcon];
+const GROUP_COLUMNS = [HELP_GROUPS.slice(0, 2), HELP_GROUPS.slice(2)];
 
-const HELP_SECTIONS = [
-  { id: 'course-model', label: 'Courses & lessons' },
-  { id: 'study-modes', label: 'Study modes' },
-  { id: 'filtered-modes', label: 'Filtered study' },
-  { id: 'how-to-study', label: 'How to study' },
-  { id: 'keyboard-shortcuts', label: 'Keyboard shortcuts' },
-  { id: 'touch-gestures', label: 'Touch gestures' },
-  { id: 'progress', label: 'Progress & scheduling' },
-  { id: 'card-types', label: 'Card types' },
-  { id: 'questions', label: 'Questions' },
-  { id: 'sequences', label: 'Sequences' },
-  { id: 'occlusions', label: 'Diagrams' },
-  { id: 'tips', label: 'Tips & best practice' },
-];
-
-function SectionCard({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface p-6 md:p-8">
-      <div className="mb-5 flex items-center gap-3">
-        <span className="text-accent">{icon}</span>
-        <h2 className="font-display text-3xl tracking-tight">{label}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function ModeCard({
-  title,
-  description,
-  whatItDoes,
-  whenToUse,
-  tip,
-}: {
-  title: string;
-  description: string;
-  whatItDoes: string;
-  whenToUse: string;
-  tip?: string;
-}) {
-  return (
-    <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-      <h3 className="mb-1.5 font-medium text-ink">{title}</h3>
-      <p className="mb-3 text-sm text-ink-soft">{description}</p>
-      <div className="space-y-2 text-sm text-ink-soft">
-        <p>
-          <strong className="text-ink">What it does:</strong> {whatItDoes}
-        </p>
-        <p>
-          <strong className="text-ink">When to use:</strong> {whenToUse}
-        </p>
-        {tip && (
-          <p className="rounded-lg bg-accent-soft/40 px-3 py-2.5 text-xs text-accent-ink">
-            <strong className="text-accent">Tip:</strong> {tip}
-          </p>
-        )}
-      </div>
-    </div>
-  );
+function fragment() {
+  try {
+    return decodeURIComponent(window.location.hash.split('#').at(-1) ?? '');
+  } catch {
+    return '';
+  }
 }
 
 export function HelpPage() {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-  const [activeSection, setActiveSection] = useState<string>(HELP_SECTIONS[0].id);
+  const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const [target, setTarget] = useState<string | null>(null);
+  const location = useLocation();
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
+  const searching = query.trim() !== '';
+  const topics = searchHelp(query);
 
-  // Track which section is currently visible using IntersectionObserver.
   useEffect(() => {
-    const intersecting = new Set<string>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) intersecting.add(entry.target.id);
-          else intersecting.delete(entry.target.id);
-        });
-        const top = HELP_SECTIONS.find((s) => intersecting.has(s.id));
-        if (top) setActiveSection(top.id);
-      },
-      { rootMargin: '-20% 0px -60% 0px', threshold: 0 },
-    );
-    HELP_SECTIONS.forEach((section) => {
-      const el = document.getElementById(section.id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, []);
-
-  // If the user navigated directly to a hash (e.g. /help#card-types), scroll
-  // to it and highlight the correct sidebar item on mount.
-  useEffect(() => {
-    const hash = window.location.hash.replace('#', '');
-    if (hash && HELP_SECTIONS.some((s) => s.id === hash)) {
-      setActiveSection(hash);
-      const el = document.getElementById(hash);
-      if (el) {
-        window.requestAnimationFrame(() => {
-          el.scrollIntoView({ behavior: 'instant', block: 'start' });
-        });
-      }
+    function reveal() {
+      // HashRouter navigation uses pushState; native fragment changes still need a listener.
+      const hash = fragment();
+      const id = HELP_ALIASES[hash] ?? hash;
+      if (!helpTopics.some((topic) => topic.id === id)) return;
+      setQuery('');
+      setExpanded((previous) => new Set([...previous, id]));
+      setTarget(id);
     }
-  }, []);
+    reveal();
+    window.addEventListener('hashchange', reveal);
+    return () => window.removeEventListener('hashchange', reveal);
+  }, [location.key]);
 
-  const sections = useMemo<Section[]>(
-    () => [
-      {
-        id: 'course-model',
-        label: 'Courses & lessons',
-        icon: <CardsIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Lacuna organises material into courses. Each course is made up of lessons, studied in
-              order along a path.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Courses</h3>
-                <p className="text-sm text-ink-soft">
-                  A course is the top-level subject you are studying &mdash; a module, a subject, an
-                  exam. The dashboard lists your courses; opening one takes you to its path. A
-                  course with a single lesson skips the path and opens straight into that lesson.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">The course path</h3>
-                <p className="text-sm text-ink-soft">
-                  The path is an ordered sequence of lessons. Completing a lesson unlocks the next
-                  one. Alongside lessons, the path can show:
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-                  <li>
-                    <strong className="text-ink">Checkpoints:</strong> markers for exam dates you
-                    have set on the course. Open one to inspect its scope and start an assessment
-                    revision plan. Checkpoints never block course progress.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Practice sessions:</strong> nodes that gather up
-                    due cards from the lessons studied so far, so you keep reviewing older material
-                    as you move through the course.
-                  </li>
-                </ul>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Lessons and notes</h3>
-                <p className="text-sm text-ink-soft">
-                  A lesson holds the notes and cards for one topic. Notes are Markdown blocks where
-                  you write out explanations, examples or source material &mdash; add, reorder and
-                  edit them directly on the lesson page. Add further lessons from the course path,
-                  from course settings under Lessons, or from a single-lesson course view. Cards are
-                  the flashcards you actually get quizzed on; create them from the lesson page or
-                  the course&apos;s Cards tab.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Cards</h3>
-                <p className="text-sm text-ink-soft">
-                  Every course has a Cards tab listing all of its Cards in one place, regardless of
-                  which lesson they belong to. Use it to browse, search, edit or bulk-manage cards.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Course settings</h3>
-                <p className="text-sm text-ink-soft">
-                  Course Settings holds exam dates, the study objective, scheduling optimisation,
-                  lesson and manual-practice management, and course deletion. Full backup and
-                  recovery lives in global Settings; course sharing lives under Share.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'study-modes',
-        label: 'Study modes',
-        icon: <PlayIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Lacuna offers several ways to study your cards. Each mode is designed for a different
-              purpose. You can start a session from a lesson or the course path, or choose{' '}
-              <strong>Review today</strong> for a session across every course.
-            </p>
-            <div className="grid gap-3">
-              <ModeCard
-                title="Study all cards"
-                description="The default study mode. Uses the FSRS algorithm to schedule cards based on when you are likely to forget them, weighted towards your exam date."
-                whatItDoes="Shows cards that are due for review, plus a limited number of new cards each day. The algorithm tracks your performance and schedules each card at the optimal interval to maximise retention while minimising workload."
-                whenToUse="Use this for your day-to-day studying. It is the most efficient mode for long-term retention."
-                tip="If you have an exam date set, the algorithm prioritises cards that will be weakest on exam day. The progress bar shows how many cards are 'secured' (predicted retrievability above 90%)."
-              />
-              <ModeCard
-                title="Simple learn"
-                description="A first pass through your cards. Mark each answer correct or incorrect; your answers also start spaced-repetition scheduling."
-                whatItDoes="Shows every card in the course. If you answer correctly, the card is marked as mastered. If you answer incorrectly, the card is sent to the back of the queue and reappears later. The session ends only when every card has been marked correct."
-                whenToUse="Use this when learning material for the first time. Turn off Learn first in course settings to start directly with spaced repetition."
-                tip="The progress bar at the top shows how many cards are wrong, remaining, and mastered. Try to turn them all correct before you finish."
-              />
-              <ModeCard
-                title="Assessment revision"
-                description="A time-budgeted revision plan for one named checkpoint or final exam."
-                whatItDoes="Uses the assessment’s covered lessons, removes excluded and unavailable cards, and limits revision to material you have reached and studied. Plans persist by day, can be left and resumed, and never complete a course Practice milestone."
-                whenToUse="Choose it from a relevant Practice node, checkpoint details, or Study when an upcoming assessment overlaps material you have reached."
-                tip="Set today’s time and edit future days before starting. The plan estimates each review’s assessment-day value and reports what was covered, improved, parked or not reached. If the model is unavailable, it says so and uses ordinary Practice ordering."
-              />
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'filtered-modes',
-        label: 'Filtered study',
-        icon: <InfoIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Filtered study lets you narrow down to a specific subset of cards. These are useful
-              for targeted review, maintenance, or catching up on specific categories.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ModeCard
-                title="Study due cards"
-                description="Cards that are scheduled for review today or are overdue."
-                whatItDoes="Shows only cards whose next review date is today or earlier. This is the core of the FSRS algorithm: reviewing cards just before you are likely to forget them."
-                whenToUse="Use this when you want to catch up on your review backlog without seeing new cards."
-              />
-              <ModeCard
-                title="Study new cards"
-                description="Cards you have never seen before."
-                whatItDoes="Shows only cards that have never been reviewed (no learning history). These cards are in the learning phase and will graduate to review after their learning steps."
-                whenToUse="Use this when you want to introduce new cards without being distracted by reviews."
-              />
-              <ModeCard
-                title="Study leech cards"
-                description="Cards that keep failing."
-                whatItDoes="Shows only cards that have failed enough times to cross the leech threshold (default is 8 lapses). These cards usually need rewording, better mnemonics, or splitting into smaller cards."
-                whenToUse="Use this when you want to identify and fix cards that are not sticking."
-                tip="Consider editing or rewording leech cards. A card that has lapsed many times is often a sign that the card is too complex or poorly phrased."
-              />
-              <ModeCard
-                title="Study flagged cards"
-                description="Cards you have manually flagged for attention."
-                whatItDoes="Shows only cards that have the flag marker set. You can flag a card during a study session by opening the card menu and selecting 'Flag card'."
-                whenToUse="Use this when you want to review cards you have marked as needing attention, without searching through the entire course."
-              />
-              <ModeCard
-                title="Study suspended cards"
-                description="Cards that have been removed from normal rotation."
-                whatItDoes="Shows only cards that are suspended. Suspended cards are excluded from all normal study sessions. You can suspend a card during a study session or from the card list."
-                whenToUse="Use this to review or unsuspend cards you had previously removed from rotation."
-              />
-            </div>
-            <p className="text-base text-ink-soft">
-              You can combine multiple filters together (e.g., due + flagged) to study only cards
-              that match all selected criteria.
-            </p>
-          </div>
-        ),
-      },
-      {
-        id: 'how-to-study',
-        label: 'How to study',
-        icon: <KeyboardIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              The study session is designed to be fast and keyboard-driven. Here is how a typical
-              session works.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">1. Question phase</h3>
-                <p className="text-sm text-ink-soft">
-                  The card is shown front-side only. Read the question and try to recall the answer.
-                  Do not flip the card immediately: the time you spend thinking is what builds
-                  memory.
-                </p>
-                <p className="mt-2 text-sm text-ink-soft">
-                  <strong className="text-ink">Keyboard:</strong> press Space or the Up arrow to
-                  reveal.
-                  <br />
-                  <strong className="text-ink">Touch:</strong> tap the card or the &lsquo;Show
-                  answer&rsquo; button.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">2. Answer phase</h3>
-                <p className="text-sm text-ink-soft">
-                  The card flips to reveal the answer. Compare your recalled answer with the actual
-                  answer. Grade yourself honestly.
-                </p>
-                <p className="mt-2 text-sm text-ink-soft">
-                  <strong className="text-ink">Silent grading (default):</strong> press Yes (Space
-                  or Right arrow) if you were correct, No (Left arrow) if you were wrong. The
-                  algorithm measures your response time to determine how well you knew the card.
-                  <br />
-                  <strong className="text-ink">Manual grading:</strong> press 1 (Again), 2 (Hard), 3
-                  (Good), or 4 (Easy) to self-grade. Enable this in Settings under &lsquo;Study
-                  &amp; scheduling&rsquo;.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">3. Card actions</h3>
-                <p className="text-sm text-ink-soft">
-                  During a study session, you can perform actions on the current card without
-                  leaving the session:
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-                  <li>
-                    <strong className="text-ink">Edit (E):</strong> fix a typo or reword the card.
-                    The timer pauses while you edit.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Flag:</strong> mark the card for later review in
-                    the flagged-cards filter.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Bury:</strong> hide the card until tomorrow. Use
-                    this for cards that you already know well or do not want to see today.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Suspend:</strong> remove the card from all study
-                    sessions indefinitely. Use this for cards that are no longer relevant.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Undo (U):</strong> undo your last answer if you
-                    mis-pressed.
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'keyboard-shortcuts',
-        label: 'Keyboard shortcuts',
-        icon: <KeyboardIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              All shortcuts can be customised in Settings &rarr; Keyboard shortcuts.
-            </p>
-            <div className="overflow-hidden rounded-xl border border-line">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-line bg-surface-raised">
-                    <th className="px-4 py-3 text-left font-medium text-ink">Action</th>
-                    <th className="px-4 py-3 text-left font-medium text-ink">Default key</th>
-                    <th className="px-4 py-3 text-left font-medium text-ink">When</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Reveal answer</td>
-                    <td className="px-4 py-3 font-medium text-ink">Space, Up</td>
-                    <td className="px-4 py-3 text-ink-soft">Question phase</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Hide answer</td>
-                    <td className="px-4 py-3 font-medium text-ink">Down</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Yes / Correct</td>
-                    <td className="px-4 py-3 font-medium text-ink">Right</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (silent mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">No / Wrong</td>
-                    <td className="px-4 py-3 font-medium text-ink">Left</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (silent mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Again</td>
-                    <td className="px-4 py-3 font-medium text-ink">1</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (manual mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Hard</td>
-                    <td className="px-4 py-3 font-medium text-ink">2</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (manual mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Good</td>
-                    <td className="px-4 py-3 font-medium text-ink">3</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (manual mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Easy</td>
-                    <td className="px-4 py-3 font-medium text-ink">4</td>
-                    <td className="px-4 py-3 text-ink-soft">Answer phase (manual mode)</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Edit card</td>
-                    <td className="px-4 py-3 font-medium text-ink">E</td>
-                    <td className="px-4 py-3 text-ink-soft">Any time</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Undo last answer</td>
-                    <td className="px-4 py-3 font-medium text-ink">U</td>
-                    <td className="px-4 py-3 text-ink-soft">Any time</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Focus mode</td>
-                    <td className="px-4 py-3 font-medium text-ink">F</td>
-                    <td className="px-4 py-3 text-ink-soft">Any time</td>
-                  </tr>
-                  <tr>
-                    <td className="px-4 py-3 text-ink-soft">Shortcuts help</td>
-                    <td className="px-4 py-3 font-medium text-ink">?</td>
-                    <td className="px-4 py-3 text-ink-soft">Any time</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'touch-gestures',
-        label: 'Touch gestures',
-        icon: <SparklesIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              In touch-first mode, the study interface supports swipe gestures for faster grading.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Tap to flip</h3>
-                <p className="text-sm text-ink-soft">
-                  Tap anywhere on the card to reveal the answer. Tap again to hide it.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Swipe right = Yes</h3>
-                <p className="text-sm text-ink-soft">
-                  In the answer phase, swipe right on the card to mark it correct. A green glow
-                  appears to confirm the action.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Swipe left = No</h3>
-                <p className="text-sm text-ink-soft">
-                  In the answer phase, swipe left on the card to mark it wrong. A red glow appears
-                  to confirm the action.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'progress',
-        label: 'Progress & scheduling',
-        icon: <CheckIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Understanding the progress bar and scheduling helps you use Lacuna more effectively.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">What the progress bar means</h3>
-                <p className="text-sm text-ink-soft">
-                  The progress bar shows how close your course is to being exam-ready. The exact
-                  meaning depends on your exam objective:
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
-                  <li>
-                    <strong className="text-ink">Secure topics:</strong> the fraction of cards that
-                    are predicted to be retrievable at 90% or above on exam day.
-                  </li>
-                  <li>
-                    <strong className="text-ink">Maximise expected marks:</strong> the mean
-                    predicted retrievability across all cards on exam day.
-                  </li>
-                </ul>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">FSRS scheduling</h3>
-                <p className="text-sm text-ink-soft">
-                  Lacuna uses FSRS (Free Spaced Repetition Scheduler), an open-source algorithm that
-                  models your memory with mathematical precision. It tracks how well you know each
-                  card and schedules reviews at the optimal moment: just before you would forget,
-                  but not so often that it wastes time.
-                </p>
-                <p className="mt-2 text-sm text-ink-soft">
-                  The algorithm adapts to you. Over time, cards you find easy will be shown less
-                  frequently, while cards you struggle with will come back sooner.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Optimisation</h3>
-                <p className="text-sm text-ink-soft">
-                  Lacuna can fit the FSRS weights to your own review history. This is where most of
-                  the efficiency gains come from. You can run this manually per course in Course
-                  Settings &rarr; Scheduling optimisation, or enable automatic optimisation in
-                  Settings &rarr; Study & scheduling.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'card-types',
-        label: 'Card types',
-        icon: <CardsIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Lacuna supports several card types for different kinds of learning.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Basic card</h3>
-                <p className="text-sm text-ink-soft">
-                  A simple front-and-back flashcard. The question appears on the front; the answer
-                  on the back. This is the default and works for most material.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Reversed card</h3>
-                <p className="text-sm text-ink-soft">
-                  Creates two cards from one note: one in each direction. Useful for vocabulary
-                  (English-to-French and French-to-English) or any bidirectional knowledge.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Typing-answer card</h3>
-                <p className="text-sm text-ink-soft">
-                  You type the answer into a text box before revealing. This is more demanding than
-                  simply recalling, and is excellent for spelling, formulae, or precise terminology.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Cloze card</h3>
-                <p className="text-sm text-ink-soft">
-                  A sentence with one or more words hidden. You recall the hidden words before
-                  revealing them. Useful for context-dependent knowledge and fill-in-the-blank style
-                  questions.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Audio card</h3>
-                <p className="text-sm text-ink-soft">
-                  Attach or record a short clip, add an optional prompt and provide the answer.
-                  Audio plays on the question face and disappears when the answer is revealed;
-                  choose Hear it again or press R to replay without losing the grading controls.
-                  Autoplay and playback speed are under Settings &rarr; Study &amp; scheduling.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Diagram card</h3>
-                <p className="text-sm text-ink-soft">
-                  Generated from a labelled diagram: the labels are covered and one is ringed for
-                  you to recall. See Diagrams below.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'questions',
-        label: 'Questions',
-        icon: <InfoIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Questions are post-instruction application problems, kept separate from direct-recall
-              Cards. Open a course&apos;s Questions tab to author or practise them; they do not
-              appear in lesson Card study, Practice nodes, assessment revision or the course path.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Fixed and generated Questions</h3>
-                <p className="text-sm text-ink-soft">
-                  A fixed Question always presents the authored problem. A generated family creates
-                  deterministic variants from one built-in configuration. Every Question names one
-                  Primary skill practised and may name prerequisite Concepts.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Practice and marking</h3>
-                <p className="text-sm text-ink-soft">
-                  Practise 10 serves due Questions first, then unseen Questions where space remains;
-                  All due serves every eligible Question currently due. Lacuna marks numeric and
-                  structured working answers automatically. Full marks schedule as Good, incomplete
-                  answers as Again, and uncertain or disputed results do not change the schedule.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Attempts and feedback</h3>
-                <p className="text-sm text-ink-soft">
-                  Each presentation records its exact problem before display. Your first submission
-                  is preserved, worked feedback is always shown, and an optional correction is
-                  stored separately. Undo excludes the Attempt from scheduling without deleting its
-                  receipt. Question evidence never changes Card schedules or Card analytics.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'sequences',
-        label: 'Sequences',
-        icon: <SparklesIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              A sequence is an ordered list you write once — a list of steps, dates, or items in a
-              series — from which Lacuna generates ordinary cards for you. You never study the
-              sequence itself; you study the cards it produces, and editing the sequence keeps them
-              in sync.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Cue window</h3>
-                <p className="text-sm text-ink-soft">
-                  Each generated card’s front shows the preceding item or two (the cue window, two
-                  by default) so you recall the next item from local context, rather than the whole
-                  list. This targets the point in a list you are most likely to forget: the middle.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Chunks</h3>
-                <p className="text-sm text-ink-soft">
-                  Long sequences can be split into named chunks. The first item of a chunk is cued
-                  by its chunk name rather than by the previous chunk’s items, so chunks study
-                  independently of one another.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Reciting poems, speeches and scripts</h3>
-                <p className="text-sm text-ink-soft">
-                  Simple Learn teaches a poem, speech or script by recitation. Each new line is
-                  shown once; you then recite every line so far from memory, typed or aloud, and
-                  mark any you got wrong. Lines are learnt in chunks (stanzas, or four lines unless
-                  you choose otherwise); after each chunk you recite everything from the top. In
-                  later reviews, a due line is recited from the start of its chunk.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Label cards</h3>
-                <p className="text-sm text-ink-soft">
-                  Turning on label cards additionally generates an unordered label-to-value card for
-                  each item (for example, “Atomic number 11 &rarr; ?”), for recall that does not
-                  depend on position in the sequence at all.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Editing generated cards</h3>
-                <p className="text-sm text-ink-soft">
-                  Cards generated from a sequence are read-only in the card editor and carry a
-                  sequence badge wherever they appear. To change their content, edit the sequence
-                  itself — Lacuna regenerates the affected cards and keeps their memory state
-                  intact.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'occlusions',
-        label: 'Diagrams',
-        icon: <ImageIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <p className="text-base text-ink-soft">
-              Upload a labelled diagram, draw boxes over it once, and Lacuna generates one card per
-              box. As with sequences, you study the cards rather than the diagram itself, and
-              editing the diagram keeps them in sync.
-            </p>
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Labels and features</h3>
-                <p className="text-sm text-ink-soft">
-                  A <strong>label</strong> box covers text already printed on the diagram — you type
-                  nothing, and revealing uncovers the diagram&rsquo;s own words. A{' '}
-                  <strong>feature</strong> box points at a part of the drawing that carries no
-                  printed label; pair it with the label box that names it, and revealing uncovers
-                  that label. Every label is covered on every question face, so no card can be
-                  answered by reading the picture or by elimination.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Editing a diagram</h3>
-                <p className="text-sm text-ink-soft">
-                  Moving, resizing or re-pairing a box updates that card and keeps its memory state;
-                  deleting a box removes its card, with an undo. Replacing the image itself
-                  regenerates every card in the diagram, so Lacuna warns you first. Drawing is
-                  designed for a mouse or trackpad — it works on a touchscreen, but a larger screen
-                  is easier.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Sharing a diagram</h3>
-                <p className="text-sm text-ink-soft">
-                  Share codes cannot carry image or audio files, so a shared diagram card arrives as
-                  text with no picture. To move diagrams between machines, export a full backup from
-                  Settings instead.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        id: 'tips',
-        label: 'Tips & best practice',
-        icon: <FlameIcon width={20} height={20} />,
-        content: (
-          <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Set an exam date</h3>
-                <p className="text-sm text-ink-soft">
-                  The single most important thing you can do is set an accurate exam date and time
-                  for each course. Without it, Lacuna defaults to a generic rolling horizon and will
-                  not prioritise the cards that matter most. The exam date is set in Course
-                  Settings.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Keep cards small</h3>
-                <p className="text-sm text-ink-soft">
-                  Each card should test one atomic fact. Complex cards that require multiple steps
-                  are harder to remember and harder to grade. If a card keeps failing, split it.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Be honest when grading</h3>
-                <p className="text-sm text-ink-soft">
-                  The algorithm is only as good as your self-assessment. If you were not sure, mark
-                  it wrong. It is better to review a card one extra time than to forget it on exam
-                  day.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Use the Pomodoro timer</h3>
-                <p className="text-sm text-ink-soft">
-                  The built-in Pomodoro timer helps you maintain focus. Short breaks prevent
-                  fatigue, which improves retention. You can customise the durations in Settings
-                  &rarr; Pomodoro timer.
-                </p>
-              </div>
-              <div className="border-b border-line py-5 first:pt-0 last:border-b-0 last:pb-0">
-                <h3 className="mb-2 font-medium text-ink">Export your data regularly</h3>
-                <p className="text-sm text-ink-soft">
-                  All your data lives locally in your browser. Use the automatic backups feature
-                  (Settings &rarr; Automatic backups) or export your data manually to keep a safe
-                  copy.
-                </p>
-              </div>
-            </div>
-          </div>
-        ),
-      },
-    ],
-    [],
-  );
+  useEffect(() => {
+    if (!target) return;
+    document.getElementById(target)?.scrollIntoView({ block: 'start' });
+    if (multiplier === 0) setTarget(null);
+  }, [target, multiplier, location.key]);
 
-  return (
-    <div className="mx-auto flex max-w-6xl gap-6 px-6 py-8 md:px-10 md:py-10">
-      <div className="min-w-0 flex-1">
-        <Link
-          to="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-ink-faint transition-colors hover:text-ink"
-        >
-          <ChevronLeftIcon width={16} height={16} />
-          Back to dashboard
-        </Link>
-
-        <div>
-          <header className="mb-12 pt-2 md:mb-16 md:pt-4">
-            <h1 className="font-display text-4xl tracking-tight md:text-5xl">Help</h1>
-          </header>
-
-          {/* Sections */}
-          <div className="flex flex-col gap-8">
-            {sections.map((s) => (
-              <section key={s.id} id={s.id} className="scroll-mt-8">
-                <SectionCard icon={s.icon} label={s.label}>
-                  {s.content}
-                </SectionCard>
-              </section>
-            ))}
-          </div>
-
-          {/* Footer */}
-          <div className="mt-4 border-t border-line py-10 text-left">
-            <div className="mb-3 text-accent">
-              <InfoIcon width={20} height={20} />
-            </div>
-            <p className="mb-3 text-base text-ink-soft">
-              Still have questions? Check the settings pages for more granular controls, or explore
-              the analytics page to understand your study patterns.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/settings">
-                <Button variant="secondary" size="sm">
-                  <SettingsIcon width={16} height={16} />
-                  Settings
-                </Button>
-              </Link>
-              <Link to="/analytics">
-                <Button variant="secondary" size="sm">
-                  <ChartIcon width={16} height={16} />
-                  Analytics
-                </Button>
-              </Link>
-              <Link to="/method">
-                <Button variant="secondary" size="sm">
-                  <SparklesIcon width={16} height={16} />
-                  How the scheduler works
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <SectionRail
-        sections={HELP_SECTIONS}
-        activeSection={activeSection}
-        onNavigate={(id) => {
-          document.getElementById(id)?.scrollIntoView({
-            behavior: m > 0 ? 'smooth' : 'instant',
-            block: 'start',
+  function row(topic: (typeof helpTopics)[number]) {
+    return (
+      <HelpTopicRow
+        key={topic.id}
+        topic={topic}
+        open={searching || expanded.has(topic.id)}
+        onRevealed={() => {
+          if (target !== topic.id) return;
+          document.getElementById(target)?.scrollIntoView({ block: 'start' });
+          setTarget(null);
+        }}
+        onToggle={() => {
+          if (searching) return;
+          setTarget(null);
+          setExpanded((previous) => {
+            const next = new Set(previous);
+            if (next.has(topic.id)) next.delete(topic.id);
+            else next.add(topic.id);
+            return next;
           });
         }}
-        motionMultiplier={m}
       />
+    );
+  }
+
+  return (
+    <div className={`${PAGE_FRAME} pb-12`}>
+      <header className={PAGE_HEADER}>
+        <h1 className={PAGE_TITLE}>Help</h1>
+      </header>
+      <label className="relative mb-7 block min-[1100px]:max-w-[calc((100%-1.25rem)/2)]">
+        <SearchIcon
+          width={18}
+          height={18}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+        />
+        <input
+          type="search"
+          aria-label="Search help"
+          placeholder="Search help"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink card-surface card-surface-control outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent-ink"
+        />
+      </label>
+      <SettingsArrivalProvider>
+        {searching ? (
+          <SettingsCard className="mb-0! min-w-0">
+            <div className={`${SETTINGS_HEADING_ROW_CLASS} mb-2`}>
+              <SearchIcon width={18} height={18} className="shrink-0" />
+              <SettingsSectionHeading
+                level={2}
+                className="font-display text-xl font-semibold tracking-tight"
+              >
+                Results
+              </SettingsSectionHeading>
+            </div>
+            {topics.length ? (
+              topics.map(row)
+            ) : (
+              <p role="status" className="py-6 pl-[calc(18px+0.625rem)] text-sm text-ink-soft">
+                No matching topics.
+              </p>
+            )}
+          </SettingsCard>
+        ) : (
+          <div className="grid items-start gap-5 min-[1100px]:grid-cols-2">
+            {GROUP_COLUMNS.map((groups, index) => (
+              <div key={index} className="flex min-w-0 flex-col gap-5">
+                {groups.map((group) => {
+                  const Icon = GROUP_ICONS[HELP_GROUPS.indexOf(group)];
+                  return (
+                    <SettingsCard key={group} className="mb-0! min-w-0">
+                      <div className={`${SETTINGS_HEADING_ROW_CLASS} mb-2`}>
+                        <Icon width={18} height={18} className="shrink-0" />
+                        <SettingsSectionHeading
+                          level={2}
+                          className="font-display text-xl font-semibold tracking-tight"
+                        >
+                          {group}
+                        </SettingsSectionHeading>
+                      </div>
+                      {topics.filter((topic) => topic.group === group).map(row)}
+                    </SettingsCard>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </SettingsArrivalProvider>
+
+      <div className="mt-4 border-t border-line py-10 text-left">
+        <div className="flex flex-wrap gap-2">
+          <Link to="/settings" className={HELP_LINK_CLASS}>
+            <SettingsIcon width={16} height={16} />
+            Settings
+          </Link>
+          <Link to="/analytics" className={HELP_LINK_CLASS}>
+            <ChartIcon width={16} height={16} />
+            Progress
+          </Link>
+          <Link to="/method" className={HELP_LINK_CLASS}>
+            <SparklesIcon width={16} height={16} />
+            How the scheduler works
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Settings } from './Settings';
+import { SettingsDisclosure } from './settings/SettingsDisclosure';
 
 const setStartInFocusMode = vi.fn();
 const setCourseCardMetric = vi.fn();
@@ -13,7 +14,7 @@ vi.mock('../state/focusModePreference', () => ({
 
 vi.mock('../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast', setMotionSpeed],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => 0,
 }));
 
 vi.mock('../state/ThemeContext', () => ({
@@ -128,8 +129,9 @@ describe('Settings', () => {
 
   it('updates the default Focus Mode preference', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
 
-    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in Focus Mode' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Start Learn sessions in focus mode' }));
 
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
   });
@@ -142,6 +144,7 @@ describe('Settings', () => {
 
   it('names the shared sidebar control as a search entry rather than either search surface', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
 
     expect(screen.getByText('Search entry')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
@@ -150,6 +153,7 @@ describe('Settings', () => {
 
   it('selects the course card progress metric', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
 
     expect(screen.getByRole('button', { name: 'Course progress' })).toHaveAttribute(
       'aria-pressed',
@@ -194,6 +198,9 @@ describe('Settings', () => {
 
   it('labels switches whose visible descriptions sit outside the control', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Course defaults/ }));
 
     expect(screen.getByRole('switch', { name: 'Show course hover details' })).toBeInTheDocument();
     expect(screen.getByRole('radiogroup', { name: 'After the final exam' })).toBeInTheDocument();
@@ -209,6 +216,8 @@ describe('Settings', () => {
 
   it('names primary navigation visibility switches and numeric settings fields', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Course defaults/ }));
 
     expect(screen.getByRole('switch', { name: 'Show Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
@@ -228,39 +237,53 @@ describe('Settings', () => {
 
     expect(screen.queryByText('Settings group')).not.toBeInTheDocument();
 
-    const jumper = screen.getByLabelText('Jump to settings group');
-    expect(
-      Array.from(jumper.querySelectorAll('option')).map((option) => option.textContent),
-    ).toEqual([
+    expect(screen.queryByLabelText('Jump to settings group')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('section[id^="settings-group-"]')).toHaveLength(5);
+    [
       'Appearance & access',
       'Study behaviour',
       'Course defaults',
-      'Data safety',
+      'Your data',
       'Integrations',
-    ]);
-    expect(document.querySelectorAll('section[id^="settings-group-"]')).toHaveLength(5);
+    ].forEach((title) => {
+      expect(screen.getByRole('button', { name: new RegExp(`^${title}`) })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    });
 
     const membership = {
       'settings-group-appearance': [
-        'settings-appearance',
-        'settings-input',
         'settings-sidebar',
         'settings-dashboard',
         'settings-course-header',
         'settings-shortcuts',
       ],
-      'settings-group-study': ['settings-study', 'settings-pomodoro'],
+      'settings-group-study': ['settings-study'],
       'settings-group-course-defaults': ['settings-course-defaults'],
-      'settings-group-data': ['settings-sync', 'settings-export', 'settings-backups'],
+      'settings-group-data': [
+        'settings-backups',
+        'settings-data-links',
+        'settings-sync',
+        'settings-export',
+      ],
       'settings-group-integrations': ['settings-install', 'settings-ai'],
     };
 
     Object.entries(membership).forEach(([groupId, childIds]) => {
       const group = document.getElementById(groupId);
       childIds.forEach((childId) =>
-        expect(document.getElementById(childId)?.parentElement).toBe(group),
+        expect(group).toContainElement(document.getElementById(childId)),
       );
     });
+  });
+
+  it('keeps every web settings section exactly once', () => {
+    render(<Settings />);
+    const ids = Array.from(document.querySelectorAll('section[id^="settings-"]')).map(
+      (section) => section.id,
+    );
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('uses an open page header and full content column', () => {
@@ -268,11 +291,16 @@ describe('Settings', () => {
 
     const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
     const header = heading.closest('header');
-    const contentColumn = header?.parentElement;
+    const contentColumn = header?.nextElementSibling;
 
     expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
     expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
-    expect(contentColumn).toHaveClass('min-w-0', 'flex-1');
+    expect(contentColumn).toHaveClass('grid');
+    expect(Array.from(contentColumn?.children ?? []).map((card) => card.id)).toEqual([
+      'settings-appearance',
+      'settings-input',
+      'settings-pomodoro',
+    ]);
     expect(contentColumn).not.toHaveClass('max-w-2xl');
     expect(screen.getByText('Version 0.2.8')).toBeInTheDocument();
   });
@@ -281,15 +309,37 @@ describe('Settings', () => {
     render(<Settings />);
 
     const appearance = document.getElementById('settings-appearance');
-    expect(appearance).toHaveClass('rounded-2xl', 'border', 'border-line', 'bg-surface');
+    expect(appearance).toHaveClass('rounded-3xl', 'bg-surface');
+    expect(appearance).not.toHaveClass('border');
   });
 
-  it('keeps a consistent gap after every settings group', () => {
+  it('retains the same controls when a group closes', () => {
     render(<Settings />);
+    const toggle = screen.getByRole('button', { name: /^Your data/ });
+    fireEvent.click(toggle);
+    const sync = document.getElementById('settings-sync');
+    fireEvent.click(toggle);
+    expect(document.getElementById('settings-sync')).toBe(sync);
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toHaveAttribute('inert');
+    expect(document.querySelectorAll('#settings-sync')).toHaveLength(1);
+  });
 
-    document.querySelectorAll('section[id^="settings-group-"]').forEach((group) => {
-      expect(group).toHaveClass('mb-8');
-    });
+  it('keeps an unfinished form mounted and inaccessible while its group is closed', () => {
+    render(
+      <SettingsDisclosure id="form-group" title="Form" summary="" anchors={[]}>
+        <input aria-label="Draft" defaultValue="" />
+      </SettingsDisclosure>,
+    );
+    const toggle = screen.getByRole('button', { name: 'Form' });
+    expect(screen.queryByRole('textbox', { name: 'Draft' })).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    const draft = screen.getByRole('textbox', { name: 'Draft' });
+    fireEvent.change(draft, { target: { value: 'unfinished' } });
+    fireEvent.click(toggle);
+    expect(screen.queryByRole('textbox', { name: 'Draft' })).not.toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.getByRole('textbox', { name: 'Draft' })).toBe(draft);
+    expect(draft).toHaveValue('unfinished');
   });
 
   it('omits redundant explanatory copy from settings headings and self-evident controls', () => {
@@ -308,11 +358,14 @@ describe('Settings', () => {
 
   it('renders task groups, sections and subsections at successive heading levels', () => {
     render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Your data/ }));
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Appearance & access' }),
+      screen.getByRole('heading', { level: 2, name: /^Appearance & access/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: 'Appearance' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Appearance' })).toBeInTheDocument();
     expect(
       screen.getByRole('heading', { level: 3, name: 'Session behaviour' }),
     ).toBeInTheDocument();
@@ -332,17 +385,31 @@ describe('Settings', () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     const target = document.getElementById('settings-export');
     expect(scrollIntoView.mock.instances[0]).toBe(target);
-    expect(target?.parentElement?.className).toContain('[&>section]:scroll-mt-20');
+    expect(screen.getByRole('button', { name: /^Your data/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('opens a closed group for a later hash change and allows it to close again', () => {
+    render(<Settings />);
+    window.location.hash = '#/settings#settings-study';
+    fireEvent(window, new Event('hashchange'));
+    const toggle = screen.getByRole('button', { name: /^Study behaviour/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('switch', { name: 'Manual four-point grading' })).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('keeps global scheduler internals closed behind deliberate disclosures', () => {
     render(<Settings />);
 
-    const scheduling = screen.getByText('Advanced scheduling').closest('details');
-    const practiceTiming = screen.getByText('Advanced practice timing').closest('details');
+    const scheduling = screen.getByText('Advanced scheduling').closest('button');
+    const practiceTiming = screen.getByText('Advanced practice timing').closest('button');
 
-    expect(scheduling).not.toHaveAttribute('open');
-    expect(practiceTiming).not.toHaveAttribute('open');
+    expect(scheduling).toHaveAttribute('aria-expanded', 'false');
+    expect(practiceTiming).toHaveAttribute('aria-expanded', 'false');
     expect(
       screen.getByRole('switch', { name: 'Optimise scheduling', hidden: true }),
     ).toBeInTheDocument();

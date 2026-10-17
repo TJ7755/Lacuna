@@ -1,0 +1,393 @@
+{
+  "date": "2026-10-17",
+  "baselineCommit": "6c939732dc847c126e26fa033aacd74f2545e397",
+  "environment": {
+    "browser": "Playwright Chromium headless",
+    "workers": 1,
+    "build": "Vite production",
+    "cpuThrottling": false,
+    "networkThrottling": false,
+    "motion": "normal"
+  },
+  "fixture": {
+    "cards": 322,
+    "imageCards": 105,
+    "occlusionCards": 105,
+    "imageBytes": 129008829,
+    "reviews": 6440
+  },
+  "measurement": "Pointer down to animation-frame sample: current front visible at >=0.9 opacity, not inert, with decoded non-empty image; first card also verified by Enter reveal.",
+  "notes": [
+    "Each state is one fresh browser context. These are samples, not medians or a device-wide guarantee.",
+    "Wall spans describe concurrent requests; do not sum request durations. cursorRows is zero for native getAll reads.",
+    "The intermittent 1\u20132 second advance stall was not reproduced."
+  ],
+  "before": {
+    "firstCardMs": 1226.79,
+    "firstGradeToSecondCardMs": 143.33,
+    "startupMarks": [
+      {
+        "stage": "click",
+        "atMs": 0.0
+      },
+      {
+        "stage": "load-start",
+        "atMs": 907.46
+      },
+      {
+        "stage": "pool-ready",
+        "atMs": 1044.93
+      },
+      {
+        "stage": "context-ready",
+        "atMs": 1046.48
+      },
+      {
+        "stage": "metadata-ready",
+        "atMs": 1048.9
+      },
+      {
+        "stage": "progress-ready",
+        "atMs": 1050.45
+      },
+      {
+        "stage": "serve-start",
+        "atMs": 1050.64
+      },
+      {
+        "stage": "serve-end",
+        "atMs": 1057.97
+      },
+      {
+        "stage": "object-url",
+        "atMs": 1093.89
+      },
+      {
+        "stage": "card-painted",
+        "atMs": 1226.81
+      }
+    ],
+    "conductorHistoryReads": [
+      {
+        "operation": "reviewHistory:cardId:openCursor",
+        "requests": 1,
+        "cursorRows": 6440,
+        "firstRequestMs": 745.11,
+        "lastCompletionMs": 878.36,
+        "wallSpanMs": 133.25
+      }
+    ],
+    "sessionHistoryReads": [
+      {
+        "operation": "reviewHistory:cardId:openCursor",
+        "requests": 1,
+        "cursorRows": 6440,
+        "firstRequestMs": 912.16,
+        "lastCompletionMs": 1011.36,
+        "wallSpanMs": 99.2
+      }
+    ],
+    "advanceDatabaseReads": [
+      {
+        "operation": "reviewHistory:get",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 73.35,
+        "lastCompletionMs": 113.09,
+        "wallSpanMs": 39.74
+      },
+      {
+        "operation": "sessionHistory:eventId:getAll",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 73.66,
+        "lastCompletionMs": 73.91,
+        "wallSpanMs": 0.25
+      },
+      {
+        "operation": "cards:get",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 73.96,
+        "lastCompletionMs": 80.77,
+        "wallSpanMs": 6.81
+      },
+      {
+        "operation": "reviewHistory:cardId:openCursor",
+        "requests": 1,
+        "cursorRows": 20,
+        "firstRequestMs": 74.18,
+        "lastCompletionMs": 75.38,
+        "wallSpanMs": 1.19
+      },
+      {
+        "operation": "reviewActivity:get",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 77.97,
+        "lastCompletionMs": 78.07,
+        "wallSpanMs": 0.09
+      },
+      {
+        "operation": "courses:get",
+        "requests": 6,
+        "cursorRows": 0,
+        "firstRequestMs": 78.45,
+        "lastCompletionMs": 104.4,
+        "wallSpanMs": 25.95
+      },
+      {
+        "operation": "coursePerformance:get",
+        "requests": 2,
+        "cursorRows": 0,
+        "firstRequestMs": 80.32,
+        "lastCompletionMs": 81.08,
+        "wallSpanMs": 0.76
+      },
+      {
+        "operation": "courseAssessments:courseId:getAll",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 81.91,
+        "lastCompletionMs": 104.46,
+        "wallSpanMs": 22.55
+      },
+      {
+        "operation": "assets:get",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 99.99,
+        "lastCompletionMs": 104.55,
+        "wallSpanMs": 4.55
+      },
+      {
+        "operation": "sessionHistory:timestamp:openCursor",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 105.93,
+        "lastCompletionMs": 107.74,
+        "wallSpanMs": 1.81
+      },
+      {
+        "operation": "cards:courseId:getAll",
+        "requests": 2,
+        "cursorRows": 0,
+        "firstRequestMs": 106.21,
+        "lastCompletionMs": 115.97,
+        "wallSpanMs": 9.75
+      }
+    ],
+    "advanceMarks": [
+      {
+        "stage": "click",
+        "atMs": 0.0
+      },
+      {
+        "stage": "object-url",
+        "atMs": 105.15
+      },
+      {
+        "stage": "card-painted",
+        "atMs": 143.32
+      }
+    ],
+    "scriptsRequestedAfterGrade": [],
+    "mountedStudyFacesAtFirstCard": 1
+  },
+  "after": {
+    "firstCardMs": 860.3,
+    "firstGradeToSecondCardMs": 125.6,
+    "startupMarks": [
+      {
+        "stage": "click",
+        "atMs": 0.0
+      },
+      {
+        "stage": "load-start",
+        "atMs": 546.96
+      },
+      {
+        "stage": "pool-ready",
+        "atMs": 658.41
+      },
+      {
+        "stage": "context-ready",
+        "atMs": 660.34
+      },
+      {
+        "stage": "metadata-ready",
+        "atMs": 663.03
+      },
+      {
+        "stage": "progress-ready",
+        "atMs": 664.75
+      },
+      {
+        "stage": "serve-start",
+        "atMs": 664.98
+      },
+      {
+        "stage": "serve-end",
+        "atMs": 674.25
+      },
+      {
+        "stage": "object-url",
+        "atMs": 723.61
+      },
+      {
+        "stage": "object-url",
+        "atMs": 741.11
+      },
+      {
+        "stage": "decode",
+        "atMs": 741.62
+      },
+      {
+        "stage": "object-url",
+        "atMs": 742.44
+      },
+      {
+        "stage": "decode",
+        "atMs": 742.88
+      },
+      {
+        "stage": "card-painted",
+        "atMs": 860.29
+      }
+    ],
+    "conductorHistoryReads": [
+      {
+        "operation": "reviewHistory:cardId:getAll",
+        "requests": 322,
+        "cursorRows": 0,
+        "firstRequestMs": 439.52,
+        "lastCompletionMs": 509.42,
+        "wallSpanMs": 69.9
+      }
+    ],
+    "sessionHistoryReads": [
+      {
+        "operation": "reviewHistory:cardId:getAll",
+        "requests": 322,
+        "cursorRows": 0,
+        "firstRequestMs": 552.79,
+        "lastCompletionMs": 625.37,
+        "wallSpanMs": 72.59
+      }
+    ],
+    "advanceDatabaseReads": [
+      {
+        "operation": "reviewHistory:get",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 73.05,
+        "lastCompletionMs": 145.14,
+        "wallSpanMs": 72.09
+      },
+      {
+        "operation": "sessionHistory:eventId:getAll",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 73.43,
+        "lastCompletionMs": 73.73,
+        "wallSpanMs": 0.3
+      },
+      {
+        "operation": "cards:get",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 73.79,
+        "lastCompletionMs": 80.83,
+        "wallSpanMs": 7.04
+      },
+      {
+        "operation": "reviewHistory:cardId:getAll",
+        "requests": 209,
+        "cursorRows": 0,
+        "firstRequestMs": 74.29,
+        "lastCompletionMs": 185.87,
+        "wallSpanMs": 111.58
+      },
+      {
+        "operation": "reviewActivity:get",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 78.1,
+        "lastCompletionMs": 78.22,
+        "wallSpanMs": 0.12
+      },
+      {
+        "operation": "courses:get",
+        "requests": 6,
+        "cursorRows": 0,
+        "firstRequestMs": 78.66,
+        "lastCompletionMs": 109.24,
+        "wallSpanMs": 30.57
+      },
+      {
+        "operation": "coursePerformance:get",
+        "requests": 2,
+        "cursorRows": 0,
+        "firstRequestMs": 79.97,
+        "lastCompletionMs": 81.07,
+        "wallSpanMs": 1.1
+      },
+      {
+        "operation": "courseAssessments:courseId:getAll",
+        "requests": 3,
+        "cursorRows": 0,
+        "firstRequestMs": 82.12,
+        "lastCompletionMs": 109.31,
+        "wallSpanMs": 27.18
+      },
+      {
+        "operation": "sessionHistory:timestamp:openCursor",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 105.08,
+        "lastCompletionMs": 120.81,
+        "wallSpanMs": 15.73
+      },
+      {
+        "operation": "assets:get",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 119.59,
+        "lastCompletionMs": 121.02,
+        "wallSpanMs": 1.43
+      },
+      {
+        "operation": "cards:courseId:getAll",
+        "requests": 1,
+        "cursorRows": 0,
+        "firstRequestMs": 120.29,
+        "lastCompletionMs": 127.48,
+        "wallSpanMs": 7.19
+      }
+    ],
+    "advanceMarks": [
+      {
+        "stage": "click",
+        "atMs": 0.0
+      },
+      {
+        "stage": "decode",
+        "atMs": 119.72
+      },
+      {
+        "stage": "object-url",
+        "atMs": 121.67
+      },
+      {
+        "stage": "decode",
+        "atMs": 122.12
+      },
+      {
+        "stage": "card-painted",
+        "atMs": 125.6
+      }
+    ],
+    "scriptsRequestedAfterGrade": [],
+    "mountedStudyFacesAtFirstCard": 1
+  }
+}

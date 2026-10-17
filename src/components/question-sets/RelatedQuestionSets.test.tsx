@@ -84,9 +84,10 @@ describe('RelatedQuestionSets', () => {
 
     expect(await screen.findByRole('heading', { name: 'Practice questions' })).toBeInTheDocument();
     const link = screen.getByRole('link', { name: set.title });
-    expect(link).toHaveAttribute('href', `/course/${course.id}/question-sets/${set.id}`);
+    expect(link).not.toHaveAttribute('href');
     fireEvent.click(link);
     await waitFor(() => expect(onNavigate).toHaveBeenCalledTimes(1));
+    expect(router.state.location.pathname).toBe(`/course/${course.id}/question-sets/${set.id}`);
     expect(onNavigate).toHaveBeenCalledWith();
     expect(router.state.location.state).toEqual({
       questionSetReturnTo: '/course/' + course.id + '/lesson/lesson-1?tab=cards',
@@ -145,13 +146,19 @@ describe('RelatedQuestionSets', () => {
     cleanup();
     examView.router.dispose();
 
-    const cardView = renderAt(course.id, { cardId: card.id }, `/course/${course.id}/cards/${card.id}`);
+    const cardView = renderAt(
+      course.id,
+      { cardId: card.id },
+      `/course/${course.id}/cards/${card.id}`,
+    );
     expect(await screen.findByRole('link', { name: set.title })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: set.title }));
-    await waitFor(() => expect(cardView.router.state.location.state).toEqual({
-      questionSetReturnTo: `/course/${course.id}/cards/${card.id}`,
-      questionSetReturnLabel: 'Back to Cards',
-    }));
+    await waitFor(() =>
+      expect(cardView.router.state.location.state).toEqual({
+        questionSetReturnTo: `/course/${course.id}/cards/${card.id}`,
+        questionSetReturnLabel: 'Back to Cards',
+      }),
+    );
     expect(await db.cards.get(card.id)).toEqual(cardBeforeNavigation);
   });
 

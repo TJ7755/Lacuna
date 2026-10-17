@@ -1,0 +1,3 @@
+- Make sidebar entries consistently open pages, keep study actions on Today, align Archived with course names and remove horizontal sidebar overflow.
+- Support drawing, moving and resizing diagram regions with a keyboard, preserve normal editor Tab order, and focus sharing results after their actions complete.
+- Remove repeated descriptive editor captions and align editor heading sizes with Direction C pages.

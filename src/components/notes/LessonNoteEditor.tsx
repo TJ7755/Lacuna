@@ -1,7 +1,8 @@
-import { useId, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useEditorKeys } from '../../hooks/dialogKeys';
 import { MarkdownEditor } from '../markdown/MarkdownEditor';
 import { Button } from '../ui/Button';
-import { cn } from '../ui/cn';
+import { Field, Input } from '../ui/Field';
 import type { Note } from '../../db/types';
 
 interface LessonNoteEditorProps {
@@ -19,10 +20,10 @@ interface LessonNoteEditorProps {
  * lesson-view CRUD flow and any AI-authoring path.
  */
 export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: LessonNoteEditorProps) {
-  const titleInputId = useId();
   const [name, setName] = useState(note?.name ?? '');
   const [content, setContent] = useState(note?.content ?? '');
 
+  const saveRef = useRef<HTMLButtonElement>(null);
   const canSave = name.trim().length > 0 && !busy;
 
   async function handleSave() {
@@ -30,32 +31,24 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
     await onSave({ name: name.trim(), content });
   }
 
+  const keys = useEditorKeys({
+    onCancel: () => !busy && onCancel(),
+    onSubmit: () => void handleSave(),
+  });
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* Note title */}
-      <div>
-        <label htmlFor={titleInputId} className="mb-1.5 block text-sm text-ink-soft">
-          Title
-        </label>
-        <input
-          id={titleInputId}
+    <div className="flex flex-col gap-4" {...keys}>
+      <Field label="Title">
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Note title"
           disabled={busy}
-          className={cn(
-            'w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink',
-            'placeholder:text-ink-faint focus:outline-none focus:ring-2 focus:ring-accent/60',
-            'disabled:opacity-40',
-          )}
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-              void handleSave();
-            }
-          }}
+          autoFocus
+          className="min-h-11 text-sm placeholder:text-ink-faint disabled:opacity-40"
         />
-      </div>
+      </Field>
 
       {/* Note body */}
       <MarkdownEditor
@@ -65,6 +58,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
         label="Content"
         minRows={8}
         allowEmbeds
+        onTabForward={() => saveRef.current?.focus()}
       />
 
       {/* Actions */}
@@ -73,6 +67,7 @@ export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: Lesso
           Cancel
         </Button>
         <Button
+          ref={saveRef}
           variant="primary"
           size="sm"
           onClick={() => void handleSave()}

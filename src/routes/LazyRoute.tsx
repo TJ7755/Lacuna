@@ -1,3 +1,4 @@
+import { PAGE_FRAME, PAGE_HEADER } from '../components/course/coursePageLayout';
 import { Suspense, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -13,12 +14,15 @@ const CONTENT_FADE_S = 0.14;
 function RouteFallback() {
   return (
     <DelayedFallback>
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-4 p-8">
-        <div className="w-full max-w-xs space-y-3">
-          <Skeleton className="h-8 w-3/4 rounded-lg bg-ink/5" />
-          <Skeleton className="h-4 w-full rounded-lg bg-ink/5" />
-          <Skeleton className="h-4 w-5/6 rounded-lg bg-ink/5" />
-          <Skeleton className="h-32 w-full rounded-xl bg-ink/5" />
+      <div className={`${PAGE_FRAME} pb-10`}>
+        <header className={PAGE_HEADER}>
+          <Skeleton className="h-11 w-64 max-w-full" />
+        </header>
+        <div className="space-y-4 rounded-3xl bg-surface p-6 card-surface">
+          <Skeleton className="h-6 w-48 max-w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-5/6" />
+          <Skeleton className="h-32 w-full rounded-3xl" />
         </div>
       </div>
     </DelayedFallback>

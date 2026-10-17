@@ -1,11 +1,14 @@
 import { LazyCardImportDialog as CardImportDialog } from '../import/LazyCardImportDialog';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
-import { PlusIcon } from '../ui/icons';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { useToast } from '../ui/Toast';
 import { createLesson } from '../../db/lessonRepository';
 import type { Lesson } from '../../db/types';
 import { Field, Input } from '../ui/Field';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { dialogKeyDown } from '../../hooks/dialogKeys';
+import { countOf } from '../../utils/plural';
 
 /** Suggested name for the next lesson in a course (e.g. "Lesson 2"). */
 export function defaultLessonName(lessonCount: number): string {
@@ -38,24 +41,46 @@ export function AddLessonControl({
   const [name, setName] = useState(() => defaultLessonName(lessonCount));
   const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
+  const nameInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    // Selected, so typing replaces the suggested name.
+    if (open && !importingCards) {
+      nameInput.current?.focus();
+      nameInput.current?.select();
+    }
+  }, [open, importingCards]);
 
   function startAdd() {
+    addedHere.current = 0;
     setName(defaultLessonName(lessonCount));
     setOpen(true);
   }
 
   function cancel() {
+    if (saving) return;
     setOpen(false);
+    addedHere.current = 0;
     setName(defaultLessonName(lessonCount));
     onCancel?.();
   }
 
-  async function save() {
+  // Lessons this form has created since it last closed: the live count lags a creation.
+  const addedHere = useRef(0);
+
+  /** `another` keeps the form open with the next name, for building an outline. */
+  async function save(another = false) {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (saving || !trimmed) return;
     setSaving(true);
     try {
       const lesson = await createLesson(courseId, trimmed);
+      if (another) {
+        addedHere.current += 1;
+        setName(defaultLessonName(lessonCount + addedHere.current));
+        requestAnimationFrame(() => nameInput.current?.select());
+        return;
+      }
+      addedHere.current = 0;
       setOpen(false);
       onCreated?.(lesson);
     } catch (err) {
@@ -79,58 +104,90 @@ export function AddLessonControl({
           );
           setImportingCards(false);
           setOpen(false);
-          notify(`${result.count} cards imported.`, 'positive');
+          notify(`${countOf(result.count, 'card')} imported.`, 'positive');
           onCreated?.(result.lesson!);
         }}
       />
     );
 
-  if (open) {
-    return (
-      <div className="flex w-full flex-col gap-3 rounded-lg border border-line-strong bg-surface px-4 py-3">
-        <Field label="Lesson name">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void save();
-              if (e.key === 'Escape') cancel();
-            }}
-            placeholder="e.g. Elasticity"
-            autoFocus
-            disabled={saving}
-            className="disabled:opacity-40"
-          />
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => void save()}
-            disabled={saving || !name.trim()}
-          >
-            {saving ? 'Creating…' : 'Create lesson'}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setImportingCards(true)}
-            disabled={saving}
-          >
-            Import cards
-          </Button>
-          <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
-            Cancel
-          </Button>
-        </div>
+  const form = (
+    <div
+      onKeyDown={(event) => {
+        // As in the card editor, Ctrl/Cmd+Enter creates and readies the next one.
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          event.stopPropagation();
+          void save(true);
+          return;
+        }
+        dialogKeyDown({
+          onCancel: cancel,
+          onSubmit: () => void save(),
+          enterSubmits: true,
+        })(event);
+      }}
+      className={`flex w-full flex-col gap-3 px-4 py-3 ${onCancel ? 'rounded-3xl bg-surface card-surface' : ''}`}
+    >
+      <Field label="Lesson name">
+        <Input
+          ref={nameInput}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Elasticity"
+          autoFocus
+          disabled={saving}
+          className="disabled:opacity-40"
+        />
+      </Field>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => void save()}
+          disabled={saving || !name.trim()}
+        >
+          {saving ? 'Creating…' : 'Create lesson'}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => void save(true)}
+          disabled={saving || !name.trim()}
+          title="Create and add another (Ctrl/Cmd+Enter)"
+        >
+          Create &amp; add another
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setImportingCards(true)}
+          disabled={saving}
+        >
+          Import cards
+        </Button>
+        <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
+          Cancel
+        </Button>
       </div>
+    </div>
+  );
+  if (!onCancel)
+    return (
+      <ExpandingCreateControl
+        align="start"
+        label="Add lesson"
+        open={open}
+        onOpenChange={(next) => {
+          if (next) startAdd();
+          else cancel();
+        }}
+      >
+        {form}
+      </ExpandingCreateControl>
     );
-  }
-
   return (
-    <Button variant="secondary" size="sm" onClick={startAdd} className="self-start">
-      <PlusIcon width={16} height={16} />
-      Add lesson
-    </Button>
+    <div className="contents" inert={!open} aria-hidden={!open || undefined}>
+      <AnimatedDisclosure open={open}>{form}</AnimatedDisclosure>
+    </div>
   );
 }

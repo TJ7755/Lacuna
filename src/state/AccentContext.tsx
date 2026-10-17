@@ -13,6 +13,7 @@ import {
 // Mirrors ThemeContext and FontScaleContext.
 
 const STORAGE_KEY = 'lacuna-accent';
+const VOLT_ADOPTION_KEY = 'lacuna-volt-accent-adopted';
 
 export interface Accent {
   key: string;
@@ -23,6 +24,7 @@ export interface Accent {
 
 /** The selectable accents. The first entry is the default. */
 export const ACCENTS: readonly Accent[] = [
+  { key: 'volt', label: 'Volt', swatch: 'hsl(73 100% 62%)' },
   { key: 'amber', label: 'Amber', swatch: 'hsl(32 90% 48%)' },
   { key: 'red', label: 'Red', swatch: 'hsl(6 90% 48%)' },
   { key: 'rose', label: 'Rose', swatch: 'hsl(340 90% 48%)' },
@@ -45,6 +47,9 @@ const AccentContext = createContext<AccentValue | null>(null);
 function readStored(): string {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
+    // Amber was saved automatically by the previous default. Adopt Volt once,
+    // then honour a deliberate return to Amber and all other saved accents.
+    if (stored === 'amber' && !localStorage.getItem(VOLT_ADOPTION_KEY)) return DEFAULT_ACCENT;
     if (stored && ACCENTS.some((a) => a.key === stored)) return stored;
   } catch {
     // Ignore storage access errors and fall back to the default.
@@ -59,6 +64,7 @@ export function AccentProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.accent = accent;
     try {
       localStorage.setItem(STORAGE_KEY, accent);
+      localStorage.setItem(VOLT_ADOPTION_KEY, '1');
     } catch {
       // Persistence is best-effort.
     }

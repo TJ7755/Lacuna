@@ -1,0 +1,91 @@
+.import-panel {
+  padding: 8px 20px 20px;
+}
+.import-step-height {
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+.import-sources {
+  display: grid;
+  gap: 8px;
+}
+.import-sources button {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  column-gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  text-align: left;
+  background: hsl(var(--surface));
+  border: var(--card-border);
+}
+.import-sources button:hover {
+  background: hsl(var(--ink) / 0.05);
+}
+.import-sources svg {
+  grid-row: span 2;
+  align-self: center;
+  color: hsl(var(--ink-soft));
+}
+.import-sources strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.import-sources span,
+.import-drop p {
+  font-size: 13px;
+  color: hsl(var(--ink-soft));
+}
+.import-drop {
+  margin-top: 12px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  background: hsl(var(--ink) / 0.04);
+  text-align: center;
+}
+.import-drop > svg {
+  color: hsl(var(--ink-soft));
+}
+.import-drop[data-dragging='true'] {
+  background: hsl(var(--accent-soft));
+}
+.import-drop h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+.import-destination {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.import-destination > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.import-destination fieldset > div {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+/* Soften the shared study-target picker inside the destination panel. */
+.import-destination fieldset label {
+  border: 0;
+  background: hsl(var(--surface));
+  box-shadow: 0 1px 2px hsl(var(--ink) / 0.06);
+  border-radius: 16px;
+}
+.import-destination fieldset label:has(input:checked) {
+  box-shadow: inset 0 0 0 2px hsl(var(--ink));
+}
+.import-destination legend {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  color: hsl(var(--ink));
+}

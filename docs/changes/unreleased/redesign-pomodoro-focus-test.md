@@ -1,0 +1,1 @@
+- Exercise the imported Pomodoro keyboard-focus regression using the redesigned reset control’s existing accessible name. (#389)

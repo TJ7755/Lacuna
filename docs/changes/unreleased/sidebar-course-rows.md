@@ -1,0 +1,1 @@
+- Make sidebar course rows a single even line, and fade the course list at a scrolled edge instead of shading it, which glowed in dark mode.

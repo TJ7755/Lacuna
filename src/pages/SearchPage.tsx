@@ -1,31 +1,24 @@
+import { searchHelp } from './help/searchHelp';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useSearchData } from '../state/useSearchData';
 import {
-  cardEditPath,
-  plainPreview,
-  questionEditPath,
   searchCardsInScope,
   searchCourseContent,
   searchQuestionsInScope,
   type CardFilter,
-  type CourseContentHit,
 } from '../db/search';
 import { cn } from '../components/ui/cn';
-import {
-  FlagIcon,
-  SearchIcon,
-  TagIcon,
-  CardsIcon,
-  GridIcon,
-  FolderIcon,
-  FileTextIcon,
-} from '../components/ui/icons';
-import { GeneratedCardBadge } from '../components/cards/GeneratedCardBadge';
+import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
 import { Skeleton } from '../components/ui/Skeleton';
+import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
+import { SearchResultOption } from '../components/search/SearchResultOption';
+import { StudyDrawing } from '../components/ui/StudyDrawing';
+import { hitKey, hitPath, type SearchHit } from '../components/search/searchPresentation';
 
 /** The structured filters offered as quick chips, in display order. */
 const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
@@ -35,304 +28,281 @@ const FILTER_CHIPS: { value: CardFilter; label: string }[] = [
   { value: 'flagged', label: 'Flagged' },
   { value: 'suspended', label: 'Suspended' },
 ];
-
-/** Where a course/lesson/note result deep-links to. */
-function courseHitPath(hit: CourseContentHit): string {
-  switch (hit.kind) {
-    case 'course':
-      return `/course/${hit.course.id}`;
-    case 'lesson':
-      return `/course/${hit.course.id}/lesson/${hit.lesson.id}`;
-    case 'note':
-      return `/course/${hit.course.id}/lesson/${hit.lesson.id}`;
-  }
-}
-
-/** Icon and label for a course/lesson/note result row. */
-function courseHitMeta(hit: CourseContentHit) {
-  switch (hit.kind) {
-    case 'course':
-      return { icon: GridIcon, title: hit.course.name, subtitle: 'Course' };
-    case 'lesson':
-      return { icon: FolderIcon, title: hit.lesson.name, subtitle: hit.course.name };
-    case 'note':
-      return {
-        icon: FileTextIcon,
-        title: hit.note.name,
-        subtitle: `${hit.course.name} · ${hit.lesson.name}`,
-      };
-  }
-}
+const PAGE_SIZE = 80;
 
 /** Full-page content search with Card filters. Quick search remains the shortcut-led overlay. */
 export function SearchPage() {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const searchData = useSearchData();
-  const cards = searchData?.cards;
-  const courses = searchData?.courses;
-  const lessons = searchData?.lessons;
-  const notes = searchData?.notes;
-  const questions = searchData?.questions;
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState<Set<CardFilter>>(new Set());
-
-  const results = useMemo(
+  const [params, setParams] = useSearchParams();
+  const query = params.get('q') ?? '';
+  const deferredQuery = useDeferredValue(query);
+  const filterKey = params.getAll('filter').sort().join(',');
+  const filters = useMemo(
     () =>
-      searchCardsInScope(
-        query,
-        {
-          cards: cards ?? [],
-          courses: courses ?? [],
-          lessons: lessons ?? [],
-        },
-        {
-          filters: [...filters],
-        },
+      new Set(
+        FILTER_CHIPS.flatMap(({ value }) => (filterKey.split(',').includes(value) ? [value] : [])),
       ),
-    [query, cards, courses, lessons, filters],
+    [filterKey],
   );
+  const searchInput = useRef<HTMLInputElement>(null);
+  const resultList = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const shown = Number(params.get('shown'));
+  const selectionChanged = useRef(false);
+  const criteria = `${deferredQuery}:${[...filters].join(',')}`;
 
-  // Courses/lessons/notes have no due/new/flagged concept, so structured filters
-  // narrow only the card results above; a text query still matches them here.
-  const courseResults = useMemo(
-    () => searchCourseContent(query, courses ?? [], lessons ?? [], notes ?? []),
-    [query, courses, lessons, notes],
-  );
-
-  const questionResults = useMemo(
-    () =>
-      searchQuestionsInScope(query, {
-        questions: questions ?? [],
-        courses: courses ?? [],
-        lessons: lessons ?? [],
+  const results = useMemo<SearchHit[]>(() => {
+    const scope = {
+      cards: searchData?.cards ?? [],
+      courses: searchData?.courses ?? [],
+      lessons: searchData?.lessons ?? [],
+    };
+    // Structured filters narrow only Cards; a text query still matches other content.
+    return [
+      ...(deferredQuery.trim()
+        ? searchHelp(deferredQuery)
+            .slice(0, 3)
+            .map((topic): SearchHit => ({ kind: 'help', topic }))
+        : []),
+      ...searchCourseContent(deferredQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
+      ...searchQuestionsInScope(deferredQuery, {
+        ...scope,
+        questions: searchData?.questions ?? [],
       }),
-    [query, questions, courses, lessons],
-  );
+      ...searchCardsInScope(deferredQuery, scope, { filters: [...filters] }),
+    ];
+  }, [deferredQuery, searchData, filters]);
+  const limit =
+    Number.isFinite(shown) && shown > PAGE_SIZE
+      ? Math.min(Math.floor(shown), Math.max(PAGE_SIZE, results.length))
+      : PAGE_SIZE;
+  const visible = results.slice(0, limit);
+  const searching = query.trim() !== '' || filters.size > 0;
+  const hasResults = searching && visible.length > 0;
 
+  useEffect(() => {
+    searchInput.current?.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
+    setActive(0);
+  }, [criteria]);
+  useEffect(() => {
+    // Returning restores the shell's scroll position; only an explicit arrow moves it.
+    if (!selectionChanged.current) return;
+    const option = resultList.current?.querySelector<HTMLElement>(`#search-option-${active}`);
+    // Arrowing past the shown rows extends the URL's limit, which renders a little later;
+    // keep the request until that row exists.
+    if (!option) return;
+    option.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+    selectionChanged.current = false;
+  }, [active, limit]);
+
+  function updateParams(change: (next: URLSearchParams) => void) {
+    const next = new URLSearchParams(params);
+    change(next);
+    setParams(next, { replace: true });
+  }
+  function setLimit(value: number) {
+    updateParams((next) => next.set('shown', String(value)));
+  }
   function toggleFilter(value: CardFilter) {
-    setFilters((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) {
-        next.delete(value);
-      } else {
-        next.add(value);
-      }
-      return next;
+    updateParams((next) => {
+      next.delete('shown');
+      const values = new Set(filters);
+      if (values.has(value)) values.delete(value);
+      else values.add(value);
+      next.delete('filter');
+      values.forEach((filter) => next.append('filter', filter));
     });
   }
-
-  const trimmed = query.trim();
-  const active = trimmed !== '' || filters.size > 0;
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (
+      event.defaultPrevented ||
+      event.nativeEvent.isComposing ||
+      event.nativeEvent.keyCode === 229
+    )
+      return;
+    if (event.key === 'Escape') {
+      searchInput.current?.focus();
+      searchInput.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      return;
+    }
+    if (event.target !== searchInput.current) return;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (!hasResults) return;
+      const next = Math.max(
+        0,
+        Math.min(active + (event.key === 'ArrowDown' ? 1 : -1), results.length - 1),
+      );
+      if (next >= limit) setLimit(limit + PAGE_SIZE);
+      selectionChanged.current = true;
+      setActive(next);
+    } else if (event.key === 'Enter' && hasResults && query === deferredQuery) {
+      event.preventDefault();
+      const hit = visible[active];
+      if (hit) void navigate(hitPath(hit));
+    }
+  }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 md:px-10">
-      <header className="mb-10">
-        <div className="relative">
-          <h1 className="font-display text-4xl tracking-tight md:text-5xl">Search content</h1>
+    <div className={`${PAGE_FRAME} py-12 md:py-20`} onKeyDown={onKeyDown}>
+      <div className="mx-auto w-full max-w-3xl">
+        <header className="mb-8 text-center">
+          <h1 className="text-balance font-display text-3xl font-semibold tracking-tight md:text-4xl">
+            Search content
+          </h1>
+        </header>
+        <div className="mb-4 flex items-center gap-3 rounded-full bg-surface px-5 py-2 card-surface card-surface-control transition-colors focus-within:ring-2 focus-within:ring-accent-ink sm:px-6 sm:py-3">
+          <SearchIcon width={20} height={20} className="shrink-0 text-ink-faint" />
+          <input
+            ref={searchInput}
+            role="combobox"
+            aria-label="Search content"
+            aria-autocomplete="list"
+            aria-expanded={hasResults}
+            aria-controls={hasResults ? 'search-listbox' : undefined}
+            aria-activedescendant={
+              hasResults && active < visible.length ? `search-option-${active}` : undefined
+            }
+            value={query}
+            onChange={(event) =>
+              updateParams((next) => {
+                next.delete('shown');
+                if (event.target.value) next.set('q', event.target.value);
+                else next.delete('q');
+              })
+            }
+            placeholder="Search…"
+            className="min-h-11 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
+          />
         </div>
-      </header>
-
-      <div className="mb-6 flex items-center gap-3 rounded-xl border border-line-strong bg-surface px-4 py-3 shadow-sm transition-shadow focus-within:border-accent focus-within:shadow-md">
-        <SearchIcon width={18} height={18} className="text-ink-faint" />
-        <input
-          autoFocus
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search courses, lessons, notes, cards and questions…"
-          className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
-        />
-      </div>
-
-      {/* Smart-view filter chips: narrow the whole collection without a text query. */}
-      <div className="mb-6 flex flex-wrap items-center gap-1.5">
-        {FILTER_CHIPS.map((chip, i) => {
-          const on = filters.has(chip.value);
-          return (
-            <motion.button
-              key={chip.value}
-              type="button"
-              onClick={() => toggleFilter(chip.value)}
-              aria-pressed={on}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
-              whileHover={{ y: -1, transition: { duration: 0.1 * m } }}
-              whileTap={{ scale: 0.95 }}
-              className={cn(
-                'rounded-lg border px-3 py-1 text-xs transition-colors',
-                on
-                  ? 'border-accent bg-accent-soft text-accent'
-                  : 'border-line text-ink-soft hover:border-line-strong',
-              )}
-            >
-              {chip.label}
-            </motion.button>
-          );
-        })}
-        {filters.size > 0 && (
-          <motion.button
-            type="button"
-            onClick={() => setFilters(new Set())}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.14 * m }}
-            className="rounded-lg px-2 py-1 text-xs text-ink-faint transition-colors hover:text-ink"
+        {/* Smart-view filter chips: narrow the whole collection without a text query. */}
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-1.5">
+          {FILTER_CHIPS.map((chip, i) => {
+            const on = filters.has(chip.value);
+            return (
+              <motion.button
+                key={chip.value}
+                type="button"
+                onClick={() => toggleFilter(chip.value)}
+                aria-pressed={on}
+                initial={m > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.14 * m, delay: i * 0.02 * m }}
+                data-press=""
+                whileTap={m > 0 ? { scale: 0.97 } : undefined}
+                className={cn(
+                  'min-h-11 rounded-full border px-3 py-1 text-sm transition-colors',
+                  on
+                    ? 'border-accent bg-accent-soft text-accent-ink'
+                    : 'border-line text-ink-soft hover:border-line-strong',
+                )}
+              >
+                {chip.label}
+              </motion.button>
+            );
+          })}
+        </div>
+        <div className="mb-3 flex min-h-11 items-center justify-between gap-3">
+          <p
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={cn('text-sm text-ink-soft', (!searching || !searchData) && 'sr-only')}
           >
-            Clear
-          </motion.button>
+            {!searchData || !searching
+              ? ''
+              : results.length === 0
+                ? 'No results'
+                : `${visible.length < results.length ? `${visible.length} of ` : ''}${results.length} ${results.length === 1 ? 'result' : 'results'}`}
+          </p>
+          {filters.size > 0 && (
+            <motion.button
+              type="button"
+              onClick={() => {
+                updateParams((next) => {
+                  next.delete('filter');
+                  next.delete('shown');
+                });
+                searchInput.current?.focus();
+              }}
+              initial={m > 0 ? { opacity: 0 } : false}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.14 * m }}
+              className="min-h-11 rounded-full px-3 py-1 text-sm text-ink-faint transition-colors hover:text-ink"
+            >
+              Clear
+            </motion.button>
+          )}
+        </div>
+        {!searchData ? (
+          <DelayedFallback>
+            <SearchSkeleton />
+          </DelayedFallback>
+        ) : !searching ? (
+          <div className="flex justify-center py-8">
+            <StudyDrawing kind="search" className="h-20 w-20 opacity-60" />
+          </div>
+        ) : results.length === 0 ? (
+          <div
+            className={`${SECTION_CARD_SURFACE_CLASS} flex flex-col items-center justify-center py-16 text-center`}
+          >
+            <StudyDrawing kind="search" className="mb-4 h-14 w-14 opacity-60" />
+            <p className="text-sm text-ink-faint">
+              {deferredQuery.trim() ? (
+                <>Nothing matches &ldquo;{deferredQuery}&rdquo;.</>
+              ) : (
+                'Nothing matches these filters.'
+              )}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div
+              ref={resultList}
+              id="search-listbox"
+              role="listbox"
+              aria-label="Search results"
+              className={`${SECTION_CARD_SURFACE_CLASS} p-1.5`}
+            >
+              {visible.map((hit, index) => (
+                <SearchResultOption
+                  key={hitKey(hit)}
+                  index={index}
+                  hit={hit}
+                  query={deferredQuery}
+                  id={`search-option-${index}`}
+                  selected={index === active}
+                  onSelect={() => setActive(index)}
+                  onOpen={() => void navigate(hitPath(hit))}
+                />
+              ))}
+            </div>
+            {visible.length < results.length && (
+              <button
+                type="button"
+                onClick={() => setLimit(limit + PAGE_SIZE)}
+                className="mt-4 min-h-11 rounded-full px-4 text-sm text-accent-ink"
+              >
+                Show more results
+              </button>
+            )}
+          </>
         )}
       </div>
-
-      {!searchData ? (
-        <DelayedFallback>
-          <SearchSkeleton />
-        </DelayedFallback>
-      ) : !active ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
-            <SearchIcon width={24} height={24} />
-          </div>
-          <h3 className="mb-2 font-display text-xl">Search everything</h3>
-          <p className="max-w-sm text-sm text-ink-soft">
-            Start typing to search courses, lessons, notes, cards and Questions, or pick a filter
-            above to browse due, new, flagged, suspended or leech Cards.
-          </p>
-        </div>
-      ) : results.length === 0 && courseResults.length === 0 && questionResults.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line-strong bg-surface/50 py-16 text-center">
-          <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent shadow-sm">
-            <CardsIcon width={24} height={24} />
-          </div>
-          <h3 className="mb-2 font-display text-xl">Nothing matches</h3>
-          <p className="max-w-sm text-sm text-ink-soft">
-            Nothing matches{trimmed ? ` "${trimmed}"` : ' those filters'}. Try clearing your search
-            or filters.
-          </p>
-        </div>
-      ) : (
-        <>
-          <p className="mb-3 text-sm text-ink-soft">
-            {results.length + courseResults.length + questionResults.length} result
-            {results.length + courseResults.length + questionResults.length === 1 ? '' : 's'}
-          </p>
-          <div className="grid gap-2">
-            {courseResults.map((hit) => {
-              const { icon: HitIcon, title, subtitle } = courseHitMeta(hit);
-              const key =
-                hit.kind === 'course'
-                  ? hit.course.id
-                  : hit.kind === 'lesson'
-                    ? hit.lesson.id
-                    : hit.note.id;
-              return (
-                <motion.button
-                  key={`${hit.kind}-${key}`}
-                  type="button"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.16 * m }}
-                  onClick={() => navigate(courseHitPath(hit))}
-                  whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                  className="flex items-center gap-3 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
-                >
-                  <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-accent-soft text-accent">
-                    <HitIcon width={16} height={16} />
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm text-ink">{title}</span>
-                    <span className="truncate text-xs text-ink-faint">{subtitle}</span>
-                  </span>
-                </motion.button>
-              );
-            })}
-            {questionResults.map((hit) => (
-              <motion.button
-                key={`question-${hit.question.id}`}
-                type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 * m }}
-                onClick={() => navigate(questionEditPath(hit.question))}
-                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
-              >
-                <span className="break-words text-sm text-ink">
-                  {hit.question.kind === 'fixed'
-                    ? plainPreview(hit.question.prompt, 140) || hit.question.name
-                    : hit.question.name}
-                </span>
-                {hit.question.kind === 'fixed' && hit.question.explanation.trim() && (
-                  <span className="break-words text-sm text-ink-faint">
-                    {plainPreview(hit.question.explanation, 140)}
-                  </span>
-                )}
-                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-                  <span>{hit.contextName}</span>
-                  <span className="rounded-lg border border-line px-2 py-0.5 text-[10px]">
-                    Question
-                  </span>
-                  {hit.question.kind === 'generated' && <span>Generated family</span>}
-                  {hit.question.tags.length > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <TagIcon width={12} height={12} />
-                      {hit.question.tags.join(', ')}
-                    </span>
-                  )}
-                </span>
-              </motion.button>
-            ))}
-            {results.map((hit) => (
-              <motion.button
-                key={hit.card.id}
-                type="button"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.16 * m }}
-                onClick={() => navigate(cardEditPath(hit.card))}
-                whileHover={{ y: -3, transition: { duration: 0.12 * m } }}
-                className="flex min-w-0 flex-col gap-1 rounded-xl border border-line bg-surface p-4 text-left shadow-sm transition-all duration-200 hover:border-line-strong hover:shadow-md hover:shadow-black/[0.04]"
-              >
-                <span className="break-words text-sm text-ink">
-                  {plainPreview(hit.card.front, 140) || '(empty front)'}
-                </span>
-                {hit.card.back.trim() && (
-                  <span className="break-words text-sm text-ink-faint">
-                    {plainPreview(hit.card.back, 140)}
-                  </span>
-                )}
-                <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-faint">
-                  <span>{hit.contextName}</span>
-                  {hit.card.flagged && <FlagIcon width={12} height={12} className="text-accent" />}
-                  {(hit.card.tags ?? []).length > 0 && (
-                    <span className="inline-flex items-center gap-1">
-                      <TagIcon width={12} height={12} />
-                      {hit.card.tags!.join(', ')}
-                    </span>
-                  )}
-                  {hit.card.sequenceItemId !== null && hit.card.sequenceItemId !== undefined && (
-                    <GeneratedCardBadge kind="sequence" />
-                  )}
-                  {hit.card.occlusionRegionId !== null &&
-                    hit.card.occlusionRegionId !== undefined && (
-                      <GeneratedCardBadge kind="occlusion" />
-                    )}
-                </span>
-              </motion.button>
-            ))}
-          </div>
-        </>
-      )}
     </div>
   );
 }
 
 function SearchSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className={`${SECTION_CARD_SURFACE_CLASS} space-y-2 p-1.5`}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-1 rounded-xl border border-line bg-surface p-4">
+        <div key={i} className="flex flex-col gap-1 px-2.5 py-2.5">
           <Skeleton className="h-4 w-3/4" />
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="mt-1 h-3 w-24" />

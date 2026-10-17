@@ -1,0 +1,1 @@
+- Share alternatives become inert and hidden from assistive technology as soon as they close or switch, preserving their visual exit and rapid reopening without moving focus from the chosen sharing method.

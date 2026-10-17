@@ -1,0 +1,1 @@
+- Replace stepped question-set authoring with an autosaving inline composer: growing Markdown fields, weighted mark-scheme lines, parts and subparts, keyboard row actions, inline multiple-choice options, guidance and knowledge links, preview and focused validation. New sets start in Q1; opening or previewing a set no longer focuses the title.

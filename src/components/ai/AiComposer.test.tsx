@@ -18,6 +18,29 @@ function session(): AiSession {
 }
 
 describe('AiComposer', () => {
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'keeps the draft when Enter confirms composition: %j',
+    async (composition) => {
+      const aiSession = session();
+      render(
+        <AiComposer
+          session={aiSession}
+          disabled={false}
+          initialDraft="Keep composing"
+          queuedFollowUp={null}
+          autoFocus={false}
+        />,
+      );
+      const input = screen.getByRole('textbox', { name: 'Message AI' });
+      fireEvent.keyDown(input, { key: 'Enter', ...composition });
+      expect(aiSession.send).not.toHaveBeenCalled();
+      expect(input).toHaveValue('Keep composing');
+      fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
+      expect(aiSession.send).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      await waitFor(() => expect(aiSession.send).toHaveBeenCalledWith('Keep composing'));
+    },
+  );
   it('uses an honest chat prompt while connected', () => {
     render(
       <AiComposer
@@ -114,7 +137,7 @@ describe('AiComposer', () => {
     });
   });
 
-  it('uses a shorter, wider Send target in the compact composer', () => {
+  it('uses the shared compact Send target in the composer', () => {
     render(
       <AiComposer
         session={session()}
@@ -125,7 +148,9 @@ describe('AiComposer', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass('h-8', 'min-w-16');
+    const send = screen.getByRole('button', { name: 'Send message' });
+    expect(send).toHaveClass('min-w-16');
+    expect(send).toHaveClass('text-sm');
   });
 
   it('keeps message actions in document flow below multiline content', () => {

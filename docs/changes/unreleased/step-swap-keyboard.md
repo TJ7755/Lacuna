@@ -1,0 +1,1 @@
+- Keep departing step controls out of keyboard navigation and make incoming headings reliably focusable.

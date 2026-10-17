@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { AppLink as Link } from '../ui/AppLink';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useChartColours } from './useChartColours';
@@ -10,6 +10,7 @@ import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { averagePredictedRetrievability, masteryFraction } from '../../fsrs/progress';
 import { isLeech } from '../../fsrs/leech';
 import { startOfDay } from '../../utils/datetime';
+import { scaledSpring } from '../ui/motion';
 
 interface ComparisonMetric {
   label: string;
@@ -46,8 +47,8 @@ function computeMetrics(
   const totalReviewsA = historyA.length;
   const totalReviewsB = historyB.length;
 
-  const leechesA = cardsA.filter(isLeech).length;
-  const leechesB = cardsB.filter(isLeech).length;
+  const leechesA = cardsA.filter((card) => isLeech(card, courseA.leechThreshold)).length;
+  const leechesB = cardsB.filter((card) => isLeech(card, courseB.leechThreshold)).length;
 
   const avgStabilityA =
     cardsA.length > 0 ? cardsA.reduce((s, c) => s + (c.stability ?? 0), 0) / cardsA.length : 0;
@@ -142,7 +143,7 @@ function ComparisonBar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={m > 0 ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 * m, delay: delay * m, ease: [0.16, 1, 0.3, 1] }}
       className="space-y-2"
@@ -151,17 +152,14 @@ function ComparisonBar({
         <span className="text-ink">{metric.label}</span>
         {winnerColour && (
           <motion.span
-            initial={{ opacity: 0, scale: 0 }}
+            initial={m > 0 ? { opacity: 0, scale: 0 } : false}
             animate={{ opacity: 1, scale: 1 }}
             transition={{
-              duration: 0.3 * m,
+              ...scaledSpring(m, 500, 25),
               delay: (delay + 0.35) * m,
-              type: 'spring',
-              stiffness: 500,
-              damping: 25,
             }}
-            className="flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow-sm"
-            style={{ backgroundColor: winnerColour }}
+            className="flex h-6 w-6 items-center justify-center rounded-full border bg-surface text-xs font-semibold text-ink"
+            style={{ borderColor: winnerColour }}
             aria-label={winner === 'A' ? 'Course A leads' : 'Course B leads'}
           >
             {winner}
@@ -173,7 +171,7 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourA }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ scaleX: 0 }}
+              initial={m > 0 ? { scaleX: 0 } : false}
               animate={{ scaleX: widthA / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.05) * m, ease: [0.16, 1, 0.3, 1] }}
               className="h-full w-full origin-left rounded-full"
@@ -189,7 +187,7 @@ function ComparisonBar({
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colourB }} />
           <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-ink/5">
             <motion.div
-              initial={{ scaleX: 0 }}
+              initial={m > 0 ? { scaleX: 0 } : false}
               animate={{ scaleX: widthB / 100 }}
               transition={{ duration: 0.6 * m, delay: (delay + 0.1) * m, ease: [0.16, 1, 0.3, 1] }}
               className="h-full w-full origin-left rounded-full"
@@ -263,11 +261,13 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
       compactEmpty
     >
       <div className="space-y-4">
-        <div className="flex flex-wrap gap-3">
+        {/* Native selects size to their longest option, so each takes an even share of a
+            bounded row instead, stacking on a phone. */}
+        <div className="grid max-w-2xl gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-3">
           <Select
             value={courseAId}
             onChange={(e) => setCourseAId(e.target.value)}
-            className="min-w-[10rem]"
+            className="w-full min-w-0"
             aria-label="First course"
           >
             <option value="">Select a course…</option>
@@ -277,11 +277,11 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
               </option>
             ))}
           </Select>
-          <span className="self-center text-sm text-ink-faint">vs</span>
+          <span className="text-sm text-ink-faint">vs</span>
           <Select
             value={courseBId}
             onChange={(e) => setCourseBId(e.target.value)}
-            className="min-w-[10rem]"
+            className="w-full min-w-0"
             aria-label="Second course"
           >
             <option value="">Select a course…</option>
@@ -306,7 +306,7 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
               <div className="flex items-center gap-3 text-sm">
                 <Link
                   to={`/course/${courseA.id}/analytics`}
-                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent-ink hover:underline"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourA }} />
                   {courseA.name}
@@ -314,7 +314,7 @@ export function CourseComparison({ courses, cards, reviewHistory }: CourseCompar
                 <span className="text-ink-faint">vs</span>
                 <Link
                   to={`/course/${courseB.id}/analytics`}
-                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent hover:underline"
+                  className="flex items-center gap-1.5 text-ink transition-colors hover:text-accent-ink hover:underline"
                 >
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colourB }} />
                   {courseB.name}

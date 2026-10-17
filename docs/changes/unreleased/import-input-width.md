@@ -1,0 +1,1 @@
+- The Import page’s initial paste and package steps use the full input width instead of reserving an empty destination column. Review keeps its destination and card-preview split.

@@ -26,9 +26,21 @@ function renderedTheme(container: HTMLElement): string | null {
 
 beforeEach(() => {
   document.documentElement.classList.remove('dark');
+  vi.spyOn(window, 'getComputedStyle').mockImplementation(
+    () =>
+      ({
+        getPropertyValue: (token: string) => {
+          if (token === '--accent-ink')
+            return document.documentElement.dataset.accent === 'blue'
+              ? '217 60% 30%'
+              : '90 52% 19%';
+          return document.documentElement.classList.contains('dark') ? '90 22% 12%' : '75 45% 99%';
+        },
+      }) as CSSStyleDeclaration,
+  );
   resetMermaidInitialisation();
-  renderer.initialize.mockImplementation((config) => {
-    renderer.theme = config.themeVariables.background === '#141311' ? 'dark' : 'light';
+  renderer.initialize.mockImplementation(() => {
+    renderer.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   });
   renderer.render.mockImplementation(async () => ({
     svg: `<svg data-palette="${renderer.theme}"><text>Diagram</text></svg>`,
@@ -37,11 +49,58 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  delete document.documentElement.dataset.accent;
   document.body.replaceChildren();
   document.documentElement.classList.remove('dark');
 });
 
 describe('Mermaid theme updates', () => {
+  it('resolves the palette from current tokens and refreshes after an accent change', async () => {
+    const container = diagram();
+    await renderMermaidDiagrams(container);
+    expect(renderer.initialize).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        fontFamily: 'Instrument Sans, system-ui, sans-serif',
+        themeVariables: expect.objectContaining({
+          primaryBorderColor: 'hsl(90, 52%, 19%)',
+          background: 'hsl(75, 45%, 99%)',
+        }),
+      }),
+    );
+    document.documentElement.dataset.accent = 'blue';
+    await updateMermaidTheme(container);
+    expect(renderer.render).toHaveBeenCalledTimes(2);
+    expect(renderer.initialize).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        themeVariables: expect.objectContaining({ primaryBorderColor: 'hsl(217, 60%, 30%)' }),
+      }),
+    );
+    document.documentElement.classList.add('dark');
+    await updateMermaidTheme(container);
+    expect(renderer.initialize).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        themeVariables: expect.objectContaining({ background: 'hsl(90, 22%, 12%)' }),
+      }),
+    );
+  });
+
+  it('uses distinct render ids for concurrent notes and theme updates in the same millisecond', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1234);
+    try {
+      const first = diagram();
+      const second = diagram();
+      await Promise.all([renderMermaidDiagrams(first), renderMermaidDiagrams(second)]);
+      document.documentElement.classList.add('dark');
+      await Promise.all([updateMermaidTheme(first), updateMermaidTheme(second)]);
+      const ids = renderer.render.mock.calls.map(([id]) => id);
+      expect(ids).toHaveLength(4);
+      expect(new Set(ids).size).toBe(ids.length);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('updates every view after another view initialises the new theme', async () => {
     const first = diagram();
     const second = diagram();

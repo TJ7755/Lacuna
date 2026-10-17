@@ -1,0 +1,1 @@
+- Progress counts short study sessions: study time was rounded to whole minutes per day before adding up, so days under 30 seconds counted as nothing. Chart axes now step in even quarters (0, 25, 50, 75, 100%) and tooltips read "Reviews: 3" rather than "Reviews : 3".

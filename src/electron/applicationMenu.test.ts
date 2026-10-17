@@ -69,16 +69,37 @@ describe('native application menu', () => {
     ]);
   });
 
-  it('routes the native Help command into Lacuna', () => {
-    const openHelp = vi.fn();
-    const template = createApplicationMenuTemplate('darwin', false, openHelp);
+  it('routes Help and Keyboard Shortcuts into Lacuna', () => {
+    const run = vi.fn();
+    const template = createApplicationMenuTemplate('darwin', false, run);
     const help = topLevelRole(template, 'help');
     if (!help || !Array.isArray(help.submenu)) throw new Error('Expected a Help submenu');
 
-    expect(help.submenu).toHaveLength(1);
-    expect(help.submenu[0]).toMatchObject({ label: 'Lacuna Help', accelerator: 'Cmd+Shift+/' });
+    expect(help.submenu.map((item) => item.label)).toEqual(['Lacuna Help', 'Keyboard Shortcuts']);
+    expect(help.submenu[0]).toMatchObject({ accelerator: 'Cmd+Shift+/' });
+    expect(help.submenu[1].accelerator).toBeUndefined();
     help.submenu[0].click?.({} as never, undefined, {} as never);
+    help.submenu[1].click?.({} as never, undefined, {} as never);
 
-    expect(openHelp).toHaveBeenCalledOnce();
+    expect(run.mock.calls).toEqual([['help'], ['shortcuts']]);
+  });
+
+  it('puts Settings where each platform expects it, on Cmd or Ctrl and comma', () => {
+    const run = vi.fn();
+    const mac = topLevelRole(createApplicationMenuTemplate('darwin', false, run), 'appMenu');
+    if (!mac || !Array.isArray(mac.submenu)) throw new Error('Expected an application submenu');
+    const macSettings = mac.submenu.find((item) => item.label === 'Settings…');
+    expect(macSettings).toMatchObject({ accelerator: 'CmdOrCtrl+,' });
+    expect(mac.submenu.at(-1)?.role).toBe('quit');
+
+    const file = topLevelRole(createApplicationMenuTemplate('win32', false, run), 'fileMenu');
+    if (!file || !Array.isArray(file.submenu)) throw new Error('Expected a File submenu');
+    expect(file.submenu.map((item) => item.role ?? item.label)).toEqual([
+      '&Settings',
+      undefined,
+      'quit',
+    ]);
+    file.submenu[0].click?.({} as never, undefined, {} as never);
+    expect(run).toHaveBeenCalledWith('settings');
   });
 });

@@ -4,11 +4,13 @@ import type { AgentMemory, BackupFile, Card, CourseRecord, Lesson } from '../db/
 import type * as DbPortability from '../db/portability';
 import { reviewHistoryEntryId, type ReviewHistoryEntry } from '../db/reviewHistory';
 import { defaultFsrsParameters } from '../fsrs/params';
+import { BACKUP_VERSION } from '../db/portability';
 import { ManualMergeError, manualMerge, summariseMerge } from './manualMerge';
 
-const { takeAutoBackup, importBackup, replace } = vi.hoisted(() => ({
+const { takeAutoBackup, importBackup, exportDatabase, replace } = vi.hoisted(() => ({
   takeAutoBackup: vi.fn(),
   importBackup: vi.fn(),
+  exportDatabase: vi.fn(),
   replace: vi.fn((_kind: string, operation: () => Promise<unknown>) => operation()),
 }));
 
@@ -25,6 +27,7 @@ vi.mock('../db/portability', async (importOriginal) => {
   return {
     ...actual,
     importBackup,
+    exportDatabase,
   };
 });
 
@@ -41,6 +44,21 @@ function backup(overrides: Partial<BackupFile> = {}): BackupFile {
     userPerformance: [],
     ...overrides,
   };
+}
+
+function currentBackup(overrides: Partial<BackupFile> = {}): BackupFile {
+  return backup({
+    app: `lacuna-v${BACKUP_VERSION}`,
+    version: BACKUP_VERSION,
+    concepts: [],
+    questions: [],
+    questionConcepts: [],
+    questionAttempts: [],
+    questionSets: [],
+    questionSetAttempts: [],
+    practiceNodes: [],
+    ...overrides,
+  });
 }
 
 function course(id: string, overrides: Partial<CourseRecord> = {}): CourseRecord {
@@ -128,6 +146,7 @@ describe('manualMerge', () => {
   beforeEach(() => {
     takeAutoBackup.mockReset();
     importBackup.mockReset();
+    exportDatabase.mockReset();
     replace.mockClear();
     takeAutoBackup.mockResolvedValue(backup());
     importBackup.mockResolvedValue({});
@@ -169,6 +188,52 @@ describe('manualMerge', () => {
 
     expect(replace).toHaveBeenCalledWith('peer', expect.any(Function));
   });
+
+  it('keeps a safety backup when omitted optional stores need normalisation', async () => {
+    const current = currentBackup();
+    exportDatabase.mockResolvedValue(current);
+
+    await manualMerge(current, { kind: 'peer' });
+
+    expect(takeAutoBackup).toHaveBeenCalledWith(true);
+    expect(importBackup).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['assessment', 'card image', 'note image'])(
+    'keeps the safety backup when a current peer needs %s migration',
+    async (migration) => {
+      const current = currentBackup({
+        courses: [
+          { ...course('course-1'), ...(migration === 'assessment' ? { examDate: 100 } : {}) },
+        ],
+        cards:
+          migration === 'card image'
+            ? [card('c1', { front: '<img src="data:image/png;base64,AAAA">' })]
+            : [],
+        notes:
+          migration === 'note image'
+            ? [
+                {
+                  id: 'note-1',
+                  lessonId: 'lesson-1',
+                  name: 'Image',
+                  orderIndex: 0,
+                  content: '<img src="data:image/png;base64,AAAA">',
+                  createdAt: 1,
+                  updatedAt: 1,
+                },
+              ]
+            : [],
+      });
+      exportDatabase.mockResolvedValue(current);
+      takeAutoBackup.mockResolvedValue(current);
+
+      await manualMerge(current, { kind: 'peer' });
+
+      expect(takeAutoBackup).toHaveBeenCalledWith(true);
+      expect(importBackup).toHaveBeenCalledTimes(1);
+    },
+  );
 
   it('aborts without writing if the safety backup fails', async () => {
     takeAutoBackup.mockRejectedValue(new Error('IndexedDB unavailable'));

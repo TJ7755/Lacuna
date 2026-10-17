@@ -1,0 +1,1 @@
+- Close note sections continuously without pausing on a thin sliver before snapping shut; disclosure heights now use a non-bouncing spring at every motion speed. (#389)

@@ -1,0 +1,1 @@
+- Progress explains the stability profile, observed recall and leech charts in plain terms, and the leech chart links straight to the leech cards. (#453)

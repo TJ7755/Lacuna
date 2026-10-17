@@ -1,6 +1,6 @@
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
+import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
-import { ChevronDownIcon } from '../../components/ui/icons';
-import { Field, Input } from '../../components/ui/Field';
 
 export interface PracticeSettingsSectionProps {
   autoPractice: boolean;
@@ -45,41 +45,36 @@ export function PracticeSettingsSection({
   onPracticeMaxGapBlur,
 }: PracticeSettingsSectionProps) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="block text-sm text-ink-soft">
-        <Toggle checked={autoPractice} onChange={onAutoPracticeChange} label="Auto-practice" />
-        <span className="mt-1 block text-xs text-ink-faint">
+    <div className="flex flex-col gap-6">
+      <div className="block text-sm font-semibold text-ink">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm font-semibold text-ink">Auto-practice</span>
+          <Toggle checked={autoPractice} onChange={onAutoPracticeChange} ariaLabel="Auto-practice" />
+        </div>
+        <span className={fieldHintClassName}>
           Automatically inserts practice nodes between lessons when the predicted time to clear your
           backlog crosses a threshold.
         </span>
       </div>
 
-      <details className="group border-t border-line pt-4">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent [&::-webkit-details-marker]:hidden">
-          <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
-            <span className="mt-1 block text-xs leading-5 text-ink-faint">
-              Lacuna places practice from workload and exam proximity. Open this to tune the
-              thresholds and maximum gap.
+      <InlineSettingsDisclosure
+        className="group ml-3 sm:ml-4"
+        headerClassName="flex min-h-11 items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        header={
+          <>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink">Advanced practice timing</span>
+              <span className="mt-1 block text-xs leading-5 text-ink-faint">
+                Lacuna places practice from workload and exam proximity. Open this to tune the
+                thresholds and maximum gap.
+              </span>
             </span>
-          </span>
-          <ChevronDownIcon
-            width={18}
-            height={18}
-            aria-hidden="true"
-            className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-          />
-        </summary>
-
-        <div className="mt-4 flex flex-col gap-4 rounded-xl border border-line bg-surface-raised/50 p-4">
-          <Field
-            label="Threshold (exam not near)"
-            hint={
-              <>
-                Minutes-to-clear at which a practice node is triggered while the exam is not near.
-              </>
-            }
-          >
+          </>
+        }
+      >
+        <div className="mt-4 flex flex-col gap-4 rounded-2xl bg-ink/[0.03] p-4">
+          <label className={fieldLabelClassName}>
+            Threshold (exam not near)
             <Input
               type="number"
               aria-label="Practice threshold when the exam is not near, in minutes"
@@ -89,17 +84,13 @@ export function PracticeSettingsSection({
               onChange={(e) => onPracticeThresholdMinutesFarChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesFarBlur}
             />
-          </Field>
+            <span className={fieldHintClassName}>
+              Minutes-to-clear at which a practice node is triggered while the exam is not near.
+            </span>
+          </label>
 
-          <Field
-            label="Threshold (exam near)"
-            hint={
-              <>
-                Minutes-to-clear at which a practice node is triggered once the exam is near (see
-                the urgent window below). Typically lower than the far threshold.
-              </>
-            }
-          >
+          <label className={fieldLabelClassName}>
+            Threshold (exam near)
             <Input
               type="number"
               aria-label="Practice threshold when the exam is near, in minutes"
@@ -109,16 +100,14 @@ export function PracticeSettingsSection({
               onChange={(e) => onPracticeThresholdMinutesNearChange(e.target.value)}
               onBlur={onPracticeThresholdMinutesNearBlur}
             />
-          </Field>
+            <span className={fieldHintClassName}>
+              Minutes-to-clear at which a practice node is triggered once the exam is near (see the
+              urgent window below). Typically lower than the far threshold.
+            </span>
+          </label>
 
-          <Field
-            label="Urgent window"
-            hint={
-              <>
-                Days until the exam at or below which the &quot;exam near&quot; threshold applies.
-              </>
-            }
-          >
+          <label className={fieldLabelClassName}>
+            Urgent window
             <Input
               type="number"
               aria-label="Practice urgent window, in days"
@@ -128,17 +117,13 @@ export function PracticeSettingsSection({
               onChange={(e) => onPracticeUrgentWindowDaysChange(e.target.value)}
               onBlur={onPracticeUrgentWindowDaysBlur}
             />
-          </Field>
+            <span className={fieldHintClassName}>
+              Days until the exam at or below which the &quot;exam near&quot; threshold applies.
+            </span>
+          </label>
 
-          <Field
-            label="Maximum lesson gap"
-            hint={
-              <>
-                Backstop: forces a practice node after this many lessons without one, even if
-                neither threshold above has been crossed.
-              </>
-            }
-          >
+          <label className={fieldLabelClassName}>
+            Maximum lesson gap
             <Input
               type="number"
               aria-label="Maximum lesson gap for automatic practice"
@@ -148,9 +133,13 @@ export function PracticeSettingsSection({
               onChange={(e) => onPracticeMaxGapChange(e.target.value)}
               onBlur={onPracticeMaxGapBlur}
             />
-          </Field>
+            <span className={fieldHintClassName}>
+              Backstop: forces a practice node after this many lessons without one, even if neither
+              threshold above has been crossed.
+            </span>
+          </label>
         </div>
-      </details>
+      </InlineSettingsDisclosure>
     </div>
   );
 }

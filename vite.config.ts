@@ -16,7 +16,7 @@ const crossOriginIsolationHeaders = {
 export const workbox = {
   // Precache the application shell and the Cards route's shared import spine.
   // Lazy route entries and large optional assets are cached when visited.
-  globPatterns: ['**/*.{html,ico,png,svg}', 'assets/SharingAnnouncement-*.css'],
+  globPatterns: ['**/*.{html,ico,png,svg}', 'fonts/*.ttf'],
   navigateFallbackDenylist: [/^\/compare(?:\/|$)/, /^\/(?:sitemap\.xml|robots\.txt)$/],
   globIgnores: [
     'compare/**',
@@ -58,17 +58,6 @@ export const workbox = {
       options: {
         cacheName: 'font-cache',
         expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
-        cacheableResponse: { statuses: [0, 200] },
-      },
-    },
-    {
-      // Keep the hosted stylesheet so the full Google Fonts language coverage
-      // remains intact without another third-party request on repeat launches.
-      urlPattern: ({ url }: { url: URL }) => url.origin === 'https://fonts.googleapis.com',
-      handler: 'CacheFirst' as const,
-      options: {
-        cacheName: 'font-stylesheet-cache',
-        expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 365 },
         cacheableResponse: { statuses: [0, 200] },
       },
     },
@@ -140,20 +129,25 @@ export default defineConfig({
   // Without this, navigating to a route that imports recharts/katex/highlight.js
   // froze the page for several seconds while Vite re-ran dependency optimisation.
   optimizeDeps: {
-    exclude: ['@open-spaced-repetition/binding', 'mermaid'],
+    exclude: ['@open-spaced-repetition/binding'],
     include: [
       'react',
       'react-dom',
+      'react-dom/server',
       'react-router-dom',
       'motion/react',
+      'mermaid',
       'recharts',
       'katex',
       'react-markdown',
       'remark-gfm',
+      'remark-breaks',
       'remark-math',
       'rehype-katex',
       'rehype-highlight',
       'rehype-raw',
+      'rehype-sanitize',
+      'react-qr-code',
       'highlight.js',
       'dexie',
       'dexie-react-hooks',

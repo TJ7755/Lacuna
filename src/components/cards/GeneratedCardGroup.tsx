@@ -9,8 +9,9 @@
 
 import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
+import { Button } from '../ui/Button';
 import { CardListBody } from './CardList';
-import type { Card, SchedulerConfig } from '../../db/types';
+import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
 interface GeneratedCardOwner {
@@ -30,6 +31,8 @@ interface GeneratedCardGroupProps {
   linkedCardIds?: ReadonlySet<string>;
   onUnlinkCard?: (card: Card) => void;
   motionMultiplier: number;
+  occlusions?: Occlusion[];
+  compactMetadata?: boolean;
 }
 
 const KIND_META = {
@@ -49,31 +52,34 @@ export function GeneratedCardGroup({
   linkedCardIds,
   onUnlinkCard,
   motionMultiplier,
+  occlusions,
+  compactMetadata,
 }: GeneratedCardGroupProps) {
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const { Icon, editLabel } = KIND_META[kind];
 
   return (
-    <div className="mb-4 overflow-hidden rounded-xl border border-line">
-      <div className="flex items-center justify-between gap-3 bg-ink/[0.03] px-4 py-2.5">
+    <div className="mb-4 rounded-2xl bg-ink/[0.035]">
+      <div className="flex items-center justify-between gap-3 py-1 pl-4 pr-1">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <Icon width={15} height={15} className="shrink-0 text-ink-faint" />
-          <span className="truncate font-medium text-ink">{owner.name}</span>
-          <span className="shrink-0 text-ink-faint">
+          <span className="truncate font-semibold text-ink">{owner.name}</span>
+          <span className="shrink-0 tabular-nums text-ink-faint">
             {cards.length} card{cards.length === 1 ? '' : 's'}
           </span>
         </div>
         {onEditOwner && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
             onClick={() => onEditOwner(owner.id)}
-            className="shrink-0 text-sm text-ink-faint transition-colors hover:text-ink"
           >
             {editLabel}
-          </button>
+          </Button>
         )}
       </div>
-      <div className="p-3">
+      <div className="px-2 pb-2">
         <CardListBody
           cards={cards}
           schedulingConfig={schedulingConfig}
@@ -89,6 +95,8 @@ export function GeneratedCardGroup({
           linkedCardIds={linkedCardIds}
           onUnlinkCard={onUnlinkCard}
           motionMultiplier={motionMultiplier}
+          compactMetadata={compactMetadata}
+          occlusions={occlusions}
         />
       </div>
     </div>

@@ -1,0 +1,1 @@
+- Sidebar course names wrap onto a second line instead of truncating after a dozen characters; compact mode still truncates.

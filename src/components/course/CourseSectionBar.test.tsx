@@ -1,3 +1,4 @@
+import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,10 +21,7 @@ describe('CourseSectionBar', () => {
     expect(screen.getAllByRole('link')).toHaveLength(5);
     expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('link', { name: 'Cards' })).toHaveAttribute(
-      'href',
-      '/course/course-1/cards',
-    );
+    expectAppDestination(screen.getByRole('link', { name: 'Cards' }), '/course/course-1/cards');
   });
 
   it('marks only Cards current on the cards route', () => {
@@ -37,14 +35,27 @@ describe('CourseSectionBar', () => {
     expect(screen.getByRole('link', { name: 'Path' })).not.toHaveAttribute('aria-current');
   });
 
-  it('marks no section current on a route nested inside a section', () => {
+  it('keeps Path current on a lesson, as the tab bar does, because a lesson is on the path', () => {
     render(
       <MemoryRouter initialEntries={['/course/course-1/lesson/lesson-1']}>
         <CourseSectionBar />
       </MemoryRouter>,
     );
 
-    for (const name of ['Path', 'Cards', 'Questions', 'Analytics', 'Settings']) {
+    expect(screen.getByRole('link', { name: 'Path' })).toHaveAttribute('aria-current', 'page');
+    for (const name of ['Cards', 'Questions', 'Settings']) {
+      expect(screen.getByRole('link', { name })).not.toHaveAttribute('aria-current');
+    }
+  });
+
+  it('marks no section current on a course page outside every section', () => {
+    render(
+      <MemoryRouter initialEntries={['/course/course-1/analytics']}>
+        <CourseSectionBar />
+      </MemoryRouter>,
+    );
+
+    for (const name of ['Path', 'Cards', 'Questions', 'Settings']) {
       expect(screen.getByRole('link', { name })).not.toHaveAttribute('aria-current');
     }
   });

@@ -4,7 +4,7 @@ test('the brand keeps its size and centres in the collapsed rail', async ({ page
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
 
   const mark = page.getByTestId('sidebar-brand-mark');
   await expect.poll(async () => (await mark.boundingBox())?.width).toBe(36);
@@ -38,7 +38,7 @@ test('the mobile brand retains its original proportions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Courses', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
 
   const mark = page.getByTestId('mobile-brand-mark');
   await expect(mark).toHaveCSS('width', '18px');

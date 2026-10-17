@@ -1,0 +1,1 @@
+- Give keyboard and assistive-technology activations the shared press feedback, and show content immediately when motion is disabled.

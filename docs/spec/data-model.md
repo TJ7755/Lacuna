@@ -40,10 +40,10 @@ authoring agents and button handlers can share the same layer without duplicatio
 
 `PracticeNode.type` is `'auto'` or `'manual'`. Auto nodes are never persisted — they are
 computed fresh on every path render from the live due-card backlog (§4.3's path diagram).
-Manual nodes are teacher-authored and persisted. In Author mode, an edit badge on an existing manual
+Manual nodes are teacher-authored and persisted. In Edit mode, an edit badge on an existing manual
 node lets a teacher reposition, rename or delete it (`PracticeNodeEditor`,
-`src/components/course/`). The path's **Add practice** action opens the same editor for creation,
-including on an inline single-lesson course. The badge and creation action are absent in Study mode.
+`src/components/course/`). The path's **Add** menu item **Card practice** opens the same editor for creation,
+including on an inline single-lesson course. The badge and creation action are absent in View mode.
 `PracticeNodesSection` in course settings lists existing nodes and links to the path for editing.
 Filters (`CardFilter[]`) remain supported in storage but are not authorable in the UI because there
 is no existing filter builder to reuse.
@@ -234,9 +234,9 @@ recitationChunkSize?, createdAt }` — `items` is ordered and stored inline (seq
   lines-mode editor's paste + auto-split flow. A line matching `NAME: dialogue` starts a new
   item for that speaker; a following non-matching line is folded in as a wrapped continuation
   of the same speech; blank lines are separators only and never break a continuing speech.
-  `src/components/sequences/ScriptPasteImport.tsx` wraps it in a paste → preview → correct →
-  confirm modal (mirroring `LinkCardsDialog`'s shell) so the author can fix a misattributed
-  speaker or line before it replaces the editor's item list.
+  Pasting several lines into the sequence editor's outline (`src/components/sequences/`
+  `sequenceOutline.ts`, `splitPaste`) adds one item per line and, for scripts, uses it to keep
+  speakers; blank lines start a new section. Each speaker stays editable on its row.
 - `Card.sequenceItemId?: string` is present iff the card was generated from a sequence item:
   the positional card carries the item's own id; the label card (when generated) carries
   `${item.id}::label` (`LABEL_CARD_SUFFIX`), so the two never collide and `isLabelCardId`/
@@ -333,7 +333,7 @@ OcclusionRegion[], createdAt }` — `regions` is stored inline (occlusions are s
   uploads are encoded as PNG to preserve transparency; JPEG uploads retain JPEG compression.
 - **Study** (`src/components/occlusion/OcclusionStudyFace.tsx`): masked labels, ringed target,
   ordinary reveal and grade row. Hidden labels use opaque neutral masks; the active label
-  uses an opaque accent-soft fill and a contrasting Fraunces question mark. Revealed labels retain
+  uses an opaque accent-soft fill and a contrasting brand-face question mark. Revealed labels retain
   one solid outline. Colours follow the selected accent and theme without changing diagram
   or card sizing. `occlusionDataByCard` (`src/db/occlusionStudy.ts`) resolves
   each pool card's owning occlusion once per session, batching one `listOcclusions` per
@@ -514,5 +514,23 @@ error. Drafts are excluded from backups, sharing and sync; their media remains r
 for local cleanup. Course deletion includes drafts and undo restores them with fresh
 revisions. The Paper editor uses these APIs for local autosave and validated completion.
 Its author preview does not create attempts, answers or card reviews.
+
+The composer maps each non-blank mark-scheme line to one allocation, preserving identity,
+explanation, dimension and Concept links by non-blank line index while editing. New points
+use Knowledge. A trailing `(n)` is reserved for a whole-number weight: it is stripped from
+`criterion` and stored in `maxMarks`. Display restores weights other than one; a criterion
+that itself ends in a numeric suffix always receives an explicit weight, including `(1)`,
+so `See equation (2) (1)` round-trips without losing its literal suffix. Blank lines are
+editing whitespace, not allocations. Existing positive-integer validation still applies.
+
+Marks defaults to the point sum, shown as the field's placeholder. An entered total writes
+`answer.maxMarks`; for one point it also writes that point's full maximum. With several
+points, a different total leaves allocations intact and reports the mismatch after row
+focus leaves. Clearing the field restores the sum of the authored line weights. Overrides
+are represented only by existing marks fields; no draft or published schema field is added.
+On reopening, a stored total equal to its point sum is presented as automatic; the schema
+does not retain a separate override-intent flag.
+Indenting moves the complete answer (including response and links) into the first child;
+stems never retain their own scored answer.
 
 [Specification index](../SPEC.md)

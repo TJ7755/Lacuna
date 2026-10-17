@@ -40,10 +40,10 @@ it('keeps reflection optional and saves it separately from answer evidence', () 
       onDirty={onDirty}
     />,
   );
-  fireEvent.click(screen.getByText('What would you change?'));
+  fireEvent.click(screen.getByRole('button', { name: 'Reflection' }));
   fireEvent.click(screen.getByLabelText('Misread the question'));
   expect(onChange).toHaveBeenLastCalledWith({ reasons: ['misread-question'], note: '' });
-  fireEvent.change(screen.getByLabelText('Reflection'), {
+  fireEvent.change(screen.getByRole('textbox', { name: 'Reflection' }), {
     target: { value: 'Check the command word.' },
   });
   expect(onDirty).toHaveBeenLastCalledWith(true);

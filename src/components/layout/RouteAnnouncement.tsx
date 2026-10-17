@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 
 function routeLabel(pathname: string): string {
   const pages: Record<string, string> = {
-    '/': 'Courses',
+    '/': 'Today',
     '/settings': 'Settings',
     '/search': 'Search',
     '/share': 'Share',
     '/import': 'Import',
-    '/analytics': 'Analytics',
+    '/analytics': 'Progress',
     '/archived': 'Archived courses',
     '/help': 'Help',
     '/welcome': 'Welcome',

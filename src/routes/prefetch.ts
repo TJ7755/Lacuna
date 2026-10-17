@@ -3,9 +3,11 @@ import {
   loadArchivedCourses,
   loadCardsPage,
   loadCourseAnalytics,
+  loadCourseStudyFlow,
   loadCoursePath,
   loadCourseSettings,
   loadHelpPage,
+  loadImportPanel,
   loadLessonView,
   loadQuestionsPage,
   loadSearchPage,
@@ -19,6 +21,7 @@ const PREFETCH_LOADERS: Partial<Record<string, RouteLoader>> = {
   '/analytics': loadAnalytics,
   '/archived': loadArchivedCourses,
   '/help': loadHelpPage,
+  '/import': loadImportPanel,
   '/search': loadSearchPage,
   '/settings': loadSettings,
   '/share': loadSharePage,
@@ -29,6 +32,7 @@ const COURSE_PREFETCH_LOADERS: Array<{
   pattern: RegExp;
   loader: RouteLoader;
 }> = [
+  { key: 'course-study', pattern: /^\/course\/[^/]+\/study\/?$/, loader: loadCourseStudyFlow },
   { key: 'course-path', pattern: /^\/course\/[^/]+\/?$/, loader: loadCoursePath },
   {
     key: 'course-lesson',

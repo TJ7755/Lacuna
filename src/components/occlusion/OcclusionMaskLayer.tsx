@@ -27,7 +27,8 @@ export interface OcclusionMaskRegion {
 
 const VISUAL_CLASSES: Record<OcclusionRegionVisual, string> = {
   // Keep passive masks light on the diagram even in dark mode; solid fills conceal answers.
-  masked: 'rounded-[3px] border border-line-strong bg-paper dark:border-ink-soft dark:bg-[hsl(38_33%_96%)]',
+  masked:
+    'rounded-[3px] border border-line-strong bg-paper dark:border-ink-soft dark:bg-[hsl(38_33%_96%)]',
   target: 'rounded-[3px] border-2 border-accent bg-accent-soft',
   ring: 'rounded-full border-2 border-accent bg-transparent',
   lifted: 'rounded-[3px] border border-positive bg-transparent',
@@ -44,6 +45,7 @@ export interface OcclusionMaskLayerProps {
    *  themselves (see src/db/assetCache.ts's `resolveAssetUrl`) before mounting this
    *  component — it never touches the asset store directly. */
   assetUrl: string;
+  imageSize?: Readonly<{ width: number; height: number }>;
   /** Accessible name for the diagram image. */
   alt: string;
   regions: OcclusionMaskRegion[];
@@ -68,6 +70,7 @@ export interface OcclusionMaskLayerProps {
  */
 export function OcclusionMaskLayer({
   assetUrl,
+  imageSize,
   alt,
   regions,
   onRegionClick,
@@ -75,24 +78,23 @@ export function OcclusionMaskLayer({
 }: OcclusionMaskLayerProps) {
   const interactive = Boolean(onRegionClick);
   return (
-    <div
-      className={cn(
-        'relative w-full overflow-hidden rounded-xl border border-line bg-surface-raised',
-        className,
-      )}
-    >
+    <div className={cn('relative w-full overflow-hidden rounded-2xl bg-ink/[0.04]', className)}>
       <img
         src={assetUrl}
+        width={imageSize?.width}
+        height={imageSize?.height}
         alt={alt}
         loading="lazy"
         decoding="async"
         className="block w-full select-none"
         draggable={false}
       />
-      {regions.map((region) => (
+      {regions.map((region, index) => (
         <div
           key={region.id}
           role={interactive ? 'button' : undefined}
+          aria-label={interactive ? `Region ${index + 1}` : undefined}
+          aria-pressed={interactive ? region.visual === 'selected' : undefined}
           tabIndex={interactive ? 0 : undefined}
           aria-hidden={interactive ? undefined : true}
           onClick={interactive ? () => onRegionClick?.(region.id) : undefined}
@@ -109,7 +111,7 @@ export function OcclusionMaskLayer({
             'absolute',
             VISUAL_CLASSES[region.visual],
             interactive &&
-              'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
+              'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
           )}
           style={{
             left: `${region.x * 100}%`,
@@ -119,7 +121,10 @@ export function OcclusionMaskLayer({
           }}
         >
           {QUESTION_MARK_VISUALS.has(region.visual) && (
-            <span aria-hidden className="grid h-full place-items-center font-brand text-base font-semibold leading-none text-accent-ink">
+            <span
+              aria-hidden
+              className="grid h-full place-items-center font-brand text-base font-semibold leading-none text-accent-ink"
+            >
               ?
             </span>
           )}

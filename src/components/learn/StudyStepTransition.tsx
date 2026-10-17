@@ -1,9 +1,11 @@
-import { type CSSProperties } from 'react';
+import { useRef, type CSSProperties } from 'react';
 import { Button } from '../ui/Button';
 import { CheckIcon, ClockIcon } from '../ui/icons';
+import { STUDY_HEADER_ROW } from './studyHeaderLayout';
 import { PomodoroTimer } from './PomodoroTimer';
 import type { SessionSummary } from './types';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { useUnclaimedFocus } from '../../hooks/useUnclaimedFocus';
 import './StudyStepTransition.css';
 
 interface StudyStepTransitionProps {
@@ -46,6 +48,9 @@ export function StudyStepTransition({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const incomplete = !summary.reachedGoal;
+  // The finished step's controls are gone; hand the keyboard to the primary action.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  useUnclaimedFocus(actionsRef, !planningNextStep);
 
   const hasNext = !incomplete && Boolean(nextLabel) && !summary.revision?.nextWindowDay;
   const destination = summary.revision?.nextWindowDay
@@ -62,10 +67,14 @@ export function StudyStepTransition({
       style={{ '--step-motion': m } as CSSProperties}
       data-motion={m === 0 ? 'off' : 'on'}
     >
-      <main className="study-transition-main" aria-label="Study progress">
-        <div className="study-transition-timer">
-          <PomodoroTimer />
+      <header className="pt-[env(safe-area-inset-top)]">
+        <div className={`${STUDY_HEADER_ROW} justify-end`}>
+          <div className="hidden shrink-0 min-[340px]:block">
+            <PomodoroTimer />
+          </div>
         </div>
+      </header>
+      <main className="study-transition-main" aria-label="Study progress">
         <div className={`study-transition-completed ${hasNext ? 'has-next' : ''}`}>
           <span
             className="study-transition-tick"
@@ -117,7 +126,7 @@ export function StudyStepTransition({
             <h2>{destination}</h2>
           </div>
         )}
-        <div className="study-transition-actions">
+        <div ref={actionsRef} className="study-transition-actions">
           {breakPending && (
             <Button variant="primary" size="lg" onClick={onTakeBreak}>
               Take a break
@@ -164,9 +173,9 @@ export function StudyStepTransition({
 
 function RevisionFact({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3">
+    <div className="rounded-2xl bg-ink/[0.04] px-4 py-3">
       <p className="font-display text-2xl tabular">{value}</p>
-      <p className="mt-1 text-sm text-ink-soft">{label}</p>
+      <p className="mt-1 text-sm text-ink-faint">{label}</p>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { setAuthoredAnswerMode } from '../../db/answerModeRepository';
 import type { AnswerMode, Card } from '../../db/types';
 import { isTypingEligible } from '../../utils/answerMode';
 import { useCourse, useLesson } from '../../state/useCourseData';
-import { cn } from '../ui/cn';
+import { PillToggleGroup } from './PillToggleGroup';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 
@@ -18,27 +18,19 @@ export function AnswerModeChoices({
   disabled?: boolean;
 }) {
   return (
-    <div
-      className="flex rounded-lg border border-line bg-surface p-1"
-      role="group"
-      aria-label="Lesson answer mode"
-    >
-      {(['reveal', 'type'] as const).map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          aria-pressed={value === mode}
-          disabled={disabled}
-          onClick={() => onChange(mode)}
-          className={cn(
-            'min-h-10 rounded-md px-4 text-sm transition-colors disabled:opacity-50',
-            value === mode ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-surface-raised',
-          )}
-        >
-          {mode === 'type' ? 'Type answers' : 'Reveal answers'}
-        </button>
-      ))}
-    </div>
+    // A disabled fieldset disables every option while a change saves.
+    <fieldset disabled={disabled} className="contents">
+      <PillToggleGroup
+        label="Lesson answer mode"
+        size="sm"
+        value={value}
+        onChange={onChange}
+        options={[
+          { value: 'reveal', label: 'Reveal answers' },
+          { value: 'type', label: 'Type answers' },
+        ]}
+      />
+    </fieldset>
   );
 }
 
@@ -58,10 +50,11 @@ export function CardAnswerModeField({
   const lesson = useLesson(lessonId);
   if (!course || course.archived || !isLessonAuthoringMode(course)) return null;
   return (
-    <label className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink-soft">
-      Answer by
+    <label className="flex min-w-0 flex-col gap-2 text-sm font-semibold text-ink">
+      <span>Answer by</span>
       <Select
         aria-label="Card answer mode"
+        className="w-full min-w-0"
         value={value ?? 'inherit'}
         onChange={(event) =>
           onChange(
@@ -71,7 +64,7 @@ export function CardAnswerModeField({
       >
         <option value="inherit">
           {lessonId
-            ? `Use lesson setting (${lesson?.answerMode === 'type' ? 'Type' : 'Reveal'})`
+            ? `Lesson (${lesson?.answerMode === 'type' ? 'Type' : 'Reveal'})`
             : 'Default (Reveal)'}
         </option>
         <option value="reveal">Reveal answer</option>
@@ -104,13 +97,8 @@ export function LessonAnswerModeControl({
     }
   }
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p className="text-sm text-ink">Answer by</p>
-        <p className="mt-1 text-xs text-ink-faint">
-          Default for this lesson. Individual cards can override it.
-        </p>
-      </div>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm text-ink">Answer by</p>
       <AnswerModeChoices
         value={lesson.answerMode ?? 'reveal'}
         disabled={saving}

@@ -39,12 +39,9 @@ than exposing GitHub's updater metadata as user choices.
   alive, preventing an MCP host from immediately relaunching `Lacuna.exe` and racing file removal.
   Successful installation removes the marker; application start removes abandoned or stale markers.
   The marker is deliberately independent of Electron's selectable user-data profile.
-- **Fonts** (`electron/assets/fonts/`): Fraunces and JetBrains Mono
-  bundled as local TTF variable fonts. The main process injects
-  `electron/fonts.css` via `webContents.insertCSS` so the app works fully
-  offline. Instrument Sans ships with the shared renderer assets in `public/fonts/`.
-  The hosted Google Fonts links are added only on HTTP(S), so Electron does not make a
-  request which its production CSP would reject.
+- **Fonts:** Electron uses the renderer's own bundled faces in `public/fonts/` (Instrument Sans,
+  Space Grotesk and JetBrains Mono), declared in `src/index.css`, so it makes no font request and
+  injects no separate font stylesheet.
 - **Auto-updater** (`electron/updater.ts`): uses `electron-updater` with GitHub Releases and checks
   the beta channel shortly after launch. A narrow, validated preload surface exposes only current
   state, a deliberate check, state-change subscription and explicit restart-and-install. Settings

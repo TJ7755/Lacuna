@@ -105,6 +105,33 @@ describe('LinkCardsDialog', () => {
     expect(screen.queryByText('Cell membrane')).not.toBeInTheDocument();
   });
 
+  it('renders formatted and cloze fronts while keeping preview links out of the tab order', () => {
+    const { container } = render(
+      <LinkCardsDialog
+        lessonId="lesson-2"
+        cards={[
+          card(
+            'formatted',
+            '**Cell membrane** and [notes](https://example.com)',
+            'Controls entry',
+            'lesson-1',
+          ),
+          { ...card('cloze', 'Cells contain {{c1::mitochondria}}.', '', null), type: 'cloze' },
+        ]}
+        lessons={lessons}
+        onLinked={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('strong')).toHaveTextContent('Cell membrane');
+    expect(container.querySelector('.cloze-blank')).toBeInTheDocument();
+    expect(container.querySelector('a')?.closest('[inert]')).not.toBeNull();
+    const choice = screen.getByRole('button', { name: /Cell membrane.*From Cells/ });
+    fireEvent.click(choice);
+    expect(choice).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('links every selected card to the current lesson', async () => {
     const onLinked = vi.fn();
     render(
@@ -120,8 +147,8 @@ describe('LinkCardsDialog', () => {
       />,
     );
 
-    fireEvent.click(screen.getByText('Cell membrane'));
-    fireEvent.click(screen.getByText('Mitochondria'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cell membrane From Cells' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mitochondria From Cards' }));
     fireEvent.click(screen.getByRole('button', { name: 'Link 2 cards' }));
 
     await waitFor(() => {

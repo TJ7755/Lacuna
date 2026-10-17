@@ -1,0 +1,1 @@
+- Expanding controls once again grow their surface from the trigger rather than revealing a pre-sized surface: the clip-path reveal showed the full panel behind the expansion and felt slow. Path editors use the same restored surface growth.

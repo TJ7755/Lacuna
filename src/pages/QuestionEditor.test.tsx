@@ -48,12 +48,19 @@ vi.mock('../components/markdown/MarkdownEditor', () => ({
     label,
     value,
     onChange,
+    inputRef,
   }: {
     label: string;
     value: string;
     onChange: (value: string) => void;
+    inputRef?: React.Ref<HTMLTextAreaElement>;
   }) => (
-    <textarea aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} />
+    <textarea
+      ref={inputRef}
+      aria-label={label}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    />
   ),
 }));
 
@@ -117,6 +124,15 @@ describe('QuestionEditor', () => {
     mocks.createFixed.mockResolvedValue(undefined);
   });
 
+  it('offers a working route back when the requested Question no longer exists', async () => {
+    const router = renderEditor('/course/course-1/questions/missing');
+    expect(
+      await screen.findByRole('heading', { name: 'This Question could not be found.' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Questions' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/course/course-1/questions'));
+  });
+
   it('uses the task title without repeating it in a decorative eyebrow', async () => {
     renderEditor();
 
@@ -150,6 +166,48 @@ describe('QuestionEditor', () => {
       ),
     );
     expect(await screen.findByText('Questions list')).toBeInTheDocument();
+    expect(loadDraft(questionDraftKey('course-1'))).toBeNull();
+  });
+
+  it('starts at the prompt and reports missing fields where they are, focusing the first', async () => {
+    renderEditor();
+    const prompt = await screen.findByLabelText('Prompt');
+    await waitFor(() => expect(prompt).toHaveFocus());
+    fireEvent.change(prompt, { target: { value: 'What is 2 + 2?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Question' }));
+
+    expect(screen.getByLabelText('Expected answer')).toHaveFocus();
+    expect(screen.getByText('Add a valid answer.')).toBeInTheDocument();
+    expect(screen.getByText('Add a name.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Completing the square')).toHaveAccessibleDescription(
+      'Add a name.',
+    );
+    expect(prompt).toHaveValue('What is 2 + 2?');
+    expect(mocks.createFixed).not.toHaveBeenCalled();
+    expect(mocks.notify).not.toHaveBeenCalled();
+  });
+
+  it('saves on Ctrl+Enter and readies another Question in the same Concept', async () => {
+    const router = renderEditor();
+    const prompt = await screen.findByLabelText('Prompt');
+    fireEvent.change(prompt, { target: { value: 'What is 2 + 2?' } });
+    fireEvent.change(screen.getByLabelText('Expected answer'), { target: { value: '4' } });
+    fireEvent.change(screen.getByLabelText('Worked explanation'), {
+      target: { value: 'Two pairs.' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Completing the square'), {
+      target: { value: 'Apply addition' },
+    });
+    fireEvent.keyDown(prompt, { key: 'Enter', ctrlKey: true });
+
+    await waitFor(() => expect(mocks.createFixed).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveValue(''));
+    expect(router.state.location.pathname).toBe('/course/course-1/questions/new');
+    expect(screen.getByPlaceholderText('Completing the square')).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Primary skill practised' })).toHaveValue(
+      'concept-1',
+    );
+    await waitFor(() => expect(screen.getByLabelText('Prompt')).toHaveFocus());
     expect(loadDraft(questionDraftKey('course-1'))).toBeNull();
   });
 
@@ -292,7 +350,7 @@ describe('QuestionEditor', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Generated family' }));
 
-    const family = screen.getByText('Built-in family').parentElement;
+    const family = screen.getByRole('heading', { name: 'Integer-root quadratic equations' }).parentElement;
     expect(family?.parentElement).toHaveStyle({ opacity: '0' });
   });
 
@@ -418,6 +476,17 @@ describe('QuestionEditor', () => {
       renderEditor('/course/course-1/questions/question-1');
     };
     const copy = 'Delete this Question definition? Its attempt evidence will be retained.';
+
+    it('saves suspension from the standard switch with the Question draft', async () => {
+      openEditor();
+      const control = await screen.findByRole('switch', { name: 'Suspend this Question' });
+      expect(control).not.toBeChecked();
+      fireEvent.click(control);
+      fireEvent.click(screen.getByRole('button', { name: 'Save Question' }));
+      await waitFor(() => expect(mocks.updateFixed).toHaveBeenCalledWith(
+        'question-1', expect.objectContaining({ suspended: true }),
+      ));
+    });
 
     it('asks inline and leaves the definition intact on Cancel', async () => {
       openEditor();

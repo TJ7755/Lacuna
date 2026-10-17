@@ -1,0 +1,4 @@
+- Study: the header shares the card's column on every screen of a session (notes, cards and the screen between steps), so Exit lines up with the card's left edge, Undo with its right, and the Pomodoro timer no longer moves when the first card opens.
+- The Pomodoro timer is a framed 44 pixel circle like the study header's other controls, and its panel uses the shared menu surface with pill buttons; the trigger reports whether the panel is open, the panel is named, and Reset has its own name.
+- Focus mode's exit button is round and reads "Leave focus mode", matching its menu item; the Settings switch reads "Start Learn sessions in focus mode".
+- The study sheet counts a wholly new lesson once ("5 new cards", not "5 cards, 5 new").

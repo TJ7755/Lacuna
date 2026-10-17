@@ -1,0 +1,1 @@
+- Redesign question-set attempts around one compact header and a course-style card, with a part stepper, growing answer field, aligned navigation and platform shortcut hints. Short answers fit desktop and phone viewports; marking and reflection share the same surfaces.

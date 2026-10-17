@@ -1,17 +1,18 @@
+/* The report's column is the shared study column (studyHeaderLayout.ts): 768px wide
+   with 24px safe-area gutters. Only the vertical rhythm is particular to the report. */
 .session-report {
-  max-width: 760px;
   min-height: 88svh;
-  margin: auto;
-  padding: max(64px, env(safe-area-inset-top)) max(32px, env(safe-area-inset-right))
-    max(64px, env(safe-area-inset-bottom)) max(32px, env(safe-area-inset-left));
+  padding-top: max(64px, env(safe-area-inset-top));
+  padding-bottom: max(64px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
+
 .session-report h1 {
   margin: 0;
   font-size: clamp(48px, 6vw, 76px);
-  font-weight: 450;
+  font-weight: 600;
   line-height: 1.04;
   letter-spacing: -0.065em;
   overflow-wrap: anywhere;
@@ -32,8 +33,10 @@
   gap: 6px;
 }
 .session-report-facts dd {
-  font-size: 38px;
-  letter-spacing: -0.045em;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -41,7 +44,7 @@
   font-size: 0.7em;
 }
 .session-report-facts dt {
-  font-size: 13px;
+  font-size: 14px;
   color: hsl(var(--ink-soft));
 }
 .session-report-progress-label {
@@ -60,29 +63,36 @@
 .session-report-details {
   border-top: 1px solid hsl(var(--line));
   margin-top: 28px;
-  font-size: 13px;
+  font-size: 14px;
   color: hsl(var(--ink-soft));
 }
-.session-report-details summary {
+.session-report-details-trigger {
   min-height: 48px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   cursor: pointer;
-  list-style: none;
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  text-align: start;
 }
-.session-report-details summary::-webkit-details-marker {
-  display: none;
-}
-.session-report-details summary:focus-visible {
-  outline: 2px solid hsl(var(--accent));
-  outline-offset: 4px;
-}
-.session-report-details summary > span {
+.session-report-plus {
+  display: inline-grid;
+  place-items: center;
   font-size: 20px;
+  transition: transform calc(180ms * var(--session-motion, 1)) cubic-bezier(0.16, 1, 0.3, 1);
 }
-.session-report-details[open] summary > span {
+.session-report-details-trigger[aria-expanded='true'] .session-report-plus {
   transform: rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-report-plus {
+    transition: none;
+  }
 }
 .session-report-detail-content {
   padding: 8px 0 18px;
@@ -112,13 +122,8 @@
   gap: 12px;
   margin-top: 20px;
 }
-.session-report-actions button {
-  min-height: 52px;
-  padding: 0 18px;
-  font-size: 14px;
-  transform: none !important;
-}
-.session-report-actions .session-report-done {
+/* The shared Button sizes and motion apply; Study only reserves arrow space. */
+.session-report-done {
   min-width: 142px;
   justify-content: space-between;
   gap: 32px;
@@ -127,6 +132,9 @@
 .session-report-arrow {
   opacity: 0;
   transform: translateX(-5px);
+  transition:
+    opacity calc(160ms * var(--session-motion, 1)),
+    transform calc(160ms * var(--session-motion, 1));
 }
 .session-report-done:hover .session-report-arrow,
 .session-report-done:focus-visible .session-report-arrow {
@@ -134,19 +142,22 @@
   transform: none;
 }
 @media (max-width: 540px) {
-  .session-report {
-    padding-inline: max(24px, env(safe-area-inset-left)) max(24px, env(safe-area-inset-right));
-  }
   .session-report-facts {
     gap: 32px;
   }
   .session-report-actions {
     gap: 8px;
   }
-  .session-report-actions button {
+  /* Keep both actions on one line at 320px, as before the shared Button sizes. */
+  .session-report-actions > button {
     padding-inline: 12px;
   }
-  .session-report-actions .session-report-done {
+  .session-report-done {
     min-width: 128px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-report-arrow {
+    transition: none;
   }
 }

@@ -1,6 +1,9 @@
+import { StudyEntrance } from '../components/learn/StudyEntrance';
+import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
+import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
@@ -25,9 +28,10 @@ import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { LearnHeader } from './learn/LearnHeader';
-import { NavSidebar } from './learn/NavSidebar';
 import { FlipCard } from './learn/FlipCard';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
+import { StreakCelebration, type StreakMoment } from './learn/StreakCelebration';
+import { isStreakMilestone, nextRun } from './learn/answerStreak';
 import { useStudyFocus } from './learn/useStudyFocus';
 import { NumericStudyFace } from '../components/items/NumericStudyFace';
 import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
@@ -53,7 +57,12 @@ interface LearnModeProps {
 }
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
+  const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
+  // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
+  const runRef = useRef(0);
+  const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
+  const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -92,8 +101,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       : courseId
         ? 'practice'
         : 'deck';
-  const dueReviewRequest =
-    request?.kind === 'practice' && request.mode === 'recurring';
+  const dueReviewRequest = request?.kind === 'practice' && request.mode === 'recurring';
   const filterParams = useMemo(() => {
     const filters = searchParams.getAll('filter') as CardFilter[];
     return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;
@@ -144,8 +152,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     toggleFullscreen,
     hintsOpen,
     setHintsOpen,
-    navOpen,
-    setNavOpen,
     typedAnswer,
     setTypedAnswer,
     typingInputRef,
@@ -245,9 +251,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onSessionReset: resetForSession,
   });
 
-  const studyFocusRef = useStudyFocus(
-    current?.id, phase, editing || menuOpen || navOpen || hintsOpen,
-  );
+  const studyFocusRef = useStudyFocus(current?.id, phase, editing || menuOpen || hintsOpen);
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
@@ -261,6 +265,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setMenuOpen(false);
     try {
       cardTransitionRef.current?.cancel();
+      runRef.current = 0;
+      setStreakMoment(null);
       await undoLast();
     } finally {
       undoInFlightRef.current = false;
@@ -268,7 +274,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   }, [undoLast, setMenuOpen]);
 
   const answerWithUndo = useCallback(
-    (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
+    (
+      input: boolean | Grade | MachineMarkedAnswer,
+      source: 'touch' | 'keyboard' = 'keyboard',
+      velocity = 0,
+    ) => {
       if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
@@ -281,21 +291,25 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             });
           }
         })();
+      const correct =
+        typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
       // Machine-marked cards measure response time at submission, so keep that path immediate.
       if (typeof input === 'object' || !cardTransitionRef.current) commit();
-      else
-        cardTransitionRef.current.dismiss(
-          typeof input === 'number' ? input > 1 : input,
-          commit,
-          source,
-        );
+      else if (!cardTransitionRef.current.dismiss(correct, commit, source, velocity)) return;
+      if (typeof input !== 'object') {
+        setGradeFeedback((previous) => ({ input, serial: (previous?.serial ?? 0) + 1 }));
+      }
+      runRef.current = nextRun(runRef.current, correct);
+      if (isStreakMilestone(runRef.current)) {
+        setStreakMoment({ run: runRef.current, key: Date.now() });
+      }
     },
     [answer, notify, undoWithTransitionCancel],
   );
 
   useEffect(() => {
-    if (editing || menuOpen || navOpen || hintsOpen) cardTransitionRef.current?.cancel();
-  }, [editing, menuOpen, navOpen, hintsOpen]);
+    if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, hintsOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -307,8 +321,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     hintStep,
     setHintStep,
     undoLast: undoWithTransitionCancel,
-    navOpen,
-    setNavOpen,
     menuOpen,
     setMenuOpen,
     editing,
@@ -342,29 +354,31 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   if (phase === 'notes' && lessonNotesScreen) {
     return (
-      <LessonNotesIntro
-        lessonName={lessonNotesScreen.lessonName}
-        notes={lessonNotesScreen.notes}
-        onExit={backOut}
-        onContinue={() => {
-          void (async () => {
-            if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
-              await markLessonComplete(lessonId);
+      <StudyEntrance>
+        <LessonNotesIntro
+          lessonName={lessonNotesScreen.lessonName}
+          notes={lessonNotesScreen.notes}
+          onExit={backOut}
+          onContinue={() => {
+            void (async () => {
+              if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
+                await markLessonComplete(lessonId);
+                setLessonNotesScreen(null);
+                finish(true);
+                return;
+              }
               setLessonNotesScreen(null);
-              finish(true);
-              return;
-            }
-            setLessonNotesScreen(null);
-            serveNextRef.current();
-          })();
-        }}
-        motionMultiplier={m}
-      />
+              serveNextRef.current();
+            })();
+          }}
+          motionMultiplier={m}
+        />
+      </StudyEntrance>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-paper">
+    <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
         active={() =>
@@ -440,7 +454,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="flex min-h-screen flex-col"
+            className={
+              'study-session flex h-dvh flex-col overflow-hidden' +
+              (focusMode ? ' pt-[calc(84px+env(safe-area-inset-top))]' : '')
+            }
           >
             {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
             <AnimatePresence>
@@ -460,8 +477,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               )}
             </AnimatePresence>
-            {/* Navigation drawer: hidden by default, slides in for quick navigation away. */}
-            <NavSidebar open={navOpen} onClose={() => setNavOpen(false)} />
             {/* Help overlay (opened with ?) */}
             <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
             {focusMode && !focusChromeVisible && !menuOpen && (
@@ -479,6 +494,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             <AnimatePresence>
               {(!focusMode || focusChromeVisible || menuOpen) && (
                 <LearnHeader
+                  canUndo={canUndo}
+                  onUndo={() => void undoWithTransitionCancel()}
                   key="learn-header"
                   mode={mode}
                   plannedRevision={plannedRevision}
@@ -493,7 +510,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   sessionCardOutcomes={sessionCardOutcomes}
                   filterParams={filterParams}
                   tagFilter={tagFilter}
-                  onOpenNav={() => setNavOpen(true)}
                   onExit={() => exitGuardRef.current?.requestLeave()}
                   focusMode={focusMode}
                   onToggleFocus={() => {
@@ -522,26 +538,23 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 />
               )}
             </AnimatePresence>
-            {/* Card — mode-aware border accent */}
-            {/* The card and its controls centre as one block. Centring the card alone
-                leaves it optically high, because the reveal and grade controls sit below
-                it and all the remaining height collects underneath them. When a card is
-                taller than the viewport this container simply grows, so nothing is
-                clipped and the page scrolls as before. StudyControls reserves the same
-                space in both phases so this centred block does not shift on reveal. */}
+            {/* Reserve the controls first; only the card body may scroll. */}
             <main
               ref={studyFocusRef}
               tabIndex={-1}
               aria-label="Study card"
               className={
-                'mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center outline-none focus-visible:shadow-none ' +
+                'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col outline-none focus-visible:shadow-none ' +
                 'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-                'pt-8 md:pt-12 ' +
+                'pt-4 md:pt-6 ' +
                 (isTouchMode && !suppressClassicGrading
-                  ? 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-                  : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
+                  ? gradingMode === 'manual'
+                    ? 'pb-[calc(14rem+env(safe-area-inset-bottom))]'
+                    : 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
+                  : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
               }
             >
+              <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
               {current && recitationSequence ? (
                 <SequenceRecitation
                   key={isSimpleMode ? recitationSequence.id : current.id}
@@ -563,69 +576,74 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         }
                   }
                 />
-              ) : current && (
-                <StudyCardTransition
-                  key={current.id}
-                  ref={cardTransitionRef}
-                  cardId={current.id}
-                  phase={phase}
-                  multiplier={m}
-                >
-                  {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
-                    <NumericStudyFace
-                      card={
-                        current as Card & {
-                          payload: Extract<ItemPayload, { kind: 'numeric' }>;
-                        }
-                      }
-                      allowCheckerDisputes={!isSimpleMode}
-                      onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                    />
-                  ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
-                    <WorkingStudyFace
-                      card={
-                        current as Card & {
-                          payload: Extract<ItemPayload, { kind: 'working' }>;
-                        }
-                      }
-                      allowCheckerDisputes={!isSimpleMode}
-                      onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                    />
-                  ) : hasUnrenderableItemPayload ? (
-                    <UnknownItemFace card={current} />
-                  ) : (
-                    <FlipCard
-                      card={current}
-                      revealed={phase === 'answer'}
-                      motionSpeed={motionSpeed}
+              ) : (
+                current && (
+                  <div className="study-card-slot min-h-0 flex-1">
+                    <StudyCardTransition
+                      ref={cardTransitionRef}
+                      cardId={current.id}
                       phase={phase}
-                      isTouchMode={isTouchMode}
-                      menuOpen={menuOpen}
-                      editing={editing}
-                      navOpen={navOpen}
-                      hintsOpen={hintsOpen}
-                      onReveal={reveal}
-                      onHide={hide}
-                      onAnswer={(input) => answerWithUndo(input, 'touch')}
-                      typedAnswer={typedAnswer}
-                      isTypingCard={isTypingCard}
-                      mode={mode}
-                      isLinesModeCard={isLinesModeCard}
-                      hintStep={hintStep}
-                      onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
-                      hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
-                      answerStrictness={answerStrictness}
-                      occlusion={occlusion}
-                      occlusionAnswerText={occlusionAnswerText}
-                    />
-                  )}
-                </StudyCardTransition>
+                      multiplier={m}
+                    >
+                      {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
+                        <NumericStudyFace
+                          card={
+                            current as Card & {
+                              payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                            }
+                          }
+                          allowCheckerDisputes={!isSimpleMode}
+                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                        />
+                      ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
+                        <WorkingStudyFace
+                          card={
+                            current as Card & {
+                              payload: Extract<ItemPayload, { kind: 'working' }>;
+                            }
+                          }
+                          allowCheckerDisputes={!isSimpleMode}
+                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                        />
+                      ) : hasUnrenderableItemPayload ? (
+                        <UnknownItemFace card={current} />
+                      ) : (
+                        <FlipCard
+                          card={current}
+                          revealed={phase === 'answer'}
+                          motionSpeed={motionSpeed}
+                          phase={phase}
+                          isTouchMode={isTouchMode}
+                          menuOpen={menuOpen}
+                          editing={editing}
+                          hintsOpen={hintsOpen}
+                          onReveal={reveal}
+                          onHide={hide}
+                          onAnswer={(input, source, velocity) =>
+                            answerWithUndo(input, source, velocity)
+                          }
+                          typedAnswer={typedAnswer}
+                          isTypingCard={isTypingCard}
+                          mode={mode}
+                          isLinesModeCard={isLinesModeCard}
+                          hintStep={hintStep}
+                          onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
+                          hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
+                          answerStrictness={answerStrictness}
+                          occlusion={occlusion}
+                          occlusionAnswerText={occlusionAnswerText}
+                        />
+                      )}
+                    </StudyCardTransition>
+                  </div>
+                )
               )}
 
               {!suppressClassicGrading && (
                 <StudyControls
                   key={`controls-${current?.id}`}
                   phase={phase}
+                  feedback={gradeFeedback}
                   isTypingCard={isTypingCard}
                   isTouchMode={isTouchMode}
                   gradingMode={gradingMode}
@@ -642,6 +660,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </StudyEntrance>
   );
 }

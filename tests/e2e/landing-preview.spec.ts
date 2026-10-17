@@ -13,35 +13,6 @@ test('opening limits attention to the headline and one action', async ({ page })
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('landing leads with exam planning before the memory story', async ({ page }) => {
-  await page.goto('/#/landing');
-
-  const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  await expect(
-    hero.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toBeVisible();
-  await expect(hero.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
-
-  const order = await page.locator('main').evaluate((main) => {
-    const children = Array.from(main.children);
-    const indexOf = (selector: string) => children.findIndex((child) => child.matches(selector));
-    return {
-      hero: indexOf('.motion-opening'),
-      product: indexOf('#landing-product'),
-      walkthrough: indexOf('.landing-walkthrough'),
-      memory: indexOf('.memory-sequence'),
-    };
-  });
-  expect(order.hero).toBe(0);
-  expect(order.product).toBeGreaterThan(order.hero);
-  expect(order.walkthrough).toBeGreaterThan(order.product);
-  expect(order.memory).toBeGreaterThan(order.walkthrough);
-
-  const firstWalkthroughImage = page.locator('.walkthrough-frame img').first();
-  await expect(firstWalkthroughImage).toHaveAttribute('src', /\/landing\/exam-date\.png$/);
-  await expect(firstWalkthroughImage).toHaveAttribute('data-active', 'true');
-});
-
 test('landing survives first launch and offers an unrestricted journey', async ({ page }) => {
   await page.goto('/#/landing');
   await expect(
@@ -50,52 +21,11 @@ test('landing survives first launch and offers an unrestricted journey', async (
   await expect(page).toHaveURL(/#\/landing$/);
   await page.getByRole('link', { name: 'Skip to Lacuna' }).focus();
   await page.getByRole('link', { name: 'Skip to Lacuna' }).click();
-  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toBeInViewport();
+  await expect(
+    page.getByRole('heading', { name: 'Scheduled for your exam, not for ever.' }),
+  ).toBeInViewport();
   await page.getByRole('link', { name: 'Start revising', exact: true }).last().click();
   await expect(page).toHaveURL(/#\/$/);
-});
-
-test('mobile reduced motion shows the complete story without horizontal overflow', async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/#/landing');
-  await expect(
-    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toBeVisible();
-  await expect(page.getByText('You just can’t bring it back.', { exact: true })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
-});
-
-test('native scrolling blurs then resolves the answer', async ({ page }) => {
-  await page.goto('/#/landing');
-  await expect(
-    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toBeVisible();
-  const answer = page.locator('.memory-answer');
-  await expect(answer).toHaveCSS('filter', 'blur(0px)');
-  await page.evaluate(() => {
-    const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    const rect = scene.getBoundingClientRect();
-    window.scrollTo({
-      top: scrollY + rect.top + (rect.height - innerHeight) * 0.61,
-      behavior: 'instant',
-    });
-  });
-  await expect(answer).toHaveCSS('filter', 'blur(23px)');
-  await expect(page.locator('.memory-caption .memory-searching')).toHaveCSS('opacity', '1');
-  await page.evaluate(() => {
-    const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    const rect = scene.getBoundingClientRect();
-    window.scrollTo({
-      top: scrollY + rect.top + (rect.height - innerHeight) * 0.96,
-      behavior: 'instant',
-    });
-  });
-  await expect(answer).toHaveCSS('filter', 'blur(0px)');
 });
 
 for (const reducedMotion of ['no-preference', 'reduce'] as const) {
@@ -115,119 +45,6 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
   });
 }
 
-test('cinematic opening is quiet and lower sections share their alignment', async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: 1000 });
-  await page.goto('/#/landing');
-  await expect(
-    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toBeVisible();
-  for (const caption of [
-    'A familiar feeling.',
-    'Revision, with your exam in mind.',
-    'The word. The page. The feeling of knowing.',
-    'Scroll to follow the thought',
-    'Knowing → remembering',
-  ]) {
-    await expect(page.getByText(caption, { exact: true })).toHaveCount(0);
-  }
-  const edges = await page.evaluate(() => {
-    const left = (selector: string) =>
-      document.querySelector(selector)!.getBoundingClientRect().left;
-    return [
-      left('.landing-walkthrough') +
-        parseFloat(getComputedStyle(document.querySelector('.landing-walkthrough')!).paddingLeft),
-      left('.landing-footer .landing-brand'),
-    ];
-  });
-  expect(Math.max(...edges) - Math.min(...edges)).toBeLessThan(1);
-});
-
-test('walkthrough pairs real screenshots with scrolling text and uses Instrument Sans', async ({
-  page,
-}) => {
-  await page.goto('/#/landing');
-  await expect(
-    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toHaveCSS('font-family', /Instrument Sans/);
-  await expect(page.getByRole('heading', { name: 'Your time. Your pace.' })).toHaveCSS(
-    'font-family',
-    /Instrument Sans/,
-  );
-  const walkthrough = page.getByRole('region', { name: 'Inside Lacuna' });
-  await expect(walkthrough).toBeVisible();
-  for (const name of [
-    'See what needs your time.',
-    'Follow your subject.',
-    'Bring the answer back.',
-  ]) {
-    await page.getByRole('heading', { name, exact: true }).scrollIntoViewIfNeeded();
-    await expect(walkthrough.locator('.walkthrough-frame img[data-active="true"]')).toHaveAttribute(
-      'alt',
-      name,
-    );
-  }
-  expect(
-    await walkthrough
-      .locator('img')
-      .evaluateAll((images) =>
-        images.every(
-          (image) =>
-            (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0,
-        ),
-      ),
-  ).toBe(true);
-});
-
-test('screenshot transitions track scroll in both directions', async ({ page }) => {
-  await page.goto('/#/landing');
-  await expect(page.getByRole('region', { name: 'Inside Lacuna' })).toBeVisible();
-  const moveTo = async (fraction: number) => {
-    await page.evaluate((value) => {
-      const steps = [...document.querySelectorAll('.walkthrough-step')];
-      const first = steps[0].getBoundingClientRect();
-      const second = steps[1].getBoundingClientRect();
-      window.scrollTo({
-        top:
-          scrollY +
-          first.top +
-          first.height / 2 -
-          innerHeight / 2 +
-          (second.top - first.top) * value,
-        behavior: 'instant',
-      });
-    }, fraction);
-  };
-  const image = page.locator('.walkthrough-frame img').first();
-  await moveTo(0);
-  await expect(image).toHaveCSS('opacity', '1');
-  await moveTo(0.5);
-  await expect
-    .poll(async () => Number(await image.evaluate((node) => getComputedStyle(node).opacity)))
-    .toBeGreaterThan(0.35);
-  await expect
-    .poll(async () => Number(await image.evaluate((node) => getComputedStyle(node).opacity)))
-    .toBeLessThan(0.65);
-  await moveTo(1);
-  await expect(image).toHaveCSS('opacity', '0');
-  await moveTo(0);
-  await expect(image).toHaveCSS('opacity', '1');
-});
-
-test('mobile walkthrough keeps each screenshot with its text', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/#/landing');
-  await expect(
-    page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-  ).toBeVisible();
-  await expect(page.locator('.walkthrough-frame')).toBeHidden();
-  for (const step of await page.locator('.walkthrough-step').all()) {
-    await step.scrollIntoViewIfNeeded();
-    await expect(step.locator('img')).toBeVisible();
-    await expect(step.locator('h3')).toBeVisible();
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-});
-
 test('opening offers keyboard app entry beside decorative artwork', async ({ page }) => {
   await page.goto('/#/landing');
   const hero = page.getByRole('region', { name: 'Revision around your exam' });
@@ -237,50 +54,14 @@ test('opening offers keyboard app entry beside decorative artwork', async ({ pag
   await expect(hero.locator('.revision-reel')).toHaveAttribute('aria-hidden', 'true');
 });
 
-test('opening stays independent from memory and supports touch', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/#/landing');
-  const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
-  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.evaluate(() => {
-    const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    const rect = scene.getBoundingClientRect();
-    window.scrollTo({
-      top: scrollY + rect.top + (rect.height - innerHeight) * 0.3,
-      behavior: 'instant',
-    });
-  });
-  await expect(hero).not.toHaveAttribute('inert', '');
-  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
-  await expect(page.locator('.memory-answer')).toHaveCSS('opacity', '1');
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(hero).not.toHaveAttribute('inert', '');
-});
-
 test('closing section offers app entry', async ({ page }) => {
   await page.goto('/#/landing');
-  const footer = page.getByRole('region', { name: 'Ready to make it stick?' });
+  const footer = page.getByRole('region', { name: 'Your exam has a date. Start there.' });
   await expect(footer.getByRole('link', { name: 'Start revising' })).toHaveAttribute('href', '#/');
   const title = page.locator('.motion-opening h1');
   expect(await title.evaluate((node) => getComputedStyle(node, '::after').content)).toBe('none');
   await footer.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
-});
-
-test('memory scene retains its drawings after the hero', async ({ page }) => {
-  await page.goto('/#/landing');
-  await expect(page.locator('.memory-drawing svg')).toHaveCount(1);
-  await page.evaluate(() => {
-    const scene = document.querySelector('.memory-sequence') as HTMLElement;
-    const rect = scene.getBoundingClientRect();
-    window.scrollTo({
-      top: scrollY + rect.top + (rect.height - innerHeight) * 0.3,
-      behavior: 'instant',
-    });
-  });
-  await expect(page.locator('.memory-drawing')).toHaveCSS('opacity', '0.7');
 });
 
 test('welcome serves the approved landing and method shares its visual treatment', async ({
@@ -291,7 +72,7 @@ test('welcome serves the approved landing and method shares its visual treatment
   await page.getByRole('link', { name: 'The method' }).click();
   const method = page.locator('.method-page');
   await expect(method).toBeVisible();
-  await expect(method).toHaveCSS('background-color', 'rgb(19, 18, 16)');
+  await expect(method).toHaveCSS('background-color', 'rgb(19, 25, 16)');
   await expect(
     page.getByRole('heading', { name: 'The thinking behind remembering.' }),
   ).toBeVisible();
@@ -317,7 +98,7 @@ for (const motion of ['no-preference', 'reduce'] as const) {
     await expect(
       page.getByRole('contentinfo').getByRole('link', { name: 'GitHub' }),
     ).toHaveAttribute('href', 'https://github.com/TJ7755/Lacuna');
-    await expect(page.getByRole('heading', { name: '£0 forever.' })).toHaveCount(1);
+    await expect(page.getByRole('heading', { name: 'Yours, on your device.' })).toHaveCount(1);
     await expect(page.getByRole('button', { name: /reduced motion/i })).toHaveCount(0);
     const cta = page
       .getByRole('region', { name: 'Revision around your exam' })
@@ -333,125 +114,28 @@ for (const motion of ['no-preference', 'reduce'] as const) {
   });
 }
 
-test('closing scenes separate the copy and doodles as scrolling reverses', async ({ page }) => {
-  await page.goto('/#/welcome');
-  await expect(
-    page.getByRole('heading', { name: 'Your study data stays on your device.' }),
-  ).toBeVisible();
-  const scene = page.locator('.closing-scene').first();
-  const copy = scene.locator('.closing-copy');
-  const drawings = scene.locator('.closing-drawings');
-  const scrollToProgress = async (progress: number) => {
-    await scene.evaluate((node, progress) => {
-      window.scrollTo({
-        top:
-          window.scrollY +
-          node.getBoundingClientRect().top +
-          (node.clientHeight - innerHeight) * progress,
-        behavior: 'instant',
-      });
-    }, progress);
-    await page.evaluate(
-      () =>
-        new Promise<void>((resolve) => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        }),
-    );
-  };
-  await scrollToProgress(0);
-  await expect
-    .poll(() => copy.evaluate((node) => getComputedStyle(node).transform))
-    .not.toBe('none');
-  const initial = await copy.evaluate((node) => getComputedStyle(node).transform);
-  await scrollToProgress(1);
-  await expect
-    .poll(() => copy.evaluate((node) => getComputedStyle(node).transform))
-    .not.toBe(initial);
-  expect(await drawings.evaluate((node) => getComputedStyle(node).transform)).not.toBe(
-    await copy.evaluate((node) => getComputedStyle(node).transform),
-  );
-  await scrollToProgress(0);
-  await expect.poll(() => copy.evaluate((node) => getComputedStyle(node).transform)).toBe(initial);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(copy).toHaveCSS('transform', 'none');
-  await expect(drawings).toHaveCSS('transform', 'none');
-});
-
-test('walkthrough explains exam scheduling, time limits and application practice before pricing', async ({
-  page,
-}) => {
-  await page.goto('/#/welcome');
-  const walkthrough = page.getByRole('region', { name: 'Inside Lacuna' });
-  for (const name of [
-    'Schedule for the day it matters.',
-    'Fit revision into your day.',
-    'Practise using what you know.',
-  ]) {
-    const heading = walkthrough.getByRole('heading', { name, exact: true });
-    await heading.scrollIntoViewIfNeeded();
-    await expect(walkthrough.locator('.walkthrough-frame img[data-active="true"]')).toHaveAttribute(
-      'alt',
-      name,
-    );
-  }
-  expect(
-    await page.evaluate(
-      () =>
-        document.querySelector('.landing-walkthrough')!.getBoundingClientRect().bottom <=
-        document.querySelector('.closing-scene')!.getBoundingClientRect().top,
-    ),
-  ).toBe(true);
-});
-
-test('course journey follows scrolling forwards and backwards with flippable examples', async ({
-  page,
-}) => {
-  await page.goto('/#/welcome');
-  const journey = page.getByRole('region', { name: 'A course, one step at a time.' });
-  await expect(journey.getByRole('button')).toHaveCount(2);
-  for (const index of [0, 1, 2, 3, 1]) {
-    await journey.locator('.journey-example').nth(index).scrollIntoViewIfNeeded();
-    await expect(journey.locator('.journey-stop').nth(index)).toHaveAttribute(
-      'data-active',
-      'true',
-    );
-  }
-  await expect(
-    journey.getByText('The rate at which something changes.', { exact: true }),
-  ).toBeVisible();
-  const recall = journey.locator('.journey-example').nth(1);
-  const answer = recall.locator('.journey-answer');
-  const turn = recall.locator('.journey-card-turn');
-  await expect(turn).toHaveCount(1);
-  for (const [offset, rotation] of [
-    [-0.2, 1],
-    [0.2, -1],
-    [-0.2, 1],
-  ] as const) {
-    await recall.evaluate(
-      (node, offset) =>
-        window.scrollTo({
-          top: scrollY + node.getBoundingClientRect().top + innerHeight * offset,
-          behavior: 'instant',
-        }),
-      offset,
-    );
-    await expect
-      .poll(() => turn.evaluate((node) => new DOMMatrix(getComputedStyle(node).transform).m11))
-      .toBeCloseTo(rotation, 3);
-  }
+test('opening stays independent from the lower sections and supports touch', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(turn).toHaveCSS('transform', 'none');
-  await expect(answer).toHaveCSS('transform', 'none');
-  await expect(answer).toHaveCSS('opacity', '1');
-  for (const title of [
-    'Start with the idea.',
-    'Bring it back to mind.',
-    'Put it to work.',
-    'A date to work towards.',
-  ]) {
-    await expect(journey.getByRole('heading', { name: title, exact: true })).toBeVisible();
-  }
+  await page.goto('/#/landing');
+  const hero = page.getByRole('region', { name: 'Revision around your exam' });
+  await expect(hero.getByRole('link', { name: 'Start revising' })).toBeInViewport();
+  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.locator('#landing-grading').scrollIntoViewIfNeeded();
+  await expect(hero).not.toHaveAttribute('inert', '');
+  await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(hero).not.toHaveAttribute('inert', '');
+});
+
+test('lower sections share the footer alignment', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#/landing');
+  await expect(page.locator('#how-it-works')).toBeVisible();
+  const edges = await page.evaluate(() => {
+    const left = (selector: string) =>
+      document.querySelector(selector)!.getBoundingClientRect().left;
+    return [left('#how-it-works .landing-feature-copy'), left('.landing-footer .landing-brand')];
+  });
+  expect(Math.max(...edges) - Math.min(...edges)).toBeLessThan(1);
 });

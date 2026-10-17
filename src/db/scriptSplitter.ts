@@ -28,6 +28,12 @@ export interface SplitScriptResult {
 // (covers "MRS ROBINSON", "2ND GUARD", "O'BRIEN") followed by the line's dialogue.
 const SPEAKER_LINE = /^([A-Za-z0-9][A-Za-z0-9 '.-]{0,60}):\s*(.+)$/;
 
+/** A single "NAME: line" split into speaker and line, or null when it has no speaker. */
+export function parseSpeakerLine(line: string): { speaker: string; value: string } | null {
+  const match = line.trim().match(SPEAKER_LINE);
+  return match ? { speaker: match[1].trim(), value: match[2].trim() } : null;
+}
+
 /**
  * Split raw pasted script text into speaker-tagged items. `makeId` is injected
  * (rather than imported from schema.ts) to keep this module dependency-free and

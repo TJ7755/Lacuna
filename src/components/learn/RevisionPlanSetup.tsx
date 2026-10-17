@@ -11,7 +11,12 @@ import {
 } from '../../db/revisionPlanRepository';
 import type { CourseAssessment, RevisionPlan } from '../../db/types';
 import { formatDateTime } from '../../utils/datetime';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { DelayedFallback } from '../ui/DelayedFallback';
 import { Button } from '../ui/Button';
+import { Field, Input, inputFrameClassName } from '../ui/Field';
+import { Skeleton } from '../ui/Skeleton';
+import { cn } from '../ui/cn';
 import { SectionCard } from '../ui/SectionCard';
 
 const PRESETS = [10, 20, 30] as const;
@@ -126,7 +131,28 @@ export function RevisionPlanSetup({
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-paper" />;
+  if (loading)
+    return (
+      // The pending treatment of the neighbouring study screens: a withheld skeleton column.
+      <div
+        role="status"
+        aria-busy="true"
+        className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        aria-label="Loading revision plan"
+      >
+        <DelayedFallback>
+          <div className="w-full max-w-xl space-y-4">
+            <Skeleton className="h-4 w-32 bg-ink/5" />
+            <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
+            <Skeleton className="h-5 w-full bg-ink/5" />
+            <div className="mt-8 flex gap-3">
+              <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
+              <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
+            </div>
+          </div>
+        </DelayedFallback>
+      </div>
+    );
   if (!assessment) {
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
@@ -184,6 +210,9 @@ export function RevisionPlanSetup({
           ) : (
             <section className="mt-8">
               <h2 className="font-display text-2xl">Time available today</h2>
+              <p className="mt-2 text-sm text-ink-soft">
+                Builds a daily plan for the cards this assessment covers.
+              </p>
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {PRESETS.map((minutes) => (
                   <Button
@@ -199,9 +228,8 @@ export function RevisionPlanSetup({
                   </Button>
                 ))}
               </div>
-              <label className="mt-4 block text-sm text-ink-soft">
-                Custom minutes
-                <input
+              <Field label="Custom minutes" className="mt-4">
+                <Input
                   type="number"
                   min={1}
                   max={480}
@@ -211,16 +239,15 @@ export function RevisionPlanSetup({
                     if (plan && todayWindow?.status === 'scheduled')
                       void updateBudget(todayWindow.day, budget);
                   }}
-                  className="mt-2 w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none focus:border-accent"
                 />
-              </label>
+              </Field>
             </section>
           )}
 
           {!plan && (
             <button
               type="button"
-              className="mt-6 text-sm font-medium text-accent"
+              className="mt-6 text-sm font-medium text-accent-ink"
               onClick={() => void prepareSchedule()}
             >
               Edit future days
@@ -234,19 +261,19 @@ export function RevisionPlanSetup({
               <section className="mt-6">
                 <button
                   type="button"
-                  className="text-sm font-medium text-accent"
+                  className="text-sm font-medium text-accent-ink"
                   onClick={() => setEditingSchedule((value) => !value)}
                 >
                   {editingSchedule ? 'Hide future days' : 'Edit future days'}
                 </button>
-                {editingSchedule && (
+                <AnimatedDisclosure open={editingSchedule}>
                   <div className="mt-3 space-y-2">
                     {plan.windows
                       .filter((window) => window.day !== today && window.status === 'scheduled')
                       .map((window) => (
                         <div
                           key={window.id}
-                          className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3"
+                          className="flex items-center gap-3 rounded-2xl bg-ink/[0.04] px-4 py-3"
                         >
                           <span className="min-w-0 flex-1 text-sm text-ink">
                             {formatPlanDay(window.day)}
@@ -259,7 +286,7 @@ export function RevisionPlanSetup({
                             onBlur={(event) =>
                               void updateBudget(window.day, Number(event.target.value))
                             }
-                            className="w-20 rounded-md border border-line-strong bg-paper px-2 py-1.5 text-sm"
+                            className={cn(inputFrameClassName, 'min-h-11 w-20 text-sm')}
                           />
                           <Button
                             variant="ghost"
@@ -273,14 +300,14 @@ export function RevisionPlanSetup({
                         </div>
                       ))}
                   </div>
-                )}
+                </AnimatedDisclosure>
               </section>
             )}
 
           <p className="mt-6 text-sm text-ink-faint">
             {revisionProjection.projectionMode === 'memory-model'
               ? 'Cards are prioritised by predicted assessment-day value when the model supports their history.'
-              : 'The memory model is unavailable. Cards use ordinary Practice ordering.'}
+              : 'The memory model is unavailable. Cards use ordinary practice ordering.'}
           </p>
           {error && <p className="mt-3 text-sm text-negative">{error}</p>}
           <Button variant="primary" size="lg" className="mt-6 w-full" onClick={() => void start()}>
@@ -308,9 +335,8 @@ function PlanShell({
 }) {
   return (
     <div className="min-h-screen bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[max(2.5rem,calc(env(safe-area-inset-top)+1.5rem))] pb-[max(2.5rem,calc(env(safe-area-inset-bottom)+1.5rem))]">
-      <main className="mx-auto max-w-xl">
-        <p className="text-sm text-ink-soft">Revision plan</p>
-        <h1 className="mt-2 font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
+      <main className="mx-auto flex min-h-[70vh] max-w-xl flex-col justify-center">
+        <h1 className="font-display text-4xl tracking-tight md:text-5xl">{title}</h1>
         {children}
         <Button variant="ghost" size="lg" className="mt-4 w-full" onClick={onExit}>
           Back

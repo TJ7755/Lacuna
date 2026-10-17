@@ -4,9 +4,9 @@
 
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useNavigationCourses } from './CourseNavigationData';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
-import { listCourseDailySessionHistory } from '../db/sessionHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type {
   Card,
@@ -20,7 +20,6 @@ import type {
   PendingMergeReview,
   PracticeNode,
   Sequence,
-  SessionHistoryEntry,
   SchedulingUnitRecord,
   UserPerformance,
 } from '../db/types';
@@ -57,7 +56,10 @@ export function useCourses(): Course[] | undefined {
 }
 
 export function useCourse(courseId: string | undefined): Course | null | undefined {
-  return useLiveQuery<Course | null>(async () => {
+  const navigation = useNavigationCourses();
+  const ownedByShell = navigation !== null;
+  const queried = useLiveQuery<Course | null>(async () => {
+    if (ownedByShell) return null;
     if (!courseId) return null;
     const [record, assessments] = await db.transaction(
       'r',
@@ -69,7 +71,12 @@ export function useCourse(courseId: string | undefined): Course | null | undefin
         ]),
     );
     return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
-  }, [courseId]);
+  }, [courseId, ownedByShell]);
+  return ownedByShell
+    ? navigation === undefined
+      ? undefined
+      : (navigation.find((course) => course.id === courseId) ?? null)
+    : queried;
 }
 
 /** Resolve a lesson's course in one query so loading and missing records stay distinct. */
@@ -282,17 +289,6 @@ export function useCourseAssessments(courseId: string | undefined): CourseAssess
   return useLiveQuery(
     () =>
       courseId ? db.courseAssessments.where('courseId').equals(courseId).sortBy('examDate') : [],
-    [courseId],
-  );
-}
-
-/** Session-history snapshots (predicted-retrievability trajectory) for a Course. */
-export function useCourseSessionHistory(
-  courseId: string | undefined,
-): SessionHistoryEntry[] | undefined {
-  return useLiveQuery(
-    () =>
-      courseId ? listCourseDailySessionHistory(courseId) : [],
     [courseId],
   );
 }

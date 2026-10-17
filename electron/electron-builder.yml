@@ -5,8 +5,6 @@ directories:
 files:
   - dist/**/*
   - electron/dist-electron/**/*
-  - electron/assets/fonts/**/*
-  - electron/fonts.css
   - '!**/*.map'
   - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'
   - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'

@@ -1,6 +1,11 @@
-import { typedAnswerCorrect, typedAnswerFeedbackHtml, type TypedAnswerFeedback } from './typedAnswerFeedback';
+import {
+  typedAnswerCorrect,
+  typedAnswerFeedbackHtml,
+  type TypedAnswerFeedback,
+} from './typedAnswerFeedback';
 import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createPortal } from 'react-dom';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -14,10 +19,11 @@ import { rehypeWikilinks } from './wikilinks';
 import { rehypeMermaidPlaceholder, renderMermaidDiagrams, updateMermaidTheme } from './mermaid';
 import { cn } from '../ui/cn';
 import { ASSET_PROTOCOL } from '../../db/assets';
-import { resolveAssetMarkdownCached } from '../../db/assetCache';
+import { cachedAssetImageSize, resolveAssetMarkdownCached, resolveCachedAssetMarkdown } from '../../db/assetCache';
 import { readAudioSettings } from '../../state/audioSettings';
 import 'katex/dist/katex.min.css';
 import { MarkdownImageViewer } from './MarkdownImageViewer';
+import { ContentDisclosure } from '../ui/ContentDisclosure';
 
 type ClozeMode = 'front' | 'back' | 'none';
 
@@ -122,8 +128,21 @@ const REHYPE_PLUGINS: MarkdownProps['rehypePlugins'] = [
   [rehypeHighlight, { detect: true, ignoreMissing: true }],
 ];
 
+/**
+ * Authors often leave alt text out, and raw HTML images may omit the attribute entirely,
+ * which makes a screen reader read the file name and leaves a linked image's link unnamed.
+ */
+const IMAGE_FALLBACK_ALT = 'Image';
+
+function imageDimensions(props: Pick<ComponentProps<'img'>, 'src' | 'width' | 'height'>) {
+  if (props.width !== undefined || props.height !== undefined || typeof props.src !== 'string' || !props.src.startsWith('blob:')) return undefined;
+  return cachedAssetImageSize(props.src);
+}
+
 const MARKDOWN_COMPONENTS: MarkdownProps['components'] = {
-  img: ({ node: _node, ...props }) => <img {...props} loading="lazy" decoding="async" />,
+  img: ({ node: _node, ...props }) => (
+    <img {...imageDimensions(props)} {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
+  ),
   table: ({ node: _node, ...props }) => (
     <div className="lacuna-table-wrap">
       <table {...props} />
@@ -135,14 +154,15 @@ const ENLARGE_COMPONENTS: MarkdownProps['components'] = {
   ...MARKDOWN_COMPONENTS,
   img: ({ node, ...props }) =>
     (node?.data as { linkedImage?: boolean } | undefined)?.linkedImage ? (
-      <img {...props} loading="lazy" decoding="async" />
+      <img {...imageDimensions(props)} {...props} alt={props.alt || IMAGE_FALLBACK_ALT} loading="lazy" decoding="async" />
     ) : (
       <button
         type="button"
         data-enlarge-image=""
         aria-label={props.alt ? `Enlarge image: ${props.alt}` : 'Enlarge image'}
       >
-        <img {...props} loading="lazy" decoding="async" />
+        {/* The button names the image, so an absent alt stays empty rather than a file name. */}
+        <img {...imageDimensions(props)} {...props} alt={props.alt ?? ''} loading="lazy" decoding="async" />
       </button>
     ),
 };
@@ -465,8 +485,14 @@ export const MarkdownView = memo(function MarkdownView({
   enlargeImages = false,
   typedAnswerFeedback,
 }: MarkdownViewProps) {
-  const [resolved, setResolved] = useState(source);
+  const [resolved, setResolved] = useState(() =>
+    source.includes(ASSET_PROTOCOL) ? resolveCachedAssetMarkdown(source) : source,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
+  const [diagramSources, setDiagramSources] = useState<{
+    html: string;
+    sources: { host: HTMLElement; source: string }[];
+  } | null>(null);
 
   // Track the source we have already resolved so the effect can distinguish
   // "source prop changed" (do work) from "effect re-fired with the same source"
@@ -529,18 +555,33 @@ export const MarkdownView = memo(function MarkdownView({
     if (!container) return;
     if (!container.querySelector('pre.lacuna-mermaid')) return;
     let cancelled = false;
-    void renderMermaidDiagrams(container).catch(() => {
-      if (!cancelled) container.setAttribute('data-mermaid-failed', 'true');
-    });
-    // Diagrams bake the light/dark palette into their SVG at render time, so
-    // re-render them when the theme toggles rather than leaving stale colours.
+    void renderMermaidDiagrams(container)
+      .then(() => {
+        if (cancelled) return;
+        // Cached Markdown stays static HTML; React owns each interactive source disclosure
+        // through a separate host without rebuilding the rendered document.
+        const sources = Array.from(container.querySelectorAll('.lacuna-mermaid-source')).map(
+          (fallback) => {
+            const source = fallback.querySelector('code')?.textContent ?? '';
+            const host = document.createElement('div');
+            host.className = 'lacuna-mermaid-source';
+            fallback.replaceWith(host);
+            return { host, source };
+          },
+        );
+        setDiagramSources({ html, sources });
+      })
+      .catch(() => {
+        if (!cancelled) container.setAttribute('data-mermaid-failed', 'true');
+      });
+    // Diagrams bake resolved tokens into their SVG, including the selected accent.
     const observer = new MutationObserver(() => {
       if (cancelled) return;
       void updateMermaidTheme(container).catch(() => {});
     });
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ['class', 'data-accent', 'style'],
     });
     return () => {
       cancelled = true;
@@ -549,12 +590,26 @@ export const MarkdownView = memo(function MarkdownView({
   }, [html]);
 
   const content = (
-    <div
-      ref={containerRef}
-      className={cn('prose-lacuna', className)}
-      dangerouslySetInnerHTML={{ __html: html }}
-      tabIndex={-1}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className={cn('prose-lacuna', className)}
+        dangerouslySetInnerHTML={{ __html: html }}
+        tabIndex={-1}
+      />
+      {diagramSources?.html === html &&
+        diagramSources.sources.map(({ host, source }, index) =>
+          createPortal(
+            <ContentDisclosure label="Diagram source">
+              <pre>
+                <code>{source}</code>
+              </pre>
+            </ContentDisclosure>,
+            host,
+            String(index),
+          ),
+        )}
+    </>
   );
   return enlargeImages ? (
     <MarkdownImageViewer key={source}>{content}</MarkdownImageViewer>

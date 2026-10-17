@@ -1,8 +1,23 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { DialogHeader, DialogPanel } from './DialogPanel';
+import { AnimatePresence, domAnimation, LazyMotion } from 'motion/react';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 1,
+}));
+
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
 
 function renderDialog(onBackdropClick?: () => void) {
   const onClose = vi.fn();
@@ -29,6 +44,31 @@ function renderDialog(onBackdropClick?: () => void) {
 }
 
 describe('DialogPanel', () => {
+  it('hides and disables the departing dialog without cancelling its visual exit', async () => {
+    const trapRef = createRef<HTMLDivElement>();
+    const view = (open: boolean) => (
+      <LazyMotion features={domAnimation}>
+        <AnimatePresence>
+          {open && (
+            <DialogPanel label="Edit card" trapRef={trapRef} onKeyDown={vi.fn()}>
+              <input aria-label="Front" />
+            </DialogPanel>
+          )}
+        </AnimatePresence>
+      </LazyMotion>
+    );
+    const { rerender } = render(view(true));
+    const input = screen.getByRole('textbox', { name: 'Front' });
+    rerender(view(false));
+    expect(input).toBeInTheDocument();
+    expect(input.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Edit card' })).not.toBeInTheDocument();
+    rerender(view(true));
+    expect(screen.getByRole('textbox', { name: 'Front' })).toBe(input);
+    expect(input.closest('[inert]')).toBeNull();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 350)));
+  });
+
   it('keeps Tab available to its trap when the caller isolates dialog shortcuts', () => {
     function TrappedDialog() {
       const trapRef = useFocusTrap(true);
@@ -73,10 +113,32 @@ describe('DialogPanel', () => {
     const { trapRef } = renderDialog();
     const dialog = screen.getByRole('dialog', { name: 'Edit card' });
     expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveClass('rounded-3xl', 'bg-paper', 'max-w-md');
+    // The same flat hairline surface as page cards and Quick search.
+    expect(dialog).toHaveClass('rounded-3xl', 'bg-surface', 'card-surface', 'max-w-md');
+    expect(dialog.className).not.toMatch(/\bborder\b|\bbg-paper\b/);
     expect(trapRef.current).toContainElement(dialog);
     expect(screen.getByRole('heading', { name: 'Edit card' })).toBeInTheDocument();
     expect(screen.getByText('Changes apply everywhere.')).toBeInTheDocument();
+  });
+
+  it('anchors a non-modal dialog without adding a backdrop or viewport overlay', () => {
+    const trapRef = createRef<HTMLDivElement>();
+    render(
+      <DialogPanel
+        modal={false}
+        label="Pomodoro timer"
+        trapRef={trapRef}
+        onKeyDown={vi.fn()}
+        className="absolute right-0 top-12 w-60"
+      >
+        <button>Start</button>
+      </DialogPanel>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Pomodoro timer' });
+    expect(trapRef.current).toBe(dialog);
+    expect(dialog).not.toHaveAttribute('aria-modal');
+    expect(dialog).toHaveClass('absolute', 'rounded-3xl', 'card-surface');
+    expect(document.querySelector('[data-modal-backdrop]')).toBeNull();
   });
 
   it('routes keys to the caller and closes from the header button', () => {

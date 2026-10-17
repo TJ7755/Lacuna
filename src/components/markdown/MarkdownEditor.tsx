@@ -1,11 +1,23 @@
-import { useEffect, useRef, useState, type DragEvent, type Ref } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type DragEvent,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from '../../utils/cloze';
 import { cn } from '../ui/cn';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { fieldLabelClassName } from '../ui/Field';
+import { Button } from '../ui/Button';
 import { ImageIcon } from '../ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { modifierShortcutLabel } from '../../electron/runtime';
 
 interface MarkdownEditorProps {
   value: string;
@@ -27,14 +39,16 @@ interface MarkdownEditorProps {
   label?: string;
   /** Cloze preview mode for the live preview pane. */
   clozePreview?: 'front' | 'back' | 'none';
+  /** Leave out the side preview, for screens that already show their own preview. */
+  hidePreview?: boolean;
   onError?: (message: string) => void;
   /** Focus the textarea on mount (used by the quick-capture flow). */
   autoFocus?: boolean;
   /** Forwarded handle on the textarea so parents can drive a custom tab order. */
   inputRef?: Ref<HTMLTextAreaElement>;
-  /** Tab (no shift) inside the textarea; preventDefault is applied for you. */
+  /** Tab (no shift) inside the textarea; native traversal remains if focus cannot move. */
   onTabForward?: () => void;
-  /** Shift+Tab inside the textarea; preventDefault is applied for you. */
+  /** Shift+Tab inside the textarea; native traversal remains if focus cannot move. */
   onTabBackward?: () => void;
   /** Ctrl/Cmd+Enter inside the textarea; preventDefault is applied for you. */
   onModEnter?: () => void;
@@ -45,8 +59,10 @@ interface MarkdownEditorProps {
 }
 
 type ToolbarAction = {
-  label: string;
+  label: ReactNode;
   title: string;
+  /** Letter pressed with Cmd/Ctrl inside the editor. */
+  shortcut?: string;
   apply: (sel: Selection) => Replacement;
 };
 
@@ -94,6 +110,7 @@ export function MarkdownEditor({
   minRows = 6,
   label,
   clozePreview = 'none',
+  hidePreview = false,
   onError,
   autoFocus = false,
   inputRef,
@@ -260,8 +277,18 @@ export function MarkdownEditor({
   }
 
   const actions: ToolbarAction[] = [
-    { label: 'B', title: 'Bold', apply: (s) => wrap(s, '**', '**', 'bold text') },
-    { label: 'I', title: 'Italic', apply: (s) => wrap(s, '_', '_', 'italic text') },
+    {
+      label: <strong>B</strong>,
+      title: 'Bold',
+      shortcut: 'B',
+      apply: (s) => wrap(s, '**', '**', 'bold text'),
+    },
+    {
+      label: <em className="font-serif">I</em>,
+      title: 'Italic',
+      shortcut: 'I',
+      apply: (s) => wrap(s, '_', '_', 'italic text'),
+    },
     { label: 'H', title: 'Heading', apply: (s) => linePrefix(s, '## ', 'Heading') },
     { label: '•', title: 'Bullet list', apply: (s) => linePrefix(s, '- ', 'List item') },
     { label: '1.', title: 'Numbered list', apply: (s) => linePrefix(s, '1. ', 'List item') },
@@ -272,9 +299,10 @@ export function MarkdownEditor({
       apply: (s) => wrap(s, '```\n', '\n```', 'code'),
     },
     { label: 'Link', title: 'Link', apply: (s) => wrap(s, '[', '](https://)', 'text') },
-    { label: '$x$', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
+    // Named in words: a teacher need not know the dollar-sign syntax to find maths.
+    { label: 'Maths', title: 'Inline maths', apply: (s) => wrap(s, '$', '$', 'x^2') },
     {
-      label: '$$',
+      label: 'Maths block',
       title: 'Block maths',
       apply: (s) => wrap(s, '$$\n', '\n$$', 'x = y'),
     },
@@ -349,18 +377,30 @@ export function MarkdownEditor({
     if (e.dataTransfer.files.length) await insertImageFiles(e.dataTransfer.files);
   }
 
+  const labelId = useId();
   const rows = Math.max(minRows, value.split('\n').length + 1);
+  const showsMathsPreview =
+    !hidePreview && layout !== 'split' && mobileTab === 'write' && /\$[^$\n]+\$/.test(value);
 
   return (
-    <div className="rounded-xl border border-line bg-surface">
+    // The whole field, toolbar included, marks focus in its text, as a plain input's border does.
+    <div className="rounded-xl border-[1.5px] border-line bg-surface transition-colors has-[textarea:focus]:border-accent">
       {label && (
-        <div className="border-b border-line px-3 py-2 text-sm text-ink-soft">
+        <label
+          htmlFor={labelId}
+          className={cn(fieldLabelClassName, 'border-b border-line px-3.5 py-2.5')}
+        >
           {label}
-        </div>
+        </label>
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
+      <div
+        className={cn(
+          'flex items-center gap-1 border-b border-line px-2 py-1.5',
+          compactToolbar && !moreTools ? 'flex-nowrap overflow-x-auto' : 'flex-wrap',
+        )}
+      >
         {actions
           .filter(
             (a) =>
@@ -369,58 +409,70 @@ export function MarkdownEditor({
               ['Bold', 'Italic', 'Link', 'Inline maths'].includes(a.title),
           )
           .map((a) => (
-            <button
+            <Button
               key={a.title}
               type="button"
-              title={a.title}
+              variant="ghost"
+              size="sm"
+              aria-label={a.title}
+              title={a.shortcut ? `${a.title} (${modifierShortcutLabel(a.shortcut)})` : a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+              className="shrink-0"
             >
               {a.label}
-            </button>
+            </Button>
           ))}
         {compactToolbar && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title="More formatting"
             aria-expanded={moreTools}
             onClick={() => setMoreTools(!moreTools)}
-            className="min-h-11 rounded-md px-2 text-xs text-ink-soft"
+            aria-label="More formatting"
+            className="shrink-0"
           >
             {moreTools ? 'Less' : 'More'}
-          </button>
+          </Button>
         )}
         {allowCloze && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title={clozeAction.title}
             onClick={() => runAction(clozeAction)}
-            className="min-h-11 rounded-md px-2 font-mono text-xs text-accent transition-colors hover:bg-accent-soft active:bg-accent-soft"
+            className="shrink-0 text-accent-ink"
           >
             {clozeAction.label}
-          </button>
+          </Button>
         )}
         {allowEmbeds &&
           embedActions.map((a) => (
-            <button
+            <Button
               key={a.title}
               type="button"
+              variant="ghost"
+              size="sm"
               title={a.title}
               onClick={() => runAction(a)}
-              className="min-h-11 min-w-11 rounded-md px-2 font-mono text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+              className="shrink-0"
             >
               {a.label}
-            </button>
+            </Button>
           ))}
         {allowImages && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             title="Insert image"
             onClick={() => fileInputRef.current?.click()}
-            className="flex min-h-11 items-center gap-1 rounded-md px-2 text-xs text-ink-soft transition-colors hover:bg-ink/5 hover:text-accent active:bg-ink/10"
+            className="shrink-0"
           >
             <ImageIcon width={15} height={15} />
-          </button>
+          </Button>
         )}
         <input
           ref={fileInputRef}
@@ -432,27 +484,42 @@ export function MarkdownEditor({
         />
 
         {/* Mobile write/preview switch */}
-        <div className={cn('ml-auto flex gap-1', layout === 'split' && 'md:hidden')}>
+        <div
+          className={cn(
+            'ml-auto flex gap-1',
+            layout === 'split' && 'md:hidden',
+            hidePreview && 'hidden',
+          )}
+        >
           {(['write', 'preview'] as const).map((tab) => (
-            <button
+            <Button
               key={tab}
               type="button"
+              variant="ghost"
+              size="sm"
+              aria-pressed={mobileTab === tab}
               onClick={() => setMobileTab(tab)}
               className={cn(
-                'min-h-11 rounded-md px-2 text-xs capitalize',
-                mobileTab === tab ? 'bg-accent-soft text-accent' : 'text-ink-faint',
+                'capitalize',
+                mobileTab === tab ? 'bg-accent-soft text-accent-ink' : 'text-ink-faint',
               )}
             >
               {tab}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       {/* Split: editor + live preview (stacked/tabbed on mobile) */}
-      <div className={cn('grid', layout === 'split' && 'md:grid-cols-2')}>
-        <div className={cn(layout === 'split' && 'md:block', mobileTab === 'preview' && 'hidden')}>
+      <div className={cn('grid', layout === 'split' && !hidePreview && 'md:grid-cols-2')}>
+        <div
+          className={cn(
+            layout === 'split' && 'md:block',
+            !hidePreview && mobileTab === 'preview' && 'hidden',
+          )}
+        >
           <textarea
+            id={labelId}
             ref={setTextareaRef}
             autoFocus={autoFocus}
             value={value}
@@ -462,6 +529,8 @@ export function MarkdownEditor({
               scheduleHistoryPush();
             }}
             onKeyDown={(e) => {
+              if (e.defaultPrevented || e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229)
+                return;
               if (onModEnter && (e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 onModEnter();
@@ -476,18 +545,25 @@ export function MarkdownEditor({
                 }
                 return;
               }
+              const shortcut =
+                (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey
+                  ? actions.find((action) => action.shortcut?.toLowerCase() === e.key.toLowerCase())
+                  : undefined;
+              if (shortcut) {
+                e.preventDefault();
+                runAction(shortcut);
+                return;
+              }
               if (e.ctrlKey && e.key.toLowerCase() === 'y') {
                 e.preventDefault();
                 redo();
                 return;
               }
               if (e.key !== 'Tab') return;
-              if (e.shiftKey && onTabBackward) {
-                e.preventDefault();
-                onTabBackward();
-              } else if (!e.shiftKey && onTabForward) {
-                e.preventDefault();
-                onTabForward();
+              const moveFocus = e.shiftKey ? onTabBackward : onTabForward;
+              if (moveFocus) {
+                moveFocus();
+                if (document.activeElement !== e.currentTarget) e.preventDefault();
               }
             }}
             onDrop={handleDrop}
@@ -505,43 +581,55 @@ export function MarkdownEditor({
             spellCheck
             className={cn(
               'w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink',
-              'placeholder:text-ink-faint focus:outline-none',
+              'placeholder:text-ink-faint focus:outline-none focus-visible:shadow-none',
               dragOver && 'ring-2 ring-inset ring-accent/60',
             )}
           />
+          {/* Maths is written as $...$; show how it reads without leaving the Write tab. */}
+          <AnimatedDisclosure open={showsMathsPreview}>
+            <div
+              data-maths-preview=""
+              className="border-t border-line px-4 py-2 text-sm text-ink-soft"
+            >
+              <span className="mr-2 text-xs text-ink-faint">Preview</span>
+              <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+            </div>
+          </AnimatedDisclosure>
         </div>
-        <div
-          className={cn(
-            'min-h-[8rem] border-line px-4 py-3',
-            layout === 'split' && 'md:border-l',
-            mobileTab === 'write' && (layout === 'split' ? 'hidden md:block' : 'hidden'),
-          )}
-        >
-          <AnimatePresence mode="sync">
-            {value.trim() ? (
-              <motion.div
-                key="preview"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-              >
-                <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
-              </motion.div>
-            ) : (
-              <motion.p
-                key="placeholder"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * m }}
-                className="text-sm text-ink-faint"
-              >
-                Preview appears here.
-              </motion.p>
+        {!hidePreview && (
+          <div
+            className={cn(
+              'min-h-[8rem] border-line px-4 py-3',
+              layout === 'split' && 'md:border-l',
+              mobileTab === 'write' && (layout === 'split' ? 'hidden md:block' : 'hidden'),
             )}
-          </AnimatePresence>
-        </div>
+          >
+            <AnimatePresence mode="sync">
+              {value.trim() ? (
+                <motion.div
+                  key="preview"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                >
+                  <MarkdownView source={value} clozeMode={clozePreview} allowEmbeds={allowEmbeds} />
+                </motion.div>
+              ) : (
+                <motion.p
+                  key="placeholder"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 * m }}
+                  className="text-sm text-ink-faint"
+                >
+                  Preview appears here.
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     </div>
   );

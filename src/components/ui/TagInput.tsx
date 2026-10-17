@@ -1,6 +1,9 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { m as motion } from 'motion/react';
 import { CloseIcon, TagIcon } from './icons';
+import { inputFrameClassName } from './Field';
+import { scaledSpring } from './motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 interface TagInputProps {
   tags: string[];
@@ -13,6 +16,9 @@ interface TagInputProps {
 /** Chip-style tag editor. Enter or comma commits a tag; Backspace on empty removes the last. */
 export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagInputProps) {
   const [draft, setDraft] = useState('');
+  const input = useRef<HTMLInputElement>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
 
   function addTag(raw: string) {
     const tag = raw.trim().replace(/,+$/, '').trim();
@@ -42,28 +48,39 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-2.5 py-2 focus-within:border-accent">
-        <TagIcon width={15} height={15} className="text-ink-faint" />
+      {/* The whole box focuses the input, so the target is the box, not the one-line field. */}
+      <div
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) {
+            e.preventDefault();
+            input.current?.focus();
+          }
+        }}
+        className={`${inputFrameClassName} flex min-h-11 cursor-text flex-wrap items-center gap-2 focus-within:border-accent`}
+      >
+        <TagIcon width={16} height={16} className="text-ink-faint" />
         {tags.map((tag) => (
           <motion.span
             key={tag}
-            initial={{ opacity: 0, scale: 0.85 }}
+            initial={multiplier > 0 ? { opacity: 0, scale: 0.96 } : false}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 28 }}
-            className="inline-flex items-center gap-1 rounded-lg bg-accent-soft px-2 py-0.5 text-xs text-accent"
+            transition={scaledSpring(multiplier, 500, 28)}
+            className="relative inline-flex min-h-7 min-w-11 items-center rounded-full bg-accent-soft py-1 pl-3 pr-8 text-xs text-accent-ink"
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
               aria-label={`Remove ${tag}`}
-              className="transition-opacity hover:opacity-70 active:opacity-70"
+              // The whole chip, 44px tall, removes the tag; the row keeps its compact height.
+              className="absolute inset-0 flex items-center justify-end rounded-full pr-2 before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] hover:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >
-              <CloseIcon width={11} height={11} />
+              <CloseIcon width={14} height={14} />
             </button>
           </motion.span>
         ))}
         <input
+          ref={input}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={onKeyDown}
@@ -73,17 +90,16 @@ export function TagInput({ tags, onChange, suggestions = [], placeholder }: TagI
         />
       </div>
       {available.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           {available.map((s) => (
-            <motion.button
+            <button
               key={s}
               type="button"
               onClick={() => addTag(s)}
-              whileTap={{ scale: 0.92 }}
-              className="rounded-lg border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors hover:border-accent hover:text-accent active:border-accent active:text-accent"
+              className="relative min-w-11 rounded-full border border-line px-2 py-0.5 text-xs text-ink-soft transition-colors before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:border-accent hover:text-accent-ink active:border-accent active:text-accent-ink"
             >
               {s}
-            </motion.button>
+            </button>
           ))}
         </div>
       )}

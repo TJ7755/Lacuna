@@ -1,0 +1,1 @@
+- A lesson's card list renders each front as the Cards page does, so maths reads as maths rather than stripped notation ("e^x"); the plain text shows while the renderer loads.

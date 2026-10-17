@@ -51,7 +51,7 @@ test('homepage ships prerendered landing HTML for crawlers', () => {
   assert.match(html, /class="landing-page landing-motion"/);
   assert.match(html, /Your revision/);
   assert.match(html, /built around/);
-  assert.match(html, /id="landing-product"/);
+  assert.match(html, /id="how-it-works"/);
   assert.match(html, /href="#\/"/);
   assert.doesNotMatch(html, /<!--landing-page-->|Prototype variants|ROUND 2|\/src\//);
   for (const [, asset] of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)) {

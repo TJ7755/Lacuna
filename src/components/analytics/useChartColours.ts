@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTheme } from '../../state/ThemeContext';
+import { useAccent } from '../../state/AccentContext';
 
 export interface ChartColours {
   accent: string;
@@ -20,24 +21,25 @@ function read(varName: string): string {
 
 /**
  * Resolve the palette's CSS custom properties to concrete `hsl(...)` strings that
- * Recharts can use as SVG fills/strokes. Re-reads whenever the theme changes.
+ * Recharts can use as SVG fills/strokes. Re-reads after accent and resolved theme changes.
  */
 export function useChartColours(): ChartColours {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
+  const { accent } = useAccent();
   const [colours, setColours] = useState<ChartColours>(() => readAll());
 
   useEffect(() => {
     // Defer one frame so the `.dark` class toggle has applied before reading.
     const id = requestAnimationFrame(() => setColours(readAll()));
     return () => cancelAnimationFrame(id);
-  }, [theme]);
+  }, [resolvedTheme, accent]);
 
   return colours;
 }
 
 function readAll(): ChartColours {
   return {
-    accent: read('--accent'),
+    accent: read('--accent-ink'),
     ink: read('--ink'),
     inkSoft: read('--ink-soft'),
     inkFaint: read('--ink-faint'),

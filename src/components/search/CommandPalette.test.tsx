@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-dom';
 import { flushSync } from 'react-dom';
 import { StrictMode, useEffect, useRef, useState } from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { CommandPalette } from './CommandPalette';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../../db/types';
 import type { FixedQuestionDefinition, QuestionDefinition } from '../../questions/types';
@@ -115,7 +116,144 @@ vi.mock('../../state/useSearchData', () => ({
   useSearchData: dataHooks.useSearchData,
 }));
 
+// Happy DOM rejects cancelled native-animation promises; exercise Motion's real JS fallback.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
+
 describe('CommandPalette', () => {
+  it('finds help topics and opens their deep link', async () => {
+    const router = createMemoryRouter([
+      { path: '*', element: <CommandPalette open onClose={vi.fn()} /> },
+    ]);
+    render(<RouterProvider router={router} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'exam date' } });
+    const option = await screen.findByRole('option', { name: /How do I set an exam date/ });
+    fireEvent.click(option);
+    expect(router.state.location.pathname + router.state.location.hash).toBe('/help#exam-date');
+  });
+
+  it('shows the capped mixed count and continues to full search with the same query', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 45 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [{ ...mockCourse, name: 'Palatine course' }],
+      lessons: [],
+      notes: [],
+      questions: [{ ...mockQuestion, prompt: 'Palatine question' }],
+    });
+    const onClose = vi.fn();
+    const router = createMemoryRouter([
+      { path: '*', element: <CommandPalette open onClose={onClose} /> },
+    ]);
+    render(<RouterProvider router={router} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Palatine' } });
+    expect(await screen.findAllByRole('option')).toHaveLength(40);
+    expect(document.querySelector('[aria-live="polite"]')).toHaveTextContent('40 of 47 results');
+    fireEvent.click(screen.getByRole('link', { name: 'See all results' }));
+    expect(router.state.location.pathname).toBe('/search');
+    expect(new URLSearchParams(router.state.location.search).get('q')).toBe('Palatine');
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the active result visible when arrowing through the list', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: Array.from({ length: 40 }, (_, i) => ({
+        ...mockCard,
+        id: `card-${i}`,
+        front: `Palatine ${i}`,
+      })),
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    const options = await screen.findAllByRole('option');
+    const scroll = vi.spyOn(options[39], 'scrollIntoView').mockImplementation(() => {});
+    for (let i = 0; i < 39; i++) fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(options[39]).toHaveAttribute('aria-selected', 'true');
+    expect(scroll).toHaveBeenCalledWith({ block: 'nearest', behavior: 'instant' });
+    expect(input).toHaveFocus();
+    scroll.mockRestore();
+  });
+
+  it('shows matching answer text rather than an unrelated front-only preview', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [{ ...mockCard, back: `${'Long explanation. '.repeat(30)}Résumé conclusion.` }],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(<CommandPalette open onClose={vi.fn()} />, { wrapper: MemoryRouter });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'resume' } });
+    expect(
+      (await screen.findByRole('option', { name: /Palatine hill fortifications/ })).querySelector(
+        'mark',
+      ),
+    ).toHaveTextContent('Résumé');
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'does not navigate or close whilst composing: %j',
+    async (composition) => {
+      dataHooks.useSearchData.mockReturnValue({
+        cards: [mockCard],
+        courses: [mockCourse],
+        lessons: [],
+        notes: [],
+        questions: [],
+      });
+      const onClose = vi.fn();
+      render(<CommandPalette open onClose={onClose} />, { wrapper: MemoryRouter });
+      const input = screen.getByRole('combobox');
+      fireEvent.change(input, { target: { value: 'Palatine' } });
+      await screen.findByRole('option', { name: /Palatine/ });
+      fireEvent.keyDown(input, { key: 'Enter', ...composition });
+      fireEvent.keyDown(input, { key: 'Escape', ...composition });
+      expect(onClose).not.toHaveBeenCalled();
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onClose).toHaveBeenCalledOnce();
+    },
+  );
+  it('retires the retained result list as soon as the query is cleared', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [mockCard],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    render(
+      <LazyMotion features={domAnimation}>
+        <CommandPalette open onClose={vi.fn()} />
+      </LazyMotion>,
+      { wrapper: MemoryRouter },
+    );
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'Palatine' } });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+    const result = screen.getByRole('option', { name: /Palatine/ });
+    // The match highlight sits flush, so a partly matched word does not split apart.
+    expect(result.querySelector('mark')!.className).not.toMatch(/\bpx-/);
+    // Rows are inset and rounded, as in the app's other menus.
+    expect(result).toHaveClass('rounded-xl');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(result).toBeInTheDocument();
+    expect(result.closest('[inert]')).not.toBeNull();
+    expect(screen.queryByRole('option', { name: /Palatine/ })).not.toBeInTheDocument();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  });
   beforeEach(() => {
     dataHooks.useSearchData.mockClear();
     localStorage.clear();
@@ -132,6 +270,10 @@ describe('CommandPalette', () => {
     expect(screen.getByText('Navigate')).toBeInTheDocument();
     expect(screen.getByText('Esc')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', 'Search…');
+    // The popover uses the shared flat hairline surface.
+    const panel = screen.getByRole('combobox').closest('.rounded-3xl');
+    expect(panel).not.toBeNull();
+    expect(panel).toHaveClass('card-surface');
     expect(screen.queryByText('Type to search across every course.')).not.toBeInTheDocument();
 
     first.rerender(renderPalette(false));

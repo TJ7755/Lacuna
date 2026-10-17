@@ -1,0 +1,3 @@
+- Course bar: the View/Edit switch uses the compact pill size, so its track is the same height as the section tabs beside it; both keep a 44 pixel target.
+- Cards: the other ways to add (beside New card, and on each lesson group) are the same unframed 44 pixel round control as every other overflow menu, not wider framed ovals.
+- The course page's Assessments card shares the Lessons card's padding and heading size, so the two headings sit on one line; the forecast legend now starts on the chart title's edge.

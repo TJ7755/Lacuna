@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom';
-import { ExamAvailability } from '../components/landing/ExamAvailability';
-import { LandingHero, LandingHeader, LandingClosing } from '../components/landing/LandingHero';
-import { CoursePathIllustration } from '../components/landing/CoursePathIllustration';
-import { ClosingScenes } from '../components/landing/ClosingScenes';
+import { LandingHero, LandingHeader } from '../components/landing/LandingHero';
 import { LandingFaq } from '../components/landing/LandingFaq';
 import { LacunaIcon } from '../components/ui/icons';
-import { MemoryScene } from '../components/landing/MemoryScene';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
-import { ProductWalkthrough } from '../components/landing/ProductWalkthrough';
+import { LandingFeatures } from '../components/landing/LandingFeatures';
+import { LandingCta } from '../components/welcome/LandingCta';
 import './Landing.css';
 
 export function Landing() {
@@ -17,31 +14,23 @@ export function Landing() {
       <LandingHeader />
       <a
         className="landing-skip"
-        href="#landing-product"
+        href="#how-it-works"
         onClick={(event) => {
           event.preventDefault();
-          document.getElementById('landing-product')?.focus({ preventScroll: true });
-          document.getElementById('landing-product')?.scrollIntoView();
+          document.getElementById('how-it-works')?.focus({ preventScroll: true });
+          document.getElementById('how-it-works')?.scrollIntoView();
         }}
       >
         Skip to Lacuna
       </a>
       <main>
         <LandingHero />
-        <ExamAvailability />
-        <ProductWalkthrough />
-        <CoursePathIllustration />
-        <MemoryScene />
-        <section className="landing-bridge">
-          <p>
-            Familiar isn’t the same
-            <br />
-            as ready to recall.
-          </p>
-        </section>
-        <ClosingScenes />
+        <LandingFeatures />
         <LandingFaq />
-        <LandingClosing />
+        <section className="landing-ending" aria-labelledby="landing-ending-title">
+          <h2 id="landing-ending-title">Your exam has a date. Start there.</h2>
+          <LandingCta>Start revising</LandingCta>
+        </section>
       </main>
       <footer className="landing-footer">
         <div className="landing-footer-start">
@@ -55,7 +44,16 @@ export function Landing() {
             GitHub
           </a>
           <Link to="/method">The method</Link>
-          <a href={window.electronAPI?.isElectron ? 'https://getlacuna.app/compare/quizlet/' : '/compare/quizlet/'}>Lacuna vs Quizlet</a>
+          {!window.electronAPI?.isElectron && <Link to="/download">Download for desktop</Link>}
+          <a
+            href={
+              window.electronAPI?.isElectron
+                ? 'https://getlacuna.app/compare/quizlet/'
+                : '/compare/quizlet/'
+            }
+          >
+            Lacuna vs Quizlet
+          </a>
         </div>
       </footer>
     </div>

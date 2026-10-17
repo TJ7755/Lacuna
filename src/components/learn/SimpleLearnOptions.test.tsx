@@ -22,11 +22,11 @@ it('defers lesson subscriptions until expanded and preserves the selection when 
   disclosure.open = true;
   fireEvent(disclosure, new Event('toggle'));
   expect(useLessons).toHaveBeenCalledWith('course-1');
-  fireEvent.change(screen.getByLabelText('Simple Learn scope'), { target: { value: 'lesson-1' } });
+  fireEvent.change(screen.getByLabelText('What to practise'), { target: { value: 'lesson-1' } });
   disclosure.open = false;
   fireEvent(disclosure, new Event('toggle'));
-  expect(screen.queryByLabelText('Simple Learn scope')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('What to practise')).not.toBeInTheDocument();
   disclosure.open = true;
   fireEvent(disclosure, new Event('toggle'));
-  expect(screen.getByLabelText('Simple Learn scope')).toHaveValue('lesson-1');
+  expect(screen.getByLabelText('What to practise')).toHaveValue('lesson-1');
 });

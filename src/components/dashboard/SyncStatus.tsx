@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { readSyncState } from '../../db/mutationStamp';
 import type { SyncState } from '../../db/types';
 import { formatRelativeTime } from '../../utils/datetime';
 
 export function SyncStatus() {
   const [state, setState] = useState<SyncState | null>(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     let active = true;
@@ -50,19 +49,28 @@ export function SyncStatus() {
   const label = state.lastSuccessfulSyncAt
     ? `Synced ${formatRelativeTime(state.lastSuccessfulSyncAt)}`
     : 'Not yet synced';
+  const needsAttention = Boolean(state.lastError) || !state.lastSuccessfulSyncAt;
+  const accessibleLabel = `${label}${state.lastError ? ' · Sync failed' : ''} · Open sync`;
+  const tone = state.lastError
+    ? 'bg-negative/10 px-3 text-negative hover:bg-negative/15'
+    : needsAttention
+      ? 'bg-warning/10 px-3 text-warning-fg hover:bg-warning/15'
+      : 'w-11 text-ink-soft hover:bg-ink/[0.04] sm:w-auto sm:px-2';
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate('/settings')}
-      className="mb-6 flex w-full items-center justify-between rounded-xl border border-line bg-surface-raised/30 px-4 py-3 text-left transition-colors hover:bg-surface-raised/50"
+    <Link
+      to="/settings"
+      aria-label={accessibleLabel}
+      title={accessibleLabel}
+      className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full text-xs ${tone}`}
     >
-      <span className="flex items-center gap-2 text-sm">
-        <span className="h-2 w-2 rounded-full bg-positive" aria-hidden="true" />
-        <span className="text-ink-soft">{label}</span>
-        {state.lastError && <span className="text-xs text-negative">· Sync failed</span>}
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${needsAttention ? 'bg-current' : 'bg-positive'}`}
+        aria-hidden="true"
+      />
+      <span className={needsAttention ? undefined : 'max-sm:hidden'}>
+        {state.lastError ? 'Sync failed' : label}
       </span>
-      <span className="text-xs text-accent">Open sync</span>
-    </button>
+    </Link>
   );
 }

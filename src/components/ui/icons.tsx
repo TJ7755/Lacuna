@@ -95,6 +95,13 @@ export const EditIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** The forward arrow that ends every Study and Start action. */
+export const ArrowRightIcon = (p: IconProps) => (
+  <Icon width="16" height="16" strokeWidth="2.4" {...p}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </Icon>
+);
+
 export const PlayIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M6 4l14 8-14 8V4z" />
@@ -249,6 +256,14 @@ export const MenuIcon = (p: IconProps) => (
     <line x1="3" y1="6" x2="21" y2="6" />
     <line x1="3" y1="12" x2="21" y2="12" />
     <line x1="3" y1="18" x2="21" y2="18" />
+  </Icon>
+);
+
+export const UnlockIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="4" y="10" width="16" height="11" rx="2" />
+    <path d="M8 10V6a4 4 0 0 1 8 0" />
+    <line x1="12" y1="14" x2="12" y2="17" />
   </Icon>
 );
 

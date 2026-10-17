@@ -1,0 +1,2 @@
+- The sliding pills now actually slide: course tabs, View/Edit, the sidebar, settings segments and the other `layoutId` indicators jumped, because the app loaded motion's `domAnimation` features, which leave out layout animation. The full `domMax` set now loads straight after first paint (no change to first-load JavaScript, and precached for offline use).
+- With layout animation live, containers holding text animate their position only, so an inline confirmation, a toast, a sidebar course row or a dialog never squashes its text while it changes size.

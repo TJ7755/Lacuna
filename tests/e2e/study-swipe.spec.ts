@@ -12,20 +12,22 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           await page.setViewportSize({ width: 1280, height: 900 });
           await enterFreshLacuna(page);
           await createCourse(page, 'Swipe regression');
-          await page.getByRole('button', { name: 'Author mode' }).click();
+          await page.getByRole('button', { name: 'Edit mode' }).click();
           for (const question of direction > 0
             ? ['Swipe question', 'Next question']
             : ['Swipe question']) {
-            await page.getByRole('button', { name: 'New card', exact: true }).click();
+            await page.getByRole('button', { name: 'New card', exact: true }).first().click();
             await page.getByRole('textbox', { name: 'Front' }).fill(question);
             await page.getByRole('textbox', { name: 'Back' }).fill('Swipe answer');
             await page.getByRole('button', { name: 'Add card', exact: true }).click();
             await expect(page).not.toHaveURL(/\/cards\/new$/);
           }
-          await page.getByRole('link', { name: 'Course', exact: true }).click();
+          await page
+            .getByRole('navigation', { name: 'Course sections' })
+            .getByRole('link', { name: 'Path', exact: true })
+            .click();
           await page.getByRole('button', { name: 'Study', exact: true }).click();
           await chooseScheduledStudy(page);
-          await page.getByRole('button', { name: 'Continue', exact: true }).click();
           await page.setViewportSize({ width, height: 900 });
           const front = page.locator('[data-study-face="front"]');
           await expect
@@ -129,27 +131,33 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
                 offscreen: boolean;
                 overflow: boolean;
                 feedbackSeen: boolean;
-                feedbackOverlapsNext: boolean;
+                buttonFillSeen: boolean;
+                handoffOverlaps: boolean;
                 radialEffectSeen: boolean;
               }>((resolve) => {
                 let overflow = false;
                 let travelledOffscreen = false;
                 let feedbackSeen = false;
-                let feedbackOverlapsNext = false;
+                let buttonFillSeen = false;
+                let handoffOverlaps = false;
                 let radialEffectSeen = false;
                 function sample() {
                   const rect = surface.getBoundingClientRect();
                   overflow ||= document.documentElement.scrollWidth > innerWidth;
                   const offscreen = direction < 0 ? rect.right <= 0 : rect.left >= innerWidth;
                   travelledOffscreen ||= offscreen && surface.isConnected;
-                  const glows = Array.from(document.querySelectorAll('.fixed.z-30')).filter(
-                    (node) => /from-(positive|negative)/.test(node.className),
-                  );
+                  const glows = Array.from(document.querySelectorAll('[data-study-rim]'));
+                  buttonFillSeen ||= Array.from(
+                    document.querySelectorAll('[data-study-grade-fill]'),
+                  ).some((node) => Number(getComputedStyle(node).opacity) > 0.01);
                   const glowVisible = glows.some(
                     (node) => Number(getComputedStyle(node).opacity) > 0.01,
                   );
                   feedbackSeen ||= glowVisible;
-                  feedbackOverlapsNext ||= !surface.isConnected && glowVisible;
+                  handoffOverlaps ||=
+                    surface.isConnected &&
+                    document.querySelectorAll('[data-study-card-id]').length > 1;
+                  radialEffectSeen ||= document.querySelector('[data-study-feedback]') !== null;
                   radialEffectSeen ||=
                     document.querySelector('.fixed.z-30 .rounded-full.ring-4') !== null;
                   if (performance.now() - started > 1100) {
@@ -157,7 +165,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
                       offscreen: travelledOffscreen,
                       overflow,
                       feedbackSeen,
-                      feedbackOverlapsNext,
+                      buttonFillSeen,
+                      handoffOverlaps,
                       radialEffectSeen,
                     });
                   } else requestAnimationFrame(sample);
@@ -169,8 +178,14 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
           );
           expect(result.offscreen).toBe(reducedMotion === 'no-preference');
           expect(result.overflow).toBe(false);
-          expect(result.feedbackSeen).toBe(reducedMotion === 'no-preference');
-          expect(result.feedbackOverlapsNext).toBe(false);
+          expect(result.feedbackSeen, JSON.stringify(result)).toBe(
+            reducedMotion === 'no-preference',
+          );
+          if (input !== 'swipe')
+            expect(result.buttonFillSeen, JSON.stringify(result)).toBe(
+              reducedMotion === 'no-preference',
+            );
+          expect(result.handoffOverlaps).toBe(reducedMotion === 'no-preference');
           expect(result.radialEffectSeen).toBe(false);
           await expect(card).toHaveCount(0);
           {

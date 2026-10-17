@@ -1,0 +1,1 @@
+- Unify creation pills and inline name entry, including question-set creation from View mode. Open question sets directly on their contents, with inline title and linkage settings and quiet, accessible autosave feedback.

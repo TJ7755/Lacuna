@@ -1,0 +1,1 @@
+- Bundled JetBrains Mono with the app and dropped the Google Fonts request on the web build, so school networks and offline reloads no longer depend on a third-party font host; Electron now uses the same bundled fonts instead of injecting 740 KB of base64 font data on every load, and the unused Fraunces face is gone. (#480)

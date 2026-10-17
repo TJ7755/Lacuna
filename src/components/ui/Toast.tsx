@@ -97,7 +97,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ notify }}>
       {children}
       <div
-        className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1.5rem,env(safe-area-inset-right))] z-[60] flex flex-col gap-2 will-change-transform"
+        className="toast-stack fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1.5rem,env(safe-area-inset-right))] z-[60] flex flex-col gap-2 will-change-transform"
         aria-label="Notifications"
         aria-live="polite"
         aria-atomic="false"
@@ -186,9 +186,9 @@ function ToastBar({
   }, [resume, isPersistent, toast.id, toastDuration]);
 
   const toneClasses = {
-    positive: 'border-positive/40 text-positive',
-    negative: 'border-negative/40 text-negative',
-    neutral: 'border-line-strong text-ink',
+    positive: 'text-positive',
+    negative: 'text-negative',
+    neutral: 'text-ink',
   } as const;
 
   const progressColour = {
@@ -199,18 +199,22 @@ function ToastBar({
 
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, x: 24, scale: 0.96 }}
+      layout={m > 0 ? 'position' : undefined}
+      initial={m > 0 ? { opacity: 0, x: 24, scale: 0.96 } : false}
       animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{
-        opacity: 0,
-        x: 24,
-        scale: 0.96,
-        transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] },
-      }}
+      exit={
+        m > 0
+          ? {
+              opacity: 0,
+              x: 24,
+              scale: 0.96,
+              transition: { duration: 0.2 * m, ease: [0.16, 1, 0.3, 1] },
+            }
+          : undefined
+      }
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'relative flex items-center gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg backdrop-blur bg-surface-raised/95 max-w-xs overflow-hidden',
+        'relative flex items-center gap-3 rounded-3xl px-4 py-3 text-sm bg-surface card-surface max-w-[min(24rem,calc(100vw-3rem))] overflow-hidden',
         toneClasses[toast.tone],
       )}
       onMouseEnter={() => {
@@ -256,7 +260,7 @@ function ToastBar({
             toast.onDismiss?.();
             onDismiss();
           }}
-          className="shrink-0 rounded-lg p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+          className="hit-target shrink-0 rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
           aria-label="Dismiss"
         >
           <CloseIcon width={14} height={14} />
@@ -270,7 +274,7 @@ function ToastBar({
             toast.onDismiss?.();
             onDismiss();
           }}
-          className="shrink-0 font-medium text-accent underline underline-offset-2 transition-opacity hover:opacity-80 active:opacity-80"
+          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         >
           {toast.actionLabel}
         </button>

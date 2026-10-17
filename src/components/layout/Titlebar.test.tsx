@@ -35,6 +35,7 @@ describe('Electron titlebar', () => {
     render(<Titlebar />);
 
     expect(screen.getByText('Lacuna')).toBeInTheDocument();
+    expect(screen.getByTestId('titlebar-brand').querySelector('svg')).toHaveClass('text-accent-ink');
     expect(document.querySelector('[data-titlebar-native-controls="darwin"]')).toHaveClass(
       'h-10',
       'pl-20',

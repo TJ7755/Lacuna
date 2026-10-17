@@ -1,0 +1,1 @@
+- Associate the note editor's Title label with its field so screen readers announce it.

@@ -38,6 +38,8 @@ export function QuestionSetMarking({
   const format = flattenQuestionSet(attempt.receipt).find((node) => node.id === nodeId)!.node
     .answer!.response;
   const root = useRef<HTMLDivElement>(null);
+  const noteTrigger = useRef<HTMLButtonElement | null>(null);
+  const correctionInput = useRef<HTMLTextAreaElement>(null);
   const [note, setNote] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<{ start: number; end: number } | null>(null);
   const [selectionError, setSelectionError] = useState('');
@@ -53,6 +55,7 @@ export function QuestionSetMarking({
     ]),
   ].sort((a, b) => a - b);
   function addNote(highlight: boolean) {
+    noteTrigger.current = document.activeElement as HTMLButtonElement;
     setSelectionError('');
     if (highlight) {
       const result = sourceAnchorFromSelection(root.current!, text, window.getSelection());
@@ -66,7 +69,49 @@ export function QuestionSetMarking({
   }
   return (
     <div className="qs-marking-grid">
-      <section>
+      <section className="qs-marking-criterion" aria-describedby={`qs-question-${nodeId}`}>
+        <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
+        <MarkdownView enlargeImages source={allocation.criterion} />
+        {allocation.explanation && (
+          <QuestionSetPanel
+            title="Explanation"
+            className="qs-correction"
+            panelClassName="qs-practice-panel"
+          >
+            <MarkdownView enlargeImages source={allocation.explanation} />
+          </QuestionSetPanel>
+        )}
+        <QuestionSetChoices
+          label="Marks awarded"
+          describedBy={`qs-question-${nodeId}`}
+          value={
+            decision?.status === 'awarded'
+              ? String(decision.marks)
+              : decision?.status === 'unsure'
+                ? 'unsure'
+                : ''
+          }
+          disabled={busy || attempt.status === 'complete'}
+          onChange={(value) => {
+            onDecision(
+              value === ''
+                ? null
+                : value === 'unsure'
+                  ? { allocationId: allocation.id, status: 'unsure' }
+                  : { allocationId: allocation.id, status: 'awarded', marks: Number(value) },
+            );
+          }}
+          options={[
+            { value: '', label: 'Not marked' },
+            ...Array.from({ length: allocation.maxMarks + 1 }, (_, marks) => ({
+              value: String(marks),
+              label: `${marks} / ${allocation.maxMarks}`,
+            })),
+            { value: 'unsure', label: 'Unsure' },
+          ]}
+        />
+      </section>
+      <section className="qs-marking-answer">
         <p className="qs-kicker">Original answer</p>
         {response.kind === 'multiple-choice' && format.kind === 'multiple-choice' && (
           <div className="qs-original select-text">
@@ -77,7 +122,7 @@ export function QuestionSetMarking({
                   <MarkdownView enlargeImages key={option.id} source={option.content} />
                 ))
             ) : (
-              <p>No answer submitted.</p>
+              <p>Unanswered</p>
             )}
           </div>
         )}
@@ -101,7 +146,7 @@ export function QuestionSetMarking({
                       <span key={start}>{text.slice(start, end)}</span>
                     );
                   })
-                : 'No answer submitted.'}
+                : 'Unanswered'}
             </p>
           </div>
         )}
@@ -149,6 +194,7 @@ export function QuestionSetMarking({
                   });
                   setNote(null);
                   onDraftChange(correction !== savedCorrection);
+                  noteTrigger.current?.focus();
                 }}
               >
                 Save note
@@ -158,6 +204,7 @@ export function QuestionSetMarking({
                 onClick={() => {
                   setNote(null);
                   onDraftChange(correction !== savedCorrection);
+                  noteTrigger.current?.focus();
                 }}
               >
                 Cancel
@@ -179,10 +226,16 @@ export function QuestionSetMarking({
             </button>
           </div>
         ))}
-        <QuestionSetPanel title="Correction" className="qs-correction">
+        <QuestionSetPanel
+          title="Correction"
+          panelClassName="qs-practice-panel"
+          className="qs-correction"
+          canClose={correction === savedCorrection}
+        >
           <label className="qs-field">
             Correction
             <textarea
+              ref={correctionInput}
               rows={5}
               value={correction}
               onChange={(event) => {
@@ -197,6 +250,7 @@ export function QuestionSetMarking({
             onClick={() => {
               onCorrection(correction);
               onDraftChange(Boolean(note?.trim()));
+              correctionInput.current?.focus();
             }}
           >
             Save correction
@@ -207,52 +261,13 @@ export function QuestionSetMarking({
               onClick={() => {
                 setCorrection(savedCorrection);
                 onDraftChange(Boolean(note?.trim()));
+                correctionInput.current?.focus();
               }}
             >
               Cancel correction
             </Button>
           )}
         </QuestionSetPanel>
-      </section>
-      <section className="qs-marking-criterion">
-        <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
-        <MarkdownView enlargeImages source={allocation.criterion} />
-        {allocation.explanation && (
-          <QuestionSetPanel title="Explanation" className="qs-correction">
-            <MarkdownView enlargeImages source={allocation.explanation} />
-          </QuestionSetPanel>
-        )}
-        <QuestionSetChoices
-          label="Marks awarded"
-          value={
-            decision?.status === 'awarded'
-              ? String(decision.marks)
-              : decision?.status === 'unsure'
-                ? 'unsure'
-                : ''
-          }
-          disabled={busy || attempt.status === 'complete'}
-          onChange={(value) => {
-            onDecision(
-              value === ''
-                ? null
-                : value === 'unsure'
-                  ? { allocationId: allocation.id, status: 'unsure' }
-                  : { allocationId: allocation.id, status: 'awarded', marks: Number(value) },
-            );
-          }}
-          options={[
-            { value: '', label: 'Not marked' },
-            ...Array.from({ length: allocation.maxMarks + 1 }, (_, marks) => ({
-              value: String(marks),
-              label: `${marks} / ${allocation.maxMarks}`,
-            })),
-            { value: 'unsure', label: 'Unsure' },
-          ]}
-        />
-        <p className="qs-muted">
-          Self-marked{decision?.status === 'unsure' ? ' · needs another look' : ''}
-        </p>
       </section>
     </div>
   );

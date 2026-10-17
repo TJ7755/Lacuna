@@ -1,0 +1,1 @@
+- Add consistent Edit, Move up/down and confirmed Delete menus to card practice, Question Set activities and checkpoints on the course path in Edit mode, aligned with lesson actions. Assessment rows also expose editing; the required final assessment remains protected.

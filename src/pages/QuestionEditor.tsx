@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { MissingRecord } from '../components/course/MissingRecord';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { Skeleton } from '../components/ui/Skeleton';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
 import {
   NumericAnswerEditor,
   numericAnswerSpecIsValid,
 } from '../components/items/NumericAnswerEditor';
 import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
+import { QuestionSegmented } from '../components/questions/QuestionSegmented';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
 import { useCourseQuestionData, useQuestionRecord } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
@@ -14,10 +19,17 @@ import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
 import { TagInput } from '../components/ui/TagInput';
+import { Toggle } from '../components/ui/Toggle';
 import { StepSwap } from '../components/ui/StepSwap';
 import { useToast } from '../components/ui/Toast';
 import { motionTransition } from '../components/ui/motion';
-import { ChevronLeftIcon, PlusIcon, TrashIcon } from '../components/ui/icons';
+import { ChevronLeftIcon, TrashIcon } from '../components/ui/icons';
+import {
+  FieldError,
+  QuestionMetadataFields,
+  questionLabelClass as labelClass,
+} from '../components/questions/QuestionMetadataFields';
+import { useEditorKeys } from '../hooks/dialogKeys';
 import type { ItemFixture, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from '../items/markSchemeCompiler';
 import { questionGeneratorRegistry } from '../questions/generators';
@@ -40,11 +52,6 @@ import {
   type QuestionAnswerKind,
   useQuestionDraft,
 } from './questionDraft';
-import { Skeleton } from '../components/ui/Skeleton';
-import { SectionCard } from '../components/ui/SectionCard';
-
-const inputClass =
-  'min-h-11 w-full rounded-xl border border-line-strong bg-surface px-3 py-2.5 text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20';
 
 export function QuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
@@ -95,10 +102,56 @@ export function QuestionEditor() {
     draft.initialise(questionStateFromRecord(record.question, record.conceptSet));
   }, [data, draft, editing, record]);
 
-  const save = async () => {
-    if (!editable) return;
-    if (!courseId || !targetConceptId || !name.trim()) {
-      notify('Add a name and choose the primary skill practised.', 'negative');
+  // Field messages appear once a save has been attempted, and update as the fields change.
+  const [attempted, setAttempted] = useState(false);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+  const answerRef = useRef<HTMLDivElement>(null);
+  const explanationRef = useRef<HTMLTextAreaElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const conceptRef = useRef<HTMLSelectElement>(null);
+  const payload =
+    kind === 'fixed'
+      ? fixedPayload(answerKind, numericAnswer, workingCompilation, workingFixtures)
+      : undefined;
+  const allErrors = {
+    prompt: kind === 'fixed' && !prompt.trim() ? 'Add a prompt.' : undefined,
+    answer: kind === 'fixed' && !payload ? 'Add a valid answer.' : undefined,
+    explanation: kind === 'fixed' && !explanation.trim() ? 'Add a worked explanation.' : undefined,
+    name: !name.trim() ? 'Add a name.' : undefined,
+    concept: !targetConceptId ? 'Choose the primary skill practised.' : undefined,
+  };
+  const errors: Partial<typeof allErrors> = attempted ? allErrors : {};
+
+  /** Where a new Question's entry starts: its prompt, or its name for a generated family. */
+  const focusEntry = () =>
+    (kind === 'fixed' ? promptRef.current : nameRef.current)?.focus({ preventScroll: true });
+  const entryFocused = useRef(false);
+  useEffect(() => {
+    if (!draft.loaded || entryFocused.current) return;
+    entryFocused.current = true;
+    focusEntry();
+    // Only on first load; later changes of form keep the user's focus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.loaded]);
+
+  /** `another` starts a fresh Question in the same lesson, Concept and form. */
+  const save = async (another = false) => {
+    if (!editable || saving || !courseId) return;
+    setAttempted(true);
+    const first = (
+      [
+        ['prompt', promptRef.current],
+        [
+          'answer',
+          answerRef.current?.querySelector<HTMLElement>('input, textarea, select, button'),
+        ],
+        ['explanation', explanationRef.current],
+        ['name', nameRef.current],
+        ['concept', conceptRef.current],
+      ] as const
+    ).find(([key]) => allErrors[key]);
+    if (first) {
+      first[1]?.focus();
       return;
     }
     setSaving(true);
@@ -111,20 +164,7 @@ export function QuestionEditor() {
         targetConceptId,
         prerequisiteConceptIds,
       };
-      if (kind === 'fixed') {
-        const payload = fixedPayload(
-          answerKind,
-          numericAnswer,
-          workingCompilation,
-          workingFixtures,
-        );
-        if (!prompt.trim() || !explanation.trim() || !payload) {
-          notify(
-            'A fixed Question needs a prompt, valid answer and worked explanation.',
-            'negative',
-          );
-          return;
-        }
+      if (kind === 'fixed' && payload) {
         if (questionId) {
           await updateFixedQuestion(questionId, { ...shared, prompt, payload, explanation });
         } else {
@@ -149,8 +189,20 @@ export function QuestionEditor() {
           });
         }
       }
-      draft.finish();
       notify(questionId ? 'Question updated.' : 'Question created.', 'positive');
+      if (another && !questionId) {
+        setAttempted(false);
+        draft.startAnother({
+          ...newQuestionState(targetConceptId),
+          kind,
+          lessonId,
+          answerKind,
+          tags,
+        });
+        requestAnimationFrame(focusEntry);
+        return;
+      }
+      draft.finish();
       void navigate(`/course/${courseId}/questions?view=individual`);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not save the Question.', 'negative');
@@ -158,6 +210,10 @@ export function QuestionEditor() {
       setSaving(false);
     }
   };
+  const editorKeys = useEditorKeys({
+    onCancel: () => void navigate(`/course/${courseId}/questions?view=individual`),
+    onSubmit: () => void save(!editing),
+  });
 
   const addConcept = async () => {
     if (!editable || !courseId || !newConceptName.trim()) return;
@@ -187,21 +243,28 @@ export function QuestionEditor() {
   ) {
     return (
       <DelayedFallback>
-        <div className="mx-auto max-w-4xl px-6 py-10">
-          <Skeleton className="h-12 w-72 rounded-xl" />
+        <div className={`${COURSE_PAGE_FRAME} py-8`}>
+          <Skeleton className="h-12 w-72 rounded-xl bg-ink/10" />
         </div>
       </DelayedFallback>
     );
   }
   if (course === null || (editing && record === null)) {
-    return <div className="p-10 text-ink-soft">This Question could not be found.</div>;
+    return (
+      <MissingRecord
+        message="This Question could not be found."
+        to={course === null ? '/' : `/course/${courseId}/questions`}
+      >
+        {course === null ? 'Back to Today' : 'Questions'}
+      </MissingRecord>
+    );
   }
 
   const tagSuggestions = [...new Set(data.questions.flatMap((question) => question.tags))].sort();
   const saveLabel = saving ? 'Saving…' : editing ? 'Save Question' : 'Create Question';
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8 pb-28 md:px-10">
+    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-6 md:pt-8`} {...editorKeys}>
       <NavigationGuard
         active={draft.shouldBlock}
         onAttempt={draft.flushDraft}
@@ -217,7 +280,7 @@ export function QuestionEditor() {
       </Link>
 
       <header className="mb-8">
-        <h1 className="font-display text-4xl tracking-tight md:text-5xl">
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-[44px]">
           {editing ? 'Edit Question' : 'Create a Question'}
         </h1>
       </header>
@@ -225,7 +288,7 @@ export function QuestionEditor() {
       {draft.draftPrompt && (
         <section
           role="status"
-          className="mb-8 flex flex-col gap-4 rounded-2xl border border-accent/30 bg-accent-soft p-5 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-8 flex flex-col gap-4 rounded-3xl bg-accent-soft p-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="text-sm text-ink">A saved draft from a previous session was found.</p>
           <div className="flex gap-2">
@@ -242,198 +305,80 @@ export function QuestionEditor() {
       <div className="space-y-8">
         {!editing && (
           <fieldset>
-            <legend className="mb-2 font-display text-base text-ink">
-              Question form
-            </legend>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-ink/5 p-1">
-              {(['fixed', 'generated'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={kind === option}
-                  onClick={() => draft.update({ kind: option })}
-                  className={`min-h-11 rounded-lg px-4 text-sm transition ${
-                    kind === option
-                      ? 'bg-surface text-ink shadow-sm'
-                      : 'text-ink-soft hover:text-ink'
-                  }`}
-                >
-                  {option === 'fixed' ? 'Fixed problem' : 'Generated family'}
-                </button>
-              ))}
-            </div>
+            <legend className={labelClass}>Question form</legend>
+            <QuestionSegmented
+              label="Question form"
+              value={kind}
+              onChange={(option) => draft.update({ kind: option })}
+              options={[
+                { value: 'fixed', label: 'Fixed problem' },
+                { value: 'generated', label: 'Generated family' },
+              ]}
+            />
           </fieldset>
         )}
-
-        <SectionCard compact className="grid gap-5 md:grid-cols-2 md:p-6">
-          <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm text-ink-soft">
-              Name
-            </span>
-            <input
-              value={name}
-              onChange={(event) => draft.update({ name: event.target.value })}
-              placeholder="Completing the square"
-              className={inputClass}
-              autoFocus
-            />
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm text-ink-soft">
-              Lesson
-            </span>
-            <select
-              value={lessonId}
-              onChange={(event) => draft.update({ lessonId: event.target.value })}
-              className={inputClass}
-            >
-              <option value="">No primary Lesson</option>
-              {lessons.map((lesson) => (
-                <option key={lesson.id} value={lesson.id}>
-                  {lesson.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-2 block text-sm text-ink-soft">
-              Primary skill practised
-            </span>
-            <select
-              value={targetConceptId}
-              onChange={(event) => {
-                const nextTarget = event.target.value;
-                draft.update((current) => ({
-                  targetConceptId: nextTarget,
-                  prerequisiteConceptIds: current.prerequisiteConceptIds.filter(
-                    (id) => id !== nextTarget,
-                  ),
-                }));
-              }}
-              className={inputClass}
-            >
-              <option value="">Choose a Concept</option>
-              {data.concepts.map((concept) => (
-                <option key={concept.id} value={concept.id}>
-                  {concept.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="md:col-span-2">
-            <span className="mb-2 block text-sm text-ink-soft">
-              Add a Concept
-            </span>
-            <div className="flex gap-2">
-              <input
-                value={newConceptName}
-                onChange={(event) => draft.update({ newConceptName: event.target.value })}
-                placeholder="A single piece of knowledge"
-                className={inputClass}
-              />
-              <Button
-                type="button"
-                onClick={() => void addConcept()}
-                disabled={!editable || !newConceptName.trim()}
-              >
-                <PlusIcon width={16} height={16} />
-                Add
-              </Button>
-            </div>
-          </div>
-          {data.concepts.filter((concept) => concept.id !== targetConceptId).length > 0 && (
-            <fieldset className="md:col-span-2">
-              <legend className="mb-2 font-display text-base text-ink">
-                Prerequisite Concepts
-              </legend>
-              <div className="flex flex-wrap gap-2">
-                {data.concepts
-                  .filter((concept) => concept.id !== targetConceptId)
-                  .map((concept) => {
-                    const selected = prerequisiteConceptIds.includes(concept.id);
-                    return (
-                      <button
-                        key={concept.id}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() =>
-                          draft.update((current) => ({
-                            prerequisiteConceptIds: selected
-                              ? current.prerequisiteConceptIds.filter((id) => id !== concept.id)
-                              : [...current.prerequisiteConceptIds, concept.id],
-                          }))
-                        }
-                        className={`min-h-11 rounded-lg border px-4 text-sm transition ${
-                          selected
-                            ? 'border-accent bg-accent-soft text-accent'
-                            : 'border-line-strong text-ink-soft hover:text-ink'
-                        }`}
-                      >
-                        {concept.name}
-                      </button>
-                    );
-                  })}
-              </div>
-            </fieldset>
-          )}
-        </SectionCard>
 
         <StepSwap stepKey={kind} direction={kind === 'generated' ? 1 : -1} className="space-y-8">
           {kind === 'fixed' ? (
             <>
-              <MarkdownEditor
-                label="Prompt"
-                value={prompt}
-                onChange={(value) => draft.update({ prompt: value })}
-                minRows={7}
-                placeholder="Apply the idea in a concrete problem."
-                onError={(message) => notify(message, 'negative')}
-              />
               <div>
-                <div className="mb-2 text-sm text-ink-soft">
-                  Answer type
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['numeric', 'working'] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={answerKind === option}
-                      onClick={() => draft.update({ answerKind: option })}
-                      className={`min-h-11 rounded-lg border px-4 text-sm transition ${
-                        answerKind === option
-                          ? 'border-accent bg-accent-soft text-accent'
-                          : 'border-line-strong text-ink-soft'
-                      }`}
-                    >
-                      {option === 'numeric' ? 'Numeric answer' : 'Show working'}
-                    </button>
-                  ))}
-                </div>
+                <MarkdownEditor
+                  label="Prompt"
+                  value={prompt}
+                  onChange={(value) => draft.update({ prompt: value })}
+                  minRows={7}
+                  placeholder="Apply the idea in a concrete problem."
+                  onError={(message) => notify(message, 'negative')}
+                  inputRef={promptRef}
+                  ariaInvalid={errors.prompt ? true : undefined}
+                  ariaDescribedBy={errors.prompt ? 'question-prompt-error' : undefined}
+                />
+                <FieldError id="question-prompt-error" message={errors.prompt} />
               </div>
-              <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
-                {answerKind === 'numeric' ? (
-                  <NumericAnswerEditor
-                    value={numericAnswer}
-                    onChange={(value) => draft.update({ numericAnswer: value })}
-                  />
-                ) : (
-                  <MarkSchemeEditor
-                    value={workingSource}
-                    onChange={(value) => draft.update({ workingSource: value })}
-                    fixtures={workingFixtures}
-                    onFixturesChange={(value) => draft.update({ workingFixtures: value })}
-                  />
-                )}
-              </StepSwap>
-              <MarkdownEditor
-                label="Worked explanation"
-                value={explanation}
-                onChange={(value) => draft.update({ explanation: value })}
-                minRows={7}
-                placeholder="Show why the answer follows, not merely what it is."
-                onError={(message) => notify(message, 'negative')}
-              />
+              <div>
+                <div className={labelClass}>Answer type</div>
+                <QuestionSegmented
+                  label="Answer type"
+                  value={answerKind}
+                  onChange={(option) => draft.update({ answerKind: option })}
+                  options={[
+                    { value: 'numeric', label: 'Numeric answer' },
+                    { value: 'working', label: 'Show working' },
+                  ]}
+                />
+              </div>
+              <div ref={answerRef}>
+                <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
+                  {answerKind === 'numeric' ? (
+                    <NumericAnswerEditor
+                      value={numericAnswer}
+                      onChange={(value) => draft.update({ numericAnswer: value })}
+                    />
+                  ) : (
+                    <MarkSchemeEditor
+                      value={workingSource}
+                      onChange={(value) => draft.update({ workingSource: value })}
+                      fixtures={workingFixtures}
+                      onFixturesChange={(value) => draft.update({ workingFixtures: value })}
+                    />
+                  )}
+                </StepSwap>
+                <FieldError id="question-answer-error" message={errors.answer} />
+              </div>
+              <div>
+                <MarkdownEditor
+                  label="Worked explanation"
+                  value={explanation}
+                  onChange={(value) => draft.update({ explanation: value })}
+                  minRows={7}
+                  placeholder="Show why the answer follows, not merely what it is."
+                  onError={(message) => notify(message, 'negative')}
+                  inputRef={explanationRef}
+                  ariaInvalid={errors.explanation ? true : undefined}
+                  ariaDescribedBy={errors.explanation ? 'question-explanation-error' : undefined}
+                />
+                <FieldError id="question-explanation-error" message={errors.explanation} />
+              </div>
             </>
           ) : generator ? (
             <GeneratedQuestionConfiguration
@@ -444,8 +389,20 @@ export function QuestionEditor() {
           ) : null}
         </StepSwap>
 
+        <QuestionMetadataFields
+          state={draft.state}
+          update={draft.update}
+          lessons={lessons}
+          concepts={data.concepts}
+          onAddConcept={() => void addConcept()}
+          editable={editable}
+          errors={errors}
+          nameRef={nameRef}
+          conceptRef={conceptRef}
+        />
+
         <section>
-          <div className="mb-2 text-sm text-ink-soft">Tags</div>
+          <div className={labelClass}>Tags</div>
           <TagInput
             tags={tags}
             onChange={(value) => draft.update({ tags: value })}
@@ -454,20 +411,16 @@ export function QuestionEditor() {
           />
         </section>
         {editing && (
-          <label className="flex min-h-11 items-center gap-3 text-sm text-ink-soft">
-            <input
-              type="checkbox"
-              checked={suspended}
-              onChange={(event) => draft.update({ suspended: event.target.checked })}
-              className="accent-accent"
-            />
-            Suspend this Question
-          </label>
+          <Toggle
+            checked={suspended}
+            onChange={(suspended) => draft.update({ suspended })}
+            label="Suspend this Question"
+          />
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 border-t border-line bg-paper/90 px-6 py-4 backdrop-blur-xl sm:bottom-0">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3">
+      <div className="pointer-events-none sticky bottom-0 z-20 -mx-[18px] mt-8 bg-gradient-to-t from-paper via-paper to-transparent px-[18px] pb-5 pt-12 min-[481px]:-mx-6 min-[481px]:px-6 md:-mx-10 md:px-10">
+        <div className="pointer-events-auto flex flex-wrap items-center justify-between gap-3">
           {editable && editing ? (
             <ConfirmInlineSwap
               active={confirmingDelete}
@@ -484,26 +437,38 @@ export function QuestionEditor() {
           ) : (
             <span />
           )}
-          <Button
-            type="button"
-            variant="primary"
-            onClick={() => void save()}
-            disabled={!editable || saving}
-            aria-label={saveLabel}
-          >
-            <AnimatePresence initial={false} mode="popLayout">
-              <motion.span
-                key={saveLabel}
-                aria-hidden="true"
-                initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
-                transition={motionTransition('feedback', motionMultiplier)}
+          <div className="flex flex-wrap justify-end gap-2">
+            {!editing && (
+              <Button
+                type="button"
+                onClick={() => void save(true)}
+                disabled={!editable || saving}
+                title="Save and add another (Ctrl/Cmd+Enter)"
               >
-                {saveLabel}
-              </motion.span>
-            </AnimatePresence>
-          </Button>
+                Save &amp; add another
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => void save()}
+              disabled={!editable || saving}
+              aria-label={saveLabel}
+            >
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={saveLabel}
+                  aria-hidden="true"
+                  initial={motionMultiplier > 0 ? { opacity: 0, y: 3 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={motionMultiplier > 0 ? { opacity: 0, y: -3 } : undefined}
+                  transition={motionTransition('feedback', motionMultiplier)}
+                >
+                  {saveLabel}
+                </motion.span>
+              </AnimatePresence>
+            </Button>
+          </div>
         </div>
       </div>
     </div>

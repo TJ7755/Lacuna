@@ -102,6 +102,39 @@ export type MergedBackupFile = BackupFile & {
   agentMemories: AgentMemory[];
 };
 
+/** Compare wire state without reordering arrays or coercing non-JSON values. */
+export function snapshotStateUnchanged(left: BackupFile, right: BackupFile): boolean {
+  return sameSnapshotValue({ ...left, exportedAt: 0 }, { ...right, exportedAt: 0 });
+}
+
+function sameSnapshotValue(left: unknown, right: unknown): boolean {
+  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') {
+    return Object.is(left, right);
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    if (Object.keys(left).length !== left.length || Object.keys(right).length !== right.length) {
+      return false;
+    }
+    return left.every((entry, index) => sameSnapshotValue(entry, right[index]));
+  }
+  if (
+    Object.getPrototypeOf(left) !== Object.prototype ||
+    Object.getPrototypeOf(right) !== Object.prototype
+  ) {
+    return false;
+  }
+  const a = left as Record<string, unknown>;
+  const b = right as Record<string, unknown>;
+  // JSON omits undefined object fields, including optional card payload/answer mode.
+  const keys = Object.keys(a).filter((key) => a[key] !== undefined);
+  const otherKeys = Object.keys(b).filter((key) => b[key] !== undefined);
+  return (
+    keys.length === otherKeys.length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameSnapshotValue(a[key], b[key]))
+  );
+}
+
 export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
   const left = normaliseSnapshot(a);
   const right = normaliseSnapshot(b);

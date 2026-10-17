@@ -1,0 +1,1 @@
+- Path practice stops are announced to screen readers as Card practice, and Help uses the current terms (Card practice, the single-lesson Add menu, lower-case "cards").

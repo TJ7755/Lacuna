@@ -1,0 +1,1 @@
+- Skip the automatic safety snapshot and database replacement for peer sync only when current-format incoming state, import projections and the merge result are provably unchanged. Deletes, migrations and uncertain comparisons retain their safety snapshots; manual backups, pre-migration snapshots, retention and throttling are unchanged.

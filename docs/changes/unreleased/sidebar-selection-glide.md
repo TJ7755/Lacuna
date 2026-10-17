@@ -1,0 +1,1 @@
+- Slow the sidebar selection glide by 20%, retaining its spring shape, motion-speed scaling and reduced-motion behaviour.

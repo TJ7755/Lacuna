@@ -19,15 +19,21 @@ function currentPlatformSource(): RuntimePlatformSource {
   };
 }
 
+/** A Cmd/Ctrl shortcut as this platform writes it, such as ⌘B or Ctrl+B. */
+export function modifierShortcutLabel(
+  key: string,
+  source: RuntimePlatformSource = currentPlatformSource(),
+): string {
+  const mac =
+    source.electronPlatform !== undefined
+      ? source.electronPlatform === 'darwin'
+      : source.browserPlatform?.startsWith('Mac') === true ||
+        /\bMacintosh\b/i.test(source.browserUserAgent ?? '');
+  return mac ? `⌘${key}` : `Ctrl+${key}`;
+}
+
 export function quickSearchShortcutLabel(
   source: RuntimePlatformSource = currentPlatformSource(),
 ): '⌘K' | 'Ctrl+K' {
-  if (source.electronPlatform !== undefined) {
-    return source.electronPlatform === 'darwin' ? '⌘K' : 'Ctrl+K';
-  }
-
-  const browserLooksLikeMac =
-    source.browserPlatform?.startsWith('Mac') === true ||
-    /\bMacintosh\b/i.test(source.browserUserAgent ?? '');
-  return browserLooksLikeMac ? '⌘K' : 'Ctrl+K';
+  return modifierShortcutLabel('K', source) as '⌘K' | 'Ctrl+K';
 }

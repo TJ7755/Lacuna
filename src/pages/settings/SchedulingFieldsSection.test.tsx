@@ -11,9 +11,6 @@ function renderSection() {
       maxReviewsPerDay="200"
       onMaxReviewsPerDayChange={vi.fn()}
       onMaxReviewsPerDayBlur={vi.fn()}
-      retention={0.9}
-      onRetentionChange={vi.fn()}
-      onRetentionCommit={vi.fn()}
       enableFuzz={true}
       onEnableFuzzChange={vi.fn()}
       maxInterval="36500"
@@ -45,17 +42,23 @@ describe('SchedulingFieldsSection', () => {
   it('leads with workload and session goals, then discloses scheduler internals', () => {
     renderSection();
 
-    const summary = screen.getByText('Advanced scheduling').closest('summary');
-    const disclosure = summary?.closest('details');
+    const trigger = screen.getByRole('button', { name: 'Advanced scheduling' });
+    const disclosure = document.getElementById(trigger.getAttribute('aria-controls')!);
 
-    expect(disclosure).not.toHaveAttribute('open');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(disclosure?.firstElementChild).toHaveAttribute('inert');
     expect(disclosure).not.toContainElement(screen.getByLabelText(/New cards per day/));
     expect(disclosure).not.toContainElement(screen.getByLabelText(/Daily review goal/));
-    expect(disclosure).toContainElement(screen.getByLabelText('Target retention'));
+    expect(screen.queryByLabelText('Target retention')).not.toBeInTheDocument();
     expect(disclosure).toContainElement(screen.getByLabelText(/Maximum interval/));
 
-    fireEvent.click(summary!);
-    expect(disclosure).toHaveAttribute('open');
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(disclosure?.firstElementChild).not.toHaveAttribute('inert');
+    fireEvent.click(trigger);
+    expect(disclosure?.firstElementChild).toHaveAttribute('inert');
+    fireEvent.click(trigger);
+    expect(screen.getByLabelText(/Learning steps/)).toHaveValue('1m, 10m');
   });
 
   it('explains workload caps using current Course language', () => {

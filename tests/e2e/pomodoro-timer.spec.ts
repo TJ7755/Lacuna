@@ -5,17 +5,18 @@ test('keeps timer focus in its popup and restores elapsed time after reload', as
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Timer regression');
-  await page.getByRole('button', { name: 'Author mode' }).click();
-  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill('A timer regression card');
   await page.getByRole('textbox', { name: 'Back' }).fill('Elapsed focus time survives a reload.');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await page.getByRole('link', { name: 'Course', exact: true }).click();
-  await page.getByRole('button', { name: 'Study', exact: true }).click();
-  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await sheet.locator('summary').filter({ hasText: 'Simple Learn' }).click();
-  await sheet.getByRole('button', { name: 'Start Simple Learn' }).click();
+  await page.getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Path', exact: true }).click();
+  await page.getByRole('button', { name: 'Other ways to study' }).click();
+  await page.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+  await page.getByRole('group', { name: 'Other ways to study' })
+    .getByRole('button', { name: 'Start practising' }).click();
 
   const trigger = page.getByRole('button', { name: 'Pomodoro timer', exact: true });
   await trigger.click();
@@ -25,7 +26,7 @@ test('keeps timer focus in its popup and restores elapsed time after reload', as
   await page.clock.install({ time: timerStart });
   await page.clock.pauseAt(new Date(timerStart.getTime() + 1000));
   await popup.getByRole('button', { name: 'Start', exact: true }).click();
-  await popup.getByRole('button', { name: 'Reset' }).focus();
+  await popup.getByRole('button', { name: 'Reset timer' }).focus();
   await page.keyboard.press('Tab');
   await expect(popup.getByRole('button', { name: 'Pause', exact: true })).toBeFocused();
   await page.keyboard.press('Escape');

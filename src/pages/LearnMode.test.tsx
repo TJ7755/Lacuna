@@ -21,6 +21,7 @@ import * as linesModeCards from '../db/linesModeCards';
 import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
+import { AccentProvider } from '../state/AccentContext';
 import { writeStartInFocusMode } from '../state/focusModePreference';
 import { loadSimpleSession } from './learn/simpleSessionPersistence';
 import type * as MotionSpeedModule from '../state/motionSpeed';
@@ -75,8 +76,11 @@ async function answerYesAndWaitForExposure(lessonId: string) {
   });
 }
 
+/** Leaves the notes screen; a lesson without notes opens on its first card instead. */
 async function continueFromNotes() {
-  fireEvent.click(await screen.findByRole('button', { name: /^continue$/i }));
+  const next = await screen.findAllByRole('button', { name: /^(continue|show answer|recite)$/i });
+  const notesContinue = next.find((button) => /^continue$/i.test(button.textContent ?? ''));
+  if (notesContinue) fireEvent.click(notesContinue);
 }
 
 function studyFaceText(text: string | RegExp) {
@@ -110,14 +114,17 @@ describe('LearnMode course/lesson scope', () => {
     const lesson = await createLesson(course.id, 'Any time');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Optional question', 'Answer');
     render(
-      <ThemeProvider><ToastProvider>
+      <ThemeProvider><AccentProvider><ToastProvider>
         <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
           <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
         </MemoryRouter>
-      </ToastProvider></ThemeProvider>,
+      </ToastProvider></AccentProvider></ThemeProvider>,
     );
     expect(await findStudyFaceText('Optional question')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    // The header names the lesson; Simple Learn's own Yes/No grading shows the mode.
+    expect(screen.getByRole('heading', { name: 'Any time' })).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
+    expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
   });
 
   it('does not paint a focus ring on the programmatic study container', async () => {
@@ -125,11 +132,11 @@ describe('LearnMode course/lesson scope', () => {
     const lesson = await createLesson(course.id, 'Focus lesson');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Focus question', 'Answer');
     render(
-      <ThemeProvider><ToastProvider>
+      <ThemeProvider><AccentProvider><ToastProvider>
         <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
           <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
         </MemoryRouter>
-      </ToastProvider></ThemeProvider>,
+      </ToastProvider></AccentProvider></ThemeProvider>,
     );
     expect(await findStudyFaceText('Focus question')).toBeInTheDocument();
     // The study container is focused programmatically as a return point after
@@ -237,7 +244,7 @@ describe('LearnMode course/lesson scope', () => {
 
     try {
       render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
               <Routes>
@@ -245,7 +252,7 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
 
       expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
@@ -275,7 +282,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -283,7 +290,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -317,7 +324,12 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
     fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
-    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass('bg-positive', 'border-accent');
+    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass(
+      'border-accent',
+    );
+    expect(
+      document.querySelector('[data-session-card-status=correct]')?.firstElementChild,
+    ).toHaveClass('bg-positive');
     expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute('aria-valuenow', '50');
     fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
       target: { value: 'Where are you?' },
@@ -371,7 +383,7 @@ describe('LearnMode course/lesson scope', () => {
     }
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
             <Routes>
@@ -379,7 +391,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText(/^Review from the start/)).toBeInTheDocument();
@@ -411,7 +423,7 @@ describe('LearnMode course/lesson scope', () => {
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -419,7 +431,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     // Header shows the lesson's own name (not the course name).
@@ -467,7 +479,7 @@ describe('LearnMode course/lesson scope', () => {
     expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
             <Routes>
@@ -475,7 +487,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await screen.findByRole('heading', { name: 'Cells' });
@@ -504,7 +516,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     const { unmount } = render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
             <Routes>
@@ -512,7 +524,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await screen.findByRole('heading', { name: 'Kinematics' });
@@ -541,7 +553,7 @@ describe('LearnMode course/lesson scope', () => {
     await linkCardToLesson(lessonB.id, card.id);
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
             <Routes>
@@ -549,7 +561,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     const notesUnload = new Event('beforeunload', { cancelable: true });
@@ -574,7 +586,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -582,7 +594,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -606,7 +618,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -614,7 +626,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -643,7 +655,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -651,7 +663,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -684,7 +696,7 @@ describe('LearnMode course/lesson scope', () => {
     expect((await db.lessons.get(lesson4.id))?.unlockedAt).toBeUndefined();
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
             <Routes>
@@ -692,7 +704,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await answerYes();
@@ -717,7 +729,7 @@ describe('LearnMode course/lesson scope', () => {
       await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
 
       const { unmount } = render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
               <Routes>
@@ -725,7 +737,7 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
 
       await screen.findByRole('heading', { name: 'First' });
@@ -747,7 +759,7 @@ describe('LearnMode course/lesson scope', () => {
     await upsertLessonCardExposure(lesson.id, card.id);
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
             <Routes>
@@ -755,7 +767,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     // Header shows the course's own name.
@@ -776,7 +788,7 @@ describe('LearnMode course/lesson scope', () => {
     await upsertLessonCardExposure(lesson.id, card.id);
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/course/${course.id}/learn?mode=cram`]}>
             <Routes>
@@ -784,7 +796,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText(/Classics/)).toBeInTheDocument();
@@ -825,7 +837,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter>
             <LearnMode
@@ -839,7 +851,7 @@ describe('LearnMode course/lesson scope', () => {
             />
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
@@ -891,7 +903,7 @@ describe('LearnMode course/lesson scope', () => {
     const onStepFinished = vi.fn();
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter>
             <LearnMode
@@ -908,7 +920,7 @@ describe('LearnMode course/lesson scope', () => {
             />
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByRole('heading', { name: /Revision plan/ })).toBeInTheDocument();
@@ -968,7 +980,7 @@ describe('LearnMode course/lesson scope', () => {
     });
     const onStepFinished = vi.fn();
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter>
             <LearnMode
@@ -984,7 +996,7 @@ describe('LearnMode course/lesson scope', () => {
             />
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
@@ -1008,7 +1020,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1016,12 +1028,12 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
     expect(await screen.findByRole('button', { name: 'Show study controls' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Exit Focus Mode' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Leave focus mode' })).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -1040,7 +1052,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Question two', 'Answer two');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1048,7 +1060,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1100,7 +1112,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(expected).toBeLessThan(100);
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1108,14 +1120,15 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(
       await screen.findByRole('progressbar', { name: 'Session progress' }),
     ).toHaveAttribute('aria-valuenow', '0');
+    // The recall forecast lives in the card actions menu.
+    fireEvent.click(screen.getByRole('button', { name: 'Card actions' }));
     expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
-    expect(screen.getByText('0% complete')).toBeInTheDocument();
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
@@ -1136,7 +1149,7 @@ describe('LearnMode course/lesson scope', () => {
     }
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1144,7 +1157,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     const progress = await screen.findByRole('progressbar', { name: 'Session progress' });
@@ -1178,7 +1191,7 @@ describe('LearnMode course/lesson scope', () => {
     await createCard(deck.id, 'front_back', 'Second undo question', 'Answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1186,7 +1199,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     const firstQuestion = (await findStudyFaceText(/undo question/i)).textContent;
@@ -1203,7 +1216,7 @@ describe('LearnMode course/lesson scope', () => {
     await createCard(deck.id, 'front_back', 'Only question', 'Answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1211,7 +1224,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await findStudyFaceText('Only question');
@@ -1238,7 +1251,7 @@ describe('LearnMode course/lesson scope', () => {
 
     try {
       render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={['/learn']}>
               <Routes>
@@ -1246,7 +1259,7 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
 
       fireEvent.change(await screen.findByLabelText('Your answer'), {
@@ -1286,7 +1299,7 @@ describe('LearnMode course/lesson scope', () => {
 
     await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1294,7 +1307,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     const input = await screen.findByLabelText('Your answer');
@@ -1330,7 +1343,7 @@ describe('LearnMode course/lesson scope', () => {
     });
     try {
       render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={['/learn']}>
               <Routes>
@@ -1338,9 +1351,11 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
-      fireEvent.change(await screen.findByLabelText('Your working'), {
+      const working = await screen.findByLabelText('Your working');
+      await waitFor(() => expect(working).toHaveFocus());
+      fireEvent.change(working, {
         target: { value: '2x = 8\n4' },
       });
       fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
@@ -1387,7 +1402,7 @@ describe('LearnMode course/lesson scope', () => {
     });
     await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1395,7 +1410,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
     await screen.findByLabelText('Your working');
     const reviewedId = document.querySelector('[data-study-card-id]')!.getAttribute('data-study-card-id')!;
@@ -1411,6 +1426,7 @@ describe('LearnMode course/lesson scope', () => {
       });
     });
     expect(await screen.findByLabelText('Your working')).toHaveValue('');
+    await waitFor(() => expect(screen.getByLabelText('Your working')).toHaveFocus());
     expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
   });
 
@@ -1421,7 +1437,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1429,7 +1445,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText('Solve 2x = 8 by scaffold.')).toBeInTheDocument();
@@ -1455,7 +1471,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1463,7 +1479,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText('What is 8 / 2?')).toBeInTheDocument();
@@ -1483,7 +1499,7 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     const { unmount } = render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1491,7 +1507,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await screen.findByText('Scaffold question')).toBeInTheDocument();
@@ -1527,7 +1543,7 @@ describe('LearnMode course/lesson scope', () => {
     await db.cards.update(suspended.id, { suspended: true });
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1535,7 +1551,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await findStudyFaceText('Available question')).toBeInTheDocument();
@@ -1562,7 +1578,7 @@ describe('LearnMode course/lesson scope', () => {
     await db.cards.update(unflagged.id, reviewState);
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn?filter=flagged']}>
             <Routes>
@@ -1570,7 +1586,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await findStudyFaceText('Flagged question')).toBeInTheDocument();
@@ -1584,7 +1600,7 @@ describe('LearnMode course/lesson scope', () => {
     await db.cards.update(suspended.id, { suspended: true });
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn?filter=suspended']}>
             <Routes>
@@ -1592,7 +1608,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(
@@ -1614,7 +1630,7 @@ describe('LearnMode course/lesson scope', () => {
       await createLessonCard(course.id, lesson.id, 'front_back', 'Only question', 'Answer');
 
       render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
               <Routes>
@@ -1622,7 +1638,7 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
 
       await continueFromNotes();
@@ -1644,7 +1660,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Final question', 'Final answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1652,7 +1668,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1678,7 +1694,7 @@ describe('LearnMode course/lesson scope', () => {
 
     try {
       render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
               <Routes>
@@ -1686,12 +1702,12 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
 
       await continueFromNotes();
       fireEvent.click(await screen.findByRole('button', { name: 'Show study controls' }));
-      const exitFocus = await screen.findByRole('button', { name: 'Exit Focus Mode' });
+      const exitFocus = await screen.findByRole('button', { name: 'Leave focus mode' });
       expect(exitFocus).not.toHaveClass('hidden');
 
       fireEvent.click(exitFocus);
@@ -1711,7 +1727,7 @@ describe('LearnMode course/lesson scope', () => {
     await createCard(deck.id, 'front_back', 'Touch question', 'Touch answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1719,7 +1735,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await findStudyFaceText('Touch question')).toBeInTheDocument();
@@ -1738,7 +1754,7 @@ describe('LearnMode course/lesson scope', () => {
     await createCard(deck.id, 'front_back', 'Thumb question', 'Thumb answer');
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={['/learn']}>
             <Routes>
@@ -1746,7 +1762,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     expect(await findStudyFaceText('Thumb question')).toBeInTheDocument();
@@ -1771,7 +1787,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1779,7 +1795,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1807,7 +1823,7 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'Second cause', 'Urbanisation');
 
     const firstRender = render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1815,13 +1831,13 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
     await findStudyFaceText(/cause$/);
     expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Simple Learn' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Industrial change' })).toBeInTheDocument();
     const firstServedId = document
       .querySelector('[data-study-card-id]')
       ?.getAttribute('data-study-card-id');
@@ -1837,7 +1853,7 @@ describe('LearnMode course/lesson scope', () => {
     firstRender.unmount();
 
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1845,7 +1861,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1868,7 +1884,7 @@ describe('LearnMode course/lesson scope', () => {
     );
 
     const firstRender = render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
             <Routes>
@@ -1876,7 +1892,7 @@ describe('LearnMode course/lesson scope', () => {
             </Routes>
           </MemoryRouter>
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1911,11 +1927,11 @@ describe('LearnMode course/lesson scope', () => {
       { initialEntries: [`/lesson/${lesson.id}/learn`] },
     );
     render(
-      <ThemeProvider>
+      <ThemeProvider><AccentProvider>
         <ToastProvider>
           <RouterProvider router={router} />
         </ToastProvider>
-      </ThemeProvider>,
+      </AccentProvider></ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -1968,11 +1984,11 @@ describe('LearnMode course/lesson scope', () => {
         { initialEntries: [`/lesson/${lesson.id}/learn`] },
       );
       return render(
-        <ThemeProvider>
+        <ThemeProvider><AccentProvider>
           <ToastProvider>
             <RouterProvider router={router} />
           </ToastProvider>
-        </ThemeProvider>,
+        </AccentProvider></ThemeProvider>,
       );
     };
 
