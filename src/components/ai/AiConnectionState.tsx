@@ -139,14 +139,19 @@ export function AiConnectionState({
         className="flex flex-1 flex-col overflow-y-auto p-5"
       >
         <div className="my-auto">
-          <h2 id="ai-connect-title" className="font-display text-xl text-ink">Built-in AI</h2>
+          <h2 id="ai-connect-title" className="font-display text-xl text-ink">
+            Built-in AI
+          </h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
             Enter your personal access code to use AI in Lacuna.
           </p>
-          <form className="mt-5 space-y-3" onSubmit={(event) => {
-            event.preventDefault();
-            if (accessCode.trim()) onConnectAccess?.(accessCode.trim());
-          }}>
+          <form
+            className="mt-5 space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (accessCode.trim()) onConnectAccess?.(accessCode.trim());
+            }}
+          >
             <Field label="Access code">
               <Input
                 type="password"
@@ -159,7 +164,11 @@ export function AiConnectionState({
               {busy ? 'Connecting' : 'Connect'}
             </Button>
           </form>
-          {error && <p role="alert" className="mt-3 text-sm text-negative">{error}</p>}
+          {error && (
+            <p role="alert" className="mt-3 text-sm text-negative">
+              {error}
+            </p>
+          )}
         </div>
       </section>
     );
@@ -193,7 +202,7 @@ export function AiConnectionState({
     }
   }
 
-  if (compact && !pairing) {
+  if (compact && !pairing && !local) {
     return (
       <section
         aria-label="AI connection"
@@ -227,9 +236,7 @@ export function AiConnectionState({
 
   return (
     <section
-      aria-labelledby={
-        pairing ? 'ai-pair-title' : local ? 'ai-local-title' : 'ai-connect-title'
-      }
+      aria-labelledby={pairing ? 'ai-pair-title' : local ? 'ai-local-title' : 'ai-connect-title'}
       aria-busy={local ? !localInstruction : busy}
       className="flex flex-1 flex-col overflow-y-auto p-5"
     >
@@ -243,17 +250,19 @@ export function AiConnectionState({
                 </h2>
 
                 <div className="mt-5 rounded-3xl card-surface px-4 py-5 text-center">
-                  <p className="text-sm font-medium text-ink-soft">
-                    Pairing code
-                  </p>
-                  <p className="mt-2 whitespace-nowrap text-xl font-semibold text-ink">
+                  <p className="text-sm font-medium text-ink-soft">Pairing code</p>
+                  <p className="mt-2 whitespace-nowrap font-mono text-xl font-semibold tracking-[0.06em] text-ink">
                     {pairing.code}
                   </p>
                   <time
                     dateTime={new Date(pairing.expiresAt).toISOString()}
                     className="mt-2 block text-xs text-ink-faint"
                   >
-                    Expires {new Date(pairing.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    Expires{' '}
+                    {new Date(pairing.expiresAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </time>
                 </div>
 
@@ -316,7 +325,8 @@ export function AiConnectionState({
                   Connect an AI client
                 </h2>
                 <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
-                  The desktop app connects locally. No pairing code or internet connection is needed.
+                  The desktop app connects locally. No pairing code or internet connection is
+                  needed.
                 </p>
 
                 {rendererStatus && (

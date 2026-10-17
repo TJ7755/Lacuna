@@ -122,17 +122,13 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
             <SparklesIcon width={14} height={14} />
           </span>
           <span className="min-w-0">
-            <span className="block text-sm font-medium text-ink-faint">
-              {statusLabel}
-            </span>
+            <span className="block text-sm font-medium text-ink-faint">{statusLabel}</span>
             <span className="block max-w-52 truncate text-sm text-ink">{compactSummary}</span>
           </span>
         </button>
       ) : (
         <p className="max-w-48 px-2">
-          <span className="block text-sm font-medium text-ink-faint">
-            {statusLabel}
-          </span>
+          <span className="block text-sm font-medium text-ink-faint">{statusLabel}</span>
           <span className="block truncate text-sm text-ink">{compactSummary}</span>
         </p>
       )}
@@ -163,78 +159,71 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
             {...collapse(multiplier)}
             className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] rounded-3xl overflow-hidden bg-surface card-surface"
           >
-          <div className="border-b border-line bg-surface px-4 py-3">
-            <p className="text-sm font-medium text-ink-faint">
-              Current activity
-            </p>
-            <p className="mt-1 text-sm font-medium text-ink">
-              {snapshot.activity?.summary ?? 'AI is responding'}
-            </p>
-            {snapshot.activity?.detail && (
-              <p className="mt-1 text-xs leading-5 text-ink-soft">{snapshot.activity.detail}</p>
-            )}
-          </div>
-          {latestReply && (
-            <div className="border-b border-line px-4 py-3">
-              <p className="text-sm font-medium text-ink-faint">
-                Latest reply
+            <div className="border-b border-line bg-surface px-4 py-3">
+              <p className="text-sm font-medium text-ink-faint">Current activity</p>
+              <p className="mt-1 text-sm font-medium text-ink">
+                {snapshot.activity?.summary ?? 'AI is responding'}
               </p>
-              <p className="mt-1 line-clamp-4 text-sm leading-5 text-ink-soft">
-                {latestReply.content}
-              </p>
-            </div>
-          )}
-          <div className="px-4 py-3">
-            <label
-              htmlFor="ai-capsule-follow-up"
-              className="text-sm font-medium text-ink-faint"
-            >
-              Queued follow-up
-            </label>
-            <textarea
-              id="ai-capsule-follow-up"
-              rows={2}
-              value={followUp}
-              disabled={stopPending}
-              placeholder={stopPending ? 'Waiting for AI to stop' : 'No follow-up queued'}
-              onChange={(event) => setFollowUp(event.target.value)}
-              className={cn(
-                inputFrameClassName,
-                'mt-2 block w-full min-h-16 resize-none text-sm placeholder:text-ink-faint',
+              {snapshot.activity?.detail && (
+                <p className="mt-1 text-xs leading-5 text-ink-soft">{snapshot.activity.detail}</p>
               )}
-            />
-            {followUpError && (
-              <p role="alert" className="mt-2 text-xs text-negative">
-                {followUpError}
-              </p>
+            </div>
+            {latestReply && (
+              <div className="border-b border-line px-4 py-3">
+                <p className="text-sm font-medium text-ink-faint">Latest reply</p>
+                <p className="mt-1 line-clamp-4 text-sm leading-5 text-ink-soft">
+                  {latestReply.content}
+                </p>
+              </div>
             )}
-          </div>
-          <div className="flex justify-end gap-1 border-t border-line bg-surface px-3 py-2">
-            <button
-              type="button"
-              disabled={stopPending || sendingFollowUp || followUp.trim().length === 0}
-              onClick={() => void sendFollowUp()}
-              className="min-h-11 rounded-full px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {sendingFollowUp
-                ? 'Queuing'
-                : snapshot.queuedFollowUp
-                  ? 'Update follow-up'
-                  : 'Queue follow-up'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDetailsOpen(false);
-                props.onOpenConversation();
-              }}
-              className="min-h-11 rounded-full px-3 text-sm font-medium text-accent-ink transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-            >
-              Open conversation
-            </button>
-          </div>
-        </motion.div>
-      )}
+            <div className="px-4 py-3">
+              <label htmlFor="ai-capsule-follow-up" className="text-sm font-medium text-ink-faint">
+                Queued follow-up
+              </label>
+              <textarea
+                id="ai-capsule-follow-up"
+                rows={2}
+                value={followUp}
+                disabled={stopPending}
+                placeholder={stopPending ? 'Waiting for AI to stop' : 'No follow-up queued'}
+                onChange={(event) => setFollowUp(event.target.value)}
+                className={cn(
+                  inputFrameClassName,
+                  'mt-2 block w-full min-h-16 resize-none text-sm placeholder:text-ink-faint',
+                )}
+              />
+              {followUpError && (
+                <p role="alert" className="mt-2 text-xs text-negative">
+                  {followUpError}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-1 border-t border-line bg-surface px-3 py-2">
+              <button
+                type="button"
+                disabled={stopPending || sendingFollowUp || followUp.trim().length === 0}
+                onClick={() => void sendFollowUp()}
+                className="min-h-11 rounded-full px-3 text-sm font-medium text-ink-soft transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {sendingFollowUp
+                  ? 'Queuing'
+                  : snapshot.queuedFollowUp
+                    ? 'Update follow-up'
+                    : 'Queue follow-up'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  props.onOpenConversation();
+                }}
+                className="min-h-11 rounded-full px-3 text-sm font-medium text-accent-ink transition-colors hover:bg-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+              >
+                Open conversation
+              </button>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </section>
   );

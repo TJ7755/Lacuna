@@ -134,6 +134,45 @@ describe('AiConnectionState', () => {
     await waitFor(() => expect(requestRestart).toHaveBeenCalledOnce());
   });
 
+  it('keeps the local setup prompt visible in compact panels', async () => {
+    Object.defineProperty(window, 'electronAPI', {
+      configurable: true,
+      value: {
+        isElectron: true,
+        mcp: {
+          getStatus: vi.fn().mockResolvedValue({
+            running: true,
+            toolCount: 1,
+            toolSurfaceVersion: 1,
+            aiRenderer: { status: 'ready' },
+            aiCompanion: {
+              command: 'C:\\Program Files\\Lacuna\\Lacuna.exe',
+              args: ['--ai-companion'],
+            },
+          }),
+        },
+      },
+    });
+
+    render(
+      <AiConnectionState
+        pairing={null}
+        busy={false}
+        error={null}
+        local
+        compact
+        onStartPairing={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Connect an AI client' })).toBeInTheDocument();
+    expect(await screen.findByText('AI runtime ready')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'AI client setup prompt' })).toBeInTheDocument();
+    expect(screen.queryByText('AI client disconnected')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Connect AI client' })).not.toBeInTheDocument();
+  });
+
   it('offers one focused primary action while disconnected', () => {
     const onStartPairing = vi.fn();
     render(
