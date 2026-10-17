@@ -1077,3 +1077,11 @@ describe('CoursePath overview', () => {
     expect(mockCreateLesson).not.toHaveBeenCalled();
   });
 });
+
+it('explains a suspended saved order on the path without enabling locked authoring', () => {
+  mockCourse = { ...course, localLessonOrder: [lesson2.id, lesson1.id], autoPractice: true,
+    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false } };
+  renderPage();
+  expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent('Turn off automatic Card practice');
+  expect(screen.queryByRole('button', { name: /Add lesson/i })).not.toBeInTheDocument();
+});

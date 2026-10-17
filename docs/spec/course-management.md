@@ -95,3 +95,26 @@
   sequence.
 
 [Specification index](../SPEC.md)
+
+### Local lesson order on locked imports
+
+Course settings offers Move up/down and **Use publisher order** on supported locked
+lineage copies. The preference applies to this local copy's path, Sidebar, guided Study,
+Cards lesson groups and Simple Learn picker. Rename, delete, Add Lesson and content editing
+remain locked. Ordinary authored courses still change their stored content order.
+
+Support requires an active locked copy, free progression, automatic Card practice off,
+no Card-practice nodes or checkpoints, and exactly one unanchored prefix final covering
+all Cards without exclusions. Lesson-ID-anchored Question Set activities follow their
+lessons. Prerequisites remain advisory. An unsupported shape suspends the saved preference,
+explains why in Settings and on the path, and uses publisher order until supported again.
+The course share format does not carry automatic practice settings: imports inherit the
+learner's global defaults, so automatic practice may need switching off first.
+
+`Course.localLessonOrder` is an optional, unindexed list of stable lesson IDs. Save validates
+an exact current course permutation transactionally and stamps only the Course row. Reset
+clears the preference, including while suspended. Resolution retains known preferred IDs
+once, ignores stale IDs and appends omitted/new lessons in canonical publisher order
+(index, creation time, ID). It returns original lessons without changing their indices.
+Published content, lineage snapshots, assessment coverage, FSRS/exam targeting and
+release/unlock obligations retain source order. New lessons are never hidden.

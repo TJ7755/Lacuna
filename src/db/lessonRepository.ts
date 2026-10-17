@@ -2,6 +2,7 @@
 // Components call these rather than touching Dexie tables directly.
 
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
+import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import { scheduleAssetGc } from './assets';
 import {
@@ -490,14 +491,56 @@ export async function deleteLesson(id: string): Promise<void> {
  * Assign a fresh orderIndex to each lesson based on its position in
  * orderedLessonIds, in one transaction.
  */
-export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
+export async function reorderLessons(courseId: string, orderedLessonIds: string[]): Promise<void> {
   const now = Date.now();
-  await db.transaction('rw', db.lessons, async () => {
+  await db.transaction('rw', [db.courses, db.lessons], async () => {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('Course not found.');
+    if (course.distributedCopy?.locked) throw new Error('Published lesson order is locked.');
+    const lessons = await db.lessons.where('courseId').equals(courseId).toArray();
+    validateLessonPermutation(lessons, orderedLessonIds);
     await db.lessons.bulkUpdate(
       orderedLessonIds.map((id, orderIndex) => ({
         key: id,
         changes: stampUpdatedAt({ orderIndex }, now),
       })),
+    );
+  });
+}
+
+function validateLessonPermutation(lessons: Lesson[], ids: string[]): void {
+  const currentIds = new Set(lessons.map((lesson) => lesson.id));
+  if (
+    ids.length !== lessons.length || new Set(ids).size !== ids.length ||
+    ids.some((id) => !currentIds.has(id))
+  ) {
+    throw new Error(
+      'The lesson list changed. Refresh and try again with every current lesson exactly once.',
+    );
+  }
+}
+
+/** Save only the local Course preference; reset is also allowed while suspended. */
+export async function setLocalLessonOrder(courseId: string, ids?: string[]): Promise<void> {
+  await db.transaction('rw', [db.courses, db.lessons, db.courseAssessments, db.practiceNodes], async () => {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('Course not found.');
+    if (!course.distributedCopy?.locked) {
+      throw new Error('Local lesson order requires a locked imported course.');
+    }
+    if (ids !== undefined) {
+      const [lessons, assessments, practiceNodes] = await Promise.all([
+        db.lessons.where('courseId').equals(courseId).toArray(),
+        db.courseAssessments.where('courseId').equals(courseId).toArray(),
+        db.practiceNodes.where('courseId').equals(courseId).toArray(),
+      ]);
+      const reason = localLessonOrderUnavailableReason(course, lessons, assessments, practiceNodes);
+      if (reason) throw new Error(reason);
+      validateLessonPermutation(lessons, ids);
+    }
+    await db.courses.update(
+      courseId,
+      stampUpdatedAt({ localLessonOrder: ids }, Math.max(Date.now(), course.updatedAt + 1)),
     );
   });
 }

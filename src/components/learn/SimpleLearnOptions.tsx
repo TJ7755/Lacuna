@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLessons } from '../../state/useCourseData';
+import { useLessonOrderData } from '../../state/useLessonOrderData';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { ChevronDownIcon } from '../ui/icons';
@@ -55,7 +55,7 @@ function SimpleLearnFields({
   lessonId: string;
   onLessonChange: (id: string) => void;
 }) {
-  const lessons = useLessons(courseId);
+  const lessons = useLessonOrderData(courseId)?.lessons;
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-3 pb-2 pt-1">

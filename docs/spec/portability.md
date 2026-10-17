@@ -626,3 +626,16 @@ explicit choice. CSV/TSV and Markdown exports do not preserve answer modes.
 one destination: the named Lesson or the Course bank. Matching text in a different Lesson
 does not suppress a proposed Card or become an update candidate. Every supplied Lesson must
 belong to the target Course; all destinations are validated before any Cards are written.
+
+### Local lesson order
+
+Full personal backups, Course undo snapshots and peer sync retain `Course.localLessonOrder`.
+It is excluded from course-file/share payloads, whose lessons remain in publisher order;
+fresh content imports start without a local preference. No store, index or schema migration
+is needed for this optional field. Older clients can retain the field but will ignore its
+presentation meaning.
+
+This inherits existing whole-row merge limits: recovery merge chooses Course rows by
+`createdAt` and retains the existing row on ties; peer sync uses `updatedAt`, with canonical
+JSON breaking equal-time ties. Concurrent order and other Course setting changes are not
+merged independently. A competing whole-row change can replace a preference or reset.

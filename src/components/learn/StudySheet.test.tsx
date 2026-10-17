@@ -36,6 +36,10 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+vi.mock('../../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => ({ lessons: [{ id: 'l1', name: 'Atomic structure' }] }),
+}));
+
 vi.mock('../../state/useCourseData', () => ({
   useCourses: () => mockCourses,
   useLessons: () => [{ id: 'l1', name: 'Atomic structure' }],

@@ -360,6 +360,8 @@ export interface CourseRecord {
   linearCadence?: { anchorDate: number; intervalDays: number };
   /** When true, the system auto-inserts practice nodes between lessons. */
   autoPractice: boolean;
+  /** Local traversal preference on supported locked copies; never published content. */
+  localLessonOrder?: string[];
   /** Minutes-to-clear threshold that triggers practice when the exam is not near. */
   practiceThresholdMinutesFar: number;
   /** Minutes-to-clear threshold that triggers practice when the exam is near. */

@@ -10,6 +10,7 @@ import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';
 import type { CourseForecast } from '../fsrs/courseForecast';
+import { resolveCourseLessonOrder } from '../course/lessonOrder';
 
 interface SidebarData {
   courses: Course[];
@@ -41,34 +42,37 @@ export function ShellCourseDataProvider({
   children: ReactNode;
 }) {
   const data = useLiveQuery(async (): Promise<ShellCourseData> => {
-    const [records, lessons, cards, assessments, dashboardRows] = await db.transaction(
-      'r',
-      [
-        db.courses,
-        db.lessons,
-        db.cards,
-        db.courseAssessments,
-        db.lessonCards,
-        db.lessonCardExposures,
-        db.lessonCompletions,
-        db.coursePerformance,
-      ],
-      () =>
-        Promise.all([
-          db.courses.toArray(),
-          db.lessons.toArray(),
-          db.cards.toArray(),
-          db.courseAssessments.toArray(),
-          includeDashboard
-            ? Promise.all([
-                db.lessonCards.toArray(),
-                db.lessonCardExposures.toArray(),
-                db.lessonCompletions.toArray(),
-                db.coursePerformance.toArray(),
-              ])
-            : undefined,
-        ]),
-    );
+    const [records, lessons, cards, assessments, practiceNodes, dashboardRows] =
+      await db.transaction(
+        'r',
+        [
+          db.courses,
+          db.lessons,
+          db.cards,
+          db.courseAssessments,
+          db.practiceNodes,
+          db.lessonCards,
+          db.lessonCardExposures,
+          db.lessonCompletions,
+          db.coursePerformance,
+        ],
+        () =>
+          Promise.all([
+            db.courses.toArray(),
+            db.lessons.toArray(),
+            db.cards.toArray(),
+            db.courseAssessments.toArray(),
+            db.practiceNodes.toArray(),
+            includeDashboard
+              ? Promise.all([
+                  db.lessonCards.toArray(),
+                  db.lessonCardExposures.toArray(),
+                  db.lessonCompletions.toArray(),
+                  db.coursePerformance.toArray(),
+                ])
+              : undefined,
+          ]),
+      );
     const courses = records.map((record) =>
       hydrateCourse(record, finalAssessmentForCourse(record.id, assessments)),
     );
@@ -84,7 +88,14 @@ export function ShellCourseDataProvider({
     const schedulingByCourse = new Map(courses.map((course) => [course.id, course]));
     const sidebar: SidebarData = {
       courses,
-      lessons,
+      lessons: courses.flatMap((course) =>
+        resolveCourseLessonOrder(
+          course,
+          lessons.filter((lesson) => lesson.courseId === course.id),
+          assessments.filter((assessment) => assessment.courseId === course.id),
+          practiceNodes.filter((node) => node.courseId === course.id),
+        ),
+      ),
       summaries: computeCourseSummaries(
         courses,
         lessons,
