@@ -4,6 +4,7 @@
 
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useNavigationCourses } from './CourseNavigationData';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory, listReviewHistoryForCourse } from '../db/reviewHistoryRead';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
@@ -55,7 +56,10 @@ export function useCourses(): Course[] | undefined {
 }
 
 export function useCourse(courseId: string | undefined): Course | null | undefined {
-  return useLiveQuery<Course | null>(async () => {
+  const navigation = useNavigationCourses();
+  const ownedByShell = navigation !== null;
+  const queried = useLiveQuery<Course | null>(async () => {
+    if (ownedByShell) return null;
     if (!courseId) return null;
     const [record, assessments] = await db.transaction(
       'r',
@@ -67,7 +71,12 @@ export function useCourse(courseId: string | undefined): Course | null | undefin
         ]),
     );
     return record ? hydrateCourse(record, finalAssessmentForCourse(courseId, assessments)) : null;
-  }, [courseId]);
+  }, [courseId, ownedByShell]);
+  return ownedByShell
+    ? navigation === undefined
+      ? undefined
+      : (navigation.find((course) => course.id === courseId) ?? null)
+    : queried;
 }
 
 /** Resolve a lesson's course in one query so loading and missing records stay distinct. */

@@ -116,7 +116,7 @@ vi.mock('../state/useCourseData', () => ({
 }));
 
 vi.mock('../state/useCourseStudyFlowRecords', () => ({
-  useCourseStudyFlowRecords: () => {
+  useCoursePathRecords: () => {
     if (
       mockCourse === undefined ||
       mockLessons === undefined ||

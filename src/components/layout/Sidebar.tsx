@@ -323,7 +323,7 @@ export function Sidebar({
             ))}
           </AnimatePresence>
 
-          {sidebarCourses.length === 0 && (
+          {courses !== undefined && sidebarCourses.length === 0 && (
             <SidebarLabel
               className={cn(
                 'px-3 py-2 text-ink-faint',

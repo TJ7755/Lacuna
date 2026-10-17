@@ -3,14 +3,14 @@
 // British English throughout.
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
 import { usePendingMergeReview } from '../state/useCourseData';
 import { useCourseForecast } from '../state/ShellCourseData';
-import { useCourseStudyFlowRecords } from '../state/useCourseStudyFlowRecords';
+import { useCoursePathRecords } from '../state/useCourseStudyFlowRecords';
 import { computeCourseSummaries } from '../state/courseSummaries';
 import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
@@ -48,6 +48,7 @@ import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { loadLessonView } from '../routes/loaders';
 import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
+import { useIdleRoutePrefetch } from '../routes/useIdleRoutePrefetch';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
 const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
@@ -87,9 +88,12 @@ export function CoursePath() {
     setSearchParams(next, { replace: true });
   };
 
-  const records = useCourseStudyFlowRecords(courseId);
+  const records = useCoursePathRecords(courseId);
   const course = records?.course;
   const lessons = records?.lessons;
+  useIdleRoutePrefetch(
+    lessons?.slice(0, 1).map((lesson) => `/course/${courseId}/lesson/${lesson.id}`) ?? [],
+  );
   const courseCards = records?.cards;
   // Match the existing Dexie sort: an undated assessment keeps its relative position.
   const assessments = useMemo(
@@ -293,11 +297,7 @@ export function CoursePath() {
 
   // Loading state — a skeleton while course/lesson data resolves.
   if (!dataLoaded) {
-    return (
-      <DelayedFallback>
-        <CoursePathSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CoursePathSkeleton />} />;
   }
 
   // Course not found.
@@ -414,13 +414,7 @@ export function CoursePath() {
             </Link>
           </div>
         )}
-        <Suspense
-          fallback={
-            <DelayedFallback>
-              <CoursePathSkeleton />
-            </DelayedFallback>
-          }
-        >
+        <Suspense fallback={<PageLoading fallback={<CoursePathSkeleton />} />}>
           <LessonView
             inlineData={{
               course,

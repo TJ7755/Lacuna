@@ -3,7 +3,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 // Route: /course/:courseId/analytics
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -79,9 +79,7 @@ export function CourseAnalytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading course analytics">
-        <DelayedFallback>
-          <CourseAnalyticsSkeleton />
-        </DelayedFallback>
+        <PageLoading fallback={<CourseAnalyticsSkeleton />} />
       </div>
     );
   }

@@ -1,8 +1,9 @@
 import { COURSE_PAGE_FRAME } from './coursePageLayout';
 import { useCourse } from '../../state/useCourseData';
 import { CoursePageNavigation } from './CoursePageNavigation';
-import { matchCourseSection } from './courseSections';
+import { COURSE_SECTIONS, matchCourseSection } from './courseSections';
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useIdleRoutePrefetch } from '../../routes/useIdleRoutePrefetch';
 
 /**
  * Whether the route's own course title is on screen. The bar's course name
@@ -60,8 +61,10 @@ export function CourseSectionNavigation({
   pathname?: string;
 }) {
   const course = useCourse(courseId);
+  useIdleRoutePrefetch(COURSE_SECTIONS.map(({ suffix }) => `/course/${courseId}${suffix}`));
   const titleInView = useCourseTitleInView(pathname);
   const archived = course?.archived === true;
+  const lesson = /^\/course\/[^/]+\/lesson\/[^/]+$/.test(pathname);
 
   return (
     // The bar's own `sticky` would end with this short wrapper, so the wrapper sticks
@@ -70,11 +73,11 @@ export function CourseSectionNavigation({
       <CoursePageNavigation
         courseId={courseId}
         course={course ?? undefined}
-        backTo={archived ? '/archived' : '/'}
-        backLabel={archived ? 'Archived courses' : 'All courses'}
+        backTo={archived ? '/archived' : lesson ? `/course/${courseId}` : '/'}
+        backLabel={archived ? 'Archived courses' : lesson ? 'Course' : 'All courses'}
         archived={archived}
-        identityHidden={titleInView}
-        identity={course ? { name: course.name } : undefined}
+        identityHidden={titleInView || !course}
+        identity={course ? { name: course.name, back: lesson } : { name: '' }}
       />
     </div>
   );

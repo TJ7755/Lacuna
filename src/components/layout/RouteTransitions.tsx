@@ -4,7 +4,7 @@ import { CourseTitleTransition } from '../course/CourseTitleTransition';
 import { CourseSectionNavigation } from '../course/CourseSectionNavigation';
 import { matchCourseSection } from '../course/courseSections';
 
-const COURSE_ANALYTICS = /^\/course\/([^/]+)\/analytics$/;
+const COURSE_CHROME_ROUTE = /^\/course\/([^/]+)\/(?:analytics|lesson\/[^/]+)$/;
 
 /** How far a course tab drifts as it fades in: a nudge that says which way, not a full slide. */
 export const TAB_DRIFT_PX = 24;
@@ -41,8 +41,8 @@ export function RouteTransitions({
     mounted.current = true;
   }, []);
   const section = matchCourseSection(pathname);
-  // Course analytics is not a tab, but it is still the course's own page, so it keeps the bar.
-  const barCourseId = section?.courseId ?? COURSE_ANALYTICS.exec(pathname)?.[1];
+  // Lessons keep the same chrome during loading; they remain deeper destinations, not tabs.
+  const barCourseId = section?.courseId ?? COURSE_CHROME_ROUTE.exec(pathname)?.[1];
   return (
     <>
       {barCourseId && (

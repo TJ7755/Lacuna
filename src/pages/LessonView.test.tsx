@@ -140,7 +140,18 @@ function renderPage() {
     <MemoryRouter initialEntries={['/course/course-1/lesson/lesson-1']}>
       <ToastProvider>
         <Routes>
-          <Route path="/course/:courseId/lesson/:lessonId" element={<LessonView />} />
+          <Route
+            path="/course/:courseId/lesson/:lessonId"
+            element={
+              <>
+                <CourseSectionNavigation
+                  courseId="course-1"
+                  pathname="/course/course-1/lesson/lesson-1"
+                />
+                <LessonView />
+              </>
+            }
+          />
         </Routes>
       </ToastProvider>
     </MemoryRouter>
