@@ -365,7 +365,11 @@ export function FlipCard({
             style={{
               transformOrigin: 'center center',
               x: sharedX ? undefined : swipeXMotion,
-              minHeight: stableHeight === undefined ? undefined : `min(${stableHeight}px, 100%)`,
+              height: stableHeight,
+              minHeight:
+                stableHeight === undefined
+                  ? undefined
+                  : `min(${stableHeight}px, var(--study-card-max-height, ${stableHeight}px))`,
             }}
             className={cn(
               'relative z-10 ' + surfaceClassName,

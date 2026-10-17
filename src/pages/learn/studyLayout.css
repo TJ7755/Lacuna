@@ -2,17 +2,38 @@
   flex-shrink: 0;
 }
 
-.study-card-slot > div,
-.study-card-slot [data-study-card-id],
-.study-card-slot .study-flip-card,
-.study-card-slot .study-flip-card > [role='button'] {
+.study-card-slot {
+  --study-card-max-height: 100cqh;
+  container-type: size;
+  display: grid;
+  align-items: center;
+}
+
+/* The transition area stays fixed; each presentation keeps its own content height. */
+.study-card-slot > div {
   height: 100%;
   min-height: 0;
 }
 
+.study-card-slot [data-study-card-id] {
+  height: auto;
+  min-height: 0;
+}
+
 .study-card-slot .study-card-surface {
-  height: 100%;
-  max-height: 100%;
+  max-height: 100cqh;
+}
+
+/* Measure both faces at their natural height before applying the viewport cap. */
+.study-card-slot [data-study-sizing-face] {
+  height: auto;
+  max-height: none;
+}
+
+@media (min-width: 768px) {
+  .study-card-slot [data-study-sizing-face] {
+    min-height: 18rem;
+  }
 }
 
 .study-card-slot [data-study-face] {
@@ -42,7 +63,7 @@
   min-height: 0;
 }
 
-.study-card-slot .study-occlusion-diagram {
+.study-card-slot [data-study-face] .study-occlusion-diagram {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -52,12 +73,12 @@
 }
 
 /* The percentage masks must use the fitted image's box, without letterboxing. */
-.study-card-slot .study-occlusion-diagram > div {
+.study-card-slot [data-study-face] .study-occlusion-diagram > div {
   width: fit-content;
   max-width: 100%;
 }
 
-.study-card-slot .study-occlusion-diagram img {
+.study-card-slot [data-study-face] .study-occlusion-diagram img {
   width: auto;
   max-width: 100%;
   max-height: 100cqh;
