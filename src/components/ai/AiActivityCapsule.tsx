@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import type { AiSession } from '../../ai/session/types';
+import { inputFrameClassName } from '../ui/Field';
 import { SparklesIcon } from '../ui/icons';
+import { collapse } from '../ui/motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { cn } from '../ui/cn';
 
 const ACTIVITY_STATUS_LABEL = {
   working: 'Working',
@@ -24,6 +29,8 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
   const [followUpError, setFollowUpError] = useState<string | null>(null);
   const capsuleRef = useRef<HTMLElement>(null);
   const detailsTriggerRef = useRef<HTMLButtonElement>(null);
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const snapshot = useSyncExternalStore(
     props.session.subscribe,
     props.session.getSnapshot,
@@ -148,12 +155,14 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
           {stoppableRun.status === 'stop_requested' ? 'Stop requested' : 'Stop'}
         </button>
       )}
-      {detailsOpen && props.canOpenConversation && (
-        <div
-          role="dialog"
-          aria-label="AI activity details"
-          className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line-strong bg-paper card-surface"
-        >
+      <AnimatePresence>
+        {detailsOpen && props.canOpenConversation && (
+          <motion.div
+            role="dialog"
+            aria-label="AI activity details"
+            {...collapse(multiplier)}
+            className="absolute right-0 top-[calc(100%+0.5rem)] w-[min(22rem,calc(100vw-2rem))] rounded-3xl overflow-hidden bg-surface card-surface"
+          >
           <div className="border-b border-line bg-surface px-4 py-3">
             <p className="text-sm font-medium text-ink-faint">
               Current activity
@@ -189,7 +198,10 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
               disabled={stopPending}
               placeholder={stopPending ? 'Waiting for AI to stop' : 'No follow-up queued'}
               onChange={(event) => setFollowUp(event.target.value)}
-              className="mt-2 block min-h-16 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-faint focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent-ink"
+              className={cn(
+                inputFrameClassName,
+                'mt-2 block w-full min-h-16 resize-none text-sm placeholder:text-ink-faint',
+              )}
             />
             {followUpError && (
               <p role="alert" className="mt-2 text-xs text-negative">
@@ -221,8 +233,9 @@ export function AiActivityCapsule(props: AiActivityCapsuleProps) {
               Open conversation
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </section>
   );
 }

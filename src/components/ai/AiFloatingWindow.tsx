@@ -1,6 +1,7 @@
 import { useState, type HTMLAttributes, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
+import { MeasuredHeight } from '../ui/MeasuredHeight';
 import { scaledSpring } from '../ui/motion';
 import { useDraggableWindow } from './useDraggableWindow';
 
@@ -66,15 +67,18 @@ export function AiFloatingWindow({
                 : { duration: 0 }
             }
             style={{ transformOrigin: 'bottom right' }}
-            className={minimised ? undefined : 'h-[min(640px,calc(100dvh-4rem))]'}
           >
-            {children({
-              minimised,
-              onToggleMinimise: () => setMinimised((value) => !value),
-              dragging,
-              multiplier,
-              handleProps,
-            })}
+            <MeasuredHeight>
+              <div className={minimised ? undefined : 'h-[min(640px,calc(100dvh-4rem))] w-full'}>
+                {children({
+                  minimised,
+                  onToggleMinimise: () => setMinimised((value) => !value),
+                  dragging,
+                  multiplier,
+                  handleProps,
+                })}
+              </div>
+            </MeasuredHeight>
           </motion.div>
         </FloatingWindowSurface>
       )}
