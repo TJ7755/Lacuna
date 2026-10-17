@@ -56,7 +56,7 @@
 .study-transition-title h1 {
   margin: 0;
   font-size: clamp(32px, 4vw, 48px);
-  font-weight: 450;
+  font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1.12;
   overflow-wrap: anywhere;
@@ -64,7 +64,6 @@
 .has-next .study-transition-title h1 {
   max-width: calc(100% / 1.3);
   color: hsl(var(--ink-soft));
-  transform-origin: left center;
   animation: study-topic-settle calc(700ms * var(--step-motion)) calc(180ms * var(--step-motion))
     cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -80,16 +79,22 @@
 .study-transition-destination h2 {
   margin: 0;
   font-size: 24px;
-  font-weight: 450;
+  font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1.12;
   overflow-wrap: anywhere;
 }
 .study-transition-destination.has-next h2 {
-  font-size: clamp(48px, 8vw, 96px);
-  letter-spacing: -0.065em;
+  /* The study heading scale (StudyFlowMessage and RevisionPlanSetup): text-4xl to md:text-5xl. */
+  font-size: 36px;
+  letter-spacing: -0.025em;
   animation: study-content-arrive calc(600ms * var(--step-motion)) calc(720ms * var(--step-motion))
     cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (min-width: 768px) {
+  .study-transition-destination.has-next h2 {
+    font-size: 48px;
+  }
 }
 .study-transition-node {
   margin-top: 8px;
@@ -104,11 +109,6 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-.study-transition-actions button {
-  min-height: 52px;
-  padding: 12px 24px;
-  font-size: 14px;
 }
 .study-transition-actions .study-transition-continue {
   min-width: 140px;
@@ -129,13 +129,16 @@
 .study-transition-continue:focus-visible .study-transition-arrow svg {
   transform: translateX(3px);
 }
+/* A settled heading stays stable: a fade with StudyEntrance's short lift, no scaling. */
 @keyframes study-topic-settle {
   from {
-    transform: translateY(60px) scale(1.3);
+    opacity: 0;
+    transform: translateY(8px);
     color: hsl(var(--ink));
   }
   to {
-    transform: translateY(0) scale(1);
+    opacity: 1;
+    transform: translateY(0);
     color: hsl(var(--ink-soft));
   }
 }
