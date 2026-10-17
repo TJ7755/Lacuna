@@ -131,77 +131,80 @@ export function SessionReport({
           aria-controls={detailsId}
           onClick={() => setDetailsOpen((value) => !value)}
         >
-          Session details <span className="session-report-plus" aria-hidden="true">+</span>
+          Session details{' '}
+          <span className="session-report-plus" aria-hidden="true">
+            +
+          </span>
         </button>
         <AnimatedDisclosure open={detailsOpen} retainContent id={detailsId}>
           <div className="session-report-detail-content">
-          <dl>
-            <div>
-              <dt>Mean time</dt>
-              <dd>{meanResponse.toFixed(1)}s</dd>
-            </div>
-            <div>
-              <dt>Focus</dt>
-              <dd>{Math.round(summary.focusFraction * 100)}%</dd>
-            </div>
-            <div>
-              <dt>Progress this session</dt>
-              <dd>
-                {delta >= 0 ? '+' : ''}
-                {delta} percentage points
-              </dd>
-            </div>
-          </dl>
-          {/* Keep the first-pass report focused on correct and remaining cards. */}
-          {!summary.simpleMode && (
-            <div className="mt-6">
-              <h2 className="mb-4 font-display text-xl">How you rated</h2>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height={192}>
-                  <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-                    <XAxis
-                      dataKey="grade"
-                      stroke={c.inkFaint}
-                      tick={{ fill: c.inkFaint, fontSize: 12 }}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      stroke={c.inkFaint}
-                      tick={{ fill: c.inkFaint, fontSize: 11 }}
-                      tickLine={false}
-                      width={32}
-                    />
-                    <Tooltip
-                      separator=": "
-                      cursor={{ fill: c.line, opacity: 0.4 }}
-                      contentStyle={{
-                        background: c.surface,
-                        border: `1px solid ${c.line}`,
-                        borderRadius: 10,
-                        color: c.ink,
-                        fontSize: 13,
-                      }}
-                      formatter={(v) => [v, 'Cards']}
-                    />
-                    <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
-                      {gradeData.map((d) => (
-                        <Cell key={d.g} fill={gradeColour(d.g)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+            <dl>
+              <div>
+                <dt>Mean time</dt>
+                <dd>{meanResponse.toFixed(1)}s</dd>
               </div>
-            </div>
-          )}
+              <div>
+                <dt>Focus</dt>
+                <dd>{Math.round(summary.focusFraction * 100)}%</dd>
+              </div>
+              <div>
+                <dt>Progress this session</dt>
+                <dd>
+                  {delta >= 0 ? '+' : ''}
+                  {delta} percentage points
+                </dd>
+              </div>
+            </dl>
+            {/* Keep the first-pass report focused on correct and remaining cards. */}
+            {!summary.simpleMode && (
+              <div className="mt-6">
+                <h2 className="mb-4 font-display text-xl">How you rated</h2>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height={192}>
+                    <BarChart data={gradeData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                      <XAxis
+                        dataKey="grade"
+                        stroke={c.inkFaint}
+                        tick={{ fill: c.inkFaint, fontSize: 12 }}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        stroke={c.inkFaint}
+                        tick={{ fill: c.inkFaint, fontSize: 11 }}
+                        tickLine={false}
+                        width={32}
+                      />
+                      <Tooltip
+                        separator=": "
+                        cursor={{ fill: c.line, opacity: 0.4 }}
+                        contentStyle={{
+                          background: c.surface,
+                          border: `1px solid ${c.line}`,
+                          borderRadius: 10,
+                          color: c.ink,
+                          fontSize: 13,
+                        }}
+                        formatter={(v) => [v, 'Cards']}
+                      />
+                      <Bar dataKey="count" isAnimationActive={false} radius={[6, 6, 0, 0]}>
+                        {gradeData.map((d) => (
+                          <Cell key={d.g} fill={gradeColour(d.g)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
-          {distractions > 0 && (
-            <p className="session-report-distractions">
-              You left the page during {distractions} of {total}{' '}
-              {total === 1 ? 'answer' : 'answers'}. Your grades were unaffected; the timing may be
-              less representative.
-            </p>
-          )}
+            {distractions > 0 && (
+              <p className="session-report-distractions">
+                You left the page during {distractions} of {total}{' '}
+                {total === 1 ? 'answer' : 'answers'}. Your grades were unaffected; the timing may be
+                less representative.
+              </p>
+            )}
           </div>
         </AnimatedDisclosure>
       </div>

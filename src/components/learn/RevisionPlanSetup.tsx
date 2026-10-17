@@ -135,6 +135,8 @@ export function RevisionPlanSetup({
     return (
       // The pending treatment of the neighbouring study screens: a withheld skeleton column.
       <div
+        role="status"
+        aria-busy="true"
         className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         aria-label="Loading revision plan"
       >
@@ -150,7 +152,8 @@ export function RevisionPlanSetup({
           </div>
         </DelayedFallback>
       </div>
-    );  if (!assessment) {
+    );
+  if (!assessment) {
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
         <p className="text-sm text-negative">{error ?? 'The assessment could not be found.'}</p>
