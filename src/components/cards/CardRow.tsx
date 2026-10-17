@@ -16,6 +16,7 @@ import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
 import { GeneratedCardBadge } from './GeneratedCardBadge';
 import { ExpandedCardAnalytics } from './ExpandedCardAnalytics';
 import { cardKindLabel, cardScheduleLabel } from './lessonCardRow';
+import { CardKindIcon } from './CardKindIcon';
 import { ScheduleChip } from './ScheduleChip';
 import { OcclusionThumbnail } from './OcclusionThumbnail';
 
@@ -45,6 +46,7 @@ export const CardRow = React.memo(function CardRow({
   motionMultiplier,
   skipAnimation,
   occlusion,
+  compactMetadata = false,
 }: {
   card: Card;
   schedulingConfig: SchedulerConfig;
@@ -65,6 +67,7 @@ export const CardRow = React.memo(function CardRow({
   skipAnimation?: boolean;
   /** The occlusion that generated this card, so the row can show its diagram. */
   occlusion?: Occlusion;
+  compactMetadata?: boolean;
 }) {
   const m = motionMultiplier ?? 1;
   const isTouchMode = useIsTouchMode();
@@ -392,7 +395,12 @@ export const CardRow = React.memo(function CardRow({
           aria-pressed={selectMode && !generated && !linked ? selected : undefined}
           className="absolute inset-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         />
-        <div className="relative flex items-center gap-3 sm:gap-4">
+        <div
+          className={cn(
+            'relative flex gap-3 sm:gap-4',
+            compactMetadata ? 'items-start' : 'items-center',
+          )}
+        >
           {selectMode && !generated && !linked && (
             <span
               className={cn(
@@ -446,7 +454,12 @@ export const CardRow = React.memo(function CardRow({
 
           {/* The schedule and the actions share one cell: hovering or focusing the row
               swaps one for the other, so the actions take no width of their own. */}
-          <div className="grid shrink-0 items-center justify-items-end">
+          <div
+            className={cn(
+              'grid shrink-0 justify-items-end',
+              compactMetadata ? 'items-start' : 'items-center',
+            )}
+          >
             <div
               className={cn(
                 'flex flex-col items-end gap-1 transition-opacity [grid-area:1/1]',
@@ -454,25 +467,42 @@ export const CardRow = React.memo(function CardRow({
                   'sm:[@media(hover:hover)]:group-hover:opacity-0 sm:[@media(hover:hover)]:group-focus-within:opacity-0',
               )}
             >
-              <ScheduleChip schedule={schedule} />
-              <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-faint">
-                {flagged && <FlagIcon width={12} height={12} className="text-accent-ink" aria-label="Flagged" />}
-                {leech && (
-                  <span
-                    title={`Failed ${card.lapses} times. Consider rewording or splitting this card.`}
-                    className="font-semibold text-negative"
-                  >
-                    Leech
-                  </span>
-                )}
-                {linked && <span className="font-semibold text-accent-ink">Linked</span>}
-                {/* A generated card's badge already names its kind. */}
-                {isOcclusionGenerated ? (
-                  <GeneratedCardBadge kind="occlusion" />
-                ) : (
-                  <span>{cardKindLabel(card)}</span>
-                )}
-              </span>
+              {compactMetadata ? (
+                <div className="flex min-h-6 items-center gap-1.5">
+                  <CardKindIcon card={card} />
+                  <ScheduleChip schedule={schedule} />
+                </div>
+              ) : (
+                <ScheduleChip schedule={schedule} />
+              )}
+              {(!compactMetadata || flagged || leech || linked) && (
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-ink-faint">
+                  {flagged && (
+                    <FlagIcon
+                      width={12}
+                      height={12}
+                      className="text-accent-ink"
+                      aria-label="Flagged"
+                    />
+                  )}
+                  {leech && (
+                    <span
+                      title={`Failed ${card.lapses} times. Consider rewording or splitting this card.`}
+                      className="font-semibold text-negative"
+                    >
+                      Leech
+                    </span>
+                  )}
+                  {linked && <span className="font-semibold text-accent-ink">Linked</span>}
+                  {/* A generated card's badge already names its kind. */}
+                  {!compactMetadata &&
+                    (isOcclusionGenerated ? (
+                      <GeneratedCardBadge kind="occlusion" />
+                    ) : (
+                      <span>{cardKindLabel(card)}</span>
+                    ))}
+                </span>
+              )}
             </div>
             {!selectMode && (
               // Narrow and touch screens reach these through the swipe tray and the expanded row.

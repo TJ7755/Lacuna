@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LessonCardsSection } from './LessonCardsSection';
@@ -46,7 +47,11 @@ vi.mock('./CardList', () => ({
     linkedCardIds,
     onUnlinkCard,
     context,
+    heading,
+    beforeCards,
   }: {
+    heading?: ReactNode;
+    beforeCards?: ReactNode;
     linkedCardIds?: ReadonlySet<string>;
     onUnlinkCard?: (card: Card) => void;
     context?: {
@@ -66,6 +71,8 @@ vi.mock('./CardList', () => ({
     }
     return (
       <div>
+        {heading}
+        {beforeCards}
         <span data-testid="linked-ids">{[...(linkedCardIds ?? [])].join(',')}</span>
         <button type="button" onClick={() => onUnlinkCard?.(card)}>
           Remove linked card

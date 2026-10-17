@@ -47,6 +47,10 @@ interface CardListBaseProps {
   heading?: React.ReactNode;
   /** Keeps the heading row in view below the course bar while its cards scroll past. */
   stickyHeader?: boolean;
+  /** Lesson controls between the heading and the card rows. */
+  beforeCards?: React.ReactNode;
+  /** Compact metadata for the lesson workspace, leaving other card lists unchanged. */
+  compactMetadata?: boolean;
   /** When supplied with courseId, enables bulk lesson assignment. */
   assignableLessons?: AssignableLesson[];
   courseId?: string;
@@ -67,6 +71,8 @@ export function CardList({
   hideHeader = false,
   heading,
   stickyHeader = false,
+  beforeCards,
+  compactMetadata = false,
   assignableLessons,
   courseId,
   sequences,
@@ -449,6 +455,8 @@ export function CardList({
         </div>
       </div>
 
+      {beforeCards}
+
       <CardBulkBar
         open={selectMode}
         panel={
@@ -676,6 +684,7 @@ export function CardList({
               linkedCardIds={linkedCardIds}
               onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
+              compactMetadata={compactMetadata}
               occlusions={occlusions}
             />
           ))}
@@ -695,6 +704,7 @@ export function CardList({
               linkedCardIds={linkedCardIds}
               onUnlinkCard={onUnlinkCard}
               motionMultiplier={m}
+              compactMetadata={compactMetadata}
               occlusions={occlusions}
             />
           )}
@@ -729,6 +739,7 @@ export function CardListBody({
   onUnlinkCard,
   motionMultiplier,
   occlusions,
+  compactMetadata = false,
 }: {
   cards: Card[];
   schedulingConfig: SchedulerConfig;
@@ -746,6 +757,7 @@ export function CardListBody({
   motionMultiplier: number;
   /** Occlusions that may own these cards, so occlusion rows can show their diagram. */
   occlusions?: Occlusion[];
+  compactMetadata?: boolean;
 }) {
   const enabled = cards.length > VIRTUAL_THRESHOLD;
   const occlusionOf = (card: Card) =>
@@ -793,6 +805,7 @@ export function CardListBody({
             onUnlink={() => onUnlinkCard?.(card)}
             onToggleFlag={onToggleFlag}
             motionMultiplier={motionMultiplier}
+            compactMetadata={compactMetadata}
             occlusion={occlusionOf(card)}
           />
         ))}
@@ -828,6 +841,7 @@ export function CardListBody({
               onToggleFlag={onToggleFlag}
               motionMultiplier={motionMultiplier}
               skipAnimation={introDone}
+              compactMetadata={compactMetadata}
               occlusion={occlusionOf(card)}
             />
           </div>

@@ -38,7 +38,10 @@
   Invalid coverage/dependency destinations are refused. Computed automatic-practice stops
   are not authored records and remain outside reordering; the final assessment stays fixed.
 - **Lesson view** (`/course/:courseId/lesson/:lessonId`) presents the lesson's notes and
-  cards. The course-level conductor owns guided session entry and embeds this lesson's
+  cards. Its course-name link has a back chevron leading to the course path. In Edit mode,
+  **Select** shares the **Manage** heading row above **Answer by**. Both lesson card lists
+  show card kinds as icons with the existing kind names as accessible labels and tooltips.
+  The course-level conductor owns guided session entry and embeds this lesson's
   notes-first teaching flow when it is the next available path step. In Edit mode, the card
   panel's **New card** is the single way to add cards: it opens the card editor, whose type
   picker keeps **Import cards** beside it and reveals the rarer types, **Sequence**, **Image

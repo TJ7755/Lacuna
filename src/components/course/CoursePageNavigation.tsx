@@ -18,7 +18,7 @@ interface CoursePageNavigationProps {
   archived?: boolean;
   trailing?: ReactNode;
   /** Show the course name in place of the back link. */
-  identity?: { name: string };
+  identity?: { name: string; back?: boolean };
   /** Hide the identity while the page's own title already names the course. */
   identityHidden?: boolean;
   className?: string;
@@ -85,6 +85,7 @@ export function CoursePageNavigation({
             identityHidden && 'pointer-events-none invisible',
           )}
         >
+          {identity.back && <ChevronLeftIcon width={16} height={16} className="shrink-0" />}
           <span data-course-nav-title="" className="truncate">
             {identity.name}
           </span>

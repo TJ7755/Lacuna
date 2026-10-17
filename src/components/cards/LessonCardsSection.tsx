@@ -68,12 +68,13 @@ export function LessonCardsSection({
 
   if (lessonCards.length === 0) return null;
 
-  return (
-    <section className={className}>
-      <h2 className="mb-4 font-display text-lg font-semibold tracking-tight text-ink">
-        Manage <span className="text-ink-faint">({lessonCards.length})</span>
-      </h2>
-
+  const heading = (
+    <h2 className="font-display text-lg font-semibold tracking-tight text-ink">
+      Manage <span className="text-ink-faint">({lessonCards.length})</span>
+    </h2>
+  );
+  const controls = (
+    <>
       <LessonAnswerModeControl courseId={courseId} lessonId={lessonId} />
 
       {pendingUnlink && (
@@ -87,15 +88,23 @@ export function LessonCardsSection({
           />
         </div>
       )}
+    </>
+  );
 
+  return (
+    <section className={className}>
       {links === undefined || !lessonSchedulingConfig ? (
         // Membership determines whether a row may delete the underlying card. Never
         // render destructive controls until that membership query has resolved.
-        <div className="space-y-3" aria-label="Loading lesson cards">
-          {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
-            <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
-          ))}
-        </div>
+        <>
+          <div className="mb-2">{heading}</div>
+          {controls}
+          <div className="space-y-3" aria-label="Loading lesson cards">
+            {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
+              <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
+            ))}
+          </div>
+        </>
       ) : (
         <CardList
           courseId={courseId}
@@ -106,7 +115,9 @@ export function LessonCardsSection({
             primaryLessonId: lessonId,
             importTargetName: lessonName,
           })}
-          hideHeader
+          heading={heading}
+          beforeCards={controls}
+          compactMetadata
           onEditCard={(card) =>
             onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/${card.id}/edit`)
           }

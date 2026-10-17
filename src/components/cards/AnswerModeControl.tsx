@@ -97,7 +97,7 @@ export function LessonAnswerModeControl({
     }
   }
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <p className="text-sm text-ink">Answer by</p>
       <AnswerModeChoices
         value={lesson.answerMode ?? 'reveal'}

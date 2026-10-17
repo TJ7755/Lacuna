@@ -303,6 +303,13 @@ describe('LessonView View mode', () => {
     expect(mockUpdateLesson).not.toHaveBeenCalled();
   });
 
+  it('marks the course link as the route back from a lesson', () => {
+    renderPage();
+    const back = screen.getByRole('link', { name: 'Test course' });
+    expectAppDestination(back, '/course/course-1');
+    expect(back.querySelector('svg')).not.toBeNull();
+  });
+
   it('offers the shared Edit mode on a normal lesson route', () => {
     renderPage();
 
@@ -331,7 +338,10 @@ describe('LessonView View mode', () => {
     renderPage();
     expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeInTheDocument();
     expect(screen.getByText('front')).toBeInTheDocument();
-    expect(screen.getAllByText('Front / back').length).toBeGreaterThan(0);
+    expect(screen.getByRole('img', { name: 'Front / back' })).toHaveAttribute(
+      'title',
+      'Front / back',
+    );
     expect(screen.getAllByText('New').length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Edit card' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'New card' })).not.toBeInTheDocument();
