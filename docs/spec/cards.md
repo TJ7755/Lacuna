@@ -25,6 +25,15 @@ this device) and are skipped inside code. Tables render inside a scrolling card
 wrapper. Lesson notes use the same engine with `allowEmbeds`; the lesson workspace
 is `max-w-4xl` so diagrams and tables stay legible.
 
+Study-session note sections start their mouse disclosure on press; keyboard and touch
+use native click activation. Each section owns its open state and retains its rendered
+body, diagrams and annotation drafts while closed. Closed content is inert and hidden
+from assistive technology. Shared retained disclosures cache their natural height and
+observe content resizes, keeping measurement and Markdown/Mermaid work out of toggles.
+The expansion spring follows motion speed and becomes instant with reduced motion.
+Concurrent Mermaid renders and theme updates use distinct SVG IDs so one diagram cannot
+remove another. The development server pre-bundles Mermaid's CommonJS dependencies.
+
 The `MarkdownView` component is backed by a bounded LRU parse cache (parsed HTML
 cached by source string, with five-minute stale eviction and an LRU fallback), so
 re-renders and remounts are O(1) lookups while an entry remains cached; an evicted source
@@ -143,7 +152,6 @@ a failed write leaves both the editor and its draft intact.
 Questions are post-instruction application practice. They do not appear in the Card editor, lesson
 Card study or Course path. Deleting a Question removes the definition and relationship set but
 retains its Attempt receipts as personal evidence.
-
 
 [Specification index](../SPEC.md)
 

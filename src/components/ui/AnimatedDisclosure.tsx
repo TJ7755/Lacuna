@@ -1,4 +1,5 @@
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
 import { expandingActionSpring } from './motion';
@@ -32,30 +33,58 @@ export function AnimatedDisclosure({
   const enabled = multiplier > 0;
 
   if (retainContent) {
-    return (
-      <motion.div
-        inert={!open}
-        aria-hidden={!open || undefined}
-        initial={false}
-        animate={{
-          height: open ? 'auto' : 0,
-          opacity: open ? 1 : 0,
-          overflow: 'hidden',
-          transitionEnd: { overflow: open ? 'visible' : 'hidden' },
-        }}
-        transition={animatedDisclosureTiming(multiplier)}
-        onAnimationComplete={props.onAnimationComplete}
-        className={cn('overflow-hidden', props.className)}
-      >
-        <div className={cn('flow-root', props.innerClassName)}>{props.children}</div>
-      </motion.div>
-    );
+    return <RetainedDisclosure {...props} open={open} multiplier={multiplier} />;
   }
 
   return (
     <AnimatePresence initial={initial}>
       {open && <DisclosureContent {...props} enabled={enabled} multiplier={multiplier} />}
     </AnimatePresence>
+  );
+}
+
+function RetainedDisclosure({
+  open,
+  multiplier,
+  children,
+  className,
+  innerClassName,
+  onAnimationComplete,
+}: AnimatedDisclosureProps & { multiplier: number }) {
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState<number>();
+
+  useLayoutEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    const measure = () => setHeight(inner.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <motion.div
+      inert={!open}
+      aria-hidden={!open || undefined}
+      initial={false}
+      animate={{
+        // Measuring auto height in Motion adds a measurement frame on every toggle.
+        // Keep the natural height current even while the retained panel is closed.
+        height: open ? (height ?? 'auto') : 0,
+        opacity: open ? 1 : 0,
+        overflow: 'hidden',
+        transitionEnd: { overflow: open ? 'visible' : 'hidden' },
+      }}
+      transition={animatedDisclosureTiming(multiplier)}
+      onAnimationComplete={onAnimationComplete}
+      className={cn('overflow-hidden', className)}
+    >
+      <div ref={innerRef} className={cn('flow-root', innerClassName)}>
+        {children}
+      </div>
+    </motion.div>
   );
 }
 

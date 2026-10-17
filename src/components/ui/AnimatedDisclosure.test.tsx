@@ -1,12 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnimatedDisclosure, animatedDisclosureTiming } from './AnimatedDisclosure';
 import { expandingActionSpring } from './motion';
 import { domAnimation, LazyMotion } from 'motion/react';
 
+const motion = vi.hoisted(() => ({ multiplier: 1 }));
+
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => motion.multiplier,
 }));
 
 describe('animatedDisclosureTiming', () => {
@@ -23,6 +25,55 @@ describe('animatedDisclosureTiming', () => {
 });
 
 describe('AnimatedDisclosure', () => {
+  it('caches retained height between toggles and updates it when closed content resizes', async () => {
+    let measuredHeight = 120;
+    let resize = () => {};
+    const measure = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(() => ({ height: measuredHeight }) as DOMRect);
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resize = callback;
+        }
+        observe() {}
+        disconnect = disconnect;
+      },
+    );
+    motion.multiplier = 0;
+    try {
+      const view = (open: boolean) => (
+        <LazyMotion features={domAnimation}>
+          <AnimatedDisclosure open={open} retainContent>
+            <p>Measured body</p>
+          </AnimatedDisclosure>
+        </LazyMotion>
+      );
+      const { rerender, unmount } = render(view(true));
+      const panel = screen.getByText('Measured body').parentElement!.parentElement!;
+      await waitFor(() => expect(panel.style.height).toBe('120px'));
+      measure.mockClear();
+      rerender(view(false));
+      await waitFor(() => expect(panel.style.height).toBe('0px'));
+      rerender(view(true));
+      await waitFor(() => expect(panel.style.height).toBe('120px'));
+      expect(measure).not.toHaveBeenCalled();
+      rerender(view(false));
+      measuredHeight = 240;
+      act(() => resize());
+      rerender(view(true));
+      await waitFor(() => expect(panel.style.height).toBe('240px'));
+      unmount();
+      expect(disconnect).toHaveBeenCalledOnce();
+    } finally {
+      motion.multiplier = 1;
+      measure.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('makes departing controls inert immediately and revives them when reopened during exit', async () => {
     const view = (open: boolean) => (
       <LazyMotion features={domAnimation}>
