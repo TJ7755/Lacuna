@@ -174,10 +174,10 @@ vi.mock('../db/assessmentRepository', () => ({
   deleteCourseAssessment: mockDeleteCourseAssessment,
 }));
 
-vi.mock('../state/motionSpeed', () => ({
-  useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
-}));
+vi.mock('../state/motionSpeed', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../state/motionSpeed')>();
+  return { ...actual, useMotionSpeed: () => ['fast'] };
+});
 
 const mockOpenStudySheet = vi.hoisted(() => vi.fn());
 vi.mock('../components/learn/StudySheetContext', () => ({
