@@ -41,7 +41,7 @@ describe('ReviewHeatmap', () => {
   it.each([7, 30])('uses the available width for a compact %i-day strip', (days) => {
     render(<ReviewHeatmap cards={[]} days={days} />);
     const grid = screen.getByRole('grid');
-    expect(grid).toHaveStyle({ gridTemplateColumns: `repeat(${days}, minmax(0, 1fr))` });
+    expect(grid).toHaveStyle({ gridTemplateColumns: `repeat(${days}, minmax(44px, 1fr))` });
     expect(grid.style.maxWidth).toBe('');
     const cells = screen.getAllByRole('gridcell');
     fireEvent.focus(cells[0]);
@@ -50,10 +50,10 @@ describe('ReviewHeatmap', () => {
     expect(cells[1]).toHaveStyle({ gridRow: '2' });
   });
 
-  it('fits a 30-day strip on a phone and keeps its last date labels apart', () => {
+  it('gives each day a distinct 44px target and keeps its last date labels apart', () => {
     render(<ReviewHeatmap cards={[]} days={30} />);
     const grid = screen.getByRole('grid');
-    expect(parseInt(grid.style.minWidth, 10)).toBeLessThanOrEqual(240);
+    expect(parseInt(grid.style.minWidth, 10)).toBeGreaterThanOrEqual(30 * 44);
     const columns = [...grid.querySelectorAll<HTMLElement>('span[aria-hidden="true"]')]
       .map((label) => Number(label.style.gridColumn))
       .filter(Number.isFinite);

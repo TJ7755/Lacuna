@@ -42,7 +42,7 @@ export function ArchivedCourses() {
   }, [archived]);
 
   return (
-    <div className={`${PAGE_FRAME} py-10`}>
+    <div className={`${PAGE_FRAME} pb-10 pt-6 md:pt-8`}>
       <header className="mb-8">
         <h1
           ref={heading}
@@ -55,7 +55,7 @@ export function ArchivedCourses() {
 
       {archived === undefined ? null : archived.length === 0 ? (
         // The shared card surface, as every page's empty state is, rather than a ruled line.
-        <div className={`${SECTION_CARD_SURFACE_CLASS} px-7 py-[54px] text-center`}>
+        <div className={`${SECTION_CARD_SURFACE_CLASS} px-6 py-12 text-center`}>
           <h2 className="font-display text-2xl">No archived courses</h2>
           <p className="mt-3 text-sm text-ink-soft">
             Courses you archive from Today wait here, ready to restore.

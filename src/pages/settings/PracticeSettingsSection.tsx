@@ -46,8 +46,11 @@ export function PracticeSettingsSection({
 }: PracticeSettingsSectionProps) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="block text-sm text-ink-soft">
-        <Toggle checked={autoPractice} onChange={onAutoPracticeChange} label="Auto-practice" />
+      <div className="block text-sm font-semibold text-ink">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm font-semibold text-ink">Auto-practice</span>
+          <Toggle checked={autoPractice} onChange={onAutoPracticeChange} ariaLabel="Auto-practice" />
+        </div>
         <span className={fieldHintClassName}>
           Automatically inserts practice nodes between lessons when the predicted time to clear your
           backlog crosses a threshold.
@@ -56,11 +59,11 @@ export function PracticeSettingsSection({
 
       <InlineSettingsDisclosure
         className="group ml-3 sm:ml-4"
-        headerClassName="flex cursor-pointer items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        headerClassName="flex min-h-11 items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         header={
           <>
             <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">Advanced practice timing</span>
+              <span className="block text-sm font-semibold text-ink">Advanced practice timing</span>
               <span className="mt-1 block text-xs leading-5 text-ink-faint">
                 Lacuna places practice from workload and exam proximity. Open this to tune the
                 thresholds and maximum gap.

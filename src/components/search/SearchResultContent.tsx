@@ -121,7 +121,7 @@ export const SearchResultContent = memo(function SearchResultContent({
             <HighlightedText text={hit.contextName} query={query} />
           </span>
           {question && (
-            <span className={compact ? '' : 'rounded-lg border border-line px-2 py-0.5'}>
+            <span className={compact ? '' : 'rounded-full border border-line px-2 py-0.5'}>
               Question
             </span>
           )}

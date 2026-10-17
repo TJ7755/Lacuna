@@ -1,3 +1,4 @@
+import { inputFrameClassName } from '../../components/ui/Field';
 import { useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
@@ -137,7 +138,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                     if (e.key === 'Enter') void commitRename();
                     if (e.key === 'Escape') setEditingId(null);
                   }}
-                  className="min-w-0 flex-[1_1_8rem] rounded-lg border border-line-strong bg-surface px-3 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                  className={`min-h-11 min-w-0 flex-[1_1_8rem] ${inputFrameClassName} text-sm`}
                 />
               ) : (
                 <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">

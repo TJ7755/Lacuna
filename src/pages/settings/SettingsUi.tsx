@@ -6,17 +6,13 @@ import { SECTION_CARD_SURFACE_CLASS } from '../../components/ui/SectionCard';
 import {
   createContext,
   useContext,
-  useId,
-  useLayoutEffect,
   useRef,
   useState,
-  type KeyboardEvent,
   type ReactNode,
-  type RefObject,
 } from 'react';
-import { LayoutGroup, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { cn } from '../../components/ui/cn';
-import { MOTION_EASING, scaledSpring } from '../../components/ui/motion';
+import { MOTION_EASING } from '../../components/ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 /** Card surface shared by every settings section: a flat surface with a hairline border. */
@@ -76,164 +72,7 @@ export function SettingsCard({
   );
 }
 
-export interface SegmentedOption<T extends string> {
-  value: T;
-  label: ReactNode;
-  /** Accessible name when the visible label is only an icon or a glyph. */
-  ariaLabel?: string;
-}
-
-/**
- * Pill track with a white pill that slides (and springs) to the chosen option.
- * Only selection changes move the indicator; text-size reflow stays immediate.
- * A single radiogroup with roving focus: arrows, Home and End move the choice.
- */
-export function SegmentedPills<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-  describedBy,
-  className,
-  animateSelection = true,
-}: {
-  label: string;
-  value: T;
-  options: readonly SegmentedOption<T>[];
-  onChange: (value: T) => void;
-  describedBy?: string;
-  className?: string;
-  /** Text-size changes reflow immediately, including their selection indicator. */
-  animateSelection?: boolean;
-}) {
-  const [motionSpeed] = useMotionSpeed();
-  const multiplier = speedMultiplier(motionSpeed);
-  const groupId = useId();
-  const buttons = useRef<Array<HTMLButtonElement | null>>([]);
-  const selected = options.findIndex((option) => option.value === value);
-  const track = useRef<HTMLDivElement>(null);
-  const stacked = useStackWhenCramped(track, buttons);
-
-  function choose(index: number) {
-    onChange(options[index].value);
-    buttons.current[index]?.focus();
-  }
-
-  function onKeyDown(event: KeyboardEvent, index: number) {
-    let next: number | null = null;
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      next = (index - 1 + options.length) % options.length;
-    } else if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      next = (index + 1) % options.length;
-    } else if (event.key === 'Home') {
-      next = 0;
-    } else if (event.key === 'End') {
-      next = options.length - 1;
-    }
-    if (next === null) return;
-    event.preventDefault();
-    choose(next);
-  }
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      aria-describedby={describedBy}
-      ref={track}
-      data-stacked={stacked || undefined}
-      className={cn(
-        'bg-ink/[0.06] px-1',
-        stacked ? 'flex w-full flex-col rounded-[1.375rem]' : 'inline-flex rounded-full',
-        className,
-      )}
-    >
-      <LayoutGroup id={groupId}>
-        {options.map((option, index) => {
-          const active = index === selected;
-          return (
-            <button
-              key={option.value}
-              ref={(node) => {
-                buttons.current[index] = node;
-              }}
-              type="button"
-              data-press={animateSelection ? undefined : ''}
-              role="radio"
-              aria-checked={active}
-              aria-label={option.ariaLabel}
-              tabIndex={active ? 0 : -1}
-              onClick={() => onChange(option.value)}
-              onKeyDown={(event) => onKeyDown(event, index)}
-              className={cn(
-                !animateSelection && 'scale-100!',
-                'relative inline-flex h-11 min-w-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-                active ? 'text-ink' : 'text-ink-soft hover:text-ink',
-              )}
-            >
-              {active && (
-                <motion.span
-                  layoutId={animateSelection && multiplier > 0 ? 'segmented-pill' : undefined}
-                  layoutDependency={value}
-                  aria-hidden="true"
-                  transition={scaledSpring(multiplier, 520, 36)}
-                  className="absolute inset-x-0 inset-y-1 rounded-full bg-surface shadow-[0_1px_3px_hsl(var(--ink)/0.14)]"
-                />
-              )}
-              <span className="relative">{option.label}</span>
-            </button>
-          );
-        })}
-      </LayoutGroup>
-    </div>
-  );
-}
-
-/**
- * True when the options cannot sit side by side in the space beside or beneath
- * their label, so the track stacks them vertically instead of overflowing its
- * card. Measured from the labels, so it follows the text-size setting too.
- */
-function useStackWhenCramped(
-  track: RefObject<HTMLDivElement | null>,
-  buttons: RefObject<Array<HTMLButtonElement | null>>,
-): boolean {
-  const [stacked, setStacked] = useState(false);
-
-  useLayoutEffect(() => {
-    const element = track.current;
-    const parent = element?.parentElement;
-    if (!element || !parent || typeof ResizeObserver === 'undefined') return;
-    const px = (value: string) => parseFloat(value) || 0;
-
-    const measure = () => {
-      const trackStyle = getComputedStyle(element);
-      let needed = px(trackStyle.paddingLeft) + px(trackStyle.paddingRight);
-      for (const button of buttons.current) {
-        const label = button?.lastElementChild;
-        if (!button || !label) continue;
-        const style = getComputedStyle(button);
-        const content =
-          label.getBoundingClientRect().width + px(style.paddingLeft) + px(style.paddingRight);
-        needed += Math.max(px(style.minWidth), content);
-      }
-      const parentStyle = getComputedStyle(parent);
-      const available =
-        parent.clientWidth - px(parentStyle.paddingLeft) - px(parentStyle.paddingRight);
-      setStacked(needed > available + 0.5);
-    };
-
-    const observer = new ResizeObserver(measure);
-    observer.observe(parent);
-    for (const button of buttons.current) {
-      if (button?.lastElementChild) observer.observe(button.lastElementChild);
-    }
-    measure();
-    return () => observer.disconnect();
-  }, [track, buttons]);
-
-  return stacked;
-}
+export { SegmentedPills, type SegmentedOption } from '../../components/ui/SegmentedPills';
 
 /** The app-wide pill switch; one implementation lives in components/ui/Toggle. */
 export { Toggle as PillSwitch } from '../../components/ui/Toggle';
@@ -254,9 +93,9 @@ export function SettingRow({
     <div
       className={cn('flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-3', className)}
     >
-      <span id={labelId} className="min-w-0 flex-1 basis-48 font-semibold text-ink">
+      <div id={labelId} className="min-w-0 flex-1 basis-48 font-semibold text-ink">
         {label}
-      </span>
+      </div>
       {children}
     </div>
   );

@@ -1,3 +1,4 @@
+import { scaledSpring } from '../ui/motion';
 import { m as motion } from 'motion/react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -134,13 +135,11 @@ export function TodayQueue({
             {row.state === 'done' ? (
               <span className="inline-flex items-center gap-2 text-sm font-semibold text-positive">
                 <motion.span
-                  className="grid h-6 w-6 place-items-center rounded-full bg-positive text-surface"
+                  className="grid h-6 w-6 place-items-center rounded-full bg-positive text-paper"
                   initial={multiplier > 0 ? { scale: 0, rotate: -90 } : false}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{
-                    type: 'spring',
-                    stiffness: 500,
-                    damping: 15,
+                    ...scaledSpring(multiplier, 500, 15),
                     delay: (arrival + 0.2) * multiplier,
                   }}
                 >

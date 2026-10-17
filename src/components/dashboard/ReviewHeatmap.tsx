@@ -133,6 +133,10 @@ export function ReviewHeatmap({
     observer.observe(grid);
     return () => observer.disconnect();
   }, [compact, days]);
+  useLayoutEffect(() => {
+    const scrollport = gridRef.current?.parentElement;
+    if (scrollport) scrollport.scrollLeft = scrollport.scrollWidth;
+  }, [days]);
   const tooltipRef = useRef<HTMLSpanElement>(null);
 
   useLayoutEffect(() => {
@@ -198,14 +202,13 @@ export function ReviewHeatmap({
           ref={gridRef}
           role="grid"
           aria-label={`Review activity over the last ${days} days`}
-          className={compact ? 'grid gap-[2px] sm:gap-[4px]' : 'grid gap-[4px]'}
+          className="grid gap-1"
           style={{
             gridTemplateColumns: compact
-              ? `repeat(${days}, minmax(0, 1fr))`
-              : `28px repeat(${columns.length}, minmax(0, 1fr))`,
-            // A daily strip fits a phone's card (30 days at 8px), so today is never scrolled away.
-            minWidth: compact ? days * 8 : Math.min(480, 28 + columns.length * 24),
-            maxWidth: compact ? undefined : 28 + columns.length * 32,
+              ? `repeat(${days}, minmax(44px, 1fr))`
+              : `28px repeat(${columns.length}, minmax(44px, 1fr))`,
+            minWidth: compact ? days * 48 - 4 : 28 + columns.length * 48,
+            maxWidth: compact ? undefined : 28 + columns.length * 48,
           }}
         >
           {compact &&
@@ -305,16 +308,16 @@ export function ReviewHeatmap({
                   }}
                   initial={m > 0 ? { opacity: 0, scale: 0.5 } : false}
                   animate={revealed ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
-                  whileHover={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
-                  whileFocus={m > 0 ? { scale: compact ? 1.035 : 1.18 } : undefined}
+                  whileHover={m > 0 ? { scale: 1.02 } : undefined}
+                  whileFocus={m > 0 ? { scale: 1.02 } : undefined}
                   data-press=""
-                  whileTap={m > 0 ? { scale: 0.9 } : undefined}
+                  whileTap={m > 0 ? { scale: 0.96 } : undefined}
                   transition={{
                     duration: 0.3 * m,
                     delay,
                     ease: MOTION_EASING.emphasised,
                   }}
-                  className={`${compact ? 'h-9' : 'aspect-square'} rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-accent-ink`}
+                  className="min-h-11 min-w-11 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                   style={{ ...placement, ...cellStyle(cell) }}
                 />
               );
@@ -328,7 +331,7 @@ export function ReviewHeatmap({
               ref={tooltipRef}
               role="tooltip"
               aria-hidden="true"
-              className="pointer-events-none fixed z-50 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] text-paper shadow-lg"
+              className="pointer-events-none fixed z-50 whitespace-nowrap rounded-xl bg-ink px-3 py-2 text-xs text-paper"
               style={{
                 position: 'fixed',
                 top: tooltip.rect.bottom + 8,

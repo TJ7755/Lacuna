@@ -1,3 +1,4 @@
+import { scaledSpring } from '../ui/motion';
 import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
@@ -396,7 +397,7 @@ export function ForecastChart({
                     style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                     transition={
                       draw
-                        ? { type: 'spring', stiffness: 520, damping: 14, delay: (delay + 1) * multiplier }
+                        ? { ...scaledSpring(multiplier, 520, 14), delay: (delay + 1) * multiplier }
                         : { duration: 0 }
                     }
                   />

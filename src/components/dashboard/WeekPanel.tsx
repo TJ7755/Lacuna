@@ -1,3 +1,4 @@
+import { scaledSpring } from '../ui/motion';
 import { m as motion } from 'motion/react';
 import { CardsIcon, FlameIcon } from '../ui/icons';
 import { CountUp } from '../ui/Celebration';
@@ -72,9 +73,7 @@ export function WeekPanel({
                   initial={multiplier > 0 && done ? { scale: 0 } : false}
                   animate={{ scale: 1 }}
                   transition={{
-                    type: 'spring',
-                    stiffness: 600,
-                    damping: 16,
+                    ...scaledSpring(multiplier, 600, 16),
                     delay: (0.5 + index * 0.06) * multiplier,
                   }}
                 />

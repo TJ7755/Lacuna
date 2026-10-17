@@ -135,7 +135,7 @@ export function TouchMenuSheet({
         {/* Drag handle — wide touch target, springy drag-to-close. */}
         <div className="mb-5 flex justify-center">
           <div
-            className="flex h-8 w-20 cursor-grab items-center justify-center active:cursor-grabbing"
+            className="flex h-11 w-20 cursor-grab items-center justify-center active:cursor-grabbing"
             onPointerDown={handleDragHandleDown}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

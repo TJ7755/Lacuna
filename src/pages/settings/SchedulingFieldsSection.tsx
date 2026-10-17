@@ -1,6 +1,6 @@
 import { Input, fieldLabelClassName, fieldHintClassName } from '../../components/ui/Field';
 import { Toggle } from '../../components/ui/Toggle';
-import { ChevronDownIcon } from '../../components/ui/icons';
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 
 export interface SchedulingFieldsSectionProps {
   /** Select a group for course settings; other callers retain the complete form. */
@@ -91,13 +91,13 @@ export function SchedulingFieldsSection({
       <div className="block text-sm text-ink-soft">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="font-medium">Interval fuzz</div>
+            <div className="text-sm font-semibold text-ink">Interval fuzz</div>
             <span className={fieldHintClassName}>
               Adds a small random variation to scheduled intervals so cards do not cluster on the
               same day. Recommended on.
             </span>
           </div>
-          <Toggle checked={enableFuzz} onChange={onEnableFuzzChange} label="Fuzz intervals" />
+          <Toggle checked={enableFuzz} onChange={onEnableFuzzChange} ariaLabel="Fuzz intervals" />
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export function SchedulingFieldsSection({
       </label>
 
       <div className="block text-sm text-ink-soft">
-        <div className="mb-2 font-medium">Leech detection</div>
+        <div className="mb-2 text-sm font-semibold text-ink">Leech detection</div>
         <div className="flex flex-col gap-3">
           <label className={fieldLabelClassName}>
             Leech threshold
@@ -285,24 +285,13 @@ export function SchedulingFieldsSection({
       {section === 'advanced' ? (
         advancedFields
       ) : section !== 'workload' ? (
-        <details className="group pt-2">
-          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink [&::-webkit-details-marker]:hidden">
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">Advanced scheduling</span>
-              <span className="mt-1 block text-xs leading-5 text-ink-faint">
-                Tune intervals, learning steps and leeches.
-              </span>
-            </span>
-            <ChevronDownIcon
-              width={18}
-              height={18}
-              aria-hidden="true"
-              className="mt-0.5 shrink-0 text-ink-faint transition-transform group-open:rotate-180"
-            />
-          </summary>
-
+        <InlineSettingsDisclosure
+          className="pt-2"
+          headerClassName="flex min-h-11 items-center justify-between gap-4 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          header={<span className="text-sm font-semibold text-ink">Advanced scheduling</span>}
+        >
           {advancedFields}
-        </details>
+        </InlineSettingsDisclosure>
       ) : null}
     </>
   );
