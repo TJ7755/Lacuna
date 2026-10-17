@@ -5,6 +5,7 @@ import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type * as MotionReact from 'motion/react';
+import type * as MarkdownEditorModule from '../components/markdown/MarkdownEditor';
 import { CardEditor } from './CardEditor';
 import type { Card, Course, LegacyDeckRecord, Lesson, Occlusion, Sequence } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
@@ -74,7 +75,7 @@ vi.mock('../db/cardRepository', () => ({
 // Stub the Markdown editor and viewer: fast, focuses the test on CardEditor's own
 // wiring, mirroring SequenceEditor.test.tsx's MarkdownEditor stub.
 vi.mock('../components/markdown/MarkdownEditor', async () => {
-  const actual = await vi.importActual<typeof import('../components/markdown/MarkdownEditor')>(
+  const actual = await vi.importActual<typeof MarkdownEditorModule>(
     '../components/markdown/MarkdownEditor',
   );
   return {
