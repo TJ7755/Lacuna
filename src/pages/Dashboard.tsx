@@ -228,6 +228,7 @@ export function Dashboard() {
             </span>
           </p>
         )}
+        <SyncStatus />
         <div className="ml-auto flex shrink-0 gap-2">
           <div inert={importing}>
             <NewCourseControl open={creatingCourse && !importing} onOpenChange={setCreatingCourse} />
@@ -235,8 +236,6 @@ export function Dashboard() {
           <ImportControl onOpen={() => setCreatingCourse(false)} />
         </div>
       </div>
-
-      <SyncStatus />
 
       {!rows || !ready ? (
         <DelayedFallback>

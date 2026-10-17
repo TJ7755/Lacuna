@@ -71,7 +71,11 @@ form returns focus to the setup choices; success focuses Show pairing QR after s
 after joining, rather than the removal action. Settings
 exposes last successful sync, encrypted/plaintext snapshot sizes, the last error, a deliberate Sync
 now action, local unpairing and a separately confirmed channel purge. The dashboard shows a
-`Synced … · Open sync` pill polling the same state.
+compact sync link beside Today's header stats, polling the same state and opening Settings.
+Successful syncs show a dot with `Synced …` on larger screens; the accessible name and
+title retain `Synced … · Open sync` at every width. `Not yet synced` and `Sync failed`
+remain visibly labelled in warning and error treatments, including on phones. An unpaired
+device shows no sync indicator.
 
 The custom relay domain aliases the original Vercel relay and Blob store. Saved pairings
 and share write credentials retain their original relay URL; the legacy endpoint stays
