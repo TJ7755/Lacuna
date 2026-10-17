@@ -1,3 +1,4 @@
+import { AnimatePresence } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { useToast } from '../ui/Toast';
 import { db } from '../../db/schema';
@@ -130,15 +131,19 @@ export function McpBridgeController() {
     };
   }, [notify]);
 
-  if (!current) return null;
   return (
-    <McpConsentPrompt
-      request={current}
-      courseName={label}
-      onDecision={(approved) => {
-        window.electronAPI?.mcp?.replyConsent({ id: current.id, approved });
-        setQueue((items) => items.slice(1));
-      }}
-    />
+    <AnimatePresence mode="wait">
+      {current && (
+        <McpConsentPrompt
+          key={current.id}
+          request={current}
+          courseName={label}
+          onDecision={(approved) => {
+            window.electronAPI?.mcp?.replyConsent({ id: current.id, approved });
+            setQueue((items) => items.slice(1));
+          }}
+        />
+      )}
+    </AnimatePresence>
   );
 }

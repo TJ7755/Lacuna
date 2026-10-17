@@ -9,6 +9,12 @@ import { MOTION_DURATION, MOTION_EASING, scaledSpring } from './motion';
 interface DialogPanelProps {
   /** The dialog's accessible name. */
   label: string;
+  role?: 'dialog' | 'alertdialog';
+  /** Anchored popovers share the surface and motion without a modal overlay. */
+  modal?: boolean;
+  describedBy?: string;
+  testId?: string;
+  tabIndex?: number;
   /** The focus trap's container ref (from `useFocusTrap`). */
   trapRef: RefObject<HTMLDivElement | null>;
   /** Dialog shortcuts, including Escape. Tab remains with the focus trap and fields. */
@@ -28,11 +34,16 @@ interface DialogPanelProps {
 }
 
 /**
- * A centred modal dialog: a fading overlay with a blurred backdrop and a card-surface panel
+ * A shared dialog surface, centred over a backdrop or anchored by its caller,
  * that springs into place. Motion follows the user's motion-speed setting.
  */
 export function DialogPanel({
   label,
+  role = 'dialog',
+  modal = true,
+  describedBy,
+  testId,
+  tabIndex,
   trapRef,
   onKeyDown,
   onBackdropClick,
@@ -45,12 +56,51 @@ export function DialogPanel({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
   const present = useIsPresent();
+  const panel = (
+    <motion.div
+      ref={!modal ? trapRef : undefined}
+      inert={!present}
+      aria-hidden={!present || undefined}
+      onKeyDown={
+        !modal
+          ? (event) => {
+              if (event.key !== 'Tab') onKeyDown(event);
+            }
+          : undefined
+      }
+      role={role}
+      aria-modal={modal || undefined}
+      aria-label={label}
+      aria-describedby={describedBy}
+      data-testid={testId}
+      tabIndex={tabIndex}
+      initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
+      layout={layout && m > 0 ? 'position' : undefined}
+      transition={scaledSpring(m, 320, 30)}
+      className={cn(
+        // The same flat hairline surface as page cards and Quick search.
+        'flex min-h-0 flex-col overflow-hidden rounded-3xl bg-surface card-surface',
+        modal
+          ? 'relative z-10 m-auto max-h-full w-full'
+          : 'max-h-[calc(100dvh-7rem)] overflow-y-auto',
+        className,
+      )}
+    >
+      {children}
+    </motion.div>
+  );
+  if (!modal) return panel;
   return (
     <motion.div
       ref={trapRef}
       inert={!present}
       aria-hidden={!present || undefined}
-      className={cn('fixed inset-0 z-50 flex flex-col', overlayClassName)}
+      className={cn(
+        'fixed inset-0 z-50 flex flex-col pt-[max(1rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]',
+        overlayClassName,
+      )}
       initial={m > 0 ? { opacity: 0 } : false}
       animate={{ opacity: 1 }}
       exit={m > 0 ? { opacity: 0 } : undefined}
@@ -61,23 +111,7 @@ export function DialogPanel({
       }}
     >
       <ModalBackdrop shade={50} {...backdropProps} onClick={onBackdropClick} />
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-label={label}
-        initial={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : false}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={m > 0 ? { opacity: 0, y: 16, scale: 0.98 } : undefined}
-        layout={layout && m > 0 ? 'position' : undefined}
-        transition={scaledSpring(m, 320, 30)}
-        className={cn(
-          // The same flat hairline surface as page cards and Quick search.
-          'relative z-10 m-auto flex w-full flex-col overflow-hidden rounded-3xl bg-surface card-surface',
-          className,
-        )}
-      >
-        {children}
-      </motion.div>
+      {panel}
     </motion.div>
   );
 }
@@ -92,7 +126,7 @@ interface DialogHeaderProps {
 /** A dialog's title row with an optional description and a 44px close button. */
 export function DialogHeader({ title, description, onClose, closeLabel }: DialogHeaderProps) {
   return (
-    <header className="relative flex items-center justify-between gap-4 border-b border-line px-6 py-4">
+    <header className="relative flex shrink-0 items-center justify-between gap-4 border-b border-line px-6 py-4">
       <div>
         <h2 className="font-display text-xl">{title}</h2>
         {description && <p className="mt-1 text-sm text-ink-faint">{description}</p>}

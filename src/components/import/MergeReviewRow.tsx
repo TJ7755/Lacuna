@@ -34,7 +34,7 @@ export function MergeReviewRow({
   const changed = row.fields.filter((field) => field.state !== 'Unchanged');
   const preview = changed[0] ?? row.fields[0];
   return (
-    <li data-merge-row={row.key} className="rounded-2xl bg-surface px-4 py-3">
+    <li data-merge-row={row.key} className="rounded-3xl bg-surface p-5 card-surface">
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0 flex-1 basis-40">
           <div className="flex items-center gap-2">

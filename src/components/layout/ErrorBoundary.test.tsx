@@ -34,8 +34,9 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>,
     );
     expect(screen.getByRole('heading', { name: 'Something went wrong' })).toHaveFocus();
-    expect(screen.getByText('lazy chunk unavailable').closest('details')).not.toHaveAttribute(
-      'open',
+    expect(screen.getByRole('button', { name: 'Technical details' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
     );
     fireEvent.click(screen.getByText('Technical details'));
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostic details' }));

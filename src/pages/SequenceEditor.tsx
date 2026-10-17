@@ -680,10 +680,18 @@ function SequenceEditorSkeleton() {
     <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
       <Skeleton className="mb-3 h-11 w-28 rounded-full" />
       <Skeleton className="mb-8 h-10 w-48" />
-      <div className="flex flex-col gap-5">
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
-        <Skeleton className="h-40 w-full rounded-lg" />
+      <div className="space-y-5">
+        <SectionCard className="space-y-5">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-11 w-full rounded-xl" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-11 w-72 max-w-full rounded-full" />
+        </SectionCard>
+        <SectionCard>
+          <Skeleton className="mb-5 h-6 w-48" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+        </SectionCard>
       </div>
     </div>
   );

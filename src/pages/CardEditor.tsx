@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useCardSaveConfirmation } from './useCardSaveConfirmation';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -413,32 +414,26 @@ export function CardEditor() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent-ink underline">
-          Back to Today
-        </Link>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
   if (lessonMode && lesson === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This lesson could not be found.</p>
-        <Link to={courseId ? `/course/${courseId}` : '/'} className="text-accent-ink underline">
-          {courseId ? 'Back to course' : 'Back to Today'}
-        </Link>
-      </div>
+      <MissingRecord
+        message="This lesson could not be found."
+        to={courseId ? `/course/${courseId}` : '/'}
+      >
+        {courseId ? 'Back to course' : 'Back to Today'}
+      </MissingRecord>
     );
   }
   if (editing && card === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This card could not be found.</p>
-        <Link to={backPath} className="text-accent-ink underline">
-          Back to {backLabel}
-        </Link>
-      </div>
+      <MissingRecord message="This card could not be found." to={backPath}>
+        Back to {backLabel}
+      </MissingRecord>
     );
   }
 

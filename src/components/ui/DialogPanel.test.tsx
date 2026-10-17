@@ -121,6 +121,26 @@ describe('DialogPanel', () => {
     expect(screen.getByText('Changes apply everywhere.')).toBeInTheDocument();
   });
 
+  it('anchors a non-modal dialog without adding a backdrop or viewport overlay', () => {
+    const trapRef = createRef<HTMLDivElement>();
+    render(
+      <DialogPanel
+        modal={false}
+        label="Pomodoro timer"
+        trapRef={trapRef}
+        onKeyDown={vi.fn()}
+        className="absolute right-0 top-12 w-60"
+      >
+        <button>Start</button>
+      </DialogPanel>,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Pomodoro timer' });
+    expect(trapRef.current).toBe(dialog);
+    expect(dialog).not.toHaveAttribute('aria-modal');
+    expect(dialog).toHaveClass('absolute', 'rounded-3xl', 'card-surface');
+    expect(document.querySelector('[data-modal-backdrop]')).toBeNull();
+  });
+
   it('routes keys to the caller and closes from the header button', () => {
     const { onClose, onKeyDown } = renderDialog();
     fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), { key: 'Escape' });

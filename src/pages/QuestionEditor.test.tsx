@@ -124,6 +124,15 @@ describe('QuestionEditor', () => {
     mocks.createFixed.mockResolvedValue(undefined);
   });
 
+  it('offers a working route back when the requested Question no longer exists', async () => {
+    const router = renderEditor('/course/course-1/questions/missing');
+    expect(
+      await screen.findByRole('heading', { name: 'This Question could not be found.' }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('link', { name: 'Questions' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/course/course-1/questions'));
+  });
+
   it('uses the task title without repeating it in a decorative eyebrow', async () => {
     renderEditor();
 

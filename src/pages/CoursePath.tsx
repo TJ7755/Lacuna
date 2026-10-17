@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 // Course path page — renders the ordered sequence of lessons for a course.
 // Route: /course/:courseId
 // British English throughout.
@@ -48,7 +49,6 @@ import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { loadLessonView } from '../routes/loaders';
 import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
-import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 
 const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
 
@@ -303,14 +303,9 @@ export function CoursePath() {
   // Course not found.
   if (course === null || summary === null) {
     return (
-      <div className={`${SECTION_CARD_SURFACE_CLASS} relative overflow-hidden p-10`}>
-        <div className="relative">
-          <p className="mb-4 text-ink-soft">This course could not be found.</p>
-          <Link to="/" className="text-accent-ink underline">
-            Back to Today
-          </Link>
-        </div>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
 

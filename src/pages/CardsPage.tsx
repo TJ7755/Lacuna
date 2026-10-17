@@ -1,3 +1,5 @@
+import { StudyDrawing } from '../components/ui/StudyDrawing';
+import { MissingRecord } from '../components/course/MissingRecord';
 import { CreateButton } from '../components/ui/CreateButton';
 import { useScopedFindShortcut } from '../hooks/useScopedFindShortcut';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -177,12 +179,9 @@ export function CardsPage() {
   }
   if (course === null) {
     return (
-      <div className="p-10">
-        <p className="mb-4 text-ink-soft">This course could not be found.</p>
-        <Link to="/" className="text-accent-ink underline">
-          Back to Today
-        </Link>
-      </div>
+      <MissingRecord message="This course could not be found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
 
@@ -231,11 +230,13 @@ export function CardsPage() {
       )}
 
       {isEmpty ? (
-        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+        <div className={`${BUCKET_CLASS} p-6 text-center md:p-8`}>
+          <StudyDrawing kind="course" className="mx-auto mb-5" />
           <p className="text-ink-soft">This course has no cards yet.</p>
         </div>
       ) : noMatches ? (
-        <div className={`${BUCKET_CLASS} py-16 text-center`}>
+        <div className={`${BUCKET_CLASS} p-6 text-center md:p-8`}>
+          <StudyDrawing kind="search" className="mx-auto mb-5" />
           <p className="text-ink-soft">
             {search.trim() ? <>No cards match &ldquo;{search}&rdquo;.</> : 'No cards match.'}
           </p>

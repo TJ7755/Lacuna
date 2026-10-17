@@ -1,3 +1,4 @@
+import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -55,7 +56,8 @@ export function ArchivedCourses() {
 
       {archived === undefined ? null : archived.length === 0 ? (
         // The shared card surface, as every page's empty state is, rather than a ruled line.
-        <div className={`${SECTION_CARD_SURFACE_CLASS} px-7 py-[54px] text-center`}>
+        <div className={`${SECTION_CARD_SURFACE_CLASS} p-6 text-center md:p-8`}>
+          <StudyDrawing kind="course" className="mx-auto mb-5" />
           <h2 className="font-display text-2xl">No archived courses</h2>
           <p className="mt-3 text-sm text-ink-soft">
             Courses you archive from Today wait here, ready to restore.

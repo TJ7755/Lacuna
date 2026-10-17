@@ -1,3 +1,5 @@
+import { AnimatePresence, useIsPresent } from 'motion/react';
+import { DialogPanel } from '../ui/DialogPanel';
 import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateCourse } from '../../db/courseRepository';
@@ -30,11 +32,7 @@ export function FinalExamLifecycleController() {
     if (!courses) return;
     const currentTime = Date.now();
     const nearest = courses.reduce<number | undefined>((current, course) => {
-      if (
-        course.archived ||
-        course.examDate === undefined ||
-        course.examDate <= currentTime
-      ) {
+      if (course.archived || course.examDate === undefined || course.examDate <= currentTime) {
         return current;
       }
       return current === undefined || course.examDate < current ? course.examDate : current;
@@ -49,7 +47,8 @@ export function FinalExamLifecycleController() {
     if (!courses || policy !== 'archive') return;
     for (const course of courses) {
       const attemptKey = `${course.id}:${course.examDate}`;
-      if (!finalExamNeedsDecision(course, now) || attemptedArchives.current.has(attemptKey)) continue;
+      if (!finalExamNeedsDecision(course, now) || attemptedArchives.current.has(attemptKey))
+        continue;
       attemptedArchives.current.add(attemptKey);
       void updateCourse(course.id, { archived: true }).catch(() => {
         notify(`Could not archive ${course.name}`, 'negative');
@@ -66,27 +65,30 @@ export function FinalExamLifecycleController() {
         )
       : undefined;
 
-  if (!pending) return null;
-
   return (
-    <FinalExamDecisionDialog
-      course={pending}
-      onArchive={() => {
-        void updateCourse(pending.id, { archived: true })
-          .then(() => notify(`${pending.name} archived`, 'positive'))
-          .catch(() => notify(`Could not archive ${pending.name}`, 'negative'));
-      }}
-      onSetNewDate={() => {
-        sessionSuppressed.current.add(`${pending.id}:${pending.examDate}`);
-        void navigate(`/course/${pending.id}/settings?editFinalExam=1`);
-        refresh();
-      }}
-      onKeepRevising={() => {
-        markFinalExamHandled(pending.id, pending.examDate!);
-        refresh();
-        notify(`${pending.name} will stay in active revision`, 'neutral');
-      }}
-    />
+    <AnimatePresence>
+      {pending && (
+        <FinalExamDecisionDialog
+          key={`${pending.id}:${pending.examDate}`}
+          course={pending}
+          onArchive={() => {
+            void updateCourse(pending.id, { archived: true })
+              .then(() => notify(`${pending.name} archived`, 'positive'))
+              .catch(() => notify(`Could not archive ${pending.name}`, 'negative'));
+          }}
+          onSetNewDate={() => {
+            sessionSuppressed.current.add(`${pending.id}:${pending.examDate}`);
+            void navigate(`/course/${pending.id}/settings?editFinalExam=1`);
+            refresh();
+          }}
+          onKeepRevising={() => {
+            markFinalExamHandled(pending.id, pending.examDate!);
+            refresh();
+            notify(`${pending.name} will stay in active revision`, 'neutral');
+          }}
+        />
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -101,33 +103,31 @@ function FinalExamDecisionDialog({
   onSetNewDate: () => void;
   onKeepRevising: () => void;
 }) {
-  const dialogRef = useFocusTrap(true, { autoFocusSelector: '[data-primary-action]' });
+  const present = useIsPresent();
+  const dialogRef = useFocusTrap(present, { autoFocusSelector: '[data-primary-action]' });
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm">
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="final-exam-decision-title"
-        className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 card-surface"
-      >
-        <h2 id="final-exam-decision-title" className="font-display text-3xl tracking-tight">
-          Final exam passed
-        </h2>
-        <p className="mt-2 text-ink-soft">What should happen to {course.name} now?</p>
-        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-          <Button variant="ghost" onClick={onKeepRevising}>
-            Keep revising
-          </Button>
-          <Button variant="secondary" onClick={onSetNewDate}>
-            Set a new exam date
-          </Button>
-          <Button data-primary-action variant="primary" onClick={onArchive}>
-            Archive course
-          </Button>
-        </div>
+    <DialogPanel
+      trapRef={dialogRef}
+      label="Final exam passed"
+      onKeyDown={() => {}}
+      className="max-w-lg overflow-y-auto p-6"
+    >
+      <h2 id="final-exam-decision-title" className="font-display text-xl tracking-tight">
+        Final exam passed
+      </h2>
+      <p className="mt-2 text-ink-soft">What should happen to {course.name} now?</p>
+      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <Button variant="ghost" onClick={onKeepRevising}>
+          Keep revising
+        </Button>
+        <Button variant="secondary" onClick={onSetNewDate}>
+          Set a new exam date
+        </Button>
+        <Button data-primary-action variant="primary" onClick={onArchive}>
+          Archive course
+        </Button>
       </div>
-    </div>
+    </DialogPanel>
   );
 }

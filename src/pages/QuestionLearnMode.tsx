@@ -1,3 +1,4 @@
+import { MissingRecord } from '../components/course/MissingRecord';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
@@ -234,7 +235,9 @@ export function QuestionLearnMode() {
   }
   if (course === null) {
     return (
-      <div className="grid min-h-screen place-items-center text-ink-soft">Course not found.</div>
+      <MissingRecord message="Course not found." to="/">
+        Back to Today
+      </MissingRecord>
     );
   }
 

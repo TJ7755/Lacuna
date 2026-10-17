@@ -1,3 +1,4 @@
+import { DialogPanel } from '../ui/DialogPanel';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { usePomodoro } from '../../hooks/usePomodoro';
@@ -175,15 +176,14 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
       {/* ===== Expanded popup ===== */}
       <AnimatePresence>
         {open && (
-          <motion.div
-            ref={popupRef}
-            role="dialog"
-            aria-label="Pomodoro timer"
-            initial={{ opacity: 0, y: -6, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.96 }}
-            transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right overflow-hidden rounded-[18px] bg-surface card-surface"
+          <DialogPanel
+            modal={false}
+            trapRef={popupRef}
+            label="Pomodoro timer"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setOpen(false);
+            }}
+            className="absolute right-0 top-[52px] z-30 w-60 origin-top-right"
           >
             <div className="px-4 py-4">
               {/* header */}
@@ -292,7 +292,7 @@ function PomodoroTimerView({ controller: p }: { controller: PomodoroController }
                 )}
               </div>
             </div>
-          </motion.div>
+          </DialogPanel>
         )}
       </AnimatePresence>
     </div>

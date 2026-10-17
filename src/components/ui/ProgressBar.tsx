@@ -1,3 +1,4 @@
+import { scaledSpring } from './motion';
 import { m as motion } from 'motion/react';
 import { cn } from './cn';
 
@@ -14,6 +15,7 @@ const variantClass: Record<ProgressVariant, string> = {
 interface ProgressBarProps {
   /** Completion fraction, 0..1. */
   value: number;
+  motionMultiplier?: number;
   className?: string;
   showLabel?: boolean;
   height?: number;
@@ -25,6 +27,7 @@ interface ProgressBarProps {
 
 export function ProgressBar({
   value,
+  motionMultiplier = 1,
   className,
   showLabel = false,
   height = 10,
@@ -50,13 +53,11 @@ export function ProgressBar({
           )}
           initial={false}
           animate={{ scaleX: pct / 100 }}
-          transition={{ type: 'spring', stiffness: 120, damping: 22 }}
+          transition={scaledSpring(motionMultiplier, 120, 22)}
         />
       </div>
       {showLabel && (
-        <span className="tabular text-sm font-medium text-ink-soft w-12 text-right">
-          {pct}%
-        </span>
+        <span className="tabular text-sm font-medium text-ink-soft w-12 text-right">{pct}%</span>
       )}
     </div>
   );

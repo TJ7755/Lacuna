@@ -339,6 +339,18 @@ keyboard shortcuts on keyboard).
   share the input's frame (`inputFrameClassName`), focused in the accent. Also `Skeleton`
   for loading placeholders, and `DialogPanel` with `DialogHeader` for centred modal dialogs (overlay, backdrop, a
   flat hairline card-surface panel like Quick search's, and a 44px close button).
+  Shortcut help, shortcut capture, leave confirmations, final-exam decisions, desktop update
+  readiness, MCP consent and lazy-overlay recovery share this primitive and its speed-scaled
+  320/30 spring. Modal panels stay within safe-area gutters; long shortcut lists scroll beneath
+  a fixed header. Departing dialogs become inert immediately and release focus to their trigger.
+  Pomodoro uses the same primitive in anchored, non-modal mode. Reduced motion removes
+  interpolation. Error diagnostics and update notes use the shared animated disclosure.
+- Loading placeholders follow their destination's frame and grouping: the course lesson list
+  with companion and summary, Study's wider pill header, the asymmetric course-settings grid
+  and the specialised editors' content groups. Missing records share a framed recovery link.
+  Archive and empty-card states use the existing Study drawings without additional copy.
+  Notifications and desktop update notices use flat surfaces and safe-area placement; their
+  actions and Windows/Linux titlebar controls have 44px targets.
 - Markdown diagrams resolve their palette from the current theme and accent tokens; syntax
   highlighting uses readable semantic and chart colours in both themes. Diagram source and
   chart data use shared pill disclosures with measured height motion and inert closed content.
