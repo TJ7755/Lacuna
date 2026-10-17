@@ -160,6 +160,15 @@ function openSettings(title: string) {
 }
 
 describe('CourseSettings', () => {
+  it('describes securing as many topics as possible rather than guaranteeing every card', () => {
+    mockMotion.multiplier = 0;
+    mockCourse = { ...mockCourse!, examObjective: 'securedTopics' };
+    renderPage();
+    expect(
+      screen.getByText('Brings as many cards as possible to 90% recall by exam day.'),
+    ).toBeVisible();
+  });
+
   it('exposes common edits directly and keeps secondary settings collapsed with reduced motion', async () => {
     mockMotion.multiplier = 0;
     renderPage();

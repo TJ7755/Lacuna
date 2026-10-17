@@ -477,6 +477,7 @@ export function SequenceEditor() {
                 Learn in
                 <Select
                   aria-label="Learn in"
+                  aria-describedby="sequence-learn-in-hint"
                   value={chunkChoice}
                   onChange={(e) =>
                     setRecitationChunkSize(
@@ -495,6 +496,9 @@ export function SequenceEditor() {
                     </option>
                   ))}
                 </Select>
+                <span id="sequence-learn-in-hint" className={fieldHintClassName}>
+                  How many lines to practise together, or your named sections.
+                </span>
               </label>
             )}
             <div className="flex items-center justify-between gap-4">

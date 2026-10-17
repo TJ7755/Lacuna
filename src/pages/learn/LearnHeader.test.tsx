@@ -123,5 +123,12 @@ it.each([false, true])(
     expect(screen.getByRole('heading', { name: course.name })).toBeVisible();
     rerender(<LearnHeader {...props} menuOpen />);
     expect(screen.getByText(/75% forecast recall/)).toBeVisible();
+    for (const [name, description] of [
+      ['Flag card', 'Find it later; its schedule is unchanged.'],
+      ['Bury until tomorrow', 'Back tomorrow.'],
+      ['Suspend card', 'Out of study until you resume it.'],
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveAccessibleDescription(description);
+    }
   },
 );

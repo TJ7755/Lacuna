@@ -118,7 +118,12 @@ export function OcclusionRegionPane({
         <div className="flex flex-col gap-3 border-t border-line p-3">
           <div>
             <p className="mb-1.5 text-sm text-ink-soft">Role</p>
-            <div className="flex gap-1.5">
+            <div
+              role="group"
+              aria-label="Role"
+              aria-describedby="occlusion-role-hint"
+              className="flex gap-1.5"
+            >
               <RoleButton
                 label="Label box"
                 active={selected.role === 'label'}
@@ -130,6 +135,9 @@ export function OcclusionRegionPane({
                 onClick={() => onUpdate(selected.id, { role: 'feature' })}
               />
             </div>
+            <p id="occlusion-role-hint" className="mt-1 text-xs text-ink-faint">
+              Label boxes hide printed names; feature boxes mark unlabelled parts.
+            </p>
           </div>
 
           {selected.role === 'feature' && (

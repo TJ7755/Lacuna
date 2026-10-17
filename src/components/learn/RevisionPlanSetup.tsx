@@ -184,6 +184,9 @@ export function RevisionPlanSetup({
           ) : (
             <section className="mt-8">
               <h2 className="font-display text-2xl">Time available today</h2>
+              <p className="mt-2 text-sm text-ink-soft">
+                Builds a daily plan for the cards this assessment covers.
+              </p>
               <div className="mt-4 grid grid-cols-3 gap-3">
                 {PRESETS.map((minutes) => (
                   <Button

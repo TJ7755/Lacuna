@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { MAINTENANCE_HORIZON_DAYS } from '../../fsrs/horizon';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { Card } from '../../db/types';
@@ -326,16 +327,21 @@ export function LearnHeader({
                   <MenuItem
                     icon={<FlagIcon width={16} height={16} />}
                     label={current.flagged ? 'Remove flag' : 'Flag card'}
+                    description={
+                      current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
+                    }
                     onClick={onToggleFlag}
                   />
                   <MenuItem
                     icon={<ClockIcon width={16} height={16} />}
                     label="Bury until tomorrow"
+                    description="Back tomorrow."
                     onClick={onBury}
                   />
                   <MenuItem
                     icon={<PauseIcon width={16} height={16} />}
                     label="Suspend card"
+                    description="Out of study until you resume it."
                     onClick={onSuspend}
                   />
                   <div className="mx-2 my-1.5 h-px bg-line" />
@@ -535,20 +541,34 @@ function SessionSegments({
 function MenuItem({
   icon,
   label,
+  description,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   onClick: () => void;
 }) {
+  const descriptionId = useId();
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-label={description ? label : undefined}
+      aria-describedby={description ? descriptionId : undefined}
       className="flex w-full min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
-      {label}
+      {description ? (
+        <span className="flex flex-col">
+          <strong className="font-bold">{label}</strong>
+          <span id={descriptionId} className="text-[13px] text-ink-faint">
+            {description}
+          </span>
+        </span>
+      ) : (
+        label
+      )}
     </button>
   );
 }

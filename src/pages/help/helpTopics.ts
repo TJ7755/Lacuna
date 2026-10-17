@@ -128,7 +128,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Cards and content',
     question: 'How do I learn a sequence of steps or facts?',
     answer:
-      'Write a sequence once and Lacuna creates cards that cue each next item from the preceding items. Split long lists into named chunks to learn them separately. Edit the sequence itself to update its cards.',
+      'Write a sequence once and Lacuna creates cards that cue each next item from the preceding items. Split long lists into named chunks to keep them manageable. Edit the sequence itself to update its cards.',
     keywords: ['ordered', 'list', 'steps', 'sequence', 'chunks'],
   },
   {

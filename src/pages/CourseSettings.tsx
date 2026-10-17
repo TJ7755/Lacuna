@@ -154,7 +154,7 @@ export function CourseSettings() {
                 </SettingRow>
                 <p className="text-sm text-ink-soft">
                   {objective === 'securedTopics'
-                    ? 'Gets each card to 90% by exam day.'
+                    ? 'Brings as many cards as possible to 90% recall by exam day.'
                     : 'Lifts your overall exam-day recall the most.'}
                 </p>
               </div>

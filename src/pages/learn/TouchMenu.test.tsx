@@ -37,6 +37,17 @@ describe('TouchMenuSheet', () => {
     }
   });
 
+  it('describes card actions without changing their accessible names', () => {
+    renderMenu();
+    for (const [name, description] of [
+      ['Flag card', 'Find it later; its schedule is unchanged.'],
+      ['Bury until tomorrow', 'Back tomorrow.'],
+      ['Suspend card', 'Out of study until you resume it.'],
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveAccessibleDescription(description);
+    }
+  });
+
   it('reflects flag and focus state and hides editing for derived cards', () => {
     renderMenu({ flagged: true, sequenceItemId: 'item-1' }, true);
     expect(screen.getByRole('button', { name: 'Remove flag' })).toBeInTheDocument();

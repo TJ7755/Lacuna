@@ -211,12 +211,22 @@ function CourseStudyOptions({
         <section aria-label="Other ways" className="mt-2 flex flex-col gap-2">
           <h3 className="text-sm font-semibold text-ink-soft">Other ways</h3>
           {canReviewDueCards && (
-            <Button variant="secondary" onClick={() => start('?review=due')}>
-              Only review due cards
-              <span className="ml-1 text-sm opacity-70 tabular-nums">
-                {snapshot?.recurringPracticeEligibleCount}
-              </span>
-            </Button>
+            <div>
+              <Button
+                variant="secondary"
+                aria-describedby="study-due-reviews-description"
+                className="w-full"
+                onClick={() => start('?review=due')}
+              >
+                Only review due cards
+                <span className="ml-1 text-sm opacity-70 tabular-nums">
+                  {snapshot?.recurringPracticeEligibleCount}
+                </span>
+              </Button>
+              <p id="study-due-reviews-description" className="mt-1 text-sm text-ink-soft">
+                Skip new cards and lessons
+              </p>
+            </div>
           )}
           {assessments.map((assessment) => (
             <Button

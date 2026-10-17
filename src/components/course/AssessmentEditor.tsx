@@ -182,6 +182,10 @@ export function AssessmentEditor({
         />
       )}
 
+      {kind === 'checkpoint' && (
+        <p className="text-sm text-ink-soft">Checkpoints never block progress along the course.</p>
+      )}
+
       <label className={fieldLabelClassName}>
         Path position
         <select

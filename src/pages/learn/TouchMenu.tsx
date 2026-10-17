@@ -1,5 +1,5 @@
 import { ModalBackdrop } from '../../components/ui/ModalBackdrop';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { animate, m as motion, useMotionValue, usePresence } from 'motion/react';
 import { expandingActionSpring } from '../../components/ui/motion';
@@ -166,6 +166,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<FlagIcon width={22} height={22} />}
             label={current.flagged ? 'Remove flag' : 'Flag card'}
+            description={current.flagged ? undefined : 'Find it later; its schedule is unchanged.'}
             onClick={() => {
               hapticLight();
               onToggleFlag();
@@ -174,6 +175,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<ClockIcon width={22} height={22} />}
             label="Bury until tomorrow"
+            description="Back tomorrow."
             onClick={() => {
               hapticLight();
               onBury();
@@ -190,6 +192,7 @@ export function TouchMenuSheet({
           <TouchMenuButton
             icon={<PauseIcon width={22} height={22} />}
             label="Suspend card"
+            description="Out of study until you resume it."
             onClick={() => {
               hapticLight();
               onSuspend();
@@ -224,20 +227,34 @@ export function TouchMenuSheet({
 function TouchMenuButton({
   icon,
   label,
+  description,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
+  description?: string;
   onClick: () => void;
 }) {
+  const descriptionId = useId();
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex h-14 w-full items-center gap-4 rounded-xl px-4 text-left text-base text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
+      aria-label={description ? label : undefined}
+      aria-describedby={description ? descriptionId : undefined}
+      className="flex min-h-14 w-full items-center gap-4 rounded-xl px-4 py-2.5 text-left text-base text-ink transition-colors hover:bg-ink/5 active:bg-ink/10"
     >
       <span className="shrink-0 text-ink-faint">{icon}</span>
-      {label}
+      {description ? (
+        <span className="flex flex-col">
+          <strong className="font-bold">{label}</strong>
+          <span id={descriptionId} className="text-[13px] text-ink-faint">
+            {description}
+          </span>
+        </span>
+      ) : (
+        label
+      )}
     </button>
   );
 }

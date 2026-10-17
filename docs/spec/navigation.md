@@ -322,7 +322,7 @@ generic choice and enters that exact scope. Before **Study**, a ring shows the c
 due today, filling as the day's are done and completing with a tick once none are due; the course's
 exam-day recall, card and lesson counts sit in one card beneath its lessons. Beside **Study**, an
 **Other ways** menu offers
-**Only review due cards** (course-wide due review, directly), each upcoming assessment and
+**Only review due cards** (course-wide due review, directly, described as “Skip new cards and lessons”), each upcoming assessment and
 **Practise until all correct**. Practice expands within that menu to choose the whole course or
 a lesson; answers still update the review schedule. It is never duplicated in the session preview. Every
 course entry point is the same `CourseStudyActions` pair, a one-lesson course included, and

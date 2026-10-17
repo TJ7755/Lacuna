@@ -406,6 +406,9 @@ export function SyncSection() {
             Another device
           </SettingsSectionHeading>
           <span className="text-sm text-ink-faint"> · End-to-end encrypted</span>
+          <p className="mt-1 text-sm text-ink-faint">
+            Keeps paired devices up to date. Export a backup for a separate copy.
+          </p>
         </div>
         {!loaded ? (
           <span className="text-sm text-ink-faint">Reading sync status…</span>

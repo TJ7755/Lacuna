@@ -81,6 +81,26 @@ function Harness({
 }
 
 describe('AssessmentEditor', () => {
+  it.each(['checkpoint', 'final'] as const)(
+    'explains progress only for checkpoints (%s)',
+    (kind) => {
+      render(
+        <AssessmentEditor
+          courseId="c1"
+          kind={kind}
+          draft={emptyAssessmentDraft(lessons)}
+          onChange={() => {}}
+          lessons={lessons}
+          cards={cards}
+          links={[]}
+        />,
+      );
+      const hint = screen.queryByText('Checkpoints never block progress along the course.');
+      if (kind === 'checkpoint') expect(hint).toBeVisible();
+      else expect(hint).not.toBeInTheDocument();
+    },
+  );
+
   it('uses prefix coverage by default and resolves lesson/card counts at the anchor', () => {
     render(<Harness />);
     expect(screen.getByRole('button', { name: 'Everything so far' })).toHaveAttribute(

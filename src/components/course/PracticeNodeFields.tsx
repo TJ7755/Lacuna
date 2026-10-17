@@ -36,6 +36,9 @@ export function PracticeNodeFields({ draft, onChange, lessons }: PracticeNodeFie
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-xs text-ink-faint">
+        Reviews cards from the chosen lessons at this point on the path.
+      </p>
       <Field label="Name">
         <Input
           value={draft.name}

@@ -450,6 +450,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
 - **Flag** (toggle), **Bury until tomorrow** (`buriedUntil = startOfDay(now) + 1 day`),
   **Suspend** — all drop the card from the live pool (and the denominator) and move
   on.
+  The desktop and touch actions describe Flag as “Find it later; its schedule is unchanged.”,
+  Bury as “Back tomorrow.” and Suspend as “Out of study until you resume it.”, with each
+  helper exposed through `aria-describedby`.
 - **Undo**: single-step reversal of the last answer — restores the card's prior
   memory state, the `UserPerformance`, the cooldown map, the progress value and the
   events list, and deletes the written `SessionHistory` row. The restored question clears
