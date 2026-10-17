@@ -180,7 +180,13 @@ Specific motion (current state of the app):
 - **Sidebar:** desktop width changes between 72px and 264px over 280ms with the standard
   easing curve, including safe-area padding. Real width drives the adjacent content and
   active pill in the same frame. Icons stay centred 36px from the inner left edge in both
-  states; the theme and collapse controls stay stacked. Mounted, single-line labels clip
+  states, as does the theme toggle. When expanded, the theme toggle and collapse chevron share
+  the footer's bottom line, theme at the left and chevron at the right edge, with the spare
+  height as a gap above them. On collapsing, the chevron stays on that line and slides left into
+  the rail column whilst the theme toggle rises into the slot above it, ending stacked. Both
+  move on the width's easing curve (instantly under reduced motion, and reversibly
+  mid-animation) and the footer keeps one height, so Share, Settings and Help never move. The
+  mobile drawer keeps its side-by-side row. Mounted, single-line labels clip
   at the moving edge, fading out over 120ms or in over 180ms after a 60ms delay. Hidden
   labels, course expanders and retained lesson lists are inert and hidden from assistive
   technology. Hover cards close during resizing and work again on the settled rail.

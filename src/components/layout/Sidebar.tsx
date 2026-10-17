@@ -3,6 +3,7 @@ import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useSidebarSettings } from '../../state/sidebarSettings';
 import { cn } from '../ui/cn';
+import { MOTION_EASING } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import {
   ArchiveIcon,
@@ -33,6 +34,10 @@ import { NavItem, ActionNavItem, NAV_LABELS, FOOTER_NAV } from './SidebarNavItem
 import { forecastStatus } from '../dashboard/forecastStatus';
 import { CourseRow, type SidebarGlyph } from './SidebarCourseRow';
 import { SidebarFrame, SidebarLabel } from './SidebarMotion';
+
+/** Expanded desktop footer: the chevron's offset from its collapsed slot to the row's right edge
+ *  (264px rail, 12px footer padding, 44px button, 14px left inset). */
+const DESKTOP_CHEVRON_ROW_X = 264 - 12 - 44 - 14;
 
 interface SidebarProps {
   collapsed: boolean;
@@ -359,32 +364,25 @@ export function Sidebar({
       </nav>
       <div
         className={cn(
-          'flex items-center justify-between gap-2 px-3',
+          'flex items-center justify-between px-3',
           sidebarSettings.compactMode ? 'py-2' : 'py-3 short:py-1',
-          !drawer && 'flex-col items-start pl-[14px]',
+          drawer ? 'gap-2' : 'flex-col items-start pl-[14px]',
         )}
       >
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title="Toggle colour theme"
-          aria-label="Toggle colour theme"
-          className={cn(
-            'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
-            'text-ink-soft hover:bg-ink/5 hover:text-ink',
-            drawer
-              ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
-              : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
-          )}
+        <motion.div
+          // Desktop keeps the stacked footprint so nothing above shifts. Expanded, the theme
+          // toggle drops into the bottom slot beside the chevron; collapsed, it rises to the
+          // upper slot. Same curve as the width, so reversals stay in step.
+          initial={false}
+          animate={drawer ? undefined : { y: collapsed ? 0 : '100%' }}
+          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+          className={cn(!drawer && 'pb-2')}
         >
-          {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
-        </button>
-        {collapseControl && (
           <button
             type="button"
-            onClick={onToggleCollapsed}
-            title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
-            aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+            onClick={toggleTheme}
+            title="Toggle colour theme"
+            aria-label="Toggle colour theme"
             className={cn(
               'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
               'text-ink-soft hover:bg-ink/5 hover:text-ink',
@@ -393,8 +391,34 @@ export function Sidebar({
                 : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
             )}
           >
-            {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
+        </motion.div>
+        {collapseControl && (
+          <motion.div
+            // The chevron stays on the bottom line and slides between the rail column and the
+            // row's right edge.
+            initial={false}
+            animate={drawer ? undefined : { x: collapsed ? 0 : DESKTOP_CHEVRON_ROW_X }}
+            transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+            data-testid={drawer ? undefined : 'sidebar-collapse-slot'}
+          >
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              title={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+              aria-label={toggleLabel ?? (collapsed ? 'Expand sidebar' : 'Collapse sidebar')}
+              className={cn(
+                'flex items-center justify-center rounded-xl transition-colors active:bg-ink/10',
+                'text-ink-soft hover:bg-ink/5 hover:text-ink',
+                drawer
+                  ? 'min-h-11 min-w-11 short:min-h-9 short:min-w-9'
+                  : 'h-11 w-11 shrink-0 short:h-9 short:min-h-9',
+              )}
+            >
+              {collapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            </button>
+          </motion.div>
         )}
       </div>
     </SidebarFrame>
