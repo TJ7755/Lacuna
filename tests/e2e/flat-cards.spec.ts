@@ -5,7 +5,7 @@ const accents = ['volt', 'violet', 'amber', 'red', 'rose', 'pink', 'blue', 'teal
 
 async function expectFlatCards(page: Page) {
   const surfaces = page.locator('main .card-surface');
-  expect(await surfaces.count()).toBeGreaterThan(0);
+  await expect.poll(() => surfaces.count()).toBeGreaterThan(0);
   for (const surface of await surfaces.all()) {
     await expect(surface).toHaveCSS('border-top-width', '1px');
     await expect(surface).toHaveCSS('border-top-style', 'solid');
