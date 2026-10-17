@@ -1,3 +1,4 @@
+import { CreateButton } from '../components/ui/CreateButton';
 import { useScopedFindShortcut } from '../hooks/useScopedFindShortcut';
 import { Skeleton } from '../components/ui/Skeleton';
 // Course Cards — all cards in a course, organised by lesson, with an
@@ -28,7 +29,6 @@ import { CardList } from '../components/cards/CardList';
 import { courseCardListContext } from '../components/cards/cardListContext';
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../components/ui/motion';
-import { Button } from '../components/ui/Button';
 import { PlusIcon } from '../components/ui/icons';
 import { CardsToolbar, CARD_FILTER_CHIPS } from '../components/cards/CardsToolbar';
 import { filterSessionCardPool, searchCardsInScope, type CardFilter } from '../db/search';
@@ -201,10 +201,10 @@ export function CardsPage() {
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
       <header className={COURSE_PAGE_HEADER}>
         <h1 className={COURSE_PAGE_TITLE}>Cards</h1>
-        <Button variant="primary" onClick={() => go(`/course/${courseId}/cards/new`)}>
+        <CreateButton onClick={() => go(`/course/${courseId}/cards/new`)}>
           <PlusIcon width={18} height={18} />
           New card
-        </Button>
+        </CreateButton>
       </header>
 
       {!isEmpty && (

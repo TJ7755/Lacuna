@@ -1,3 +1,4 @@
+import { CreateButton } from '../components/ui/CreateButton';
 import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { useMemo, useState } from 'react';
@@ -134,14 +135,10 @@ export function LegacyQuestionsPage() {
           )}
           {/* An empty bank offers its own Create a Question. */}
           {data.questions.length > 0 && (
-            <Button
-              variant="secondary"
-              className={OUTLINE_PILL}
-              onClick={() => navigate(`/course/${course.id}/questions/new`)}
-            >
+            <CreateButton onClick={() => navigate(`/course/${course.id}/questions/new`)}>
               <PlusIcon width={16} height={16} />
               New question
-            </Button>
+            </CreateButton>
           )}
           {data.questions.length > 0 && (
             <Button
@@ -163,14 +160,13 @@ export function LegacyQuestionsPage() {
           <p className="font-display text-2xl font-semibold tracking-tight text-ink">
             No Questions yet
           </p>
-          <Button
-            className="mt-6 min-h-12 px-6"
-            variant="primary"
+          <CreateButton
+            className="mt-6"
             onClick={() => navigate(`/course/${course.id}/questions/new`)}
           >
             <PlusIcon width={18} height={18} />
             Create a Question
-          </Button>
+          </CreateButton>
         </section>
       ) : (
         <section aria-label="Question definitions" className="grid gap-4 md:grid-cols-2">

@@ -1,7 +1,7 @@
 import { LazyCardImportDialog as CardImportDialog } from '../import/LazyCardImportDialog';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
-import { PlusIcon } from '../ui/icons';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { useToast } from '../ui/Toast';
 import { createLesson } from '../../db/lessonRepository';
 import type { Lesson } from '../../db/types';
@@ -41,17 +41,13 @@ export function AddLessonControl({
   const [name, setName] = useState(() => defaultLessonName(lessonCount));
   const [importingCards, setImportingCards] = useState(false);
   const [saving, setSaving] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
-  const previouslyOpen = useRef(open);
   useEffect(() => {
     // Selected, so typing replaces the suggested name.
     if (open && !importingCards) {
       nameInput.current?.focus();
       nameInput.current?.select();
     }
-    if (!open && previouslyOpen.current) trigger.current?.focus();
-    previouslyOpen.current = open;
   }, [open, importingCards]);
 
   function startAdd() {
@@ -114,84 +110,84 @@ export function AddLessonControl({
       />
     );
 
-  return (
-    <>
-      <div className="contents" inert={!open} aria-hidden={!open || undefined}>
-        <AnimatedDisclosure open={open}>
-          <div
-            onKeyDown={(event) => {
-              // As in the card editor, Ctrl/Cmd+Enter creates and readies the next one.
-              if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-                event.preventDefault();
-                event.stopPropagation();
-                void save(true);
-                return;
-              }
-              dialogKeyDown({
-                onCancel: cancel,
-                onSubmit: () => void save(),
-                enterSubmits: true,
-              })(event);
-            }}
-            className="flex w-full flex-col gap-3 rounded-3xl bg-surface px-4 py-3 card-surface"
-          >
-            <Field label="Lesson name">
-              <Input
-                ref={nameInput}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Elasticity"
-                autoFocus
-                disabled={saving}
-                className="disabled:opacity-40"
-              />
-            </Field>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void save()}
-                disabled={saving || !name.trim()}
-              >
-                {saving ? 'Creating…' : 'Create lesson'}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void save(true)}
-                disabled={saving || !name.trim()}
-                title="Create and add another (Ctrl/Cmd+Enter)"
-              >
-                Create &amp; add another
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setImportingCards(true)}
-                disabled={saving}
-              >
-                Import cards
-              </Button>
-              <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </AnimatedDisclosure>
-      </div>
-      {/* A caller that supplies onCancel owns the trigger and the collapse. */}
-      {!open && !onCancel && (
+  const form = (
+    <div
+      onKeyDown={(event) => {
+        // As in the card editor, Ctrl/Cmd+Enter creates and readies the next one.
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          event.stopPropagation();
+          void save(true);
+          return;
+        }
+        dialogKeyDown({
+          onCancel: cancel,
+          onSubmit: () => void save(),
+          enterSubmits: true,
+        })(event);
+      }}
+      className={`flex w-full flex-col gap-3 px-4 py-3 ${onCancel ? 'rounded-3xl bg-surface card-surface' : ''}`}
+    >
+      <Field label="Lesson name">
+        <Input
+          ref={nameInput}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Elasticity"
+          autoFocus
+          disabled={saving}
+          className="disabled:opacity-40"
+        />
+      </Field>
+      <div className="flex flex-wrap gap-2">
         <Button
-          ref={trigger}
+          variant="primary"
+          size="sm"
+          onClick={() => void save()}
+          disabled={saving || !name.trim()}
+        >
+          {saving ? 'Creating…' : 'Create lesson'}
+        </Button>
+        <Button
           variant="secondary"
           size="sm"
-          onClick={startAdd}
-          className="self-start"
+          onClick={() => void save(true)}
+          disabled={saving || !name.trim()}
+          title="Create and add another (Ctrl/Cmd+Enter)"
         >
-          <PlusIcon width={16} height={16} />
-          Add lesson
+          Create &amp; add another
         </Button>
-      )}
-    </>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setImportingCards(true)}
+          disabled={saving}
+        >
+          Import cards
+        </Button>
+        <Button variant="ghost" size="sm" onClick={cancel} disabled={saving}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+  if (!onCancel)
+    return (
+      <ExpandingCreateControl
+        align="start"
+        label="Add lesson"
+        open={open}
+        onOpenChange={(next) => {
+          if (next) startAdd();
+          else cancel();
+        }}
+      >
+        {form}
+      </ExpandingCreateControl>
+    );
+  return (
+    <div className="contents" inert={!open} aria-hidden={!open || undefined}>
+      <AnimatedDisclosure open={open}>{form}</AnimatedDisclosure>
+    </div>
   );
 }

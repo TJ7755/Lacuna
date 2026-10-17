@@ -1,3 +1,4 @@
+import { CreateButton } from '../ui/CreateButton';
 // "Cards in this lesson" — the compact card list beside the lesson's note. Each row
 // is the card's front, rendered as on the Cards page so maths shows as maths, its kind
 // beneath and when it next comes up; an occlusion card leads with its diagram. In
@@ -93,25 +94,18 @@ export function LessonCardsList({
           Cards in this lesson
         </h2>
         <div className="flex shrink-0 items-center gap-1">
-          <motion.button
+          <CreateButton
             ref={newCardRef}
             type="button"
             {...fade}
             tabIndex={editable ? 0 : -1}
             aria-hidden={editable ? undefined : true}
             onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-            className={cn(
-              'inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-              // The first card is the lesson's next step, so it leads until one exists.
-              cards.length === 0
-                ? 'bg-accent text-accent-fg hover:brightness-105'
-                : 'bg-ink/[0.06] text-ink hover:bg-ink/10',
-              !editable && 'pointer-events-none',
-            )}
+            className={cn(!editable && 'pointer-events-none')}
           >
             <PlusIcon width={16} height={16} />
             New card
-          </motion.button>
+          </CreateButton>
           {find}
         </div>
       </div>

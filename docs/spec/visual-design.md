@@ -336,3 +336,10 @@ keyboard shortcuts on keyboard).
   through More and scroll their compact row at narrow widths rather than orphaning an action.
 
 [Specification index](../SPEC.md)
+
+Creation actions share Today’s neutral 44px pill: raised surface, inset strong-line ring,
+ink label and plus icon. Name-first creation expands from that pill with the shared expansion
+spring; the plus rotates to close, Escape dismisses and focus returns to the trigger. Closed
+forms are inert and hidden from assistive technology. Full-editor creation keeps immediate
+navigation with the same pill and a motion-scaled 0.97 press. Embedded menu and compact
+editor-toolbar actions retain their local layout.

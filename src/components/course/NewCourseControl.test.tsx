@@ -51,6 +51,12 @@ describe('NewCourseControl', () => {
   it('expands in place and returns focus after Escape or Cancel', () => {
     const { container } = render(<Creation />);
     const trigger = screen.getByRole('button', { name: 'New course' });
+    expect(trigger).toHaveAttribute('data-press');
+    expect(trigger.parentElement).toHaveClass(
+      'bg-surface-raised',
+      'ring-inset',
+      'ring-line-strong',
+    );
     expect(trigger).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
