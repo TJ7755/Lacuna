@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import type { AiApprovalState } from '../../ai/protocol';
 import type { AiSession } from '../../ai/session/types';
 import { Button } from '../ui/Button';
+import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 
 /** "lacuna.delete_course" reads as "Delete course". */
 export function actionName(toolName: string): string {
@@ -19,6 +20,8 @@ export function AiApprovalCard({
   autoFocus: boolean;
 }) {
   const rejectRef = useRef<HTMLButtonElement>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const detailsId = useId();
 
   useEffect(() => {
     if (autoFocus && approval.status === 'pending') rejectRef.current?.focus();
@@ -29,7 +32,7 @@ export function AiApprovalCard({
   const grant = approval.kind === 'write_grant';
   return (
     <section
-      className="mx-4 mb-4 rounded-xl border border-warning/40 bg-warning/10 p-4"
+      className="mx-4 mb-4 rounded-3xl card-surface bg-warning/10 p-4"
       aria-labelledby="ai-approval-title"
     >
       <h2 id="ai-approval-title" className="font-display text-lg text-ink">
@@ -41,10 +44,20 @@ export function AiApprovalCard({
           ? 'AI can add and change content here until you stop or disconnect.'
           : 'Approves this change only.'}
       </p>
-      <details className="mt-2 text-xs text-ink-faint">
-        <summary className="cursor-pointer select-none">Technical details</summary>
-        <p className="mt-1 break-all font-mono">{approval.toolName}</p>
-      </details>
+      <button
+        type="button"
+        aria-expanded={detailsOpen}
+        aria-controls={detailsId}
+        onClick={() => setDetailsOpen((open) => !open)}
+        className="mt-2 inline-flex min-h-11 cursor-pointer select-none items-center text-xs text-ink-faint hover:text-ink-soft"
+      >
+        Technical details
+      </button>
+      <AnimatedDisclosure open={detailsOpen}>
+        <p id={detailsId} className="mt-1 break-all font-mono text-xs text-ink-faint">
+          {approval.toolName}
+        </p>
+      </AnimatedDisclosure>
       <div className="mt-4 flex justify-end gap-2">
         <Button
           ref={rejectRef}

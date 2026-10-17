@@ -382,7 +382,8 @@ describe('AiPanel', () => {
     expect(screen.getByText('Mechanics')).toBeInTheDocument();
     expect(screen.getByText('Approves this change only.')).toBeInTheDocument();
     expect(screen.queryByText('Permission required')).toBeNull();
-    expect(screen.getByText('lacuna.delete_course').closest('details')).not.toHaveAttribute('open');
+    const detailsTrigger = screen.getByRole('button', { name: 'Technical details' });
+    expect(detailsTrigger).toHaveAttribute('aria-expanded', 'false');
     const reject = screen.getByRole('button', { name: 'Reject' });
     await waitFor(() => expect(reject).toHaveFocus());
     fireEvent.click(reject);

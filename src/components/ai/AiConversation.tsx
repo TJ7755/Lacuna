@@ -49,9 +49,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
               className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-accent-soft px-4 py-3 text-accent-ink"
             >
               {/* Side and colour say who is speaking; the article label names it. */}
-              <p className="whitespace-pre-wrap break-words text-sm leading-6">
-                {item.content}
-              </p>
+              <p className="whitespace-pre-wrap break-words text-sm leading-6">{item.content}</p>
             </article>
           );
         }
@@ -97,7 +95,7 @@ export function AiConversation({ items }: { items: readonly AiConversationItem[]
           return <AiActivityReceipt key={item.id} receipt={item.receipt} />;
         }
         return (
-          <article key={item.id} className="rounded-xl border border-negative/30 bg-negative/5 p-3">
+          <article key={item.id} className="rounded-3xl card-surface bg-negative/5 p-3">
             <p className="text-sm font-medium text-negative">AI could not continue</p>
             <p className="mt-1 text-sm text-ink-soft">
               {'message' in item.error ? item.error.message : item.error.error.message}

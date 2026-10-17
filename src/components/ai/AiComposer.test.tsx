@@ -137,7 +137,7 @@ describe('AiComposer', () => {
     });
   });
 
-  it('uses a shorter, wider Send target in the compact composer', () => {
+  it('uses the shared compact Send target in the composer', () => {
     render(
       <AiComposer
         session={session()}
@@ -148,7 +148,9 @@ describe('AiComposer', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Send message' })).toHaveClass('h-8', 'min-w-16');
+    const send = screen.getByRole('button', { name: 'Send message' });
+    expect(send).toHaveClass('min-w-16');
+    expect(send).toHaveClass('text-sm');
   });
 
   it('keeps message actions in document flow below multiline content', () => {
