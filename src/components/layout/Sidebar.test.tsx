@@ -164,6 +164,18 @@ describe('Sidebar', () => {
     );
   });
 
+  it('slots the desktop collapse control for the row/stack glide, but not in the drawer', () => {
+    const { rerender } = render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, {
+      wrapper: MemoryRouter,
+    });
+    const slot = screen.getByTestId('sidebar-collapse-slot');
+    expect(slot).toContainElement(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(slot).toHaveClass('pt-2');
+
+    rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
+    expect(screen.queryByTestId('sidebar-collapse-slot')).not.toBeInTheDocument();
+  });
+
   it('uses a compact 32px brand mark in compact mode', () => {
     localStorage.setItem(
       'lacuna.sidebarSettings',

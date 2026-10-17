@@ -1,0 +1,1 @@
+- Return the expanded desktop sidebar's theme toggle to a single footer row beside the collapse chevron, gliding the chevron to its stacked slot beneath the theme toggle as the sidebar collapses, without shifting other content and snapping under reduced motion.
