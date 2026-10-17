@@ -69,6 +69,13 @@ export function mermaidSourceFromElement(el: Element): string {
 }
 
 let mermaidInitialisedFor: string | null = null;
+let renderSequence = 0;
+
+// Mermaid removes any existing SVG with this id before rendering. Concurrent
+// note mounts (and theme updates) can share a millisecond, so time alone is unsafe.
+function nextRenderId(): string {
+  return `lacuna-mermaid-${Date.now().toString(36)}-${renderSequence++}`;
+}
 
 function palette(dark: boolean): Record<string, string> {
   return dark
@@ -121,7 +128,7 @@ export async function renderMermaidDiagrams(container: HTMLElement): Promise<voi
     const block = blocks[i] as HTMLElement;
     const source = mermaidSourceFromElement(block);
     if (!source) continue;
-    const renderId = `lacuna-mermaid-${Date.now().toString(36)}-${i}`;
+    const renderId = nextRenderId();
     try {
       const result = await mermaid.render(renderId, source);
       const clean = await sanitizeDiagramSvg(result.svg);
@@ -300,7 +307,7 @@ export async function updateMermaidTheme(container: HTMLElement): Promise<void> 
     const figure = block.querySelector('.lacuna-mermaid-rendered');
     if (!source || !figure) continue;
     try {
-      const result = await mermaid.render(`lacuna-mermaid-${Date.now().toString(36)}-${i}`, source);
+      const result = await mermaid.render(nextRenderId(), source);
       const clean = await sanitizeDiagramSvg(result.svg);
       if (!clean) continue;
       figure.innerHTML = clean;

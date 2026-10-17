@@ -42,6 +42,22 @@ afterEach(() => {
 });
 
 describe('Mermaid theme updates', () => {
+  it('uses distinct render ids for concurrent notes and theme updates in the same millisecond', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1234);
+    try {
+      const first = diagram();
+      const second = diagram();
+      await Promise.all([renderMermaidDiagrams(first), renderMermaidDiagrams(second)]);
+      document.documentElement.classList.add('dark');
+      await Promise.all([updateMermaidTheme(first), updateMermaidTheme(second)]);
+      const ids = renderer.render.mock.calls.map(([id]) => id);
+      expect(ids).toHaveLength(4);
+      expect(new Set(ids).size).toBe(ids.length);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
   it('updates every view after another view initialises the new theme', async () => {
     const first = diagram();
     const second = diagram();

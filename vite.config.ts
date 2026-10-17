@@ -121,13 +121,14 @@ export default defineConfig({
   // Without this, navigating to a route that imports recharts/katex/highlight.js
   // froze the page for several seconds while Vite re-ran dependency optimisation.
   optimizeDeps: {
-    exclude: ['@open-spaced-repetition/binding', 'mermaid'],
+    exclude: ['@open-spaced-repetition/binding'],
     include: [
       'react',
       'react-dom',
       'react-dom/server',
       'react-router-dom',
       'motion/react',
+      'mermaid',
       'recharts',
       'katex',
       'react-markdown',
