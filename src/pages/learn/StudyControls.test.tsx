@@ -36,3 +36,41 @@ describe('StudyControls typed answers', () => {
     }
   });
 });
+
+it.each([false, true])(
+  'responds on the corresponding grade button for keyboard grade %s',
+  (input) => {
+    const props = {
+      phase: 'answer' as const,
+      isTypingCard: false,
+      isTouchMode: false,
+      gradingMode: 'silent' as const,
+      typedAnswer: '',
+      typingInputRef: createRef<HTMLInputElement>(),
+      onTypedAnswer: vi.fn(),
+      onReveal: vi.fn(),
+      onHide: vi.fn(),
+      onAnswer: vi.fn(),
+      m: 1,
+    };
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...props} />
+      </LazyMotion>,
+    );
+    view.rerender(
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...props} feedback={{ input, serial: 1 }} />
+      </LazyMotion>,
+    );
+    const button = view.getByRole('button', { name: input ? 'Yes' : 'No' });
+    expect(button).toHaveAttribute('data-study-grade-active', 'true');
+    expect(view.getByRole('button', { name: input ? 'No' : 'Yes' })).not.toHaveAttribute(
+      'data-study-grade-active',
+      'true',
+    );
+    fireEvent.click(button);
+    expect(props.onAnswer).toHaveBeenCalledExactlyOnceWith(input, 'keyboard');
+    view.unmount();
+  },
+);

@@ -184,10 +184,10 @@ Specific motion (current state of the app):
   gesture** — drag left past a threshold to spring open a per-card action tray, drag right
   to quick-toggle the flag — backed by a `useSpring`-driven `useMotionValue` with a springy
   snap-back below the threshold.
-- **Learn answer feedback:** after the card departs, a soft glow confirms the grade —
-  green for correct, muted red for incorrect — with a radial pulse from the centre.
-  Swipe feedback comes from the corresponding side; keyboard feedback rises from the foot
-  of the screen. Both remain decorative (`pointer-events-none`) and independent of the write.
+- **Learn answer feedback:** the departing card carries a positive/negative inner rim,
+  fading through an opacity-only layer over 320 ms. The corresponding grade button
+  compresses to 97% and briefly fills with its outcome colour over 240 ms, including
+  keyboard grades. There is no page-wide grading glow. Touch drag hints remain on-card.
 - **Study preview:** a single opaque neutral surface expands from the Study button and
   contracts back into it using the shared expansion spring. Only the button's own fill
   and label fade over 180ms times the motion multiplier, from its actual rendered colours
@@ -196,11 +196,15 @@ Specific motion (current state of the app):
   on dismissal; it never swaps sides or mounts a different icon.
   The full-width body stays right-anchored and clipped, fading in place without a slide.
   Reduced motion applies the final appearance and geometry immediately.
-- **Study card hand-off:** swipe, button and keyboard grades carry the card fully beyond
-  the appropriate viewport edge in 200 ms before grading advances the session. Repeated
-  inputs are ignored during departure, and unmounting cancels a pending grade. Incoming
-  cards rise 20 px and settle from 97% scale over 280 ms, including repeated cards.
-  The motion-speed setting scales these timings; reduced motion grades immediately.
+- **Study card hand-off:** correct grades throw right, incorrect grades left, with a
+  restrained 3-degree tilt, 102% lift and a non-bouncing 300/35 spring. Swipe release
+  velocity feeds the throw. Persistence starts 70 ms into the lift; the card stays visible
+  until the next presentation is ready, then throws as that card enters from 96% scale,
+  12 px below, at 65% opacity. There is no inter-card pause or speculative queue read.
+  Repeated card ids receive distinct presentations; repeated grades are ignored and
+  Undo cancels pending motion. Settled wrappers retain no transform. The header progress
+  track and outcome fills use a critically damped 300/34.64 spring. All durations and spring physics scale
+  with motion speed; reduced motion commits synchronously and skips presence retention.
 - **Flip card:** the question/answer faces swap with a 3-D `rotateX` flip (perspective 1600).
   Swipes follow the pointer directly, with a compact Yes/No cue on the card. Abandoned
   swipes spring back; accepted swipes retain their offset through the shared departure.

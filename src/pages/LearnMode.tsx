@@ -1,5 +1,6 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { StudyControls } from './learn/StudyControls';
+import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -55,6 +56,7 @@ interface LearnModeProps {
 }
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
+  const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
   const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
   // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
   const runRef = useRef(0);
@@ -271,7 +273,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   }, [undoLast, setMenuOpen]);
 
   const answerWithUndo = useCallback(
-    (input: boolean | Grade | MachineMarkedAnswer, source: 'touch' | 'keyboard' = 'keyboard') => {
+    (
+      input: boolean | Grade | MachineMarkedAnswer,
+      source: 'touch' | 'keyboard' = 'keyboard',
+      velocity = 0,
+    ) => {
       if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
@@ -284,22 +290,18 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             });
           }
         })();
-      {
-        const correct =
-          typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
-        runRef.current = nextRun(runRef.current, correct);
-        if (isStreakMilestone(runRef.current)) {
-          setStreakMoment({ run: runRef.current, key: Date.now() });
-        }
-      }
+      const correct =
+        typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
       // Machine-marked cards measure response time at submission, so keep that path immediate.
       if (typeof input === 'object' || !cardTransitionRef.current) commit();
-      else
-        cardTransitionRef.current.dismiss(
-          typeof input === 'number' ? input > 1 : input,
-          commit,
-          source,
-        );
+      else if (!cardTransitionRef.current.dismiss(correct, commit, source, velocity)) return;
+      if (typeof input !== 'object') {
+        setGradeFeedback((previous) => ({ input, serial: (previous?.serial ?? 0) + 1 }));
+      }
+      runRef.current = nextRun(runRef.current, correct);
+      if (isStreakMilestone(runRef.current)) {
+        setStreakMoment({ run: runRef.current, key: Date.now() });
+      }
     },
     [answer, notify, undoWithTransitionCancel],
   );
@@ -577,7 +579,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               ) : (
                 current && (
                   <StudyCardTransition
-                    key={current.id}
                     ref={cardTransitionRef}
                     cardId={current.id}
                     phase={phase}
@@ -617,7 +618,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         hintsOpen={hintsOpen}
                         onReveal={reveal}
                         onHide={hide}
-                        onAnswer={(input) => answerWithUndo(input, 'touch')}
+                        onAnswer={(input, source, velocity) =>
+                          answerWithUndo(input, source, velocity)
+                        }
                         typedAnswer={typedAnswer}
                         isTypingCard={isTypingCard}
                         mode={mode}
@@ -638,6 +641,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 <StudyControls
                   key={`controls-${current?.id}`}
                   phase={phase}
+                  feedback={gradeFeedback}
                   isTypingCard={isTypingCard}
                   isTouchMode={isTouchMode}
                   gradingMode={gradingMode}

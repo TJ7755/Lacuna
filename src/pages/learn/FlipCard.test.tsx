@@ -1,3 +1,4 @@
+import { MotionValue } from 'motion/react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Card } from '../../db/types';
@@ -72,9 +73,21 @@ describe('FlipCard reduced-motion swipes', () => {
     const answer = vi.fn();
     renderRevealed(answer);
     swipe(dx);
-    expect(answer).toHaveBeenCalledExactlyOnceWith(dx > 0, 'touch');
+    expect(answer).toHaveBeenCalledExactlyOnceWith(dx > 0, 'touch', expect.any(Number));
     swipe(dx);
     expect(answer).toHaveBeenCalledOnce();
+  });
+
+  it('hands the swipe motion value release velocity to the shared throw', () => {
+    const velocity = vi.spyOn(MotionValue.prototype, 'getVelocity').mockReturnValue(720);
+    try {
+      const answer = vi.fn();
+      renderRevealed(answer);
+      swipe(100);
+      expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch', 720);
+    } finally {
+      velocity.mockRestore();
+    }
   });
 
   it('keeps cancelled and below-threshold swipes ungraded, then accepts a new swipe', () => {
@@ -84,7 +97,7 @@ describe('FlipCard reduced-motion swipes', () => {
     swipe(-100, true);
     expect(answer).not.toHaveBeenCalled();
     swipe(100);
-    expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch');
+    expect(answer).toHaveBeenCalledExactlyOnceWith(true, 'touch', expect.any(Number));
   });
 });
 

@@ -242,6 +242,7 @@ export function LearnHeader({
               currentCardIds={currentCardIds}
               value={displayedProgress}
               label={progressName}
+              m={m}
             />
           ) : (
             <SessionProgressTrack value={displayedProgress} label={progressName} m={m} />
@@ -444,7 +445,7 @@ function SessionProgressTrack({ value, label, m }: { value: number; label: strin
       <motion.div
         initial={false}
         animate={{ scaleX: progress }}
-        transition={scaledSpring(m, 220, 24)}
+        transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
         className="h-full w-full origin-left rounded-full bg-accent"
       />
     </div>
@@ -457,12 +458,14 @@ function SessionSegments({
   currentCardIds,
   value,
   label,
+  m,
 }: {
   cardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
   currentCardIds: readonly string[];
   value: number;
   label: string;
+  m: number;
 }) {
   const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
@@ -505,9 +508,7 @@ function SessionSegments({
               key={group[0]}
               data-session-card-status={status}
               className={cn(
-                'min-w-px flex-1 rounded-full border transition-colors duration-200',
-                status === 'correct' && 'bg-positive',
-                status === 'wrong' && 'bg-negative',
+                'relative min-w-px flex-1 overflow-hidden rounded-full border',
                 current
                   ? 'border-accent'
                   : status === 'correct'
@@ -518,7 +519,17 @@ function SessionSegments({
                 status === 'current' && 'bg-accent/10',
                 status === 'unseen' && 'bg-ink/10',
               )}
-            />
+            >
+              <motion.span
+                className={cn(
+                  'absolute inset-0 origin-left rounded-full',
+                  status === 'wrong' ? 'bg-negative' : 'bg-positive',
+                )}
+                initial={false}
+                animate={{ scaleX: status === 'correct' || status === 'wrong' ? 1 : 0 }}
+                transition={scaledSpring(m, 300, 2 * Math.sqrt(300))}
+              />
+            </span>
           );
         })}
       </div>

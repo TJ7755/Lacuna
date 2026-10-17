@@ -324,7 +324,12 @@ describe('LearnMode course/lesson scope', () => {
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
     fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
     await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
-    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass('bg-positive', 'border-accent');
+    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass(
+      'border-accent',
+    );
+    expect(
+      document.querySelector('[data-session-card-status=correct]')?.firstElementChild,
+    ).toHaveClass('bg-positive');
     expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute('aria-valuenow', '50');
     fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
       target: { value: 'Where are you?' },

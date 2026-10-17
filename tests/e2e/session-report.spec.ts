@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-test('shows a clear completed Simple Learn report on desktop and mobile', async ({ page }, testInfo) => {
+test('shows a clear completed Simple Learn report on desktop and mobile', async ({
+  page,
+}, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Session report');
@@ -15,11 +17,13 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
     .getByRole('navigation', { name: 'Course sections' })
     .getByRole('link', { name: 'Path', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Study', exact: true }).click();
-  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await sheet.locator('summary').filter({ hasText: 'Practise until all correct' }).click();
-  await sheet.getByRole('button', { name: 'Start practising' }).click();
-  await page.getByRole('button', { name: /Show answer/i }).last().click();
+  await page.getByRole('button', { name: 'Other ways to study' }).click();
+  await page.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+  await page.getByRole('button', { name: 'Start practising' }).click();
+  await page
+    .getByRole('button', { name: /Show answer/i })
+    .last()
+    .click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
   await expect(page.getByText('Goal reached', { exact: true })).toHaveCount(0);
@@ -27,22 +31,39 @@ test('shows a clear completed Simple Learn report on desktop and mobile', async 
   await page.locator('summary').filter({ hasText: 'Session details' }).click();
   await expect(page.getByText('+100 percentage points')).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Session details' }).click();
-  await expect(page.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute('aria-valuenow', '100');
+  await expect(
+    page.getByRole('progressbar', { name: 'Cards correct in this pass' }),
+  ).toHaveAttribute('aria-valuenow', '100');
   await expect(page.getByText('Card added.', { exact: true })).toBeHidden();
-  await expect.poll(() => page.getByRole('progressbar').locator(':scope > div').evaluate(
-    (fill) => fill.getBoundingClientRect().width / fill.parentElement!.getBoundingClientRect().width,
-  )).toBeGreaterThan(0.999);
+  await expect
+    .poll(() =>
+      page
+        .getByRole('progressbar')
+        .locator(':scope > div')
+        .evaluate(
+          (fill) =>
+            fill.getBoundingClientRect().width / fill.parentElement!.getBoundingClientRect().width,
+        ),
+    )
+    .toBeGreaterThan(0.999);
   for (const width of [1440, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(page.getByRole('button', { name: 'Done', exact: true })).toBeInViewport();
     const done = await page.getByRole('button', { name: 'Done', exact: true }).boundingBox();
-    const keepStudying = await page.getByRole('button', { name: 'Keep studying', exact: true }).boundingBox();
+    const keepStudying = await page
+      .getByRole('button', { name: 'Keep studying', exact: true })
+      .boundingBox();
     expect(done).not.toBeNull();
     expect(keepStudying).not.toBeNull();
     expect(Math.abs(done!.y - keepStudying!.y)).toBeLessThan(1);
     expect(keepStudying!.x).toBeGreaterThan(done!.x + done!.width);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: testInfo.outputPath(`session-report-${width}.png`), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`session-report-${width}.png`),
+      fullPage: true,
+    });
   }
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Goal reached.' })).toBeHidden();

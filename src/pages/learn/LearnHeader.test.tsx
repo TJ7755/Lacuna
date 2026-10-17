@@ -47,9 +47,11 @@ it('keeps results coloured while those lines are recited again', () => {
   );
   const pips = screen.getByRole('progressbar').querySelectorAll('[data-session-card-status]');
   expect(pips[0]).toHaveAttribute('data-session-card-status', 'correct');
-  expect(pips[0]).toHaveClass('bg-positive', 'border-accent');
+  expect(pips[0]).toHaveClass('border-accent');
+  expect(pips[0].firstElementChild).toHaveClass('bg-positive');
   expect(pips[1]).toHaveAttribute('data-session-card-status', 'wrong');
-  expect(pips[1]).toHaveClass('bg-negative', 'border-accent');
+  expect(pips[1]).toHaveClass('border-accent');
+  expect(pips[1].firstElementChild).toHaveClass('bg-negative');
   expect(pips[2]).toHaveAttribute('data-session-card-status', 'current');
 });
 
@@ -136,4 +138,12 @@ it.each([false, true])('has no navigation opener (touch: %s)', (isTouchMode) => 
   expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Exit' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Card actions' })).toBeInTheDocument();
+});
+
+it('fills Simple Learn outcomes through a transform layer, including reduced motion', () => {
+  render(<LearnHeader {...headerProps()} />);
+  const pips = screen.getByRole('progressbar').querySelectorAll('[data-session-card-status]');
+  expect(pips[0].firstElementChild).toHaveClass('bg-negative');
+  expect(pips[1].firstElementChild).toHaveClass('bg-positive');
+  expect(pips[3].firstElementChild).toHaveStyle({ transform: 'scaleX(0)' });
 });

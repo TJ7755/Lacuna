@@ -1,156 +1,144 @@
 import { createRef } from 'react';
-import { animate } from 'motion/react';
-import type * as MotionReact from 'motion/react';
-import { act, render } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { LazyMotion, domAnimation } from 'motion/react';
+import { act, render, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './StudyCardTransition';
 
-vi.mock('motion/react', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionReact>();
-  return { ...actual, animate: vi.fn() };
+beforeEach(() => {
+  const nativeAnimate = Element.prototype.animate;
+  vi.spyOn(Element.prototype, 'animate').mockImplementation(function (this: Element, ...args) {
+    const animation = nativeAnimate.apply(this, args);
+    // happy-dom rejects native animation promises on cancellation; consume those
+    // while retaining real Motion/presence timing for the lifecycle regressions.
+    void animation.finished.catch(() => {});
+    return animation;
+  });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
-const animateMock = vi.mocked(animate);
-
-function completeLatestAnimation() {
-  const options = animateMock.mock.calls.at(-1)?.[2];
-  if (typeof options === 'object' && 'onComplete' in options) options.onComplete?.();
+function setup(multiplier = 1) {
+  const ref = createRef<StudyCardTransitionHandle>();
+  const frame = (id: string, phase: 'question' | 'answer') => (
+    <LazyMotion features={domAnimation}>
+      <StudyCardTransition ref={ref} cardId={id} phase={phase} multiplier={multiplier}>
+        <div>
+          {id} {phase}
+        </div>
+      </StudyCardTransition>
+    </LazyMotion>
+  );
+  const view = render(frame('one', 'answer'));
+  return { ref, view, frame };
 }
 
-describe('StudyCardTransition timing', () => {
-  it('uses a calmer entrance', () => {
-    animateMock.mockClear();
-    const view = render(
-      <StudyCardTransition cardId="one" phase="question" multiplier={1}>
-        Card
-      </StudyCardTransition>,
-    );
-
-    expect(animateMock.mock.calls.some((call) => call[2]?.duration === 0.36)).toBe(true);
-    view.unmount();
-  });
-
-  it('finishes departure, pauses, then commits once', () => {
+describe('StudyCardTransition hand-off', () => {
+  it.each([0.6, 1, 1.4])('commits during departure at multiplier %s, without a page pulse', (m) => {
     vi.useFakeTimers();
-    animateMock.mockClear();
-    const ref = createRef<StudyCardTransitionHandle>();
+    const { ref, view } = setup(m);
     const commit = vi.fn();
-    const view = render(
-      <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={1}>
-        Card
-      </StudyCardTransition>,
-    );
-
-    act(() => {
+    void act(() => {
       ref.current!.dismiss(true, commit);
       ref.current!.dismiss(false, commit);
     });
-    expect(animateMock.mock.calls.at(-1)?.[2]?.duration).toBe(0.2);
-    void act(completeLatestAnimation);
-    void act(() => vi.advanceTimersByTime(179));
-    expect(commit).not.toHaveBeenCalled();
-    void act(() => vi.advanceTimersByTime(1));
+    expect(view.container.querySelector('[data-study-feedback]')).toBeNull();
+    expect(view.container.querySelector('[data-study-rim="positive"]')).not.toBeNull();
+    void act(() => vi.advanceTimersByTime(80 * m));
+    expect(commit).toHaveBeenCalledOnce();
+    void act(() => vi.advanceTimersByTime(1000));
     expect(commit).toHaveBeenCalledOnce();
     view.unmount();
-    vi.useRealTimers();
   });
 
-  it.each([0.6, 1, 1.4])(
-    'finishes the edge pulse before committing at motion multiplier %s',
-    (multiplier) => {
-      vi.useFakeTimers();
-      animateMock.mockClear();
-      const ref = createRef<StudyCardTransitionHandle>();
-      const commit = vi.fn();
-      const view = render(
-        <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={multiplier}>
-          Card
-        </StudyCardTransition>,
-      );
+  it('retains the departing card while the persisted next card enters', () => {
+    vi.useFakeTimers();
+    const { ref, view, frame } = setup();
+    void act(() => ref.current!.dismiss(true, vi.fn()));
+    void act(() => vi.advanceTimersByTime(80));
+    view.rerender(frame('two', 'question'));
+    expect(view.getByText('one answer')).toBeInTheDocument();
+    expect(view.getByText('two question')).toBeInTheDocument();
+    expect(view.getByText('one answer').closest('[data-study-card-id]')).toHaveAttribute('inert');
+    view.unmount();
+  });
 
-      act(() => ref.current!.dismiss(true, commit));
-      const feedback = view.container.querySelector('[data-study-feedback]');
-      expect(feedback).not.toBeNull();
-      expect(feedback).toHaveAttribute('data-study-feedback', 'right');
-      expect(feedback!.querySelector('.rounded-full')).toBeNull();
-      const pulse = animateMock.mock.calls.find((call) => Array.isArray(call[1]));
-      expect(pulse?.[1]).toEqual([0, 1, 0]);
-      expect(pulse?.[2]?.duration).toBe(0.32 * multiplier);
-      void act(completeLatestAnimation);
-      void act(() => vi.advanceTimersByTime(180 * multiplier));
+  it('animates repeated ids as distinct presentations', () => {
+    vi.useFakeTimers();
+    const { ref, view, frame } = setup();
+    const commit = vi.fn();
+    void act(() => ref.current!.dismiss(false, commit));
+    void act(() => vi.advanceTimersByTime(80));
+    view.rerender(frame('one', 'question'));
+    expect(view.getByText('one answer')).toBeInTheDocument();
+    expect(view.getByText('one question')).toBeInTheDocument();
+    view.rerender(frame('one', 'answer'));
+    void act(() => ref.current!.dismiss(true, commit));
+    void act(() => vi.advanceTimersByTime(80));
+    expect(commit).toHaveBeenCalledTimes(2);
+    view.unmount();
+  });
+
+  it('cancels an uncommitted grade and clears the rim on Undo', () => {
+    vi.useFakeTimers();
+    const { ref, view } = setup();
+    const commit = vi.fn();
+    void act(() => ref.current!.dismiss(false, commit));
+    void act(() => ref.current!.cancel());
+    void act(() => vi.advanceTimersByTime(1000));
+    expect(commit).not.toHaveBeenCalled();
+    expect(view.container.querySelector('[data-study-rim]')).toBeNull();
+    view.unmount();
+  });
+
+  it('commits synchronously and only once without motion', () => {
+    const { ref, view } = setup(0);
+    const commit = vi.fn();
+    void act(() => {
+      expect(ref.current!.dismiss(false, commit)).toBe(true);
       expect(commit).toHaveBeenCalledOnce();
-      expect(view.container.querySelector('[data-study-feedback]')).toBeNull();
-      view.unmount();
-      vi.useRealTimers();
-    },
-  );
-
-  it('lets Undo cancel a pending grade even when it restores the same card', () => {
-    vi.useFakeTimers();
-    animateMock.mockClear();
-    const ref = createRef<StudyCardTransitionHandle>();
-    const commit = vi.fn();
-    const view = render(
-      <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={1}>
-        Card
-      </StudyCardTransition>,
-    );
-
-    act(() => ref.current!.dismiss(false, commit));
-    void act(completeLatestAnimation);
-    act(() => ref.current!.cancel());
-    void act(() => vi.advanceTimersByTime(500));
-    expect(commit).not.toHaveBeenCalled();
-    expect(view.container.querySelector('[data-study-feedback]')).toBeNull();
-    act(() => ref.current!.dismiss(true, commit));
-    void act(completeLatestAnimation);
-    void act(() => vi.advanceTimersByTime(180));
+      expect(ref.current!.dismiss(false, commit)).toBe(false);
+    });
     expect(commit).toHaveBeenCalledOnce();
+    expect(view.container.querySelector('[data-study-rim]')).toBeNull();
     view.unmount();
-    vi.useRealTimers();
   });
 
-  it('cancels a pending grade when the answer is hidden during the pause', () => {
-    vi.useFakeTimers();
-    animateMock.mockClear();
-    const ref = createRef<StudyCardTransitionHandle>();
-    const commit = vi.fn();
-    const view = render(
-      <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={1}>
-        Card
-      </StudyCardTransition>,
+  it('removes the settled transform so fixed descendants remain viewport-bound', async () => {
+    const { view } = setup();
+    await waitFor(() =>
+      expect(view.container.querySelector('[data-study-card-id]')).toHaveStyle({
+        transform: 'none',
+      }),
     );
-
-    act(() => ref.current!.dismiss(false, commit));
-    void act(completeLatestAnimation);
-    view.rerender(
-      <StudyCardTransition ref={ref} cardId="one" phase="question" multiplier={1}>
-        Card
-      </StudyCardTransition>,
-    );
-    void act(() => vi.advanceTimersByTime(500));
-    expect(commit).not.toHaveBeenCalled();
-    expect(view.container.querySelector('[data-study-feedback]')).toBeNull();
     view.unmount();
-    vi.useRealTimers();
   });
+});
 
-  it('cancels a pending grade when unmounted during the inter-card pause', () => {
-    vi.useFakeTimers();
-    animateMock.mockClear();
-    const ref = createRef<StudyCardTransitionHandle>();
-    const commit = vi.fn();
-    const view = render(
-      <StudyCardTransition ref={ref} cardId="one" phase="answer" multiplier={1}>
-        Card
-      </StudyCardTransition>,
-    );
+it('keeps the active element after the retained outgoing element unmounts', async () => {
+  const { ref, view, frame } = setup();
+  const first = vi.fn();
+  void act(() => ref.current!.dismiss(false, first));
+  await waitFor(() => expect(first).toHaveBeenCalledOnce());
+  view.rerender(frame('two', 'question'));
+  await waitFor(() => expect(view.queryByText('one answer')).not.toBeInTheDocument());
+  view.rerender(frame('two', 'answer'));
+  const second = vi.fn();
+  void act(() => ref.current!.dismiss(true, second));
+  expect(second).not.toHaveBeenCalled();
+  expect(view.container.querySelector('[data-study-rim="positive"]')).not.toBeNull();
+  await waitFor(() => expect(second).toHaveBeenCalledOnce());
+  view.unmount();
+});
 
-    act(() => ref.current!.dismiss(false, commit));
-    void act(completeLatestAnimation);
-    view.unmount();
-    void act(() => vi.advanceTimersByTime(500));
-    expect(commit).not.toHaveBeenCalled();
-    vi.useRealTimers();
-  });
+it('keeps the lifted card visible until persistence supplies its replacement', async () => {
+  const { ref, view } = setup();
+  const commit = vi.fn();
+  void act(() => ref.current!.dismiss(true, commit));
+  await waitFor(() => expect(commit).toHaveBeenCalledOnce());
+  await new Promise((resolve) => setTimeout(resolve, 450));
+  const current = view.container.querySelector('[data-study-card-id]')!;
+  expect((current as HTMLElement).style.transform).not.toContain('translateX');
+  view.unmount();
 });

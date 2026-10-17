@@ -6,10 +6,12 @@ import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { TouchBottomSheet } from './TouchBottomSheet';
 import type { Phase } from './types';
+import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 
 /** Both phases share a grid cell, reserving the larger height before a flip. */
 export function StudyControls({
   phase,
+  feedback,
   isTypingCard,
   isTouchMode,
   gradingMode,
@@ -22,6 +24,7 @@ export function StudyControls({
   m,
 }: {
   phase: Phase;
+  feedback?: StudyGradeFeedback;
   isTypingCard: boolean;
   isTouchMode: boolean;
   gradingMode: 'manual' | 'silent';
@@ -100,7 +103,10 @@ export function StudyControls({
             >
               {gradingMode === 'manual' ? (
                 <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
-                  <Button
+                  <StudyGradeButton
+                    grade={1}
+                    feedback={feedback}
+                    m={m}
                     variant="danger"
                     size="lg"
                     className="w-full"
@@ -108,24 +114,33 @@ export function StudyControls({
                   >
                     <CloseIcon width={18} height={18} />
                     Again
-                  </Button>
-                  <Button
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={2}
+                    feedback={feedback}
+                    m={m}
                     variant="secondary"
                     size="lg"
                     className="w-full"
                     onClick={() => onAnswer(2, 'keyboard')}
                   >
                     Hard
-                  </Button>
-                  <Button
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={3}
+                    feedback={feedback}
+                    m={m}
                     variant="secondary"
                     size="lg"
                     className="w-full"
                     onClick={() => onAnswer(3, 'keyboard')}
                   >
                     Good
-                  </Button>
-                  <Button
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={4}
+                    feedback={feedback}
+                    m={m}
                     variant="primary"
                     size="lg"
                     className="w-full"
@@ -133,11 +148,14 @@ export function StudyControls({
                   >
                     <CheckIcon width={18} height={18} />
                     Easy
-                  </Button>
+                  </StudyGradeButton>
                 </div>
               ) : (
                 <div className="flex w-full max-w-md gap-3">
-                  <Button
+                  <StudyGradeButton
+                    grade={false}
+                    feedback={feedback}
+                    m={m}
                     variant="danger"
                     size="lg"
                     className="w-full flex-1"
@@ -145,8 +163,11 @@ export function StudyControls({
                   >
                     <CloseIcon width={18} height={18} />
                     No
-                  </Button>
-                  <Button
+                  </StudyGradeButton>
+                  <StudyGradeButton
+                    grade={true}
+                    feedback={feedback}
+                    m={m}
                     variant="primary"
                     size="lg"
                     className="w-full flex-1"
@@ -154,7 +175,7 @@ export function StudyControls({
                   >
                     <CheckIcon width={18} height={18} />
                     Yes
-                  </Button>
+                  </StudyGradeButton>
                 </div>
               )}
             </motion.div>
@@ -164,6 +185,7 @@ export function StudyControls({
       {isTouchMode && (
         <TouchBottomSheet
           phase={phase}
+          feedback={feedback}
           gradingMode={gradingMode}
           onReveal={onReveal}
           onHide={onHide}

@@ -6,6 +6,7 @@ import { StepSwap } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import type { Phase } from './types';
+import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 
 // Thumb-zone grade buttons: tall, squarer than the pill buttons elsewhere, with the
 // press scale coming from Button itself.
@@ -13,6 +14,7 @@ const GRADE_BUTTON = 'h-16 rounded-[20px] text-[17px]';
 
 export function TouchBottomSheet({
   phase,
+  feedback,
   gradingMode,
   onReveal,
   onHide,
@@ -21,6 +23,7 @@ export function TouchBottomSheet({
   isTypingCard,
 }: {
   phase: Phase;
+  feedback?: StudyGradeFeedback;
   gradingMode: 'silent' | 'manual';
   onReveal: () => void;
   onHide: () => void;
@@ -65,7 +68,10 @@ export function TouchBottomSheet({
           <>
             {gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
-                <Button
+                <StudyGradeButton
+                  grade={1}
+                  feedback={feedback}
+                  m={m}
                   variant="secondary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'w-full border-[1.5px] border-ink bg-surface')}
@@ -76,8 +82,11 @@ export function TouchBottomSheet({
                 >
                   <CloseIcon width={20} height={20} />
                   Again
-                </Button>
-                <Button
+                </StudyGradeButton>
+                <StudyGradeButton
+                  grade={2}
+                  feedback={feedback}
+                  m={m}
                   variant="secondary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'w-full')}
@@ -87,8 +96,11 @@ export function TouchBottomSheet({
                   }}
                 >
                   Hard
-                </Button>
-                <Button
+                </StudyGradeButton>
+                <StudyGradeButton
+                  grade={3}
+                  feedback={feedback}
+                  m={m}
                   variant="secondary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'w-full')}
@@ -98,8 +110,11 @@ export function TouchBottomSheet({
                   }}
                 >
                   Good
-                </Button>
-                <Button
+                </StudyGradeButton>
+                <StudyGradeButton
+                  grade={4}
+                  feedback={feedback}
+                  m={m}
                   variant="primary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'w-full')}
@@ -110,11 +125,14 @@ export function TouchBottomSheet({
                 >
                   <CheckIcon width={20} height={20} />
                   Easy
-                </Button>
+                </StudyGradeButton>
               </div>
             ) : (
               <div className="flex w-full gap-3">
-                <Button
+                <StudyGradeButton
+                  grade={false}
+                  feedback={feedback}
+                  m={m}
                   variant="secondary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'flex-1 border-[1.5px] border-ink bg-surface')}
@@ -125,8 +143,11 @@ export function TouchBottomSheet({
                 >
                   <CloseIcon width={20} height={20} />
                   No
-                </Button>
-                <Button
+                </StudyGradeButton>
+                <StudyGradeButton
+                  grade={true}
+                  feedback={feedback}
+                  m={m}
                   variant="primary"
                   size="lg"
                   className={cn(GRADE_BUTTON, 'flex-1')}
@@ -137,7 +158,7 @@ export function TouchBottomSheet({
                 >
                   <CheckIcon width={20} height={20} />
                   Yes
-                </Button>
+                </StudyGradeButton>
               </div>
             )}
             <Button variant="ghost" size="sm" onClick={onHide}>

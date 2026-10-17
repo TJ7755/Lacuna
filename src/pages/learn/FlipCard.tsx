@@ -54,7 +54,7 @@ export function FlipCard({
   hintsOpen: boolean;
   onReveal: () => void;
   onHide: () => void;
-  onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
+  onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard', velocity?: number) => void;
   typedAnswer?: string;
   isTypingCard?: boolean;
   mode: LearnModeType;
@@ -192,7 +192,7 @@ export function FlipCard({
             /* ignore */
           }
           // The shared transition carries swipe, button and keyboard grades off-screen.
-          void onAnswer(dx > 0, 'touch');
+          void onAnswer(dx > 0, 'touch', swipeXMotion.getVelocity());
         } else {
           resetSwipe();
         }
@@ -213,7 +213,7 @@ export function FlipCard({
         }
       }
     },
-    [phase, audioCard, onReveal, onHide, onAnswer, resetSwipe],
+    [phase, audioCard, onReveal, onHide, onAnswer, resetSwipe, swipeXMotion],
   );
 
   const handlePointerCancel = useCallback(
@@ -353,7 +353,7 @@ export function FlipCard({
               CARD_SURFACE_CLASS,
             )}
           >
-            {/* Keep drag feedback on the card, away from the page-wide grading pulse. */}
+            {/* Keep drag feedback attached to the card throughout the throw. */}
             {swipe.hint && (
               <div
                 aria-hidden="true"
