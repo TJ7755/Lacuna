@@ -11,10 +11,11 @@ test('keeps the sidebar quiet and shows study details beside a hovered course', 
   await expect(course).toHaveAccessibleName('Welcome to Lacuna');
   // Navigation entries all open destinations; quick search remains a global shortcut.
   await expect(sidebar.locator('kbd')).toHaveCount(0);
-  await expect(sidebar.getByRole('link', { name: 'Search content', exact: true })).toHaveAttribute(
-    'href',
-    '#/search',
-  );
+  await sidebar.getByRole('link', { name: 'Search content', exact: true }).click();
+  await expect(page).toHaveURL(/#\/search$/);
+  await sidebar.getByRole('link', { name: 'Today', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  await sidebar.getByRole('link', { name: 'Search content', exact: true }).focus();
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await course.hover();
   const card = page.getByRole('tooltip');

@@ -148,7 +148,9 @@ describe('Sidebar', () => {
     expect(mark.tagName).toBe('IMG');
     expect(mark).toHaveAttribute('src', '/icon.svg');
     expect(mark).toHaveClass('h-9', 'w-9');
-    expect(mark.parentElement).toHaveClass('px-0', 'justify-center');
+    expect(mark.parentElement).toHaveClass('px-[18px]');
+    expect(screen.getByText('Lacuna')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('Lacuna')).toHaveAttribute('inert');
     expect(mark.parentElement).not.toHaveClass('px-5');
     expect(screen.getByRole('complementary')).toHaveClass(
       'w-[calc(72px+env(safe-area-inset-left))]',

@@ -44,7 +44,9 @@ describe('StudyCardTransition', () => {
         Card
       </StudyCardTransition>,
     );
-    act(() => ref.current!.dismiss(false, commit));
+    act(() => {
+      ref.current!.dismiss(false, commit);
+    });
     view.unmount();
     await new Promise((resolve) => setTimeout(resolve, 500));
     expect(commit).not.toHaveBeenCalled();
@@ -58,7 +60,9 @@ describe('StudyCardTransition', () => {
         Card
       </StudyCardTransition>,
     );
-    act(() => ref.current!.dismiss(false, commit));
+    act(() => {
+      ref.current!.dismiss(false, commit);
+    });
     expect(commit).toHaveBeenCalledOnce();
     view.rerender(
       <StudyCardTransition ref={ref} cardId="one" phase="question" multiplier={0}>
@@ -70,7 +74,9 @@ describe('StudyCardTransition', () => {
         Card
       </StudyCardTransition>,
     );
-    act(() => ref.current!.dismiss(true, commit));
+    act(() => {
+      ref.current!.dismiss(true, commit);
+    });
     expect(commit).toHaveBeenCalledTimes(2);
   });
 });
