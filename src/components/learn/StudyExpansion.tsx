@@ -29,6 +29,7 @@ export function StudyExpansion({
 }) {
   const [launching, setLaunching] = useState(false);
   const launchingRef = useRef(false);
+  // Presence updates during retained exits, so the portal can yield to Other ways' z-30 wrapper.
   const present = useIsPresent();
   const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -166,7 +167,7 @@ export function StudyExpansion({
               boxShadow: 'none',
               pointerEvents: 'none',
             }
-          : undefined
+          : { zIndex: present ? 50 : 20 }
       }
       className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
     >

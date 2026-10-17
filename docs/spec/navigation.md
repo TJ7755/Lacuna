@@ -356,8 +356,9 @@ due today, filling as the day's are done and completing with a tick once none ar
 exam-day recall, card and lesson counts sit in one card beneath its lessons. Beside **Study**, an
 **Other ways** menu offers
 **Only review due cards** (course-wide due review, directly, described as “Skip new cards and lessons”), each upcoming assessment and
-**Practise until all correct**. Practice expands within that menu to choose the whole course or
-a lesson; answers still update the review schedule. It is never duplicated in the session preview. Every
+**Practise until all correct**. Switching between Study and Other ways keeps the opening surface
+above the closing surface throughout the transition. Practice expands within that menu to choose
+the whole course or a lesson; answers still update the review schedule. It is never duplicated in the session preview. Every
 course entry point is the same `CourseStudyActions` pair, a one-lesson course included, and
 Today's **Study** on a course row (and the S shortcut there) opens the same session preview, so Study
 always previews the session before it starts. Once the curriculum is finished, the
