@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { Card, Grade } from '../../db/types';
 import { generateCards } from '../../db/sequenceGeneration';
 import { FlipCard } from '../learn/FlipCard';
@@ -82,11 +82,15 @@ export function NativeFlashcardDemo() {
   const [revealed, setRevealed] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState('');
   const [speed] = useMotionSpeed();
+  const [hydrated, setHydrated] = useState(false);
+  useLayoutEffect(() => setHydrated(true), []);
   const transition = useRef<StudyCardTransitionHandle>(null);
   const input = useRef<HTMLInputElement>(null);
   const current = examples[format][index];
   const phase = revealed ? 'answer' : 'question';
-  const m = speedMultiplier(speed);
+  // The server cannot read the visitor's motion preference. Match its first tree,
+  // then apply the preference before painting the hydrated controls.
+  const m = hydrated ? speedMultiplier(speed) : 1;
   function choose(next: Format) {
     transition.current?.cancel();
     setFormat(next);
@@ -126,6 +130,7 @@ export function NativeFlashcardDemo() {
             card={current}
             revealed={revealed}
             motionSpeed={speed}
+            motionMultiplier={m}
             phase={phase}
             isTouchMode={false}
             menuOpen={false}
