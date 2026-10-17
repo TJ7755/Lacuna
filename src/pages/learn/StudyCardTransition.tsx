@@ -14,7 +14,7 @@ import {
   usePresence,
   useTransform,
 } from 'motion/react';
-import { scaledSpring } from '../../components/ui/motion';
+import { MOTION_EASING } from '../../components/ui/motion';
 import type { Phase } from './types';
 import { StudyCardMotionContext } from './studyCardMotion';
 import { studyCardExitTransition } from './studyCardExit';
@@ -23,6 +23,7 @@ interface Departure {
   correct: boolean;
   x: number;
   velocity: number;
+  source: 'touch' | 'keyboard';
 }
 
 export interface StudyCardTransitionHandle {
@@ -75,7 +76,7 @@ export const StudyCardTransition = forwardRef<
       // Undo also removes any retained outgoing presentation.
       setReset((value) => value + 1);
     },
-    dismiss(correct, commit, _source = 'keyboard', velocity = 0) {
+    dismiss(correct, commit, source = 'keyboard', velocity = 0) {
       if (busy.current) return false;
       busy.current = true;
       if (m === 0 || !element.current) {
@@ -90,6 +91,7 @@ export const StudyCardTransition = forwardRef<
         // Aim just beyond the viewport, allowing clearance for rotated corners.
         x: correct ? window.innerWidth - bounds.left + clearance : -bounds.right - clearance,
         velocity,
+        source,
       });
       // Begin persistence while the card is still visible. No speculative queue read,
       // second commit, or empty inter-card pause; the incoming presentation overlaps.
@@ -148,7 +150,7 @@ const StudyCardPresentation = forwardRef<
     const animation = animate(
       x,
       departure.x,
-      studyCardExitTransition(m, x.get(), departure.x, departure.velocity),
+      studyCardExitTransition(m, x.get(), departure.x, departure.velocity, departure.source),
     );
     flight.current = animation;
     return () => animation.stop();
@@ -175,7 +177,7 @@ const StudyCardPresentation = forwardRef<
         className="relative col-start-1 row-start-1 w-full self-center"
         initial={{ y: 12, scale: 0.96 }}
         animate={{ y: 0, scale: 1 }}
-        transition={scaledSpring(m, 100, 20)}
+        transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
         inert={departure !== null || !present}
         aria-hidden={departure !== null || !present || undefined}
         style={{

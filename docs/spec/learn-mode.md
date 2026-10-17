@@ -509,9 +509,11 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   back, and committed drags carry their release velocity into the same departure used by
   buttons and keyboard. Translation, rotation and fading share one position-driven motion,
   starting before persistence supplies the next card. An exit from rest accelerates over a
-  560ms flight to just beyond the viewport; flicks inherit capped release velocity with
-  flights bounded to 360–560ms. The incoming card settles with a slower, critically damped
-  spring. Both follow the motion-speed setting; reduced motion skips the departure.
+  330ms flight to just beyond the viewport; flicks inherit capped release velocity with
+  flights bounded to 220–280ms, including slow releases. The incoming card settles over
+  280ms with an ease-out and no bounce, overlapping the departure while persistence
+  supplies the next card. Both follow the motion-speed setting; reduced motion skips the
+  departure.
   The first successful swipe hides the persistent swipe
   hints via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study

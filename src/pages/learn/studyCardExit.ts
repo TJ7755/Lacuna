@@ -3,12 +3,13 @@ export function studyCardExitTransition(
   from: number,
   to: number,
   velocity: number,
+  source: 'touch' | 'keyboard' = 'keyboard',
 ) {
   const distance = Math.abs(to - from);
   if (multiplier === 0 || distance < 1) return { duration: 0 } as const;
 
-  const restingDuration = 0.56 * multiplier;
-  const minimumDuration = 0.36 * multiplier;
+  const restingDuration = (source === 'touch' ? 0.28 : 0.33) * multiplier;
+  const minimumDuration = 0.22 * multiplier;
   const speedLimit = Math.min(2400, (1.6 * distance) / minimumDuration);
   const release = Math.max(-speedLimit, Math.min(speedLimit, velocity * Math.sign(to - from)));
   const duration = Math.max(
