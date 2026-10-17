@@ -115,7 +115,9 @@ ordinary `front_back` cards to the scheduler.
   in place; the separate Question workflow remains the application-practice model above.
   Tolerance, alternative answers, maths symbols, scheme drafting/testing, fixtures, tags and formatting
   remain available in their existing groups. Mark-scheme suggestions consume completion keys before
-  save shortcuts; composition keys remain with the input method.
+  save shortcuts; composition keys remain with the input method. Numeric entry keeps its active
+  answer target after check-mode animations finish, without requiring another edit; validation
+  still targets the first invalid accepted answer or tolerance field.
 - Audio creation starts at **Choose file**, including after repeat-save. Attachment or explicitly
   stopped recording advances to the empty optional prompt, or to Answer when the prompt is already
   filled, provided the learner has not moved focus elsewhere. Prompt -> Answer -> enabled repeat-save

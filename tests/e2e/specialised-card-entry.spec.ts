@@ -222,3 +222,33 @@ test('failed numeric writes retain content for retry and route recovery', async 
   await expect(prompt).toHaveValue('');
   await expect(page.getByText('1 added', { exact: true })).toBeVisible();
 });
+
+test('numeric Tab targets survive completed answer-type animations without editing', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => localStorage.setItem('lacuna.motionSpeed', 'normal'));
+  await openEditor(page, 'Numeric answer');
+  const prompt = page.getByRole('textbox', { name: 'Question', exact: true });
+  const editor = page.getByRole('region', { name: 'Accepted answer' });
+  await prompt.fill('What is 2 + 2?');
+  await page.getByRole('textbox', { name: 'Expected answer' }).fill('4');
+  for (const type of ['Tolerance', 'One of', 'Exact', 'Tolerance']) {
+    const outgoingId = await editor.getByRole('textbox').getAttribute('id');
+    expect(outgoingId).toBeTruthy();
+    await page.getByRole('button', { name: type, exact: true }).click();
+    await expect(editor.locator(`[id="${outgoingId}"]`)).toHaveCount(0);
+    await expect(editor.locator('[inert]')).toHaveCount(0);
+    const answer = page.getByRole('textbox', {
+      name: type === 'One of' ? 'Accepted answer 1' : 'Expected answer',
+      exact: true,
+    });
+    // Focusing preserves the untouched value; typing here would reattach the lost ref.
+    await answer.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(prompt).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(answer).toBeFocused();
+    await expect(answer).toHaveValue('4');
+  }
+});

@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import { createRef, useImperativeHandle, useMemo, useRef, type Ref } from 'react';
 import { Button } from '../ui/Button';
 import type { NumericAnswerSpec } from '../../db/types';
 import { numericAnswerSpecIsValid } from '../../items/numericAnswerSpec';
@@ -13,6 +13,7 @@ interface NumericAnswerEditorProps {
   value: NumericAnswerSpec;
   onChange: (value: NumericAnswerSpec) => void;
   invalid?: boolean;
+  /** Active answer, or the first invalid answer/tolerance when invalid; clears on unmount. */
   inputRef?: Ref<HTMLInputElement>;
   onTabForward?: () => void;
   onTabBackward?: () => void;
@@ -49,6 +50,32 @@ export function NumericAnswerEditor({
     value.kind === 'within' &&
     numericAnswerSpecIsValid({ kind: 'exact', value: value.value }) &&
     !numericAnswerSpecIsValid(value);
+  const exactRef = useRef<HTMLInputElement>(null);
+  const withinRef = useRef<HTMLInputElement>(null);
+  const toleranceRef = useRef<HTMLInputElement>(null);
+  const alternativeIndex = invalid && invalidAlternative >= 0 ? invalidAlternative : 0;
+  const alternativeCount = value.kind === 'matches-one-of' ? value.values.length : 0;
+  const alternativeRefs = useMemo(
+    () => Array.from({ length: alternativeCount }, () => createRef<HTMLInputElement>()),
+    [alternativeCount],
+  );
+  const targetRef =
+    value.kind === 'matches-one-of'
+      ? alternativeRefs[alternativeIndex]
+      : value.kind === 'exact'
+        ? exactRef
+        : focusTolerance
+          ? toleranceRef
+          : withinRef;
+
+  // Exiting StepSwap branches may unmount after the incoming input has mounted.
+  // Only this editor publishes the current target; branch cleanup owns local refs.
+  useImperativeHandle<HTMLInputElement | null, HTMLInputElement | null>(
+    inputRef,
+    () => targetRef?.current ?? null,
+    [targetRef],
+  );
+
   const selectKind = (kind: NumericAnswerSpec['kind']) => {
     const current = firstValue(value);
     if (kind === 'exact') onChange({ kind, value: current });
@@ -94,11 +121,7 @@ export function NumericAnswerEditor({
               {value.values.map((candidate, index) => (
                 <div key={index} className="relative">
                   <MathsAnswerInput
-                    ref={
-                      index === (invalid && invalidAlternative >= 0 ? invalidAlternative : 0)
-                        ? inputRef
-                        : undefined
-                    }
+                    ref={alternativeRefs[index]}
                     onTabForward={onTabForward}
                     onTabBackward={onTabBackward}
                     label={`Accepted answer ${index + 1}`}
@@ -136,7 +159,7 @@ export function NumericAnswerEditor({
               )}
             >
               <MathsAnswerInput
-                ref={focusTolerance ? undefined : inputRef}
+                ref={value.kind === 'exact' ? exactRef : withinRef}
                 onTabForward={onTabForward}
                 onTabBackward={onTabBackward}
                 label="Expected answer"
@@ -147,7 +170,7 @@ export function NumericAnswerEditor({
                 <label className="block">
                   <span className={`${fieldLabelClassName} mb-2`}>Plus or minus</span>
                   <input
-                    ref={focusTolerance ? inputRef : undefined}
+                    ref={toleranceRef}
                     type="number"
                     aria-label="Plus or minus"
                     min="0"
