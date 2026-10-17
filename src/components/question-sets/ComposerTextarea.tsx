@@ -14,15 +14,24 @@ export function ComposerTextarea(props: ComponentProps<'textarea'>) {
     };
     grow();
     let width = field.getBoundingClientRect().width;
+    let frame: number | undefined;
     const observer = new ResizeObserver(() => {
       const next = field.getBoundingClientRect().width;
       if (next !== width) {
         width = next;
-        grow();
+        // Changing the observed height during delivery creates another resize notification.
+        if (frame === undefined)
+          frame = requestAnimationFrame(() => {
+            frame = undefined;
+            grow();
+          });
       }
     });
     observer.observe(field);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
   }, [props.value]);
   return <textarea {...props} ref={ref} rows={1} />;
 }

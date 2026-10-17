@@ -82,3 +82,51 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
     await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
   });
 }
+
+test('resizes wrapped composer fields without ResizeObserver delivery errors', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Composer resizing');
+  const coursePath = new URL(page.url()).hash.slice(1);
+  await page.goto(`/#${coursePath}/questions`);
+  await page.getByRole('button', { name: 'New question set', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Wrapping questions');
+  await page.keyboard.press('Enter');
+  const question = page.getByRole('textbox', { name: 'Q1 question', exact: true });
+  const scheme = page.getByRole('textbox', { name: 'Q1 mark scheme', exact: true });
+  await expect(question).toBeFocused();
+  await page.evaluate(() => {
+    const errors: string[] = [];
+    Object.assign(window, { composerResizeErrors: errors });
+    window.addEventListener('error', (event) => {
+      if (event.message.includes('ResizeObserver')) errors.push(event.message);
+    });
+  });
+  await question.fill('Explain how the specialised structures support the cell. '.repeat(8));
+  await scheme.fill('Relate the structure to its function. '.repeat(6));
+  for (const width of [390, 800, 320, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    for (const field of [question, scheme]) {
+      await expect
+        .poll(() =>
+          field.evaluate((element) => {
+            const textarea = element as HTMLTextAreaElement;
+            return textarea.scrollHeight <= textarea.clientHeight + 1;
+          }),
+        )
+        .toBe(true);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+  }
+  expect(
+    await page.evaluate(
+      () => (window as Window & { composerResizeErrors?: string[] }).composerResizeErrors,
+    ),
+  ).toEqual([]);
+});

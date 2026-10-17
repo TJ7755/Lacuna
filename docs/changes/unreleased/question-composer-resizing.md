@@ -1,0 +1,1 @@
+- Prevent browser resize errors when question composer fields wrap at a different page width.
