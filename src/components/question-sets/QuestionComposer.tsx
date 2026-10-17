@@ -192,7 +192,7 @@ export function QuestionComposer({
       <div className="qs-composer-captions font-display text-xs text-ink-faint" aria-hidden="true">
         <span />
         <span>Question</span>
-        <span>Mark scheme · one point per line</span>
+        <span>Mark scheme</span>
         <span>Marks</span>
         <span />
       </div>
