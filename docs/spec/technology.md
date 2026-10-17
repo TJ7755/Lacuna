@@ -48,7 +48,14 @@ existing Settings file-based Combine flow remains the manual fallback; the trans
 `src/sync/relay.ts` also supports an HTTP relay that stores only opaque bytes. The cycle in
 `src/sync/cycle.ts` pulls the encrypted state blob, decrypts and validates it, merges it through
 the existing `manualMerge` replace-import path, then pushes only when the merged state changed.
-A forced restore point is taken before every peer apply, a stale relay generation is retried once,
+A forced restore point is taken before every peer apply unless the current-format incoming state,
+its pure import projections and the merge result exactly match a consistent local export, ignoring
+export time, object-key order and JSON-omitted undefined fields. Array order is preserved. Proven
+unchanged peers skip both the safety snapshot and replace-import, but still run the pre-apply size
+and pairing guards. Any
+tombstone, legacy format, migration/backfill, unrecognised difference or comparison failure keeps
+the safety snapshot. Manual backups and Combine, pre-migration snapshots, ten-point retention and
+the five-minute ordinary-backup throttle are unchanged. A stale relay generation is retried once,
 and overlapping cycles share one in-flight promise.
 
 P6 adds the Settings Device sync section. First-device setup mints a channel, generates a channel
