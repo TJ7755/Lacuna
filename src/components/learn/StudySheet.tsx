@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
-import { StudyExpansion } from './StudyExpansion';
+import { StudyExpansion, useStudyLaunch } from './StudyExpansion';
 import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
 import { ArrowRightIcon, ChevronLeftIcon } from '../ui/icons';
@@ -117,13 +117,14 @@ function CourseStudyOptions({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const launch = useStudyLaunch();
   const course = useCourse(courseId);
   const flow = useCourseStudyFlow(courseId);
   const title = flow?.course.name ?? course?.name;
 
   // The choice is encoded in the URL rather than handed over in memory, so the study
   // flow starts already knowing what it is running and never shows an entry of its own.
-  const start = (search: string) => navigate(`/course/${courseId}/study${search}`);
+  const start = (search: string) => launch(() => navigate(`/course/${courseId}/study${search}`));
 
   if (flow === null) {
     return (

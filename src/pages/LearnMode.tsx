@@ -1,3 +1,4 @@
+import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { StudyControls } from './learn/StudyControls';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -97,8 +98,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       : courseId
         ? 'practice'
         : 'deck';
-  const dueReviewRequest =
-    request?.kind === 'practice' && request.mode === 'recurring';
+  const dueReviewRequest = request?.kind === 'practice' && request.mode === 'recurring';
   const filterParams = useMemo(() => {
     const filters = searchParams.getAll('filter') as CardFilter[];
     return dueReviewRequest && !filters.includes('due') ? [...filters, 'due' as const] : filters;
@@ -248,9 +248,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onSessionReset: resetForSession,
   });
 
-  const studyFocusRef = useStudyFocus(
-    current?.id, phase, editing || menuOpen || hintsOpen,
-  );
+  const studyFocusRef = useStudyFocus(current?.id, phase, editing || menuOpen || hintsOpen);
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
@@ -353,29 +351,31 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   if (phase === 'notes' && lessonNotesScreen) {
     return (
-      <LessonNotesIntro
-        lessonName={lessonNotesScreen.lessonName}
-        notes={lessonNotesScreen.notes}
-        onExit={backOut}
-        onContinue={() => {
-          void (async () => {
-            if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
-              await markLessonComplete(lessonId);
+      <StudyEntrance>
+        <LessonNotesIntro
+          lessonName={lessonNotesScreen.lessonName}
+          notes={lessonNotesScreen.notes}
+          onExit={backOut}
+          onContinue={() => {
+            void (async () => {
+              if (lessonId && cardsRef.current.length === 0 && !lessonHasMembersRef.current) {
+                await markLessonComplete(lessonId);
+                setLessonNotesScreen(null);
+                finish(true);
+                return;
+              }
               setLessonNotesScreen(null);
-              finish(true);
-              return;
-            }
-            setLessonNotesScreen(null);
-            serveNextRef.current();
-          })();
-        }}
-        motionMultiplier={m}
-      />
+              serveNextRef.current();
+            })();
+          }}
+          motionMultiplier={m}
+        />
+      </StudyEntrance>
     );
   }
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-paper">
+    <StudyEntrance className="min-h-screen overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
         active={() =>
@@ -552,11 +552,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   : 'pb-[max(2rem,env(safe-area-inset-bottom))] md:pb-12')
               }
             >
-              <StreakCelebration
-                moment={streakMoment}
-                multiplier={m}
-                onDone={clearStreakMoment}
-              />
+              <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
               {current && recitationSequence ? (
                 <SequenceRecitation
                   key={isSimpleMode ? recitationSequence.id : current.id}
@@ -578,62 +574,64 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                         }
                   }
                 />
-              ) : current && (
-                <StudyCardTransition
-                  key={current.id}
-                  ref={cardTransitionRef}
-                  cardId={current.id}
-                  phase={phase}
-                  multiplier={m}
-                >
-                  {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
-                    <NumericStudyFace
-                      card={
-                        current as Card & {
-                          payload: Extract<ItemPayload, { kind: 'numeric' }>;
+              ) : (
+                current && (
+                  <StudyCardTransition
+                    key={current.id}
+                    ref={cardTransitionRef}
+                    cardId={current.id}
+                    phase={phase}
+                    multiplier={m}
+                  >
+                    {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
+                      <NumericStudyFace
+                        card={
+                          current as Card & {
+                            payload: Extract<ItemPayload, { kind: 'numeric' }>;
+                          }
                         }
-                      }
-                      allowCheckerDisputes={!isSimpleMode}
-                      onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                    />
-                  ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
-                    <WorkingStudyFace
-                      card={
-                        current as Card & {
-                          payload: Extract<ItemPayload, { kind: 'working' }>;
+                        allowCheckerDisputes={!isSimpleMode}
+                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                      />
+                    ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
+                      <WorkingStudyFace
+                        card={
+                          current as Card & {
+                            payload: Extract<ItemPayload, { kind: 'working' }>;
+                          }
                         }
-                      }
-                      allowCheckerDisputes={!isSimpleMode}
-                      onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                    />
-                  ) : hasUnrenderableItemPayload ? (
-                    <UnknownItemFace card={current} />
-                  ) : (
-                    <FlipCard
-                      card={current}
-                      revealed={phase === 'answer'}
-                      motionSpeed={motionSpeed}
-                      phase={phase}
-                      isTouchMode={isTouchMode}
-                      menuOpen={menuOpen}
-                      editing={editing}
-                      hintsOpen={hintsOpen}
-                      onReveal={reveal}
-                      onHide={hide}
-                      onAnswer={(input) => answerWithUndo(input, 'touch')}
-                      typedAnswer={typedAnswer}
-                      isTypingCard={isTypingCard}
-                      mode={mode}
-                      isLinesModeCard={isLinesModeCard}
-                      hintStep={hintStep}
-                      onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
-                      hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
-                      answerStrictness={answerStrictness}
-                      occlusion={occlusion}
-                      occlusionAnswerText={occlusionAnswerText}
-                    />
-                  )}
-                </StudyCardTransition>
+                        allowCheckerDisputes={!isSimpleMode}
+                        onAnswer={(result) => answerWithUndo(result, 'keyboard')}
+                      />
+                    ) : hasUnrenderableItemPayload ? (
+                      <UnknownItemFace card={current} />
+                    ) : (
+                      <FlipCard
+                        card={current}
+                        revealed={phase === 'answer'}
+                        motionSpeed={motionSpeed}
+                        phase={phase}
+                        isTouchMode={isTouchMode}
+                        menuOpen={menuOpen}
+                        editing={editing}
+                        hintsOpen={hintsOpen}
+                        onReveal={reveal}
+                        onHide={hide}
+                        onAnswer={(input) => answerWithUndo(input, 'touch')}
+                        typedAnswer={typedAnswer}
+                        isTypingCard={isTypingCard}
+                        mode={mode}
+                        isLinesModeCard={isLinesModeCard}
+                        hintStep={hintStep}
+                        onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
+                        hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
+                        answerStrictness={answerStrictness}
+                        occlusion={occlusion}
+                        occlusionAnswerText={occlusionAnswerText}
+                      />
+                    )}
+                  </StudyCardTransition>
+                )
               )}
 
               {!suppressClassicGrading && (
@@ -656,6 +654,6 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </StudyEntrance>
   );
 }

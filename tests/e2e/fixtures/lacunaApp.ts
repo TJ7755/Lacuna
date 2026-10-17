@@ -1,11 +1,8 @@
 import { expect, type Page } from '@playwright/test';
 
 export async function chooseScheduledStudy(page: Page) {
-  const sheet = page.getByRole('dialog', { name: 'Choose what to study' });
-  await sheet
-    .getByRole('button', { name: 'Start session' })
-    .first()
-    .click();
+  const sheet = page.getByRole('region', { name: 'Session preview' });
+  await sheet.getByRole('button', { name: 'Start session' }).first().click();
   await expect(sheet).toBeHidden();
 }
 
@@ -24,7 +21,10 @@ export async function openImport(page: Page) {
     await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
   } else {
     await page.getByRole('button', { name: 'Open navigation' }).click();
-    await page.getByRole('dialog', { name: 'Navigation' }).getByRole('link', { name: 'Import' }).click();
+    await page
+      .getByRole('dialog', { name: 'Navigation' })
+      .getByRole('link', { name: 'Import' })
+      .click();
   }
 }
 

@@ -52,6 +52,14 @@ export function RouteTransition() {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const covered = hasLandingArrival();
+  const presenceKey = useRef('routes');
+  const previousLocationKey = useRef(location.key);
+  // A solid cover replaces the outgoing tree outright, including nested sheet exits.
+  // Keep this key after reveal so removing the cover cannot remount the session.
+  if (previousLocationKey.current !== location.key) {
+    previousLocationKey.current = location.key;
+    if (covered) presenceKey.current = location.key;
+  }
   const motionEnabled = multiplier > 0 && !covered;
 
   return (
@@ -59,7 +67,7 @@ export function RouteTransition() {
       <Suspense fallback={null}>
         <RouteAnnouncement pathname={location.pathname} />
       </Suspense>
-      <AnimatePresence mode="wait" custom={covered}>
+      <AnimatePresence key={presenceKey.current} mode="wait" custom={covered}>
         <motion.div
           key={routeTransitionKey(location.pathname)}
           className="min-h-screen"

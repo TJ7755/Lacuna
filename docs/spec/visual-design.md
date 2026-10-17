@@ -110,9 +110,17 @@ Specific motion (current state of the app):
   descendants stay viewport-fixed. Moving between adjacent course sections adds a 24px drift
   in the direction of travel (`TAB_DRIFT_PX`), not a full-width slide. Full-screen landing,
   method, conductor and Learn routes use the outer `RouteTransition` boundary, also a
-  crossfade, with `AnimatePresence mode="wait"`. Both boundaries skip enter/exit when
+  crossfade, with `AnimatePresence mode="wait"`. Starting from the Study sheet instead
+  reuses the landing cover: sheet contents fade over 90ms while its surface expands from
+  its rendered bounds with a 380ms, zero-bounce spring, blends to paper and loses its radius.
+  The shell dims by 4%, without scaling. Covered study arrivals mount synchronously and
+  release the cover only once session content is ready. The session header fades over 140ms;
+  the first three content blocks rise 8px over 220ms, starting at 20ms with a 40ms stagger
+  (320ms total). Finished blocks retain no transform. Direct study entries retain the outer
+  route fade and share this entrance. All timings scale with motion speed and become instant
+  under reduced motion. Both boundaries skip enter/exit when
   `prefers-reduced-motion` is on. Incoming page content sits still inside that fade:
-  sections may fade on a short stagger (`Rise`, settings cards, Import) but never move.
+  sections may fade on a short stagger (`Rise`, settings cards, Import); study uses the entrance above.
   The first route appears immediately; this does not suppress entrances for content opened later.
   Course and lesson workspaces fade together over the local motion duration once their
   core records and notes are ready, with no section rise or stagger. New course warms

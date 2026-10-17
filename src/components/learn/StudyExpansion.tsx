@@ -1,9 +1,21 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from '../ui/motion';
 import { StudyActionIcon } from './StudyActionIcon';
+
+import { beginStudyTransition } from '../layout/LandingTransition';
+
+const StudyLaunchContext = createContext<(navigate: () => void) => void>((navigate) => navigate());
+export const useStudyLaunch = () => useContext(StudyLaunchContext);
 
 /** The Study surface grows from its trigger without obscuring the surrounding course. */
 export function StudyExpansion({
@@ -15,6 +27,8 @@ export function StudyExpansion({
   onClose: () => void;
   children: ReactNode;
 }) {
+  const [launching, setLaunching] = useState(false);
+  const launchingRef = useRef(false);
   const present = useIsPresent();
   const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
@@ -73,7 +87,7 @@ export function StudyExpansion({
   }, [anchor, anchorVisibility]);
 
   useLayoutEffect(() => {
-    if (!present) return;
+    if (!present || launching) return;
     returnFocus.current = true;
     anchor.style.visibility = 'hidden';
     anchor.setAttribute('aria-expanded', 'true');
@@ -107,7 +121,7 @@ export function StudyExpansion({
       window.removeEventListener('keydown', escape);
       if (returnFocus.current && anchor.isConnected) anchor.focus();
     };
-  }, [anchor, anchorVisibility, onClose, present]);
+  }, [anchor, anchorVisibility, onClose, present, launching]);
 
   return createPortal(
     <motion.div
@@ -115,7 +129,7 @@ export function StudyExpansion({
       data-expanding-action="study"
       role="region"
       aria-label="Session preview"
-      inert={!present}
+      inert={!present || launching}
       aria-hidden={!present || undefined}
       initial={
         multiplier > 0
@@ -131,6 +145,7 @@ export function StudyExpansion({
       animate={{
         ...bounds,
         borderRadius: 24,
+        opacity: launching ? 0 : 1,
       }}
       exit={{
         left: origin.left,
@@ -139,7 +154,20 @@ export function StudyExpansion({
         height: origin.height,
         borderRadius: origin.height / 2,
       }}
-      transition={expandingActionSpring(multiplier)}
+      transition={{
+        ...expandingActionSpring(multiplier),
+        opacity: { duration: 0.09 * multiplier },
+      }}
+      style={
+        launching
+          ? {
+              zIndex: 101,
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              pointerEvents: 'none',
+            }
+          : undefined
+      }
       className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
     >
       <motion.button
@@ -149,10 +177,15 @@ export function StudyExpansion({
         data-press=""
         whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
         initial={multiplier > 0 ? originColours : false}
-        animate={{ backgroundColor: 'rgba(0, 0, 0, 0)', color: headerInk }}
+        animate={{
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          color: headerInk,
+          opacity: launching ? 0 : 1,
+        }}
         exit={originColours}
         transition={{
           ...expandingActionSpring(multiplier),
+          opacity: { duration: 0.09 * multiplier },
           backgroundColor: { duration: 0.18 * multiplier, ease: 'linear' },
           color: { duration: 0.18 * multiplier, ease: 'linear' },
         }}
@@ -173,11 +206,35 @@ export function StudyExpansion({
             ref={content}
             className="p-6"
             initial={{ opacity: 0 }}
-            animate={{ opacity: present ? 1 : 0 }}
+            animate={{ opacity: present && !launching ? 1 : 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 * multiplier }}
+            transition={{ duration: (launching ? 0.09 : 0.12) * multiplier }}
           >
-            {children}
+            <StudyLaunchContext.Provider
+              value={(navigate) => {
+                const element = surface.current;
+                if (!element || multiplier === 0) {
+                  navigate();
+                  return;
+                }
+                if (launchingRef.current) return;
+                launchingRef.current = true;
+                returnFocus.current = false;
+                const style = getComputedStyle(element);
+                beginStudyTransition(
+                  element.getBoundingClientRect(),
+                  {
+                    colour: style.backgroundColor,
+                    radius: style.borderRadius,
+                    paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
+                  },
+                  navigate,
+                );
+                setLaunching(true);
+              }}
+            >
+              {children}
+            </StudyLaunchContext.Provider>
           </motion.div>
         </div>
       </div>

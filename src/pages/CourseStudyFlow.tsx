@@ -1,3 +1,4 @@
+import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { useLeaveFlow } from '../utils/editorOrigin';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -318,11 +319,13 @@ function CourseStudyFlowInner() {
   ) {
     scene = 'revision';
     body = (
-      <RevisionPlanSetup
-        assessmentId={displayStep.assessmentId}
-        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
-        onExit={finishFlow}
-      />
+      <StudyEntrance>
+        <RevisionPlanSetup
+          assessmentId={displayStep.assessmentId}
+          onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+          onExit={finishFlow}
+        />
+      </StudyEntrance>
     );
   } else if (request && displayStep && flowIdentity) {
     // One scene per committed step. A finished session never serves another card,

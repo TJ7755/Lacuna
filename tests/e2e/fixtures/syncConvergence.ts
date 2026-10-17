@@ -60,7 +60,7 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   const routeChoice = page
-    .getByRole('dialog', { name: 'Choose what to study' })
+    .getByRole('region', { name: 'Session preview' })
     .getByRole('button', { name: 'Start session' });
   const continueButton = page.getByRole('button', { name: 'Continue', exact: true });
   const studyCard = page.locator('[data-study-card-id]');
@@ -74,7 +74,9 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
   await page.keyboard.press('Space');
   await page.keyboard.press('Y');
   await expect(
-    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+    page
+      .getByRole('main', { name: 'Study progress' })
+      .getByRole('img', { name: 'Completed', exact: true }),
   ).toBeVisible();
   return cardId;
 }

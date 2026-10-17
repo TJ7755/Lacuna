@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { LazyMotion, domAnimation, m } from 'motion/react';
+import { LazyMotion, domAnimation, m, usePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beginStudyTransition, releaseStudyCover } from './LandingTransition';
 import { RouteTransition, routeTransitionKey, routeTransitionTiming } from './RouteTransition';
 
 function Page({ name, destination }: { name: string; destination: string }) {
@@ -16,6 +17,12 @@ function Page({ name, destination }: { name: string; destination: string }) {
       </button>
     </main>
   );
+}
+
+function RetainedExit() {
+  // Nested sheets can retain their outgoing tree until their own exit completes.
+  usePresence();
+  return <Page name="Settings" destination="/course/one/study" />;
 }
 
 function renderRoutes(initialEntry: string) {
@@ -36,7 +43,11 @@ function renderRoutes(initialEntry: string) {
     ],
     { initialEntries: [initialEntry] },
   );
-  render(<RouterProvider router={router} />);
+  render(
+    <LazyMotion features={domAnimation}>
+      <RouterProvider router={router} />
+    </LazyMotion>,
+  );
   return router;
 }
 
@@ -81,6 +92,60 @@ describe('routeTransitionTiming', () => {
 });
 
 describe('RouteTransition', () => {
+  it('mounts a study arrival at full opacity beneath the launch cover', async () => {
+    vi.mocked(window.matchMedia).mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList);
+    const router = createMemoryRouter(
+      [
+        {
+          element: <RouteTransition />,
+          children: [
+            {
+              path: '/settings',
+              element: (
+                <m.div exit={{ opacity: 0 }} transition={{ duration: 10 }}>
+                  <RetainedExit />
+                </m.div>
+              ),
+            },
+            {
+              path: '/course/one/study',
+              element: <Page name="Practice" destination="/settings" />,
+            },
+          ],
+        },
+      ],
+      { initialEntries: ['/settings'] },
+    );
+    render(
+      <LazyMotion features={domAnimation}>
+        <RouterProvider router={router} />
+      </LazyMotion>,
+    );
+    act(() =>
+      beginStudyTransition(
+        new DOMRect(0, 0, 400, 300),
+        { colour: 'white', radius: '24px', paper: 'white' },
+        () => {},
+      ),
+    );
+    // The cover callback navigates only once the expansion has reached the viewport.
+    await act(async () => {
+      await router.navigate('/course/one/study');
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'Practice' })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('heading', { name: 'Practice' }).closest('.min-h-screen')).toHaveStyle({
+      opacity: '1',
+    });
+    expect(screen.queryByRole('heading', { name: 'Settings' })).not.toBeInTheDocument();
+    act(() => releaseStudyCover());
+  });
+
   it('shows the first route at once without stopping later content from animating in', () => {
     vi.mocked(window.matchMedia).mockImplementation(
       (query) =>

@@ -1,5 +1,4 @@
 import { useRef } from 'react';
-import { m as motion } from 'motion/react';
 import type { Note } from '../../db/types';
 import { LessonNotesStudyView } from '../notes/LessonNotesStudyView';
 import { Button } from '../ui/Button';
@@ -17,23 +16,12 @@ interface LessonNotesIntroProps {
 }
 
 /** Notes-first lesson entry, kept outside LearnMode's already-large session controller. */
-export function LessonNotesIntro({
-  lessonName,
-  notes,
-  onExit,
-  onContinue,
-  motionMultiplier,
-}: LessonNotesIntroProps) {
+export function LessonNotesIntro({ lessonName, notes, onExit, onContinue }: LessonNotesIntroProps) {
   // Starting the session removed the control that held focus; Enter now continues.
   const continueRef = useRef<HTMLDivElement>(null);
   useUnclaimedFocus(continueRef);
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.32 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
-      className="flex min-h-screen flex-col bg-paper"
-    >
+    <div className="flex min-h-screen flex-col bg-paper">
       <header className="sticky top-0 z-10 bg-paper pt-[env(safe-area-inset-top)]">
         {/* Exit and the timer bound the same column as the notes, so the page reads as one
             measure; Learn's own header takes over when the first card opens. */}
@@ -68,6 +56,6 @@ export function LessonNotesIntro({
           </Button>
         </div>
       </main>
-    </motion.div>
+    </div>
   );
 }

@@ -8,6 +8,11 @@ import type { Card, Course } from '../../db/types';
 import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import { CourseStudyActions } from '../course/CourseStudyActions';
 import { StudySheet } from './StudySheet';
+import {
+  LandingTransition,
+  hasLandingArrival,
+  releaseStudyCover,
+} from '../layout/LandingTransition';
 
 const mockNavigate = vi.fn();
 const motionPreference = vi.hoisted(() => ({ multiplier: 0 }));
@@ -43,6 +48,7 @@ vi.mock('../../state/useCourseStudyFlow', () => ({
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast', vi.fn()],
   speedMultiplier: () => motionPreference.multiplier,
+  getMotionMultiplier: () => motionPreference.multiplier,
 }));
 
 const chemistry: Course = {
@@ -80,6 +86,7 @@ function renderSheet(
     <StrictMode>
       <LazyMotion features={domAnimation}>
         <MemoryRouter>
+          <LandingTransition />
           <StudySheet anchor={anchor} courseId={courseId} otherWays={otherWays} onClose={onClose} />
         </MemoryRouter>
       </LazyMotion>
@@ -108,6 +115,27 @@ beforeEach(() => {
 });
 
 describe('StudySheet', () => {
+  it('expands the preview before navigating under the cover', async () => {
+    motionPreference.multiplier = 1;
+    renderSheet('chem');
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(hasLandingArrival()).toBe(true);
+    expect(screen.getByTestId('study-cover')).toBeInTheDocument();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/course/chem/study'), {
+      timeout: 2000,
+    });
+    releaseStudyCover();
+  });
+
+  it('starts instantly without a cover when motion is disabled', () => {
+    renderSheet('chem');
+    fireEvent.click(screen.getByRole('button', { name: 'Start session' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/chem/study');
+    expect(hasLandingArrival()).toBe(false);
+    expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument();
+  });
+
   it('previews the session it will start, with the due reviews offered after', () => {
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');

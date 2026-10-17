@@ -200,7 +200,7 @@ export function LearnHeader({
 
   return (
     <motion.header
-      initial={m > 0 ? { opacity: 0 } : false}
+      initial={false}
       animate={{ opacity: 1 }}
       exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{ duration: 0.18 * m, ease: [0.16, 1, 0.3, 1] }}
