@@ -1,6 +1,6 @@
-import { memo } from 'react';
+import { memo, useId } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { AppNavLink as NavLink } from '../ui/AppLink';
 import { cn } from '../ui/cn';
 import { ChevronDownIcon } from '../ui/icons';
@@ -9,6 +9,8 @@ import type { Lesson } from '../../db/types';
 import { prefetchRoute } from '../../routes/prefetch';
 import { SidebarHoverCard, type SidebarDetail } from './SidebarHoverCard';
 import { SidebarLabel, useSidebarMotion } from './SidebarMotion';
+import { AnimatedDisclosure, animatedDisclosureTiming } from '../ui/AnimatedDisclosure';
+import { scaledSpring } from '../ui/motion';
 
 /** The course glyph sits comfortably inside a single-line 44px row. */
 const GLYPH_SIZE = 30;
@@ -81,8 +83,11 @@ export const CourseRow = memo(function CourseRow({
 }) {
   const location = useLocation();
   const { drawer } = useSidebarMotion();
+  const panelId = useId();
   const isMultiLesson = lessons.length > 1;
   const isExpanded = expanded.has(courseId);
+  const open = isExpanded && !collapsed;
+  const timing = animatedDisclosureTiming(m * (open ? 1 : 0.8));
   const isCourseActive =
     location.pathname === `/course/${courseId}` ||
     location.pathname.startsWith(`/course/${courseId}/`);
@@ -126,7 +131,7 @@ export const CourseRow = memo(function CourseRow({
 
   // Multi-lesson course: collapsible header with lesson list beneath.
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col">
       <div
         className={cn(
           'group relative flex w-full items-center gap-1 rounded-xl transition-colors duration-150',
@@ -167,7 +172,8 @@ export const CourseRow = memo(function CourseRow({
               e.stopPropagation();
               onToggle(courseId);
             }}
-            aria-expanded={isExpanded && !collapsed}
+            aria-expanded={open}
+            aria-controls={panelId}
             aria-label={isExpanded ? `Collapse ${courseName}` : `Expand ${courseName}`}
             className={cn(
               'relative flex shrink-0 items-center justify-center rounded-full text-ink-faint opacity-60 transition hover:bg-ink/10 hover:text-ink hover:opacity-100 group-hover:opacity-100 focus-visible:opacity-100',
@@ -175,8 +181,9 @@ export const CourseRow = memo(function CourseRow({
             )}
           >
             <motion.span
-              animate={{ rotate: isExpanded ? 0 : -90 }}
-              transition={{ duration: 0.15 * m }}
+              initial={false}
+              animate={{ rotate: open ? 0 : -90 }}
+              transition={scaledSpring(m * 0.75, 420, 2 * Math.sqrt(420))}
               className="shrink-0"
             >
               <ChevronDownIcon width={12} height={12} />
@@ -185,36 +192,32 @@ export const CourseRow = memo(function CourseRow({
         </SidebarLabel>
       </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={
-              drawer
-                ? { opacity: 1 }
-                : { height: collapsed ? 0 : 'auto', opacity: collapsed ? 0 : 1 }
-            }
-            inert={collapsed}
-            aria-hidden={collapsed || undefined}
-            className={drawer ? undefined : 'overflow-hidden'}
-            exit={m > 0 ? { opacity: 0 } : undefined}
-            transition={
-              drawer
-                ? { duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }
-                : {
-                    height: { duration: 0.28 * m, ease: [0.16, 1, 0.3, 1] },
-                    opacity: { duration: 0.12 * m },
-                  }
-            }
-          >
-            <div className={drawer ? 'contents' : 'w-60'}>
-              {lessons.map((lesson) => (
-                <LessonItem key={lesson.id} lesson={lesson} compact={compact} />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <AnimatedDisclosure
+        id={panelId}
+        open={open}
+        retainContent
+        fade={false}
+        transition={timing}
+        innerClassName={drawer ? undefined : 'w-60'}
+      >
+        {lessons.map((lesson, index) => {
+          const delay =
+            Math.min(open ? index * 0.025 : (lessons.length - 1 - index) * 0.015, 0.1) * m;
+          return (
+            <motion.div
+              key={lesson.id}
+              initial={false}
+              animate={{ opacity: open ? 1 : 0, y: open ? 0 : -4 }}
+              transition={{
+                opacity: { duration: (open ? 0.16 : 0.1) * m, delay },
+                y: { ...scaledSpring(m * (open ? 0.8 : 0.6), 420, 2 * Math.sqrt(420)), delay },
+              }}
+            >
+              <LessonItem lesson={lesson} compact={compact} />
+            </motion.div>
+          );
+        })}
+      </AnimatedDisclosure>
     </div>
   );
 });

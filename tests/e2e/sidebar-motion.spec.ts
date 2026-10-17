@@ -281,8 +281,11 @@ test('course lessons fold without unmounting and rail hover cards wait for the m
   });
   await expect(lesson).toBeVisible();
   const lessonNode = await lesson.elementHandle();
-  const body = lesson.locator('../..');
-  const height = (await body.boundingBox())!.height;
+  const body = aside.locator(`[id="${await expander.getAttribute('aria-controls')}"]`);
+  const height = await body
+    .locator(':scope > div')
+    .evaluate((content) => content.getBoundingClientRect().height);
+  await expect.poll(async () => (await body.boundingBox())!.height).toBe(height);
   await course.hover();
   await expect(page.getByRole('tooltip')).toBeVisible();
   await aside.evaluate((aside) =>

@@ -1,4 +1,4 @@
-import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
+import { AnimatePresence, m as motion, useIsPresent, type Transition } from 'motion/react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from './cn';
@@ -18,11 +18,14 @@ export function animatedDisclosureTiming(multiplier: number) {
  */
 interface AnimatedDisclosureProps {
   open: boolean;
+  id?: string;
   children: React.ReactNode;
   className?: string;
   innerClassName?: string;
   retainContent?: boolean;
   initial?: boolean;
+  fade?: boolean;
+  transition?: Transition;
   onAnimationComplete?: () => void;
 }
 
@@ -54,6 +57,9 @@ function RetainedDisclosure({
   className,
   innerClassName,
   onAnimationComplete,
+  id,
+  fade = true,
+  transition,
 }: AnimatedDisclosureProps & { multiplier: number }) {
   const innerRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number>();
@@ -70,6 +76,7 @@ function RetainedDisclosure({
 
   return (
     <motion.div
+      id={id}
       inert={!open}
       aria-hidden={!open || undefined}
       initial={false}
@@ -77,11 +84,11 @@ function RetainedDisclosure({
         // Measuring auto height in Motion adds a measurement frame on every toggle.
         // Keep the natural height current even while the retained panel is closed.
         height: open ? (height ?? 'auto') : 0,
-        opacity: open ? 1 : 0,
+        opacity: !fade || open ? 1 : 0,
         overflow: 'hidden',
         transitionEnd: { overflow: open ? 'visible' : 'hidden' },
       }}
-      transition={animatedDisclosureTiming(multiplier)}
+      transition={transition ?? animatedDisclosureTiming(multiplier)}
       onAnimationComplete={onAnimationComplete}
       className={cn('overflow-hidden', className)}
     >
@@ -99,16 +106,20 @@ function DisclosureContent({
   enabled,
   multiplier,
   onAnimationComplete,
+  id,
+  fade = true,
+  transition,
 }: Omit<AnimatedDisclosureProps, 'open'> & { enabled: boolean; multiplier: number }) {
   const present = useIsPresent();
   return (
     <motion.div
+      id={id}
       inert={!present}
       aria-hidden={!present || undefined}
-      initial={enabled ? { height: 0, opacity: 0 } : false}
+      initial={enabled ? { height: 0, opacity: fade ? 0 : 1 } : false}
       animate={{ height: 'auto', opacity: 1, transitionEnd: { overflow: 'visible' } }}
-      exit={enabled ? { height: 0, opacity: 0, overflow: 'hidden' } : undefined}
-      transition={animatedDisclosureTiming(multiplier)}
+      exit={enabled ? { height: 0, opacity: fade ? 0 : 1, overflow: 'hidden' } : undefined}
+      transition={transition ?? animatedDisclosureTiming(multiplier)}
       onAnimationComplete={onAnimationComplete}
       className={cn(enabled ? 'overflow-hidden' : 'overflow-visible', className)}
     >

@@ -191,8 +191,13 @@ Specific motion (current state of the app):
   nested routes), Archived and the drawer's Import select directly. Pointer and keyboard
   navigation follow the same rule. The glide retains
   stiffness 500 and damping 38, with a sidebar-only 1.2 timing multiplier applied alongside
-  motion speed through `scaledSpring`, preserving the damping ratio. Expanding a course's
-  lesson list fades in place; collapsing the desktop sidebar also folds its height.
+  motion speed through `scaledSpring`, preserving the damping ratio. Course lesson lists
+  retain their measured height and spring open or closed, with closing 20% quicker.
+  Lessons fade and slide 4px with a short stagger, reversed on close; the chevron rotates
+  with a spring. Other courses and Archived follow the changing height in normal flow,
+  without a separate layout animation or group fade. Mid-animation toggles retarget the
+  retained panel. The desktop rail folds the same panel without losing its expanded state;
+  the mobile drawer uses the same motion. Reduced motion switches instantly.
   A collapsible drawer on mobile (§4.1); the drawer overlay and panel
   skip enter/exit when the motion multiplier is 0.
 - **Course cards** (dashboard grid): no arrival stagger (that competed with the shell
