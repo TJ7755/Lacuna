@@ -82,7 +82,7 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
       ...recordOptions
     } = opts ?? {};
     if (recordOptions.specificationRef !== undefined) {
-      recordOptions.specificationRef = parseSpecificationReference(recordOptions.specificationRef);
+      parseSpecificationReference(recordOptions.specificationRef);
     }
     if (schedulingMode === 'steady' && requestedExamDate !== undefined) {
       throw new Error('A steady-retention course cannot also have an exam date.');
@@ -177,15 +177,9 @@ export async function stampMissingLessonViewModes(): Promise<void> {
 export async function updateCourse(id: string, changes: Partial<CourseRecord>): Promise<void> {
   try {
     const setsReference = Object.prototype.hasOwnProperty.call(changes, 'specificationRef');
-    const validatedChanges = setsReference
-      ? {
-          ...changes,
-          specificationRef:
-            changes.specificationRef === undefined
-              ? undefined
-              : parseSpecificationReference(changes.specificationRef),
-        }
-      : changes;
+    if (changes.specificationRef !== undefined) {
+      parseSpecificationReference(changes.specificationRef);
+    }
     const compatibilityChanges = changes as Partial<Course>;
     if (
       Object.prototype.hasOwnProperty.call(compatibilityChanges, 'examDate') ||
@@ -209,7 +203,7 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
           if (!course) throw new Error('The course could not be found.');
           if (!canEditLessons(course)) throw new Error('This published course is locked.');
         }
-        await db.courses.update(id, stampUpdatedAt(validatedChanges));
+        await db.courses.update(id, stampUpdatedAt(changes));
         await syncCourseSchedulingUnits(id);
       },
     );

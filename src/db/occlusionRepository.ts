@@ -11,6 +11,7 @@ import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Occlusion, OcclusionRegion } from './types';
 import type { Concept } from '../questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
+import { conceptIdForRegion } from '../questions/generatedConceptIds';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { scheduleAssetGc } from './assets';
 import { replaceReviewHistoryForCards } from './cardRepository';
@@ -133,10 +134,6 @@ function generatedCardFromPayload(
     },
     createdAt,
   );
-}
-
-function conceptIdForRegion(occlusionId: string, regionId: string): string {
-  return `concept:occlusion:${encodeURIComponent(occlusionId)}:${encodeURIComponent(regionId)}`;
 }
 
 function conceptsForOcclusionPayloads(

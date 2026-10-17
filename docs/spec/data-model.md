@@ -39,8 +39,15 @@ validate and stamp writes within the existing repository transaction boundaries 
 to locked published copies. `getConceptsForSpecificationPoint` uses the index and restricts results
 to the requested Course. Unknown but syntactically valid IDs are retained, including links to a
 different specification or a point outside the current tier/route selection.
-Regenerating Sequence or Occlusion Card faces retains the existing Concept's links; a teacher's
-published replacement or removal of those links remains authoritative during managed updates.
+Native Sequence and Occlusion Concept IDs are remapped with their source/item/region IDs on ordinary
+course imports, using the same Concept mapping for every Card and Question relationship. Later
+regeneration therefore retains their links, including after a generated face is removed and rebuilt.
+A teacher's published replacement or removal of those links remains authoritative during managed
+updates. Older Sequence imports with random Concept IDs reuse an existing positional or label Card's
+Concept when adding its sibling, rather than selecting another Concept by name or by a coincidental ID.
+For older imports or arbitrary reassignments using non-deterministic Concept IDs, the current source
+format cannot recover the association after all of that source's Cards have been removed; it stores
+no explicit source-to-Concept association.
 
 `src/specifications/tagResolver.ts` provides pure review helpers. `resolveSpecPointTags` proposes
 qualified links from `spec:<ref>` and `spec:<code>:<ref>` Card tags. References match the published

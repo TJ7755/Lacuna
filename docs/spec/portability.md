@@ -375,6 +375,10 @@ never one person's scheduling progress or review history.
   changed selection remains local. Concept point links follow the existing published Concept
   content update policy; Question schedules, Attempts and Card review history remain personal.
   Transport versions and encryption are unchanged.
+  Native generated Concept IDs are rebuilt from the fresh Sequence/item or Occlusion/region IDs,
+  keeping regeneration consistent with imported Card/Question relationships. Ordinary Concepts
+  still receive fresh IDs, and repeated imports remain isolated Courses. This does not add an
+  association field for arbitrary external generator-to-Concept reassignments.
 - **What it omits — media, deliberately and loudly.** `stripAssetMedia` replaces every asset
   reference in card and note Markdown with placeholder text (`[Image omitted from share
 code]`, `[Audio omitted…]`), so images and audio do not travel. An occlusion's diagram is

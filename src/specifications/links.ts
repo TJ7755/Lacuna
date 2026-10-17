@@ -13,16 +13,17 @@ function isId(value: unknown): value is string {
   return typeof value === 'string' && id.test(value);
 }
 
+function isUniqueArrayOf(value: unknown, accepts: (entry: unknown) => boolean): boolean {
+  return Array.isArray(value) && [...value].every(accepts) && new Set(value).size === value.length;
+}
+
 export function isSpecificationReference(value: unknown): value is SpecificationReference {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
   const reference = value as Record<string, unknown>;
   return (
     isId(reference.specificationId) &&
     (reference.tier === undefined || isId(reference.tier)) &&
-    (reference.routeIds === undefined ||
-      (Array.isArray(reference.routeIds) &&
-        [...reference.routeIds].every(isId) &&
-        new Set(reference.routeIds).size === reference.routeIds.length))
+    (reference.routeIds === undefined || isUniqueArrayOf(reference.routeIds, isId))
   );
 }
 
@@ -31,11 +32,7 @@ export function isQualifiedSpecificationPointId(value: unknown): value is string
 }
 
 export function isSpecificationPointIds(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) &&
-    [...value].every(isQualifiedSpecificationPointId) &&
-    new Set(value).size === value.length
-  );
+  return isUniqueArrayOf(value, isQualifiedSpecificationPointId);
 }
 
 export function parseSpecificationReference(value: unknown): SpecificationReference {
