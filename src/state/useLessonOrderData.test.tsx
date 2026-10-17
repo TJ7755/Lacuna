@@ -20,11 +20,12 @@ it('keeps Settings, Sidebar and guided Study in agreement while source hooks rem
     distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false } });
   const a = await createLesson(course.id, 'A');
   const b = await createLesson(course.id, 'B');
-  await setLocalLessonOrder(course.id, [b.id, a.id]);
   const { result } = renderHook(() => ({
     display: useLessonOrderData(course.id), sidebar: useSidebarData(),
     study: useCourseStudyFlow(course.id), source: useLessons(course.id),
   }), { wrapper: ({ children }: { children: ReactNode }) => <ShellCourseDataProvider>{children}</ShellCourseDataProvider> });
+  await waitFor(() => expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([a.id, b.id]));
+  await act(async () => { await setLocalLessonOrder(course.id, [b.id, a.id]); });
   await waitFor(() => expect(result.current.display?.lessons.map((lesson) => lesson.id)).toEqual([b.id, a.id]));
   await waitFor(() => expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([b.id, a.id]));
   await waitFor(() => expect(result.current.study?.decision).toMatchObject({ step: { kind: 'lesson', lessonId: b.id } }));
@@ -50,4 +51,5 @@ it('keeps Settings, Sidebar and guided Study in agreement while source hooks rem
   await waitFor(() => expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([a.id, b.id]));
   await act(async () => { await setLocalLessonOrder(course.id); });
   expect((await db.courses.get(course.id))?.localLessonOrder).toBeUndefined();
+  await waitFor(() => expect(result.current.sidebar?.lessons.map((lesson) => lesson.id)).toEqual([a.id, b.id]));
 });

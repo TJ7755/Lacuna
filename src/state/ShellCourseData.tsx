@@ -10,7 +10,7 @@ import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';
 import type { CourseForecast } from '../fsrs/courseForecast';
-import { resolveCourseLessonOrder } from '../course/lessonOrder';
+import { lessonOrder } from '../course/assessmentCoverage';
 
 interface SidebarData {
   courses: Course[];
@@ -86,10 +86,13 @@ export function ShellCourseDataProvider({
       courses.filter((course) => !course.archived).map((course) => course.id),
     );
     const schedulingByCourse = new Map(courses.map((course) => [course.id, course]));
+    const resolveOrder = courses.some((course) => course.localLessonOrder)
+      ? (await import('../course/lessonOrder')).resolveCourseLessonOrder
+      : (_course: Course, courseLessons: Lesson[]) => courseLessons.sort(lessonOrder);
     const sidebar: SidebarData = {
       courses,
       lessons: courses.flatMap((course) =>
-        resolveCourseLessonOrder(
+        resolveOrder(
           course,
           lessons.filter((lesson) => lesson.courseId === course.id),
           assessments.filter((assessment) => assessment.courseId === course.id),
