@@ -93,8 +93,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           onPointerEnter={prefetch}
           onFocus={prefetch}
           onClick={() => changeOpen(!open)}
-          data-press=""
-          whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
+          data-press="none"
           transition={transition}
           className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px] disabled:opacity-40"
         >

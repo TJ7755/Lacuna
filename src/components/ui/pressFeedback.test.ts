@@ -70,6 +70,15 @@ describe('installPressFeedback', () => {
     expect(animate).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves morphing triggers at rest for pointer and keyboard activation', () => {
+    const trigger = sized(document.createElement('button'), 120, 48);
+    trigger.dataset.press = 'none';
+    document.body.append(trigger);
+    trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+    expect(animate).not.toHaveBeenCalled();
+  });
+
   it('cancels a held press when uninstalled', () => {
     const button = document.createElement('button');
     document.body.append(button);

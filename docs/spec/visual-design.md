@@ -148,7 +148,10 @@ Specific motion (current state of the app):
 - **Scroll memory (`scrollMemory.ts`):** a new page starts at the top; returning to a page,
   by browser Back or Forward or by an in-app return (`state.returning`), restores where it
   was left, keyed by path and query. A query change on the same page keeps its place.
-- **Shared controls:** `Button` scales to 1.02 on hover and 0.96 on press; `Toggle`, `Menu`
+- **Shared controls:** ordinary `Button` controls scale to 1.02 on hover and 0.96 on press.
+  Morphing triggers do not press-scale: the surface growing from their resting bounds is
+  the press feedback, for pointer and keyboard activation. Study also keeps its resting
+  size on hover. `Toggle`, `Menu`
   and assessment sheets use the same global motion multiplier for their springs, fades and
   CSS transitions. Reduced motion removes these transforms and entrances. Every Button
   variant enforces a 44px minimum touch height.
@@ -156,7 +159,7 @@ Specific motion (current state of the app):
   menu items, switches) sinks about 5px on press and springs back on release, so large
   surfaces dip as gently as pills. It animates the standalone `scale` property, so it
   composes with a control's own transform. Controls that animate their own press carry
-  `data-press` to opt out.
+  `data-press` to opt out of pointer feedback; `data-press="none"` also skips keyboard scaling.
 - **Typing feedback (`typingFeedback.ts`):** typing in a text field, textarea or editable
   region gives a soft accent glow round the field that fades back to its resting style. Only
   the box shadow animates, so text, caret and layout stay still; a burst of typing shares one

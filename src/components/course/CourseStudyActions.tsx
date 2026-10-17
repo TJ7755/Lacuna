@@ -32,6 +32,7 @@ export function CourseStudyActions({
       <Button
         data-study-trigger={courseId}
         hoverScale={false}
+        pressScale={false}
         variant="primary"
         size="lg"
         disabled={disabled}

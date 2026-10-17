@@ -167,6 +167,7 @@ export function TodayQueue({
                 <Button
                   data-study-trigger={row.id}
                   hoverScale={false}
+                  pressScale={false}
                   variant={row === lead ? 'primary' : 'secondary'}
                   onClick={() => onStudy(row.id)}
                   aria-label={`Study ${row.name}`}

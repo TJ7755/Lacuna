@@ -74,8 +74,8 @@ export function QuestionSetCourseRow({
                 },
               })
         }
-        data-press=""
-        whileTap={m && !reorder?.lifted ? { scale: 0.99 } : undefined}
+        data-press={authoring ? 'none' : ''}
+        whileTap={m && !reorder?.lifted && !authoring ? { scale: 0.99 } : undefined}
         className={cn(
           authoring && 'pr-[60px]',
           reorder?.lifted && 'bg-surface path-editor-shadow',

@@ -140,3 +140,82 @@ test('expanding menus animate their own geometry and settle without clipping', a
     await page.keyboard.press('Escape');
   }
 });
+
+for (const width of [390, 1440]) {
+  test(`morphing triggers retain resting bounds on hover and press at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await enterFreshLacuna(page);
+    async function pressAtRest(trigger: Locator) {
+      await trigger.scrollIntoViewIfNeeded();
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(250);
+      const rest = (await trigger.boundingBox())!;
+      await trigger.hover();
+      await page.waitForTimeout(180);
+      const hovered = (await trigger.boundingBox())!;
+      await page.mouse.down();
+      await page.waitForTimeout(180);
+      const held = (await trigger.boundingBox())!;
+      const opensStudy = (await trigger.getAttribute('data-study-trigger')) !== null;
+      if (opensStudy) {
+        await trigger.evaluate(() => {
+          sessionStorage.removeItem('test-study-morph-origin');
+          const observer = new MutationObserver(() => {
+            const surface = document.querySelector('[data-expanding-action="study"]');
+            if (!surface) return;
+            sessionStorage.setItem(
+              'test-study-morph-origin',
+              JSON.stringify(surface.getBoundingClientRect()),
+            );
+            observer.disconnect();
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        });
+      }
+      for (const bounds of [hovered, held]) {
+        expect(Math.abs(bounds.width - rest.width)).toBeLessThan(0.1);
+        expect(Math.abs(bounds.height - rest.height)).toBeLessThan(0.1);
+        // Today's row has its own deliberate 2px hover lift; the pill must not resize.
+        expect(Math.abs(bounds.x - rest.x)).toBeLessThan(0.1);
+        const liftsRow =
+          (await trigger.getAttribute('data-study-trigger')) !== null &&
+          (await trigger.getAttribute('aria-label')) !== null;
+        expect(Math.abs(bounds.y - rest.y)).toBeLessThan(liftsRow ? 2.1 : 0.1);
+      }
+      await page.mouse.up();
+      if (opensStudy) {
+        const readOrigin = () =>
+          page.evaluate(() => sessionStorage.getItem('test-study-morph-origin'));
+        await expect.poll(readOrigin).not.toBeNull();
+        const origin = JSON.parse((await readOrigin())!);
+        for (const key of ['x', 'y', 'width', 'height'] as const)
+          expect(Math.abs(origin[key] - held[key])).toBeLessThan(0.1);
+      }
+    }
+    for (const label of ['New course', 'Import']) {
+      await pressAtRest(page.locator('main').getByRole('button', { name: label, exact: true }));
+      if (label === 'New course') await page.keyboard.press('Escape');
+      else await page.locator('main').getByRole('button', { name: 'Close', exact: true }).click();
+      await page.waitForTimeout(600);
+    }
+    await pressAtRest(page.getByRole('button', { name: 'Study Welcome to Lacuna' }));
+    await page.getByRole('region', { name: 'Session preview' }).waitFor();
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(600);
+    await page
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+      .click();
+    await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
+    for (const label of ['Study', 'Other ways to study', 'Add']) {
+      await pressAtRest(page.getByRole('button', { name: label, exact: true }));
+      if (label === 'Study') await page.getByRole('region', { name: 'Session preview' }).waitFor();
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(600);
+    }
+  });
+}

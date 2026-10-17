@@ -275,8 +275,7 @@ export function Menu({
           aria-controls={open ? menuId : undefined}
           onClick={() => (open ? close(false) : setOpen(true))}
           onKeyDown={onTriggerKeyDown}
-          data-press=""
-          whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
+          data-press="none"
           transition={transition}
           className={cn(
             'absolute top-0 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]',

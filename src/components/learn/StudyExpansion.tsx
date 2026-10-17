@@ -174,8 +174,7 @@ export function StudyExpansion({
         type="button"
         aria-label="Close session preview"
         onClick={onClose}
-        data-press=""
-        whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
+        data-press="none"
         initial={multiplier > 0 ? originColours : false}
         animate={{
           backgroundColor: 'rgba(0, 0, 0, 0)',

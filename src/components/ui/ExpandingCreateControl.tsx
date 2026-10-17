@@ -86,8 +86,7 @@ export function ExpandingCreateControl({
             else onOpenChange(true);
           }}
           animate={{ x: open ? -offset : 0 }}
-          data-press=""
-          whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
+          data-press="none"
           transition={transition}
           style={{ width: closedWidth }}
           className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}

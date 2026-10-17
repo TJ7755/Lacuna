@@ -78,6 +78,14 @@ describe('QuestionSetCourseRow', () => {
     );
   });
 
+  it.each([true, false])('uses morph feedback only in authoring mode (%s)', (authoring) => {
+    mocks.activityData = { content, attempt: null, exam: undefined };
+    renderRow(authoring);
+    expect(
+      screen.getByRole('button', { name: 'Practice questions: Cell structure' }),
+    ).toHaveAttribute('data-press', authoring ? 'none' : '');
+  });
+
   it('offers editing only while authoring', () => {
     mocks.activityData = { content, attempt: null, exam: undefined };
     renderRow(false);

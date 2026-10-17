@@ -187,6 +187,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                           data-drag-lifted={reorder?.lifted || undefined}
                           data-drag-refused={reorder?.refused || undefined}
                           data-path-row=""
+                          data-press={authoring ? 'none' : undefined}
                           type="button"
                           disabled={archived}
                           onClick={() => props.onAssessmentOpen(node.assessment.id)}
@@ -290,6 +291,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                   : locked && authoring
                     ? `${name}, locked for study`
                     : name;
+                const morphsToEditor = authoring && !!practice?.practiceNode;
                 const open = () => {
                   if (lesson) props.onLessonOpen(lesson.lesson.id);
                   else if (practice) props.onPracticeOpen(practice);
@@ -347,8 +349,10 @@ export function CourseOverview(props: CourseOverviewProps) {
                       onClick={open}
                       data-drag-lifted={reorder?.lifted || undefined}
                       data-drag-refused={reorder?.refused || undefined}
-                      data-press=""
-                      whileTap={m && !reorder?.lifted ? { scale: 0.99 } : undefined}
+                      data-press={morphsToEditor ? 'none' : ''}
+                      whileTap={
+                        m && !reorder?.lifted && !morphsToEditor ? { scale: 0.99 } : undefined
+                      }
                       className={cn(
                         'group flex w-full items-center gap-[18px] rounded-2xl px-3 py-3.5 text-left text-ink transition-colors',
                         'hover:bg-ink/[0.03] disabled:cursor-default',
@@ -500,6 +504,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                 >
                   <button
                     data-path-row=""
+                    data-press={authoring ? 'none' : undefined}
                     type="button"
                     disabled={archived}
                     onClick={() => props.onAssessmentOpen(assessment.id)}

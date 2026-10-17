@@ -1,6 +1,6 @@
 import { speedMultiplier } from '../../state/motionSpeed';
 
-// Controls that animate their own press (the shared Button) opt out with data-press.
+// data-press delegates pointer feedback to the control; "none" also skips keyboard scaling.
 const PRESSABLE =
   'button:not(:disabled), a[href], [role="button"], [role="link"], ' +
   '[role="menuitem"], [role="tab"], [role="option"], [role="switch"], summary';
@@ -73,6 +73,7 @@ export function installPressFeedback(root: Document = document): () => void {
     const multiplier = speedMultiplier();
     if (
       !target ||
+      target.getAttribute('data-press') === 'none' ||
       target.closest('[inert]') ||
       target.getAttribute('aria-disabled') === 'true' ||
       multiplier <= 0 ||

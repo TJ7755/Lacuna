@@ -71,6 +71,10 @@ describe('course path node actions', () => {
       },
     ];
     const view = render(overview(nodes));
+    expect(
+      screen.getByRole('button', { name: 'Card practice: Card practice, 0% secured' }),
+    ).toHaveAttribute('data-press', 'none');
+    expect(screen.getByRole('button', { name: 'Cells' })).toHaveAttribute('data-press', '');
     fireEvent.click(screen.getByRole('button', { name: 'Practice actions: Card practice' }));
     expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: 'Move down' })).toBeDisabled();
