@@ -12,7 +12,7 @@ test('a keyboard-only learner moves from notes through a finished step without t
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const studyCard = page.locator('[data-study-card-id]:not([inert])');
+  const studyCard = page.locator('[data-study-card-id]');
   const finished = page.getByRole('main', { name: 'Study progress' });
   await expect(studyCard).toBeVisible();
   // The first step is a handful of cards; answer each by keyboard until it completes.

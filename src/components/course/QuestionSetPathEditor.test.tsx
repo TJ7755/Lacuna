@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render as renderView, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../../db/repository';
 import { createLesson } from '../../db/lessonRepository';
@@ -13,6 +13,17 @@ import {
   updateQuestionSetPracticeNode,
 } from '../../db/practiceNodeRepository';
 import { QuestionSetPathEditor } from './QuestionSetPathEditor';
+import { domAnimation, LazyMotion } from 'motion/react';
+import type { ReactNode } from 'react';
+
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 0,
+}));
+
+function render(children: ReactNode) {
+  return renderView(<LazyMotion features={domAnimation}>{children}</LazyMotion>);
+}
 
 vi.mock('../../db/practiceNodeRepository', () => ({
   createQuestionSetPracticeNode: vi.fn(),

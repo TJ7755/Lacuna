@@ -30,10 +30,10 @@ it('keeps study covered through navigation until the session is ready', async ()
     ),
   );
   expect(screen.getByTestId('study-cover')).toBeInTheDocument();
-  await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1), { timeout: 100 });
+  await vi.waitFor(() => expect(navigate).toHaveBeenCalledTimes(1), { timeout: 2000 });
   expect(screen.getByTestId('study-cover')).toBeInTheDocument();
   act(() => releaseStudyCover());
-  await vi.waitFor(() => expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument());
+  expect(screen.queryByTestId('study-cover')).not.toBeInTheDocument();
   expect(hasLandingArrival()).toBe(false);
 });
 

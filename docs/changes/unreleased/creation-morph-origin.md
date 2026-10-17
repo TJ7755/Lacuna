@@ -1,1 +1,0 @@
-- Keep creation headers anchored to their triggers when phone panels clamp into the viewport, preventing the first opening from moving and clipping the label.

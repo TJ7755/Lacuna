@@ -1,5 +1,3 @@
-import { MorphContent } from './MorphContent';
-import { useInlineMorph } from './useMorphReveal';
 import {
   useCallback,
   useEffect,
@@ -81,12 +79,12 @@ export function Menu({
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const menuId = useId();
   const [measuredWidth, setMeasuredWidth] = useState(triggerWidth ?? 120);
+  const [panelHeight, setPanelHeight] = useState(
+    12 + items.reduce((height, item) => height + (item.description ? 64 : 44), 0),
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const [triggerHeight, setTriggerHeight] = useState(size === 'md' ? 48 : 44);
   const transition = expandingActionSpring(multiplier);
-  const width =
-    panelIndex !== null ? Math.min(320, window.innerWidth - 32) : Math.max(216, measuredWidth);
-  const morph = useInlineMorph(open, measuredWidth, multiplier, align, 0, triggerHeight, 24, width);
 
   // Only the surface changes dimensions; its text never inherits a layout scale.
   // Both axes are measured so enlarged text grows the surface instead of clipping it,
@@ -106,6 +104,18 @@ export function Menu({
     observer.observe(trigger);
     return () => observer.disconnect();
   }, [triggerWidth, items.length, size]);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!open || !panel) return;
+    const measure = () => {
+      if (panel.scrollHeight > 0) setPanelHeight(panel.scrollHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [open, items.length, panelIndex]);
 
   const firstEnabledIndex = items.findIndex((item) => !item.disabled);
   const activeItemUnavailable = !items[activeIndex] || !!items[activeIndex]?.disabled;
@@ -234,27 +244,22 @@ export function Menu({
           close(false);
       }}
     >
-      <div
-        ref={morph.depth}
-        aria-hidden="true"
-        className={cn(
-          'pointer-events-none absolute top-0 rounded-3xl',
-          align === 'end' ? 'right-0' : 'left-0',
-        )}
-        style={{
-          width,
-          height: morph.height,
-          opacity: 0,
-          boxShadow: '0 18px 48px -12px rgb(0 0 0 / 0.28)',
-        }}
-      />
-      <div
-        ref={morph.surface}
+      <motion.div
         data-expanding-action=""
-        data-morph-surface=""
-        style={{ width, height: morph.height }}
+        initial={false}
+        animate={{
+          width: open
+            ? panelIndex !== null
+              ? 'min(320px, calc(100vw - 32px))'
+              : Math.max(216, measuredWidth)
+            : measuredWidth,
+          height: open ? triggerHeight + panelHeight + 2 : triggerHeight,
+          borderRadius: open ? 18 : triggerHeight / 2,
+        }}
+        transition={transition}
         className={cn(
           'absolute top-0 overflow-hidden border',
+          // An icon-only trigger repeats down lists, so it stays unframed until opened.
           triggerWidth && !open ? 'bg-transparent hover:bg-ink/5' : 'bg-surface-raised',
           align === 'end' ? 'right-0' : 'left-0',
           open ? 'card-surface' : triggerWidth ? 'border-transparent' : 'border-line-strong',
@@ -274,7 +279,6 @@ export function Menu({
           whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
           transition={transition}
           className={cn(
-            !open && !triggerWidth && 'ring-1 ring-inset ring-line-strong',
             'absolute top-0 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]',
             size === 'md' ? 'min-h-12' : 'min-h-11',
             triggerWidth ? 'px-0' : size === 'md' ? 'px-5' : 'px-4',
@@ -298,12 +302,8 @@ export function Menu({
         <div inert={!open} aria-hidden={!open || undefined}>
           <AnimatePresence>
             {open && (
-              <MorphContent
-                multiplier={multiplier}
-                ref={(node) => {
-                  panelRef.current = node;
-                  morph.content.current = node;
-                }}
+              <motion.div
+                ref={panelRef}
                 id={menuId}
                 role={panelIndex === null ? 'menu' : 'group'}
                 aria-label={label}
@@ -317,6 +317,10 @@ export function Menu({
                         }
                       }
                 }
+                initial={multiplier > 0 ? { opacity: 0 } : false}
+                animate={{ opacity: 1 }}
+                exit={multiplier > 0 ? { opacity: 0 } : undefined}
+                transition={{ duration: 0.12 * multiplier }}
                 style={{ top: triggerHeight }}
                 className={cn(
                   'absolute p-1.5',
@@ -386,11 +390,11 @@ export function Menu({
                     </motion.button>
                   ))
                 )}
-              </MorphContent>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

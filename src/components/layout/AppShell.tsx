@@ -1,13 +1,5 @@
 import { ModalBackdrop } from '../ui/ModalBackdrop';
-import {
-  lazy,
-  Suspense,
-  useEffect,
-  useRef,
-  useState,
-  type ComponentProps,
-  type ComponentType,
-} from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentProps } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { ShellCourseDataProvider } from '../../state/ShellCourseData';
@@ -40,9 +32,9 @@ import { FinalExamLifecycleController } from '../course/FinalExamLifecycleContro
 import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 
 const AiPanel = lazy(loadAiPanel);
-const loadStudySheet = () =>
-  import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet }));
-const StudySheet = lazy(loadStudySheet);
+const StudySheet = lazy(() =>
+  import('../learn/StudySheet').then(({ StudySheet }) => ({ default: StudySheet })),
+);
 const KeyHints = lazy(() =>
   import('../ui/KeyHints').then(({ KeyHints }) => ({ default: KeyHints })),
 );
@@ -61,30 +53,6 @@ export function AppShell() {
 }
 
 function AppShellLayout() {
-  const [StudyPreview, setStudyPreview] = useState<
-    ComponentType<ComponentProps<typeof StudySheet>>
-  >(() => StudySheet);
-  // A fulfilled import still suspends React.lazy on its first render. Use the warmed
-  // component directly, keeping React's fallback delay off the first Study press.
-  useEffect(() => {
-    let mounted = true;
-    void loadStudySheet()
-      .then(({ default: Component }) => {
-        if (mounted) setStudyPreview(() => Component);
-      })
-      .catch((error: unknown) => {
-        if (mounted)
-          setStudyPreview(
-            () =>
-              function UnavailableStudyPreview() {
-                throw error;
-              },
-          );
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   // Sync sidebar collapsed state across tabs.
@@ -500,7 +468,7 @@ function AppShellLayout() {
           {studySheet.open && studySheet.anchor && (
             <OverlayLoadBoundary label="Study options" onClose={studySheet.close}>
               <Suspense fallback={null}>
-                <StudyPreview
+                <StudySheet
                   anchor={studySheet.anchor}
                   courseId={studySheet.courseId}
                   otherWays={studySheet.otherWays}

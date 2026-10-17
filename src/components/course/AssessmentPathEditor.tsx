@@ -158,7 +158,7 @@ export function AssessmentPathEditor({
       onDelete={assessment && kind !== 'final' ? remove : undefined}
       deleteNoun="checkpoint"
     >
-      <p data-morph-row className="path-editor-sentence">
+      <p className="path-editor-sentence">
         <input
           ref={name}
           aria-label="Name"
@@ -253,12 +253,12 @@ export function AssessmentPathEditor({
           ))}
         </div>
       </AnimatedDisclosure>
-      <p data-morph-row className="mt-3 text-sm text-ink-faint">
+      <p className="mt-3 text-sm text-ink-faint">
         {resolved.coveredLessons.length} lesson{resolved.coveredLessons.length === 1 ? '' : 's'} ·{' '}
         {resolved.cards.length} card{resolved.cards.length === 1 ? '' : 's'}
       </p>
       {draft.excludedCardIds.length === 0 && candidates.cards.length > 0 && (
-        <div data-morph-row>{exclusionButton(true)}</div>
+        <div>{exclusionButton(true)}</div>
       )}
       <AssessmentExclusions
         open={exclusionOpen}
@@ -274,7 +274,7 @@ export function AssessmentPathEditor({
         onChange={(excludedCardIds) => setDraft({ ...draft, excludedCardIds })}
       />
       {kind === 'final' && (
-        <div data-morph-row>
+        <div>
           <PathEditorPopover quiet label="Study target">
             {(close) => (
               <>

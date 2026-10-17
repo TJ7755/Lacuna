@@ -93,7 +93,7 @@ test('New course icon and label stay centred as one group at enlarged text size'
   const geometry = await trigger.evaluate((button) => {
     const icon = button.querySelector('svg')!.getBoundingClientRect();
     const text = button.lastElementChild!.getBoundingClientRect();
-    const surface = button.getBoundingClientRect();
+    const surface = button.parentElement!.getBoundingClientRect();
     return {
       offset: Math.abs((icon.left + text.right - surface.left - surface.right) / 2),
       contained: icon.left >= surface.left && text.right <= surface.right,
@@ -107,7 +107,7 @@ test('New course icon and label stay centred as one group at enlarged text size'
   });
 });
 
-test('expanding menus reveal their own geometry and settle without clipping', async ({ page }) => {
+test('expanding menus animate their own geometry and settle without clipping', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await enterFreshLacuna(page);
   await page
@@ -119,24 +119,15 @@ test('expanding menus reveal their own geometry and settle without clipping', as
     const trigger = page.getByRole('button', { name: label, exact: true });
     const samples = await trigger.evaluate(async (button) => {
       const surface = button.parentElement!;
-      const visibleWidth = () => {
-        const width = surface.getBoundingClientRect().width;
-        const clip = getComputedStyle(surface).clipPath;
-        if (clip === 'none') return width;
-        const inset = clip.slice(6).split(' round ')[0].split(' ').map(parseFloat);
-        const right = inset[1] ?? inset[0];
-        const left = inset[3] ?? right;
-        return width - right - left;
-      };
-      const before = visibleWidth();
+      const before = surface.getBoundingClientRect().width;
       (button as HTMLButtonElement).click();
       const widths: number[] = [];
       const start = performance.now();
       while (performance.now() - start < 700) {
         await new Promise(requestAnimationFrame);
-        widths.push(visibleWidth());
+        widths.push(surface.getBoundingClientRect().width);
       }
-      return { before, widths, after: visibleWidth() };
+      return { before, widths, after: surface.getBoundingClientRect().width };
     });
     expect(samples.widths.length).toBeGreaterThan(5);
     expect(samples.after).toBeGreaterThan(samples.before + 10);

@@ -1,19 +1,15 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { m as motion, usePresence } from 'motion/react';
+import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
-import { loadCourseStudyFlow } from '../../routes/loaders';
-import { loadRouteModule } from '../../routes/routeModule';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from '../ui/motion';
-import { useMorphReveal } from '../ui/useMorphReveal';
 import { StudyActionIcon } from './StudyActionIcon';
 
 import { beginStudyTransition } from '../layout/LandingTransition';
@@ -31,15 +27,10 @@ export function StudyExpansion({
   onClose: () => void;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    void loadRouteModule(loadCourseStudyFlow).catch(() => {});
-  }, []);
   const [launching, setLaunching] = useState(false);
   const launchingRef = useRef(false);
-  const [present, safeToRemove] = usePresence();
+  const present = useIsPresent();
   const surface = useRef<HTMLDivElement>(null);
-  const header = useRef<HTMLButtonElement>(null);
-  const depth = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const [origin] = useState(() => anchor.getBoundingClientRect());
   const [originColours] = useState(() => {
@@ -132,119 +123,122 @@ export function StudyExpansion({
     };
   }, [anchor, anchorVisibility, onClose, present, launching]);
 
-  useMorphReveal({
-    surface,
-    content,
-    header,
-    depth,
-    origin,
-    bounds,
-    open: present,
-    multiplier,
-    onComplete: () => {
-      if (!present) safeToRemove?.();
-    },
-  });
-
   return createPortal(
-    <>
-      <div
-        ref={depth}
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[49]"
-        style={{ opacity: 0 }}
-      >
-        <div className="absolute inset-0 bg-black/[0.025]" />
-        <div
-          className="absolute rounded-3xl"
-          style={{ ...bounds, boxShadow: '0 18px 48px -12px rgb(0 0 0 / 0.28)' }}
-        />
-      </div>
-      <div
-        ref={surface}
-        data-expanding-action="study"
-        role="region"
-        aria-label="Session preview"
-        inert={!present || launching}
-        aria-hidden={!present || undefined}
-        style={{
-          ...bounds,
-          ...(launching
-            ? {
-                zIndex: 101,
-                opacity: 0,
-                backgroundColor: 'transparent',
-                boxShadow: 'none',
-                pointerEvents: 'none',
-              }
-            : {}),
+    <motion.div
+      ref={surface}
+      data-expanding-action="study"
+      role="region"
+      aria-label="Session preview"
+      inert={!present || launching}
+      aria-hidden={!present || undefined}
+      initial={
+        multiplier > 0
+          ? {
+              left: origin.left,
+              top: origin.top,
+              width: origin.width,
+              height: origin.height,
+              borderRadius: origin.height / 2,
+            }
+          : false
+      }
+      animate={{
+        ...bounds,
+        borderRadius: 24,
+        opacity: launching ? 0 : 1,
+      }}
+      exit={{
+        left: origin.left,
+        top: origin.top,
+        width: origin.width,
+        height: origin.height,
+        borderRadius: origin.height / 2,
+      }}
+      transition={{
+        ...expandingActionSpring(multiplier),
+        opacity: { duration: 0.09 * multiplier },
+      }}
+      style={
+        launching
+          ? {
+              zIndex: 101,
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              pointerEvents: 'none',
+            }
+          : undefined
+      }
+      className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
+    >
+      <motion.button
+        type="button"
+        aria-label="Close session preview"
+        onClick={onClose}
+        data-press=""
+        whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
+        initial={multiplier > 0 ? originColours : false}
+        animate={{
+          backgroundColor: 'rgba(0, 0, 0, 0)',
+          color: headerInk,
+          opacity: launching ? 0 : 1,
         }}
-        className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface"
+        exit={originColours}
+        transition={{
+          ...expandingActionSpring(multiplier),
+          opacity: { duration: 0.09 * multiplier },
+          backgroundColor: { duration: 0.18 * multiplier, ease: 'linear' },
+          color: { duration: 0.18 * multiplier, ease: 'linear' },
+        }}
+        className="absolute right-0 top-0 z-10 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold focus-visible:outline-offset-[-3px]"
+        style={{
+          width: origin.width,
+          height: origin.height,
+          borderRadius: origin.height / 2,
+        }}
       >
-        <motion.button
-          ref={header}
-          type="button"
-          aria-label="Close session preview"
-          onClick={onClose}
-          data-press=""
-          whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
-          initial={multiplier > 0 ? originColours : false}
-          animate={{
-            backgroundColor: 'rgba(0, 0, 0, 0)',
-            color: headerInk,
-          }}
-          exit={originColours}
-          transition={{
-            ...expandingActionSpring(multiplier),
-            opacity: { duration: 0.09 * multiplier },
-            backgroundColor: { duration: 0.18 * multiplier, ease: 'linear' },
-            color: { duration: 0.18 * multiplier, ease: 'linear' },
-          }}
-          className="absolute right-0 top-0 z-10 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold focus-visible:outline-offset-[-3px]"
-          style={{
-            opacity: launching ? 0 : undefined,
-            width: origin.width,
-            height: origin.height,
-            borderRadius: origin.height / 2,
-          }}
-        >
-          <span>Study</span>
-          <StudyActionIcon open={present} multiplier={multiplier} />
-        </motion.button>
-        {/* The body keeps its final wrapping while the surface blooms from the trigger. */}
-        <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
-          <div className="max-h-[calc(100dvh-76px)] overflow-y-auto">
-            <div ref={content} className="p-6" style={{ opacity: launching ? 0 : undefined }}>
-              <StudyLaunchContext.Provider
-                value={(navigate) => {
-                  const element = surface.current;
-                  if (!element || multiplier === 0) {
-                    navigate();
-                    return;
-                  }
-                  if (launchingRef.current) return;
-                  launchingRef.current = true;
-                  returnFocus.current = false;
-                  const style = getComputedStyle(element);
-                  beginStudyTransition(
-                    element.getBoundingClientRect(),
-                    {
-                      colour: style.backgroundColor,
-                      radius: style.borderRadius,
-                      paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
-                    },
-                    navigate,
-                  );
-                  setLaunching(true);
-                }}
-              >
-                {children}
-              </StudyLaunchContext.Provider>
-            </div>
-          </div>
+        <span>Study</span>
+        <StudyActionIcon open={present} multiplier={multiplier} />
+      </motion.button>
+      {/* Keep the final-width body still while the shell reveals it towards the left. */}
+      <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
+        <div className="max-h-[calc(100dvh-76px)] overflow-y-auto">
+          <motion.div
+            ref={content}
+            className="p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: present && !launching ? 1 : 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: (launching ? 0.09 : 0.12) * multiplier }}
+          >
+            <StudyLaunchContext.Provider
+              value={(navigate) => {
+                const element = surface.current;
+                if (!element || multiplier === 0) {
+                  navigate();
+                  return;
+                }
+                if (launchingRef.current) return;
+                launchingRef.current = true;
+                returnFocus.current = false;
+                const style = getComputedStyle(element);
+                beginStudyTransition(
+                  element.getBoundingClientRect(),
+                  {
+                    colour: style.backgroundColor,
+                    radius: style.borderRadius,
+                    paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
+                  },
+                  navigate,
+                );
+                setLaunching(true);
+              }}
+            >
+              {children}
+            </StudyLaunchContext.Provider>
+          </motion.div>
         </div>
       </div>
-    </>,
+    </motion.div>,
     document.body,
   );
 }

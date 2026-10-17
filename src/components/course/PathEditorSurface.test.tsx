@@ -1,7 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { afterAll, afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { PathEditorSurface } from './PathEditorSurface';
+
+// Use Motion's JS engine; Happy DOM rejects cancelled native animations.
+const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
+beforeAll(() => {
+  Reflect.deleteProperty(Element.prototype, 'animate');
+});
+afterAll(() => {
+  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
+});
+
+function renderEditor(children = <Harness />) {
+  return render(<LazyMotion features={domAnimation}>{children}</LazyMotion>);
+}
 
 function Harness() {
   const [open, setOpen] = useState(false);
@@ -27,13 +41,8 @@ function Harness() {
   );
 }
 afterEach(() => vi.restoreAllMocks());
-it('blooms from the focused row, isolates the page and folds back after saving', async () => {
-  const reveals: Keyframe[][] = [];
-  vi.spyOn(Element.prototype, 'animate').mockImplementation(function (this: Element, frames) {
-    if (this.hasAttribute('data-path-editor-surface')) reveals.push(frames as Keyframe[]);
-    return { cancel: vi.fn(), finished: Promise.resolve(), currentTime: 0 } as unknown as Animation;
-  });
-  render(<Harness />);
+it('grows from the focused row, isolates the page and folds back after saving', async () => {
+  renderEditor();
   const row = screen.getByRole('button', { name: 'Open row' });
   vi.spyOn(row, 'getBoundingClientRect').mockReturnValue({
     left: 80,
@@ -48,9 +57,9 @@ it('blooms from the focused row, isolates the page and folds back after saving',
   expect(screen.getByRole('dialog', { name: 'Edit checkpoint' })).toBeVisible();
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
   expect(row.closest('[inert]')).not.toBeNull();
-  expect(reveals.some((frames) => frames[0].clipPath !== frames.at(-1)?.clipPath)).toBe(true);
+  expect(screen.getByRole('dialog')).toHaveStyle({ width: '500px', height: '64px' });
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0));
   expect(row.closest('[inert]')).toBeNull();
   expect(row).toHaveFocus();
 });
@@ -66,24 +75,18 @@ it('opens and folds instantly when reduced motion sets the multiplier to zero', 
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   }));
-  const animate = vi.spyOn(Element.prototype, 'animate');
-  render(<Harness />);
+  renderEditor();
   fireEvent.click(screen.getByRole('button', { name: 'Open row' }));
   expect(screen.getByRole('dialog', { name: 'Edit checkpoint' })).toBeVisible();
-  expect(
-    animate.mock.calls.some((_, index) =>
-      (animate.mock.contexts[index] as Element)?.hasAttribute('data-path-editor-surface'),
-    ),
-  ).toBe(false);
+  await waitFor(
+    () => expect(screen.getByRole('dialog')).toHaveStyle({ width: '520px', borderRadius: '24px' }),
+    { timeout: 100 },
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0));
 });
 
 it('focuses the neighbouring row when deletion removes the opening row', async () => {
-  vi.spyOn(Element.prototype, 'animate').mockImplementation(
-    () =>
-      ({ cancel: vi.fn(), finished: Promise.resolve(), currentTime: 0 }) as unknown as Animation,
-  );
   function DeletionHarness() {
     const [exists, setExists] = useState(true);
     const [open, setOpen] = useState(false);
@@ -112,12 +115,39 @@ it('focuses the neighbouring row when deletion removes the opening row', async (
       </>
     );
   }
-  render(<DeletionHarness />);
+  renderEditor(<DeletionHarness />);
   const opener = screen.getByRole('button', { name: 'Checkpoint row' });
   opener.focus();
   fireEvent.click(opener);
   fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
   fireEvent.click(screen.getByRole('dialog', { name: 'Delete' }).querySelector('button')!);
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() => expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0));
   expect(screen.getByRole('button', { name: 'Next row' })).toHaveFocus();
+});
+
+it('grows the surface itself from the anchor dimensions without a pre-sized backing', async () => {
+  vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(260);
+  renderEditor();
+  const row = screen.getByRole('button', { name: 'Open row' });
+  vi.spyOn(row, 'getBoundingClientRect').mockReturnValue({
+    left: 80,
+    top: 150,
+    width: 500,
+    height: 64,
+    right: 580,
+    bottom: 214,
+  } as DOMRect);
+  row.focus();
+  fireEvent.click(row);
+  const surface = screen.getByRole('dialog', { name: 'Edit checkpoint' });
+  expect(surface).toHaveStyle({ left: '80px', top: '150px', width: '500px', height: '64px' });
+  expect(surface.style.clipPath).toBe('');
+  expect(surface).toHaveClass('overflow-hidden', 'path-editor-shadow');
+  expect(surface.querySelector('.path-editor-content')).toHaveStyle({ width: '520px' });
+  await waitFor(() => expect(surface).toHaveStyle({ width: '520px', height: '260px' }));
+  expect(
+    document.querySelector(
+      '[data-path-editor-host] > .path-editor-shadow:not([data-path-editor-surface])',
+    ),
+  ).toBeNull();
 });

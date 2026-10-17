@@ -72,7 +72,7 @@ export function QuestionSetPathEditor({
       onDelete={node ? remove : undefined}
       deleteNoun="question-set activity"
     >
-      <p ref={sentence} data-morph-row className="path-editor-sentence">
+      <p ref={sentence} className="path-editor-sentence">
         Practise{' '}
         {node ? (
           <input

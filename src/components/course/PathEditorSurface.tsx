@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom';
 import { m as motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { useMorphReveal } from '../ui/useMorphReveal';
-import { MorphContent } from '../ui/MorphContent';
-import type { MorphRect } from '../ui/morphReveal';
+import { expandingActionSpring } from '../ui/motion';
 import { Button } from '../ui/Button';
 import { PathEditorPopover } from './PathEditorPopover';
 import './path-editor.css';
@@ -45,7 +43,7 @@ export function PathEditorSurface({
       null
     );
   });
-  const [origin] = useState<MorphRect>(
+  const [origin] = useState(
     () =>
       (source?.closest('[data-path-source]') ?? source)?.getBoundingClientRect() ?? {
         left: 24,
@@ -57,19 +55,17 @@ export function PathEditorSurface({
   const [closing, setClosing] = useState(false);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
-  const surface = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
-  const depth = useRef<HTMLDivElement>(null);
   const trap = useFocusTrap(!closing, {
     autoFocusSelector: '[data-path-editor-focus]',
     returnFocus: false,
   });
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
-  const [bounds, setBounds] = useState<MorphRect>({
+  const [bounds, setBounds] = useState({
     left: origin.left,
     top: origin.top,
-    width: Math.min(680, window.innerWidth - 32),
+    width: origin.width,
     height: origin.height,
   });
 
@@ -82,7 +78,7 @@ export function PathEditorSurface({
       const width = narrow
         ? window.innerWidth - 16
         : Math.min(Math.max(card?.width ?? origin.width, 520), 760, window.innerWidth - 32);
-      if (surface.current) surface.current.style.width = `${width}px`;
+      body.style.width = `${width}px`;
       const height = Math.min(body.scrollHeight, window.innerHeight - 32);
       const left = narrow
         ? 8
@@ -106,18 +102,13 @@ export function PathEditorSurface({
     };
   }, [origin, source]);
 
-  useMorphReveal({
-    surface,
-    content,
-    depth,
-    origin,
-    bounds,
-    open: !closing,
-    multiplier,
-    onComplete: () => {
-      if (closing) onClosed();
-    },
-  });
+  const collapsed = {
+    left: origin.left,
+    top: origin.top,
+    width: origin.width,
+    height: origin.height,
+    borderRadius: origin.height / 2,
+  };
 
   useLayoutEffect(() => {
     const host = trap.current;
@@ -196,24 +187,29 @@ export function PathEditorSurface({
         transition={{ duration: 0.18 * multiplier }}
         onClick={() => void finish()}
       />
-      <div
-        ref={depth}
-        aria-hidden="true"
-        className="pointer-events-none fixed rounded-3xl path-editor-shadow"
-        style={{ ...bounds, opacity: 0 }}
-      />
-      <div
-        ref={surface}
+      <motion.div
         data-path-editor-surface=""
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="path-editor fixed bg-surface-raised"
-        style={{ ...bounds }}
+        className="path-editor fixed overflow-hidden bg-surface-raised path-editor-shadow"
+        initial={multiplier > 0 ? collapsed : false}
+        animate={closing ? collapsed : { ...bounds, borderRadius: 24 }}
+        transition={expandingActionSpring(multiplier)}
+        onAnimationComplete={() => {
+          if (closing) onClosed();
+        }}
       >
-        <MorphContent ref={content} multiplier={multiplier} className="path-editor-content">
+        <motion.div
+          ref={content}
+          className="path-editor-content absolute left-0 top-0"
+          style={{ width: bounds.width }}
+          initial={multiplier > 0 ? { opacity: 0 } : false}
+          animate={{ opacity: closing ? 0 : 1 }}
+          transition={{ duration: 0.12 * multiplier }}
+        >
           {children}
-          <footer data-morph-row className="mt-5 flex items-center justify-between gap-3">
+          <footer className="mt-5 flex items-center justify-between gap-3">
             {onDelete ? (
               <PathEditorPopover label="Delete" quiet negative>
                 <p className="px-3 py-2 text-sm">Delete this {deleteNoun}?</p>
@@ -233,8 +229,8 @@ export function PathEditorSurface({
               {busy ? 'Saving…' : 'Done'}
             </Button>
           </footer>
-        </MorphContent>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>,
     document.body,
   );

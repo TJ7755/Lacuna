@@ -98,7 +98,7 @@ export function PracticeNodeEditor({
       onDelete={node ? remove : undefined}
       deleteNoun="practice node"
     >
-      <p data-morph-row className="path-editor-sentence">
+      <p className="path-editor-sentence">
         <input
           ref={name}
           data-path-editor-focus
@@ -212,7 +212,7 @@ export function PracticeNodeEditor({
           ))}
         </div>
       </AnimatedDisclosure>
-      <p data-morph-row className="mt-3 text-sm text-ink-faint">
+      <p className="mt-3 text-sm text-ink-faint">
         {countOf(draft.lessonIds?.length ?? lessons.length, 'lesson')} ·{' '}
         {Math.min(parseCardCount(draft.cardCount) ?? scope.length, scope.length)} cards
       </p>

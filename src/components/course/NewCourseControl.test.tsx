@@ -30,18 +30,6 @@ function Creation() {
 }
 
 describe('NewCourseControl', () => {
-  it('reveals a final-size surface instead of animating its layout', () => {
-    render(<Creation />);
-    const trigger = screen.getByRole('button', { name: 'New course' });
-    fireEvent.click(trigger);
-    const surface = trigger.parentElement!;
-    expect(surface).toHaveAttribute('data-morph-surface');
-    expect(surface.style.width).toBe(`${Math.min(448, window.innerWidth - 36)}px`);
-    expect(surface.style.clipPath).toBe('none');
-    expect(surface.style.borderRadius).toBe('24px');
-    fireEvent.click(trigger);
-    expect(surface.style.clipPath).not.toBe('none');
-  });
   it('refocuses the retained course name when reopened during its exit', async () => {
     motionPreference.multiplier = 1;
     render(

@@ -1,10 +1,8 @@
-import { MorphContent } from './MorphContent';
 import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { PlusIcon } from './icons';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
-import { useInlineMorph } from './useMorphReveal';
 
 /** Creation expands from its trigger, retaining the surrounding page. */
 export function ExpandingCreateControl({
@@ -47,8 +45,6 @@ export function ExpandingCreateControl({
     return () => window.removeEventListener('resize', measure);
   }, [open, align]);
 
-  const morph = useInlineMorph(open, closedWidth, multiplier, align, offset);
-
   const previouslyOpen = useRef(open);
   useEffect(() => {
     if (!open && previouslyOpen.current) trigger.current?.focus();
@@ -68,27 +64,16 @@ export function ExpandingCreateControl({
       className={`relative ${open ? 'z-[7]' : 'z-[5]'} h-11 shrink-0 ${className}`}
       style={{ width: closedWidth }}
     >
-      <div
-        ref={morph.depth}
-        aria-hidden="true"
-        className={`pointer-events-none absolute ${anchor} top-0 rounded-3xl`}
-        style={{
-          width: Math.min(448, window.innerWidth - 36),
-          height: morph.height,
-          transform: `translateX(${offset}px)`,
-          opacity: 0,
-          boxShadow: '0 18px 48px -12px rgb(0 0 0 / 0.28)',
+      <motion.div
+        initial={false}
+        animate={{
+          x: open ? offset : 0,
+          width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
+          height: open ? 'auto' : 44,
+          borderRadius: open ? 24 : 22,
         }}
-      />
-      <div
-        ref={morph.surface}
-        data-morph-surface=""
-        style={{
-          width: Math.min(448, window.innerWidth - 36),
-          height: morph.height,
-          transform: `translateX(${offset}px)`,
-        }}
-        // The ring follows the revealed edge rather than the invisible final bounds.
+        transition={transition}
+        // The closed button uses an inset ring to fill its 44px height; the open form is a flat card.
         className={`absolute ${anchor} top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
         <motion.button
@@ -100,12 +85,12 @@ export function ExpandingCreateControl({
             if (open) close();
             else onOpenChange(true);
           }}
+          animate={{ x: open ? -offset : 0 }}
           data-press=""
           whileTap={multiplier > 0 ? { scale: 0.97 } : undefined}
           transition={transition}
-          // Share the reveal's origin so viewport clamping cannot move the header independently.
-          style={{ width: closedWidth, left: morph.origin.left }}
-          className={`absolute top-0 ${open ? '' : 'rounded-full ring-1 ring-inset ring-line-strong'} flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}
+          style={{ width: closedWidth }}
+          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}
         >
           <motion.span
             aria-hidden="true"
@@ -128,19 +113,21 @@ export function ExpandingCreateControl({
         >
           <AnimatePresence initial={false}>
             {open && (
-              <MorphContent
-                multiplier={multiplier}
+              <motion.div
                 key="form"
-                ref={morph.content}
                 id={formId}
                 className="pt-11"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 * multiplier }}
               >
                 {typeof children === 'function' ? children(close) : children}
-              </MorphContent>
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -79,30 +79,11 @@ Shared conventions:
 
 - Standard easing curve `[0.16, 1, 0.3, 1]` (a soft "ease-out-quint") for entrances.
 - Springs for tactile controls and shared-layout indicators.
-- Expanding actions (Study, name-first creation, Import and menus) lay out at their final
-  bounds and reveal through native `clip-path: inset(... round R)` keyframes. Width, height,
-  left and top never animate. Independent springs open horizontally first, with vertical
-  growth following 35ms later: damping ratio 0.85, responses 0.42s and 0.46s respectively
-  (mass 1, stiffness about 224/187 and damping 25.4/23.2). Closing fades content over 60ms
-  while collapsing vertically before horizontally, with a 35ms gap and critically damped
-  springs settling within 0.3s (stiffness about 1111, damping 66.7). The reveal radius is capped at half
-  its current height: short surfaces remain capsules before relaxing to 24px. Supported
-  browsers add `corner-shape: superellipse(1.25)` only to the settled panel. Content springs
-  from 94% scale about the trigger over 220ms, with rows staggered by 25ms, capped at five delays.
-  The surface settles within 420ms on opening and 300ms on closing; live measurement changes
-  retarget its remaining time without replaying content or extending the original deadline.
-  The shell warms the preview module and uses its resolved component directly, avoiding a
-  first-open React.lazy fallback delay.
-  A constant shadow layer fades in, and Study dims the page by 2.5% without scaling it.
-  Reversals start from the presented reveal; closed contents are inert and aria-hidden.
-  Creation headers share the reveal's trigger origin, including viewport clamp offsets,
-  so their labels stay anchored on first opening and during reversals.
-  Motion speed scales spring stiffness by the inverse square of the multiplier, damping
-  by its inverse, and all axis delays proportionately; multiplier zero applies endpoints
-  immediately. Native animation owners consume cancellation, including unmounts.
-- Disclosures use a critically damped height spring with stiffness 420, damping
-  `2 * sqrt(420)` (about 40.99) and mass 1, scaled in the same way. Text remains at its
-  natural size. Disclosure opacity takes 120ms times the motion multiplier. Nested settings retain
+- Expanding action surfaces and disclosures share a physical spring with stiffness 420,
+  damping 36 and mass 1. Motion speed scales stiffness by the inverse square of the
+  multiplier and damping by its inverse, preserving the damping ratio. Reduced motion
+  removes the interpolation; text remains at its natural size as the surface expands.
+  Disclosure opacity takes 120ms times the motion multiplier. Nested settings retain
   mounted drafts while closed and inert. Note controls and annotation panels keep
   decoration and spacing inside the zero-height wrapper. Assessment editor step changes
   measure their height locally; StepSwap itself remains a content transition. The mobile drawer
@@ -130,13 +111,10 @@ Specific motion (current state of the app):
   in the direction of travel (`TAB_DRIFT_PX`), not a full-width slide. Full-screen landing,
   method, conductor and Learn routes use the outer `RouteTransition` boundary, also a
   crossfade, with `AnimatePresence mode="wait"`. Starting from the Study sheet instead
-  uses the same axis-led clip reveal from the sheet's rendered bounds, relaxing its
-  corner to zero. Sheet contents fade over 80ms. A paper-coloured layer fades in during
-  the first 300ms of growth, so the cover arrives already matching the session background.
-  An inert frozen copy of the course stays behind it while the destination prepares;
-  the page never scales. Once ready, the session begins its entrance during the final
-  approach (240ms at Normal speed), as the cover fades over 140ms. There is no separate
-  full-screen hold or blank release frame. The destination module warms while the preview is open. The session header fades over 140ms;
+  reuses the landing cover: sheet contents fade over 90ms while its surface expands from
+  its rendered bounds with a 380ms, zero-bounce spring, blends to paper and loses its radius.
+  The shell dims by 4%, without scaling. Covered study arrivals mount synchronously and
+  release the cover only once session content is ready. The session header fades over 140ms;
   the first three content blocks rise 8px over 220ms, starting at 20ms with a 40ms stagger
   (320ms total). Finished blocks retain no transform. Direct study entries retain the outer
   route fade and share this entrance. All timings scale with motion speed and become instant
@@ -162,7 +140,7 @@ Specific motion (current state of the app):
 - **Today’s Import action:** the neutral button expands into its own source chooser and
   import form using the same surface and spring as New course. Today stays in place.
   Cold opens wait for the form module while the trigger shows loading feedback; content
-  is measured at its final width before the shared axis-led reveal. Source selection
+  is measured at its final width so both dimensions expand together. Source selection
   and All sources use opposite short slides with a crossfade, including the back button,
   while the panel height follows its content with the same spring. Text and Anki imports
   use compact input, review and destination steps without a panel scrollbar. The panel
@@ -216,9 +194,8 @@ Specific motion (current state of the app):
   into the card header and back on dismissal. The closed primary button remains Volt.
   The trailing arrow morphs into a cross using the same two SVG strokes and reverses
   on dismissal; it never swaps sides or mounts a different icon.
-  The full-width body keeps its wrapping while it grows gently about the trigger with
-  the shared content spring and stagger. Reduced motion applies the final appearance
-  and geometry immediately.
+  The full-width body stays right-anchored and clipped, fading in place without a slide.
+  Reduced motion applies the final appearance and geometry immediately.
 - **Study card hand-off:** correct grades throw right, incorrect grades left, with a
   restrained 3-degree tilt, 102% lift and a non-bouncing 300/35 spring. Swipe release
   velocity feeds the throw. Persistence starts 70 ms into the lift; the card stays visible
@@ -372,9 +349,10 @@ navigation with the same pill and a motion-scaled 0.97 press. Embedded menu and 
 editor-toolbar actions retain their local layout.
 
 - **Path editing:** checkpoint/exam, manual practice and Question Set editors use the shared
-  morph reveal from their opening row, or Add trigger. The editor overlays the path card,
+  width/height spring to grow their surface from the opening row or Add trigger. The editor
+  overlays the path card,
   with a quiet paper-coloured scrim and no background blur. Below 640px it ends as a bottom
-  sheet using the same reveal. Inline sentence fields and chip popovers replace modal forms;
+  sheet using the same surface growth. Inline sentence fields and chip popovers replace modal forms;
   lesson pills disclose on the shared spring. Popovers scale from 94% with a quick spring.
   Saving folds the retained sentence back into its source. Path drag lifts the whole row to
   102% with the raised shadow, tracks vertical movement directly, and springs neighbours
