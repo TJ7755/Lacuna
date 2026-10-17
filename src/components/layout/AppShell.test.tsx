@@ -205,8 +205,9 @@ describe('AppShell mobile navigation', () => {
     renderShell();
 
     const mark = screen.getByTestId('mobile-brand-mark');
-    expect(mark.tagName).toBe('IMG');
-    expect(mark).toHaveAttribute('src', '/icon.svg');
+    expect(mark.tagName.toLowerCase()).toBe('svg');
+    expect(mark).toHaveClass('text-accent-ink');
+    expect(mark).not.toHaveAttribute('src');
     expect(mark).toHaveClass('h-[18px]', 'w-[18px]');
     expect(mark.className).not.toMatch(/\bbg-|\bp-/);
     expect(mark.parentElement).toHaveTextContent('Lacuna');

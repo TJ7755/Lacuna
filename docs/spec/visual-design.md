@@ -47,6 +47,10 @@ colours (`bg-surface`, `text-ink`, `border-line`, `text-accent`, ...).
 - **Body (`font-body`, Instrument Sans):** all running text, including the landing page.
   Both faces are bundled locally (OFL) and precached so they work offline.
 - **Brand (`font-brand`, Space Grotesk):** the Lacuna wordmark and course overview title.
+  App sidebar, mobile-header and desktop-titlebar marks use the shared `LacunaIcon` with
+  `accent-ink`, following the active theme and accent. Standalone favicon, PWA and desktop
+  artwork uses the landing mark’s default Volt lime; `icons:generate` also refreshes the
+  existing portable-splash mark without altering its wordmark or copy.
 - **Mono (`font-mono`, JetBrains Mono):** code only. Figures use `tabular-nums` in the body
   or display face; axis and metadata labels are never monospace.
 - Labels are short, sentence-case and quiet (`text-sm text-ink-faint`); prefer an icon and a

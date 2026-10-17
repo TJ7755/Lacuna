@@ -15,7 +15,7 @@ import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
-import { CloseIcon, SparklesIcon } from '../ui/icons';
+import { CloseIcon, LacunaIcon, SparklesIcon } from '../ui/icons';
 import { scaledSpring } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
@@ -419,12 +419,10 @@ function AppShellLayout() {
               </span>
             </button>
             <span className="flex items-center gap-2 font-brand text-lg font-medium leading-none tracking-tight">
-              <img
+              <LacunaIcon
                 data-testid="mobile-brand-mark"
-                src={`${import.meta.env.BASE_URL}icon.svg`}
-                alt=""
                 aria-hidden="true"
-                className="h-[18px] w-[18px] shrink-0"
+                className="h-[18px] w-[18px] shrink-0 text-accent-ink"
               />
               <span>Lacuna</span>
             </span>
