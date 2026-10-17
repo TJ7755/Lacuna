@@ -1,3 +1,5 @@
+import { modifierShortcutLabel } from '../electron/runtime';
+import { QuestionSetPracticeStepper } from '../components/question-sets/QuestionSetPracticeStepper';
 import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
@@ -186,18 +188,29 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
       <header className="qs-practice-header">
-        <div>
-          <Link className="qs-back" to={base} state={origin}>
-            ← {attempt.receipt.title}
-          </Link>
-          <p className="qs-kicker">
-            {attempt.mode === 'paper' ? 'Paper' : 'Practice'} ·{' '}
-            {attempt.status === 'complete' ? 'Complete' : marking ? 'Self-marking' : 'Answering'}
-          </p>
-        </div>
+        <Link className="qs-back" to={base} state={origin}>
+          ← {attempt.receipt.title}
+        </Link>
+        <QuestionSetPracticeStepper
+          mode={attempt.mode}
+          nodes={nodes}
+          allNodes={allNodes}
+          attempt={attempt}
+          index={index}
+          blocked={blocked}
+          onMove={move}
+          context={marking ? `criterion ${criterionIndex + 1} of ${criteria.length}` : undefined}
+        />
+        <span className="sr-only" aria-live="polite">
+          {attempt.status === 'complete'
+            ? 'Complete'
+            : marking
+              ? `Criterion ${criterionIndex + 1} of ${criteria.length}`
+              : `Part ${index + 1} of ${nodes.length}`}
+        </span>
         <div className="qs-actions">
           <span className="qs-status" role="status">
-            {progress.error ? 'Not saved' : progress.dirty || progress.saving ? 'Saving…' : 'Saved'}
+            {progress.error ? 'Not saved' : progress.dirty || progress.saving ? 'Saving…' : ''}
           </span>
           {attempt.status !== 'complete' && (
             <Button
@@ -240,37 +253,10 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
           </Button>
         </div>
       )}
-      <div className="qs-practice-progress">
-        <span aria-live="polite">
-          {marking
-            ? `Criterion ${criterionIndex + 1} of ${criteria.length}`
-            : `Part ${index + 1} of ${nodes.length}`}
-        </span>
-        {nodes.length > 1 && (
-          <QuestionSetPanel title="All parts" closeOnSelect>
-            <nav className="qs-outline" aria-label="Question parts">
-              {nodes.map((node) => (
-                <button
-                  key={node.id}
-                  disabled={blocked}
-                  aria-current={node.id === active.id ? 'true' : undefined}
-                  onClick={() => move(node.id)}
-                >
-                  {[
-                    ...node.parentIds.map((id) => allNodes.find((row) => row.id === id)!.label),
-                    node.label,
-                  ].join(' ')}
-                  {attempt.responses.find((row) => row.nodeId === node.id)?.submitted
-                    ? ' · submitted'
-                    : ''}
-                </button>
-              ))}
-            </nav>
-          </QuestionSetPanel>
-        )}
-      </div>
-      <StepSwap stepKey={`${active.id}:${marking}`}>
-        <article className={`qs-paper ${marking ? 'qs-paper-marking' : ''}`}>
+      <article
+        className={`qs-paper rounded-3xl bg-surface card-surface ${marking ? 'qs-paper-marking' : ''}`}
+      >
+        <StepSwap stepKey={`${active.id}:${marking}`}>
           {marking ? (
             <>
               <header className="qs-part-bar">
@@ -288,15 +274,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
                   {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
                 </span>
               </header>
-              <QuestionSetPanel title="Question and source" className="qs-question-context">
-                <QuestionSetAnswer
-                  content={attempt.receipt}
-                  nodeId={active.id}
-                  value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
-                  onChange={() => {}}
-                  readOnly
-                />
-              </QuestionSetPanel>
+
               {criterion && (
                 <QuestionSetMarking
                   key={active.id}
@@ -352,137 +330,143 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
               }
             />
           )}
-        </article>
-      </StepSwap>
-      <footer className="qs-attempt-footer">
-        {!marking ? (
-          <>
-            <p className="qs-muted">
-              {attempt.mode === 'paper'
-                ? 'The mark scheme opens after you submit the paper.'
-                : 'Submit all parts of this question before opening its mark scheme.'}
-            </p>
-            {blankConfirmation.open ? (
-              <div ref={blankConfirmation.ref}>
-                <ConfirmInline
-                  message="Some parts are unanswered."
-                  confirmLabel="Submit unanswered"
-                  variant="default"
-                  focusOnMount={blankConfirmation.focusOnMount}
-                  onCancel={blankConfirmation.cancel}
-                  onConfirm={() => void perform(() => submit(true))}
-                />
-              </div>
-            ) : (
-              <div className="qs-primary-actions">
-                {advancePart && (
-                  <Button
-                    variant="primary"
-                    data-attempt-primary
-                    disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
-                    onClick={() =>
-                      void perform(async () => {
-                        await progress.flush();
-                        await progress.run((current) =>
-                          saveQuestionSetAttemptPosition(
-                            current.id,
-                            current.revisionId,
-                            nextPart.id,
-                            null,
-                          ),
-                        );
-                      })
-                    }
-                  >
-                    Next part
-                  </Button>
-                )}
-                <Button
-                  variant={advancePart ? 'secondary' : 'primary'}
-                  data-attempt-primary={!advancePart || undefined}
-                  data-attempt-submit
-                  disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
-                  onClick={() => void perform(() => submit())}
-                >
-                  {attempt.mode === 'paper' ? 'Submit paper' : 'Submit question'}
-                </Button>
-                <p className="qs-muted">
-                  Ctrl/Cmd+Enter ·{' '}
-                  {advancePart
-                    ? 'Next part'
-                    : attempt.mode === 'paper'
-                      ? 'Submit paper'
-                      : 'Submit question'}
-                </p>
-              </div>
-            )}
-          </>
-        ) : (
-          <QuestionSetMarkingActions
-            attempt={attempt}
+        </StepSwap>
+        <footer className="qs-attempt-footer">
+          <QuestionSetPracticeNavigation
+            rows={
+              marking
+                ? criteria.map((row) => ({ nodeId: row.nodeId, allocationId: row.allocation.id }))
+                : nodes.map((node) => ({ nodeId: node.id }))
+            }
+            index={marking ? criterionIndex : index}
+            marking={marking}
             blocked={blocked}
-            currentMarked={currentMarked}
-            nextCriterion={nextCriterion}
-            criterionIndex={criterionIndex}
-            criterionCount={criteria.length}
             onMove={move}
-            onNextQuestion={() => {
-              const next = nodes.find(
-                (node) => !feedbackAvailable(attempt, node.parentIds[0] ?? node.id),
-              );
-              if (next) move(next.id);
-            }}
-            onComplete={() =>
-              void perform(() =>
-                progress.run((current) =>
-                  completeQuestionSetAttempt(current.id, current.revisionId),
-                ),
+          />
+          {!marking ? (
+            <>
+              {blankConfirmation.open ? (
+                <div ref={blankConfirmation.ref}>
+                  <ConfirmInline
+                    message="Some parts are unanswered."
+                    confirmLabel="Submit unanswered"
+                    variant="default"
+                    focusOnMount={blankConfirmation.focusOnMount}
+                    onCancel={blankConfirmation.cancel}
+                    onConfirm={() => void perform(() => submit(true))}
+                  />
+                </div>
+              ) : (
+                <div className="qs-primary-actions">
+                  <Button
+                    variant={advancePart ? 'ghost' : 'primary'}
+                    data-attempt-primary={!advancePart || undefined}
+                    data-attempt-submit
+                    disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
+                    onClick={() => void perform(() => submit())}
+                  >
+                    {attempt.mode === 'paper' ? 'Submit paper' : 'Submit question'}
+                    {!advancePart && (
+                      <kbd className="qs-shortcut" aria-hidden="true">
+                        {modifierShortcutLabel('↵')}
+                      </kbd>
+                    )}
+                  </Button>
+                  {advancePart && (
+                    <Button
+                      variant="primary"
+                      data-attempt-primary
+                      disabled={formDirty || reflectionDirty || acting || Boolean(progress.error)}
+                      onClick={() =>
+                        void perform(async () => {
+                          await progress.flush();
+                          await progress.run((current) =>
+                            saveQuestionSetAttemptPosition(
+                              current.id,
+                              current.revisionId,
+                              nextPart.id,
+                              null,
+                            ),
+                          );
+                        })
+                      }
+                    >
+                      Next part
+                      <kbd className="qs-shortcut" aria-hidden="true">
+                        {modifierShortcutLabel('↵')}
+                      </kbd>
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <QuestionSetMarkingActions
+              attempt={attempt}
+              blocked={blocked}
+              currentMarked={currentMarked}
+              nextCriterion={nextCriterion}
+              criterionIndex={criterionIndex}
+              criterionCount={criteria.length}
+              onMove={move}
+              onNextQuestion={() => {
+                const next = nodes.find(
+                  (node) => !feedbackAvailable(attempt, node.parentIds[0] ?? node.id),
+                );
+                if (next) move(next.id);
+              }}
+              onComplete={() =>
+                void perform(() =>
+                  progress.run((current) =>
+                    completeQuestionSetAttempt(current.id, current.revisionId),
+                  ),
+                )
+              }
+              returnTo={origin?.questionSetReturnTo ?? base}
+              returnLabel={origin?.questionSetReturnLabel ?? 'Back to set'}
+            />
+          )}
+        </footer>
+        <div className="qs-practice-secondary">
+          <QuestionSetRelatedKnowledge
+            key={active.id}
+            courseId={attempt.courseId}
+            conceptIds={[
+              ...answer.prerequisiteConceptIds,
+              ...answer.allocations.flatMap((row) => row.targetConceptIds),
+            ]}
+            submitted={marking}
+            beforeReveal={() =>
+              progress.run((current) =>
+                recordQuestionSetAssistance(current.id, current.revisionId, {
+                  nodeId: active.id,
+                  kind: 'related-knowledge',
+                  occurredAt: Date.now(),
+                }),
               )
             }
-            returnTo={origin?.questionSetReturnTo ?? base}
-            returnLabel={origin?.questionSetReturnLabel ?? 'Back to set'}
           />
-        )}
-      </footer>
-      <div className="qs-practice-secondary">
-        <QuestionSetRelatedKnowledge
-          key={active.id}
-          courseId={attempt.courseId}
-          conceptIds={[
-            ...answer.prerequisiteConceptIds,
-            ...answer.allocations.flatMap((row) => row.targetConceptIds),
-          ]}
-          submitted={marking}
-          beforeReveal={() =>
-            progress.run((current) =>
-              recordQuestionSetAssistance(current.id, current.revisionId, {
-                nodeId: active.id,
-                kind: 'related-knowledge',
-                occurredAt: Date.now(),
-              }),
-            )
-          }
-        />
-        <QuestionSetPracticeNavigation
-          rows={
-            marking
-              ? criteria.map((row) => ({ nodeId: row.nodeId, allocationId: row.allocation.id }))
-              : nodes.map((node) => ({ nodeId: node.id }))
-          }
-          index={marking ? criterionIndex : index}
-          marking={marking}
-          blocked={blocked}
-          onMove={move}
-        />
-      </div>
-      {marking && (
-        <QuestionSetReflection
-          value={attempt.reflection}
-          busy={busy || Boolean(progress.error)}
-          onDirty={setReflectionDirty}
-          onChange={(reflection) => updateMarking(() => ({ reflection }))}
-        />
-      )}
+          {marking && (
+            <QuestionSetPanel title="Question and source" panelClassName="qs-practice-panel">
+              <QuestionSetAnswer
+                content={attempt.receipt}
+                nodeId={active.id}
+                value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
+                onChange={() => {}}
+                readOnly
+              />
+            </QuestionSetPanel>
+          )}
+          {marking && (
+            <QuestionSetReflection
+              value={attempt.reflection}
+              busy={busy || Boolean(progress.error)}
+              onDirty={setReflectionDirty}
+              onChange={(reflection) => updateMarking(() => ({ reflection }))}
+            />
+          )}
+        </div>
+      </article>
     </div>
   );
 }

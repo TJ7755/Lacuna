@@ -10,6 +10,7 @@ export function QuestionSetPanel({
   title,
   children,
   className = '',
+  panelClassName = '',
   triggerLabel,
   closeOnSelect = false,
   canClose = true,
@@ -17,6 +18,7 @@ export function QuestionSetPanel({
   title: string;
   children: ReactNode;
   className?: string;
+  panelClassName?: string;
   triggerLabel?: string;
   closeOnSelect?: boolean;
   canClose?: boolean;
@@ -37,7 +39,7 @@ export function QuestionSetPanel({
             <DialogPanel
               label={title}
               trapRef={trap}
-              className="max-w-3xl max-h-[90dvh] text-ink"
+              className={`max-w-3xl max-h-[90dvh] text-ink ${panelClassName}`}
               overlayClassName="p-4 z-[80]"
               onBackdropClick={close}
               onKeyDown={(event) => {

@@ -30,7 +30,8 @@ export function QuestionSetReflection({
   const input = useRef<HTMLTextAreaElement>(null);
   return (
     <QuestionSetPanel
-      title="What would you change?"
+      title="Reflection"
+      panelClassName="qs-practice-panel"
       className="qs-reflection"
       canClose={note === value.note}
     >

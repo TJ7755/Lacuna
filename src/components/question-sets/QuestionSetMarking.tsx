@@ -73,7 +73,11 @@ export function QuestionSetMarking({
         <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
         <MarkdownView enlargeImages source={allocation.criterion} />
         {allocation.explanation && (
-          <QuestionSetPanel title="Explanation" className="qs-correction">
+          <QuestionSetPanel
+            title="Explanation"
+            className="qs-correction"
+            panelClassName="qs-practice-panel"
+          >
             <MarkdownView enlargeImages source={allocation.explanation} />
           </QuestionSetPanel>
         )}
@@ -106,9 +110,6 @@ export function QuestionSetMarking({
             { value: 'unsure', label: 'Unsure' },
           ]}
         />
-        <p className="qs-muted">
-          Self-marked{decision?.status === 'unsure' ? ' · needs another look' : ''}
-        </p>
       </section>
       <section className="qs-marking-answer">
         <p className="qs-kicker">Original answer</p>
@@ -121,7 +122,7 @@ export function QuestionSetMarking({
                   <MarkdownView enlargeImages key={option.id} source={option.content} />
                 ))
             ) : (
-              <p>No answer submitted.</p>
+              <p>Unanswered</p>
             )}
           </div>
         )}
@@ -145,7 +146,7 @@ export function QuestionSetMarking({
                       <span key={start}>{text.slice(start, end)}</span>
                     );
                   })
-                : 'No answer submitted.'}
+                : 'Unanswered'}
             </p>
           </div>
         )}
@@ -227,6 +228,7 @@ export function QuestionSetMarking({
         ))}
         <QuestionSetPanel
           title="Correction"
+          panelClassName="qs-practice-panel"
           className="qs-correction"
           canClose={correction === savedCorrection}
         >

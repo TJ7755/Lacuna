@@ -1,3 +1,4 @@
+import { modifierShortcutLabel } from '../../electron/runtime';
 import { AppLink as Link } from '../ui/AppLink';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { summariseSelfMarking } from '../../questions/questionSets';
@@ -40,7 +41,7 @@ export function QuestionSetMarkingActions({
       ? 'Next question'
       : 'Finish attempt';
   return (
-    <>
+    <div className="qs-marking-actions">
       <div>
         <p className="qs-result">
           {attempt.decisions.some((row) => row.status === 'awarded') ? summary.total.awarded : '—'}{' '}
@@ -76,6 +77,9 @@ export function QuestionSetMarkingActions({
             }
           >
             {label}
+            <kbd className="qs-shortcut" aria-hidden="true">
+              {modifierShortcutLabel('↵')}
+            </kbd>
           </Button>
           {continuing && attempt.status === 'marking' && (
             <Button
@@ -86,9 +90,8 @@ export function QuestionSetMarkingActions({
               Finish attempt
             </Button>
           )}
-          <p className="qs-muted">Ctrl/Cmd+Enter · {label}</p>
         </div>
       )}
-    </>
+    </div>
   );
 }
