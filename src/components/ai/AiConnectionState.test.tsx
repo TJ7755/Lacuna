@@ -177,7 +177,7 @@ describe('AiConnectionState', () => {
       />,
     );
 
-    expect(screen.getByText('A7K9-Q2')).toHaveClass('font-mono', 'whitespace-nowrap', 'text-xl');
+    expect(screen.getByText('A7K9-Q2')).toHaveClass('whitespace-nowrap', 'text-xl');
     expect(screen.getByRole('textbox', { name: 'AI client instruction' })).toHaveValue(instruction);
     expect(screen.getByRole('link', { name: 'Set up the AI client companion' })).toHaveAttribute(
       'href',

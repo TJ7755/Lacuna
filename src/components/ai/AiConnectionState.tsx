@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
+import { Field, Input, inputFrameClassName } from '../ui/Field';
+import { MeasuredHeight } from '../ui/MeasuredHeight';
+import { StepSwap } from '../ui/StepSwap';
+import { cn } from '../ui/cn';
 
 const TERMINAL_SETUP_URL = 'https://github.com/TJ7755/Lacuna#optional-desktop-ai-chat';
 const RENDERER_STATUS_POLL_MS = 1_000;
@@ -40,6 +44,12 @@ function AiClientSetupGuide() {
       </a>
     </div>
   );
+}
+
+function instructionTextareaClass() {
+  // The setup text is a literal command with a URL, so the code face stays for readability;
+  // but it borrows the shared field's frame rather than its own outlier.
+  return cn(inputFrameClassName, 'mt-2 w-full resize-none font-mono text-xs leading-5');
 }
 
 export function AiConnectionState({
@@ -124,7 +134,10 @@ export function AiConnectionState({
 
   if (hosted) {
     return (
-      <section aria-labelledby="ai-connect-title" className="flex flex-1 flex-col overflow-y-auto p-5">
+      <section
+        aria-labelledby="ai-connect-title"
+        className="flex flex-1 flex-col overflow-y-auto p-5"
+      >
         <div className="my-auto">
           <h2 id="ai-connect-title" className="font-display text-xl text-ink">Built-in AI</h2>
           <p className="mt-2 text-sm leading-6 text-ink-soft">
@@ -134,10 +147,14 @@ export function AiConnectionState({
             event.preventDefault();
             if (accessCode.trim()) onConnectAccess?.(accessCode.trim());
           }}>
-            <label htmlFor="ai-access-code" className="block text-xs font-medium text-ink-soft">Access code</label>
-            <input id="ai-access-code" type="password" autoComplete="off" value={accessCode}
-              onChange={(event) => setAccessCode(event.target.value)}
-              className="min-h-11 w-full rounded-lg border border-line-strong bg-paper px-3 text-sm text-ink outline-none focus:border-accent" />
+            <Field label="Access code">
+              <Input
+                type="password"
+                autoComplete="off"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+              />
+            </Field>
             <Button type="submit" disabled={busy || accessCode.trim().length === 0}>
               {busy ? 'Connecting' : 'Connect'}
             </Button>
@@ -176,116 +193,6 @@ export function AiConnectionState({
     }
   }
 
-  if (local) {
-    return (
-      <section
-        aria-labelledby="ai-connect-title"
-        aria-busy={!localInstruction}
-        className="flex flex-1 flex-col overflow-y-auto p-5"
-      >
-        <div className="my-auto">
-          <h2 id="ai-connect-title" className="font-display text-2xl text-ink">
-            Connect an AI client
-          </h2>
-          <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
-            The desktop app connects locally. No pairing code or internet connection is needed.
-          </p>
-
-          {rendererStatus && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="mt-4 flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2"
-            >
-              <span
-                aria-hidden="true"
-                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                  rendererStatus === 'ready'
-                    ? 'bg-positive'
-                    : rendererStatus === 'waiting'
-                      ? 'bg-warning'
-                      : 'bg-negative'
-                }`}
-              />
-              <span className="min-w-0 flex-1 text-xs text-ink-soft">
-                {rendererStatus === 'ready'
-                  ? 'AI runtime ready'
-                  : rendererStatus === 'waiting'
-                    ? 'AI runtime is still starting'
-                    : 'AI runtime unavailable'}
-              </span>
-              {rendererStatus !== 'ready' && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={rendererRestarting}
-                  onClick={() => void restartRenderer()}
-                >
-                  {rendererRestarting ? 'Restarting' : 'Restart AI runtime'}
-                </Button>
-              )}
-            </div>
-          )}
-
-          <label
-            htmlFor="ai-client-setup-prompt"
-            className="mt-5 block text-xs font-medium text-ink-soft"
-          >
-            AI client setup prompt
-          </label>
-          <textarea
-            id="ai-client-setup-prompt"
-            readOnly
-            rows={9}
-            value={
-              localInstruction ??
-              (localSetupError
-                ? 'The packaged companion command is unavailable.'
-                : 'Reading the packaged companion command…')
-            }
-            onFocus={(event) => event.currentTarget.select()}
-            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent-ink"
-          />
-
-          {(error || localSetupError) && (
-            <p
-              role="alert"
-              className="mt-3 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
-            >
-              {error ?? localSetupError}
-            </p>
-          )}
-
-          <Button
-            ref={copyRef}
-            variant="primary"
-            className="mt-3 w-full"
-            aria-label="Copy setup prompt"
-            disabled={!localInstruction}
-            onClick={() => void copyInstruction()}
-          >
-            {copyStatus === 'copied' ? 'Copied' : 'Copy setup prompt'}
-          </Button>
-          <a
-            href={TERMINAL_SETUP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent-ink underline underline-offset-2"
-          >
-            Open AI client setup instructions
-          </a>
-          <p role="status" aria-live="polite" className="min-h-5 text-xs text-ink-soft">
-            {copyStatus === 'copied'
-              ? 'Setup prompt copied'
-              : copyStatus === 'failed'
-                ? 'Copy failed. Select the prompt and copy it manually.'
-                : ''}
-          </p>
-        </div>
-      </section>
-    );
-  }
-
   if (compact && !pairing) {
     return (
       <section
@@ -316,127 +223,222 @@ export function AiConnectionState({
     );
   }
 
-  if (pairing) {
-    const expiry = new Date(pairing.expiresAt);
-
-    return (
-      <section
-        aria-labelledby="ai-pair-title"
-        aria-busy={busy}
-        className="flex flex-1 flex-col overflow-y-auto p-5"
-      >
-        <div className="my-auto">
-          <h2 id="ai-pair-title" className="font-display text-2xl text-ink">
-            Pair your AI client
-          </h2>
-
-          <div className="mt-5 rounded-xl border border-line-strong bg-surface-raised px-4 py-5 text-center card-surface">
-            <p className="text-sm font-medium text-ink-soft">
-              Pairing code
-            </p>
-            <p className="mt-2 whitespace-nowrap font-mono text-xl font-semibold tracking-[0.06em] text-ink">
-              {pairing.code}
-            </p>
-            <time dateTime={expiry.toISOString()} className="mt-2 block text-xs text-ink-faint">
-              Expires {expiry.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </time>
-          </div>
-
-          <label
-            htmlFor="ai-terminal-instruction"
-            className="mt-5 block text-xs font-medium text-ink-soft"
-          >
-            AI client instruction
-          </label>
-          <textarea
-            id="ai-terminal-instruction"
-            readOnly
-            rows={4}
-            value={instruction}
-            onFocus={(event) => event.currentTarget.select()}
-            className="mt-2 w-full resize-none rounded-lg border border-line bg-surface px-3 py-2 font-mono text-xs leading-5 text-ink outline-none focus-visible:border-accent/60 focus-visible:ring-2 focus-visible:ring-accent-ink"
-          />
-          <p className="mt-2 text-xs text-ink-soft">
-            Need to set it up first?{' '}
-            <a
-              href={TERMINAL_SETUP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-accent-ink underline underline-offset-2"
-            >
-              Set up the AI client companion
-            </a>
-          </p>
-
-          {error && (
-            <p
-              role="alert"
-              className="mt-3 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
-            >
-              {error}
-            </p>
-          )}
-
-          <div className="mt-3 flex gap-2">
-            <Button
-              ref={copyRef}
-              variant="primary"
-              className="flex-1"
-              aria-label="Copy instruction"
-              onClick={() => void copyInstruction()}
-            >
-              {copyStatus === 'copied' ? 'Copied' : 'Copy'}
-            </Button>
-            <Button variant="ghost" disabled={busy} onClick={onCancel}>
-              Cancel
-            </Button>
-          </div>
-          <p role="status" aria-live="polite" className="mt-2 min-h-5 text-xs text-ink-soft">
-            {copyStatus === 'copied'
-              ? 'Instruction copied'
-              : copyStatus === 'failed'
-                ? 'Copy failed. Select the instruction and copy it manually.'
-                : ''}
-          </p>
-        </div>
-      </section>
-    );
-  }
+  const stateKey = pairing ? 'pairing' : local ? 'local' : 'connect';
 
   return (
     <section
-      aria-labelledby="ai-connect-title"
-      aria-busy={busy}
-      className="flex flex-1 flex-col p-5"
+      aria-labelledby={
+        pairing ? 'ai-pair-title' : local ? 'ai-local-title' : 'ai-connect-title'
+      }
+      aria-busy={local ? !localInstruction : busy}
+      className="flex flex-1 flex-col overflow-y-auto p-5"
     >
       <div className="my-auto">
-        <h2 id="ai-connect-title" className="font-display text-2xl text-ink">
-          Connect an AI client
-        </h2>
-        <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
-          Pair this Lacuna tab with an AI client to begin.
-        </p>
+        <MeasuredHeight>
+          <StepSwap stepKey={stateKey} direction={0} className="flow-root">
+            {pairing ? (
+              <div>
+                <h2 id="ai-pair-title" className="font-display text-xl text-ink">
+                  Pair your AI client
+                </h2>
 
-        {error && (
-          <p
-            role="alert"
-            className="mt-4 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
-          >
-            {error}
-          </p>
-        )}
+                <div className="mt-5 rounded-3xl card-surface px-4 py-5 text-center">
+                  <p className="text-sm font-medium text-ink-soft">
+                    Pairing code
+                  </p>
+                  <p className="mt-2 whitespace-nowrap text-xl font-semibold text-ink">
+                    {pairing.code}
+                  </p>
+                  <time
+                    dateTime={new Date(pairing.expiresAt).toISOString()}
+                    className="mt-2 block text-xs text-ink-faint"
+                  >
+                    Expires {new Date(pairing.expiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </time>
+                </div>
 
-        <Button
-          ref={connectRef}
-          variant="primary"
-          className="mt-5 w-full"
-          disabled={busy}
-          onClick={onStartPairing}
-        >
-          {busy ? 'Connecting…' : 'Connect AI client'}
-        </Button>
+                <Field label="AI client instruction" className="mt-5">
+                  <textarea
+                    id="ai-terminal-instruction"
+                    readOnly
+                    rows={4}
+                    value={instruction}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className={instructionTextareaClass()}
+                  />
+                </Field>
+                <p className="mt-2 text-xs text-ink-soft">
+                  Need to set it up first?{' '}
+                  <a
+                    href={TERMINAL_SETUP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-accent-ink underline underline-offset-2"
+                  >
+                    Set up the AI client companion
+                  </a>
+                </p>
 
-        <AiClientSetupGuide />
+                {error && (
+                  <p
+                    role="alert"
+                    className="mt-3 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    ref={copyRef}
+                    variant="primary"
+                    className="flex-1"
+                    aria-label="Copy instruction"
+                    onClick={() => void copyInstruction()}
+                  >
+                    {copyStatus === 'copied' ? 'Copied' : 'Copy'}
+                  </Button>
+                  <Button variant="ghost" disabled={busy} onClick={onCancel}>
+                    Cancel
+                  </Button>
+                </div>
+                <p role="status" aria-live="polite" className="mt-2 min-h-5 text-xs text-ink-soft">
+                  {copyStatus === 'copied'
+                    ? 'Instruction copied'
+                    : copyStatus === 'failed'
+                      ? 'Copy failed. Select the instruction and copy it manually.'
+                      : ''}
+                </p>
+              </div>
+            ) : local ? (
+              <div>
+                <h2 id="ai-local-title" className="font-display text-xl text-ink">
+                  Connect an AI client
+                </h2>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
+                  The desktop app connects locally. No pairing code or internet connection is needed.
+                </p>
+
+                {rendererStatus && (
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="mt-4 flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-2"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        rendererStatus === 'ready'
+                          ? 'bg-positive'
+                          : rendererStatus === 'waiting'
+                            ? 'bg-warning'
+                            : 'bg-negative'
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1 text-xs text-ink-soft">
+                      {rendererStatus === 'ready'
+                        ? 'AI runtime ready'
+                        : rendererStatus === 'waiting'
+                          ? 'AI runtime is still starting'
+                          : 'AI runtime unavailable'}
+                    </span>
+                    {rendererStatus !== 'ready' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={rendererRestarting}
+                        onClick={() => void restartRenderer()}
+                      >
+                        {rendererRestarting ? 'Restarting' : 'Restart AI runtime'}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                <Field label="AI client setup prompt" className="mt-5">
+                  <textarea
+                    id="ai-client-setup-prompt"
+                    readOnly
+                    rows={9}
+                    value={
+                      localInstruction ??
+                      (localSetupError
+                        ? 'The packaged companion command is unavailable.'
+                        : 'Reading the packaged companion command…')
+                    }
+                    onFocus={(event) => event.currentTarget.select()}
+                    className={instructionTextareaClass()}
+                  />
+                </Field>
+
+                {(error || localSetupError) && (
+                  <p
+                    role="alert"
+                    className="mt-3 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
+                  >
+                    {error ?? localSetupError}
+                  </p>
+                )}
+
+                <Button
+                  ref={copyRef}
+                  variant="primary"
+                  className="mt-3 w-full"
+                  aria-label="Copy setup prompt"
+                  disabled={!localInstruction}
+                  onClick={() => void copyInstruction()}
+                >
+                  {copyStatus === 'copied' ? 'Copied' : 'Copy setup prompt'}
+                </Button>
+                <a
+                  href={TERMINAL_SETUP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-accent-ink underline underline-offset-2"
+                >
+                  Open AI client setup instructions
+                </a>
+                <p role="status" aria-live="polite" className="min-h-5 text-xs text-ink-soft">
+                  {copyStatus === 'copied'
+                    ? 'Setup prompt copied'
+                    : copyStatus === 'failed'
+                      ? 'Copy failed. Select the prompt and copy it manually.'
+                      : ''}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h2 id="ai-connect-title" className="font-display text-xl text-ink">
+                  Connect an AI client
+                </h2>
+                <p className="mt-3 max-w-sm text-sm leading-6 text-ink-soft">
+                  Pair this Lacuna tab with an AI client to begin.
+                </p>
+
+                {error && (
+                  <p
+                    role="alert"
+                    className="mt-4 rounded-xl border border-negative/30 bg-negative/5 p-3 text-sm text-negative"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <Button
+                  ref={connectRef}
+                  variant="primary"
+                  className="mt-5 w-full"
+                  disabled={busy}
+                  onClick={onStartPairing}
+                >
+                  {busy ? 'Connecting…' : 'Connect AI client'}
+                </Button>
+
+                <AiClientSetupGuide />
+              </div>
+            )}
+          </StepSwap>
+        </MeasuredHeight>
       </div>
     </section>
   );
