@@ -1,0 +1,1 @@
+- Simplify Settings → Your data: group device-sync actions, keep technical details behind the encryption disclosure and replace the unlocked banner with a compact lock control. Show the three newest restore points with older points under More, using tighter rows and preserving all deletion and restoration confirmations. Restore-point retention is unchanged.

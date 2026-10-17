@@ -91,7 +91,17 @@ mounting are visible immediately even if their change event preceded the subscri
 - **Automatic backups:** "Back up now"; folder-mirror controls (where
   supported); a list of restore points (timestamp + lesson/card counts) each with
   two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from
-  Lacuna; an independently mirrored folder file is not removed.
+  Lacuna; an independently mirrored folder file is not removed. The three newest points are
+  visible initially; **More** discloses the older points without changing retention. Ordinary
+  snapshots are capped at ten, while pre-migration snapshots are exempt. Startup saves when the
+  newest point is at least 24 hours old. Ordinary saves have a five-minute in-session throttle;
+  deliberate backups and pre-combine/peer-apply safety snapshots bypass it. Snapshots are not
+  deduplicated by content.
+- **Device sync:** **Another device** shows the paired state and last successful sync together,
+  with Sync now, Show pairing QR and a compact Lock control grouped below. The existing unlocked
+  explanation remains on the lock control. **End-to-end encrypted** discloses the relay URL,
+  full channel id, snapshot sizes and backup reminder. Errors remain visible. Remove and Delete
+  channel share a quiet action group and retain their separate confirmations and safety checks.
 - **Install** (where supported): a panel of platform-specific install
   instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`. Browser install
   events are consumed immediately, including on dismissal; the action becomes available

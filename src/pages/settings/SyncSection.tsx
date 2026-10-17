@@ -2,12 +2,13 @@ import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
-import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon } from '../../components/ui/icons';
+import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { readSyncState } from '../../db/mutationStamp';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { SettingsCard } from './SettingsUi';
 import { SettingsModal } from './SettingsModal';
+import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
 import { loadQrCode, SyncQrPanel } from './SyncQrPanel';
 import type { SyncState } from '../../db/types';
 import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
@@ -43,34 +44,19 @@ function formatBytes(bytes: number | undefined): string | null {
 }
 
 function StatusPanel({ state }: { state: SyncState }) {
-  const encrypted = formatBytes(state.lastSnapshotBytes);
-  const plaintext = formatBytes(state.lastSnapshotPlaintextBytes);
   return (
-    <div className="rounded-2xl bg-paper px-4 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-positive">
-          <span className="h-2 w-2 rounded-full bg-positive" aria-hidden="true" />
+    <div>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
+        <span className="inline-flex items-center gap-2 font-medium text-positive">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-positive" aria-hidden="true" />
           Paired to a sync channel
-        </div>
+        </span>
         {state.lastSuccessfulSyncAt ? (
-          <span
-            className="text-sm text-ink-soft"
-            title={formatDateTime(state.lastSuccessfulSyncAt)}
-          >
+          <span className="text-ink-soft" title={formatDateTime(state.lastSuccessfulSyncAt)}>
             Last synced {formatRelativeTime(state.lastSuccessfulSyncAt)}
           </span>
         ) : (
-          <span className="text-sm text-ink-soft">Not synced yet</span>
-        )}
-      </div>
-      <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1 text-xs text-ink-faint">
-        <span>{state.relayUrl ?? 'Relay not recorded'}</span>
-        <span>{state.channelId ? `${state.channelId.slice(0, 8)}…` : 'channel unavailable'}</span>
-        {(encrypted || plaintext) && (
-          <span>
-            Last snapshot: {encrypted ? `${encrypted} encrypted` : 'encrypted size unknown'}
-            {plaintext ? ` · ${plaintext} before encryption` : ''}
-          </span>
+          <span className="text-ink-soft">Not synced yet</span>
         )}
       </div>
       {state.lastError && (
@@ -79,6 +65,31 @@ function StatusPanel({ state }: { state: SyncState }) {
         </p>
       )}
     </div>
+  );
+}
+
+function SyncDetails({ state }: { state: SyncState }) {
+  const encrypted = formatBytes(state.lastSnapshotBytes);
+  const plaintext = formatBytes(state.lastSnapshotPlaintextBytes);
+  return (
+    <InlineSettingsDisclosure
+      header="End-to-end encrypted"
+      headerClassName="flex min-h-11 items-center justify-between gap-3 rounded-lg text-sm text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+    >
+      <div className="space-y-2 pb-3 pt-1 text-sm text-ink-soft">
+        <p>Keeps paired devices up to date. Export a backup for a separate copy.</p>
+        <div className="flex flex-wrap gap-x-5 gap-y-1 break-all text-xs">
+          <span>{state.relayUrl ?? 'Relay not recorded'}</span>
+          <span>{state.channelId ?? 'channel unavailable'}</span>
+        </div>
+        {(encrypted || plaintext) && (
+          <p className="text-xs">
+            Last snapshot: {encrypted ? `${encrypted} encrypted` : 'encrypted size unknown'}
+            {plaintext ? ` · ${plaintext} before encryption` : ''}
+          </p>
+        )}
+      </div>
+    </InlineSettingsDisclosure>
   );
 }
 
@@ -402,37 +413,13 @@ export function SyncSection() {
           <ShareIcon width={18} height={18} />
         </span>
         <div className="min-w-0 flex-1">
-          <SettingsSectionHeading className="inline font-display text-lg font-semibold tracking-tight">
+          <SettingsSectionHeading className="font-display text-lg font-semibold tracking-tight">
             Another device
           </SettingsSectionHeading>
-          <span className="text-sm text-ink-faint"> · End-to-end encrypted</span>
-          <p className="mt-1 text-sm text-ink-faint">
-            Keeps paired devices up to date. Export a backup for a separate copy.
-          </p>
         </div>
         {!loaded ? (
           <span className="text-sm text-ink-faint">Reading sync status…</span>
-        ) : syncState ? (
-          confirmUnpair ? (
-            <ConfirmInline
-              message="Remove sync from this device?"
-              confirmLabel={busy === 'unpair' ? 'Removing…' : 'Unpair'}
-              onCancel={() => setConfirmUnpair(false)}
-              onConfirm={() => void handleUnpair()}
-              variant="default"
-            />
-          ) : (
-            <Button
-              key="remove"
-              variant="secondary"
-              size="sm"
-              onClick={() => setConfirmUnpair(true)}
-              disabled={busy !== null}
-            >
-              Remove
-            </Button>
-          )
-        ) : (
+        ) : !syncState ? (
           <Button
             key="pair"
             variant="secondary"
@@ -444,13 +431,13 @@ export function SyncSection() {
           >
             Pair
           </Button>
-        )}
+        ) : null}
       </div>
 
       {loaded && syncState && (
-        <div className="mt-5 flex flex-col gap-4">
+        <div className="mt-3 flex flex-col gap-5">
           <StatusPanel state={syncState} />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               id="sync-now"
               variant="primary"
@@ -475,23 +462,22 @@ export function SyncSection() {
               <QrCodeIcon width={18} height={18} />
               Show pairing QR
             </Button>
-          </div>
-
-          {unlocked ? (
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-positive/10 px-4 py-2">
-              <p className="text-sm text-positive">
-                Unlocked — this device remembers its key, so sync works without the passphrase.
-              </p>
+            {unlocked && (
               <Button
                 variant="ghost"
                 size="sm"
+                className="px-3 text-positive"
+                aria-label="Lock"
+                title="Unlocked — this device remembers its key, so sync works without the passphrase."
                 onClick={() => void handleLock()}
                 disabled={busy !== null}
               >
-                Lock
+                <UnlockIcon width={18} height={18} />
               </Button>
-            </div>
-          ) : (
+            )}
+          </div>
+
+          {!unlocked && (
             <div className="rounded-2xl bg-paper p-4">
               <SyncField
                 id="sync-action-passphrase"
@@ -535,25 +521,49 @@ export function SyncSection() {
               </AnimatedDisclosure>
             )}
 
-            <div className="flex flex-wrap items-center gap-3">
-              {confirmDelete ? (
-                <ConfirmInline
-                  message="Delete the shared channel everywhere?"
-                  confirmLabel={busy === 'delete' ? 'Deleting…' : 'Delete channel'}
-                  onCancel={() => setConfirmDelete(false)}
-                  onConfirm={() => void handleDeleteChannel()}
-                />
-              ) : (
-                <Button
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setConfirmDelete(true)}
-                  disabled={busy !== null}
-                >
-                  <TrashIcon width={16} height={16} />
-                  Delete channel
-                </Button>
-              )}
+            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-2 border-t border-line pt-3">
+              <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
+                <SyncDetails state={syncState} />
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {confirmUnpair ? (
+                  <ConfirmInline
+                    message="Remove sync from this device?"
+                    confirmLabel={busy === 'unpair' ? 'Removing…' : 'Unpair'}
+                    onCancel={() => setConfirmUnpair(false)}
+                    onConfirm={() => void handleUnpair()}
+                    variant="default"
+                  />
+                ) : (
+                  <Button
+                    key="remove"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmUnpair(true)}
+                    disabled={busy !== null}
+                  >
+                    Remove
+                  </Button>
+                )}
+                {confirmDelete ? (
+                  <ConfirmInline
+                    message="Delete the shared channel everywhere?"
+                    confirmLabel={busy === 'delete' ? 'Deleting…' : 'Delete channel'}
+                    onCancel={() => setConfirmDelete(false)}
+                    onConfirm={() => void handleDeleteChannel()}
+                  />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDelete(true)}
+                    disabled={busy !== null}
+                  >
+                    <TrashIcon width={16} height={16} />
+                    Delete channel
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
