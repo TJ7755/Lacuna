@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../components/ui/Field';
 // Full-page composer for creating and editing an Occlusion (a labelled diagram that
 // derives ordinary front/back FSRS cards, one per masked region). Mirrors
 // SequenceEditor's shape closely: the route decides create vs edit mode, a sticky
@@ -309,7 +310,7 @@ export function OcclusionEditor() {
 
         <div className="flex flex-col gap-5">
           <div>
-            <label htmlFor={nameId} className="mb-2 block text-sm text-ink-soft">
+            <label htmlFor={nameId} className={`${fieldLabelClassName} mb-2`}>
               Name
             </label>
             <input
@@ -319,13 +320,13 @@ export function OcclusionEditor() {
               onChange={(e) => setName(e.target.value)}
               autoFocus
               placeholder="e.g. The plant cell"
-              className="w-full rounded-lg border border-line-strong bg-surface px-3.5 py-2.5 text-ink outline-none focus:border-accent"
+              className={`${inputFrameClassName} w-full`}
             />
           </div>
 
           <div
             ref={gridRef}
-            className="grid grid-cols-1 overflow-hidden rounded-xl border border-line bg-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]"
+            className="grid grid-cols-1 overflow-hidden rounded-3xl bg-surface card-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]"
           >
             <OcclusionCanvas
               assetUrl={assetUrl}
@@ -354,8 +355,8 @@ export function OcclusionEditor() {
           </div>
 
           {/* Live generated-card count, following the sequence editor's precedent. */}
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
-            <span className="rounded-lg bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-ink">
+          <div className="flex flex-wrap items-center gap-3 rounded-3xl bg-surface px-5 py-4 text-sm card-surface">
+            <span className="rounded-full bg-accent-soft px-3 py-1 text-sm font-semibold text-accent-ink">
               {preview.length} card{preview.length === 1 ? '' : 's'} will be generated
             </span>
             {regions.length > 0 && (

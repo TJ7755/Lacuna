@@ -1,3 +1,6 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
+import { Select } from '../ui/Select';
+import { Button } from '../ui/Button';
 import { useRef, useState } from 'react';
 import { FORMAT_LABELS, type ImportFormat } from '../../db/importEngine';
 import { FileTextIcon, UploadIcon } from '../ui/icons';
@@ -32,13 +35,18 @@ export function CardImportInput({
       }}
     >
       <div className="card-import-input-label">
-        <label htmlFor="card-import-text">
+        <label htmlFor="card-import-text" className={fieldLabelClassName}>
           {preferPackage ? 'Anki package' : 'Paste your cards'}
         </label>
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={source.reading}>
-          <UploadIcon width={14} height={14} />
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => fileRef.current?.click()}
+          disabled={source.reading}
+        >
+          <UploadIcon width={16} height={16} />
           Upload a file
-        </button>
+        </Button>
       </div>
       <input
         ref={fileRef}
@@ -76,6 +84,7 @@ export function CardImportInput({
         </div>
       ) : (
         <textarea
+          className={inputFrameClassName}
           id="card-import-text"
           value={source.text}
           onChange={(event) => source.changeText(event.target.value)}
@@ -104,7 +113,7 @@ export function CardImportInput({
           <summary>Import settings</summary>
           <label>
             Format
-            <select
+            <Select
               value={source.format}
               onChange={(event) => source.setFormat(event.target.value as ImportFormat | '')}
             >
@@ -116,7 +125,7 @@ export function CardImportInput({
                   {FORMAT_LABELS[format]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <p>Use one row per card: front, back, then optional tags.</p>
         </details>

@@ -1,3 +1,4 @@
+import { fieldLabelClassName } from '../ui/Field';
 import {
   forwardRef,
   useEffect,
@@ -117,7 +118,7 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
 
     return (
       <div className={cn('group', className)}>
-        <label id={labelId} htmlFor={inputId} className="mb-2 block text-sm font-medium text-ink-soft">
+        <label id={labelId} htmlFor={inputId} className={`${fieldLabelClassName} mb-2`}>
           {label}
         </label>
         <div

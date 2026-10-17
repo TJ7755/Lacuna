@@ -291,7 +291,7 @@ export function SharedCourseImport({
           }}
           rows={4}
           placeholder="Paste a share link or code"
-          className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-sans placeholder:text-sm placeholder:text-ink-faint"
+          className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
         />
       </div>
 

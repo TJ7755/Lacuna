@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import type { BatchCandidate } from '../../items/batchStaging';
@@ -122,7 +123,7 @@ export function ItemStagingCandidateRow({
       layout={motionMultiplier > 0 ? 'position' : undefined}
       transition={{ duration: 0.2 * motionMultiplier, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'rounded-2xl border p-4 md:p-5',
+        'rounded-3xl border p-5 md:p-6',
         decision === 'accepted'
           ? 'border-positive/30 bg-positive/5'
           : decision === 'rejected'
@@ -135,9 +136,7 @@ export function ItemStagingCandidateRow({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-ink-soft">
-              Question {candidate.index + 1}
-            </span>
+            <span className="text-sm text-ink-soft">Question {candidate.index + 1}</span>
             <StatusPill tone={ready ? 'positive' : 'negative'}>
               {ready ? 'Valid' : 'Needs attention'}
             </StatusPill>
@@ -269,7 +268,7 @@ export function ItemStagingCandidateRow({
 
       <AnimatedDisclosure open={revisionOpen && decision === 'staged'}>
         <div className="mt-4 rounded-2xl bg-ink/[0.04] p-4">
-          <label className="flex flex-col gap-2 text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
             What should change?
             <textarea
               ref={revisionComplaintRef}
@@ -277,17 +276,17 @@ export function ItemStagingCandidateRow({
               onChange={(event) => setComplaint(event.target.value)}
               rows={3}
               placeholder="Describe the marking or wording problem…"
-              className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 text-sm leading-6 text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className={`${inputFrameClassName} resize-y text-sm leading-6`}
             />
           </label>
-          <label className="mt-3 flex flex-col gap-2 text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} mt-3 flex flex-col gap-2`}>
             Revised reply
             <textarea
               value={revisedSource}
               onChange={(event) => setRevisedSource(event.target.value)}
               rows={4}
               placeholder="Paste the model's reply here"
-              className="resize-y rounded-xl border border-line-strong bg-paper px-4 py-3 font-mono text-sm text-ink outline-none placeholder:font-sans placeholder:text-ink-faint focus:border-accent"
+              className={`${inputFrameClassName} resize-y font-mono text-sm placeholder:font-body placeholder:text-ink-faint`}
             />
           </label>
           <div className="mt-3 flex flex-wrap justify-end gap-2">
@@ -352,7 +351,7 @@ function StatusPill({
   return (
     <span
       className={cn(
-        'rounded-lg px-2.5 py-1 text-xs font-medium capitalize',
+        'rounded-full px-3 py-1 text-xs font-semibold capitalize',
         tone === 'positive' && 'bg-positive/10 text-positive',
         tone === 'negative' && 'bg-negative/10 text-negative',
         tone === 'warning' && 'bg-warning/10 text-warning-fg',

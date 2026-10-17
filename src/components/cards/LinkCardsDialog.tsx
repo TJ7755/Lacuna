@@ -1,3 +1,4 @@
+import { CardContent } from './CardContent';
 import { useMemo, useState } from 'react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { linkCardsToLesson } from '../../db/lessonRepository';
@@ -87,12 +88,7 @@ export function LinkCardsDialog({
         }
       }}
     >
-      <DialogHeader
-        title="Link existing cards"
-        description="Linked cards keep their original lesson and scheduling progress."
-        onClose={onCancel}
-        closeLabel="Close card picker"
-      />
+      <DialogHeader title="Link existing cards" onClose={onCancel} closeLabel="Close card picker" />
 
       <div className="flex min-h-0 flex-1 flex-col px-6 py-5">
         <label className="relative mb-4 block">
@@ -108,11 +104,11 @@ export function LinkCardsDialog({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search cards…"
-            className="w-full rounded-xl border border-line-strong bg-surface py-2.5 pl-10 pr-4 text-ink outline-none focus:border-accent"
+            className="min-h-11 w-full rounded-full border-[1.5px] border-line bg-surface py-2.5 pl-10 pr-4 text-ink outline-none focus:border-accent"
           />
         </label>
 
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-line">
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-3xl border border-line">
           {filteredCards.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-ink-soft">
               {cards.length === 0
@@ -127,13 +123,20 @@ export function LinkCardsDialog({
                   ? (lessonNames.get(card.primaryLessonId) ?? 'Unknown lesson')
                   : 'Cards';
                 return (
-                  <button
+                  <div
                     key={card.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => toggle(card.id)}
-                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-ink/[0.03]"
+                    className={cn(
+                      'relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
+                      isSelected ? 'bg-accent-soft' : 'hover:bg-ink/[0.03]',
+                    )}
                   >
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      aria-label={`${card.front} From ${source}`}
+                      onClick={() => toggle(card.id)}
+                      className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink"
+                    />
                     <span
                       className={cn(
                         'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
@@ -144,11 +147,15 @@ export function LinkCardsDialog({
                     >
                       {isSelected && <CheckIcon width={12} height={12} />}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-ink">{card.front}</span>
+                    <div className="pointer-events-none min-w-0 flex-1" inert>
+                      <CardContent
+                        card={card}
+                        side="front"
+                        className="card-row-clamp line-clamp-2 max-h-[3.75rem] text-sm text-ink"
+                      />
                       <span className="mt-1 block text-xs text-ink-faint">From {source}</span>
-                    </span>
-                  </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>

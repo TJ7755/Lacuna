@@ -1,3 +1,6 @@
+import { PillToggleGroup } from '../cards/PillToggleGroup';
+import { Select } from '../ui/Select';
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 // Region list and detail pane for the occlusion editor (Task 10, D1 adapted —
 // design/arc6/plan.md §6.5): role chips, inline pairing, and a detail pane for
 // role/answer text/back note. Region names default to "Box 1…n" (labels) and
@@ -64,13 +67,15 @@ export function OcclusionRegionPane({
 
   return (
     <div className="flex min-w-0 flex-col border-t border-line min-[760px]:border-l min-[760px]:border-t-0">
-      <div className="flex items-center justify-between border-b border-line px-3 py-2">
+      <div className="flex items-center justify-between border-b border-line px-5 py-4">
         <h2 className="font-display text-lg text-ink">Regions</h2>
-        <span className="text-sm text-ink-soft">{regions.length}</span>
+        <span className="text-sm tabular-nums text-ink-soft">{regions.length}</span>
       </div>
 
       {regions.length === 0 ? (
-        <p className="px-3 py-4 text-sm text-ink-faint">Draw a box on the diagram to add a region.</p>
+        <p className="px-5 py-4 text-sm text-ink-faint">
+          Draw a box on the diagram to add a region.
+        </p>
       ) : (
         <ul ref={listRef} className="flex max-h-56 flex-col gap-0.5 overflow-y-auto p-1.5">
           {regions.map((region, index) => {
@@ -84,11 +89,13 @@ export function OcclusionRegionPane({
                   onClick={() => onSelect(region.id)}
                   aria-current={current}
                   className={cn(
-                    'flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm transition-colors',
-                    current ? 'bg-accent-soft text-accent-ink' : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
+                    'flex min-w-0 flex-1 items-center gap-2 min-h-11 rounded-2xl px-3 py-2.5 text-left text-sm transition-colors',
+                    current
+                      ? 'bg-accent-soft text-accent-ink'
+                      : 'text-ink-soft hover:bg-ink/5 hover:text-ink',
                   )}
                 >
-                  <span className="shrink-0 rounded border border-line-strong px-1 py-0.5 text-xs text-ink-faint">
+                  <span className="shrink-0 rounded-full bg-ink/5 px-2 py-1 text-xs text-ink-faint">
                     {region.role === 'label' ? 'Label' : 'Feature'}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
@@ -115,38 +122,34 @@ export function OcclusionRegionPane({
       )}
 
       {selected ? (
-        <div className="flex flex-col gap-3 border-t border-line p-3">
+        <div className="flex flex-col gap-3 border-t border-line p-5">
           <div>
-            <p className="mb-1.5 text-sm text-ink-soft">Role</p>
-            <div
-              role="group"
-              aria-label="Role"
-              aria-describedby="occlusion-role-hint"
-              className="flex gap-1.5"
-            >
-              <RoleButton
-                label="Label box"
-                active={selected.role === 'label'}
-                onClick={() => onUpdate(selected.id, { role: 'label', pairedRegionId: undefined })}
-              />
-              <RoleButton
-                label="Feature"
-                active={selected.role === 'feature'}
-                onClick={() => onUpdate(selected.id, { role: 'feature' })}
-              />
-            </div>
-            <p id="occlusion-role-hint" className="mt-1 text-xs text-ink-faint">
-              Label boxes hide printed names; feature boxes mark unlabelled parts.
-            </p>
+            <p className={`${fieldLabelClassName} mb-2`}>Role</p>
+            <PillToggleGroup
+              label="Role"
+              value={selected.role}
+              onChange={(role) =>
+                onUpdate(
+                  selected.id,
+                  role === 'label' ? { role, pairedRegionId: undefined } : { role },
+                )
+              }
+              options={[
+                { value: 'label', label: 'Label box' },
+                { value: 'feature', label: 'Feature' },
+              ]}
+              size="sm"
+            />
           </div>
 
           {selected.role === 'feature' && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-ink-soft">Paired label</span>
-              <select
+            <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
+              <span className={fieldLabelClassName}>Paired label</span>
+              <Select
                 value={selected.pairedRegionId ?? ''}
-                onChange={(e) => onUpdate(selected.id, { pairedRegionId: e.target.value || undefined })}
-                className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                onChange={(e) =>
+                  onUpdate(selected.id, { pairedRegionId: e.target.value || undefined })
+                }
               >
                 <option value="">Not paired</option>
                 {labelRegions.map((label) => (
@@ -154,13 +157,13 @@ export function OcclusionRegionPane({
                     {names.get(label.id)}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
 
           {(selected.role === 'label' || !selected.pairedRegionId) && (
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-ink-soft">
+            <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
+              <span className={fieldLabelClassName}>
                 Answer text <span className="text-ink-faint/70">(optional)</span>
               </span>
               <input
@@ -168,48 +171,30 @@ export function OcclusionRegionPane({
                 value={selected.answerText ?? ''}
                 onChange={(e) => onUpdate(selected.id, { answerText: e.target.value || undefined })}
                 placeholder="Only needed for typed mode"
-                className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+                className={`${inputFrameClassName} min-h-11 text-sm`}
               />
             </label>
           )}
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm text-ink-soft">
+          <label className={`${fieldLabelClassName} flex flex-col gap-2`}>
+            <span className={fieldLabelClassName}>
               Note on back <span className="text-ink-faint/70">(optional)</span>
             </span>
             <input
               type="text"
               value={selected.backNote ?? ''}
               onChange={(e) => onUpdate(selected.id, { backNote: e.target.value || undefined })}
-              className="min-h-11 rounded-lg border border-line-strong bg-surface px-2.5 py-1.5 text-sm text-ink outline-none focus:border-accent"
+              className={`${inputFrameClassName} min-h-11 text-sm`}
             />
           </label>
         </div>
       ) : (
         regions.length > 0 && (
-          <p className="border-t border-line px-3 py-4 text-sm text-ink-faint">
+          <p className="border-t border-line px-5 py-4 text-sm text-ink-faint">
             Select a region to edit it.
           </p>
         )
       )}
     </div>
-  );
-}
-
-function RoleButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'min-h-11 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors',
-        active
-          ? 'border-accent bg-accent-soft text-accent-ink'
-          : 'border-line text-ink-soft hover:border-line-strong hover:text-ink',
-      )}
-    >
-      {label}
-    </button>
   );
 }

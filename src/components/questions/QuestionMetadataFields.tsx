@@ -1,3 +1,4 @@
+import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 // The Question editor's metadata: name, lesson, the primary skill practised and optional
 // prerequisites. It follows the prompt and answer, so ordinary entry starts with content.
 
@@ -8,11 +9,9 @@ import { Button } from '../ui/Button';
 import { PlusIcon } from '../ui/icons';
 import type { QuestionAuthoringState } from '../../pages/questionDraft';
 
-export const questionInputClass =
-  'min-h-12 w-full rounded-[14px] border-[1.5px] border-line-strong bg-surface px-4 py-2.5 text-ink outline-none transition focus:border-ink aria-[invalid=true]:border-negative';
-export const questionLabelClass = 'mb-2 block text-sm text-ink-soft';
-export const questionCardClass =
-  'rounded-3xl bg-surface card-surface';
+export const questionInputClass = `${inputFrameClassName} min-h-11 w-full aria-[invalid=true]:border-negative`;
+export const questionLabelClass = `${fieldLabelClassName} mb-2`;
+export const questionCardClass = 'rounded-3xl bg-surface card-surface';
 
 /** A field's validation message, linked to its control by `id`. */
 export function FieldError({ id, message }: { id: string; message?: string }) {
@@ -54,7 +53,7 @@ export function QuestionMetadataFields({
   const { name, newConceptName = '', lessonId, targetConceptId, prerequisiteConceptIds } = state;
   const prerequisites = concepts.filter((concept) => concept.id !== targetConceptId);
   return (
-    <section className={`grid gap-5 p-6 md:grid-cols-2 md:p-7 ${questionCardClass}`}>
+    <section className={`grid gap-5 p-5 md:grid-cols-2 md:p-6 ${questionCardClass}`}>
       <label className="block md:col-span-2">
         <span className={questionLabelClass}>Name</span>
         <input
@@ -119,7 +118,11 @@ export function QuestionMetadataFields({
             placeholder="A single piece of knowledge"
             className={questionInputClass}
           />
-          <Button type="button" onClick={onAddConcept} disabled={!editable || !newConceptName.trim()}>
+          <Button
+            type="button"
+            onClick={onAddConcept}
+            disabled={!editable || !newConceptName.trim()}
+          >
             <PlusIcon width={16} height={16} />
             Add
           </Button>
@@ -127,7 +130,7 @@ export function QuestionMetadataFields({
       </div>
       {prerequisites.length > 0 && (
         <fieldset className="md:col-span-2">
-          <legend className="mb-2 font-display text-base text-ink">Prerequisite Concepts</legend>
+          <legend className={questionLabelClass}>Prerequisite Concepts</legend>
           <div className="flex flex-wrap gap-2">
             {prerequisites.map((concept) => {
               const selected = prerequisiteConceptIds.includes(concept.id);

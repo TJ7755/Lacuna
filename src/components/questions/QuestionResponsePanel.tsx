@@ -254,7 +254,7 @@ function CheckedResult({
               <span className="min-w-0 flex-1 break-words pt-0.5 font-mono text-sm leading-6 text-ink">
                 {verdict.studentLine}
                 {verdict.undetermined && (
-                  <span className="mt-1 block font-sans text-xs text-ink-faint">
+                  <span className="mt-1 block font-body text-xs text-ink-faint">
                     The checker could not decide this line. Scheduling will be withheld.
                   </span>
                 )}

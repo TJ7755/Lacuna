@@ -1,0 +1,1 @@
+- Align card and individual-question authoring, batch review, image occlusion, card import and linking controls with the direction C form, surface and motion primitives.
