@@ -112,7 +112,7 @@ describe('StudySheet', () => {
     mockFlows.chem.snapshot.recurringPracticeEligibleCount = 6;
     renderSheet('chem');
     const steps = screen.getByRole('list', { name: "Today's session" });
-    expect(steps).toHaveTextContent('Learn Atomic structure');
+    expect(steps).toHaveTextContent('Atomic structureLearn · 2 cards, 1 new');
     expect(steps).toHaveTextContent('2 cards, 1 new');
     expect(steps).toHaveTextContent('Review due cards6 cards, offered next');
     // One review plus a new card counted three times is a minute; six reviews round up to two.

@@ -41,15 +41,16 @@ function describeStep(
     const fresh = cards.filter((card) => card.lastReviewed === null).length;
     return {
       key: `lesson:${step.lessonId}`,
-      title: `Learn ${step.label}`,
-      detail:
+      title: step.label,
+      detail: `Learn · ${
         cards.length === 0
           ? 'Notes only'
           : fresh === cards.length
             ? countOf(fresh, 'new card')
             : fresh > 0
               ? `${countOf(cards.length, 'card')}, ${fresh} new`
-              : countOf(cards.length, 'card'),
+              : countOf(cards.length, 'card')
+      }`,
       minutes:
         cards.length === 0
           ? undefined
