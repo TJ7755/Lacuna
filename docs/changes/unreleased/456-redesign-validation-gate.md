@@ -1,0 +1,1 @@
+- Record the redesign coverage matrix, candidate-specific evidence and outstanding novice, native-input and device validation gates. (#456)

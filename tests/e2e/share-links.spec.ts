@@ -86,7 +86,11 @@ async function readStudentRevision(page: Page): Promise<number | null> {
   );
 }
 
-test('a share link imports a course and republishes update it', async ({ browser }: { browser: Browser }) => {
+test('a share link imports a course and republishes update it', async ({
+  browser,
+}: {
+  browser: Browser;
+}) => {
   test.setTimeout(180_000);
   // One relay store for the whole test: teacher publishes and student reads
   // the same backend, as they would in production.
@@ -112,7 +116,11 @@ test('a share link imports a course and republishes update it', async ({ browser
   await expect(student.getByText(/Link biology —/)).toBeVisible();
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await student.goto('/#/');
-  await expect(student.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Link biology', exact: true })).toBeVisible();
+  await expect(
+    student
+      .getByRole('navigation', { name: 'Courses' })
+      .getByRole('link', { name: 'Link biology', exact: true }),
+  ).toBeVisible();
 
   // The teacher adds a card and republishes; the student's next dashboard
   // visit polls the manifest and merges the new revision.
@@ -127,7 +135,10 @@ test('a share link imports a course and republishes update it', async ({ browser
   await student.reload();
   await expect(student.getByRole('heading', { name: 'Today' })).toBeVisible();
   await expect.poll(() => readStudentRevision(student)).toBe(2);
-  await student.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Link biology', exact: true }).click();
+  await student
+    .getByRole('navigation', { name: 'Courses' })
+    .getByRole('link', { name: 'Link biology', exact: true })
+    .click();
   const studentCourseId = /#\/course\/([^/]+)/.exec(student.url())?.[1];
   expect(studentCourseId).toBeTruthy();
   await student.goto(`/#/course/${studentCourseId}/cards`);
@@ -157,7 +168,11 @@ test('a share link imports a course and republishes update it', async ({ browser
   await studentContext.close();
 });
 
-test('stopping a share removes the link for new visitors', async ({ browser }: { browser: Browser }) => {
+test('stopping a share removes the link for new visitors', async ({
+  browser,
+}: {
+  browser: Browser;
+}) => {
   test.setTimeout(180_000);
   const handle = createHandler(new MemoryStore());
   const teacherContext = await browser.newContext();
@@ -169,7 +184,13 @@ test('stopping a share removes the link for new visitors', async ({ browser }: {
   await openShare(teacher, 'Ephemeral biology');
   const code = await createShareLink(teacher);
   await teacher.getByRole('button', { name: 'Stop sharing' }).click();
-  await teacher.getByRole('button', { name: 'Yes, stop sharing' }).click();
+  await teacher
+    .getByText('Stop sharing? Students keep their copies but stop receiving updates.', {
+      exact: true,
+    })
+    .locator('..')
+    .getByRole('button', { name: 'Stop sharing', exact: true })
+    .click();
   await expect(teacher.getByRole('textbox', { name: 'Share link', exact: true })).toBeHidden();
   await expect(teacher.getByRole('button', { name: 'Create share link' })).toBeVisible();
 

@@ -127,9 +127,16 @@ and updater hash comparisons. The release verifier also avoids installing depend
 rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
 Required CI and Security gates remain intact. Native build time and platform checks still apply;
 no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
-Browser CI runs the full Chromium suite in two Playwright shards and a focused iPhone-sized
-WebKit smoke suite in one worker. Each job preserves its failure evidence. The existing required
-`browser-smoke` check fails if either Chromium shard or the WebKit job fails.
+Browser CI runs functional Chromium tests in two Playwright shards with two workers each.
+The original-sized image-advance measurement runs in a separate job with one worker and no
+concurrent functional test on that runner. CI explicitly selects `chromium-functional` or
+`chromium-image-performance` from `tests/config/playwright.web.ci.config.ts`; together they cover
+all tests in the normal `chromium` project exactly once. The ordinary
+`bun run test:e2e:web -- --project=chromium` command still includes the image measurement.
+The focused iPhone-sized WebKit smoke suite runs in one worker. Each job preserves its failure
+evidence. The existing required `browser-smoke` check fails if either Chromium shard, the image
+measurement or the WebKit job fails. Isolation removes competing test work; it does not establish
+that a product performance regression has been fixed.
 
 ## Signing policy
 

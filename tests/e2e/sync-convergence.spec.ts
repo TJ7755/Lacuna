@@ -37,7 +37,7 @@ async function preparePeers(browser: Browser, page: Page, initialFront?: string)
   }
 
   const relay = await installStatefulSyncRelay(page);
-  await page.goto('/#/settings');
+  await page.goto('/#/settings#settings-sync');
   await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Set up sync' }).click();
   await page.getByRole('button', { name: 'Advanced: use a private relay' }).click();
@@ -53,14 +53,14 @@ async function preparePeers(browser: Browser, page: Page, initialFront?: string)
     ),
     page.getByRole('button', { name: 'Set up sync', exact: true }).click(),
   ]);
-  await page.goto('/#/settings');
+  await page.goto('/#/settings#settings-sync');
   await expect(page.getByText('Paired to a sync channel')).toBeVisible({ timeout: 30_000 });
 
   const peerContext = await browser.newContext();
   const peer = await peerContext.newPage();
   await relay.attach(peer);
   await enterFreshLacuna(peer);
-  await peer.goto('/#/settings');
+  await peer.goto('/#/settings#settings-sync');
   await peer.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();
   await peer.getByRole('dialog').getByRole('button', { name: 'Join another device' }).click();
   await peer.getByRole('radio', { name: 'Enter details' }).click();
@@ -74,7 +74,7 @@ async function preparePeers(browser: Browser, page: Page, initialFront?: string)
     ),
     peer.getByRole('button', { name: 'Join channel' }).click(),
   ]);
-  await peer.goto('/#/settings');
+  await peer.goto('/#/settings#settings-sync');
   await expect(peer.getByText('Paired to a sync channel')).toBeVisible({ timeout: 30_000 });
 
   return { courseId, peer, peerContext, relay };
