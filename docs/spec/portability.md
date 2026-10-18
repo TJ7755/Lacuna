@@ -53,6 +53,11 @@ or corrupt media and enforce size limits before reading/decoding and before expo
 Sharing a locked/published copy is not a way to fork teacher authority silently. Respect the
 existing source/adopted identity registry and public-edit locks.
 
+[SharePage](../../src/pages/SharePage.tsx) keeps archived Courses selectable for link management
+and labels them **Archived** in both the picker and selected label, including a single Course.
+An explicit Course request wins. Otherwise selection prefers an active shared Course, then an
+active Course; when all are archived, it falls back to a shared Course, then the first Course.
+
 ## Classroom distribution
 
 [lineageDiff](../../src/db/lineageDiff.ts) is the pure comparison seam;
