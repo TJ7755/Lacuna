@@ -70,6 +70,7 @@ import { finalAssessmentForCourse } from './assessmentMigration';
 import { stripAssetMedia } from './assets';
 import { decodeShareCode, encodeShareCode, encodeShareQrCode } from './shareCodec';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
+import { conceptIdForSequenceItem, conceptIdForRegion } from '../questions/generatedConceptIds';
 import { getPreset, presetForSequence } from './sequencePresets';
 import { itemPayloadIsValid, assertValidCardPayload } from '../items/payloadValidation';
 import { emptyQuestionSchedule } from '../questions/scheduler';
@@ -1457,9 +1458,20 @@ async function importCourseSharePayload(
       // walking `shareLesson.cards` below) can be remapped to the new item id straight
       // away. The sequence rows themselves are only inserted once every lesson (hence
       // lessonIds, needed for `primaryLessonId`) exists — see the loop after exams.
+      const sequenceIdMap = new Map<string, string>();
       const itemIdMap = new Map<string, string>();
+      const generatedConceptIdMap = new Map<string, string>();
       for (const shareSeq of payload.sequences ?? []) {
-        for (const item of shareSeq.items) itemIdMap.set(item.id, makeId());
+        const sequenceId = makeId();
+        sequenceIdMap.set(shareSeq.id, sequenceId);
+        for (const item of shareSeq.items) {
+          const itemId = makeId();
+          itemIdMap.set(item.id, itemId);
+          generatedConceptIdMap.set(
+            conceptIdForSequenceItem(shareSeq.id, item.id),
+            conceptIdForSequenceItem(sequenceId, itemId),
+          );
+        }
       }
       const remapSequenceItemId = (si: string): string | undefined => {
         const { baseId, isLabel } = splitSequenceItemId(si);
@@ -1471,9 +1483,19 @@ async function importCourseSharePayload(
       // Same pre-computation for occlusion regions: a shared card's `oc` reference is
       // resolved while walking the lessons below, and `pairedRegionId` points at another
       // region in the same occlusion, so every region id must be mapped up front.
+      const occlusionIdMap = new Map<string, string>();
       const regionIdMap = new Map<string, string>();
       for (const shareOcc of payload.occlusions ?? []) {
-        for (const region of shareOcc.regions) regionIdMap.set(region.id, makeId());
+        const occlusionId = makeId();
+        occlusionIdMap.set(shareOcc.id, occlusionId);
+        for (const region of shareOcc.regions) {
+          const regionId = makeId();
+          regionIdMap.set(region.id, regionId);
+          generatedConceptIdMap.set(
+            conceptIdForRegion(shareOcc.id, region.id),
+            conceptIdForRegion(occlusionId, regionId),
+          );
+        }
       }
 
       const course = await createCourse(payload.course.n || 'Shared course', {
@@ -1509,7 +1531,10 @@ async function importCourseSharePayload(
       const conceptIdMap = new Map<string, string>();
       if (payload.v !== 2) {
         const importedConcepts: Concept[] = payload.concepts.map((concept, index) => {
-          const id = makeId();
+          // Keep native generator identities reproducible after remapping, including
+          // when every Card for an item/region is removed and later regenerated.
+          // All presentations and Question relationships use this same per-Concept map.
+          const id = generatedConceptIdMap.get(concept.id) ?? makeId();
           conceptIdMap.set(concept.id, id);
           return {
             id,
@@ -1712,7 +1737,7 @@ async function importCourseSharePayload(
         const primaryLessonId =
           typeof shareSeq.pl === 'number' ? (lessonIds[shareSeq.pl] ?? null) : null;
         return {
-          id: makeId(),
+          id: sequenceIdMap.get(shareSeq.id)!,
           courseId: course.id,
           primaryLessonId,
           name: shareSeq.n || 'Shared sequence',
@@ -1740,7 +1765,7 @@ async function importCourseSharePayload(
       // second set of cards. Course files supply the referenced asset; text codes
       // omit it, so their study face falls back to plain-text front/back.
       const importedOcclusions: Occlusion[] = (payload.occlusions ?? []).map((shareOcc, index) => ({
-        id: makeId(),
+        id: occlusionIdMap.get(shareOcc.id)!,
         courseId: course.id,
         primaryLessonId: typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
         name: shareOcc.n || 'Shared occlusion',

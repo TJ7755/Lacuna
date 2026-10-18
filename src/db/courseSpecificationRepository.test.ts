@@ -45,6 +45,7 @@ describe('Course specification reference', () => {
     { specificationId: 'board-fixture', tier: '' },
     { specificationId: 'board-fixture', routeIds: ['route', 'route'] },
     { specificationId: 'board-fixture', routeIds: ['BAD'] },
+    { specificationId: 'board-fixture', routeIds: new Array<string>(1) },
   ])('rejects malformed references at every authoring boundary: %j', async (invalid) => {
     const course = await courses.createCourse('Biology');
     const before = await db.courses.get(course.id);
