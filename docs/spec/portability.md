@@ -154,7 +154,10 @@ A single, reusable export UI offering multiple output formats:
 
 - Exports read represented records and their referenced media within one readonly database
   transaction, so simultaneous reviews, edits or deletions cannot produce a partial restore point.
-  Media byte encoding runs after the read transaction closes.
+  Media byte encoding runs after the read transaction closes, processing assets sequentially
+  in bounded chunks and yielding to the event loop when a cumulative byte or asset-count
+  budget is reached, including within large assets. Small assets share the work budget.
+  The base64 bytes, metadata and asset order are unchanged.
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and

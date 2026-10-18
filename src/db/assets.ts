@@ -351,19 +351,50 @@ export async function assetsForBackup(hashes: string[]): Promise<BackupAsset[]> 
   return encodeBackupAssets(assets);
 }
 
+// A multiple of three avoids padding between concatenated base64 chunks.
+const BACKUP_ASSET_CHUNK_BYTES = 384 * 1024;
+// Bound metadata work even when assets contain few or no bytes.
+const BACKUP_ASSETS_PER_YIELD = 256;
+
+function yieldToEventLoop(): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, 0));
+}
+
 /** Encode captured media rows without additional database reads. */
 export async function encodeBackupAssets(assets: MediaAsset[]): Promise<BackupAsset[]> {
-  return Promise.all(
-    assets.map(async (asset) => ({
+  const encoded: BackupAsset[] = [];
+  let bytesSinceYield = 0;
+  let assetsSinceYield = 0;
+  for (const asset of assets) {
+    if (assetsSinceYield >= BACKUP_ASSETS_PER_YIELD) {
+      await yieldToEventLoop();
+      bytesSinceYield = 0;
+      assetsSinceYield = 0;
+    }
+    const bytes = new Uint8Array(await blobToArrayBuffer(asset.blob));
+    const chunks: string[] = [];
+    for (let offset = 0; offset < bytes.length; offset += BACKUP_ASSET_CHUNK_BYTES) {
+      const chunk = bytes.subarray(offset, offset + BACKUP_ASSET_CHUNK_BYTES);
+      if (bytesSinceYield + chunk.length > BACKUP_ASSET_CHUNK_BYTES) {
+        await yieldToEventLoop();
+        bytesSinceYield = 0;
+        assetsSinceYield = 0;
+      }
+      chunks.push(bytesToBase64(chunk));
+      bytesSinceYield += chunk.length;
+    }
+    encoded.push({
       hash: asset.hash,
-      data: bytesToBase64(new Uint8Array(await blobToArrayBuffer(asset.blob))),
+      data: chunks.join(''),
       mimeType: asset.mimeType,
       kind: asset.kind,
       width: asset.width,
       height: asset.height,
       createdAt: asset.createdAt,
-    })),
-  );
+    });
+    assetsSinceYield += 1;
+  }
+  return encoded;
 }
 
 export function backupAssetToMediaAsset(asset: BackupAsset): MediaAsset {

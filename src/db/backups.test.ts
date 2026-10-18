@@ -12,6 +12,7 @@ import {
   __resetBackupThrottleForTests,
 } from './backups';
 import { createCard, createCourse, createLesson } from './repository';
+import { assetUrl, storeImageBlob } from './assets';
 import { PRE_V22_BACKUP_MESSAGE } from './portability';
 import type { BackupFile, ItemPayload } from './types';
 
@@ -233,6 +234,32 @@ describe('backups', () => {
 
     expect(payload).toBeDefined();
     expect(add).toHaveBeenCalledTimes(2);
+    expect(await db.backups.count()).toBe(1);
+  });
+
+  it('stores no restore point when asset encoding fails and allows an immediate retry', async () => {
+    const course = await createCourse('Media backup');
+    const asset = await storeImageBlob(new Blob(['diagram']), 'image/png', 20, 10);
+    await createCard(course.id, 'front_back', `![Diagram](${assetUrl(asset.hash)})`, 'Answer');
+    vi.spyOn(globalThis, 'btoa').mockImplementationOnce(() => {
+      throw new Error('Asset encoding failed');
+    });
+
+    await expect(takeAutoBackup()).rejects.toThrow('Asset encoding failed');
+    expect(await db.backups.count()).toBe(0);
+
+    const payload = await takeAutoBackup();
+    expect(payload?.assets).toEqual([
+      {
+        hash: asset.hash,
+        data: 'ZGlhZ3JhbQ==',
+        mimeType: 'image/png',
+        kind: 'image',
+        width: 20,
+        height: 10,
+        createdAt: asset.createdAt,
+      },
+    ]);
     expect(await db.backups.count()).toBe(1);
   });
   it('takes the first backup even when the clock is inside the first five minutes', async () => {
