@@ -20,7 +20,8 @@ readonly transaction, then perform expensive byte encoding outside it. Encoding 
 bounded chunks across assets, including inside a large asset, while preserving bytes, metadata and
 asset order. This responsiveness must not weaken the snapshot boundary. Pre-migration snapshots
 commit outside the upgrading database transaction so an aborted upgrade retains recovery evidence.
-A failed safety snapshot blocks destructive replacement or migration.
+A failed safety snapshot blocks destructive replacement or migration. Pre-upgrade media uses the
+shared encoder so restoring the snapshot retains audio/image kinds and bytes.
 
 The daily backup worker captures, encodes, stores, prunes and mirrors through the same
 [restore-point writer](../../src/db/backupRestorePoint.ts) as explicit backups. Only small status

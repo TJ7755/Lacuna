@@ -47,7 +47,7 @@ import {
 } from './migrations';
 import { buildCourseMigration } from './courseMigration';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
-import { blobToArrayBuffer, bytesToBase64 } from './assets';
+import { encodeBackupAssets } from './assets';
 import {
   buildCourseAssessmentMigration,
   type LegacyAssessmentRecord,
@@ -1508,19 +1508,7 @@ export async function readAllDataFromVersion(
   }
 
   const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
-  const assets = await Promise.all(
-    assetsRaw.map(async (a) => {
-      const buf = new Uint8Array(await blobToArrayBuffer(a.blob));
-      return {
-        hash: a.hash,
-        data: bytesToBase64(buf),
-        mimeType: a.mimeType,
-        width: a.width,
-        height: a.height,
-        createdAt: a.createdAt,
-      };
-    }),
-  );
+  const assets = await encodeBackupAssets(assetsRaw);
 
   const payload: BackupFile = {
     app: schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',

@@ -5,7 +5,7 @@ import type { Concept } from '../questions/types';
 import { db, ensurePreMigrationSnapshot } from './schema';
 import { createCourse } from './repository';
 import { exportDatabase, importBackup, readBackupFile, validateBackup } from './portability';
-import type { BackupFile } from './types';
+import type { BackupFile, MediaAsset } from './types';
 
 const specificationRef = {
   specificationId: 'future-science-2099',
@@ -154,12 +154,33 @@ describe('specification backup portability', () => {
   it('validates and restores the v29 snapshot captured before the default v30 upgrade', async () => {
     const backup = await linkedLibrary();
     const name = `lacuna-specification-snapshot-${Date.now()}`;
+    const media: MediaAsset[] = [
+      {
+        hash: 'snapshot-audio',
+        blob: new Uint8Array([0, 1, 127, 128, 254, 255]),
+        mimeType: 'audio/mpeg',
+        kind: 'audio',
+        createdAt: 3,
+      },
+      {
+        hash: 'snapshot-image',
+        blob: new Uint8Array([255, 128, 64, 1, 0]),
+        mimeType: 'image/png',
+        kind: 'image',
+        width: 40,
+        height: 30,
+        createdAt: 4,
+      },
+    ];
     const legacy = new Dexie(name);
-    legacy.version(29).stores({ courses: 'id', concepts: 'id', courseAssessments: 'id' });
+    legacy.version(29).stores({
+      courses: 'id', concepts: 'id', courseAssessments: 'id', assets: 'hash',
+    });
     await legacy.open();
     await legacy.table('courses').bulkAdd(backup.courses!);
     await legacy.table('concepts').bulkAdd(backup.concepts!);
     await legacy.table('courseAssessments').bulkAdd(backup.courseAssessments!);
+    await legacy.table('assets').bulkAdd(media);
     legacy.close();
     let captured: BackupFile | undefined;
     try {
@@ -168,10 +189,14 @@ describe('specification backup portability', () => {
         captured = snapshot;
       });
       expect(captured).toMatchObject({ app: 'lacuna-v13', version: 13 });
+      expect(captured!.assets.map((asset) => asset.kind)).toEqual(
+        media.map((asset) => asset.kind),
+      );
       expect(validateBackup(captured)).toBe(true);
       await importBackup(captured!, 'replace');
       expect(await db.courses.toArray()).toEqual(backup.courses);
       expect(await db.concepts.toArray()).toEqual(backup.concepts);
+      expect(await db.assets.bulkGet(media.map((asset) => asset.hash))).toEqual(media);
     } finally {
       await new Dexie(name).delete();
     }
