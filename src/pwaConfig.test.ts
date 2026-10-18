@@ -23,6 +23,13 @@ describe('service-worker asset caching', () => {
       { fileName: 'assets/validation-RESTORE2.js', isEntry: false, imports: [] },
     ])).toEqual(['assets/app-ENTRY001.js', 'assets/portability-RESTORE1.js', 'assets/validation-RESTORE2.js']);
   });
+  it('precaches the required device-local AI cleanup hook for offline restore', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/relay-CLEANUP1.js', isEntry: false, imports: ['assets/deviceState-CLEANUP2.js'] },
+      { fileName: 'assets/deviceState-CLEANUP2.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/relay-CLEANUP1.js', 'assets/deviceState-CLEANUP2.js']);
+  });
   it('precaches deferred embedded-image processing before the first offline import', () => {
     expect(
       collectAppShellScripts([
