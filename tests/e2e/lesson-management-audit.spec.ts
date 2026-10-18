@@ -14,7 +14,10 @@ for (const width of [390, 1440]) {
       .click();
     await page.goto(`${page.url()}/settings`);
     await expect(page.getByRole('heading', { name: 'Course settings', exact: true })).toBeVisible();
-    await page.getByRole('heading', { name: /^Lessons/ }).getByRole('button').click();
+    await page
+      .getByRole('heading', { name: /^Lessons/ })
+      .getByRole('button')
+      .click();
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
 
     const actions = page.getByRole('button', { name: /^Move .+ (up|down)$/ });
@@ -36,7 +39,7 @@ for (const width of [390, 1440]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
-    const lessonName = page.getByText('Core concepts & rendering', { exact: true });
+    const lessonName = page.locator('main').getByText('Core concepts & rendering', { exact: true });
     const nameBox = await lessonName.boundingBox();
     expect(
       nameBox!.width,

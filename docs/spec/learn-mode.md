@@ -21,6 +21,11 @@ Long text scrolls inside the card body rather than scrolling the page. Simple Le
 the same layout. Review notifications sit above the study actions and their surfaces pass
 pointer input through; the existing Undo action remains interactive.
 
+The notes intro and active session share the same wider header frame, centred around
+the narrower reading/card column. Exit leads the header; the timer closes it at widths
+from 340px, with Undo immediately before the timer during card study. Both stay in place
+when the notes intro hands over to the first card.
+
 1. **Load** a static snapshot of the deck(s) and their cards (an optional `?tag=`
    filter narrows a single-deck session). Build a `SessionContext` (one objective
    context per deck) and per-deck `UserPerformance`. Capture `progressBefore`.
@@ -517,7 +522,9 @@ recitation rather than as flip cards; label cards stay ordinary cards.
   flights bounded to 220–280ms, including slow releases. The incoming card settles over
   280ms with an ease-out and no bounce, overlapping the departure while persistence
   supplies the next card. Both follow the motion-speed setting; reduced motion skips the
-  departure.
+  departure. The outgoing presentation remains connected through Motion's final render
+  of the departure endpoint before presence removes it. Undo and unmount cancel pending
+  removal as well as the flight.
   The first successful swipe hides the persistent swipe
   hints via a `localStorage` flag (`lacuna.learnHints`).
 - **Mode-aware card accents:** each card's border and shadow shift to match the study

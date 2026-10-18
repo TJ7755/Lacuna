@@ -2,10 +2,7 @@ import { expect, type Page } from '@playwright/test';
 
 export async function addCard(page: Page, courseId: string, front: string): Promise<void> {
   await page.goto(`/#/course/${courseId}/cards`);
-  await page
-    .getByRole('group', { name: 'Add content' })
-    .getByRole('button', { name: 'New card' })
-    .click();
+  await page.getByRole('button', { name: 'New card', exact: true }).click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);
   await page.getByRole('textbox', { name: 'Back' }).fill(`${front} answer`);
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
@@ -82,7 +79,7 @@ async function completeOnlyCard(page: Page, courseId: string): Promise<string> {
 }
 
 export async function syncNow(page: Page): Promise<void> {
-  await page.goto('/#/settings');
+  await page.goto('/#/settings#settings-sync');
   const button = page.getByRole('button', { name: 'Sync now', exact: true });
   await expect(button).toBeEnabled({ timeout: 30_000 });
   await Promise.all([
@@ -94,7 +91,7 @@ export async function syncNow(page: Page): Promise<void> {
   await expect
     .poll(
       async () => {
-        if (new URL(page.url()).hash !== '#/settings') return true;
+        if (new URL(page.url()).hash !== '#/settings#settings-sync') return true;
         return button.isEnabled({ timeout: 250 }).catch(() => false);
       },
       { timeout: 30_000 },

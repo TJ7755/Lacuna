@@ -5,7 +5,7 @@ const accents = ['volt', 'violet', 'amber', 'red', 'rose', 'pink', 'blue', 'teal
 
 async function expectFlatCards(page: Page) {
   const surfaces = page.locator('main .card-surface');
-  expect(await surfaces.count()).toBeGreaterThan(0);
+  await expect.poll(() => surfaces.count()).toBeGreaterThan(0);
   for (const surface of await surfaces.all()) {
     await expect(surface).toHaveCSS('border-top-width', '1px');
     await expect(surface).toHaveCSS('border-top-style', 'solid');
@@ -81,6 +81,16 @@ for (const theme of ['light', 'dark'] as const) {
     await page.getByRole('combobox', { name: 'Search content' }).fill('derivative');
     const result = page.getByRole('option').first();
     await expect(result).toBeVisible();
-    await expect(result).not.toHaveCSS('box-shadow', 'none');
+    await expect(result).toHaveAttribute('aria-selected', 'true');
+    await expect(result).toHaveCSS('box-shadow', 'none');
+    const selectedBackground = await result.evaluate((element) => {
+      const probe = document.createElement('span');
+      probe.style.backgroundColor = 'hsl(var(--accent-soft))';
+      element.append(probe);
+      const colour = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return colour;
+    });
+    await expect(result).toHaveCSS('background-color', selectedBackground);
   });
 }

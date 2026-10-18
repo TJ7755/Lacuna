@@ -52,7 +52,11 @@ for (const width of [1280, 390]) {
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.emulateMedia({ reducedMotion });
       await enterFreshLacuna(page);
-      const course = await page.locator('a[href^="#/course/"]').first().getAttribute('href');
+      await page
+        .getByRole('region', { name: 'Today, most urgent first' })
+        .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+        .click();
+      const course = new URL(page.url()).hash;
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/${course}/settings`);
       await expect(

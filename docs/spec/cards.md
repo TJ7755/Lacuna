@@ -73,6 +73,9 @@ ordinary `front_back` cards to the scheduler.
   occlusion**, which open their own editors in place of this one (anything typed is kept as a
   draft). For a new card, **Import cards** is always visible beside More, outside the type
   selector. It imports into the lesson or, from Cards, the course's unassigned cards.
+  **More card types** passes keyboard focus to **Basic (reversed)** when it reveals the
+  further types. Tab navigates the pressed-button **Card type** group; Enter or Space
+  activates the focused type, including **Image occlusion**, which opens its editor.
   In a lesson, More also reveals **Link existing cards**. Changing
   type slides the new form in from the side of the chosen pill.
   - **Basic:** standard front/back flashcard.

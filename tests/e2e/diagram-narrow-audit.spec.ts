@@ -17,8 +17,12 @@ async function openNewOcclusion(page: Page, width: number) {
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
   await page.goto(`${page.url()}/cards`);
-  await page.getByRole('button', { name: 'More ways to add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'New occlusion' }).click();
+  await page.getByRole('button', { name: 'New card', exact: true }).click();
+  await page.getByRole('button', { name: 'More card types', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Card type', exact: true })
+    .getByRole('button', { name: 'Image occlusion', exact: true })
+    .click();
   await expect(page.getByRole('heading', { name: 'New occlusion', exact: true })).toBeVisible();
   await page
     .getByLabel('Upload diagram', { exact: true })

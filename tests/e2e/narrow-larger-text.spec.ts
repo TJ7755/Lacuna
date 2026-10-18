@@ -43,11 +43,11 @@ test('the Help shortcuts table keeps every column reachable at 320px with Larger
 }) => {
   await enterFreshLacuna(page);
   await page.setViewportSize({ width: 320, height: 800 });
-  await page.goto('/#/help');
+  await page.goto('/#/help#keyboard-shortcuts');
   const region = page.getByRole('region', { name: 'Keyboard shortcuts table' });
   await region.scrollIntoViewIfNeeded();
   expect(await mainOverflow(page)).toBeLessThanOrEqual(1);
-  const when = region.getByRole('columnheader', { name: 'When' });
+  const when = region.getByRole('columnheader', { name: 'Where' });
   await region.evaluate((el) => (el.scrollLeft = el.scrollWidth));
   const [regionBox, whenBox] = await Promise.all([region.boundingBox(), when.boundingBox()]);
   expect(whenBox!.x + whenBox!.width).toBeLessThanOrEqual(regionBox!.x + regionBox!.width + 1);

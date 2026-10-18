@@ -1,0 +1,1 @@
+- Fix the public comparison card demo's hydration error when reduced motion is enabled, retaining its interactive controls and motion preference.

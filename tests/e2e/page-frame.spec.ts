@@ -18,7 +18,6 @@ for (const width of [1440, 1920]) {
     let top: number | undefined;
     for (const [route, title] of [
       ['settings', 'Settings'],
-      ['import', 'Import'],
       ['analytics', 'Progress'],
       ['help', 'Help'],
       ['share', 'Share'],
@@ -32,12 +31,24 @@ for (const width of [1440, 1920]) {
           message: `${title} title edge`,
         })
         .toBeLessThanOrEqual(1);
-      // Top-level pages also start their title at the same height. Import is a two-level
-      // flow: like the course sections, it keeps a navigation row (Back) above its title.
-      if (title === 'Import') continue;
+      // Top-level pages also start their title at the same height.
       const y = (await heading.boundingBox())!.y;
       top ??= y;
       expect(Math.abs(y - top), `${title} title top`).toBeLessThanOrEqual(2);
     }
+    await page.goto(`${base}#/import`);
+    await expect(page).toHaveURL(/#\/\?import=1$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Today', exact: true })).toBeVisible();
+    const panel = page.locator('.import-panel');
+    await expect(panel).toBeVisible();
+    const close = page.getByRole('button', { name: 'Close', exact: true });
+    await expect(close).toHaveAttribute('aria-expanded', 'true');
+    await expect
+      .poll(async () => {
+        const bounds = (await close.locator('..').boundingBox())!;
+        const trigger = (await close.boundingBox())!;
+        return Math.abs(bounds.x + bounds.width - (trigger.x + trigger.width));
+      })
+      .toBeLessThanOrEqual(1);
   });
 }

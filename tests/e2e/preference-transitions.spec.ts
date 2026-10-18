@@ -97,7 +97,11 @@ test('editor presentation follows explicit modes and Auto follows physical activ
   page,
 }) => {
   await enterFreshLacuna(page);
-  const course = await page.locator('a[href^="#/course/"]').first().getAttribute('href');
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+    .click();
+  const course = new URL(page.url()).hash;
   const editor = `/${course}/cards/new`;
   const actions = page.getByRole('region', { name: 'Card editor actions' });
   const positions: Record<string, string[]> = { Keyboard: [], Touch: [] };
@@ -119,12 +123,14 @@ test('editor presentation follows explicit modes and Auto follows physical activ
   expect(new Set(positions.Keyboard).size).toBe(1);
   expect(new Set(positions.Touch).size).toBe(1);
 
-  // Keep the real consumer mounted whilst switching preference and detecting activity.
-  await page.evaluate(async () => {
-    const path = '/src/state/inputMode.ts';
-    const { writeInputMode } = await import(/* @vite-ignore */ path);
-    writeInputMode('auto');
-  });
+  // Change the preference through another tab whilst the editor consumer stays mounted.
+  const preferences = await page.context().newPage();
+  await preferences.goto('/#/settings');
+  await preferences
+    .getByRole('radiogroup', { name: 'Input mode', exact: true })
+    .getByRole('radio', { name: 'Auto', exact: true })
+    .click();
+  await preferences.close();
   await page.keyboard.press('Tab');
   await expect(actions).toHaveCSS('position', 'static');
   await page.dispatchEvent('body', 'pointerup', { pointerType: 'pen' });
