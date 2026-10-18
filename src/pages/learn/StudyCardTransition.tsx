@@ -9,6 +9,8 @@ import {
 import {
   animate,
   AnimatePresence,
+  cancelFrame,
+  frame,
   m as motion,
   useMotionValue,
   usePresence,
@@ -159,13 +161,19 @@ const StudyCardPresentation = forwardRef<
   useLayoutEffect(() => {
     if (present) return;
     let cancelled = false;
+    const remove = () => {
+      if (!cancelled) safeToRemove?.();
+    };
     if (flight.current)
       void flight.current.then(() => {
-        if (!cancelled) safeToRemove?.();
+        // Completion can remove the card in its final frame, before that frame
+        // is presented. Retain the endpoint through Motion's next render pass.
+        if (!cancelled) frame.postRender(remove);
       });
     else safeToRemove?.();
     return () => {
       cancelled = true;
+      cancelFrame(remove);
     };
   }, [present, safeToRemove]);
 

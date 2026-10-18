@@ -29,11 +29,19 @@ for (const width of [390, 1440]) {
     await course.press('Enter');
     const courseUrl = page.url();
     await page.goto(`${courseUrl}/cards`);
-    const menu = page.getByRole('button', { name: 'More ways to add', exact: true });
-    await menu.focus();
-    await menu.press('ArrowDown');
-    await page.getByRole('menu', { name: 'More ways to add' }).press('End');
-    await expect(page.getByRole('menuitem', { name: 'New occlusion' })).toBeFocused();
+    const newCard = page.getByRole('button', { name: 'New card', exact: true });
+    await newCard.focus();
+    await newCard.press('Enter');
+    const more = page.getByRole('button', { name: 'More card types', exact: true });
+    await more.focus();
+    await more.press('Enter');
+    const types = page.getByRole('group', { name: 'Card type', exact: true });
+    const reversed = types.getByRole('button', { name: 'Basic (reversed)', exact: true });
+    await expect(reversed).toBeFocused();
+    for (const label of ['Numeric answer', 'Working', 'Audio', 'Sequence', 'Image occlusion']) {
+      await page.keyboard.press('Tab');
+      await expect(types.getByRole('button', { name: label, exact: true })).toBeFocused();
+    }
     await page.keyboard.press('Enter');
     await expect(page.getByRole('heading', { name: 'New occlusion', exact: true })).toBeVisible();
 

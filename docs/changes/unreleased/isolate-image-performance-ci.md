@@ -1,0 +1,1 @@
+- Run the original CPU-throttled image-advance measurement in its own single-worker CI job, required alongside both functional Chromium shards and mobile smoke by `browser-smoke`. Keep ordinary local Chromium coverage and all measurement budgets unchanged.

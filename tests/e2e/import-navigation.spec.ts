@@ -11,10 +11,19 @@ for (const width of [1280, 390]) {
     await expect(page).toHaveURL(/#\/\?import=1$/);
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     const checkBounds = async () => {
-      const bounds = await panel.boundingBox();
-      expect(bounds!.x).toBeGreaterThanOrEqual(0);
-      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
-      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+      await expect.poll(async () => (await panel.boundingBox())!.x).toBeGreaterThanOrEqual(0);
+      await expect
+        .poll(async () => {
+          const bounds = (await panel.boundingBox())!;
+          return bounds.x + bounds.width;
+        })
+        .toBeLessThanOrEqual(width);
+      await expect
+        .poll(async () => {
+          const bounds = (await panel.boundingBox())!;
+          return bounds.y + bounds.height;
+        })
+        .toBeLessThanOrEqual(844);
     };
     await checkBounds();
     for (const source of ['Lacuna course', 'Anki deck', 'Text or spreadsheet']) {
@@ -28,7 +37,10 @@ for (const width of [1280, 390]) {
         await expect(panel.getByRole('button', { name: 'Choose destination' })).toBeVisible();
         await checkBounds();
         await panel.getByRole('button', { name: 'Choose destination' }).click();
-        await panel.getByRole('radio', { name: /Exam date/ }).check();
+        const examDate = panel.getByRole('radio', { name: /Exam date/ });
+        await examDate.focus();
+        await examDate.press('Space');
+        await expect(examDate).toBeChecked();
         await expect(panel.getByText('Exam date and time', { exact: true })).toBeVisible();
         await checkBounds();
       }
