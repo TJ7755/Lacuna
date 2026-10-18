@@ -36,6 +36,8 @@ does not authorise implementation. Release and rollout gates live in
 [Performance measurements](performance/) retain dated baselines and their reproduction steps.
 [Change history through v0.2.7](archive/changes-through-0.2.7.md) remains part of the release record.
 Date verification claims and record test results against the commit actually tested.
+The [17 October redesign validation register](validation/2026-10-17-redesign.md) separates
+candidate-specific checks from the remaining human and device sign-off.
 
 When changing behaviour, update the relevant `spec/` section and the recent changelog; keep
 `SPEC.md` as the index. Update the relevant operating procedure when a release or rollout

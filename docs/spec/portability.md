@@ -70,7 +70,8 @@ cards. Dropping or choosing a file selects its import path automatically. Existi
 `/import` links redirect to `/?import=1`, opening this same panel, including from the
 phone navigation drawer. There is no separate Import page.
 
-Source changes use the shared step crossfade. Back and an empty-form Escape return
+Source changes use the shared step crossfade. Initial inline autofocus preserves the
+expanding panel's scroll position, keeping its heading anchored. Back and an empty-form Escape return
 keyboard focus to the source that opened the form. Close returns focus to the trigger;
 closing is disabled during a write. Text and Anki imports use three compact steps:
 **Add cards → Review cards → Choose destination**. Each step fits the panel without a
