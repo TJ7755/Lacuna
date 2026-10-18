@@ -16,7 +16,7 @@ const crossOriginIsolationHeaders = {
 export const workbox = {
   // Precache the application shell and the Cards route's shared import spine.
   // Lazy route entries and large optional assets are cached when visited.
-  globPatterns: ['**/*.{html,ico,png,svg}', 'fonts/*.ttf'],
+  globPatterns: ['**/*.{html,ico,png,svg}', 'fonts/*.ttf', 'assets/dailyBackup.worker-*.js'],
   navigateFallbackDenylist: [/^\/compare(?:\/|$)/, /^\/(?:sitemap\.xml|robots\.txt)$/],
   globIgnores: [
     'compare/**',

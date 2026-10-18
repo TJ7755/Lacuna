@@ -219,9 +219,54 @@ describe('defaultShareCourse', () => {
     expect(defaultShareCourse([archived], null)?.id).toBe('archived');
     expect(defaultShareCourse([], null)).toBeUndefined();
   });
+
+  it('prefers active courses over archived share links unless an archived course is requested', () => {
+    const archivedShared = { ...shared, id: 'archived-shared', archived: true };
+    expect(defaultShareCourse([archivedShared, active], null)?.id).toBe(active.id);
+    expect(defaultShareCourse([archivedShared, shared], null)?.id).toBe(shared.id);
+    expect(defaultShareCourse([archivedShared, active], archivedShared.id)?.id).toBe(
+      archivedShared.id,
+    );
+    expect(defaultShareCourse([archived, archivedShared], null)?.id).toBe(archivedShared.id);
+  });
 });
 
 describe('SharePage', () => {
+  it('marks archived courses in the picker and keeps their status visible after selection', () => {
+    const archived = { ...mockCourse, id: 'archived', name: 'Old course', archived: true };
+    given(archived, mockCourse);
+    render(<SharePage />);
+    const picker = screen.getByRole('button', { name: 'Course to share' });
+    expect(picker).toHaveTextContent('Test Course');
+    expect(picker).not.toHaveTextContent('Archived');
+    fireEvent.click(picker);
+    const archivedItem = screen.getByRole('menuitem', { name: /^Old course · Archived/ });
+    expect(archivedItem).toHaveTextContent('1 lesson · 1 card');
+    expect(screen.getByRole('menuitem', { name: /^Test Course/ })).not.toHaveTextContent(
+      'Archived',
+    );
+    fireEvent.click(archivedItem);
+    expect(picker).toHaveTextContent('Old course · Archived');
+  });
+
+  it('marks an archived course opened directly from its sharing URL', () => {
+    given(mockCourse, { ...mockCourse, id: 'archived', name: 'Old course', archived: true });
+    mockSearchParams = new URLSearchParams('courseId=archived');
+    render(<SharePage />);
+    expect(screen.getByRole('button', { name: 'Course to share' })).toHaveTextContent(
+      'Old course · Archived',
+    );
+  });
+
+  it('marks the course as archived when it is the only course', () => {
+    given({ ...mockCourse, archived: true });
+    render(<SharePage />);
+    expect(within(screen.getByRole('banner')).getByRole('paragraph')).toHaveTextContent(
+      'Test Course · Archived',
+    );
+    expect(screen.queryByRole('button', { name: 'Course to share' })).not.toBeInTheDocument();
+  });
+
   it('uses the course frame and wrapping header without an inner hero column', () => {
     given(mockCourse, { ...mockCourse, id: 'other', name: 'Other course' });
     const { container } = render(<SharePage />);
