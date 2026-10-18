@@ -3,7 +3,6 @@
 // site data being cleared (the one failure IndexedDB restore points cannot).
 
 import { db } from './schema';
-import { importBackup } from './portability';
 import type { BackupFile } from './types';
 import { scheduleAssetGc } from './assets';
 import { replacementLifecycle } from './replacementLifecycle';
@@ -84,7 +83,10 @@ export async function autoBackupIfStale(): Promise<void> {
 export async function restoreBackup(id: number): Promise<void> {
   const snapshot = await db.backups.get(id);
   if (!snapshot) throw new Error('That restore point could not be found.');
-  await replacementLifecycle.replace('manual', () => importBackup(snapshot.payload, 'replace'));
+  await replacementLifecycle.replace('manual', async () => {
+    const { importBackup } = await import('./portability');
+    return importBackup(snapshot.payload, 'replace');
+  });
 }
 
 /** Remove a stored restore point. */

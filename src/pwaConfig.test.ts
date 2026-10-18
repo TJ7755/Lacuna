@@ -8,8 +8,13 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
-  it('precaches the self-contained daily backup worker before first offline use', () => {
+  it('precaches the daily backup worker and launcher dependencies before first offline use', () => {
     expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/backups-BACKUP01.js', isEntry: false, imports: ['assets/snapshot-BACKUP02.js'] },
+      { fileName: 'assets/snapshot-BACKUP02.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/backups-BACKUP01.js', 'assets/snapshot-BACKUP02.js']);
   });
   it('precaches deferred embedded-image processing before the first offline import', () => {
     expect(
