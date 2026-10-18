@@ -9,6 +9,18 @@ import {
 
 describe('Electron renderer security policy', () => {
   describe('response headers', () => {
+    it.each(['app://./index.html', 'app://./assets/apkgImport.worker.js'])(
+      'permits WebAssembly without JavaScript string evaluation for %s',
+      (url) => {
+        const policy = addElectronSecurityHeaders(url, {}, 'production')[
+          'Content-Security-Policy'
+        ][0];
+        const sources = /(?:^|;\s*)script-src\s+([^;]*)/.exec(policy)![1].trim().split(/\s+/);
+        expect(sources).toContain("'wasm-unsafe-eval'");
+        expect(sources).not.toContain("'unsafe-eval'");
+      },
+    );
+
     it('sets the exact production renderer CSP and isolation headers', () => {
       expect(
         addElectronSecurityHeaders('app://./index.html', { Server: ['fixture'] }, 'production'),
@@ -18,7 +30,7 @@ describe('Electron renderer security policy', () => {
         'Cross-Origin-Embedder-Policy': ['credentialless'],
         'Access-Control-Allow-Origin': ['*'],
         'Content-Security-Policy': [
-          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self';",
+          "default-src 'self' app: file:; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' app: file:; style-src 'self' 'unsafe-inline' app: file:; font-src 'self' app: file: data:; img-src 'self' blob: data: app: file:; media-src 'self' blob: app: file:; connect-src 'self' https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' app: file: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self';",
         ],
       });
     });
