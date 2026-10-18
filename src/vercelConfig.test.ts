@@ -61,6 +61,24 @@ describe('Vercel configuration', () => {
     }
   });
 
+  it('permits WebAssembly without JavaScript string evaluation in both web policies', async () => {
+    const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
+      headers: { source: string; headers: { key: string; value: string }[] }[];
+    };
+    const headerPolicy = config.headers
+      .find((entry) => entry.source === '/(.*)')!
+      .headers.find((header) => header.key === 'Content-Security-Policy')!.value;
+    const document = await readFile('index.html', 'utf8');
+    const metaPolicy =
+      /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(document)![1];
+
+    for (const policy of [headerPolicy, metaPolicy]) {
+      const sources = /(?:^|;\s*)script-src\s+([^;]*)/.exec(policy)![1].trim().split(/\s+/);
+      expect(sources).toContain("'wasm-unsafe-eval'");
+      expect(sources).not.toContain("'unsafe-eval'");
+    }
+  });
+
   it('keeps the header and meta policies in step on connect-src origins', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       headers?: { source?: string; headers?: { key?: string; value?: string }[] }[];

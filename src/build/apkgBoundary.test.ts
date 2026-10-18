@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 describe('Anki parser boundary', () => {
   it('keeps application storage out of the parsing worker', async () => {
     const result = await build({
-      entryPoints: ['src/workers/apkg.worker.ts'],
+      entryPoints: ['src/workers/apkgImport.worker.ts'],
       bundle: true,
       platform: 'browser',
       format: 'esm',

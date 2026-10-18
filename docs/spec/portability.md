@@ -84,6 +84,12 @@ lesson in an existing active course, or an existing lesson. Undo retains the con
 and destination settings. Confirmation imports through the existing atomic writer
 and opens the destination. Anki scheduling and media are preserved.
 
+Anki's SQLite reader runs as bundled WebAssembly. The app's HTML policy, hosted
+response policy (including worker responses) and packaged renderer policy allow
+`'wasm-unsafe-eval'` in `script-src`; JavaScript string evaluation remains blocked.
+The worker entry has a new asset URL so imports bypass responses cached with the
+older policy.
+
 Lacuna files and codes use the shared-course importer (`SharedCourseImport`), including
 preview, media validation, QR scanning and published-course update matching. A
 successful import opens its course. The share-link route uses the same component;
@@ -154,7 +160,10 @@ A single, reusable export UI offering multiple output formats:
 
 - Exports read represented records and their referenced media within one readonly database
   transaction, so simultaneous reviews, edits or deletions cannot produce a partial restore point.
-  Media byte encoding runs after the read transaction closes.
+  Media byte encoding runs after the read transaction closes, processing assets sequentially
+  in bounded chunks and yielding to the event loop when a cumulative byte or asset-count
+  budget is reached, including within large assets. Small assets share the work budget.
+  The base64 bytes, metadata and asset order are unchanged.
 - **Export:** versioned JSON portable snapshot (`BackupFile`: decks, compact Card rows, canonical
   `reviewHistory`, referenced image/audio assets,
   session history, user performance, folders, courses, lessons, notes, lesson-card links and
