@@ -62,6 +62,13 @@ describe('service-worker asset caching', () => {
       { fileName: 'assets/action-ui-ACTION01.js', isEntry: false, imports: [] },
     ])).toEqual(['assets/app-ENTRY001.js', 'assets/CourseActions-ACTIONS1.js', 'assets/action-ui-ACTION01.js']);
   });
+  it('precaches deferred lesson ordering and its guard before the first offline save', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/lessonOrder-ORDER001.js', isEntry: false, imports: ['assets/lessonOrder-RESOLVE1.js'] },
+      { fileName: 'assets/lessonOrder-RESOLVE1.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/lessonOrder-ORDER001.js', 'assets/lessonOrder-RESOLVE1.js']);
+  });
   it('precaches the welcome-course seed that start-up loads on demand', () => {
     expect(collectAppShellScripts([
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },

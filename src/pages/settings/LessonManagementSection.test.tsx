@@ -2,16 +2,20 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { LessonManagementSection } from './LessonManagementSection';
 import type { Lesson } from '../../db/types';
+import type { CourseRecord } from '../../db/types';
 
 let mockLessons: Lesson[] | undefined;
+let mockCourse: CourseRecord;
+let unavailableReason: string | undefined;
 
-vi.mock('../../state/useCourseData', () => ({
-  useLessons: () => mockLessons,
+vi.mock('../../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => ({ course: mockCourse, lessons: mockLessons, unavailableReason }),
 }));
 
 const updateLesson = vi.fn().mockResolvedValue(undefined);
 const deleteLesson = vi.fn().mockResolvedValue(undefined);
 const reorderLessons = vi.fn().mockResolvedValue(undefined);
+const setLocalLessonOrder = vi.fn().mockResolvedValue(undefined);
 const notify = vi.fn();
 const createLesson = vi.fn().mockResolvedValue({
   id: 'lesson-new',
@@ -27,6 +31,7 @@ vi.mock('../../db/lessonRepository', () => ({
   updateLesson: (...args: unknown[]) => updateLesson(...args),
   deleteLesson: (...args: unknown[]) => deleteLesson(...args),
   reorderLessons: (...args: unknown[]) => reorderLessons(...args),
+  setLocalLessonOrder: (...args: unknown[]) => setLocalLessonOrder(...args),
   createLesson: (...args: unknown[]) => createLesson(...args),
 }));
 
@@ -56,6 +61,9 @@ const lessonTwo: Lesson = {
 describe('LessonManagementSection', () => {
   beforeEach(() => {
     mockLessons = [lessonOne, lessonTwo];
+    mockCourse = { id: 'course-1' } as CourseRecord;
+    unavailableReason = undefined;
+    setLocalLessonOrder.mockClear();
     updateLesson.mockClear();
     deleteLesson.mockClear();
     reorderLessons.mockClear();
@@ -67,6 +75,32 @@ describe('LessonManagementSection', () => {
     render(<LessonManagementSection courseId="course-1" />);
     expect(screen.getByText('Lesson one')).toBeInTheDocument();
     expect(screen.getByText('Lesson two')).toBeInTheDocument();
+  });
+
+  it('moves and resets a locked copy while hiding content authoring', async () => {
+    mockCourse.distributedCopy = { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false };
+    mockCourse.localLessonOrder = ['lesson-1', 'lesson-2'];
+    render(<LessonManagementSection courseId="course-1" />);
+    expect(screen.queryByRole('button', { name: /^Rename|^Delete|Add lesson/i })).not.toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByLabelText('Move Lesson one down')));
+    expect(setLocalLessonOrder).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']);
+    expect(reorderLessons).not.toHaveBeenCalled();
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Use publisher order' })));
+    expect(setLocalLessonOrder).toHaveBeenLastCalledWith('course-1');
+  });
+
+  it('explains suspended ordering, disables moves and still allows reset', async () => {
+    mockCourse.distributedCopy = { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false };
+    mockCourse.localLessonOrder = ['lesson-2', 'lesson-1'];
+    unavailableReason = 'Turn off automatic Card practice to use local lesson order.';
+    render(<LessonManagementSection courseId="course-1" />);
+    expect(screen.getByRole('status')).toHaveTextContent('Saved lesson order is suspended.');
+    expect(screen.getByRole('status')).toHaveTextContent(unavailableReason);
+    expect(screen.getByLabelText('Move Lesson one down')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Use publisher order' })).toBeEnabled();
+    setLocalLessonOrder.mockRejectedValueOnce(new Error('Storage unavailable'));
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Use publisher order' })));
+    expect(notify).toHaveBeenCalledWith('Storage unavailable', 'negative');
   });
 
   it('reorders lessons on move down', () => {

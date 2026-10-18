@@ -490,9 +490,15 @@ export async function deleteLesson(id: string): Promise<void> {
  * Assign a fresh orderIndex to each lesson based on its position in
  * orderedLessonIds, in one transaction.
  */
-export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
+export async function reorderLessons(courseId: string, orderedLessonIds: string[]): Promise<void> {
+  const { validateLessonPermutation } = await import('./lessonOrder');
   const now = Date.now();
-  await db.transaction('rw', db.lessons, async () => {
+  await db.transaction('rw', [db.courses, db.lessons], async () => {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('Course not found.');
+    if (course.distributedCopy?.locked) throw new Error('Published lesson order is locked.');
+    const lessons = await db.lessons.where('courseId').equals(courseId).toArray();
+    validateLessonPermutation(lessons, orderedLessonIds);
     await db.lessons.bulkUpdate(
       orderedLessonIds.map((id, orderIndex) => ({
         key: id,
@@ -500,6 +506,12 @@ export async function reorderLessons(_courseId: string, orderedLessonIds: string
       })),
     );
   });
+}
+
+/** Save only the local Course preference; reset is also allowed while suspended. */
+export async function setLocalLessonOrder(courseId: string, ids?: string[]): Promise<void> {
+  const { setLocalLessonOrder } = await import('./lessonOrder');
+  return setLocalLessonOrder(courseId, ids);
 }
 
 // ---------------------------------------------------------------------------

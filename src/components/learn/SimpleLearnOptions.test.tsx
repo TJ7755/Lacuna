@@ -4,7 +4,9 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { SimpleLearnOptions } from './SimpleLearnOptions';
 
 const { useLessons } = vi.hoisted(() => ({ useLessons: vi.fn() }));
-vi.mock('../../state/useCourseData', () => ({ useLessons }));
+vi.mock('../../state/useLessonOrderData', () => ({
+  useLessonOrderData: (courseId: string) => ({ lessons: useLessons(courseId) }),
+}));
 
 beforeEach(() => {
   useLessons.mockReset();

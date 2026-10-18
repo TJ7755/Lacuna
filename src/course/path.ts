@@ -19,6 +19,7 @@ import type {
   QuestionSetPracticeNode,
 } from '../db/types';
 import { lessonOrder, resolveAssessmentCoverage } from './assessmentCoverage';
+import { resolveCourseLessonOrder } from './lessonOrder';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { practiceNodeKey } from './studyPools';
@@ -318,8 +319,8 @@ function lessonIndexAtOrBeforePosition(
 /**
  * Assembles the full ordered `PathNode[]` for a course.
  *
- * **Lesson ordering:** all lessons (including extensions) are sorted by
- * `orderIndex`. Extension lessons are included in the path with their status
+ * **Lesson ordering:** supported locked copies use their local traversal preference;
+ * other courses follow canonical publisher order. Extension lessons have their status
  * computed correctly (always unlocked per addendum B), but excluded from
  * `pathPosition` totals.
  *
@@ -368,10 +369,10 @@ export function buildPath(
   progress: PathProgress = EMPTY_PATH_PROGRESS,
   nearestPracticeAssessmentDate?: number,
 ): PathNode[] {
-  const sorted = [...lessons].sort(lessonOrder);
+  const sorted = resolveCourseLessonOrder(course, lessons, assessments, practiceNodes);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
-  const firstCoreLessonId = sorted.find((lesson) => !lesson.isExtension)?.id;
+  const firstCoreLessonId = [...lessons].sort(lessonOrder).find((lesson) => !lesson.isExtension)?.id;
   const exposedCardIdsByLesson = new Map<string, Set<string>>();
   for (const exposure of progress.exposures) {
     let cardIds = exposedCardIdsByLesson.get(exposure.lessonId);
@@ -424,7 +425,7 @@ export function buildPath(
   const checkpointPlacements: Placement[] = assessments
     .filter((assessment) => assessment.kind === 'checkpoint')
     .map((assessment) => {
-      const afterIndex = resolveAssessmentCoverage(assessment, sorted, [], []).placementIndex;
+      const afterIndex = resolveAssessmentCoverage(assessment, lessons, [], []).placementIndex;
       return {
         afterIndex,
         node: {

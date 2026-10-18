@@ -69,6 +69,18 @@ and labels them **Archived** in both the picker and selected label, including a 
 An explicit Course request wins. Otherwise selection prefers an active shared Course, then an
 active Course; when all are archived, it falls back to a shared Course, then the first Course.
 
+## Local lesson order
+
+Full personal backups, Course undo snapshots and peer sync retain `Course.localLessonOrder`.
+Course-file/share payloads exclude it and keep publisher lesson order; fresh content imports have
+no preference. This optional field needs no store, index or schema migration. Older clients can
+retain the field while ignoring its presentation meaning.
+
+The preference inherits whole-Course merge rules: recovery uses `createdAt` and keeps the current
+row on ties; peer sync uses `updatedAt` with canonical JSON breaking ties. Concurrent order and
+other Course settings are not merged independently; a competing whole-row change can replace
+an order or reset.
+
 ## Specification metadata
 
 Course `specificationRef` and course-scoped Concept `specificationPointIds` survive backup/restore,

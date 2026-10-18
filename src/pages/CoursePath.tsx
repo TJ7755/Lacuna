@@ -1,4 +1,5 @@
 import { MissingRecord } from '../components/course/MissingRecord';
+import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 // Course path page — renders the ordered sequence of lessons for a course.
 // Route: /course/:courseId
 // British English throughout.
@@ -310,6 +311,14 @@ export function CoursePath() {
   }
 
   const lastLesson = lessons[lessons.length - 1];
+  const orderReason = course.localLessonOrder
+    ? localLessonOrderUnavailableReason(course, lessons, assessments, practiceNodes)
+    : undefined;
+  const orderNotice = orderReason ? (
+    <p role="status" className="text-sm text-ink-soft">
+      Saved lesson order is suspended. {orderReason} Using publisher order.
+    </p>
+  ) : null;
   const pathEditors = archived ? null : (
     <AnimatePresence>
       {selectedAssessmentId &&
@@ -399,6 +408,7 @@ export function CoursePath() {
     const LessonView = getLoadedRouteModule(loadLessonView)?.default ?? LazyLessonView;
     return (
       <>
+        {orderNotice}
         {!archived && pendingUpdate && (
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
@@ -457,6 +467,7 @@ export function CoursePath() {
   const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
     <CoursePageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+      {orderNotice}
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <CourseHeader
           className="min-w-0 flex-[1_1_320px]"

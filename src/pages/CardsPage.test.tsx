@@ -8,6 +8,9 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() })
 
 let mockCourse: Course | undefined;
 let mockLessons: Lesson[] | undefined;
+vi.mock('../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => ({ lessons: mockLessons }),
+}));
 let mockCards: Card[] | undefined;
 let mockSequences: Sequence[] | undefined = [];
 let mockOcclusions: Occlusion[] | undefined = [];

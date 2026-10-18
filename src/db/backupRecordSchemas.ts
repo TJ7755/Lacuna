@@ -176,6 +176,7 @@ export const course = object({
   unlockMode: z.enum(['linear', 'semi-linear', 'open']),
   linearCadence: object({ anchorDate: number, intervalDays: number }).optional(),
   autoPractice: flag,
+  localLessonOrder: ids.optional(),
   practiceThresholdMinutesFar: number,
   practiceThresholdMinutesNear: number,
   practiceUrgentWindowDays: number,
