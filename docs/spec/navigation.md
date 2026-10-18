@@ -17,6 +17,12 @@ location changes, so redirect guards must check presence. Departing controls and
 inert immediately; they cannot handle input intended for the incoming page. Preserve focus chosen
 by the learner while asynchronous work settles. See [rendering pitfalls](../maintenance/engineering-notes.md).
 
+Question-set editing, overview and attempts share a loading boundary and skeleton. Missing sets
+or attempts show a focused heading and direct return action. Failed initial reads offer Try again
+without reloading or discarding saved work; Technical details stay collapsed. Read-only editing
+explains the restriction and retains saved drafts. An attempt retry preserves navigation focus
+chosen while its read was pending.
+
 Shared disclosures keep drafts while closed, expose the relevant action first, and do not leave
 invisible controls in the Tab order. Closing a confirmation restores a sensible opener only when
 its caller has not deliberately chosen another focus target.

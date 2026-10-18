@@ -1,0 +1,1 @@
+- Run frame-sensitive sidebar motion and original-sized image timing tests serially on an isolated CI runner, retaining four parallel functional shards and all original assertions and budgets.

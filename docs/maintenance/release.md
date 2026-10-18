@@ -58,9 +58,12 @@ stand in for the intended build. Companion relaunch during Windows installation 
 ## Browser CI gate
 
 Four functional Chromium shards use two workers each. The unchanged image-advance measurement
-runs alone with one worker, and mobile WebKit has its own job. The functional shards and image
-project together cover the ordinary Chromium suite exactly once. Each job retains evidence;
-`browser-smoke` fails if any functional shard, image measurement or mobile job fails.
+and frame-sensitive sidebar checks run serially in one timing job with one worker; mobile WebKit
+has its own job. CI selects `chromium-functional` for shards and `chromium-image-performance` plus
+`chromium-sidebar-motion` for timing from `tests/config/playwright.web.ci.config.ts`. Together these
+cover ordinary Chromium tests exactly once. Each job retains evidence; `browser-smoke` fails if
+any functional shard, timing job or mobile job fails. Isolation removes competing test work; it
+does not establish that a product performance regression is fixed.
 
 ## macOS manual packages
 

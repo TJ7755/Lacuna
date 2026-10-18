@@ -9,6 +9,10 @@ import { Button, buttonClassName } from '../components/ui/Button';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import {
+  QuestionSetLoading,
+  QuestionSetUnavailable,
+} from '../components/question-sets/QuestionSetRouteState';
+import {
   listQuestionSetAttempts,
   startQuestionSetAttempt,
 } from '../questions/questionSetAttemptRepository';
@@ -38,8 +42,7 @@ export function QuestionSetOverview() {
   const [error, setError] = useState('');
   const attempts = useLiveQuery(() => listQuestionSetAttempts(setId!), [setId]);
   const content = useLiveQuery(() => getQuestionSet(setId!), [setId]);
-  if (content === undefined || !course || !attempts)
-    return <p className="p-8">Loading question set…</p>;
+  if (content === undefined || !course || !attempts) return <QuestionSetLoading />;
   const retainedAttempts = attempts.filter((attempt) => attempt.courseId === courseId);
   const back = (
     <Link className="qs-back" to={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}>
@@ -68,9 +71,12 @@ export function QuestionSetOverview() {
     );
   if (!content || content.courseId !== courseId)
     return (
-      <p className="p-8">
-        Question set not found. <Link to={`/course/${courseId}/questions`}>Back to Questions</Link>
-      </p>
+      <QuestionSetUnavailable
+        title="Question set not found"
+        backTo={origin?.questionSetReturnTo ?? `/course/${courseId}/questions`}
+      >
+        It may have been removed or belong to another course. Return to Questions to choose a set.
+      </QuestionSetUnavailable>
     );
   const unfinished = retainedAttempts
     .filter((attempt) => attempt.status !== 'complete')

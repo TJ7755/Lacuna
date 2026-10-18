@@ -2,7 +2,7 @@ import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { MeasuredHeight } from '../ui/MeasuredHeight';
 import { StepSwap } from '../ui/StepSwap';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
-import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useId, useMemo, useRef, useState, type Ref, type KeyboardEvent } from 'react';
 import type { ItemFixture, MarkSchemeLine } from '../../db/types';
 import {
   compileMarkScheme,
@@ -24,6 +24,9 @@ interface MarkSchemeEditorProps {
   onDraftMarkScheme?: () => void;
   draftDisabled?: boolean;
   invalid?: boolean;
+  sourceRef?: Ref<HTMLTextAreaElement>;
+  onTabForward?: () => void;
+  onTabBackward?: () => void;
 }
 
 interface Suggestion {
@@ -49,6 +52,9 @@ export function MarkSchemeEditor({
   onDraftMarkScheme,
   draftDisabled = false,
   invalid = false,
+  sourceRef,
+  onTabForward,
+  onTabBackward,
 }: MarkSchemeEditorProps) {
   const generatedId = useId();
   const sourceId = `mark-scheme-source-${generatedId}`;
@@ -91,7 +97,22 @@ export function MarkSchemeEditor({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (suggestions.length === 0) return;
+    if (
+      event.defaultPrevented ||
+      event.nativeEvent.isComposing ||
+      event.nativeEvent.keyCode === 229
+    )
+      return;
+    if (suggestions.length === 0 || (event.key === 'Tab' && event.shiftKey)) {
+      if (event.key === 'Tab') {
+        const moveFocus = event.shiftKey ? onTabBackward : onTabForward;
+        if (moveFocus) {
+          moveFocus();
+          if (document.activeElement !== event.currentTarget) event.preventDefault();
+        }
+      }
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const delta = event.key === 'ArrowDown' ? 1 : -1;
@@ -141,7 +162,11 @@ export function MarkSchemeEditor({
             Scheme source
           </label>
           <textarea
-            ref={inputRef}
+            ref={(node) => {
+              inputRef.current = node;
+              if (typeof sourceRef === 'function') sourceRef(node);
+              else if (sourceRef) sourceRef.current = node;
+            }}
             id={sourceId}
             value={value}
             onChange={(event) => {

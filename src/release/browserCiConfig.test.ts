@@ -65,7 +65,7 @@ function cases(suites: Suite[], ancestors: string[] = []): string[] {
   ]);
 }
 
-it('partitions the complete local Chromium suite across the CI shard matrix and one exclusive image case', () => {
+it('partitions the complete local Chromium suite across functional shards and isolated timing projects', () => {
   const workflow = parse(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8')) as {
     jobs: { 'browser-tests': { strategy: { matrix: { shard: number[] } } } };
   };
@@ -117,19 +117,35 @@ it('partitions the complete local Chromium suite across the CI shard matrix and 
       ),
     );
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
+    const motion = list('playwright.web.ci.config.ts', 'chromium-sidebar-motion', '--workers=1');
+    const timing = list(
+      'playwright.web.ci.config.ts',
+      'chromium-image-performance',
+      '--project=chromium-sidebar-motion',
+      '--workers=1',
+    );
     const mobile = list('playwright.web.config.ts', 'webkit-mobile', '--workers=1');
     const functionalCases = shards.flatMap((shard) => cases(shard.suites));
     const imageCases = cases(image.suites);
-    const allCiCases = [...functionalCases, ...imageCases];
+    const motionCases = cases(motion.suites);
+    const isSidebarMotion = (name: string) => /^sidebar(?:-course-dropdown)?-motion.spec.ts:/.test(name);
+    const allCiCases = [...functionalCases, ...imageCases, ...motionCases];
 
     expect(cases(local.suites).length).toBeGreaterThan(0);
     expect(allCiCases.sort()).toEqual(cases(local.suites).sort());
     expect(new Set(allCiCases).size).toBe(allCiCases.length);
     expect(imageCases).toHaveLength(1);
     expect(imageCases[0]).toMatch(/^study-image-advance.spec.ts:/);
-    expect(functionalCases.every((name) => !name.startsWith('study-image-advance.spec.ts:'))).toBe(
-      true,
+    expect(motionCases.length).toBeGreaterThan(0);
+    expect(motionCases.sort()).toEqual(cases(local.suites).filter(isSidebarMotion).sort());
+    expect(new Set(motionCases.map((name) => name.split(':')[0]))).toEqual(
+      new Set(['sidebar-motion.spec.ts', 'sidebar-course-dropdown-motion.spec.ts']),
     );
+    expect(
+      functionalCases.every((name) => !name.startsWith('study-image-advance.spec.ts:') && !isSidebarMotion(name)),
+    ).toBe(true);
+    expect(cases(timing.suites).sort()).toEqual([...imageCases, ...motionCases].sort());
+    expect(timing.config.workers).toBe(1);
     for (const shard of shards) {
       expect(shard.config.workers).toBe(2);
       expect(shard.config.fullyParallel).toBe(true);
@@ -138,6 +154,10 @@ it('partitions the complete local Chromium suite across the CI shard matrix and 
     expect(image.config.workers).toBe(1);
     expect(image.config.filteredProjects).toEqual([
       expect.objectContaining({ name: 'chromium-image-performance' }),
+    ]);
+    expect(motion.config.workers).toBe(1);
+    expect(motion.config.filteredProjects).toEqual([
+      expect.objectContaining({ name: 'chromium-sidebar-motion' }),
     ]);
     const config = spawnSync(
       'bun',
@@ -154,12 +174,12 @@ it('partitions the complete local Chromium suite across the CI shard matrix and 
       workers?: number;
       fullyParallel?: boolean;
     }[];
-    expect(projects.find((project) => project.name === 'chromium-image-performance')).toMatchObject(
-      {
+    for (const name of ['chromium-image-performance', 'chromium-sidebar-motion']) {
+      expect(projects.find((project) => project.name === name)).toMatchObject({
         workers: 1,
         fullyParallel: false,
-      },
-    );
+      });
+    }
     expect(cases(mobile.suites)).toHaveLength(3);
     expect(cases(mobile.suites).every((name) => name.startsWith('mobile-pwa-smoke.spec.ts:'))).toBe(
       true,

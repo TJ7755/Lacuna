@@ -41,6 +41,23 @@ Cards; changing cues or geometry must not reset surviving memory state. Review
 and [ordinary share import](../../src/db/share.ts) together when changing generated Concept identity.
 Native generator IDs and imported/remapped IDs must remain coherent.
 
+Sequence entry starts with Name focused and one blank item. The type sets its terminology and
+cue defaults; secondary settings and generated previews remain under Options and Preview. Script
+speakers stay beside their lines, and Your part selects the generated lines. Enter splits at the
+caret and focuses the next item; Shift+Enter inserts a line break. An empty item's Enter can start
+a named section. Alt+Up/Down reorders; Backspace at the start joins or removes a section break.
+Pointer/touch Delete remains available. Focus/scroll respect motion preferences.
+
+Forward Tab from the last item's content focuses Add sequence / Save changes without submitting;
+earlier items, backward Tab and unavailable save targets retain native traversal. Ctrl/Cmd+Enter
+saves the whole sequence and never inserts an item. Composition, including legacy key-code 229,
+must not trigger row shortcuts. Empty items are scaffolding omitted from preview/save; an all-empty
+outline still fails validation. Missing Name or script part focuses the relevant control. Multiline
+paste inserts at the selection, preserving surrounding items and parsing speakers. For #442 these
+contracts supersede historical empty-row invalidation and whole-outline replacement warnings;
+see the retained [acceptance evidence](../evidence/442-sequence-acceptance.md). The action bar keeps
+shared page bounds at 320px with Larger text.
+
 ## Question sets and drafts
 
 Question Set revisions save atomically with same-Course reference validation. Unchanged content

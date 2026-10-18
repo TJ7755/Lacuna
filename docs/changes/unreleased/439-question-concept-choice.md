@@ -1,0 +1,2 @@
+- New individual Questions require an explicit primary Concept choice instead of silently using the first Course Concept; editing, restored drafts and repeat entry retain deliberate choices. (#439)
+- Individual Question validation focuses the first invalid numeric answer or tolerance through the shared editor ref and reports invalid generated-family settings beside the relevant field, retaining input and keyboard save behaviour. (#439)

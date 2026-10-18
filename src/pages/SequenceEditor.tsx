@@ -98,6 +98,7 @@ export function SequenceEditor() {
   const usesSpeakers = preset.usesSpeakers;
   const { item: itemTerm, itemPlural, chunkLabel } = preset.terminology;
   const partRef = useRef<HTMLDivElement>(null);
+  const saveRef = useRef<HTMLButtonElement>(null);
 
   // Seed the form from the sequence being edited once it has loaded (new sequences start
   // with one blank item to type into).
@@ -436,6 +437,7 @@ export function SequenceEditor() {
             mySpeaker={usesSpeakers ? mySpeaker : undefined}
             speakers={speakers}
             showLabels={generateLabelCards}
+            onTabForward={() => saveRef.current?.focus()}
           />
         </SectionCard>
 
@@ -575,6 +577,7 @@ export function SequenceEditor() {
             Cancel
           </Button>
           <Button
+            ref={saveRef}
             variant="primary"
             onClick={handleSave}
             disabled={!editable || saving}

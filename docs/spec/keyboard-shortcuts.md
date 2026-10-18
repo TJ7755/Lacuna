@@ -13,6 +13,13 @@ Question Set and individual Question shortcuts must follow their own explicit sa
 semantics instead of being made superficially uniform. Preserve backward correction and the
 learner's position through validation failures and async saves.
 
+Forward Tab from the last Sequence item's content focuses Add sequence / Save changes without
+submitting; unavailable save targets, earlier items and backward Tab retain native traversal.
+Composition events, including legacy key-code 229, do not invoke these shortcuts. Retained
+Numeric/Working Card controls use Question -> Expected answer / Scheme source -> enabled
+Save-and-add, with backward Tab returning to Question. Audio uses Prompt -> Answer -> enabled
+Save-and-add and returns to Choose file after repeat creation.
+
 [Study handlers](../../src/pages/learn/useLearnKeyboardShortcuts.ts) enforce read-only unknown
 payloads centrally: a shortcut cannot grant a grading path absent from the visible UI.
 

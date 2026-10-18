@@ -4,7 +4,7 @@ import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
 import { useQuestionSetScroll } from '../components/question-sets/useQuestionSetScroll';
 import { questionSetReturn } from '../questions/questionSetNavigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   questionSetPrimaryKey,
   useQuestionSetBlankConfirmation,
@@ -37,23 +37,61 @@ import {
 import type { QuestionSetAttemptSession } from '../components/question-sets/questionSetAttemptSession';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import {
+  QuestionSetLoading,
+  QuestionSetUnavailable,
+} from '../components/question-sets/QuestionSetRouteState';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
 export function QuestionSetPractice() {
   const { courseId = '', setId = '', attemptId = '' } = useParams();
-  const { session, error } = useQuestionSetAttempt(courseId, setId, attemptId);
+  const { session, error, missing, retryLoad } = useQuestionSetAttempt(courseId, setId, attemptId);
+  const retryFocusOwner = useRef<Element | null | undefined>(undefined);
+  const backTo = `/course/${courseId}/question-sets/${setId}`;
+  if (missing)
+    return (
+      <QuestionSetUnavailable
+        title="Attempt not found"
+        backTo={backTo}
+        backLabel="Back to question set"
+      >
+        This attempt may have been removed or belong to another question set. Choose a saved attempt
+        or start a new one from the set.
+      </QuestionSetUnavailable>
+    );
   if (error)
     return (
-      <p role="alert" className="p-8">
-        {error}
-      </p>
+      <QuestionSetUnavailable
+        title="Could not open this attempt"
+        backTo={backTo}
+        backLabel="Back to question set"
+        detail={error}
+        onRetry={() => {
+          retryFocusOwner.current = document.activeElement;
+          retryLoad();
+        }}
+      >
+        The saved attempt could not be read. Try again; your saved answers have not been removed.
+      </QuestionSetUnavailable>
     );
-  if (!session) return <p className="p-8">Loading attempt…</p>;
-  return <PracticeWorkspace key={attemptId} session={session} />;
+  if (!session) return <QuestionSetLoading label="Loading attempt" />;
+  return (
+    <PracticeWorkspace
+      key={attemptId}
+      session={session}
+      initialFocusOwner={retryFocusOwner.current}
+    />
+  );
 }
 
-function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) {
+function PracticeWorkspace({
+  session,
+  initialFocusOwner,
+}: {
+  session: QuestionSetAttemptSession;
+  initialFocusOwner?: Element | null;
+}) {
   const [formDirty, setFormDirty] = useState(false);
   const [reflectionDirty, setReflectionDirty] = useState(false);
   const progress = useAttemptProgress(session, formDirty || reflectionDirty);
@@ -110,6 +148,7 @@ function PracticeWorkspace({ session }: { session: QuestionSetAttemptSession }) 
     marking,
     attempt.status === 'complete',
     busy || acting,
+    initialFocusOwner,
   );
   async function perform(work: () => Promise<unknown>) {
     setActionError('');

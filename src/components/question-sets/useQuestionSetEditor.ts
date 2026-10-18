@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { useBlocker } from 'react-router-dom';
 import {
   createQuestionSetDraftSession,
@@ -12,6 +12,8 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
   const [session, setSession] = useState<QuestionSetDraftSession | null>(null);
   const [snapshot, setSnapshot] = useState<QuestionSetDraftSessionSnapshot | null>(null);
   const [loadError, setLoadError] = useState('');
+  const [missing, setMissing] = useState(false);
+  const [loadAttempt, retryLoad] = useReducer((value: number) => value + 1, 0);
   useEffect(() => {
     let cancelled = false;
     let owned: QuestionSetDraftSession | null = null;
@@ -19,6 +21,7 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
     setSession(null);
     setSnapshot(null);
     setLoadError('');
+    setMissing(false);
     void (async () => {
       try {
         const [draft, saved] = await Promise.all([
@@ -26,8 +29,10 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
           getQuestionSet(setId),
         ]);
         if (cancelled) return;
-        if (!draft && (!saved || saved.courseId !== courseId))
-          throw new Error('This question set could not be found.');
+        if (!draft && (!saved || saved.courseId !== courseId)) {
+          setMissing(true);
+          return;
+        }
         const initialDraft = draft ?? createQuestionSetDraft(saved!, saved!.contentRevisionId);
         owned = createQuestionSetDraftSession({ initialDraft, debounceMs: 500 });
         unsubscribe = owned.subscribe(() => {
@@ -49,7 +54,7 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
       unsubscribe();
       if (owned) void owned.dispose().catch(() => undefined);
     };
-  }, [courseId, setId]);
+  }, [courseId, setId, loadAttempt]);
   const blocker = useBlocker(
     Boolean(snapshot?.dirty || snapshot?.phase === 'saving' || snapshot?.phase === 'publishing'),
   );
@@ -71,5 +76,5 @@ export function useQuestionSetEditor(courseId: string, setId: string) {
     window.addEventListener('beforeunload', leave);
     return () => window.removeEventListener('beforeunload', leave);
   }, [session]);
-  return { session, snapshot, loadError, blocker };
+  return { session, snapshot, loadError, missing, retryLoad, blocker };
 }
