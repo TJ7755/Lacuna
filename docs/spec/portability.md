@@ -20,7 +20,8 @@ readonly transaction, then perform expensive byte encoding outside it. Encoding 
 bounded chunks across assets, including inside a large asset, while preserving bytes, metadata and
 asset order. This responsiveness must not weaken the snapshot boundary. Pre-migration snapshots
 commit outside the upgrading database transaction so an aborted upgrade retains recovery evidence.
-A failed safety snapshot blocks destructive replacement or migration.
+A failed safety snapshot blocks destructive replacement or migration. Pre-upgrade media uses the
+shared encoder so restoring the snapshot retains audio/image kinds and bytes.
 
 The daily backup worker captures, encodes, stores, prunes and mirrors through the same
 [restore-point writer](../../src/db/backupRestorePoint.ts) as explicit backups. Only small status
@@ -79,6 +80,21 @@ The preference inherits whole-Course merge rules: recovery uses `createdAt` and 
 row on ties; peer sync uses `updatedAt` with canonical JSON breaking ties. Concurrent order and
 other Course settings are not merged independently; a competing whole-row change can replace
 an order or reset.
+
+## Specification metadata
+
+Course `specificationRef` and course-scoped Concept `specificationPointIds` survive backup/restore,
+peer sync, share codes and Course files. Validate before writes: malformed references, duplicate
+route/point IDs and links on legacy-scheduling-unit Concepts are invalid. Unknown valid catalogue
+IDs and additive nested metadata remain portable; a Course selection change never silently drops
+Concept links. Sync uses the existing whole-Concept last-writer rule and deterministic timestamp
+tie-break, rather than unioning removed links back into the record.
+
+Ordinary sharing remaps local Concept IDs while preserving qualified catalogue point IDs and the
+Custom fallback strings. Published source metadata retains the reference/fallback text: teacher
+corrections update an unchanged selection, while learner selection changes stay local. Concept
+links follow published-content update policy; learner schedules, Attempts and reviews stay personal.
+These optional keys do not change transport versions or encryption.
 
 ## Classroom distribution
 

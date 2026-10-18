@@ -47,7 +47,7 @@ import {
 } from './migrations';
 import { buildCourseMigration } from './courseMigration';
 import { savePreMigrationSnapshot } from './preMigrationSnapshots';
-import { blobToArrayBuffer, bytesToBase64 } from './assets';
+import { encodeBackupAssets } from './assets';
 import {
   buildCourseAssessmentMigration,
   type LegacyAssessmentRecord,
@@ -1304,6 +1304,11 @@ class LacunaDatabase extends Dexie {
     this.version(29).stores({
       questionSetAttempts: 'id, courseId, questionSetId, status, updatedAt',
     });
+
+    // Version 30: optional qualified specification links, indexed without rewriting Concepts.
+    this.version(30).stores({
+      concepts: 'id, scopeKey, courseId, updatedAt, *specificationPointIds',
+    });
   }
 }
 
@@ -1325,7 +1330,7 @@ function containsReviewProjection(
   return true;
 }
 
-const CURRENT_SCHEMA_VERSION = 28;
+const CURRENT_SCHEMA_VERSION = 30;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 export const db = new LacunaDatabase();
@@ -1503,19 +1508,7 @@ export async function readAllDataFromVersion(
   }
 
   const assetsRaw = (raw.data['assets'] ?? []) as MediaAsset[];
-  const assets = await Promise.all(
-    assetsRaw.map(async (a) => {
-      const buf = new Uint8Array(await blobToArrayBuffer(a.blob));
-      return {
-        hash: a.hash,
-        data: bytesToBase64(buf),
-        mimeType: a.mimeType,
-        width: a.width,
-        height: a.height,
-        createdAt: a.createdAt,
-      };
-    }),
-  );
+  const assets = await encodeBackupAssets(assetsRaw);
 
   const payload: BackupFile = {
     app: schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',

@@ -76,6 +76,8 @@ import { emptyQuestionSchedule } from '../questions/scheduler';
 import { questionGeneratorRegistry } from '../questions/generators';
 import { parseQuestionSetRecord, type QuestionSetRecord } from '../questions/questionSetCodec';
 import { importSharedQuestionSets, packQuestionSetMedia } from '../questions/questionSetShare';
+import { specificationPointIdsSchema, specificationRefSchema } from '../specifications/linkSchemas';
+import type { SpecificationReference } from '../specifications/links';
 
 // ---------------------------------------------------------------------------
 // Zod runtime schema for share payloads
@@ -256,6 +258,9 @@ const ShareCourseSchema = z
   .object({
     n: z.string().min(1),
     d: z.string().optional(), // description
+    specificationRef: specificationRefSchema.optional(),
+    examBoard: z.string().optional(),
+    specification: z.string().optional(),
     o: z.union([z.literal(0), z.literal(1)]), // objective: 0 expectedMarks, 1 securedTopics
     c: z.number(), // createdAt
     e: z.number().optional(), // examDate (primary date due)
@@ -400,6 +405,7 @@ const ShareConceptSchema = z.object({
   id: z.string().min(1),
   n: z.string().min(1),
   p: z.literal(1).optional(),
+  specificationPointIds: specificationPointIdsSchema.optional(),
 });
 
 const ShareFixedQuestionSchema = z.object({
@@ -532,6 +538,9 @@ export interface ShareLesson {
 interface ShareCourse {
   n: string; // name
   d?: string; // description
+  specificationRef?: SpecificationReference;
+  examBoard?: string;
+  specification?: string;
   o: 0 | 1; // objective: 0 expectedMarks, 1 securedTopics
   c: number; // createdAt
   e?: number; // examDate (primary date due)
@@ -645,6 +654,7 @@ interface ShareConcept {
   id: string;
   n: string;
   p?: 1;
+  specificationPointIds?: string[];
 }
 
 type ShareQuestion =
@@ -696,7 +706,8 @@ export interface SharePayloadV5 extends Omit<SharePayloadV4, 'v'> {
 }
 
 /** The decoded contents of a share code, either a flat deck list or a single course. */
-export type SharePayload = SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
+export type SharePayload =
+  SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
 
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
@@ -752,7 +763,11 @@ export function parseSharePayload(payload: unknown): SharePayload {
       ...parse.data,
       questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
       ...(parse.data.v === 5
-        ? { questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(parseQuestionSetPracticeNode) }
+        ? {
+            questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(
+              parseQuestionSetPracticeNode,
+            ),
+          }
         : {}),
     } as SharePayloadV4 | SharePayloadV5;
   }
@@ -1111,17 +1126,25 @@ export async function buildCourseSharePayload(
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
-  const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts, questionSets, practiceNodes] =
-    await Promise.all([
-      lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.cards.where('courseId').equals(courseId).toArray(),
-      lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-      db.concepts.where('courseId').equals(courseId).toArray(),
-      db.questions.where('courseId').equals(courseId).toArray(),
-      db.questionConcepts.where('courseId').equals(courseId).toArray(),
-      db.questionSets.where('courseId').equals(courseId).toArray(),
-      db.practiceNodes.where('courseId').equals(courseId).toArray(),
-    ]);
+  const [
+    notes,
+    courseCards,
+    lessonLinks,
+    concepts,
+    questions,
+    questionConcepts,
+    questionSets,
+    practiceNodes,
+  ] = await Promise.all([
+    lessonIds.length > 0 ? db.notes.where('lessonId').anyOf(lessonIds).toArray() : [],
+    db.cards.where('courseId').equals(courseId).toArray(),
+    lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
+    db.concepts.where('courseId').equals(courseId).toArray(),
+    db.questions.where('courseId').equals(courseId).toArray(),
+    db.questionConcepts.where('courseId').equals(courseId).toArray(),
+    db.questionSets.where('courseId').equals(courseId).toArray(),
+    db.practiceNodes.where('courseId').equals(courseId).toArray(),
+  ]);
   const notesByLesson = new Map<string, Note[]>();
   for (const note of notes) {
     const group = notesByLesson.get(note.lessonId);
@@ -1192,6 +1215,9 @@ export async function buildCourseSharePayload(
   const shareCourse: ShareCourse = {
     n: course.name,
     ...(course.description ? { d: course.description } : {}),
+    ...(course.specificationRef === undefined ? {} : { specificationRef: course.specificationRef }),
+    ...(course.examBoard === undefined ? {} : { examBoard: course.examBoard }),
+    ...(course.specification === undefined ? {} : { specification: course.specification }),
     o: course.examObjective === 'securedTopics' ? 1 : 0,
     c: course.createdAt,
     ...(finalAssessment.examDate === undefined ? {} : { e: finalAssessment.examDate }),
@@ -1331,10 +1357,13 @@ export async function buildCourseSharePayload(
     };
   });
 
-  const questionSetPracticeNodes = practiceNodes.filter(
-    (node) => node.type === 'question-set',
+  const questionSetPracticeNodes = practiceNodes.filter((node) => node.type === 'question-set');
+  assertQuestionSetPracticeNodeReferences(
+    questionSetPracticeNodes,
+    [course],
+    lessons,
+    questionSets,
   );
-  assertQuestionSetPracticeNodeReferences(questionSetPracticeNodes, [course], lessons, questionSets);
   return {
     v: 5,
     by: null,
@@ -1350,6 +1379,9 @@ export async function buildCourseSharePayload(
       id: concept.id,
       n: concept.name,
       ...(concept.provisional ? { p: 1 as const } : {}),
+      ...(concept.specificationPointIds === undefined
+        ? {}
+        : { specificationPointIds: concept.specificationPointIds }),
     })),
     questions: shareQuestions,
     questionSets: questionSets.map((record) => packQuestionSetMedia(record, includeMedia)),
@@ -1446,6 +1478,13 @@ async function importCourseSharePayload(
 
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
+        ...(payload.course.specificationRef === undefined
+          ? {}
+          : { specificationRef: payload.course.specificationRef }),
+        ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
+        ...(payload.course.specification === undefined
+          ? {}
+          : { specification: payload.course.specification }),
         examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
         createdAt: payload.course.c,
         schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
@@ -1479,6 +1518,9 @@ async function importCourseSharePayload(
             courseId: course.id,
             name: concept.n,
             provisional: concept.p === 1,
+            ...(concept.specificationPointIds === undefined
+              ? {}
+              : { specificationPointIds: concept.specificationPointIds }),
             createdAt: importedAt + index,
             updatedAt: importedAt + index,
           };
@@ -1825,8 +1867,13 @@ async function importCourseSharePayload(
               throw new Error('A shared Question Set activity has a missing Set or Lesson.');
             }
             return parseQuestionSetPracticeNode({
-              ...node, id: makeId(), courseId: course.id, questionSetId, afterLessonId,
-              createdAt: importedAt, updatedAt: importedAt,
+              ...node,
+              id: makeId(),
+              courseId: course.id,
+              questionSetId,
+              afterLessonId,
+              createdAt: importedAt,
+              updatedAt: importedAt,
             });
           });
           if (importedNodes.length > 0) await db.practiceNodes.bulkAdd(importedNodes);

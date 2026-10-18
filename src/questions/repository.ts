@@ -23,7 +23,14 @@ export {
   startQuestionAttempt,
   undoQuestionAttempt,
 } from './repository.attempts';
-export { createConcept, deleteConcept, listConcepts, updateConcept } from './repository.concepts';
+export {
+  createConcept,
+  deleteConcept,
+  getConceptsForSpecificationPoint,
+  listConcepts,
+  setConceptSpecificationPoints,
+  updateConcept,
+} from './repository.concepts';
 export {
   type ConceptSnapshot,
   type QuestionSnapshot,
