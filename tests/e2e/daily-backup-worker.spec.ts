@@ -103,3 +103,30 @@ test('runs the daily worker for the first time after an offline reload', async (
     await context.setOffline(false);
   }
 });
+
+test('restores a daily snapshot offline before any import or export action', async ({
+  page,
+  context,
+}) => {
+  await enterFreshLacuna(page);
+  await expect.poll(() => restorePointCount(page)).toBe(1);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await page.goto('/#/settings#settings-backups');
+  await expect(page.getByRole('heading', { name: 'Restore points', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+  try {
+    await context.setOffline(true);
+    await page.getByRole('button', { name: 'Restore', exact: true }).click();
+    await page
+      .getByRole('alertdialog')
+      .getByRole('button', { name: 'Restore', exact: true })
+      .click();
+    await expect(
+      page.getByText('Data restored from the selected point.', { exact: true }),
+    ).toBeVisible();
+  } finally {
+    await context.setOffline(false);
+  }
+});

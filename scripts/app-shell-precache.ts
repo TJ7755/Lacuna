@@ -27,7 +27,7 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
   // First offline use also needs deferred shell controls, embedded-image imports,
   // the welcome-course seed and the motion features loaded after first paint.
   const deferredControls = chunks.filter((chunk) =>
-    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|backups)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|backups|portability)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   return [
     ...new Set([
