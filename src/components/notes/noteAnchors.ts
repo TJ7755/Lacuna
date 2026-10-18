@@ -53,7 +53,8 @@ export function sourceAnchorFromSelection(
   const endBlock = endElement?.closest(ORDINARY_BLOCK_SELECTOR);
 
   if (!startBlock || startBlock !== endBlock || !root.contains(startBlock)) {
-    return { error: 'Highlights must stay within one paragraph.' };
+    // Leave ordinary text selection alone when it cannot become a highlight.
+    return { error: '' };
   }
 
   if (startElement?.closest(FORBIDDEN_SELECTOR) || endElement?.closest(FORBIDDEN_SELECTOR)) {

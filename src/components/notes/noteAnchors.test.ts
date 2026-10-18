@@ -62,8 +62,8 @@ describe('note annotation anchors', () => {
         crossRoot,
         'First\n\nSecond',
         select(paragraphs[0].firstChild as Text, 0, paragraphs[1].firstChild as Text, 6),
-      ).error,
-    ).toMatch(/one paragraph/i);
+      ),
+    ).toEqual({ error: '' });
 
     const codeRoot = document.createElement('div');
     codeRoot.innerHTML = '<p>Use <code>const value</code> here</p>';
