@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { afterEach, test } from 'node:test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { verifyBrowser } from './check-browser.mjs';
+import { previewBrowser, verifyBrowser } from './check-browser.mjs';
 
 const directories = [];
 afterEach(() => {
@@ -105,4 +105,48 @@ test('does not accept a configuration override which would bypass isolation', ()
     () => verifyBrowser({ args: ['--config=other.ts'] }),
     /owns its isolated configuration/,
   );
+});
+
+test('rejects output and reporter overrides before starting verification', () => {
+  for (const args of [
+    ['--output', 'test-results'],
+    ['--output=test-results'],
+    ['--reporter', 'line'],
+    ['--reporter=line'],
+  ]) {
+    assert.throws(() => verifyBrowser({ args }), /owns its isolated/);
+  }
+});
+
+test('starts the preview with structured arguments and preserves its exit status', () => {
+  const directory = fixture();
+  const env = {
+    LACUNA_BROWSER_RUN_DIR: join(directory, "a path with spaces & 'quotes'"),
+    PLAYWRIGHT_WEB_PORT: '4198',
+  };
+  const status = previewBrowser({
+    directory,
+    env,
+    execute: (command, args, options) => {
+      assert.equal(command, 'bun');
+      assert.deepEqual(args, [
+        'x',
+        'vite',
+        'preview',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        '4198',
+        '--strictPort',
+        '--outDir',
+        join(env.LACUNA_BROWSER_RUN_DIR, 'dist'),
+      ]);
+      assert.equal(options.cwd, directory);
+      assert.equal(options.env, env);
+      assert.equal(options.stdio, 'inherit');
+      assert.equal(options.shell, false);
+      return { status: 19 };
+    },
+  });
+  assert.equal(status, 19);
 });

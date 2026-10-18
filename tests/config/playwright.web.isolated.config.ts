@@ -5,7 +5,6 @@ import webConfig from './playwright.web.config';
 const directory = process.env.LACUNA_BROWSER_RUN_DIR;
 if (!directory) throw new Error('Run this configuration through bun run verify:browser');
 const port = process.env.PLAYWRIGHT_WEB_PORT ?? '4173';
-const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
 export default defineConfig({
   ...webConfig,
@@ -17,7 +16,7 @@ export default defineConfig({
   ],
   webServer: {
     ...webConfig.webServer,
-    command: `bunx vite preview --host 127.0.0.1 --port ${quote(port)} --strictPort --outDir ${quote(join(directory, 'dist'))}`,
+    command: 'bun scripts/check-browser.mjs --preview',
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: false,
     timeout: 120_000,

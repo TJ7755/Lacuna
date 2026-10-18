@@ -32,10 +32,35 @@ function sourceState(directory) {
   };
 }
 
+export function previewBrowser({ directory = root, env = process.env, execute = spawnSync } = {}) {
+  if (!env.LACUNA_BROWSER_RUN_DIR) {
+    throw new Error('Run this preview through bun run verify:browser');
+  }
+  const result = execute(
+    'bun',
+    [
+      'x',
+      'vite',
+      'preview',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      env.PLAYWRIGHT_WEB_PORT ?? '4173',
+      '--strictPort',
+      '--outDir',
+      join(env.LACUNA_BROWSER_RUN_DIR, 'dist'),
+    ],
+    { cwd: directory, env, stdio: 'inherit', shell: false },
+  );
+  if (result.error) throw result.error;
+  if (result.signal) throw new Error(`Browser preview terminated by ${result.signal}`);
+  return result.status ?? 1;
+}
+
 export function verifyBrowser({ directory = root, args = [], execute = spawnSync } = {}) {
-  if (args.some((arg) => /^(?:-c|--config(?:=|$))/.test(arg))) {
+  if (args.some((arg) => /^(?:-c|--(?:config|output|reporter)(?:=|$))/.test(arg))) {
     throw new Error(
-      'verify:browser owns its isolated configuration; pass test/project filters instead',
+      'verify:browser owns its isolated configuration, output and reporters; pass test/project filters instead',
     );
   }
   const parent = join(directory, 'artifacts', 'browser-checks');
@@ -95,7 +120,8 @@ export function verifyBrowser({ directory = root, args = [], execute = spawnSync
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
-    process.exitCode = verifyBrowser({ args: process.argv.slice(2).filter((arg) => arg !== '--') });
+    const args = process.argv.slice(2).filter((arg) => arg !== '--');
+    process.exitCode = args[0] === '--preview' ? previewBrowser() : verifyBrowser({ args });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
