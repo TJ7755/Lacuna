@@ -25,13 +25,20 @@ describe('hosted provider policy', () => {
   it('selects only pinned free language routes at zero input and output price', () => {
     const available = [
       { id: 'poolside/laguna-s-2.1-free', modelType: 'language' as const, pricing: { input: '0', output: '0' } },
-      { id: 'inclusionai/ling-3.0-flash-fin', modelType: 'language' as const, pricing: { input: '0', output: '0' } },
+      { id: 'stealth/cat-jam', modelType: 'language' as const, pricing: { input: '0', output: '0' } },
+      { id: 'nvidia/nemotron-3.5-lightning-free', modelType: 'language' as const, pricing: { input: '0', output: '0' } },
+      { id: 'inclusionai/ling-3.0-flash-fin', modelType: 'language' as const, pricing: { input: '0.000000075', output: '0.00000022' } },
       { id: 'minimax/minimax-m3-free', modelType: 'language' as const, pricing: { input: '0', output: '0' } },
     ];
     expect(selectFreeGatewayModels(available)).toEqual([
-      'inclusionai/ling-3.0-flash-fin',
+      'nvidia/nemotron-3.5-lightning-free',
+      'stealth/cat-jam',
       'poolside/laguna-s-2.1-free',
     ]);
+    for (const model of available.slice(0, 3)) {
+      expect(selectFreeGatewayModels([{ ...model, pricing: { input: '0', output: '0.01' } }])).toEqual([]);
+      expect(selectFreeGatewayModels([{ ...model, pricing: undefined }])).toEqual([]);
+    }
     expect(selectFreeGatewayModels([{ ...available[0]!, pricing: { input: '0', output: '0.01' } }])).toEqual([]);
     expect(selectFreeGatewayModels([{ ...available[0]!, modelType: 'image' as const }])).toEqual([]);
     expect(selectFreeGatewayModels([])).toEqual([]);
