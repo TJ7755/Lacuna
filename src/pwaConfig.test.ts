@@ -11,6 +11,24 @@ describe('service-worker asset caching', () => {
   it('precaches the self-contained daily backup worker before first offline use', () => {
     expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
   });
+  it('precaches deferred embedded-image processing before the first offline import', () => {
+    expect(
+      collectAppShellScripts([
+        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+        {
+          fileName: 'assets/markdownAssets-IMAGE001.js',
+          isEntry: false,
+          imports: ['assets/imageHelpers-IMAGE002.js'],
+        },
+        { fileName: 'assets/imageHelpers-IMAGE002.js', isEntry: false, imports: [] },
+      ]),
+    ).toEqual([
+      'assets/app-ENTRY001.js',
+      'assets/markdownAssets-IMAGE001.js',
+      'assets/imageHelpers-IMAGE002.js',
+    ]);
+  });
+
   it('precaches deferred Quick search and its dependencies before first offline use', () => {
     expect(collectAppShellScripts([
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
