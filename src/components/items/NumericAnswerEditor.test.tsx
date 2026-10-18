@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { NumericAnswerSpec } from '../../db/types';
@@ -34,9 +34,87 @@ describe('NumericAnswerEditor', () => {
 
   it('rejects variables and negative tolerances', () => {
     expect(numericAnswerSpecIsValid({ kind: 'exact', value: 'x' })).toBe(false);
-    expect(
-      numericAnswerSpecIsValid({ kind: 'within', value: '4', tolerance: -0.1 }),
-    ).toBe(false);
+    expect(numericAnswerSpecIsValid({ kind: 'within', value: '4', tolerance: -0.1 })).toBe(false);
     expect(numericAnswerSpecIsValid({ kind: 'exact', value: 'sqrt(16)' })).toBe(true);
   });
+});
+
+for (const refKind of ['object', 'callback', 'callback cleanup'] as const) {
+  it(`keeps precise invalid targets and clears the ${refKind} ref on unmount`, () => {
+    const objectRef = createRef<HTMLInputElement>();
+    let callbackTarget: HTMLInputElement | null = null;
+    let cleanupCount = 0;
+    const inputRef =
+      refKind === 'object'
+        ? objectRef
+        : (node: HTMLInputElement | null) => {
+            callbackTarget = node;
+            if (refKind === 'callback cleanup' && node)
+              return () => {
+                callbackTarget = null;
+                cleanupCount += 1;
+              };
+          };
+    const currentTarget = () => (refKind === 'object' ? objectRef.current : callbackTarget);
+    const { rerender, unmount } = render(
+      <NumericAnswerEditor
+        value={{ kind: 'matches-one-of', values: ['4', 'x'] }}
+        onChange={() => {}}
+        invalid
+        inputRef={inputRef}
+      />,
+    );
+    expect(currentTarget()).toBe(screen.getByRole('textbox', { name: 'Accepted answer 2' }));
+    rerender(
+      <NumericAnswerEditor
+        value={{ kind: 'matches-one-of', values: ['4', 'x'] }}
+        onChange={() => {}}
+        inputRef={inputRef}
+      />,
+    );
+    expect(currentTarget()).toBe(screen.getByRole('textbox', { name: 'Accepted answer 1' }));
+    rerender(
+      <NumericAnswerEditor
+        value={{ kind: 'within', value: '4', tolerance: -1 }}
+        onChange={() => {}}
+        invalid
+        inputRef={inputRef}
+      />,
+    );
+    expect(currentTarget()).toBe(screen.getByRole('spinbutton', { name: 'Plus or minus' }));
+    rerender(
+      <NumericAnswerEditor
+        value={{ kind: 'within', value: '4', tolerance: -1 }}
+        onChange={() => {}}
+        inputRef={inputRef}
+      />,
+    );
+    expect(currentTarget()).toBe(screen.getByRole('textbox', { name: 'Expected answer' }));
+    const previousCleanupCount = cleanupCount;
+    unmount();
+    expect(currentTarget()).toBeNull();
+    if (refKind === 'callback cleanup') expect(cleanupCount).toBe(previousCleanupCount + 1);
+  });
+}
+
+it('exposes an alternative added to an initially empty answer list', () => {
+  const inputRef = createRef<HTMLInputElement>();
+  const { rerender, unmount } = render(
+    <NumericAnswerEditor
+      value={{ kind: 'matches-one-of', values: [] }}
+      onChange={() => {}}
+      inputRef={inputRef}
+    />,
+  );
+  expect(inputRef.current).toBeNull();
+  rerender(
+    <NumericAnswerEditor
+      value={{ kind: 'matches-one-of', values: ['4'] }}
+      onChange={() => {}}
+      inputRef={inputRef}
+    />,
+  );
+  expect(inputRef.current).toBe(screen.getByRole('textbox', { name: 'Accepted answer 1' }));
+  unmount();
+  expect(inputRef.current).toBeNull();
 });

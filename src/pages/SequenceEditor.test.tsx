@@ -322,16 +322,108 @@ describe('SequenceEditor', () => {
     expect(createSequence).not.toHaveBeenCalled();
   });
 
-  it('saves with Ctrl+Enter from an item', async () => {
+  it.each(['ctrlKey', 'metaKey'] as const)('saves with %s+Enter from an item', async (modifier) => {
     mockCourse = course;
     renderNew();
     fireEvent.change(screen.getByLabelText('Sequence name'), { target: { value: 'Respiration' } });
     paste(1, 'Glycolysis\nKrebs cycle');
     await act(async () => {
-      fireEvent.keyDown(field(2), { key: 'Enter', ctrlKey: true });
+      fireEvent.keyDown(field(2), { key: 'Enter', [modifier]: true });
       await vi.waitFor(() => expect(createSequence).toHaveBeenCalled());
     });
     expect(screen.queryByLabelText('Item 3 content')).not.toBeInTheDocument();
+  });
+
+  it.each(['Ordered list', 'Poetry / verse', 'Script / dialogue'])(
+    'Tabs from the last content field to save for %s without submitting',
+    (preset) => {
+      mockCourse = course;
+      renderNew();
+      fireEvent.click(screen.getByRole('radio', { name: preset }));
+      type(1, 'First');
+      enter(1);
+      type(2, 'Second');
+      enter(2);
+      type(3, 'Third');
+      field(3).focus();
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        cancelable: true,
+      });
+      fireEvent(field(3), event);
+      expect(screen.getByRole('button', { name: 'Add sequence' })).toHaveFocus();
+      expect(event.defaultPrevented).toBe(true);
+      expect(createSequence).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ['modern', true, 9],
+    ['legacy', false, 229],
+  ] as const)('leaves %s composition Tab with the item', (_, isComposing, keyCode) => {
+    mockCourse = course;
+    renderNew();
+    type(1, 'First');
+    enter(1);
+    type(2, 'Second');
+    field(2).focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      isComposing,
+      keyCode,
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(field(2), event);
+    expect.soft(field(2)).toHaveFocus();
+    expect.soft(event.defaultPrevented).toBe(false);
+    expect(createSequence).not.toHaveBeenCalled();
+  });
+
+  it('leaves backward Tab and earlier items to native navigation', () => {
+    mockCourse = course;
+    renderNew();
+    type(1, 'First');
+    enter(1);
+    for (const [index, shiftKey] of [
+      [1, false],
+      [2, true],
+    ] as const) {
+      field(index).focus();
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+      fireEvent(field(index), event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(field(index)).toHaveFocus();
+    }
+  });
+
+  it('leaves Tab to native navigation when save cannot receive focus', () => {
+    mockCourse = {
+      ...course,
+      distributedCopy: {
+        lineageId: 'published-course',
+        revision: 1,
+        locked: true,
+        autoAcceptUpdates: false,
+      },
+    };
+    renderNew();
+    expect(screen.getByRole('button', { name: 'Add sequence' })).toBeDisabled();
+    field(1).focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    fireEvent(field(1), event);
+    expect(event.defaultPrevented).toBe(false);
+    expect(field(1)).toHaveFocus();
   });
 
   it('cancels a pristine new sequence on Escape', async () => {

@@ -202,6 +202,13 @@ export function CardEditor() {
   // Front → Back → Save & add another → Add card, skipping the toolbars and tag input.
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const backRef = useRef<HTMLTextAreaElement>(null);
+  const numericRef = useRef<HTMLInputElement>(null);
+  const schemeRef = useRef<HTMLTextAreaElement>(null);
+  const audioPromptRef = useRef<HTMLTextAreaElement>(null);
+  const audioAnswerRef = useRef<HTMLTextAreaElement>(null);
+  const audioEntryRef = useRef<HTMLButtonElement>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const saveAddRef = useRef<HTMLButtonElement>(null);
   const saveRef = useRef<HTMLButtonElement>(null);
   // Where Tab off the last text field should land: the "add another" button when it
@@ -213,6 +220,25 @@ export function CardEditor() {
   const [shakeField, setShakeField] = useState<string | null>(null);
   const [shakeNonce, setShakeNonce] = useState(0);
   const shakeTimer = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!shakeField) return;
+    const frame = requestAnimationFrame(() => {
+      const target =
+        shakeField === 'answer'
+          ? numericRef.current
+          : shakeField === 'scheme'
+            ? schemeRef.current
+            : shakeField === 'back'
+              ? type === 'audio'
+                ? audioAnswerRef.current
+                : backRef.current
+              : type === 'audio'
+                ? audioEntryRef.current
+                : frontRef.current;
+      target?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [shakeField, shakeNonce, type]);
   const [duplicateWarning, setDuplicateWarning] = useState<Card | null>(null);
   const duplicateTimer = useRef<number | undefined>(undefined);
   const [motionSpeed] = useMotionSpeed();
@@ -571,90 +597,127 @@ export function CardEditor() {
     );
 
   async function handleSave(andAnother = false) {
-    if (!editable) return;
+    if (!editable || savingRef.current) return;
     const missingOwner = lessonMode ? !courseId || !lessonId : !courseId;
     if (!canSave || missingOwner) {
       // Shake the first invalid field to give the user tactile feedback on why save is blocked.
-      if (!frontValid) setShakeField('front');
-      else if (!numericValid) setShakeField('answer');
-      else if (!workingValid) setShakeField('scheme');
-      else if (!backValid) setShakeField('back');
-      else if (!clozeValid) setShakeField('cloze');
+      const field = !frontValid
+        ? 'front'
+        : !numericValid
+          ? 'answer'
+          : !workingValid
+            ? 'scheme'
+            : !backValid
+              ? 'back'
+              : 'cloze';
+      setShakeField(field);
+      notify(
+        field === 'answer'
+          ? 'Enter at least one valid numeric answer without variables.'
+          : field === 'scheme'
+            ? 'Enter a valid mark scheme.'
+            : field === 'back'
+              ? 'Enter an answer.'
+              : field === 'cloze'
+                ? 'Add at least one cloze deletion.'
+                : isAudio
+                  ? 'Choose or record an audio clip.'
+                  : 'Enter a question or prompt.',
+        'negative',
+      );
       setShakeNonce((n) => n + 1);
       window.clearTimeout(shakeTimer.current);
       shakeTimer.current = window.setTimeout(() => setShakeField(null), 500);
       return;
     }
-    const storedAnswerMode =
-      course && !course.archived && isLessonAuthoringMode(course)
-        ? isStructured
-          ? undefined
-          : answerMode
-        : editing
-          ? card?.answerMode
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const storedAnswerMode =
+        course && !course.archived && isLessonAuthoringMode(course)
+          ? isStructured
+            ? undefined
+            : answerMode
+          : editing
+            ? card?.answerMode
+            : undefined;
+      const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
+      const backValue = isCloze || isStructured ? '' : back;
+      const payload: ItemPayload | undefined = isNumeric
+        ? { v: 1, kind: 'numeric', answer: numericAnswer }
+        : isWorking
+          ? {
+              v: 1,
+              kind: 'working',
+              scheme: workingCompilation.lines.flatMap((line) =>
+                line.kind === 'compiled' ? [line.value] : [],
+              ),
+              ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
+            }
           : undefined;
-    const storedType: CardType = isStructured || isAudio ? 'front_back' : type;
-    const backValue = isCloze || isStructured ? '' : back;
-    const payload: ItemPayload | undefined = isNumeric
-      ? { v: 1, kind: 'numeric', answer: numericAnswer }
-      : isWorking
-        ? {
-            v: 1,
-            kind: 'working',
-            scheme: workingCompilation.lines.flatMap((line) =>
-              line.kind === 'compiled' ? [line.value] : [],
-            ),
-            ...(workingFixtures.length > 0 ? { fixtures: workingFixtures } : {}),
-          }
-        : undefined;
-    if (editing && card) {
-      await updateCard(card.id, {
-        type: storedType,
-        front,
-        back: backValue,
-        tags,
-        payload,
-        answerMode: storedAnswerMode,
-      });
-      // If this is a basic_reversed card, update its reverse partner too.
-      if (card.type === 'basic_reversed' && card.reverseCardId) {
-        await updateCard(card.reverseCardId, { front: backValue, back: front });
+      if (editing && card) {
+        await updateCard(card.id, {
+          type: storedType,
+          front,
+          back: backValue,
+          tags,
+          payload,
+          answerMode: storedAnswerMode,
+        });
+        // If this is a basic_reversed card, update its reverse partner too.
+        if (card.type === 'basic_reversed' && card.reverseCardId) {
+          await updateCard(card.reverseCardId, { front: backValue, back: front });
+        }
+        clearDraft(draftKeyRef.current);
+        setDraftDirty(false);
+        flashSaved();
+        // Let the confirmation flourish play briefly before leaving the page.
+        afterSaved(() => {
+          notify('Card updated.', 'positive');
+          returnTo.goBack();
+        });
+        return;
       }
-      clearDraft(draftKeyRef.current);
-      setDraftDirty(false);
-      flashSaved();
-      // Let the confirmation flourish play briefly before leaving the page.
-      afterSaved(() => {
-        notify('Card updated.', 'positive');
-        returnTo.goBack();
-      });
-      return;
-    }
 
-    const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
-    if (lessonMode) {
-      if (isBasicReversed) {
-        await createLessonBasicReversedPair(
-          courseId!,
-          lessonId!,
-          front,
-          backValue,
-          tags,
-          storedAnswerMode,
-        );
+      const reversed = !isCloze && !isBasicReversed && !isStructured && !isAudio && alsoReverse;
+      if (lessonMode) {
+        if (isBasicReversed) {
+          await createLessonBasicReversedPair(
+            courseId!,
+            lessonId!,
+            front,
+            backValue,
+            tags,
+            storedAnswerMode,
+          );
+        } else if (reversed) {
+          await createLessonCardWithReverse(
+            courseId!,
+            lessonId!,
+            front,
+            backValue,
+            tags,
+            storedAnswerMode,
+          );
+        } else {
+          await createLessonCard(
+            courseId!,
+            lessonId!,
+            storedType,
+            front,
+            backValue,
+            tags,
+            payload,
+            storedAnswerMode,
+          );
+        }
+      } else if (isBasicReversed) {
+        await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
       } else if (reversed) {
-        await createLessonCardWithReverse(
-          courseId!,
-          lessonId!,
-          front,
-          backValue,
-          tags,
-          storedAnswerMode,
-        );
+        await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
       } else {
-        await createLessonCard(
+        await createCourseCard(
           courseId!,
-          lessonId!,
           storedType,
           front,
           backValue,
@@ -663,40 +726,34 @@ export function CardEditor() {
           storedAnswerMode,
         );
       }
-    } else if (isBasicReversed) {
-      await createCourseBasicReversedPair(courseId!, front, backValue, tags, storedAnswerMode);
-    } else if (reversed) {
-      await createCourseCardWithReverse(courseId!, front, backValue, tags, storedAnswerMode);
-    } else {
-      await createCourseCard(
-        courseId!,
-        storedType,
-        front,
-        backValue,
-        tags,
-        payload,
-        storedAnswerMode,
-      );
-    }
-    clearDraft(draftKeyRef.current);
-    setDraftDirty(false);
-    if (andAnother) {
-      // Stay on the page for rapid entry: clear the content, keep the type and tags
-      // (usually shared across a batch), refocus the first field, and tally the count.
-      setFront('');
-      setBack('');
-      if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
-      if (isWorking) setWorkingSource('');
-      if (isWorking) setWorkingFixtures([]);
-      setAddedCount((n) => n + (reversed ? 2 : 1));
-      setFormKey((k) => k + 1);
-      flashSaved();
-    } else {
-      flashSaved();
-      afterSaved(() => {
-        notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
-        returnTo.goBack();
-      });
+      clearDraft(draftKeyRef.current);
+      setDraftDirty(false);
+      if (andAnother) {
+        // Stay on the page for rapid entry: clear the content, keep the type and tags
+        // (usually shared across a batch), refocus the first field, and tally the count.
+        setFront('');
+        setBack('');
+        if (isNumeric) setNumericAnswer(EMPTY_NUMERIC_ANSWER);
+        if (isWorking) setWorkingSource('');
+        if (isWorking) setWorkingFixtures([]);
+        setAddedCount((n) => n + (reversed ? 2 : 1));
+        setFormKey((k) => k + 1);
+        flashSaved();
+      } else {
+        flashSaved();
+        afterSaved(() => {
+          notify(reversed ? 'Card and its reverse added.' : 'Card added.', 'positive');
+          returnTo.goBack();
+        });
+      }
+      if (andAnother) {
+        savingRef.current = false;
+        setSaving(false);
+      }
+    } catch {
+      savingRef.current = false;
+      setSaving(false);
+      notify('Could not save the card. Try again.', 'negative');
     }
   }
 
@@ -839,7 +896,7 @@ export function CardEditor() {
                 {isCloze ? (
                   <>
                     <div
-                      key={`front-shake-${shakeField === 'front' || shakeField === 'cloze' ? shakeNonce : 'stable'}`}
+                      key="cloze"
                       className={cn(
                         shakeField === 'front' || shakeField === 'cloze' ? 'shake-field' : '',
                       )}
@@ -878,6 +935,11 @@ export function CardEditor() {
                     <AudioCardEditor
                       front={front}
                       back={back}
+                      autoFocus={!editing}
+                      entryRef={audioEntryRef}
+                      promptRef={audioPromptRef}
+                      answerRef={audioAnswerRef}
+                      onTabForward={focusSaveButton}
                       onFrontChange={(value) => modifyDraftField(setFront, value)}
                       onBackChange={(value) => modifyDraftField(setBack, value)}
                       onError={(message) => notify(message, 'negative')}
@@ -885,16 +947,16 @@ export function CardEditor() {
                   </div>
                 ) : isNumeric || isWorking ? (
                   <>
-                    <div
-                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
-                    >
+                    <div key="front" className={cn(shakeField === 'front' ? 'shake-field' : '')}>
                       <MarkdownEditor
                         compactToolbar
                         hidePreview
                         key={`structured-front-${formKey}`}
                         inputRef={frontRef}
                         autoFocus={!editing}
+                        onTabForward={() =>
+                          (isNumeric ? numericRef.current : schemeRef.current)?.focus()
+                        }
                         label="Question"
                         value={front}
                         onChange={(value) => modifyDraftField(setFront, value)}
@@ -905,10 +967,13 @@ export function CardEditor() {
                     </div>
                     {isNumeric ? (
                       <div
-                        key={`answer-shake-${shakeField === 'answer' ? shakeNonce : 'stable'}`}
+                        key="answer"
                         className={cn(shakeField === 'answer' ? 'shake-field' : '')}
                       >
                         <NumericAnswerEditor
+                          inputRef={numericRef}
+                          onTabForward={focusSaveButton}
+                          onTabBackward={() => frontRef.current?.focus()}
                           value={numericAnswer}
                           onChange={(value) => modifyDraftField(setNumericAnswer, value)}
                           invalid={shakeField === 'answer'}
@@ -916,10 +981,14 @@ export function CardEditor() {
                       </div>
                     ) : (
                       <div
-                        key={`scheme-shake-${shakeField === 'scheme' ? shakeNonce : 'stable'}`}
+                        key="scheme"
                         className={cn(shakeField === 'scheme' ? 'shake-field' : '')}
                       >
                         <MarkSchemeEditor
+                          key={formKey}
+                          sourceRef={schemeRef}
+                          onTabForward={focusSaveButton}
+                          onTabBackward={() => frontRef.current?.focus()}
                           value={workingSource}
                           onChange={(value) => modifyDraftField(setWorkingSource, value)}
                           fixtures={workingFixtures}
@@ -936,10 +1005,7 @@ export function CardEditor() {
                   </>
                 ) : (
                   <>
-                    <div
-                      key={`front-shake-${shakeField === 'front' ? shakeNonce : 'stable'}`}
-                      className={cn(shakeField === 'front' ? 'shake-field' : '')}
-                    >
+                    <div key="front" className={cn(shakeField === 'front' ? 'shake-field' : '')}>
                       <MarkdownEditor
                         compactToolbar
                         hidePreview
@@ -955,10 +1021,7 @@ export function CardEditor() {
                         onTabForward={() => backRef.current?.focus()}
                       />
                     </div>
-                    <div
-                      key={`back-shake-${shakeField === 'back' ? shakeNonce : 'stable'}`}
-                      className={cn(shakeField === 'back' ? 'shake-field' : '')}
-                    >
+                    <div key="back" className={cn(shakeField === 'back' ? 'shake-field' : '')}>
                       <MarkdownEditor
                         compactToolbar
                         hidePreview
@@ -1058,7 +1121,7 @@ export function CardEditor() {
             />
             <CardEditorActions
               editing={editing}
-              canSave={canSave}
+              canSave={canSave && !saving}
               addedCount={addedCount}
               isTouchMode={isTouchMode}
               onCancel={returnTo.goBack}

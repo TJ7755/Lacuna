@@ -15,6 +15,7 @@
 | Card editor            | `Tab`              | Front -> Back -> Save-and-add -> Save |
 | Question-set attempt   | `Ctrl/Cmd+Enter`    | Primary action; progress explicit manual marking |
 | Sequence editor        | `Ctrl/Cmd+Enter`   | Save                                  |
+| Sequence last item     | `Tab`              | Focus Add sequence / Save changes     |
 | Question editor        | `Ctrl/Cmd+Enter`   | Save (and add another, for new Questions) |
 | Sequence item          | `Enter`            | Next item (split at the caret); on an empty item, new section |
 | Sequence item          | `Shift+Enter`      | Line break within the item            |
@@ -60,5 +61,8 @@ returns focus to its available opener; the primary chord does not advance the ed
 underneath or implicitly confirm a destructive action. Plain Enter activates the focused
 confirmation button. Card-entry Tab jumps apply only when the target actually receives
 focus; disabled or missing targets leave native forward and backward traversal available.
+The retained Numeric/Working Card controls extend this to Question -> Expected answer/Scheme
+source -> enabled Save-and-add; Shift+Tab in the answer/source returns to Question. Audio uses
+Prompt -> Answer -> enabled Save-and-add and returns to Choose file after repeat creation.
 
 [Specification index](../SPEC.md)
