@@ -1,1 +1,0 @@
-- Fixed Anki package imports failing because the web and desktop security policies blocked the bundled SQLite WebAssembly reader, including after an upgrade from a cached worker. JavaScript string evaluation remains blocked. (#565)

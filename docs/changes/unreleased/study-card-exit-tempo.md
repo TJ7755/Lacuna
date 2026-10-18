@@ -1,1 +1,0 @@
-- Tighten study-card motion to a shorter accelerating exit, cap flick flights at 280ms, and settle incoming cards within 280ms while overlapping the departure.

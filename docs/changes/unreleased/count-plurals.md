@@ -1,1 +1,0 @@
-- Counts read naturally everywhere they are shown: "1 card" rather than "1 cards" on Path rows, import, practice settings and the study progress bar, with thousands grouped ("5,002 cards"). One shared helper replaces three local copies.

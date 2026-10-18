@@ -1,1 +1,0 @@
-- Today: only courses with something to study show a Study button, and only the lead one is filled. Courses with no cards say "No cards yet", courses with nothing due say "Nothing due", and "Done for today" now appears only after studying that day. The S shortcut studies the course whose button leads (#445).

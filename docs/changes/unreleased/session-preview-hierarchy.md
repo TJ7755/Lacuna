@@ -1,2 +1,0 @@
-- Replaced the session modal with a Study-trigger expansion that keeps the course visible and fits phone screens. Session counts, estimates and start behaviour are unchanged. Moved Practise until all correct into Other ways with its whole-course/lesson picker.
-- Aligned Study’s expansion with New course: a persistent close control, fixed-size content fading and a surface that contracts back into its trigger.

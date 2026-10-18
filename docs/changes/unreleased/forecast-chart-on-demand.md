@@ -1,1 +1,0 @@
-- Today's exam-day forecast chart now loads on demand, keeping start-up JavaScript under its budget.

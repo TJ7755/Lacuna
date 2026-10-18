@@ -1,2 +1,0 @@
-- Fit text and Anki imports into compact input, review and destination steps without a scrolling panel. Preserve drafts and reverse-card settings when going back.
-- Centre Search content and use the shared rounded search-field styling.

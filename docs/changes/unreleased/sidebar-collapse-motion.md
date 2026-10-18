@@ -1,1 +1,0 @@
-- Animate desktop sidebar collapse and expansion with fixed icon positions, clipped label fades and synchronised content layout. Retain hidden labels and lesson lists with inert accessibility states, honour reduced motion, and suppress hover cards whilst the sidebar moves.

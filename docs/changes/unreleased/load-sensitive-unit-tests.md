@@ -1,1 +1,0 @@
-- Two unit tests no longer time out under a parallel full-suite run: the backup rollback test writes a slice of its first batch instead of 2,000 rows (fake-indexeddb rolls each row back with a linear index scan), and the APKG zip-bomb test builds its archive at the fastest compression level with a longer timeout

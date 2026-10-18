@@ -1,1 +1,0 @@
-- Exercise the complete optional Simple Learn workflow independently at desktop and phone widths, preserving its picker, viewport and navigation assertions. (#389)

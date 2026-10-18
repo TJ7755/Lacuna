@@ -1,1 +1,0 @@
-- Load embedded-image import processing on demand while keeping its first offline use and database transactions safe.

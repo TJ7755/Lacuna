@@ -1,1 +1,0 @@
-- Quick search highlights its rows as inset rounded rows, like every other menu, instead of full-width bands.

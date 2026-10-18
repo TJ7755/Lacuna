@@ -1,1 +1,0 @@
-- Preserve the minimum touch target for practice editing despite fractional browser geometry, using the existing 48px control height without weakening the 44px regression assertion. (#389)

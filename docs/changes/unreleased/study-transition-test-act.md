@@ -1,1 +1,0 @@
-- Keep study-transition test act callbacks synchronous so lint does not interpret returned dismissal booleans as unhandled asynchronous work.

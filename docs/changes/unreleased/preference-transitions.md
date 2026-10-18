@@ -1,2 +1,0 @@
-- Input-mode choices now leave text size and other preferences unchanged, so Keyboard/Touch round trips restore the same presentation and Auto retains its existing activity detection.
-- Text-size changes reflow immediately without springing Settings selection indicators or scaling the size control; other selection motion and reduced-motion behaviour are retained.

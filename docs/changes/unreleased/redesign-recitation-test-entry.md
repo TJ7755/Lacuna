@@ -1,1 +1,0 @@
-- Keep the study test helper compatible with recitation when a lesson opens directly on its first line. (#389)

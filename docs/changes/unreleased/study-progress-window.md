@@ -1,1 +1,0 @@
-- Keep Simple Learn progress pills readable in large sessions with a width-aware window that glides at roughly 80% progress, handles backwards navigation and snaps with reduced motion. Sessions that fit retain their full-width strip.

@@ -1,1 +1,0 @@
-- Tab and Shift+Tab leave an action menu in the surrounding page's normal keyboard order, retaining the trigger as the navigation origin when the focused option disappears.

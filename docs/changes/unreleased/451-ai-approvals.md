@@ -1,1 +1,0 @@
-- AI approvals lead with the proposed action, its target and consequence, with the raw tool name moved under Technical details. (#451, #475)

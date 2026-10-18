@@ -1,1 +1,0 @@
-- Sidebar settings keep visibility switches, navigation names and reorder controls within their rows at mobile widths with enlarged text, rather than relying on page overflow checks that miss clipped content.

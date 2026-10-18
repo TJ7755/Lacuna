@@ -1,1 +1,0 @@
-- Removed the sharing announcement from Today, including its dismissal state, styles and offline-cache entries. Existing stored dismissal values are safely ignored.

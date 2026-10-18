@@ -1,1 +1,0 @@
-- Lead an empty lesson with New card alone, leaving out the empty management panel and the irrelevant Answer by control, and disable Study on a one-lesson course that has nothing to study.

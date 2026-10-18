@@ -1,1 +1,0 @@
-- Fixed the Path heading sitting lower than its sibling course sections: the course header now inherits spacing from the shared page frame without conflicting padding utilities.
