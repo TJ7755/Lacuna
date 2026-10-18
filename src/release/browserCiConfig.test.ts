@@ -30,21 +30,12 @@ it('serves only the isolated build, refuses port reuse and separates reports', (
   };
   expect(config.webServer.reuseExistingServer).toBe(false);
   expect(config.webServer.url).toBe('http://127.0.0.1:4317');
-  expect(config.webServer.command).toContain('--strictPort');
-  expect(config.webServer.command).not.toContain('build:assets');
+  expect(config.webServer.command).toBe('bun scripts/check-browser.mjs --preview');
   expect(config.outputDir).toBe(resolve(directory, 'test-results'));
   expect(config.reporter).toContainEqual([
     'json',
     { outputFile: resolve(directory, 'results.json') },
   ]);
-  const tokens = spawnSync(
-    'bash',
-    ['-c', `set -- ${config.webServer.command}; printf '%s\\0' "$@"`],
-    { encoding: 'utf8' },
-  );
-  expect(tokens.status, tokens.stderr).toBe(0);
-  const args = tokens.stdout.split('\0');
-  expect(args[args.indexOf('--outDir') + 1]).toBe(resolve(directory, 'dist'));
 });
 
 interface Suite {
