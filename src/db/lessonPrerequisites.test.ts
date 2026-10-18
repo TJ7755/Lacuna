@@ -289,6 +289,9 @@ describe('advisory Lesson prerequisites and Course creator', () => {
   it('rejects self, duplicate, missing, cross-Course and cyclic local references atomically', async () => {
     const { cells, atp } = await fixture();
     const foreign = await createLesson((await createCourse('Other')).id, 'Other');
+    await expect(updateLesson(atp.id, { id: 'replacement' })).rejects.toThrow(/identity/i);
+    await expect(updateLesson(atp.id, { courseId: foreign.courseId })).rejects.toThrow(/between Courses/i);
+    expect(await db.lessons.get(atp.id)).toEqual(atp);
     for (const ids of [[atp.id], [cells.id, cells.id], ['missing'], [foreign.id]]) {
       await expect(updateLesson(atp.id, { prerequisiteLessonIds: ids })).rejects.toThrow(
         /prerequisite/i,
