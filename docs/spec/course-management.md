@@ -4,8 +4,10 @@ Start at [CoursePath](../../src/pages/CoursePath.tsx), [LessonView](../../src/pa
 and the [course planner](../../src/course/studyFlowPlanner.ts). Repository writes live in
 [courseRepository](../../src/db/courseRepository.ts) and [lessonRepository](../../src/db/lessonRepository.ts).
 
-Path ordering expresses prerequisites and assessment coverage. Moving a node must preserve valid
-coverage and dependency order. An informational checkpoint does not gate progress. The conductor
+Path ordering expresses progression and assessment coverage. Moving a node must preserve valid
+coverage and the existing access rules. Advisory Lesson prerequisites use stable same-Course
+identities, independently of path order. They do not gate access, select study work or change
+scheduling horizons. An informational checkpoint does not gate progress. The conductor
 recomputes its next step after completion rather than trusting a captured future plan.
 
 A Lesson can include another Lesson's Card through membership. That link does not transfer

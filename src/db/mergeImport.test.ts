@@ -223,7 +223,7 @@ describe('mergeImport: first import of a lineage', () => {
       locked: true,
       autoAcceptUpdates: false,
       sourceLabel: 'Ms Teacher',
-      source: { name: 'Biology', description: '', unlockMode: 'open' },
+      source: { name: 'Biology', description: '', unlockMode: 'open', creator: 'Ms Teacher' },
     });
 
     const lesson = await db.lessons.get('lesson-1');

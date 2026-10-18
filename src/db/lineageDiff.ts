@@ -40,6 +40,7 @@ export interface ShareNoteInput {
 }
 
 export interface ShareLessonInput {
+  pr?: string[];
   am?: 'reveal' | 'type';
   i: string;
   n: string;
@@ -61,6 +62,7 @@ export interface ShareLessonInput {
 // touch).
 
 export interface ExistingLesson {
+  prerequisiteLessonIds?: string[];
   answerMode?: 'reveal' | 'type';
   id: string;
   name: string;
@@ -128,6 +130,7 @@ export interface LineageDiffInput {
 // module *does* supply, since it is fully determined by the incoming payload.
 
 export interface CreateLessonPayload {
+  prerequisiteLessonIds?: string[];
   answerMode?: 'reveal' | 'type';
   id: string;
   name: string;
@@ -163,6 +166,7 @@ export interface CreateCardPayload {
 }
 
 export interface LessonUpdate {
+  prerequisiteLessonIds?: string[];
   answerMode?: 'reveal' | 'type';
   id: string;
   name?: string;
@@ -266,6 +270,10 @@ export function jsonValuesEqual(a: unknown, b: unknown): boolean {
 function diffLesson(incoming: ShareLessonInput, existing: ExistingLesson, orderIndex: number): LessonUpdate | undefined {
   const update: LessonUpdate = { id: existing.id };
   let changed = false;
+  if (!arraysEqual([...(existing.prerequisiteLessonIds ?? [])].sort(), [...(incoming.pr ?? [])].sort())) {
+    update.prerequisiteLessonIds = [...(incoming.pr ?? [])];
+    changed = true;
+  }
   if (existing.name !== incoming.n) {
     update.name = incoming.n;
     changed = true;
@@ -448,6 +456,7 @@ export function diffLineage(input: LineageDiffInput): LineageDiffResult {
     if (!isKnownLesson || !existingLesson) {
       creates.lessons.push({
         id: incomingLesson.i,
+        prerequisiteLessonIds: incomingLesson.pr,
         name: incomingLesson.n,
         description: incomingLesson.d,
         isExtension: incomingLesson.x === 1,

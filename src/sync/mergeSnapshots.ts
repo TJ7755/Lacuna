@@ -3,6 +3,7 @@
 // mergeSnapshots(local, remote) then importBackup(merged, 'replace') — that
 // caller is P5, not this module.
 
+import { assertLessonPrerequisites } from '../db/lessonPrerequisites';
 import type {
   BackupAsset,
   BackupFile,
@@ -287,6 +288,7 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
       tombstones,
     ),
   ).filter((attempt) => courses.some((course) => course.id === attempt.courseId));
+  assertLessonPrerequisites(lessons);
   assertQuestionSetReferences(
     questionSets,
     courses,

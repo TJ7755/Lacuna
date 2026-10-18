@@ -55,6 +55,24 @@ personal scheduling, reviews, Attempts, completions or unrelated bank content. O
 create fresh local identities and remap every relationship coherently. Sequences/Occlusions and
 their generated Card/Concept IDs must agree after regeneration as well as immediately after import.
 
+Lesson prerequisites are advisory same-Course links, transported by `ShareLesson.pr` using the
+payload-scoped Lesson `i` identities. Ordinary import remaps every link to fresh local identities;
+lineage import adopts source identities and includes links in its existing edit/diff/review snapshots.
+Missing prerequisite metadata means no links. Duplicate, self, missing, cross-Course and cyclic
+references are rejected. A batch is validated at its transaction boundary, so valid dependency
+reversals can be accepted together; a partial acceptance or combined peer graph that remains invalid
+fails atomically. Lesson deletion removes inbound links; undo restores those links without replacing
+unrelated edits to the dependent Lessons.
+
+`Course.creator` is a literal creator/project display label transported through `payload.by`, not
+verified human authorship or approval. Null/absent `by` means no label; string values, including an
+empty string, survive unchanged. Lineage updates use the existing Course-detail baseline policy,
+retaining a locally edited creator. Legacy copies acquire the label on their next source update;
+ordinary imports made by older builds cannot recover a label they discarded. These are additive
+fields without a database/index or envelope-version change. Older share readers can discard them
+on import/re-export, so lossless round-trips require a supporting build and the original source file
+should be retained. Backups retain the metadata and validate the final reference graph.
+
 Course files carry referenced media; text codes replace omitted media with clear placeholders.
 Occlusion diagrams are referenced by their source entity, not necessarily by Card Markdown.
 Question definitions and retained receipts can also keep assets reachable. Do not delete a recent

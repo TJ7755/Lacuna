@@ -100,6 +100,15 @@ describe('mcp lineage tools', () => {
       }
     });
 
+    it('previews prerequisite changes using stable ids without writes', async () => {
+      const second = { i: 'atp', n: 'ATP', pr: ['lesson-1'], notes: [], cards: [] };
+      await mergeLineageUpdate(courseId, coursePayload({ rv: 2, lessons: [lessonOne(), second] }));
+      const code = await encodeShareDirect(coursePayload({ rv: 3, lessons: [lessonOne(), { ...second, pr: [] }] }));
+      const result = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(result.data.diff.updates.lessons).toEqual([{ id: 'atp', prerequisiteLessonIds: [] }]);
+      expect((await db.lessons.get('atp'))?.prerequisiteLessonIds).toEqual(['lesson-1']);
+    });
+
     it('classifies a teacher update without writing anything', async () => {
       const code = await encodeShareDirect(coursePayload({ rv: 2, lessons: [lessonOne({ n: 'Cells (revised)' })] }));
       const res = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
