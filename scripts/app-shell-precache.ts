@@ -26,8 +26,9 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
   if (!entry) throw new Error('Could not find the application entry for shell precaching.');
   // First offline use also needs deferred shell controls, embedded-image imports,
   // lesson-order writes, the welcome-course seed and motion features after first paint.
+  // Restore also needs the decoder and its mandatory device-local AI cleanup hook.
   const deferredControls = chunks.filter((chunk) =>
-    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|lessonOrder)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|lessonOrder|backups|portability|relay)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   return [
     ...new Set([

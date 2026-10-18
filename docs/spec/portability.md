@@ -236,8 +236,13 @@ has already committed.
 - Ordinary restore-point attempts are throttled for five minutes; a failed export or local
   snapshot write releases that attempt's throttle so an immediate retry can protect the data.
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
-  automatically on open, **at most once a day** (`autoBackupIfStale`), and never
-  blocks the UI.
+  automatically on open, **at most once a day** (`autoBackupIfStale`). The daily worker
+  captures, encodes, stores, prunes and mirrors the snapshot; only completion/error status
+  crosses to the UI thread. It uses the same snapshot and storage path as explicit backups,
+  retaining bytes, metadata, ordering, the five-minute throttle and protected snapshots.
+  Its script is available on first use offline. Without Worker support, the existing local
+  path remains available; worker failures remain non-fatal and do not replay heavy work on
+  the UI thread. Explicit and destructive-operation safety backups retain their awaited path.
 - **Pre-migration snapshot:** before a schema upgrade rewrites data, a
   `pre-migration`-tagged snapshot is captured in a **separate committed
   transaction** (via a dedicated `lacuna-pre-migration` IndexedDB) so a failed
