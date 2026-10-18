@@ -113,6 +113,7 @@ export const CardContent = memo(function CardContent({
   return (
     <MarkdownView
       source={side === 'front' ? card.front : card.back}
+      literalNumericAnswer={side === 'back'}
       className={className}
       typedAnswerFeedback={typedAnswerFeedback}
       audioAutoplay={audioAutoplay && side === 'front'}
