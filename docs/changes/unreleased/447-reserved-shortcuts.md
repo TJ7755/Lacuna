@@ -1,1 +1,0 @@
-- Reject shortcut assignments that collide with fixed study/search/help aliases or another binding irrespective of letter case; modified keys no longer become plain shortcuts, composition remains untouched, and invalid saved assignments fall back per action. (#447)

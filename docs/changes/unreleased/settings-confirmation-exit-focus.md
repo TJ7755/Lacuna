@@ -1,1 +1,0 @@
-- Closing data-settings modals now releases the keyboard trap and hides departing controls immediately while preserving their visual exit. Inline confirmations likewise make outgoing triggers and prompts inert; fast reopening restores the current form or confirmation’s focus.

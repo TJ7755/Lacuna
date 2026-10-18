@@ -1,1 +1,0 @@
-- Keep the course colour audit pointer clear of content before navigation, so a valid hover colour cannot falsely fail the mobile resting-colour checks.

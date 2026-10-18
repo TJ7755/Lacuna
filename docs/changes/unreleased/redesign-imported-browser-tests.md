@@ -1,1 +1,0 @@
-- Keep the imported Pomodoro and recitation browser regressions compatible with the redesigned course controls and direct recitation entry, preserving their behaviour assertions. (#389)

@@ -1,1 +1,0 @@
-- Inline confirmations preserve focus deliberately restored by their caller when cancellation chooses the next action, including lesson-deletion cancellation in Settings.

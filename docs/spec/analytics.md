@@ -1,168 +1,26 @@
-# 14. Search & analytics
+# Search, forecasts and evidence
 
-### Search (`src/db/search.ts`, `SearchPage`, `CommandPalette`)
+[search](../../src/db/search.ts) owns matching and result selection; [stats](../../src/fsrs/stats.ts)
+and [analytics components](../../src/components/analytics/) own calculations and presentation.
 
-- **Card search** (`searchCards`) is a pure, offline, case- and diacritic-insensitive
-  substring search over a card's front, back, its (backing-deck) name and its tags.
-  **Ranking:** front matches rank above back/deck/tag matches; earlier match positions
-  rank first.
-- **Course content search** (`searchCourseContent`) separately searches course names,
-  lesson names, and note names/content, returning ranked `CourseContentHit`s
-  (`kind: 'course' | 'lesson' | 'note'`) that deep-link to `/course/:courseId`,
-  `/course/:courseId/lesson/:lessonId`, or the same lesson route for a note. The two
-  search cores run side by side so a single query surfaces both structural results
-  (courses/lessons/notes), Card results and Question results. Questions search authored names,
-  prompts, worked explanations, tags and generated-family metadata and link to the Question editor.
-- **Structured filters** (AND-combined, usable without a query, cards only): **due, new,
-  leech, flagged, suspended**. These turn search into course-wide card management ("show
-  me all leeches").
-- The advanced-query core accepts quoted `tag:` and `deck:` values containing spaces;
-  apostrophes within ordinary words remain literal. Unrecognised `is:` values remain
-  part of the literal text query rather than silently broadening the result set.
-- The full-page **Search content** surface and the `Ctrl/Cmd+K` **Quick search** overlay share the
-  same core. Card and Question results are visibly distinct and link to their respective editors,
-  while course/lesson/note results link to their page.
-  `plainPreview` strips Markdown/cloze/images for previews, including multiline cloze
-  answers and hints; only the answer text appears in the preview. Inline Markdown
-  links show their labels without destinations or link syntax before truncation.
-  The input has an accessible name, filter controls meet the 44px target size and
-  clearing filters returns focus to the input. The initial screen uses its heading,
-  search field and filters without repeating typing instructions in another panel.
-  Its outer frame aligns with Share and Archived; the inner reading column remains
-  capped at `max-w-3xl`.
-- Both search fields use Up/Down to select results and Enter to open them without
-  tabbing through filters. Selected rows remain visible; full-page filters retain
-  their ordinary Tab order, and Escape returns from a result to editing the query.
-  Matching text uses the core's case/diacritic folding. Bounded excerpts reveal
-  matches in long answers, descriptions and note bodies, alongside ownership and
-  generated-card badges. Polite count announcements change with the result set,
-  without announcing each arrow movement as a new count.
-- Quick search also lists up to three Help topics using Help’s all-word, case-insensitive
-  question/answer/keyword matching; selecting one opens its expanded answer at `/help#<id>`.
-- Quick search shows at most 40 mixed results, reports shown/total counts from the
-  already computed matches, and offers **See all results** with the same query.
-  Full-page search defers matching and initially renders 80 rows; **Show more results**
-  or arrowing beyond the shown rows extends the list. Its `q`, repeated `filter` and
-  expanded `shown` count live in the URL, so browser Back restores the same query,
-  Card filters and expanded list. The shell restores scroll; returning input focus
-  does not scroll away from that position. Search remains offline and introduces no
-  stored learner-data format.
-- **Leech** = a card whose `lapses` reach its Course's leech threshold (default 8,
-  `src/fsrs/leech.ts`); surfaced via a badge, the search and Cards filters and Progress
-  counts, which all apply the same per-Course threshold. Scheduling is never changed
-  automatically.
+Search is a read operation. Tagging, difficulty filters and contextual navigation must not change
+scheduling as a side effect. Preserve explicit scope and distinguish linked membership from ownership.
 
-### Dashboard signals (`src/fsrs/stats.ts`, `StudySignals`)
+Session work done, predicted recall, historical activity and examination marks are different
+quantities. The [forecast](../../src/fsrs/courseForecast.ts) assumes no further reviews; objective
+readiness uses the [active objective](exam-objective.md). Annotations and chart snapshots are not
+scheduler inputs.
 
-Pure aggregates over stored history, in local time:
+Historical charts use evidence available at that time. Daily trajectory projections retain the
+last sample for a day without discarding the underlying rows. Missing/sparse data is not a zero
+measurement. Global averages must explain changing contributors rather than implying the same
+population was observed every day.
 
-- **Streak:** consecutive studied days counting back from today (a not-yet-studied
-  today does not break a streak that includes yesterday).
-- **Reviewed today:** count of review logs dated today.
-- **Seven-day forecast:** each scheduled card is bucketed by its effective due
-  day (overdue folds into today, beyond the window is ignored) and weighted by
-  its deck's **mean review seconds** (fallback 8 s) to estimate **minutes of
-  study per day**, shown as a small bar sparkline with a "minutes to clear"
-  total. Course new-card and daily review limits apply, with reviews taking
-  precedence. Cards are grouped by scheduling source once, so looking up each
-  course's study pool does not repeatedly scan every stored card.
-- **Review heatmap** (`src/fsrs/heatmap.ts`, `ReviewHeatmap`): a
-  contribution-style calendar of reviews per **local** calendar day over the selected
-  7-, 30- or 90-day period, built from review logs and theme-aware via accent-opacity
-  bands. The header carries the matching count and day range. Seven- and 30-day
-  periods use a full-width daily strip with weekday or date labels and compact
-  fixed-height cells. Each day has a distinct target of at least 44×44px; the grid scrolls
-  horizontally when required and initially shows the most recent dates. Date labels thin out as
-  the strip narrows or text grows,
-  so neighbouring labels never collide. Longer periods use a **month-name row** above the cells, with a short month label on
-  the first column of each new month so the calendar is readable without a
-  separate legend. Weekday labels (Mon/Thu/Sun) line up exactly with their cells.
-  One calendar date enters the tab order; horizontal arrows follow consecutive dates
-  in a daily strip or consecutive weeks in a calendar. Vertical arrows move between dates, including
-  vertically across week boundaries. Changing period keeps a reachable tab stop.
+Question analytics derive from eligible Attempt evidence and remain separate from Card FSRS data.
+Disputed or undetermined results are exclusions, not automatic failures or successes. Retain raw
+observations and immutable first submissions when aggregating corrections.
 
-### Per-card analysis (`CardAnalytics`)
-
-Each Card in a course's Card list (lesson view or Cards page) can be expanded in-place
-to reveal a **forgetting curve** and **vital statistics** for that individual card:
-
-- **Forgetting curve** — an `AreaChart` projecting retrievability from the
-  card's most recent review forward to `examDate + 14 days`, with historical
-  review moments overlaid as grade-coloured dots. Vertical reference lines mark
-  the current time (`Now`) and the exam date (`Exam`). Never-reviewed cards show
-  an inviting empty state.
-- **Vital statistics** — a grid of tiles showing: stability, difficulty, current
-  retrievability, predicted exam-day retrievability, total reviews, lapses, due
-  date, days since last review, mean response time and accuracy.
-- **Grade distribution** — animated mini-bars for Again / Hard / Good / Easy
-  counts.
-- Expansion is toggled by clicking the card row; only one card may be expanded
-  at a time. The expanded panel leads with the row's Edit, Flag and Delete actions
-  (the only way to reach them on phones and touch screens) and captures click events so interacting with the chart does not collapse
-  the view. The row is keyboard-accessible (`Enter`/`Space` toggles expansion).
-
-### Course analytics (`/course/:courseId/analytics`, `src/components/analytics/CourseAnalytics.tsx`)
-
-Theme-aware Recharts panels scoped to one course's **deduplicated card set** — the same
-pool `progressValue` and the course path's mastery figure use (a card shared across
-lessons is counted once):
-
-- The **exam-day forecast** chart above them (shared with Today; see
-  [forward simulation](forward-simulation.md)) carries the exam-day trend.
-- **Lesson breakdown** — a bar chart of mastery and completion percentage per lesson, with
-  card count overlaid as a line.
-- **Card stability profile** (histogram of cards by stability range; new cards distinct).
-- **Review volume** (reviews per day over the last 30 days).
-
-The same page has a separate **Questions** section. It does not feed the Card charts or Course
-objective. It shows due/unseen/suspended counts; fixed first-presentation versus repeat performance;
-generated novel-variant versus repeated-variant performance and repeat rate; marks and full-credit
-accuracy; versioned criterion evidence; and explicit shown, abandoned, undone, checker-withheld and
-unscored exclusions. A disputed or undetermined Attempt is excluded rather than counted as a
-failure. No Question result changes predicted exam-day Card score, stability or Card calibration.
-
-Prediction accuracy calibration (`src/fsrs/calibration.ts`) — comparing predicted
-retrievability at review against actual recall outcome via a Brier/log-loss metric, plus
-the developer-facing `gradeQualitySummary` — remains available at the global level below;
-it has not yet been added to the course-scoped view.
-
-### Global analytics (`/analytics`)
-
-A cross-course view, sharing the same Recharts primitives as course analytics but
-aggregating across every course:
-
-- **Course comparison** — select any two courses and see their statistics side by
-  side (cards, predicted score, mastery fraction, cards reviewed, total reviews,
-  reviews today, leeches, mean stability, mean difficulty). Each metric renders
-  as **two stacked rows** — one per course — with a colour swatch, a percentage
-  bar, and a right-aligned value, so the values can never overlap or fight the
-  winner badge. Each compared course's name links to its own `/course/:id/analytics`
-  (Arc 10 §10.4), so the global and per-course analytics views cross-link both ways —
-  `CourseAnalytics` links back out via the shared `CourseTabs` (§12).
-- **Forecast** — cards due and new cards scheduled per day for the next 30
-  days.
-- **Predicted exam-day score** — average predicted retrievability across all
-  courses over time. Each point is a study day averaging the latest snapshot of
-  each course studied that day; the data table lists how many courses each point
-  covers. A single study day shows its value and asks for another day of study
-  instead of the empty state.
-- **Prediction accuracy** — Brier score for predicted vs actual recall.
-- **Review volume** and **Study time** — daily counts and minutes over the past
-  30 days.
-- **Observed recall by card age** — every review is grouped by the time elapsed
-  since that card's first review. The chart reports the observed recall rate for
-  each age bucket and exposes its sample count (`n`) in the tooltip; it is not a
-  current-state retention estimate or forecast.
-- **Leech count by course** — horizontal bar chart of leeches per course, explaining that
-  rewording or splitting helps more than further review, with **Show leech cards** opening
-  full-page search on the Leeches filter.
-- **Stability profile** — distribution of cards by stability range: the days until a card's
-  predicted recall falls to 90%, with new cards (no estimate yet) shown apart.
-
-Charts are wrapped in `ChartCard` (a consistent titled frame with an empty
-state and keyboard-accessible **View data** tables for the plotted values and units), in a `lg:grid-cols-2` grid. `FadeInView` triggers the entrance
-animation on approach (`viewport amount: 0` with a 100px bottom margin) so
-charts below the fold are never invisible. Each chart container is `h-64` with
-`min-w-0` so a chart cannot push its grid track wider than its share.
+Graphs need an understandable text/table equivalent, non-colour identification and useful empty
+states. Tooltips must work on touch and keyboard without changing selection unexpectedly.
 
 [Specification index](../SPEC.md)

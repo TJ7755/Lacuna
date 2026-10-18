@@ -1,1 +1,0 @@
-- Exam-day forecast lines are coloured by course rather than status, so several on-track courses no longer draw identical green lines; the legend now says On track or Behind beside each course. (#490)

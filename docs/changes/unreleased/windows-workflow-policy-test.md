@@ -1,1 +1,0 @@
-- Keep workflow-policy checks portable to Windows checkouts by normalising line endings before their existing assertions.

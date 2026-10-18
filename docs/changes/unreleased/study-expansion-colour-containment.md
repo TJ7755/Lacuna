@@ -1,3 +1,0 @@
-- Restored Study’s button-to-card expansion: one opaque surface grows from the trigger while only the button fill fades into the header. The closed primary button remains Volt; contents stay anchored and clipped inside the expansion.
-- Study’s trailing arrow now morphs continuously into the close cross using the same two strokes, reversing on dismissal without changing sides.
-- Study triggers keep their size on hover.

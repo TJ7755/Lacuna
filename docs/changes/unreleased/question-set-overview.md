@@ -1,2 +1,0 @@
-- Align question composer captions with their fields and shorten the mark scheme caption.
-- Redesign question-set overviews with course-style controls, inline questions and attempts, compact recorded results, and a primary Resume action for unfinished attempts.

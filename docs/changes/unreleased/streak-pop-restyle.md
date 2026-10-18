@@ -1,1 +1,0 @@
-- Restyle the "in a row" pop during study: it now sits on the raised surface so its flame stays legible in dark mode, arrives with a calmer spring, and no longer throws confetti.

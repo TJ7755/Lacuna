@@ -1,1 +1,0 @@
-- Measure the retained sidebar course dropdown from its layout height rather than its transformed bounding box, so the open panel no longer settles a pixel or two short and clips the last lesson.

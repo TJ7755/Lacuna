@@ -1,1 +1,0 @@
-- Device pairing starts on the recovery phrase or pairing details, with private relay configuration grouped under Advanced. Validation and pairing failures stay beside the value to correct, cancellation restores the setup choices, and successful pairing focuses Show pairing QR or Sync now. Saved pairings and encryption are unchanged. (#450)

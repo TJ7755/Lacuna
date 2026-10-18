@@ -1,1 +1,0 @@
-- Load the Today queue's course menu and archive confirmation on demand, keeping first-load JavaScript within its budget.

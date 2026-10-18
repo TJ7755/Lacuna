@@ -1,1 +1,0 @@
-- Give repeat-save its own padded row, keep Cancel and Done at stable bounds, and reserve the added-card tally. Compact touch actions retain editor space and follow the visible viewport above mobile keyboards; answer mode and reverse creation form a consistent responsive group, and card formatting uses the existing expandable toolbar. (#457)

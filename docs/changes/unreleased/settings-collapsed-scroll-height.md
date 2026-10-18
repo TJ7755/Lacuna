@@ -1,1 +1,0 @@
-- Collapsed Settings groups no longer leave a large blank scroll area below Integrations. Positioned content stays inside its panel while forms remain mounted and opening and closing animations are preserved.

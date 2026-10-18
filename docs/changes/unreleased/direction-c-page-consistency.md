@@ -1,1 +1,0 @@
-- Aligned course-section headings, spacing and content frames; Course Settings now fills its shared content column. Settings and Help share their heading rhythm, section rail and card surfaces, with the same keyboard-accessible section jumper on smaller screens.

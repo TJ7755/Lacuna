@@ -1,1 +1,0 @@
-- Expand the course Study preview into the full-screen session, retaining a paper cover until content is ready and introducing the header and first blocks in sequence. Motion speed and reduced motion apply throughout. Lesson titles now lead preview rows, with Learn in the secondary line.

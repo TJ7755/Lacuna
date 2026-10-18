@@ -208,7 +208,7 @@ export function App() {
       }
 
       setReady(true);
-      // Take a daily restore point in the background; never blocks the UI.
+      // The daily restore point runs in a worker so large backups do not stall study.
       void import('./db/backups')
         .then(({ autoBackupIfStale }) => autoBackupIfStale())
         .catch(() => {

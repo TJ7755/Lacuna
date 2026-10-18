@@ -1,247 +1,73 @@
 # Release maintenance
 
-Merging a version bump into master is the release decision; everything after it is automatic.
-Once CI and Security pass on that commit, `.github/workflows/release-tag.yml` tags it and dispatches
-`.github/workflows/release.yml`, which verifies, builds the Windows and Linux packages, prepares a
-GitHub pre-release draft and, when `docs/releases/<version>.md` exists, verifies every asset afresh
-and publishes the beta with those notes. The unsigned macOS arm64 package is still built and tested
-separately on the maintainer's Apple Silicon device (see below); Windows/Linux-only betas are
-supported, so macOS is not an implicit blocker.
+Merging a version bump with release notes into master is the maintainer's publication decision.
+The [tag workflow](../../.github/workflows/release-tag.yml) and
+[release workflow](../../.github/workflows/release.yml) own automation, job names and asset lists.
+Without the matching notes file the build remains a draft. Windows/Linux-only unsigned limited
+betas are supported; macOS packages are a separate local step, not an implicit publication blocker.
 
 ## Routine release
 
-1. On a release preparation branch, run `bun run release:prepare <version> "short release title"`.
-   It sets `package.json` (the only version to edit), folds the fragments in
-   `docs/changes/unreleased/` and any bullets still under "Unreleased" into a new
-   `## <version> beta — short release title` section of `docs/CHANGES.md`, and pins the Windows
-   upgrade gate in `scripts/windows-release-baseline.json` to the release being replaced, using
-   the installer digest GitHub recorded for it.
-2. Write the user-facing notes in `docs/releases/<version>.md`. The publisher appends the
-   unsigned/platform/update scope. Without this file the draft waits for manual publication.
-3. Merge the PR through normal required checks. CI on the pull request runs the installed-upgrade
-   gate against the new baseline.
+1. On a preparation branch, run `bun run release:prepare <version> "short release title"`.
+   Edit only the root package version through this helper; it folds pending changelog entries
+   and pins the previous Windows installer/digest for the upgrade gate.
+2. Write `docs/releases/<version>.md` with the learner-facing notes and known limitations.
+3. Check the actual PR and exact-commit CI/Security results, native upgrade evidence and applicable
+   human gates. Merge through normal protection. An existing tag must never be moved.
+4. If building or verification fails, fix the cause and rerun the failed release workflow.
+   `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
-Nothing else is needed. If the build or verification fails, fix it and rerun the failed `Build &
-Release` run; an existing tag is never moved. To restart from scratch on an existing tag, run
-`gh workflow run release.yml --ref v<version>`. A tag pushed by hand still triggers the same
-workflow, and the maintainer commands below remain for inspection and manual publication.
+The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
+[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases. An open release
+PR is edited in place. Its GitHub App needs Contents and Pull requests write permissions, installation
+on this repository, and `RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` Actions secrets. Enable Allow
+auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace the App token
+without accounting for that boundary. Missing secrets do not constitute a successful release run.
 
-## Weekly release
+## Inspect and publish
 
-`.github/workflows/weekly-release.yml` does the routine release above every Thursday at 07:53 UTC
-(or when dispatched). `scripts/weekly-release.mjs` skips the week unless the current version is
-already tagged, the diff since that tag touches shipped paths (`src/`, `electron/`, `public/`,
-`index.html`, `package.json`, `bun.lock`, `vite.config.ts`) and changelog entries are pending.
-Otherwise it bumps the patch, runs `release:prepare` and writes `docs/releases/<version>.md` from
-the pending changelog bullets. The workflow opens `release/<version>` as a pull request and enables
-squash auto-merge, so the normal required checks gate it. An open `release/*` pull request also
-skips the week; edit its notes there before the checks finish if they need rewording.
+Use the pinned tools from [CONTRIBUTING](../../CONTRIBUTING.md) and authenticated `gh`; set `GH_PATH`
+if needed. The helper uses existing credentials and never runs an installer over a working profile.
 
-It authenticates as a GitHub App, because pull requests and pushes made with `GITHUB_TOKEN` start
-no workflows: CI would never run and the merge would not start the Release tag workflow. One-time
-setup:
+- `bun run release draft <version>` waits for exact-commit CI/Security and native builds, reuses
+  only the correctly positioned tag, and prints a draft URL without publishing.
+- `bun run release verify <version>` checks a draft or published release without publishing.
+- `bun run release publish <version> --windows-linux-only --notes path/to/notes.md` freshly verifies
+  every official asset and publishes the beta. It rejects extra assets; a draft containing local
+  macOS packages needs the separate manual verification below.
 
-1. Create a GitHub App owned by the maintainer account (Settings, Developer settings, GitHub Apps,
-   New GitHub App). Any name and homepage URL; untick Webhook. Repository permissions: Contents
-   read and write, Pull requests read and write. Install it only on this repository.
-2. Generate a private key on the App's page and note its App ID.
-3. In this repository's Actions secrets, add `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` (the
-   whole `.pem` file).
-4. In the repository's general settings, enable "Allow auto-merge".
+Retained reports are under `artifacts/releases/`. Publication repeats verification and rejects
+assets replaced during verification. Failure or an expired wait is not permission to bypass a gate.
+Only exact tag/commit provenance is acceptable; `git describe` or a nearby checkout is insufficient.
+Attestations and checksums identify bytes and their build source, not application signing.
 
-Without the secrets the workflow only warns. The macOS packages remain a local step after each
-release (below); skipping them leaves Mac users on the previous manual-update package.
+## Native and human evidence
 
-## Maintainer commands
+Dispatch `gh workflow run electron-e2e.yml --ref <branch>` for pre-merge hosted package/interaction
+checks. Isolated profiles and fixture-backed services do not prove physical touch, real microphone/
+camera, screen-reader, live provider/relay or managed-device behaviour. Use the
+[manual checklist](../WEBSITE_TEST_CHECKLIST.md) on the actual candidate and keep outstanding
+[redesign acceptance](https://github.com/TJ7755/Lacuna/issues/456#issuecomment-6246871342) explicit.
 
-For pre-merge package evidence without tagging or publishing, dispatch `electron-e2e.yml` on
-the preparation branch. It builds unsigned Windows, Linux and macOS packages, runs the packaged
-interaction suite on each, and checks native AI on Windows/macOS plus the macOS study smoke.
-These hosted checks do not replace the physical managed-device or signing/notarisation matrix.
+For persistence, packaging or updater changes, retain the isolated historical-profile upgrade and
+actual updater-download evidence. Public feed discovery can only be established after publication;
+a private draft is not an update-feed test. Use a disposable installation, never the maintainer's
+working profile. Electron AI verification needs its configured port free so another server cannot
+stand in for the intended build. Companion relaunch during Windows installation is a separate risk.
 
-Use Node 24, the pinned Bun version and an authenticated GitHub CLI (`gh auth login`, or an
-existing `GH_TOKEN`). Set `GH_PATH` to the executable path when `gh` is not on PATH. Git uses
-the maintainer's existing credentials; the helper does not store credentials or change remotes.
+## Browser CI gate
 
-- `bun run release draft <version>` resolves the canonical repository's default branch, checks its
-  version, waits for successful **exact-commit** CI and Security push runs, pushes the version tag
-  if it does not exist, waits for the native builds, and prints the draft URL. It never publishes.
-  The local checkout may remain on a feature branch; no checkout, reset or stash is performed.
-- `bun run release publish <version> --windows-linux-only --notes path/to/release-notes.md`
-  freshly downloads and verifies the eight official assets before publishing the beta, and
-  appends the unsigned/platform/update scope to the notes. It refuses extra assets, so a draft
-  containing macOS packages must follow the manual platform verification below. The release
-  workflow runs this same command.
-- `bun run release verify <version>` inspects without publishing. It works on drafts and
-  published releases. Reports and downloaded assets remain in ignored
-  `artifacts/releases/v<version>/verification-*` directories.
+Four functional Chromium shards use two workers each. The unchanged image-advance measurement
+and frame-sensitive sidebar checks run serially in one timing job with one worker; mobile WebKit
+has its own job. CI selects `chromium-functional` for shards and `chromium-image-performance` plus
+`chromium-sidebar-motion` for timing from `tests/config/playwright.web.ci.config.ts`. Together these
+cover ordinary Chromium tests exactly once. Each job retains evidence; `browser-smoke` fails if
+any functional shard, timing job or mobile job fails. Isolation removes competing test work; it
+does not establish that a product performance regression is fixed.
 
-Each report records the commit, SHA-256 checks, updater sizes and SHA-512 hashes, Windows
-block-map structure and provenance result. Attestations must match this repository's release
-workflow, exact tag and commit. Publication repeats verification rather than trusting an old
-report, and rejects asset replacements observed during verification. No command runs an installer
-or touches an installed user profile.
+## macOS manual packages
 
-The commands stop on failed workflows and wait at most 45 minutes per gate. Fix or rerun the
-failed workflow in Actions, then repeat the command. An existing remote tag is reused only when
-it names the expected commit; tags are never moved.
-
-A tag created with `GITHUB_TOKEN` does not start push workflows
-([GitHub documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)),
-so the Release tag workflow starts the build with `workflow_dispatch` on the new tag, which that
-token may trigger. The dispatched run's `GITHUB_REF` is the tag, so trigger integrity and
-attestation source refs are unchanged. No new secret or scheduled watcher is needed.
-
-### Updating action pins
-
-Release, CI and Security workflow actions use full commit SHAs with a same-line version comment.
-The existing weekly `github-actions` Dependabot group can propose updates. Review the action's
-upstream release and diff, confirm the proposed SHA resolves to its documented version tag, and
-run the workflow policy test before merging. Annotated tags resolve first to a tag object: use
-the peeled commit (`refs/tags/<version>^{}`) for the `uses:` reference. Keep the version comment
-beside the SHA so Dependabot can identify the release. Run the normal CI and Security gates;
-for release actions, retain a native build and draft verification before publishing.
-
-### Evidence that still needs platform testing
-
-Automated asset verification proves that updater metadata identifies the verified installer;
-it does not prove installer execution, old-profile compatibility or the public update feed.
-For changes to persistence, packaging or updates, retain the isolated old-version profile upgrade
-and live updater download checks before considering the release validated. A draft is not visible
-to the normal public updater, so public discovery can only be tested after publication. Never run
-an installer over the maintainer's working installation to obtain this evidence. The existing
-Windows AI companion shutdown issue must also be considered when testing installation.
-
-The release workflow runs the existing normal-motion packaged interaction test on Windows before
-attestation/upload and retains its `test-results` artefact. It checks the real packaged app, clean
-shutdown and renderer errors. A separate native Windows gate installs the hash-pinned previous
-release from `scripts/windows-release-baseline.json`, records a study answer in an isolated profile, downloads the release through the installed
-updater using a loopback feed, silently installs it, and checks
-that course, lesson, card and review records survive unchanged and automatic update mode remains enabled.
-Ordinary CI also tests upgrading 0.2.7 with a long-running AI companion.
-
-### Why this is faster
-
-The helper removes manual CI polling, tag coordination, individual downloads, provenance commands
-and updater hash comparisons. The release verifier also avoids installing dependencies and
-rebuilding web assets: the exact-commit `production` CI job already enforces that asset budget.
-Required CI and Security gates remain intact. Native build time and platform checks still apply;
-no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
-Browser CI runs functional Chromium tests in two Playwright shards with two workers each.
-The original-sized image-advance measurement runs in a separate job with one worker and no
-concurrent functional test on that runner. CI explicitly selects `chromium-functional` or
-`chromium-image-performance` from `tests/config/playwright.web.ci.config.ts`; together they cover
-all tests in the normal `chromium` project exactly once. The ordinary
-`bun run test:e2e:web -- --project=chromium` command still includes the image measurement.
-The focused iPhone-sized WebKit smoke suite runs in one worker. Each job preserves its failure
-evidence. The existing required `browser-smoke` check fails if either Chromium shard, the image
-measurement or the WebKit job fails. Isolation removes competing test work; it does not establish
-that a product performance regression has been fixed.
-
-## Signing policy
-
-Maintainer decision, 6 September 2026: the limited beta may continue with explicitly unsigned
-desktop packages. Windows and macOS application signing is required before wider school rollout,
-including notarisation for macOS. This closes the policy decision; it does not claim that certificates,
-credentials or signed builds already exist.
-
-Until that gate is met, retain the beta/pre-release designation and the documented manual-update
-behaviour for unsigned macOS. Windows NSIS and Linux AppImage retain their existing updater paths;
-Windows portable and Linux DEB remain manual updates. A wider rollout requires evidence from the
-actual signed release artefacts as well as the existing data-durability and device gates.
-
-## Controlled rollout
-
-- Initial testing: clean and restored historical profiles on Windows and macOS.
-- Limited pupil beta: confirmed backup routine, diagnostics and a named support channel.
-- Wider school rollout: two weeks without unresolved data-loss, startup or installation P0s,
-  signed Windows and macOS releases, and macOS notarisation.
-
-For each pilot user, make backup status visible and explain how to export a full backup.
-These gates do not claim that device verification or signing has already passed.
-
-## Trigger integrity
-
-The workflow accepts tags matching `v*`, then rejects the run unless both conditions hold:
-
-- the tag is exactly `v<version from package.json>`; and
-- that exact tag resolves to `GITHUB_SHA` as a commit.
-
-The verifier fetches tag history and uses the fully qualified `GITHUB_REF`, so annotated and
-lightweight tags are both compared with the event commit rather than with a nearby or merely
-version-shaped tag. Do not weaken this to `git describe` or a checkout-only `HEAD` comparison;
-neither proves that the exact release tag names the workflow commit.
-
-## Verification and native builds
-
-The verifier requires successful ordinary CI and Security push workflows for the exact tagged
-commit on master or main. Those workflows cover root typechecking, lint, all unit shards and
-coverage, the canonical release scenario, browser end-to-end tests, relay checks and standalone
-AI MCP checks. The release verifier reuses that evidence rather than running those suites again.
-Root typechecking and lint cover the Playwright suites and web performance audit used by these
-gates; the typecheck job installs relay dependencies because browser fixtures import its handler.
-The ordinary production job also builds assets and enforces the performance budget, so the release
-verifier needs no dependency installation or repeated web build. Windows and Linux still build natively in Actions; macOS
-builds and package checks run locally on Apple Silicon.
-
-Ordinary CI still requires both root and relay installations: the AI MCP test suite imports the
-real relay handler and store. Do not add an unlocked installation inside `tooling/lacuna-ai-mcp`.
-
-The package matrix is:
-
-| Job     | Official runner                 | Packages              | Native AI gate |
-| ------- | ------------------------------- | --------------------- | -------------- |
-| Windows | `windows-latest` x64            | NSIS and portable EXE | Yes            |
-| Linux   | `ubuntu-latest` x64             | AppImage and DEB      | No             |
-| macOS   | Maintainer Apple Silicon device | DMG and ZIP           | Yes            |
-
-The macOS packages are explicitly unsigned: the local build disables certificate auto-discovery
-with `CSC_IDENTITY_AUTO_DISCOVERY=false`. They are not notarised and remain manual-update packages.
-The local run is physical Apple Silicon evidence, but it has no GitHub Actions OIDC provenance.
-
-Each GitHub build uploads only its explicit release allowlist:
-
-- Windows: `*.exe`, `*.exe.blockmap`, and `latest.yml`;
-- Linux: `*.AppImage`, `*.deb`, and `latest-linux.yml`. Electron Builder 26 embeds the AppImage
-  block map in the AppImage itself; it does not produce a separate `*.AppImage.blockmap` file.
-
-Before attestation, a native PowerShell check on Windows and a Bash check on Linux require at least
-one file from every listed class. Aggregate glob success is not enough.
-
-Do not replace these lists with `release/*` or `release/**`. Electron Builder also writes unpacked
-applications, debug configuration and intermediate files into that directory. Uploading the whole
-directory would turn the release into a landfill and can collide on filenames.
-
-## Provenance and checksums
-
-Each GitHub native build job uses `actions/attest@v4` to create build-provenance attestations for the
-exact files in its upload allowlist. Those jobs have only `contents: read`, `id-token: write`,
-`attestations: write` and `artifact-metadata: write`; only the publisher receives `contents: write`.
-
-Before building release packages, the tag workflow requires successful ordinary `CI` and
-`Security` push workflows for the exact tagged commit on `master` or `main`. A tag created before
-those workflows finish fails closed and must be rerun after both succeed. The asset-budget check inside the release workflow is not a substitute for those completed workflows.
-
-After both GitHub package jobs pass, the draft publisher downloads their named workflow artefacts and
-writes `SHA256SUMS-github.txt`. The publisher attests that manifest separately before adding it to
-the draft. An attestation proves which GitHub workflow and commit produced a file with that digest.
-It does not sign the application with an Apple or Microsoft identity.
-
-The Electron AI command builds renderer assets and serves them through Vite preview on
-`http://localhost:5173`. Its asset check compares the loaded script with `dist/index.html`;
-the port must be free so a development server cannot stand in for that build.
-
-CI first packages an unsigned macOS app and runs `test:e2e:electron-macos-smoke` against it.
-That required gate checks `app:` launch, IndexedDB course persistence after reload and a
-seeded study answer. It uses the host architecture and does not replace signing or notarisation.
-
-These Electron specs skip on Linux, and CI runs them only for pull requests into `master`.
-To run them for another branch or tag, including branches CI does not cover, dispatch the
-`Electron e2e` workflow on it (Actions, or `gh workflow run electron-e2e.yml --ref <branch>`).
-The branch must already contain the workflow file. It runs `test:e2e:electron-ai` on Windows
-and macOS and the packaged macOS smoke gate, and uploads `test-results/` from each.
-
-On the exact release commit, the macOS operator runs:
+On Apple Silicon at the exact release commit:
 
 ```bash
 bun install --frozen-lockfile
@@ -256,28 +82,29 @@ shasum -a 256 \
   "release/Lacuna-${release_version}-arm64.dmg.blockmap" \
   "release/Lacuna-${release_version}-arm64-mac.zip" \
   "release/Lacuna-${release_version}-arm64-mac.zip.blockmap" \
-  release/latest-mac.yml \
-  > release/SHA256SUMS-macos.txt
+  release/latest-mac.yml > release/SHA256SUMS-macos.txt
 ```
 
-After the Actions workflow has created the draft, upload those six local files to the matching
-`v${release_version}` tag with `gh release upload`, listing each file explicitly. The workflow
-deliberately preserves draft assets it does not own, so
-a rerun does not delete the local macOS files. `SHA256SUMS-macos.txt` provides an integrity check,
-not provenance: neither it nor the macOS artefacts can pass `gh attestation verify`.
+Upload those six files explicitly with `gh release upload` to the matching draft after Actions has
+created it. The local manifest provides integrity, not GitHub build provenance. Verify the GitHub
+assets and their manifest separately with `gh attestation verify PATH_TO_ASSET -R TJ7755/Lacuna`
+and the appropriate SHA-256 tool. Release automation preserves local macOS assets and refuses to
+replace a published release. Never broaden uploads to `release/**`: it contains intermediates and
+unpacked applications. The exact allowlists live in the workflow and
+[release asset verifier](../../scripts/release-assets.mjs).
 
-After downloading a draft asset, verify its provenance with the GitHub CLI:
+## Signing and rollout policy
 
-```bash
-gh attestation verify PATH_TO_ASSET -R TJ7755/Lacuna
-```
+Maintainer decision, 6 September 2026: explicitly unsigned packages may serve the limited beta.
+Windows/macOS signing and macOS notarisation are required before wider school rollout. Hashes,
+provenance and unsigned native checks do not satisfy this gate.
 
-Verify `SHA256SUMS-github.txt` the same way, then compare the downloaded Windows and Linux files
-with it using the platform's SHA-256 tool. Compare the macOS files with
-`SHA256SUMS-macos.txt` separately. The workflow overwrites its own draft assets but preserves local
-macOS assets, and refuses to overwrite an already published release.
+Initial testing uses clean and historical profiles. A limited pupil beta needs a confirmed backup
+routine, diagnostics and a named support channel. Wider rollout additionally needs two weeks
+without unresolved data-loss, startup or installation P0s and evidence from the actual signed
+release artefacts. Keep manual-update behaviour and platform scope explicit for each release.
 
-Repository plan, branch protection, required checks and release-review rules are GitHub settings.
-They cannot be proved by this checkout. See the [governance record](governance.md) for dated API
-verification, the distinction between preparing a draft and approving publication, and remaining
-policy decisions.
+Action pins use full commit SHAs with version comments. For updates, verify the upstream release
+and peeled commit for annotated tags, run the existing workflow policy checks, and retain native
+build/draft verification where release actions change. GitHub enforcement is inspected through
+[repository governance](governance.md), not inferred from this file.

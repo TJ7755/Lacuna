@@ -1,40 +1,19 @@
-# 6. FSRS-6 engine wrapper (`src/fsrs/fsrs.ts`)
+# Scheduling model boundaries
 
-A thin, pure translation layer over `ts-fsrs`. **No memory maths is implemented by hand.**
+The [FSRS wrapper](../../src/fsrs/fsrs.ts) delegates real long-term memory-state transitions to
+`ts-fsrs`. [Parameters](../../src/fsrs/params.ts) own defaults, bounds and model constants.
+Keep package/model version claims tied to those sources.
 
-- `makeEngine(params)` builds an FSRS-6 scheduler: `fsrs({ w, request_retention,
-enable_short_term: true })`.
-- `decayOf(params) = -params.w[20]` — the (always negative) forgetting-curve decay exponent.
-- `toTsCard(card, now)` / `fromTsCard(ts, now)` map between Lacuna's persisted card shape
-  and ts-fsrs's; a never-reviewed card becomes a fresh `createEmptyCard` so ts-fsrs applies
-  the correct initial-stability/difficulty path.
-- `applyReview(engine, card, grade, now)` returns the new memory state plus the
-  retrievability at the instant of review (`get_retrievability`, `null` on a first review),
-  via `engine.next`.
+Exam-day projections and named assessment revision are additional layers, not replacements for
+the real review transition. The short-term predictor's validity and transfer limits belong to its
+[benchmark](../../tooling/short-term-memory/BENCHMARK.md); an invalid or unsupported prediction
+uses the explicit ordinary-Practice fallback instead of inventing confidence.
 
-Constants (`src/fsrs/params.ts`): `FSRS_VERSION = 6`; default weights and request retention
-from ts-fsrs; target retention is user-clampable to **[0.80, 0.97]** (default = ts-fsrs
-default); difficulty bounds `[1, 10]`; `MASTERY_R = 0.90`; `MS_PER_DAY = 86_400_000`.
+Primed answers still update FSRS but do not establish an independent spaced retest. Preserve the
+primed marker and its legacy interpretation when changing review conversion or portability.
+See [primedReview](../../src/fsrs/primedReview.ts) and the [study contract](learn-mode.md).
 
-**On the algorithm version (honesty note).** Lacuna uses FSRS-6 because that is what
-`ts-fsrs` exposes — not because it is the newest FSRS in existence (FSRS-7 exists). Copy
-and comments are pinned to "the version ts-fsrs ships", not to "the newest". Also, FSRS
-has **no short-term memory model** of its own. Lacuna composes the benchmark-selected
-`half-life-logistic-v3-routed` predictor (routed handover: success/no-outcome/first-review
-21,600→86,400 s [6 h→24 h], failure 345,600→432,000 s [96 h→120 h], FSRS-6 only from 604,800 s
-[7 days]; frozen coefficients unchanged from v1, which failed multi-day transfer and was
-conservatively retreated — no-regression gate passes only against the fractional-day FSRS-6 the
-runtime uses) with FSRS-6 for assessment revision (§10); FSRS still owns every
-real long-term state transition. Invalid model data falls back explicitly to ordinary Practice and
-the UI makes no short-horizon confidence claim in fallback. A single card the model cannot score
-(for example, exposed but never reviewed) does not demote the pool: scorable cards are still
-ranked, and unscorable ones are served in objective order once no ranked card is selected.
-
-**Primed answers.** An answer recorded within 10 minutes of an earlier answer to the same card in
-the same session is stored with `primed: true` (`src/fsrs/primedReview.ts`). It still updates FSRS
-as normal. A card whose every answer after its first is primed has not cleared a spaced retest, so
-the short-term predictor treats it as unsupported and is served by the same fallback until it does.
-Legacy history without the flag counts as unprimed.
-
+Time semantics must be established from the current wrapper, horizon and training code. The
+previous proposal for a configurable global study-day clock was deferred, not delivered.
 
 [Specification index](../SPEC.md)

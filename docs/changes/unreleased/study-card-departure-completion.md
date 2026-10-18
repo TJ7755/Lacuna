@@ -1,1 +1,0 @@
-- Retain outgoing study cards through their final rendered departure position before removing them, preventing intermittent early disappearance after grading.

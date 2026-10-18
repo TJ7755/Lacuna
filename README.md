@@ -74,8 +74,8 @@ see [desktop and AI setup](docs/desktop.md).
 
 ## Documentation
 
-- [Documentation index](docs/README.md): current contracts, operating procedures and measurements.
-- [Specification](docs/SPEC.md) and [domain language](docs/domain-language.md): delivered behaviour.
+- [Documentation index](docs/README.md): source entry points, constraints, procedures and measurements.
+- [Specification](docs/SPEC.md) and [domain language](docs/domain-language.md): intent and boundaries; source and tests own behaviour.
 - [GitHub issues](https://github.com/TJ7755/Lacuna/issues): active work.
 - [Changes](docs/CHANGES.md): release history and unreleased work.
 - [Release maintenance](docs/maintenance/release.md), [security](SECURITY.md) and

@@ -1,1 +1,0 @@
-- Closing a course archive confirmation immediately disables its departing controls and focus trap while preserving the visual exit; reopening during that exit restores confirmation focus.

@@ -1,1 +1,0 @@
-- Reduce study startup delays by batching review-history reads and warming study code while the session preview is open. Decode only the next two likely cards' images in the background, without delaying the current card or changing session order.

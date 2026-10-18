@@ -1,1 +1,0 @@
-- Fixed repeated course titles after a course loads: persistent navigation now observes titles that arrive asynchronously and hides its duplicate while the page heading is visible.

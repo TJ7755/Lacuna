@@ -1,1 +1,0 @@
-- Give study-card exits a deliberate accelerating departure, preserve bounded flick momentum, and let incoming cards settle with a slower spring without bounce.

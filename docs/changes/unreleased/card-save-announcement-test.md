@@ -1,1 +1,0 @@
-- Keep the card-save announcement regression focused on the live Saved message alongside the new added-card counter.

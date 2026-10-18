@@ -1,1 +1,0 @@
-- Added the validated, read-only exam specification catalogue format with tier, route, paper, assessment objective and command word support; no entries ship yet (#550).

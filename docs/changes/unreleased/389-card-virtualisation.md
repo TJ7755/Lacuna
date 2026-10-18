@@ -1,1 +1,0 @@
-- Recalculate virtual card-list ranges when surrounding content changes size, keeping off-screen lessons bounded before the learner scrolls. (#389)

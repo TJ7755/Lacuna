@@ -1,1 +1,0 @@
-- Move Today's sync status into the header beside the stats, replacing the full-width banner with a quiet indicator while keeping failed and pending first syncs visibly labelled.

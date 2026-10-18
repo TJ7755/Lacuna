@@ -1,1 +1,0 @@
-- Study: an image on a card is centred beneath the card's centred text, instead of sitting at the left edge.

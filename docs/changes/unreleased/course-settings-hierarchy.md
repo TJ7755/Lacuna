@@ -1,1 +1,0 @@
-- Clarify course settings hierarchy with spacing and modest indentation instead of separators between disclosure rows and above Advanced practice timing.

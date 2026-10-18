@@ -27,6 +27,28 @@ The standalone AI MCP tool intentionally uses the root installation: it has no s
 CI does not install from that directory. Run its checks from the repository root after the root
 install has completed.
 
+## Finding code and delegating work
+
+Use the small [entry-point index](docs/README.md), then read the owning source, callers and tests.
+Discover filenames before guessing paths: `rg --files src tests | rg 'apkg|share|lineage'`, then
+`rg -n 'symbol' <existing-directory>`. Read issue titles first, then selected bodies and their parent
+briefs; avoid dumping an entire issue queue or unrelated files into context.
+
+A delegated brief names the repository/worktree, base and candidate commits, permitted files,
+relevant tests, and neighbouring ownership. Supply existing absolute paths for local evidence,
+especially across repositories; verify them before dispatch. A worktree starts from committed
+source and does not inherit a parent's uncommitted evidence. Do not put private-machine paths in
+public project documentation.
+
+For concurrent browser validation, stage intended new files and run
+`PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --project=chromium <spec>`.
+Each run builds once into `artifacts/browser-checks/run-*/dist`, refuses an occupied port, and
+retains source identity, dirty patch fingerprint, HTML/JSON reports and test evidence beside it.
+A failed build/test or changed source fails the command. A dirty run identifies the local candidate,
+not a clean-commit release pass. Delete old run directories when their evidence is no longer needed.
+The ordinary web/CI commands retain their existing configuration; a different port alone does not
+isolate their build output. Keep Electron builds in a separate checkout from active web verification.
+
 ## Required checks
 
 Run the checks relevant to the files you changed. A release, dependency, persistence, synchronisation,
@@ -79,8 +101,10 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
-Pull requests that change only documentation skip the heavy CI jobs; the required checks still report
-as passing. A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
+Pull requests that change only documentation skip the heavy CI jobs. The documentation job always
+checks repository file links and changelog fragments; its result feeds the required aggregate test
+gate. Run `bun run docs:check` and `bun run changelog:check` locally after documentation changes.
+A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
 is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository root. Markdown under
 `src/`, `tooling/` or `public/` is not, because code consumes it. Pushes to master always run everything.
 The rule lives in `scripts/ci-change-scope.mjs`.
@@ -128,6 +152,14 @@ Use the pull request template. Screenshots are required for material UI changes.
 conversations and obtain one approving human review before merging risk-bearing work. Branch
 protection, required checks and CODEOWNERS are repository controls; a green local run does not replace
 them.
+
+## Security maintenance
+
+[Security automation](.github/workflows/security.yml) owns audit workspaces and configuration.
+High/critical findings fail the gate; moderate findings remain visible rather than being hidden
+by blanket ignores. Review scheduled output and current advisory evidence before beta releases.
+Static analysis, provenance and checksums do not replace native behaviour or signing evidence.
+Inspect GitHub enforcement through [governance](docs/maintenance/governance.md).
 
 ## Dependency updates
 
