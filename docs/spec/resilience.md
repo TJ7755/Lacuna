@@ -1,37 +1,25 @@
-# 16. Persistence, seeding & resilience
+# Recovery boundaries
 
-- UI reads use Dexie `useLiveQuery` hooks (`src/state/useData.ts` and course-specific hooks) so
-  the interface reacts to writes automatically. Non-React callers use the plain async queries in
-  `src/db/read.ts`. Assessment details resolve all course assessments from one read transaction
-  over assessments, lessons, cards and lesson links; coverage does not hydrate review histories.
-  Course diagnostic counts use indexed counts rather than materialising cards.
-- On first run a small, deletable **demo course** (with lessons, notes and cards) is
-  seeded (`seedIfFirstRun`, `src/db/seed.ts`).
-- A daily restore point is taken in the background after seeding.
-- **Error boundaries** at the app, page and Learn-session levels keep a failure
-  in one area from blanking the whole app. Their fallback receives focus on its heading and leads
-  with **Try again**. The raw error and a **local-only diagnostic bundle**
-  (`src/db/diagnostics.ts`) wait under **Technical details**: "Copy diagnostic details" /
-  "Download diagnostic bundle" assemble the error and stack, app version
-  (`__APP_VERSION__`), browser/UA, and deck/card/review/backup counts, plus
-  course/lesson/note/lessonCard/practiceNode/courseAssessment/sequence/occlusion/revisionPlan
-  counts when the
-  course tables contain data. Card content is **excluded by default**; including
-  a small sample is a separate, explicit opt-in. Nothing is transmitted — the
-  bundle is the user's to paste into a bug report. A failed copy says so beside the buttons.
-- **Storage-quota warning** (`src/hooks/useStorageQuotaWarning.ts`): polls the Storage API on a
-  long interval and surfaces a non-blocking toast when the database is approaching its quota,
-  with an **Open backups** action that jumps to the Settings backup area.
-- **PWA service worker:** production HTTP(S) pages register `/sw.js`. The install shell precaches
-  the eager application assets and the named shared modules needed by the Cards spine; visited
-  content-hashed scripts, workers and styles use bounded Cache First stores. Stale-chunk recovery
-  probes the origin before clearing worker/cache state and reloading, and never performs that
-  recovery after an offline preload failure. The packaged Electron app uses `app://` and does not
-  register a browser service worker. These are current implementation contracts, not v0.0.2
-  release-history claims.
-- Migrations live in `src/db/migrations.ts`; the schema is versioned in
-  `src/db/schema.ts`, and every upgrade is fronted by a pre-migration restore
-  point (§13).
+[Schema](../../src/db/schema.ts), [pre-migration snapshots](../../src/db/preMigrationSnapshots.ts)
+and [backups](../../src/db/backups.ts) own durability. Database upgrades take their safety snapshot
+before rewriting data; failure to save it blocks the upgrade. See the
+[historical compatibility boundary](../storage-v22-compatibility.md).
 
+Reads remain reactive to repository writes. A failed page or study session must offer useful
+retry/return actions while retaining recoverable work, rather than blanking the app or erasing a
+draft. Quota/startup errors must make backup recovery reachable.
+
+Diagnostic bundles are local and exclude Card content by default. Including sample content is a
+separate opt-in; copying or downloading diagnostics does not authorise transmission.
+
+[Route loading](../../src/routes/) and [PWA recovery](../../src/pwa/) own bounded stale-module
+recovery. A first failed route import requests a guarded reload; a recurring failure can escalate
+through the shared probe/cache-clear path. Vite preload events and route failures share the recovery
+cooldown. Confirm network availability before clearing offline assets. Speculative loads and
+repeated failures must not create an unbounded reload loop. Packaged `app://` operation has no
+browser service worker; do not assume web cache recovery proves native behaviour.
+
+Use [current tests](../../tests/e2e/) to establish retry, offline and recovery sequences on the
+actual candidate. Historical successful runs cannot establish a newer candidate's durability.
 
 [Specification index](../SPEC.md)

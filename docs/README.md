@@ -1,44 +1,38 @@
-# Documentation
+# Working in Lacuna
 
-Start with the [project overview](../README.md) and [contributor guide](../CONTRIBUTING.md).
-Keep current contracts and operating procedures here. Completed plans, audits and
-superseded screenshots are available in Git history; they are not an implementation queue.
+Use source, tests and configuration to establish current behaviour. These pages retain decisions,
+non-obvious boundaries and operator procedures. [CONTRIBUTING](../CONTRIBUTING.md) owns validation
+and review policy; [SPEC](SPEC.md) indexes the remaining constraints. Read the relevant section,
+not the entire documentation tree.
 
-## Current references
+## Difficult entry points
 
-| Document | Purpose |
-| --- | --- |
-| [Specification](SPEC.md) | Delivered behaviour at the development head. |
-| [Domain language](domain-language.md) | Canonical terminology for Cards, Questions and Concepts. |
-| [Changes](CHANGES.md) | Release history and unreleased changes. |
-| [Browser checklist](WEBSITE_TEST_CHECKLIST.md) | Manual browser release verification. |
-| [Performance](PERFORMANCE.md) | Measurement procedures and budgets. |
-| [FSRS time semantics](architecture/fsrs-time-semantics.md) | Scheduling time boundaries. |
-| [Storage compatibility](storage-v22-compatibility.md) | Supported imports and historical migration boundaries. |
-| [Scientific assessment](scientific-assessment.md) | Evidence, assumptions and limits of learning claims. |
-| [Desktop and AI setup](desktop.md) | Packages, updates and companion registration. |
+- Course path and access: [CoursePath](../src/pages/CoursePath.tsx),
+  [lessonViewMode](../src/course/lessonViewMode.ts), [path tests](../src/course/path.test.ts).
+- Imports and published updates: [share](../src/db/share.ts), [mergeImport](../src/db/mergeImport.ts),
+  [lineage tests](../src/db/lineageDiff.test.ts). Course files wrap the same share payload.
+- Generated Concept identity: [Sequence](../src/db/sequenceRepository.ts),
+  [Occlusion](../src/db/occlusionRepository.ts), and ordinary share import above are all writers.
+- Study selection and evidence: [useLearnSession](../src/pages/learn/useLearnSession.ts),
+  [session tests](../src/fsrs/session.test.ts), [Question repositories](../src/questions/repository.ts).
+- Desktop security and transport: [securityPolicy](../electron/securityPolicy.ts),
+  [MCP build](../electron/mcp/build.mjs), [native tests](../tests/e2e-electron/).
 
-## Maintenance
+## References
 
-- [Release maintenance](maintenance/release.md): packaging, provenance, signing and device checks.
-- [Security maintenance](maintenance/security.md): dependency audits and static analysis.
-- [Repository governance](maintenance/governance.md): dated verification of GitHub controls.
-- [Security reporting](../SECURITY.md): vulnerability reporting policy.
-- [Engineering notes](maintenance/engineering-notes.md): specialist implementation pitfalls.
+- [Domain language](domain-language.md) and [engineering pitfalls](maintenance/engineering-notes.md).
+- [Desktop and AI setup](desktop.md), [release procedure](maintenance/release.md),
+  [repository policy](maintenance/governance.md), [security reporting](../SECURITY.md).
+- [Manual release checks](WEBSITE_TEST_CHECKLIST.md), [performance measurement](PERFORMANCE.md),
+  [compatibility boundary](storage-v22-compatibility.md), [scientific limits](scientific-assessment.md).
 
-## Work and evidence
+[Issues](https://github.com/TJ7755/Lacuna/issues) own unfinished work, including
+[redesign acceptance](https://github.com/TJ7755/Lacuna/issues/456#issuecomment-6246871342).
+[Release history](CHANGES.md), [earlier releases](archive/changes-through-0.2.7.md) and
+[dated measurements](performance/) are records, not current implementation instructions.
+Completed plans and superseded captures remain in Git history.
 
-[GitHub issues](https://github.com/TJ7755/Lacuna/issues) and
-[pull requests](https://github.com/TJ7755/Lacuna/pulls) track active work. A historical task list
-does not authorise implementation. Release and rollout gates live in
-[release maintenance](maintenance/release.md).
-
-[Performance measurements](performance/) retain dated baselines and their reproduction steps.
-[Change history through v0.2.7](archive/changes-through-0.2.7.md) remains part of the release record.
-Date verification claims and record test results against the commit actually tested.
-The [17 October redesign validation register](validation/2026-10-17-redesign.md) separates
-candidate-specific checks from the remaining human and device sign-off.
-
-When changing behaviour, update the relevant `spec/` section and the recent changelog; keep
-`SPEC.md` as the index. Update the relevant operating procedure when a release or rollout
-decision changes.
+Change behaviour in code and meaningful tests. Update a retained decision or procedure when that
+changes, and add an [unreleased fragment](changes/unreleased/README.md). Avoid copying record
+shapes, dependency versions, commands already listed in the manifest or transient PR/check status.
+`bun run docs:check` checks relative file links; it does not prove the prose true.

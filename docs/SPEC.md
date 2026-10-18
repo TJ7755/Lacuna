@@ -1,38 +1,17 @@
-# Lacuna specification
+# Product constraints
 
-Delivered behaviour at the development head. [GitHub issues](https://github.com/TJ7755/Lacuna/issues)
-track remaining work; [changes](CHANGES.md) records release history. Historical plans do not
-override these contracts.
+Source and executable tests establish current behaviour. These short references retain intent,
+ownership and non-obvious constraints; they are not a second implementation manual. The
+[entry-point index](README.md) and [domain language](domain-language.md) help locate code.
+Open work belongs in [issues](https://github.com/TJ7755/Lacuna/issues).
 
-Lacuna is a local-first, exam-driven FSRS-6 application organised into courses, lessons,
-notes and recall Cards. Questions have independent evidence and scheduling. Core study data
-lives in IndexedDB; optional sync and external web AI use the relay. Built-in AI sends selected
-content through the web deployment to a hosted model; local tools and approvals stay on the device.
-Legacy Deck/Folder types support
-historical migrations, while current scheduling uses scheduling units.
-
-Read the section relevant to the change, alongside the [domain glossary](domain-language.md).
-Section numbers are retained for existing references. The historical v0.0.2/v0.0.3 notes
-previously duplicated here remain in the [changelog](CHANGES.md).
-
-| Section | Contract |
-| --- | --- |
-| 1 | [Guiding principles](spec/principles.md) |
-| 2 | [Technology stack](spec/technology.md) |
-| 3 | [Visual design](spec/visual-design.md) |
-| 4 | [App layout and navigation](spec/navigation.md) |
-| 5 | [Data model](spec/data-model.md) |
-| 6 | [FSRS engine](spec/fsrs.md) |
-| 7 | [Forward simulation](spec/forward-simulation.md) |
-| 8 | [Exam objective](spec/exam-objective.md) |
-| 9 | [Eligibility and study pools](spec/eligibility.md) |
-| 10 | [Learn mode](spec/learn-mode.md) |
-| 11 | [Cards and authoring](spec/cards.md) |
-| 12 | [Courses and card management](spec/course-management.md) |
-| 13 | [Import, export and backups](spec/portability.md) |
-| 14 | [Search and analytics](spec/analytics.md) |
-| 15 | [Settings](spec/settings.md) |
-| 16 | [Persistence and resilience](spec/resilience.md) |
-| 17 | [Accessibility](spec/accessibility.md) |
-| 18 | [Keyboard shortcuts](spec/keyboard-shortcuts.md) |
-| 19 | [Electron desktop](spec/desktop.md) |
+- [Principles](spec/principles.md), [architecture](spec/technology.md).
+- [Visual intent](spec/visual-design.md), [navigation](spec/navigation.md),
+  [accessibility](spec/accessibility.md), [keyboard ownership](spec/keyboard-shortcuts.md).
+- [Data ownership](spec/data-model.md), [portability](spec/portability.md),
+  [recovery](spec/resilience.md).
+- [FSRS boundary](spec/fsrs.md), [projections](spec/forward-simulation.md),
+  [objectives and horizons](spec/exam-objective.md), [eligibility](spec/eligibility.md).
+- [Study](spec/learn-mode.md), [authoring](spec/cards.md), [course paths](spec/course-management.md),
+  [analytics](spec/analytics.md).
+- [Settings, sync and AI](spec/settings.md), [desktop authority](spec/desktop.md).

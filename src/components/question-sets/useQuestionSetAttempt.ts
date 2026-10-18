@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import { useBlocker } from 'react-router-dom';
 import {
   getQuestionSetAttempt,
@@ -13,15 +13,18 @@ import { QuestionSetAttemptSession } from './questionSetAttemptSession';
 export function useQuestionSetAttempt(courseId: string, setId: string, attemptId: string) {
   const [session, setSession] = useState<QuestionSetAttemptSession | null>(null);
   const [error, setError] = useState('');
+  const [missing, setMissing] = useState(false);
+  const [loadAttempt, retryLoad] = useReducer((value: number) => value + 1, 0);
   useEffect(() => {
     let cancelled = false;
     setSession(null);
     setError('');
+    setMissing(false);
     void getQuestionSetAttempt(attemptId)
       .then((record) => {
         if (cancelled) return;
         if (!record || record.courseId !== courseId || record.questionSetId !== setId) {
-          setError('This attempt could not be found.');
+          setMissing(true);
         } else setSession(new QuestionSetAttemptSession(record));
       })
       .catch((cause) => {
@@ -30,8 +33,8 @@ export function useQuestionSetAttempt(courseId: string, setId: string, attemptId
     return () => {
       cancelled = true;
     };
-  }, [courseId, setId, attemptId]);
-  return { session, error };
+  }, [courseId, setId, attemptId, loadAttempt]);
+  return { session, error, missing, retryLoad };
 }
 
 export function useAttemptProgress(session: QuestionSetAttemptSession, formDirty = false) {

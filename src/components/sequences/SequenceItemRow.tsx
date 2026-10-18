@@ -28,6 +28,7 @@ interface SequenceItemRowProps {
   onChange: (patch: Partial<SequenceItem>) => void;
   onGesture: (gesture: RowGesture) => void;
   onDelete: () => void;
+  onTabForward?: () => void;
   inputRef: Ref<HTMLTextAreaElement>;
 }
 
@@ -50,6 +51,7 @@ export function SequenceItemRow({
   onChange,
   onGesture,
   onDelete,
+  onTabForward,
   inputRef,
 }: SequenceItemRowProps) {
   const fieldRef = useRef<HTMLTextAreaElement | null>(null);
@@ -83,10 +85,15 @@ export function SequenceItemRow({
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.nativeEvent.isComposing) return;
+    if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) return;
     const field = e.currentTarget;
     const collapsed = field.selectionStart === field.selectionEnd;
     const plain = !e.ctrlKey && !e.metaKey && !e.altKey;
+    if (e.key === 'Tab' && plain && !e.shiftKey && onTabForward) {
+      onTabForward();
+      if (document.activeElement !== field) e.preventDefault();
+      return;
+    }
     let gesture: RowGesture | null = null;
     if (e.key === 'Enter' && plain && !e.shiftKey) {
       gesture = { kind: 'enter', caret: field.selectionStart };

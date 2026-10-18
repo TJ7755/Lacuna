@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { db } from '../db/schema';
@@ -15,41 +15,69 @@ import { QuestionSetPreview } from '../components/question-sets/QuestionSetPrevi
 import { QuestionSetDraftFeedback } from '../components/question-sets/QuestionSetDraftFeedback';
 import { Button } from '../components/ui/Button';
 import { ConfirmInline } from '../components/ui/ConfirmInline';
+import {
+  QuestionSetLoading,
+  QuestionSetUnavailable,
+} from '../components/question-sets/QuestionSetRouteState';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-composer.css';
 
 export function QuestionSetEditor() {
   const { courseId, setId } = useParams<{ courseId: string; setId: string }>();
   const course = useCourse(courseId);
-  if (!course) return <p className="p-8">Loading course…</p>;
+  if (!course) return <QuestionSetLoading />;
   if (!canEditLessons(course) || course.archived)
     return (
-      <p className="p-8">
-        This course is read-only.{' '}
-        <Link to={`/course/${courseId}/questions`}>Back to Questions</Link>
-      </p>
+      <QuestionSetUnavailable
+        title="This course is read-only"
+        backTo={`/course/${courseId}/questions`}
+      >
+        You can view its question sets, but cannot edit them here. Your saved drafts are kept.
+      </QuestionSetUnavailable>
     );
   return <PaperEditor key={`${courseId}:${setId}`} courseId={courseId!} setId={setId!} />;
 }
 function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
-  const { session, snapshot, loadError, blocker } = useQuestionSetEditor(courseId, setId);
+  const { session, snapshot, loadError, missing, retryLoad, blocker } = useQuestionSetEditor(
+    courseId,
+    setId,
+  );
   const navigate = useNavigate();
   const origin = questionSetReturn(useLocation().state, courseId);
   const [preview, setPreview] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState<{ message: string; run: () => void } | null>(null);
+  const editor = useRef<HTMLDivElement>(null);
+  const focusAfterRetry = useRef(false);
+  useEffect(() => {
+    if (!focusAfterRetry.current || !session || !snapshot?.draft) return;
+    focusAfterRetry.current = false;
+    if (document.activeElement === document.body)
+      editor.current?.querySelector('textarea')?.focus();
+  }, [session, snapshot?.draft]);
   const back = origin?.questionSetReturnTo ?? `/course/${courseId}/questions`;
+  if (missing)
+    return (
+      <QuestionSetUnavailable title="Question set not found" backTo={back}>
+        It may have been removed or belong to another course. Return to Questions to choose a set.
+      </QuestionSetUnavailable>
+    );
   if (loadError)
     return (
-      <div className="qs-editor">
-        <Link to={back}>← Questions</Link>
-        <p role="alert" className="qs-error">
-          {loadError}
-        </p>
-      </div>
+      <QuestionSetUnavailable
+        title="Could not open this question set"
+        backTo={back}
+        detail={loadError}
+        onRetry={() => {
+          focusAfterRetry.current = true;
+          retryLoad();
+        }}
+      >
+        The saved draft could not be read. Try again; your saved work has not been removed.
+      </QuestionSetUnavailable>
     );
-  if (!session || !snapshot?.draft) return <p className="p-8">Loading question set…</p>;
+  if (!session || !snapshot?.draft) return <QuestionSetLoading />;
   const content = snapshot.draft.content;
   const issues = validateQuestionSet(content);
   const busy = snapshot.phase === 'publishing' || snapshot.phase === 'loading';
@@ -84,6 +112,7 @@ function PaperEditor({ courseId, setId }: { courseId: string; setId: string }) {
         : '');
   return (
     <div
+      ref={editor}
       className="qs-editor qs-composer"
       onKeyDown={(event) => {
         if (

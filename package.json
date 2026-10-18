@@ -61,7 +61,9 @@
     "electron:build": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --config electron/electron-builder.yml --publish never",
     "electron:build:win": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --win --x64 --config electron/electron-builder.yml --publish never",
     "electron:build:linux": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --linux --x64 --config electron/electron-builder.yml --publish never",
-    "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never"
+    "electron:build:mac": "bun run electron:prepare && vite build --mode production --base ./ && electron-builder --mac --arm64 --config electron/electron-builder.yml --publish never",
+    "docs:check": "node scripts/check-docs.mjs",
+    "verify:browser": "node scripts/check-browser.mjs"
   },
   "dependencies": {
     "electron-log": "^5.4.4",

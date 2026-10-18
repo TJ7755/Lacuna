@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BackupFile } from './types';
 
 const mirrorToFolder = vi.fn<(payload: BackupFile) => Promise<void>>();
-vi.mock('./backups', () => ({ mirrorToFolder }));
+vi.mock('./backupFolder', () => ({ mirrorToFolder }));
 
 const { getPreMigrationSnapshot, savePreMigrationSnapshot } =
   await import('./preMigrationSnapshots');

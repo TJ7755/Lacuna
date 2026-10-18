@@ -24,11 +24,11 @@ function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk)
 export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[] {
   const entry = chunks.find((chunk) => chunk.isEntry && /^assets\/app-/.test(chunk.fileName));
   if (!entry) throw new Error('Could not find the application entry for shell precaching.');
-  // Deferred shell controls must also work on their first use offline, as must the
-  // welcome-course seed, which start-up loads whenever its flags are missing, and the
-  // motion features every start-up loads straight after first paint, and Today's forecast chart.
+  // First offline use also needs deferred shell controls, embedded-image imports,
+  // the welcome-course seed and the motion features loaded after first paint.
+  // Restore also needs the decoder and its mandatory device-local AI cleanup hook.
   const deferredControls = chunks.filter((chunk) =>
-    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|backups|portability|relay)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   return [
     ...new Set([

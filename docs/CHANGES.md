@@ -13,9 +13,15 @@
 - Card-entry Tab shortcuts fall back to native traversal when a disabled or missing target cannot receive focus, preserving the valid repeat-save loop. (#438)
 - Working-card study keeps its answer field focused on entry and after moving to the next card, without selecting a departing inert field or changing marking and study pacing. (#436)
 - Typing in a text field now gives a soft accent glow that fades as you type, without moving text or caret. (#437, #478)
+- Extend rapid Card entry to the retained Numeric, Working and Audio editors: direct Tab paths, invalid-field focus, useful audio attachment/repeat focus and fresh Working checker state. Preserve native traversal for incomplete drafts, leave microphone activation explicit, guard pending saves and retain failed drafts for retry. (#438)
+- Keep Numeric Card entry focused on the current answer after an animated change of answer check, without requiring another edit. (#438)
+- New individual Questions require an explicit primary Concept choice instead of silently using the first Course Concept; editing, restored drafts and repeat entry retain deliberate choices. (#439)
+- Individual Question validation focuses the first invalid numeric answer or tolerance through the shared editor ref and reports invalid generated-family settings beside the relevant field, retaining input and keyboard save behaviour. (#439)
 - Individual Question editor: the prompt and answer now lead, with name, lesson and Concepts after; a new Question opens in its prompt; Ctrl/Cmd+Enter saves, and Save & add another keeps the lesson, Concept, form and tags for the next one; missing fields are reported at the field with focus on the first instead of a toast (#439).
 - Make Question Set attempts fluent from the keyboard: Ctrl/Cmd+Enter advances answers and explicit self-marking decisions, task focus follows saved progress, and secondary tools retain unfinished notes and corrections. Restore submission focus when cancelling unanswered parts without overriding focus moved during a pending save. Simplify single-part navigation and place manual marking before annotations on narrow screens. (#441)
 - Sequences: in a script recited in chunks, the cue before a chunk's first line now belongs to that chunk, so each new line is presented with its own cue rather than a later one; the active answer is kept in view as recitation lines reflow; the sequence editor's action bar no longer makes the page scroll sideways at 320px with Larger text, and Add sequence stays on one line (#442).
+- Sequences: Tab from the last item's content once again focuses Add sequence or Save changes. Enter still adds an item and Ctrl/Cmd+Enter saves the sequence; backward Tab and unavailable save targets retain native navigation. Input-method composition, including legacy key-code 229, leaves focus and the event's default untouched (#442).
+- Sequence acceptance now explicitly preserves blank-scaffolding omission with all-empty validation and paste insertion at the selection, superseding historical row-invalidation and whole-script replacement-warning criteria; external human and native-platform gates remain tracked by #456 (#442).
 - Diagram authoring keeps focus after deleting a region, lifts focused fields clear of the action bar, keeps that bar inside the page at narrow widths, and names region roles as Label and Feature instead of lbl and ftr. (#443, #474)
 - First content and blocked study: a new course opens with focus on New card; the study sheet offers Add cards for an empty course, names a locked lesson with what unlocks it, and no longer calls an archived course locked; the Add menu describes Lesson, Card practice, Practice questions and Checkpoint; Help describes the Study sheet as it is, names Progress correctly, and its shortcuts table scrolls within itself instead of clipping on narrow screens (#444).
 - Today: only courses with something to study show a Study button, and only the lead one is filled. Courses with no cards say "No cards yet", courses with nothing due say "Nothing due", and "Done for today" now appears only after studying that day. The S shortcut studies the course whose button leads (#445).
@@ -27,6 +33,7 @@
 - Label Current and Incoming merge-review versions and compare all content fields, including changed card backs, additions, removals and unchanged context. Keep decisions and their consequences clear, retain keyboard focus after resolving rows, announce completion and recover failed applies. Move wrapping bulk actions into the page so mobile course navigation cannot cover them. Preserve the existing atomic merge, lineage and review-history behaviour. (#449)
 - Device pairing starts on the recovery phrase or pairing details, with private relay configuration grouped under Advanced. Validation and pairing failures stay beside the value to correct, cancellation restores the setup choices, and successful pairing focuses Show pairing QR or Sync now. Saved pairings and encryption are unchanged. (#450)
 - AI approvals lead with the proposed action, its target and consequence, with the raw tool name moved under Technical details. (#451, #475)
+- Give question-set loading, missing and read-only routes a consistent page frame, and retry failed draft or attempt reads without losing saved work. (#452)
 - Recovery: the error screen now focuses its heading and leads with Try again, with the raw error and diagnostic copy/download under Technical details and a visible message when copying fails; it no longer animates with reduced motion. Pasted import text survives a trip back to All sources, and shared-course import shows unreadable codes, course files and failed imports as an inline alert that stays until the next attempt instead of a passing toast (#452).
 - Progress date labels no longer collide on narrow screens with larger text, and the exam-day score explains how it averages courses and shows a single day's value instead of an empty state. (#453, #476)
 - Progress explains the stability profile, observed recall and leech charts in plain terms, and the leech chart links straight to the leech cards. (#453)
@@ -40,8 +47,11 @@
 - Dark mode keeps the near-black ground with the Volt neon foreground retained, so banner edges and icons stay defined while light mode is unchanged (#537)
 - Removed the redundant Claude instruction file and completed AI gateway implementation plan; current agent and contribution policies remain authoritative. (#548)
 - Added the validated, read-only exam specification catalogue format with tier, route, paper, assessment objective and command word support; no entries ship yet (#550).
+- Recover a sticky failed lazy-route import by reusing the shared stale-chunk recovery: after the first guarded reload the failing route re-runs the origin probe and clears service-worker and cache state before reloading again, so settings and other routes open on redelivered preview deployments (#560).
+- Fixed Anki package imports failing because the web and desktop security policies blocked the bundled SQLite WebAssembly reader, including after an upgrade from a cached worker. JavaScript string evaluation remains blocked. (#565)
 - Primary button labels now meet 4.5:1 contrast for every alternative accent in both themes, keeping the selected accent colours unchanged.
 - Repeated Enter presses cannot create duplicate lessons while creation is pending. Reopening Add lesson before its closing animation finishes refocuses the name field.
+- Prune duplicated implementation documentation and retired redesign reports, preserve unresolved acceptance evidence in its owning issues, add a small source index, and check documentation links/fragments in required CI. Add isolated browser verification with per-run assets and source/evidence records.
 - Closing the AI conversation immediately disables its departing controls while preserving the window exit animation, rapid reopening and the existing quick-search interaction guard.
 - The review calendar now follows Progress’s 7-, 30- and 90-day selector, with matching dates, totals and labels. Short periods use compact calendar cells, and changing period preserves a reachable keyboard tab stop while clearing outdated details.
 - Removed browser hover URL previews from in-app navigation controls, including sidebar entries, course tabs and back controls. Keyboard navigation, active highlights and modified-click destinations are preserved; external links and downloads keep native link behaviour.
@@ -51,6 +61,7 @@
 - Desktop releases are now automatic after the version bump merges. `bun run release:prepare <version> [title]` bumps `package.json`, folds the changelog and pins the Windows upgrade gate to the previous release's installer digest (now in `scripts/windows-release-baseline.json` rather than three files). Once CI and Security pass on master, the new Release tag workflow tags the commit and dispatches the release build, which publishes the beta itself when `docs/releases/<version>.md` holds its notes.
 - Course analytics: the Lesson breakdown's slanted lesson names no longer run off the axis and lose their first words; long names end in an ellipsis, and the tooltip and data table keep them whole.
 - Update browser checks to follow the delivered authoring, navigation, disclosure, search and study controls while retaining focus, geometry, recovery and synchronisation assertions.
+- Show named browser test and retry starts in CI logs and preserve per-attempt JSON timings alongside the existing HTML reports and failure evidence.
 - Use Bun 1.4.3's built-in checker for the web project references, retaining native TypeScript for smaller server/Electron checks and desktop emission; align development, CI, audits and release builds on Bun 1.4.3.
 - Improve the date and time picker with continuous keyboard date navigation, month and year paging that preserves the focused day, a left-aligned month label with adjacent navigation arrows, and one today shortcut that preserves the chosen time.
 - Keep Import cards visible beside More in the New card editor, as a separate rounded button outside the card-type selector.
@@ -74,6 +85,7 @@
 - Unified Add and Other ways around one expanding action surface, preserving fixed-size text and the original corner-anchored spring. Action menus support arrow keys, Home, End and Escape, skip unavailable entries and restore focus on dismissal.
 - Contain inline confirmations in rounded panels with existing semantic colours, grouped destructive and Cancel buttons, and narrow-width wrapping. Preserve neutral permission prompts, focus return and reduced motion; prevent repeat submission while returned promises are pending.
 - Clarify study actions, course controls, revision plans and device sync with contextual helper text.
+- Keep the interface responsive during backup asset encoding by yielding after bounded amounts of byte and metadata work, preserving the existing backup data and restore behaviour.
 - Counts read naturally everywhere they are shown: "1 card" rather than "1 cards" on Path rows, import, practice settings and the study progress bar, with thousands grouped ("5,002 cards"). One shared helper replaces three local copies.
 - Keep the course colour audit pointer clear of content before navigation, so a valid hover colour cannot falsely fail the mobile resting-colour checks.
 - The course bar (sections and View / Edit) now stays at the top while a course page scrolls, as intended; it used to scroll away because its sticky parent was only as tall as the bar.
@@ -94,12 +106,14 @@
 - Move the course name between the Path heading and persistent course navigation when changing sections within the same course, including reverse navigation and asynchronously loaded headings. Entry from Today and reloads show the title in place. Keep single-line titles together during travel, without clipping trailing words from wrapping headings, and hide departing endpoints until the overlay settles. Preserve the course identity for inline single-lesson courses and honour reduced motion.
 - Stop custom-covered lessons that sit after their assessment, after reordering, from feeding practice and exam-date targeting. Thanks to nc-3388 (#503).
 - Keep ranking revision cards when some cards in the pool have no memory-model history, serving those cards in objective order instead of dropping the whole session to ordinary Practice. Thanks to nc-3388 (#503).
+- Create daily restore points in a worker so large media backups do not stall study, preserving snapshot contents, throttling, protected restore points and offline operation.
 - Dashboard course menus and archive confirmations remain available on their first use offline, while retaining deferred loading during application startup. Production browser coverage checks keyboard operation and focus restoration without a network connection.
 - Restore Today's documented right-click, context-menu key and Shift+F10 course actions through the existing visible menu, sharing native text-editing protections with lesson actions without adding database code to the dashboard.
 - Load the Today queue's course menu and archive confirmation on demand, keeping first-load JavaScript within its budget.
 - Verify Today's delayed loading placeholder against a controlled clock, retaining both its 250ms delay and immediate-load suppression without depending on test-machine load.
 - Today course menus announce their expanded state, dismiss on Tab without interrupting native keyboard navigation, and provide a 44px Archive target. Archiving returns focus to the next course action or Today heading without overriding another chosen control.
 - Find cards in the current lesson with Ctrl/Command+F or the search button beside its cards. It opens the Quick search dialogue narrowed to the lesson's cards; Course Cards uses the same shortcut and search matching, while Quick search remains global.
+- Load embedded-image import processing on demand while keeping its first offline use and database transactions safe.
 - Add Settings (Cmd/Ctrl+,) and Keyboard Shortcuts to the desktop app's native menus, routed through one whitelisted menu-command channel that replaces the Help-only channel.
 - Reduce development tooling resource use by excluding generated artefacts from Vite's watcher and limiting the relay, handwriting maths and AI MCP test suites to one worker each.
 - Corrected Help’s diagram-sharing instructions to point to course files, which retain diagrams and media. Full backups remain the option for moving every course and its study history.
@@ -438,6 +452,7 @@
 - Start every top-level page title at the same height (Import keeps its Back row above the title), and keep the course tab's held expansion from being cancelled by the generic press dip.
 - Clarified device pairing: a scanned QR lets you choose a recovery passphrase for this device, including reusing an existing phrase; manual pairing requires the phrase chosen when sync was first set up.
 - Quick search highlights its rows as inset rounded rows, like every other menu, instead of full-width bands.
+- Run functional Chromium CI tests across four parallel shards to reduce the browser gate's longest job while retaining isolated image performance measurements and complete browser coverage.
 - Replace path-editor modals with sentence editors that bloom from checkpoint/exam, card-practice and Question Set rows, or the Add trigger, and fold back after valid edits. Add a searchable card-exclusion picker and anchored deletion confirmations. Extend the existing native drag interaction to authored path nodes, with spring displacement, edge scrolling, dependency checks and Alt+Arrow/menu alternatives.
 - Keep native lesson touch listeners attached through development refreshes and allow an empty new Question Set editor to close when there are no saved sets to choose.
 - Add consistent Edit, Move up/down and confirmed Delete menus to card practice, Question Set activities and checkpoints on the course path in Edit mode, aligned with lesson actions. Assessment rows also expose editing; the required final assessment remains protected.
@@ -508,6 +523,7 @@
 - Switches no longer sit a few pixels high in a block container: the shared `Toggle` aligns to the top of its line instead of the text baseline.
 - Simplify Settings → Your data: group device-sync actions, keep technical details behind the encryption disclosure and replace the unlocked banner with a compact lock control. Show the three newest restore points with older points under More, using tighter rows and preserving all deletion and restoration confirmations. Restore-point retention is unchanged.
 - Share alternatives become inert and hidden from assistive technology as soon as they close or switch, preserving their visual exit and rapid reopening without moving focus from the chosen sharing method.
+- Mark archived courses in the Share course picker and selected course label, and prefer active courses when opening Share without a requested course. Archived courses remain available for managing existing share links.
 - Share follows the course-page frame and header spacing, with a left-aligned title and content and a right-aligned course picker that wraps on phones. Course switches keep the card surfaces and Other ways heading visible while smoothly adjusting link height and immediately clearing previous outputs and actions; reduced motion remains supported.
 - Make departing share-link panels inert and hidden from assistive technology as soon as their state changes, whilst their existing exit animation finishes.
 - Fix sharing actions remaining in their loading state after React replays mount effects in development.
@@ -522,6 +538,7 @@
 - Sidebar settings keep visibility switches, navigation names and reorder controls within their rows at mobile widths with enlarged text, rather than relying on page overflow checks that miss clipped content.
 - Confine the sidebar selection glide to Today/Search content/Progress and Share/Settings/Help separately. Moving between groups or to a course selects directly; course rows retain direct selection and the existing slower glide remains within each navigation group.
 - Restored the sidebar Lacuna mark in light mode to a dark accent tile with bright accent strokes, matching its dark-mode contrast and the landing mark, instead of a pale tile with thin dark strokes.
+- Run frame-sensitive sidebar motion and original-sized image timing tests serially on an isolated CI runner, retaining four parallel functional shards and all original assertions and budgets.
 - Verify sidebar search navigation through the actual destination rather than an href omitted by the app's navigation links.
 - Enlarge Sidebar settings reorder controls to 44px targets in a compact horizontal pair, retaining persisted ordering, disabled boundary actions and reset behaviour.
 - Slow the sidebar selection glide by 20%, retaining its spring shape, motion-speed scaling and reduced-motion behaviour.
@@ -1287,7 +1304,7 @@ removed during sanitisation and covers rendering, fallback source and theme upda
 
 - Added CI per-file coverage gates for schema migration snapshots, card and ordering
   repositories, and Learn-session persistence and orchestration. Thresholds use measured
-  [baselines](maintenance/coverage.md) so a strong file cannot hide a weak one behind an
+  [baselines](https://github.com/TJ7755/Lacuna/blob/88561dc89556ebeb75de0e68075ad20afb830019/docs/maintenance/coverage.md) so a strong file cannot hide a weak one behind an
   aggregate percentage.
 
 - Counted daily review caps and goals from persisted review events across sessions and repeat

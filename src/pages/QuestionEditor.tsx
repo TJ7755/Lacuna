@@ -1,7 +1,7 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -33,6 +33,8 @@ import { useEditorKeys } from '../hooks/dialogKeys';
 import type { ItemFixture, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from '../items/markSchemeCompiler';
 import { questionGeneratorRegistry } from '../questions/generators';
+import type { GeneratorDescription } from '../questions/generators/contracts';
+import { INTEGER_ROOT_QUADRATIC_GENERATOR_KEY } from '../questions/generators/integerRootQuadratic';
 import {
   createConcept,
   createFixedQuestion,
@@ -92,7 +94,7 @@ export function QuestionEditor() {
   useEffect(() => {
     if (draft.loaded || data === undefined || (editing && record === undefined)) return;
     if (!editing) {
-      draft.initialise(newQuestionState(data.concepts[0]?.id ?? ''));
+      draft.initialise(newQuestionState(''));
       return;
     }
     if (!record) {
@@ -106,6 +108,16 @@ export function QuestionEditor() {
   const [attempted, setAttempted] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const answerRef = useRef<HTMLDivElement>(null);
+  const numericAnswerRef = useRef<HTMLInputElement>(null);
+  const [numericFocusAttempt, setNumericFocusAttempt] = useState(0);
+  useLayoutEffect(() => {
+    // The numeric editor publishes its invalid target after the error state commits.
+    if (numericFocusAttempt === 0) return;
+    const target = numericAnswerRef.current;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'center' });
+  }, [numericFocusAttempt]);
+  const configurationRef = useRef<HTMLElement>(null);
   const explanationRef = useRef<HTMLTextAreaElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   const conceptRef = useRef<HTMLSelectElement>(null);
@@ -113,7 +125,18 @@ export function QuestionEditor() {
     kind === 'fixed'
       ? fixedPayload(answerKind, numericAnswer, workingCompilation, workingFixtures)
       : undefined;
+  const configurationErrors = useMemo(
+    () =>
+      kind === 'generated' && generator
+        ? generatedConfigurationErrors(generator, generatorConfig)
+        : {},
+    [generator, generatorConfig, kind],
+  );
+  const firstConfigurationError = generator?.configurationFields.find(
+    (field) => configurationErrors[field.key],
+  )?.key;
   const allErrors = {
+    configuration: firstConfigurationError,
     prompt: kind === 'fixed' && !prompt.trim() ? 'Add a prompt.' : undefined,
     answer: kind === 'fixed' && !payload ? 'Add a valid answer.' : undefined,
     explanation: kind === 'fixed' && !explanation.trim() ? 'Add a worked explanation.' : undefined,
@@ -140,10 +163,18 @@ export function QuestionEditor() {
     setAttempted(true);
     const first = (
       [
+        [
+          'configuration',
+          configurationRef.current?.querySelector<HTMLElement>(
+            `[name="${firstConfigurationError}"]`,
+          ),
+        ],
         ['prompt', promptRef.current],
         [
           'answer',
-          answerRef.current?.querySelector<HTMLElement>('input, textarea, select, button'),
+          answerKind === 'numeric'
+            ? null
+            : answerRef.current?.querySelector<HTMLElement>('input, textarea, select'),
         ],
         ['explanation', explanationRef.current],
         ['name', nameRef.current],
@@ -151,7 +182,11 @@ export function QuestionEditor() {
       ] as const
     ).find(([key]) => allErrors[key]);
     if (first) {
-      first[1]?.focus();
+      if (first[0] === 'answer' && answerKind === 'numeric') {
+        setNumericFocusAttempt((attempt) => attempt + 1);
+      } else {
+        first[1]?.focus();
+      }
       return;
     }
     setSaving(true);
@@ -351,7 +386,9 @@ export function QuestionEditor() {
                 <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
                   {answerKind === 'numeric' ? (
                     <NumericAnswerEditor
+                      inputRef={numericAnswerRef}
                       value={numericAnswer}
+                      invalid={Boolean(errors.answer)}
                       onChange={(value) => draft.update({ numericAnswer: value })}
                     />
                   ) : (
@@ -382,9 +419,11 @@ export function QuestionEditor() {
             </>
           ) : generator ? (
             <GeneratedQuestionConfiguration
+              ref={configurationRef}
               generator={generator}
               configuration={generatorConfig}
               onChange={(value) => draft.update({ generatorConfig: value })}
+              errors={attempted ? configurationErrors : undefined}
             />
           ) : null}
         </StepSwap>
@@ -499,4 +538,35 @@ function fixedPayload(
     }),
     fixtures,
   };
+}
+
+function generatedConfigurationErrors(
+  generator: GeneratorDescription,
+  configuration: Record<string, string | number | boolean>,
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of generator.configurationFields) {
+    if (field.kind !== 'integer') continue;
+    const value = configuration[field.key];
+    if (
+      typeof value !== 'number' ||
+      !Number.isInteger(value) ||
+      (field.minimum !== undefined && value < field.minimum) ||
+      (field.maximum !== undefined && value > field.maximum)
+    ) {
+      errors[field.key] =
+        field.minimum !== undefined && field.maximum !== undefined
+          ? `Enter a whole number from ${field.minimum} to ${field.maximum}.`
+          : 'Enter a valid whole number.';
+    }
+  }
+  if (
+    generator.key === INTEGER_ROOT_QUADRATIC_GENERATOR_KEY &&
+    !errors.minimumRootMagnitude &&
+    !errors.maximumRootMagnitude &&
+    Number(configuration.minimumRootMagnitude) > Number(configuration.maximumRootMagnitude)
+  ) {
+    errors.minimumRootMagnitude = 'Use a minimum root magnitude no greater than the maximum.';
+  }
+  return errors;
 }
