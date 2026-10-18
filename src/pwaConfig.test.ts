@@ -8,6 +8,9 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches the self-contained daily backup worker before first offline use', () => {
+    expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
+  });
   it('precaches deferred Quick search and its dependencies before first offline use', () => {
     expect(collectAppShellScripts([
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },

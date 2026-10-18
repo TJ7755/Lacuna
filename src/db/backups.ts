@@ -3,11 +3,12 @@
 // site data being cleared (the one failure IndexedDB restore points cannot).
 
 import { db } from './schema';
-import { exportDatabase, importBackup } from './portability';
-import type { BackupFile, BackupSnapshot } from './types';
+import { importBackup } from './portability';
+import type { BackupFile } from './types';
 import { scheduleAssetGc } from './assets';
 import { replacementLifecycle } from './replacementLifecycle';
-import { mirrorToFolder } from './backupFolder';
+import { backupIsStale, createRestorePoint } from './backupRestorePoint';
+import { runDailyBackupWorker } from './dailyBackupWorker';
 
 export {
   backupFolderName,
@@ -16,9 +17,6 @@ export {
   folderMirrorSupported,
   mirrorToFolder,
 } from './backupFolder';
-
-const MAX_RESTORE_POINTS = 10;
-const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 let lastSuccessfulBackupAt: number | null = null;
 const pendingBackups = new Set<{ at: number }>();
@@ -30,64 +28,56 @@ export function __resetBackupThrottleForTests(): void {
   pendingBackups.clear();
 }
 
-/** Capture a full snapshot as a restore point, prune to the cap, and mirror if configured.
- *  Calls within the 5-minute throttle window are silently skipped so rapid mutations
- *  do not produce N backups per session. Pass `force: true` to bypass the throttle.
- *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
-export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
+function reserveBackup(force: boolean): { at: number } | undefined {
   const now = Date.now();
   if (!force) {
-    if (lastSuccessfulBackupAt !== null && now - lastSuccessfulBackupAt < MIN_BACKUP_INTERVAL) return;
+    if (lastSuccessfulBackupAt !== null && now - lastSuccessfulBackupAt < MIN_BACKUP_INTERVAL)
+      return;
     for (const pending of pendingBackups) {
       if (now - pending.at < MIN_BACKUP_INTERVAL) return;
     }
   }
   const reservation = { at: now };
   pendingBackups.add(reservation);
-  let payload: BackupFile;
-  try {
-    payload = await exportDatabase();
-    const snapshot: BackupSnapshot = {
-      createdAt: payload.exportedAt,
-      deckCount: payload.lessons?.length ?? 0,
-      cardCount: payload.cards.length,
-      payload,
-    };
-    await db.backups.add(snapshot);
-    // An older in-flight success must not replace the time of a newer success.
-    lastSuccessfulBackupAt = Math.max(lastSuccessfulBackupAt ?? -Infinity, reservation.at);
-  } finally {
-    // Failed attempts release only their own reservation. The remaining pending
-    // work and the last successful restore point retain their independent throttles.
-    pendingBackups.delete(reservation);
-  }
-  // Keep only the most recent restore points. Pre-migration snapshots are exempt:
-  // they are the safety net for a botched upgrade and must not be pruned away.
-  const all = await db.backups.orderBy('createdAt').toArray();
-  const prunable = all.filter((s) => (s.tag ?? '') !== 'pre-migration');
-  if (prunable.length > MAX_RESTORE_POINTS) {
-    const excess = prunable.slice(0, prunable.length - MAX_RESTORE_POINTS);
-    await db.backups.bulkDelete(excess.map((s) => s.id!));
-  }
-
-  // Best-effort folder mirror; never let it break the backup itself.
-  await mirrorToFolder(payload).catch((e: unknown) => {
-    if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
-      console.warn('Folder mirror failed:', e);
-    }
-  });
-
-  return payload;
+  return reservation;
 }
 
-/** Take a backup only if the newest restore point is older than 24 hours. */
+function markStored(reservation: { at: number }): void {
+  // An older in-flight success must not replace the time of a newer success.
+  lastSuccessfulBackupAt = Math.max(lastSuccessfulBackupAt ?? -Infinity, reservation.at);
+  pendingBackups.delete(reservation);
+}
+
+/** Capture a full snapshot as a restore point, prune to the cap, and mirror if configured.
+ *  Calls within the 5-minute throttle window are silently skipped so rapid mutations
+ *  do not produce N backups per session. Pass `force: true` to bypass the throttle.
+ *  Returns the snapshot that was stored, or `undefined` when the throttle skipped. */
+export async function takeAutoBackup(force = false): Promise<BackupFile | undefined> {
+  const reservation = reserveBackup(force);
+  if (!reservation) return;
+  try {
+    return await createRestorePoint(() => markStored(reservation));
+  } finally {
+    pendingBackups.delete(reservation);
+  }
+}
+
+/** Take a daily restore point away from the UI thread, retaining the interactive fallback. */
 export async function autoBackupIfStale(): Promise<void> {
-  const last = await db.backups.orderBy('createdAt').last();
-  if (last && Date.now() - last.createdAt < STALE_MS) return;
-  await takeAutoBackup();
-  // Sweep orphaned assets once per day alongside the backup.
-  scheduleAssetGc();
+  if (typeof Worker === 'undefined') {
+    if (!(await backupIsStale())) return;
+    await takeAutoBackup();
+    scheduleAssetGc();
+    return;
+  }
+  const reservation = reserveBackup(false);
+  if (!reservation) return;
+  try {
+    const stored = await runDailyBackupWorker(() => markStored(reservation));
+    if (stored) scheduleAssetGc();
+  } finally {
+    pendingBackups.delete(reservation);
+  }
 }
 
 /** Replace the whole database from a stored restore point. */
