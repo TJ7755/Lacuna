@@ -6,6 +6,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import * as React from 'react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
+import type * as MotionSpeedState from '../state/motionSpeed';
 import { CoursePath } from './CoursePath';
 import { ToastProvider } from '../components/ui/Toast';
 import type {
@@ -174,10 +175,10 @@ vi.mock('../db/assessmentRepository', () => ({
   deleteCourseAssessment: mockDeleteCourseAssessment,
 }));
 
-vi.mock('../state/motionSpeed', () => ({
-  useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
-}));
+vi.mock('../state/motionSpeed', async (importOriginal) => {
+  const actual = await importOriginal<typeof MotionSpeedState>();
+  return { ...actual, useMotionSpeed: () => ['fast'] };
+});
 
 const mockOpenStudySheet = vi.hoisted(() => vi.fn());
 vi.mock('../components/learn/StudySheetContext', () => ({
@@ -1076,4 +1077,12 @@ describe('CoursePath overview', () => {
     expect(add).toHaveAttribute('aria-expanded', 'false');
     expect(mockCreateLesson).not.toHaveBeenCalled();
   });
+});
+
+it('explains a suspended saved order on the path without enabling locked authoring', () => {
+  mockCourse = { ...course, localLessonOrder: [lesson2.id, lesson1.id], autoPractice: true,
+    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false } };
+  renderPage();
+  expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent('Turn off automatic Card practice');
+  expect(screen.queryByRole('button', { name: /Add lesson/i })).not.toBeInTheDocument();
 });

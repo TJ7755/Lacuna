@@ -58,6 +58,25 @@ contracts supersede historical empty-row invalidation and whole-outline replacem
 see the retained [acceptance evidence](../evidence/442-sequence-acceptance.md). The action bar keeps
 shared page bounds at 320px with Larger text.
 
+## Specification links
+
+Optional Course `specificationRef` stores `{ specificationId, tier?, routeIds? }`; the Custom
+`examBoard` and `specification` strings remain fallback text. Setting/clearing the reference does
+not remove fallback text or existing Concept links. Selection UI is a separate stage.
+
+Course-scoped Concepts may store unique `specificationPointIds` as qualified
+`<specificationId>:<pointId>` catalogue IDs. Cards and Questions inherit these through Concepts;
+legacy-scheduling-unit Concepts cannot carry them. Schema v30 adds only the multi-entry Concept
+index without rewriting rows. Repository setters validate and stamp transactionally, honour
+published-copy locks and retain unknown but valid IDs, including foreign or out-of-selection links.
+Indexed point lookup stays within the requested Course. Sequence/Occlusion regeneration preserves
+Concept links; published teacher replacement/removal retains its existing authority.
+
+[Tag resolution](../../src/specifications/tagResolver.ts) proposes links from `spec:<ref>` and
+`spec:<code>:<ref>` tags without changing records. References match exactly; qualification codes
+ignore case. Repeated identical tags yield one proposal. Ambiguous/unmatched tags remain explicit,
+as do retained foreign, unknown and out-of-selection links. The catalogue still ships no entries.
+
 ## Question sets and drafts
 
 Question Set revisions save atomically with same-Course reference validation. Unchanged content

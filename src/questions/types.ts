@@ -32,12 +32,14 @@ export type Concept =
       scope: 'course';
       courseId: string;
       legacySchedulingUnitId?: never;
+      specificationPointIds?: string[];
     })
   | (ConceptBase & {
       scope: 'legacy-scheduling-unit';
       courseId: null;
       legacySchedulingUnitId: string;
       provisional: true;
+      specificationPointIds?: never;
     });
 
 /** One atomically replaced relationship set per Question. */

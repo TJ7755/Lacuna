@@ -3,6 +3,7 @@ import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import { parseQuestionSetPracticeNode } from './questionSetPracticeNode';
+import { specificationRefSchema } from '../specifications/linkSchemas';
 
 export const text = z.string();
 export const id = text.min(1);
@@ -166,6 +167,7 @@ export const course = object({
   fsrsVersion: number,
   examBoard: text.optional(),
   specification: text.optional(),
+  specificationRef: specificationRefSchema.optional(),
   colour: text.optional(),
   examDatePromptDismissed: flag.optional(),
   learnFirst: flag.optional(),
@@ -176,6 +178,7 @@ export const course = object({
   unlockMode: z.enum(['linear', 'semi-linear', 'open']),
   linearCadence: object({ anchorDate: number, intervalDays: number }).optional(),
   autoPractice: flag,
+  localLessonOrder: ids.optional(),
   practiceThresholdMinutesFar: number,
   practiceThresholdMinutesNear: number,
   practiceUrgentWindowDays: number,
@@ -193,6 +196,9 @@ export const course = object({
       name: text,
       description: text,
       unlockMode: z.enum(['linear', 'semi-linear', 'open']),
+      examBoard: text.optional(),
+      specification: text.optional(),
+      specificationRef: specificationRefSchema.optional(),
     }).optional(),
   }).optional(),
 });

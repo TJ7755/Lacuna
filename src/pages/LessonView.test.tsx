@@ -44,6 +44,12 @@ vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: () => mockLesson,
 }));
 
+vi.mock('../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => mockCourse && mockLessons
+    ? { course: mockCourse, lessons: mockLessons, unavailableReason: undefined }
+    : undefined,
+}));
+
 vi.mock('../state/useCourseData', () => ({
   useCourse: () => mockCourse,
   useLesson: () => mockLesson,

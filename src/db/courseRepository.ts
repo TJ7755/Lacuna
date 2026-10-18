@@ -2,6 +2,8 @@
 // Components call these rather than touching Dexie tables directly.
 
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
+import { canEditLessons } from '../course/lessonViewMode';
+import { parseSpecificationReference, type SpecificationReference } from '../specifications/links';
 import type {
   Concept,
   QuestionAttempt,
@@ -79,6 +81,9 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
       timeZone: requestedTimeZone,
       ...recordOptions
     } = opts ?? {};
+    if (recordOptions.specificationRef !== undefined) {
+      recordOptions.specificationRef = parseSpecificationReference(recordOptions.specificationRef);
+    }
     if (schedulingMode === 'steady' && requestedExamDate !== undefined) {
       throw new Error('A steady-retention course cannot also have an exam date.');
     }
@@ -171,6 +176,16 @@ export async function stampMissingLessonViewModes(): Promise<void> {
 
 export async function updateCourse(id: string, changes: Partial<CourseRecord>): Promise<void> {
   try {
+    const setsReference = Object.prototype.hasOwnProperty.call(changes, 'specificationRef');
+    const validatedChanges = setsReference
+      ? {
+          ...changes,
+          specificationRef:
+            changes.specificationRef === undefined
+              ? undefined
+              : parseSpecificationReference(changes.specificationRef),
+        }
+      : changes;
     const compatibilityChanges = changes as Partial<Course>;
     if (
       Object.prototype.hasOwnProperty.call(compatibilityChanges, 'examDate') ||
@@ -189,10 +204,33 @@ export async function updateCourse(id: string, changes: Partial<CourseRecord>): 
         db.schedulingPerformance,
       ],
       async () => {
-        await db.courses.update(id, stampUpdatedAt(changes));
+        if (setsReference) {
+          const course = await db.courses.get(id);
+          if (!course) throw new Error('The course could not be found.');
+          if (!canEditLessons(course)) throw new Error('This published course is locked.');
+        }
+        await db.courses.update(id, stampUpdatedAt(validatedChanges));
         await syncCourseSchedulingUnits(id);
       },
     );
+  } catch (err) {
+    throw friendlyDbError(err);
+  }
+}
+
+export async function setCourseSpecificationReference(
+  courseId: string,
+  reference: SpecificationReference | undefined,
+): Promise<void> {
+  try {
+    const specificationRef =
+      reference === undefined ? undefined : parseSpecificationReference(reference);
+    await db.transaction('rw', db.courses, async () => {
+      const course = await db.courses.get(courseId);
+      if (!course) throw new Error('The course could not be found.');
+      if (!canEditLessons(course)) throw new Error('This published course is locked.');
+      await db.courses.update(courseId, stampUpdatedAt({ specificationRef }));
+    });
   } catch (err) {
     throw friendlyDbError(err);
   }

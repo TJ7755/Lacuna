@@ -18,6 +18,7 @@ import type {
 } from '../questions/types';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import type { SpecificationReference } from '../specifications/links';
 
 export type CardType = 'front_back' | 'cloze' | 'basic_reversed';
 
@@ -335,6 +336,7 @@ export interface CourseRecord {
   description: string;
   examBoard?: string;
   specification?: string;
+  specificationRef?: SpecificationReference;
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt. */
   updatedAt: number;
@@ -362,6 +364,8 @@ export interface CourseRecord {
   linearCadence?: { anchorDate: number; intervalDays: number };
   /** When true, the system auto-inserts practice nodes between lessons. */
   autoPractice: boolean;
+  /** Local traversal preference on supported locked copies; never published content. */
+  localLessonOrder?: string[];
   /** Minutes-to-clear threshold that triggers practice when the exam is not near. */
   practiceThresholdMinutesFar: number;
   /** Minutes-to-clear threshold that triggers practice when the exam is near. */
@@ -418,7 +422,15 @@ export interface CourseDistributedCopy {
   /** The teacher's course details as last imported. A later update applies a changed
    *  detail only where the local value still matches this, so a learner's own rename
    *  survives. Absent on copies imported before course details were updated. */
-  source?: { name: string; description: string; unlockMode: UnlockMode; creator?: string };
+  source?: {
+    name: string;
+    description: string;
+    unlockMode: UnlockMode;
+    creator?: string;
+    examBoard?: string;
+    specification?: string;
+    specificationRef?: SpecificationReference;
+  };
 }
 
 /**
