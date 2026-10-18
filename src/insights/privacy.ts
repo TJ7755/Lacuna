@@ -1,7 +1,15 @@
 /**
- * Owner-authored privacy rules for class insights (issue #588).
+ * Anonymity rules for what a reader *without* the course owner's key may see
+ * (issue #588).
  *
- * Three mechanisms bound what a teacher may see:
+ * Direction of travel (owner decision, 2026-10-18; envelope plan in issue #600):
+ * per-pupil, per-question study evidence travels end-to-end encrypted to the course
+ * owner's device, so coarse banding is no longer the mechanism protecting
+ * teacher-visible content — that detail is simply unreadable to the service. What
+ * this module still governs is every surface a keyless reader can reach: the
+ * anonymous weekly aggregate cells produced by the summariser (#589), and any future
+ * service-level or school-level metrics. Three mechanisms bound what such a reader
+ * may see:
  * - Suppression: a cell with fewer than {@link SUPPRESSION_THRESHOLD} contributing
  *   devices is returned suppressed and never publishes a number.
  * - Banding: a visible cell carries a coarse band (secure, developing or weak) and a
@@ -17,13 +25,15 @@
  * suppressed rather than thrown, so corrupt data can never reveal evidence through a
  * crash or a wrong number.
  *
- * Known residual risk, recorded per issue #588: a teacher who independently knows one
- * pupil's attendance, or has background knowledge of one cohort member, can still
- * narrow a pupil's band by elimination when the class sits at the threshold, because
- * they can compare adjacent weeks that each just clear K. Because every published
- * value is a coarse band plus a roundable count, the inference is a range rather than
- * a result, and a device that drops the class below K hides it entirely. Differential
- * privacy noise was deliberately rejected for v1 (issue #588 non-goals) as too hard to
+ * Known residual risk, recorded per issue #588: a keyless reader who combines these
+ * cells across time or across overlapping cells with off-platform knowledge (for
+ * example an attendance register) can still narrow a cohort member's band by
+ * elimination when the group sits at the threshold. Because every published keyless
+ * value is a coarse interval, the inference is a range rather than a result, and a
+ * device that drops the group below K hides it entirely; per-pupil content itself is
+ * never published in readable form beyond the e2e envelope path (owner decision,
+ * plan in #600), so no such inference can recover a result. Differential privacy
+ * noise was deliberately rejected for v1 (issue #588 non-goals) as too hard to
  * explain to a school at trial scale.
  *
  * The values are provisional pending the trial (plan for issues #588-#594): K = 5,
@@ -87,7 +97,7 @@ export function presentDeviceCount(count: number): DeviceCount {
 
 /**
  * Returns the view of one aggregate cell (a Concept retention signal or a mark-scheme
- * criterion rate) that a teacher may see.
+ * criterion rate) that a keyless reader may see.
  *
  * Callers must only count devices whose denominator for the cell is greater than zero,
  * so a device with no evidence can never push a lone device's result into the view of

@@ -10,8 +10,11 @@ import {
 
 // Owner-authored privacy rules for class insights (issue #588): suppression below K
 // contributing devices, coarse bands instead of rates, and a count presentation that
-// resists differencing. The provisional proposal (K = 5, bands at 0.8 and 0.5) is
-// pinned here so a later change to any of them is a conscious, reviewable decision.
+// resists differencing. Scope note (owner decision, 2026-10-18): these rules now bind
+// only readers without the course owner's key (plan #600); per-pupil content travels
+// end-to-end encrypted and is not coarsened. The provisional proposal (K = 5, bands at
+// 0.8 and 0.5) is pinned here so a later change to any of them is a conscious,
+// reviewable decision.
 
 describe('class insight privacy constants', () => {
   it('pins the proposed trial constants as provisional', () => {

@@ -17,7 +17,12 @@ import type { QuestionAttempt, QuestionDefinition } from '../questions/types';
  * unfamiliar versions instead of guessing. Cells carry only what the privacy module
  * (#588) needs as its numerator and denominator, and the summary is capped at the
  * 8 KB budget with room to spare for a year's course content.
- */
+ *
+ * Scope note (owner decision, 2026-10-18): with the end-to-end pivot (plan in
+ * #600) these aggregates become the *keyless signalling path* — participation and
+ * cohort-size data only — while a sibling per-pupil envelope path, encrypted to the
+ * course owner's key, will carry the raw per-question evidence that the teacher's
+ * device decrypts. */
 
 export const INSIGHTS_SCHEMA_VERSION = 1 as const;
 
@@ -98,7 +103,7 @@ function criterionIdentity(criterion: QuestionCriterionPerformance): string {
 
 /**
  * Reduce one device's week of local study for one published course to the only thing
- * the relay may receive: an anonymous counted summary.
+ * the relay may receive in readable form: an anonymous counted summary.
  *
  * Returns null when the course has no share link id (not published, or imported as a
  * plain course file without a link), making it invisible to class insights rather than
