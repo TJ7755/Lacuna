@@ -57,7 +57,12 @@ export function previewBrowser({ directory = root, env = process.env, execute = 
   return result.status ?? 1;
 }
 
-export function verifyBrowser({ directory = root, args = [], execute = spawnSync } = {}) {
+export function verifyBrowser({
+  directory = root,
+  args = [],
+  env = process.env,
+  execute = spawnSync,
+} = {}) {
   if (args.some((arg) => /^(?:-c|--(?:config|output|reporter)(?:=|$))/.test(arg))) {
     throw new Error(
       'verify:browser owns its isolated configuration, output and reporters; pass test/project filters instead',
@@ -67,6 +72,22 @@ export function verifyBrowser({ directory = root, args = [], execute = spawnSync
   mkdirSync(parent, { recursive: true });
   const runDirectory = mkdtempSync(join(parent, 'run-'));
   const buildDirectory = join(runDirectory, 'dist');
+  const browserEnv = {
+    ...env,
+    LACUNA_BROWSER_RUN_DIR: runDirectory,
+    PLAYWRIGHT_HTML_OPEN: 'never',
+  };
+  // Playwright gives these inherited destinations precedence over reporter configuration.
+  for (const key of [
+    'PLAYWRIGHT_HTML_OUTPUT_DIR',
+    'PLAYWRIGHT_HTML_REPORT',
+    'PLAYWRIGHT_JSON_OUTPUT_FILE',
+    'PLAYWRIGHT_JSON_OUTPUT_DIR',
+    'PLAYWRIGHT_JSON_OUTPUT_NAME',
+    'PLAYWRIGHT_LAST_RUN_OUTPUT_FILE',
+    'PW_TEST_REPORTER',
+  ])
+    delete browserEnv[key];
   const source = sourceState(directory);
   const report = { source, args, startedAt: new Date().toISOString(), buildDirectory };
   const reportPath = join(runDirectory, 'source.json');
@@ -77,7 +98,7 @@ export function verifyBrowser({ directory = root, args = [], execute = spawnSync
     const result = execute('bun', commandArgs, {
       cwd: directory,
       stdio: 'inherit',
-      env: { ...process.env, LACUNA_BROWSER_RUN_DIR: runDirectory },
+      env: browserEnv,
     });
     if (result.error) throw result.error;
     if (result.signal) throw new Error(`Browser command terminated by ${result.signal}`);

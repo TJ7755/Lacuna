@@ -150,3 +150,33 @@ test('starts the preview with structured arguments and preserves its exit status
   });
   assert.equal(status, 19);
 });
+
+test('does not inherit shared reporter destinations or reporter replacement', () => {
+  const directory = fixture();
+  const overrides = [
+    'PLAYWRIGHT_HTML_OUTPUT_DIR',
+    'PLAYWRIGHT_HTML_REPORT',
+    'PLAYWRIGHT_JSON_OUTPUT_FILE',
+    'PLAYWRIGHT_JSON_OUTPUT_DIR',
+    'PLAYWRIGHT_JSON_OUTPUT_NAME',
+    'PLAYWRIGHT_LAST_RUN_OUTPUT_FILE',
+    'PW_TEST_REPORTER',
+  ];
+  const env = Object.fromEntries(overrides.map((key) => [key, 'shared-output']));
+  env.PATH = 'preserved-path';
+  assert.equal(
+    verifyBrowser({
+      directory,
+      env,
+      execute: (_command, args, options) => {
+        for (const key of overrides) assert.equal(options.env[key], undefined);
+        assert.equal(options.env.PATH, 'preserved-path');
+        assert.equal(options.env.PLAYWRIGHT_HTML_OPEN, 'never');
+        if (args[0] === 'run') build(args);
+        return { status: 0 };
+      },
+    }),
+    0,
+  );
+  assert.equal(env.PW_TEST_REPORTER, 'shared-output');
+});
