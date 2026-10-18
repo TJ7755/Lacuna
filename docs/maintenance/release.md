@@ -55,6 +55,13 @@ a private draft is not an update-feed test. Use a disposable installation, never
 working profile. Electron AI verification needs its configured port free so another server cannot
 stand in for the intended build. Companion relaunch during Windows installation is a separate risk.
 
+## Browser CI gate
+
+Four functional Chromium shards use two workers each. The unchanged image-advance measurement
+runs alone with one worker, and mobile WebKit has its own job. The functional shards and image
+project together cover the ordinary Chromium suite exactly once. Each job retains evidence;
+`browser-smoke` fails if any functional shard, image measurement or mobile job fails.
+
 ## macOS manual packages
 
 On Apple Silicon at the exact release commit:

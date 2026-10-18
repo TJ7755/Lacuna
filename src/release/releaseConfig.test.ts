@@ -415,13 +415,16 @@ describe('release configuration', () => {
 
   it('requires Chromium shards, exclusive image performance and focused mobile WebKit smoke', () => {
     const tests = workflowJob(ciWorkflow, 'browser-tests');
-    expect(tests).toContain('shard: [1, 2]');
+    expect(tests).toContain('shard: [1, 2, 3, 4]');
     expect(tests).toContain('fail-fast: false');
     expect(tests).toContain(
-      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --shard=${{ matrix.shard }}/2',
+      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --shard=${{ matrix.shard }}/4',
     );
     expect(tests).toContain('if: always()');
     expect(tests).toContain('playwright-report/');
+    expect(tests).toContain('test-results/');
+    expect(tests).toContain('name: browser-results-${{ matrix.shard }}');
+    expect(tests).not.toContain('continue-on-error');
     const performance = workflowJob(ciWorkflow, 'browser-image-performance');
     expect(performance).toContain('runs-on: ubuntu-latest');
     expect(performance).toContain("if: needs.changes.outputs.docs_only != 'true'");

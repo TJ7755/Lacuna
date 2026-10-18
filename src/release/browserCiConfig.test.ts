@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -64,7 +65,11 @@ function cases(suites: Suite[], ancestors: string[] = []): string[] {
   ]);
 }
 
-it('partitions the complete local Chromium suite into two functional shards and one exclusive image case', () => {
+it('partitions the complete local Chromium suite across the CI shard matrix and one exclusive image case', () => {
+  const workflow = parse(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8')) as {
+    jobs: { 'browser-tests': { strategy: { matrix: { shard: number[] } } } };
+  };
+  const shardNumbers = workflow.jobs['browser-tests'].strategy.matrix.shard;
   const directory = mkdtempSync(resolve(tmpdir(), 'lacuna-browser-discovery-'));
   // One spec reads the built homepage during discovery. No browser or test body runs here.
   mkdirSync(resolve(directory, 'dist'));
@@ -104,11 +109,16 @@ it('partitions the complete local Chromium suite into two functional shards and 
 
   try {
     const local = list('playwright.web.config.ts', 'chromium');
-    const first = list('playwright.web.ci.config.ts', 'chromium-functional', '--shard=1/2');
-    const second = list('playwright.web.ci.config.ts', 'chromium-functional', '--shard=2/2');
+    const shards = shardNumbers.map((shard) =>
+      list(
+        'playwright.web.ci.config.ts',
+        'chromium-functional',
+        `--shard=${shard}/${shardNumbers.length}`,
+      ),
+    );
     const image = list('playwright.web.ci.config.ts', 'chromium-image-performance', '--workers=1');
     const mobile = list('playwright.web.config.ts', 'webkit-mobile', '--workers=1');
-    const functionalCases = [...cases(first.suites), ...cases(second.suites)];
+    const functionalCases = shards.flatMap((shard) => cases(shard.suites));
     const imageCases = cases(image.suites);
     const allCiCases = [...functionalCases, ...imageCases];
 
@@ -120,7 +130,7 @@ it('partitions the complete local Chromium suite into two functional shards and 
     expect(functionalCases.every((name) => !name.startsWith('study-image-advance.spec.ts:'))).toBe(
       true,
     );
-    for (const shard of [first, second]) {
+    for (const shard of shards) {
       expect(shard.config.workers).toBe(2);
       expect(shard.config.fullyParallel).toBe(true);
       expect(cases(shard.suites).length).toBeGreaterThan(0);
