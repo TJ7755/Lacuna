@@ -1,1 +1,1 @@
-Create daily restore points in a worker so large media backups do not stall study, preserving snapshot contents, throttling, protected restore points and offline operation.
+- Create daily restore points in a worker so large media backups do not stall study, preserving snapshot contents, throttling, protected restore points and offline operation.
