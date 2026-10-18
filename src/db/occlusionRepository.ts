@@ -292,6 +292,19 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
             ? await ensureLessonBackingDeck(cleaned.courseId, cleaned.primaryLessonId)
             : await ensureCourseBankBackingDeck(cleaned.courseId);
           const concepts = conceptsForOcclusionPayloads(cleaned, deckId, diff.creates, now);
+          // Specification links belong to the Concept, independently of generated Card faces.
+          const existingConcepts = await db.concepts.bulkGet(concepts.map((concept) => concept.id));
+          for (const [index, concept] of concepts.entries()) {
+            const existing = existingConcepts[index];
+            if (
+              concept.scope === 'course' &&
+              existing?.scope === 'course' &&
+              existing.courseId === concept.courseId &&
+              existing.specificationPointIds !== undefined
+            ) {
+              concept.specificationPointIds = existing.specificationPointIds;
+            }
+          }
           const newCards = diff.creates.map((payload, i) =>
             generatedCardFromPayload(
               deckId,

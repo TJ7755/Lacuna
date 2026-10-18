@@ -39,7 +39,6 @@ import {
   deleteLesson,
   deleteNote,
   updateCard,
-  updateCourse,
   updateLesson,
   updateNote,
   updateSequence,
@@ -439,6 +438,9 @@ async function upsertLineageConcepts(
     courseId,
     name: concept.n,
     provisional: concept.p === 1,
+    ...(concept.specificationPointIds === undefined
+      ? {}
+      : { specificationPointIds: concept.specificationPointIds }),
     createdAt: payload.at,
     updatedAt: payload.at,
   }));
@@ -863,6 +865,13 @@ function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCop
     name: payload.course.n || 'Shared course',
     description: payload.course.d ?? '',
     unlockMode: payload.course.um,
+    ...(payload.course.specificationRef === undefined
+      ? {}
+      : { specificationRef: payload.course.specificationRef }),
+    ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
+    ...(payload.course.specification === undefined
+      ? {}
+      : { specification: payload.course.specification }),
   };
 }
 
@@ -953,6 +962,13 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await createCourse(payload.course.n || 'Shared course', {
       description: payload.course.d ?? '',
+      ...(payload.course.specificationRef === undefined
+        ? {}
+        : { specificationRef: payload.course.specificationRef }),
+      ...(payload.course.examBoard === undefined ? {} : { examBoard: payload.course.examBoard }),
+      ...(payload.course.specification === undefined
+        ? {}
+        : { specification: payload.course.specification }),
       examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
       createdAt: payload.course.c,
       schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
@@ -1363,16 +1379,33 @@ export async function mergeLineageUpdate(
     // since the last import (it no longer matches `dc.source`) is theirs to keep.
     const source = courseSource(payload);
     const detailChanges: Partial<CourseRecord> = {};
-    const local = { name: course.name, description: course.description ?? '', unlockMode: course.unlockMode };
-    for (const key of ['name', 'description', 'unlockMode'] as const) {
-      if (local[key] !== source[key] && (!dc.source || local[key] === dc.source[key])) {
+    const local = {
+      name: course.name,
+      description: course.description ?? '',
+      unlockMode: course.unlockMode,
+      specificationRef: course.specificationRef,
+      examBoard: course.examBoard,
+      specification: course.specification,
+    };
+    for (const key of [
+      'name', 'description', 'unlockMode', 'specificationRef', 'examBoard', 'specification',
+    ] as const) {
+      if (
+        !jsonValuesEqual(local[key], source[key]) &&
+        (!dc.source || jsonValuesEqual(local[key], dc.source[key]))
+      ) {
         Object.assign(detailChanges, { [key]: source[key] });
       }
     }
-    await updateCourse(courseId, {
-      ...detailChanges,
-      distributedCopy: { ...dc, revision: payload.rv, source },
-    });
+    // A teacher import may update its locked copy; public authoring mutations remain gated.
+    await db.courses.update(
+      courseId,
+      stampUpdatedAt({
+        ...detailChanges,
+        distributedCopy: { ...dc, revision: payload.rv, source },
+      }),
+    );
+    await syncCourseSchedulingUnits(courseId);
     await db.lineageIdMappings.put(mapping);
 
     // Queue whatever remains unresolved, superseding any previous pending row for this

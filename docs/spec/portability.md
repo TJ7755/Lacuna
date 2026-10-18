@@ -20,7 +20,8 @@ readonly transaction, then perform expensive byte encoding outside it. Encoding 
 bounded chunks across assets, including inside a large asset, while preserving bytes, metadata and
 asset order. This responsiveness must not weaken the snapshot boundary. Pre-migration snapshots
 commit outside the upgrading database transaction so an aborted upgrade retains recovery evidence.
-A failed safety snapshot blocks destructive replacement or migration.
+A failed safety snapshot blocks destructive replacement or migration. Pre-upgrade media uses the
+shared encoder so restoring the snapshot retains audio/image kinds and bytes.
 
 The daily backup worker captures, encodes, stores, prunes and mirrors through the same
 [restore-point writer](../../src/db/backupRestorePoint.ts) as explicit backups. Only small status
@@ -67,6 +68,21 @@ existing source/adopted identity registry and public-edit locks.
 and labels them **Archived** in both the picker and selected label, including a single Course.
 An explicit Course request wins. Otherwise selection prefers an active shared Course, then an
 active Course; when all are archived, it falls back to a shared Course, then the first Course.
+
+## Specification metadata
+
+Course `specificationRef` and course-scoped Concept `specificationPointIds` survive backup/restore,
+peer sync, share codes and Course files. Validate before writes: malformed references, duplicate
+route/point IDs and links on legacy-scheduling-unit Concepts are invalid. Unknown valid catalogue
+IDs and additive nested metadata remain portable; a Course selection change never silently drops
+Concept links. Sync uses the existing whole-Concept last-writer rule and deterministic timestamp
+tie-break, rather than unioning removed links back into the record.
+
+Ordinary sharing remaps local Concept IDs while preserving qualified catalogue point IDs and the
+Custom fallback strings. Published source metadata retains the reference/fallback text: teacher
+corrections update an unchanged selection, while learner selection changes stay local. Concept
+links follow published-content update policy; learner schedules, Attempts and reviews stay personal.
+These optional keys do not change transport versions or encryption.
 
 ## Classroom distribution
 

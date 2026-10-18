@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from '../db/schema';
 import { createCourse } from '../db/courseRepository';
 import { sha256Blob } from '../db/assets';
-import type { ShareLesson, SharePayloadV2 } from '../db/share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV5 } from '../db/share';
 import type { BackupAsset } from '../db/types';
 import { importLineageFirstTime } from '../db/mergeImport';
 import { recordShareImport } from './linkStore';
@@ -47,7 +47,7 @@ function manifestBytes(revision: number): Uint8Array {
   );
 }
 
-function courseFileText(payload: SharePayloadV2): string {
+function courseFileText(payload: SharePayloadV2 | SharePayloadV5): string {
   return JSON.stringify({ format: 'lacuna-course', version: 1, payload, assets: [] });
 }
 
@@ -92,6 +92,49 @@ beforeEach(async () => {
 });
 
 describe('pollShareUpdates', () => {
+  it('applies published specification corrections through the course-file parser', async () => {
+    const first: SharePayloadV5 = {
+      ...coursePayload(),
+      v: 5,
+      course: {
+        ...coursePayload().course,
+        specificationRef: { specificationId: 'pearson-4bi1-2028' },
+        examBoard: 'Custom fallback',
+      },
+      concepts: [{
+        id: 'concept-cells',
+        n: 'Cells',
+        specificationPointIds: ['pearson-4bi1-2028:1.a'],
+      }],
+      questions: [],
+      questionSets: [],
+      questionSetPracticeNodes: [],
+    };
+    const { course } = await importLineageFirstTime(first);
+    recordShareImport(SHARE_ID, course.id);
+    const reference = { specificationId: 'uninstalled-spec', routeIds: ['new-route'] };
+    const revised: SharePayloadV5 = {
+      ...first,
+      at: 2_000,
+      rv: 2,
+      course: { ...first.course, specificationRef: reference },
+      concepts: [{ ...first.concepts[0], specificationPointIds: ['uninstalled-spec:point-1'] }],
+    };
+    const { fetchImpl } = shareFetch(manifestBytes(2), courseFileText(revised));
+
+    expect(await pollShareUpdates({ fetchImpl, throttleMs: 0 })).toEqual([
+      { courseId: course.id, shareId: SHARE_ID, status: 'updated', revision: 2 },
+    ]);
+    expect(await db.courses.get(course.id)).toMatchObject({
+      specificationRef: reference,
+      examBoard: 'Custom fallback',
+      distributedCopy: { source: { specificationRef: reference } },
+    });
+    expect(await db.concepts.get('concept-cells')).toMatchObject({
+      specificationPointIds: ['uninstalled-spec:point-1'],
+    });
+  });
+
   it('merges a newer teacher revision and queues it for review', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     recordShareImport(SHARE_ID, course.id);
