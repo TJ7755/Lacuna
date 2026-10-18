@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
-import { MarkdownView } from '../markdown/MarkdownView';
+import { CardContent } from '../cards/CardContent';
 import { Button } from '../ui/Button';
 
 export function QuestionSetRelatedKnowledge({
@@ -58,8 +58,8 @@ export function QuestionSetRelatedKnowledge({
       {open &&
         cards.map((card) => (
           <section className="qs-card-preview" key={card.id}>
-            <MarkdownView source={card.front} />
-            <MarkdownView source={card.back} />
+            <CardContent card={card} side="front" />
+            <CardContent card={card} side="back" />
           </section>
         ))}
     </section>

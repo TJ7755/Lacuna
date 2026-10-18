@@ -34,6 +34,30 @@ function makeCard(overrides: Partial<Card>): Card {
 }
 
 describe('CardContent', () => {
+  it.each(['1871.', '1921.', '1.', '0.'])(
+    'renders the complete answer %s through the shared list-row and preview path',
+    (back) => {
+      const { container } = render(<CardContent card={makeCard({ back })} side="back" />);
+      expect(container.textContent).toBe(back);
+      expect(container.querySelector('p')?.textContent).toBe(back);
+      expect(container.querySelector('ol')).toBeNull();
+    },
+  );
+
+  it('preserves a genuine ordered list through the shared answer path', () => {
+    const { container } = render(
+      <CardContent
+        card={makeCard({ back: '1871. First answer\n1872. Second answer' })}
+        side="back"
+      />,
+    );
+    expect(container.querySelector('ol')?.start).toBe(1871);
+    expect([...container.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+      'First answer',
+      'Second answer',
+    ]);
+  });
+
   it('renders a muted cue block above a "Next item?" prompt for a positional sequence card front', () => {
     const card = makeCard({
       front: '**Cranial Nerves**\n\nOlfactory\n\nOptic',
