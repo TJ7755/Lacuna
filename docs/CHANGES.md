@@ -33,6 +33,7 @@
 - Give the AI header's Disconnect and Sign out link a 44px pointer target without changing its look. The merge review expander and image occlusion role buttons already met the standard. (#454, #473)
 - Cards and Archived: Tag… now focuses its tag field, and a finished bulk action returns focus to Select instead of dropping it; restoring an archived course offers Open in its confirmation without navigating, and the empty Archived page offers Back to Today (#455).
 - Make the sticky course bar audit wait for course Settings to load before scrolling, so it no longer races the page. (#456, #477)
+- Record the redesign coverage matrix, candidate-specific evidence and outstanding novice, native-input and device validation gates. (#456)
 - Give repeat-save its own padded row, keep Cancel and Done at stable bounds, and reserve the added-card tally. Compact touch actions retain editor space and follow the visible viewport above mobile keyboards; answer mode and reverse creation form a consistent responsive group, and card formatting uses the existing expandable toolbar. (#457)
 - Settings reflows with its own text-size setting on narrow screens: segmented controls stack their options vertically when they cannot fit side by side, and the audio playback speed and grading strictness choices wrap beneath their labels, so nothing overflows its card or squeezes the grading explanation into a narrow column (#458)
 - Opening a landing page link such as `#landing-product` on a first visit now stays on the landing page instead of booting the study dashboard (#503)
@@ -49,6 +50,7 @@
 - Update the production audio-playback regression to use the redesigned Edit mode and Path navigation and scope playback to the authoring player within Card content, retaining real WAV playback, persisted audio reload and CSP assertions.
 - Desktop releases are now automatic after the version bump merges. `bun run release:prepare <version> [title]` bumps `package.json`, folds the changelog and pins the Windows upgrade gate to the previous release's installer digest (now in `scripts/windows-release-baseline.json` rather than three files). Once CI and Security pass on master, the new Release tag workflow tags the commit and dispatches the release build, which publishes the beta itself when `docs/releases/<version>.md` holds its notes.
 - Course analytics: the Lesson breakdown's slanted lesson names no longer run off the axis and lose their first words; long names end in an ellipsis, and the tooltip and data table keep them whole.
+- Update browser checks to follow the delivered authoring, navigation, disclosure, search and study controls while retaining focus, geometry, recovery and synchronisation assertions.
 - Use Bun 1.4.3's built-in checker for the web project references, retaining native TypeScript for smaller server/Electron checks and desktop emission; align development, CI, audits and release builds on Bun 1.4.3.
 - Improve the date and time picker with continuous keyboard date navigation, month and year paging that preserves the focused day, a left-aligned month label with adjacent navigation arrows, and one today shortcut that preserves the chosen time.
 - Keep Import cards visible beside More in the New card editor, as a separate rounded button outside the card-type selector.
@@ -66,6 +68,7 @@
 - Fit text and Anki imports into compact input, review and destination steps without a scrolling panel. Preserve drafts and reverse-card settings when going back.
 - Centre Search content and use the shared rounded search-field styling.
 - Progress’s 7- and 30-day review activity now fills the card with a compact daily strip, with matching weekday or date labels and sequential keyboard navigation. Longer periods retain the calendar layout.
+- Fix the public comparison card demo's hydration error when reduced motion is enabled, retaining its interactive controls and motion preference.
 - Component tests now cover the sync pairing flow (setup, manual and QR join, validation and failure paths), the touch card-actions sheet (actions, keyboard and drag dismissal), and the staged item editor and candidate row (field edits, fixtures, validation and AI revision)
 - Inline confirmations preserve focus deliberately restored by their caller when cancellation chooses the next action, including lesson-deletion cancellation in Settings.
 - Unified Add and Other ways around one expanding action surface, preserving fixed-size text and the original corner-anchored spring. Action menus support arrow keys, Home, End and Escape, skip unavailable entries and restore focus on dismissal.
@@ -389,12 +392,14 @@
 - Fixed duplicate keyboard targets in Help's footer: each destination is now one accessible link with the shared press feedback and a full-size touch target.
 - Replace dense Help reference sections with short, searchable task questions in Settings-style cards, arranged in two fixed columns on wide screens. Rank direct answers first, share customised shortcuts and show up to three Help results in Quick search and Search content. Update guidance for grading, scheduling, exam dates and revision.
 - Help now recognises topic links inside the app’s hash route and follows topic-fragment changes. Help and Settings share the existing validated section-link handling, including encoded fragments and listener cleanup.
+- Keep the Import heading anchored while its panel expands by focusing inline inputs without scrolling the surrounding surface.
 - Import now expands from its button into a neutral panel on Today, reusing the existing preview and confirmation flows. Existing Import links open the panel instead of a separate page.
 - Fix entrance animations being suppressed for content opened after reloading the first route.
 - Keep cold Import opens compact until content is ready, measure at the final width, and animate source changes, All sources and panel height together.
 - The Import page’s initial paste and package steps use the full input width instead of reserving an empty destination column. Review keeps its destination and card-preview split.
 - Quickly closing and reopening an Import source restores focus to its input even while the previous step animation is still finishing.
 - Import: the title now sits where every other page's title does. Back (now **All sources**) shares its row on the right instead of reserving an empty row above it, so nothing moves as the steps change.
+- Run the original CPU-throttled image-advance measurement in its own single-worker CI job, required alongside both functional Chromium shards and mobile smoke by `browser-smoke`. Keep ordinary local Chromium coverage and all measurement budgets unchanged.
 - Replace the landing page below the hero with concise exam scheduling, forecast, grading, exam question and privacy explanations, using static product examples and a shorter FAQ.
 - The sliding pills now actually slide: course tabs, View/Edit, the sidebar, settings segments and the other `layoutId` indicators jumped, because the app loaded motion's `domAnimation` features, which leave out layout animation. The full `domMax` set now loads straight after first paint (no change to first-load JavaScript, and precached for offline use).
 - With layout animation live, containers holding text animate their position only, so an inline confirmation, a toast, a sidebar course row or a dialog never squashes its text while it changes size.
@@ -529,6 +534,7 @@
 - Keep departing step controls out of keyboard navigation and make incoming headings reliably focusable.
 - Restyle the "in a row" pop during study: it now sits on the raised surface so its flame stays legible in dark mode, arrives with a calmer spring, and no longer throws confetti.
 - Restore compact, content-sized study cards, centred between the header and fixed study controls. Larger cards grow up to the viewport limit while retaining fitted media, registered occlusion masks and internal text scrolling.
+- Retain outgoing study cards through their final rendered departure position before removing them, preventing intermittent early disappearance after grading.
 - Give study-card exits a deliberate accelerating departure, preserve bounded flick momentum, and let incoming cards settle with a slower spring without bounce.
 - Tighten study-card motion to a shorter accelerating exit, cap flick flights at 280ms, and settle incoming cards within 280ms while overlapping the departure.
 - Make study cards follow horizontal drags directly and glide away in one continuous motion, carrying flick velocity through grading without waiting for the next card to load. Cancelled drags spring back; vertical scrolling, reduced motion, grading timings and Undo retain their existing behaviour.
