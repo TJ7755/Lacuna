@@ -30,7 +30,8 @@ export async function parseApkg(
   }
 
   return new Promise<ApkgImportResult>((resolve, reject) => {
-    const worker = new Worker(new URL('../workers/apkg.worker.ts', import.meta.url), {
+    // A new entry name bypasses cached worker responses whose CSP blocked WebAssembly.
+    const worker = new Worker(new URL('../workers/apkgImport.worker.ts', import.meta.url), {
       type: 'module',
     });
     const cleanup = () => worker.terminate();
