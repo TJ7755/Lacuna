@@ -128,14 +128,15 @@ rebuilding web assets: the exact-commit `production` CI job already enforces tha
 Required CI and Security gates remain intact. Native build time and platform checks still apply;
 no end-to-end timing improvement is claimed until this workflow has run on a new release tag.
 Browser CI runs functional Chromium tests in four Playwright shards with two workers each.
-The original-sized image-advance measurement runs in a separate job with one worker and no
-concurrent functional test on that runner. CI explicitly selects `chromium-functional` or
-`chromium-image-performance` from `tests/config/playwright.web.ci.config.ts`; together they cover
-all tests in the normal `chromium` project exactly once. The ordinary
+The original-sized image-advance measurement and frame-sensitive sidebar checks run serially
+in a timing job with one worker and no concurrent functional test on that runner. CI selects
+`chromium-functional` for the shards and `chromium-image-performance` plus `chromium-sidebar-motion`
+for timing from `tests/config/playwright.web.ci.config.ts`; together they cover all tests in the
+normal `chromium` project exactly once. The ordinary
 `bun run test:e2e:web -- --project=chromium` command still includes the image measurement.
 The focused iPhone-sized WebKit smoke suite runs in one worker. Each job preserves its failure
-evidence. The existing required `browser-smoke` check fails if any Chromium shard, the image
-measurement or the WebKit job fails. Isolation removes competing test work; it does not establish
+evidence. The existing required `browser-smoke` check fails if any Chromium shard, the timing
+job or the WebKit job fails. Isolation removes competing test work; it does not establish
 that a product performance regression has been fixed.
 
 ## Signing policy

@@ -413,7 +413,7 @@ describe('release configuration', () => {
     }
   });
 
-  it('requires Chromium shards, exclusive image performance and focused mobile WebKit smoke', () => {
+  it('requires Chromium shards, serial image and sidebar timing, and focused mobile WebKit smoke', () => {
     const tests = workflowJob(ciWorkflow, 'browser-tests');
     expect(tests).toContain('shard: [1, 2, 3, 4]');
     expect(tests).toContain('fail-fast: false');
@@ -425,19 +425,19 @@ describe('release configuration', () => {
     expect(tests).toContain('test-results/');
     expect(tests).toContain('name: browser-results-${{ matrix.shard }}');
     expect(tests).not.toContain('continue-on-error');
-    const performance = workflowJob(ciWorkflow, 'browser-image-performance');
-    expect(performance).toContain('runs-on: ubuntu-latest');
-    expect(performance).toContain("if: needs.changes.outputs.docs_only != 'true'");
-    expect(performance).toContain('playwright install --with-deps chromium');
-    expect(performance).toContain(
-      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --workers=1',
+    const timing = workflowJob(ciWorkflow, 'browser-timing');
+    expect(timing).toContain('runs-on: ubuntu-latest');
+    expect(timing).toContain("if: needs.changes.outputs.docs_only != 'true'");
+    expect(timing).toContain('playwright install --with-deps chromium');
+    expect(timing).toContain(
+      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --project=chromium-sidebar-motion --workers=1',
     );
-    expect(performance.match(/- run: .*playwright test /g)).toHaveLength(1);
-    expect(performance).not.toContain('continue-on-error');
-    expect(performance).not.toContain('STUDY_IMAGE_ADVANCE_BUDGET_MS');
-    expect(performance).toContain('if: always()');
-    expect(performance).toContain('playwright-report/');
-    expect(performance).toContain('test-results/');
+    expect(timing.match(/- run: .*playwright test /g)).toHaveLength(1);
+    expect(timing).not.toContain('continue-on-error');
+    expect(timing).not.toContain('STUDY_IMAGE_ADVANCE_BUDGET_MS');
+    expect(timing).toContain('if: always()');
+    expect(timing).toContain('playwright-report/');
+    expect(timing).toContain('test-results/');
     const mobile = workflowJob(ciWorkflow, 'browser-mobile');
     expect(mobile).toContain('playwright install --with-deps webkit');
     expect(mobile).toContain('bun run test:e2e:web -- --project=webkit-mobile --workers=1');
@@ -445,17 +445,17 @@ describe('release configuration', () => {
     expect(mobile).toContain('playwright-report/');
     const gate = workflowJob(ciWorkflow, 'browser-smoke');
     expect(gate).toContain(
-      'needs: [changes, browser-tests, browser-image-performance, browser-mobile]',
+      'needs: [changes, browser-tests, browser-timing, browser-mobile]',
     );
     expect(gate).toMatch(/^ {4}if: always\(\)$/m);
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
     expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
-    expect(gate).toContain('IMAGE_RESULT: ${{ needs.browser-image-performance.result }}');
+    expect(gate).toContain('TIMING_RESULT: ${{ needs.browser-timing.result }}');
     expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
     expect(gate).toContain(
       'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
     );
-    expect(gate).toContain('ok "$RESULT" && ok "$IMAGE_RESULT" && ok "$MOBILE_RESULT"');
+    expect(gate).toContain('ok "$RESULT" && ok "$TIMING_RESULT" && ok "$MOBILE_RESULT"');
   });
 
   it('fails the browser gate when any required browser job fails or is unexpectedly skipped', () => {
@@ -467,7 +467,7 @@ describe('release configuration', () => {
     const success = {
       DOCS_ONLY: 'false',
       RESULT: 'success',
-      IMAGE_RESULT: 'success',
+      TIMING_RESULT: 'success',
       MOBILE_RESULT: 'success',
     };
     const runGate = (env: Record<string, string>) =>
@@ -475,7 +475,7 @@ describe('release configuration', () => {
         env: { ...process.env, ...env },
       }).status;
     expect(runGate(success)).toBe(0);
-    for (const job of ['RESULT', 'IMAGE_RESULT', 'MOBILE_RESULT']) {
+    for (const job of ['RESULT', 'TIMING_RESULT', 'MOBILE_RESULT']) {
       for (const result of ['failure', 'cancelled', 'skipped']) {
         expect(runGate({ ...success, [job]: result })).not.toBe(0);
       }
@@ -485,7 +485,7 @@ describe('release configuration', () => {
       runGate({
         DOCS_ONLY: 'true',
         RESULT: 'skipped',
-        IMAGE_RESULT: 'skipped',
+        TIMING_RESULT: 'skipped',
         MOBILE_RESULT: 'skipped',
       }),
     ).toBe(0);
