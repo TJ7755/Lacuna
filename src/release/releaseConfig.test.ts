@@ -503,7 +503,7 @@ describe('release configuration', () => {
 
     const gate = workflowJob(ciWorkflow, 'test');
     expect(gate).toContain(
-      'needs: [changes, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
+      'needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
     );
     expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
     expect(gate).toContain(
@@ -513,6 +513,34 @@ describe('release configuration', () => {
     expect(gate).toContain('! ok "$MACOS_ELECTRON_RESULT"');
     expect(gate).toContain('PYTHON_RESULT: ${{ needs.python-tools.result }}');
     expect(gate).toContain('! ok "$PYTHON_RESULT"');
+  });
+
+  it('requires documentation checks even when heavy jobs are skipped', () => {
+    const documentation = workflowJob(ciWorkflow, 'documentation');
+    expect(documentation).not.toContain('if:');
+    expect(documentation).toContain('node scripts/check-docs.mjs');
+    expect(documentation).toContain('node scripts/changelog.mjs --check');
+    expect(documentation).not.toContain('bun install');
+    const gate = workflowJob(ciWorkflow, 'test');
+    expect(gate).toContain('DOCUMENTATION_RESULT: ${{ needs.documentation.result }}');
+    const run = blockScalarValues(gate, 'run').join('\n');
+    const environment = {
+      ...process.env,
+      DOCS_ONLY: 'true',
+      UNIT_RESULT: 'skipped',
+      COVERAGE_RESULT: 'skipped',
+      HANDWRITING_RESULT: 'skipped',
+      PYTHON_RESULT: 'skipped',
+      MACOS_ELECTRON_RESULT: 'skipped',
+    };
+    const status = (result: string) =>
+      spawnSync('bash', ['-c', run], {
+        env: { ...environment, DOCUMENTATION_RESULT: result },
+        encoding: 'utf8',
+      }).status;
+    expect(status('success')).toBe(0);
+    for (const result of ['failure', 'cancelled', 'skipped', ''])
+      expect(status(result)).not.toBe(0);
   });
 
   it('runs high-severity audits and least-privilege CodeQL on every supported change path', () => {

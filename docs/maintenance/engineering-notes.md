@@ -1,7 +1,7 @@
 # Engineering notes
 
-Non-obvious constraints extracted from repository memories. Read the relevant section when
-working in that area; current contracts belong in the [specification](../SPEC.md).
+Read the relevant section when working in that area. Source and tests establish current behaviour;
+the [constraint index](../SPEC.md) retains product intent and ownership boundaries.
 
 ## Build and desktop packaging
 

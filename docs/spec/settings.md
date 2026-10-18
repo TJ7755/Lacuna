@@ -1,311 +1,46 @@
-# 15. Settings (`src/pages/Settings.tsx`)
+# Settings, sync and AI authority
 
-`Settings.tsx` is a thin page composition; the web settings live under
-`src/pages/settings/` (with an additional Electron-only MCP surface). Its left-aligned
-heading and quiet version share the course-page frame. Appearance is the primary card
-beside Input mode and Pomodoro timer in the same asymmetric grid as course settings;
-the cards stack on narrow screens. Each control appears once.
+[Settings](../../src/pages/Settings.tsx) and [its sections](../../src/pages/settings/) own the current
+controls and labels. [CourseSettings](../../src/pages/CourseSettings.tsx) owns Course overrides.
+Use source and tests for defaults, field ranges and disclosure contents.
 
-Five compact disclosure rows below group **Appearance & access** (sidebar, Today, course
-header and shortcuts), **Study behaviour**, **Course defaults**, **Your data** and
-**Integrations**. They use the approved course-settings row treatment and existing motion
-primitives. The separate `SettingsDisclosure` keeps its forms mounted, preserving drafts,
-subscriptions and pending backup/sync operations when closed. Closed content is inert and
-hidden from assistive technology immediately. Course settings remain unchanged.
-Each panel contains its positioned descendants, so closed content contributes no scroll
-height; the page ends after the final row and its normal bottom padding.
+Device preferences must not silently change unrelated behaviour: input mode does not change text
+size or disable ordinary keyboard/pointer operation. A bounded numeric draft can be cleared and
+retyped without persisting a transient invalid value. Saving on blur preserves the newly chosen
+focus target. Hidden disclosures retain unfinished values without leaving controls interactive.
 
-Existing group and child section ids remain available. Initial and subsequent deep links
-open the containing group and scroll to the requested section; animated openings finish
-before the final scroll. The Settings section rail and mobile jumper are replaced by the
-same disclosure buttons at every viewport size.
+## Sync
 
-Device-local preference hooks re-read their value when subscribing, so changes made during
-mounting are visible immediately even if their change event preceded the subscription.
+The [cycle](../../src/sync/cycle.ts), [merge](../../src/sync/mergeSnapshots.ts) and
+[replacement lifecycle](../../src/sync/manualMerge.ts) own state application. Peer/recovery apply
+serialises snapshot, merge and import while preserving the local AI session. Full replacement
+invalidates the session before draining writes; persisted session/transcript state is cleared only
+after replacement succeeds.
 
-- **Appearance:** theme toggle (defaults to **dark**); **accent colour** swatches
-  (9 choices: Volt plus eight alternatives); **text size** steps that scale all text. All three persist to
-  `localStorage` (via `ThemeContext`, `AccentContext`, `FontScaleContext`).
-  Text-size changes reflow immediately. Their selection control stays at its natural size;
-  other Settings selection indicators animate only when their selected value changes.
-  Adopting Volt replaces the previous automatically saved amber default once. Other saved
-  accents and all saved light/dark/automatic theme choices survive. Choosing Amber again
-  afterwards is honoured on later launches. Fresh installs open in dark mode.
-- **Motion:** a **motion-speed** setting with three steps (**Slow**, **Normal** and
-  **Fast**) that multiplies animation and transition durations in the app by a single value.
-  It is persisted to `localStorage`; the separate `prefers-reduced-motion` preference disables
-  motion regardless of this setting. Overlay dialogs (card edit, archive,
-  the mobile drawer, the Learn touch sheet) skip enter/exit when the multiplier is 0
-  rather than playing a zero-duration keyframe. Expanding panels (share codes, import
-  previews, card-list choosers) fade. The New course surface grows from its trigger using the
-  same physical spring as course action menus and inline disclosures, with a separate content fade.
-- **Input mode** (v0.0.2): `auto` (default — initially uses the primary pointer, then follows mouse/keyboard
-  or touch/pen activity), `touch`, or `keyboard`. The choice drives whether the
-  app renders bottom sheets vs. dropdowns, shows or hides swipe hints, and swaps
-  hover-only affordances for always-visible ones. Persisted to `localStorage`.
-  Explicit modes determine presentation independently of previous choices and detected activity.
-  Detection continues under manual choices, so Auto resumes the primary-pointer/last-activity
-  contract. Input mode never changes text size or another preference, and does not disable
-  physical keyboard or pointer input.
-- **Pomodoro** (v0.0.2): work minutes (1–120), short and long break minutes (1–60), and
-  `autoStartBreaks`. The Pomodoro timer is otherwise fully usable from the Learn
-  header.
-- **Study behaviour:** **Manual four-point grading** toggle (off by default ->
-  silent grader, §10), **Type your answer** toggle (off by default -> flip-to-reveal;
-  see "Typing setting" above), audio-answer controls, **Recite poems and scripts aloud** (off by
-  default -> lines are typed in cumulative recitation; `lacuna.recitationInput`) and **Start Learn
-  sessions in Focus Mode** (off by default).
-- **Course defaults:** automatic Practice placement and the global **Optimise scheduling** default
-  (on -> fit FSRS weights to review history, §8.1; gated at `MIN_OPTIMISE_REVIEWS`, overridable per
-  course, applied only on confirmation), plus the device-local **After the final exam** policy
-  (**Ask me** by default, or **Archive automatically** / **Keep revising**). Practice timing, FSRS retention/interval fields and
-  optimisation controls sit behind native **Advanced practice timing** or **Advanced scheduling**
-  disclosures. Workload and session-goal fields remain visible.
-- **Sidebar:** show due counts (on by default), compact mode (off by default), and per-nav-item visibility toggles for every primary nav
-  entry (Today, Search, Share, Progress, Settings, Help). Navigation names and visibility switches
-  stay on one row, with 44px ordering controls wrapping beneath them on narrow screens; enlarged
-  text must leave every control inside its row. **Archived** is fixed
-  beneath the **Courses** heading and is not hideable or reorderable; archived courses never appear
-  in the ordinary course list. The sidebar's search entry is named **Search content**, as the page
-  it opens; Ctrl/Cmd+K from it opens **Quick search**. Persisted
-  to `localStorage` and applied immediately (`src/state/sidebarSettings.ts`). The
-  dashboard's own course-ordering control (recent / ready to study / mastery / exam
-  date / name / created) is a separate, dashboard-local setting
-  (`src/state/dashboardSort.ts`; §4.3), not part of this section.
-- **Full backup & recovery:** export the entire local database; **Another device** combines this
-  installation with a backup from a second device; **Recover this installation** offers the
-  explicit **Add from backup** / **Replace local data** chooser described in §13. Course sharing
-  and text/CSV/JSON/APKG card import remain separate flows.
-- **Persistent storage:** the app requests `navigator.storage.persist()` on
-  first run so the browser does not silently evict IndexedDB data under storage
-  pressure. The result (persisted, denied, or unsupported) is surfaced honestly
-  in the backup area of Settings, with a clear warning when persistence is
-  denied and a pointer to regular exports or folder mirroring as the safeguard.
-  The denied warning offers an **Export backup** action to the full-backup anchor. A
-  `useStorageQuotaWarning` hook (§16) also surfaces a non-blocking toast when the browser reports
-  the database is approaching its quota; that toast is shown once per session and offers
-  **Open backups**. If the database cannot open because the quota is full, startup explicitly
-  warns users not to clear Lacuna site data, to free browser or operating-system space or leave
-  private browsing, and then reload. It does not claim that export is available while the database
-  is closed.
-- **Automatic backups:** "Back up now"; folder-mirror controls (where
-  supported); a list of restore points (timestamp + lesson/card counts) each with
-  two-step Delete and Restore confirmation. Deleting removes the IndexedDB restore point from
-  Lacuna; an independently mirrored folder file is not removed. The three newest points are
-  visible initially; **More** discloses the older points without changing retention. Ordinary
-  snapshots are capped at ten, while pre-migration snapshots are exempt. Startup saves when the
-  newest point is at least 24 hours old. Ordinary saves have a five-minute in-session throttle;
-  deliberate backups and pre-combine/peer-apply safety snapshots bypass it. Peer sync skips its
-  safety snapshot and import only when the current-format payload, import projections and merged
-  state are provably unchanged. Deletes, migrations and uncertain comparisons retain the snapshot;
-  stored restore points are not deduplicated by content.
-- **Device sync:** **Another device** shows the paired state and last successful sync together,
-  with Sync now, Show pairing QR and a compact Lock control grouped below. The existing unlocked
-  explanation remains on the lock control. **End-to-end encrypted** discloses the relay URL,
-  full channel id, snapshot sizes and backup reminder. Errors remain visible. Remove and Delete
-  channel share a quiet action group and retain their separate confirmations and safety checks.
-- **Install** (where supported): a panel of platform-specific install
-  instructions (PWA, Windows installer, etc.), driven by `useInstallPrompt`. Browser install
-  events are consumed immediately, including on dismissal; the action becomes available
-  again only when the browser supplies a fresh event.
-- **AI** (desktop layouts): a device-local opt-in which is off by default, plus an independent
-  stored misconception-first teaching preference. Enabling it adds an **AI** action to the desktop
-  navigation at 1024 CSS px and above. Opening the non-modal 400 px panel temporarily contracts the
-  existing navigation to its 72 px rail without changing the saved collapse preference; closing
-  restores focus to the trigger. Below the breakpoint the inactive surface is absent. Device-local
-  AI setting subscribers recheck the stored snapshot when they attach, so an enable or disable
-  write between render and subscription is not dropped.
+A safety restore point is required before peer application unless consistent current-format state,
+import projections and the merged result prove it unchanged. Unknown or failed comparisons keep
+the snapshot. Compare-and-swap rejection does not prove whether an unreadable write committed;
+use bounded authenticated receipt recovery rather than blindly repeating a PUT.
 
-  AI connection preference selects the existing external client or built-in hosted inference.
-  Existing users remain on external mode. Built-in mode requires an issued access code and sends
-  bounded conversation content to the web deployment; Electron uses that deployment's HTTPS
-  endpoint too. The server chooses only configured free routes and enforces durable per-learner
-  and global limits. The renderer keeps the transcript locally, executes domain tools through
-  `AiToolSession`, and applies the same in-app approval and receipt rules. One tab owns a hosted
-  session; Stop and reload mark incomplete responses interrupted. Switching mode leaves the
-  other mode's conversation separate. Missing service configuration leaves ordinary study usable.
+Pairing reveals bearer capability only on demand. Remembering plaintext credentials is a deliberate
+trusted-device convenience; Lock removes them without destroying the wrapped recovery keybag.
+A relay generation provides no authenticated freshness or rollback protection. See
+[engineering notes](../maintenance/engineering-notes.md) for transport pitfalls.
 
-  The external-client `AiSession` boundary has two transports. The web build creates a ten-minute
-  pairing code, persists the local conversation and relay credentials across reload, and polls two
-  encrypted directional HTTP mailboxes. Its deliberately running terminal task launches
-  `tooling/lacuna-ai-mcp` as a standard stdio MCP server. The packaged Electron build instead runs
-  the bundled AI companion entry point through the shipped Electron binary in run-as-Node mode and
-  attaches through the authenticated native broker; it does not start a second Chromium browser
-  and uses no pairing code, web relay or network listener. Both transports expose exactly
-  `lacuna.connect`, `lacuna.wait_for_message`, `lacuna.invoke_tool`,
-  `lacuna.reply` and `lacuna.disconnect`, with the enabled renderer retaining session and approval
-  authority. On the web transport, browser and terminal use ephemeral P-256 ECDH to derive an AES-256-GCM key;
-  the relay receives public pairing metadata, bearer-token hashes and opaque ciphertext only. One
-  peer writes each mailbox. `If-Match` accepts either the backing-store ETag or a synthetic
-  `"sha256:<lowercase ciphertext digest>"` generation. For a synthetic generation, the relay first
-  verifies the current mailbox bytes against the digest and then writes against the current store
-  ETag, preserving compare-and-swap rejection of a competing or stale writer. This is outbound
-  HTTPS polling, not a browser extension, WebSocket or inbound localhost service.
+## AI
 
-  A mailbox write whose HTTP acknowledgement is unreadable or returns a server-side `5xx` is not
-  retried because the relay may already have committed it. A successful `200` uses the relay's real
-  generation from its JSON body or exposed header. Only a damaged acknowledgement falls back to a
-  synthetic SHA-256 generation derived from the exact attempted ciphertext. For a
-  transport-rejected request, an unusable non-`200` success or a server-side `5xx`, the writer
-  performs bounded, authenticated GETs with that digest on its own mailbox. The relay returns a
-  receipt only when the current stored ciphertext matches; the writer then derives the same
-  synthetic generation without trusting the receipt body or headers.
-  Browser recovery uses absolute 0/650/1400 ms offsets, 600 ms per-read aborts and a 2.2-second
-  deadline to allow Vercel's cross-origin authorisation preflight to complete. Terminal recovery
-  uses 0/250/650 ms offsets, 250 ms per-read aborts and a one-second deadline. A mismatch that
-  persists through the receipt window requires reconnection. The recovery path does not trust an
-  ordinary platform `ETag`; that header remains legacy `204` compatibility only. If a successful
-  backing-store write omits its ETag, the relay re-reads and accepts the generation only when the
-  stored ciphertext still matches exactly. A stored mailbox with no ETag fails closed; the relay
-  never performs an unconditional repair that could overwrite a concurrent successor.
+[AI runtime](../../src/ai/) owns session identity, Stop, leases, call receipts and approvals.
+Setup and service operation belong in [desktop and AI setup](../desktop.md).
+A registered client is not proof it loaded tools, and MCP cannot wake a completed model task.
 
-  A queued message is claimed with an immutable `runId` and a five-minute lease. Lease expiry
-  requeues the same stable `messageId`; it never manufactures a duplicate transcript identity. A
-  reply authored before the deadline remains valid if the browser's next poll lands after the
-  deadline, while a genuinely late reply is ignored. Replies are complete, not streamed. Stop
-  changes the browser record to `stop_requested`; the terminal refreshes that record before
-  replying, writes `stop_acknowledged`, and refuses a late reply. This is cooperative: it cannot
-  terminate inference already running in the model or terminal harness. The terminal task must
-  remain alive and repeat bounded waits because Lacuna cannot wake a task which has ended.
+Reads are implicit within an active AI run. Writes require approval; Course creation and destructive
+operations require exact one-shot approval. Retries use stable call identity and committed receipts
+so an ambiguous acknowledgement does not duplicate a write. Stop prevents later calls/replies;
+lease renewal cannot revive a stopped or expired run. Quiet polling is not proof of disconnection.
 
-  Native AI companion protocol 2 advertises lease renewal during its authenticated handshake. The
-  companion renews an active lease once per minute only when that capability was negotiated; a
-  current client falls back to the v0.2.3 protocol 1 handshake and does not send an unsupported
-  request. Renewal cannot revive an expired or stopped run, and a permanent renewal failure ends the
-  active run rather than scheduling an endless retry loop. The renderer remains the clock and
-  authority for the new expiry. It also retains a bounded record of completed local replies:
-  repeating the same run, message and content is acknowledged without adding a second assistant
-  item, while changed content conflicts. This makes an ambiguous reply acknowledgement safely
-  retryable without pretending the model itself persists across a terminated client task.
-
-  A bounded wait publishes at most one terminal-mailbox heartbeat per minute. Its relay PUT is
-  cancelled at the wait deadline; because the write outcome is then unknown, the companion requires
-  reconnection instead of silently continuing or exceeding the advertised bound. The browser treats
-  a newer terminal mailbox revision as liveness: an idle connection with no newer revision for 90
-  seconds becomes **Connection quiet**, and the next terminal write restores **connected**. An
-  active run retains connected status until its claim lease ends, avoiding a false warning while
-  the model is legitimately working. Quiet is deliberately not called disconnected because browser
-  polling cannot prove that the terminal process has ended. If a claim expires or the terminal
-  explicitly disconnects mid-run, Lacuna requeues or recovers the prompt and appends a persistent
-  failure record to the local transcript. If the native companion channel disappears before
-  claiming a queued prompt, Lacuna stops that transcript item and restores its text as an editable
-  draft for explicit resend rather than transferring it automatically to a new owner. Bounded
-  failure identifiers include a fingerprint when truncation is required, preserving uniqueness for
-  long run and event identifiers.
-
-  Mailbox protocol v3 also carries typed tool calls, browser-owned responses and an immutable
-  instruction bundle on every queued message. `buildAiInstructionBundle()` emits `teaching-v1`
-  from the live Settings preference. Enabled conceptual requests diagnose the learner's model,
-  create a concrete failed prediction, delay resolution, explain the corrected model and test
-  transfer; operational work, novel material and explicit direct-answer requests bypass that
-  route. Every bundle retains grounding, conservative memory authorship, permission and Stop rules.
-
-  Both session adapters use the shared renderer executor over the existing Electron MCP tool
-  registry: registry lookup, validation,
-  live scope resolution, repository execution and Undo capture have one implementation. Reads are
-  implicit. Course-scoped writes require a connection/course grant; course creation uses a
-  one-shot `write_call` approval bound to the exact call and validated-input digest; destructive
-  calls use a consumed exact approval. The approval card leads with the proposed action
-  ("Delete course", or "Allow AI to make changes" for a grant), its target and its
-  consequence; the raw tool name sits under Technical details, and Reject takes focus first.
-  Stable `callId` replay returns the recorded result and
-  receipt without repeating the mutation. A resumed approved call ignores an older response for
-  that same `callId` until the browser has acknowledged the terminal revision containing the retry.
-  Successful Course, Lesson, Card, fixed Question and assessment writes return selectable receipts
-  linked to their native surfaces. A receipt whose target was removed by peer sync renders the
-  historical label as **Unavailable**; the global pseudo-Course is never linked. Stop and disconnect
-  reject later calls and clear grants, approvals and replay state.
-
-  Schema v25 stores bounded `AgentMemory` records with immutable id, creation time and global or
-  Course scope; controlled tags; active, uncertain or resolved status; evidence basis; optional
-  provenance and expiry; and Course-owned references. Content is limited to 8,000 characters,
-  identifiers and provenance ids to 160, reference labels to 500, references to 25, queries to
-  1,000 and result limits to 50. `lacuna.search_memories` and `lacuna.create_memory` require an
-  explicit global or Course scope; update cannot move scope; delete is destructive with Undo.
-  Normal AI search excludes expired session memories. Settings → AI can inspect and search every
-  scope, include expired records, correct content and status, or delete a record. Resolved
-  misconceptions remain as learner-correctable evidence rather than being silently resurrected.
-
-  Full backup, replacement, recovery merge and encrypted peer sync include memories. Newest-write
-  and tombstone rules converge peer update, deletion and deliberate resurrection, while recovery
-  and peer merge reject conflicting scope movement. Course deletion cascades scoped memories in the
-  same snapshot/Undo boundary. AI writes and data application share `ReplacementLifecycle`:
-  peer/recovery application serialises snapshot, merge and import while preserving the session;
-  manual replacement synchronously invalidates new AI work, drains admitted writes, attempts relay
-  revocation, commits replacement and clears device-local transcript, connection, grants,
-  approvals and replay state only after success. The Electron MCP server below is a separate
-  local-IPC adapter with its own consent coordinator.
-
-- **MCP server** (Electron only): live stdio-server status, tool-surface version and tool
-  count, followed by process-scoped read/write/destructive grants for the whole database
-  and each course. Grants can be raised, lowered or revoked and are discarded when Lacuna
-  closes.
-
-### Course settings (`src/pages/CourseSettings.tsx`)
-
-The course settings page leads with three editable cards: **Study goal and dates** spans
-one desktop column, with **Daily workload** and **Target recall** stacked beside it. The
-cards stack on narrower screens. The study card shows the final assessment's date (or
-steady retention), the exam objective and the existing assessment editors. Daily workload
-exposes new cards per day, maximum reviews per day, daily review goal and session time limit.
-Target recall retains its slider and Relaxed/Balanced/Thorough presets.
-
-A compact list below expands **Course details** (name, exam board and specification),
-**Lessons** (unlocking, linear cadence, lesson management and manual practice nodes),
-**Auto-practice** (toggle, thresholds, urgent window and maximum lesson gap), and
-**Advanced scheduling** (Learn first, interval fuzz, maximum interval, learning/relearning
-steps, leech detection and optimisation). Each row announces its expanded state. Expansion
-uses the shared disclosure motion, honours reduced motion and removes departing controls
-from keyboard and assistive-technology navigation. Headers keep fixed bounds during pointer
-and keyboard activation; colour feedback, chevron rotation and body expansion remain separate.
-Spacing separates these rows without horizontal rules. Expanded contents are modestly indented;
-Advanced practice timing sits one step further in, with a smaller, medium-weight label.
-Local field drafts stay with the page
-when a row closes. There is no section rail or second copy of the form below the cards.
-
-`SchedulingFieldsSection` supports workload-only and advanced-only groups; its default
-presentation remains the full form. `useCourseSettingsForm` owns the existing local drafts,
-validation and update callbacks. `ExamDatesSection` retains checkpoint creation, final exam
-editing and the `editFinalExam=1` deep link. Optimisation keeps its on/off override,
-review-count gate, Web Worker progress, restore-point snapshot before applying weights,
-and reset action. Archive and delete actions sit below the list, preserving their existing
-confirmations and undo notifications. Locked shared copies retain their detach controls.
-
-Lesson rename, reorder and deletion failures use the existing negative notification.
-The editor or confirmation remains available for retry; failed writes do not dismiss it.
-Lesson names, editors and action groups wrap independently when narrow widths or
-enlarged text require more space, keeping both the name and keyboard controls usable.
-
-- **One save model: instant commit everywhere** (Arc 10 §10.3). Every field commits
-  through the existing `updateCourse` path as it's edited — there is no staged
-  "Save changes" bar. Local drafts protect incomplete text and numeric edits. Text and numeric fields (rename,
-  course provenance and scheduling numbers) commit **on blur**, with the same
-  clamping/validation they always had, so a half-typed value never commits mid-edit;
-  toggles, radios and selects (exam objective, unlock mode, auto-practice) commit **on
-  change**. The **target-retention slider** is the one exception with its own two-phase
-  commit: dragging updates the displayed value locally on every tick but writes to the
-  repository only once, on pointer/key release (the discrete preset buttons still commit
-  immediately, since they're a single discrete action, not a drag). This replaced an
-  earlier split model where ExamDates/LessonManagement/PracticeNodes already committed
-  instantly while name/scheduling/unlock/practice/authoring-mode sat behind a sticky save
-  button — the ambiguity of not knowing which edits were pending is why the whole page
-  now shares one model. **Behaviour change for existing users:** there is no longer a
-  way to edit a field and back out without saving — every edit is live immediately.
-- **Legacy lesson session filter:** `Lesson.sessionFilter` is retained only so old imports
-  remain readable. It has no settings control and does not alter live lesson study, which
-  always serves unseen lesson members in Simple mode.
-- Once the **final exam date has passed** (§8.2), the configured lifecycle policy asks what to do,
-  archives automatically, or keeps the course on its rolling maintenance horizon. Checkpoints do
-  not participate. Manual archiving is available from the dashboard course card and the bottom of course settings.
-- **Danger zone:** course deletion uses a confirmation followed by the snapshot + undo-toast
-  pattern (`DangerZoneSection`): deleting is performed after the inline confirmation, with an
-  "Undo" toast that restores everything from a `CourseSnapshot`
-  (`snapshotCourse`/`restoreCourse`, `src/db/repository.ts`): the course, its lessons,
-  notes, lesson-card links, practice nodes, assessments, revision plans, cards, their scheduling
-  units, and the session history/calibration profiles keyed to the course or those units.
-- **Not-found handling:** the course is resolved via a null-sentinel
-  `useLiveQuery` (missing row mapped to `null`, matching `CoursePath`) so a
-  stale or deleted `courseId` reaches a genuine not-found state instead of
-  hanging on the loading skeleton.
+Learner memory is an explicit product feature with inspectable global or Course scope. It follows
+its own backup/sync deletion rules and is separate from coding-agent harness memory.
+AI transcript, live authority, provider credentials and device-local state must not leak into
+Course sharing. The data MCP server has a separate connection-scoped permission model.
 
 [Specification index](../SPEC.md)

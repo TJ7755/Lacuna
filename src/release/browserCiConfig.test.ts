@@ -7,6 +7,38 @@ import { parse } from 'yaml';
 
 const root = resolve(import.meta.dirname, '../..');
 
+it('serves only the isolated build, refuses port reuse and separates reports', () => {
+  const directory = resolve(tmpdir(), "lacuna browser's evidence");
+  const result = spawnSync(
+    'bun',
+    [
+      '-e',
+      'const { default: config } = await import(process.argv[1]); process.stdout.write(JSON.stringify({ webServer: config.webServer, outputDir: config.outputDir, reporter: config.reporter }));',
+      resolve(root, 'tests/config/playwright.web.isolated.config.ts'),
+    ],
+    {
+      cwd: root,
+      env: { ...process.env, LACUNA_BROWSER_RUN_DIR: directory, PLAYWRIGHT_WEB_PORT: '4317' },
+      encoding: 'utf8',
+      timeout: 20_000,
+    },
+  );
+  expect(result.status, result.stderr).toBe(0);
+  const config = JSON.parse(result.stdout) as {
+    webServer: { command: string; reuseExistingServer: boolean; url: string };
+    outputDir: string;
+    reporter: [string, { outputFile?: string; outputFolder?: string }?][];
+  };
+  expect(config.webServer.reuseExistingServer).toBe(false);
+  expect(config.webServer.url).toBe('http://127.0.0.1:4317');
+  expect(config.webServer.command).toBe('bun scripts/check-browser.mjs --preview');
+  expect(config.outputDir).toBe(resolve(directory, 'test-results'));
+  expect(config.reporter).toContainEqual([
+    'json',
+    { outputFile: resolve(directory, 'results.json') },
+  ]);
+});
+
 interface Suite {
   specs?: { file: string; line: number; column: number; title: string }[];
   suites?: Suite[];

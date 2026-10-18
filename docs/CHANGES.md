@@ -712,7 +712,7 @@ removed during sanitisation and covers rendering, fallback source and theme upda
 
 - Added CI per-file coverage gates for schema migration snapshots, card and ordering
   repositories, and Learn-session persistence and orchestration. Thresholds use measured
-  [baselines](maintenance/coverage.md) so a strong file cannot hide a weak one behind an
+  [baselines](https://github.com/TJ7755/Lacuna/blob/88561dc89556ebeb75de0e68075ad20afb830019/docs/maintenance/coverage.md) so a strong file cannot hide a weak one behind an
   aggregate percentage.
 
 - Counted daily review caps and goals from persisted review events across sessions and repeat

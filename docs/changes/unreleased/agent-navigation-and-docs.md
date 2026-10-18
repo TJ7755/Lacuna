@@ -1,0 +1,1 @@
+- Prune duplicated implementation documentation and retired redesign reports, preserve unresolved acceptance evidence in its owning issues, add a small source index, and check documentation links/fragments in required CI. Add isolated browser verification with per-run assets and source/evidence records.

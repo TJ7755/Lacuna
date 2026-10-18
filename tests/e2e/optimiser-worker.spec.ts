@@ -16,9 +16,9 @@ test('ships the browser trainer matching binding 0.5', () => {
 });
 
 test('fits valid weights through the production browser WASI worker', async ({ page }) => {
-  const workers = readdirSync(resolve(root, 'dist/assets')).filter((name) =>
-    /^optimise\.worker-[A-Za-z0-9_-]+\.js$/.test(name),
-  );
+  const workers = readdirSync(
+    resolve(process.env.LACUNA_BROWSER_RUN_DIR ?? root, 'dist/assets'),
+  ).filter((name) => /^optimise\.worker-[A-Za-z0-9_-]+\.js$/.test(name));
   expect(workers).toHaveLength(1);
   await page.goto('/');
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
