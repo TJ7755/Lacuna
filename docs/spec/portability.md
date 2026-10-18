@@ -236,8 +236,13 @@ has already committed.
 - Ordinary restore-point attempts are throttled for five minutes; a failed export or local
   snapshot write releases that attempt's throttle so an immediate retry can protect the data.
 - Up to the **ten most recent** snapshots are kept on-device; one is taken
-  automatically on open, **at most once a day** (`autoBackupIfStale`), and never
-  blocks the UI.
+  automatically on open, **at most once a day** (`autoBackupIfStale`). The daily worker
+  captures, encodes, stores, prunes and mirrors the snapshot; only completion/error status
+  crosses to the UI thread. It uses the same snapshot and storage path as explicit backups,
+  retaining bytes, metadata, ordering, the five-minute throttle and protected snapshots.
+  Its script is available on first use offline. Without Worker support, the existing local
+  path remains available; worker failures remain non-fatal and do not replay heavy work on
+  the UI thread. Explicit and destructive-operation safety backups retain their awaited path.
 - **Pre-migration snapshot:** before a schema upgrade rewrites data, a
   `pre-migration`-tagged snapshot is captured in a **separate committed
   transaction** (via a dedicated `lacuna-pre-migration` IndexedDB) so a failed
@@ -277,9 +282,12 @@ new orphaned assets. Export refuses missing media instead of producing an incomp
 ### The Share page (`SharePage`, `src/components/share/`, `/share`)
 
 The page sends one course. It opens on the requested course (`?courseId=`), else
-one already being shared, else the first active course; a menu beneath the centred title
-switches course when there is more than one. The share link is the default and
-the one primary action, because it carries media and updates in place. A course
+an active course already being shared, else the first active course. If all courses
+are archived, it falls back to one already shared, then the first course. A menu in
+the page header switches course when there is more than one. Archived courses remain
+available for managing their share links and are marked **Archived** in both the menu
+and the selected course label, including when only one course exists. The share link
+is the default and the one primary action, because it carries media and updates in place. A course
 file, share code, QR code and plain text sit under **Other ways**, one open at a
 time; outputs survive switching between them and clear for another course. When
 a link's uploaded revision is behind the course, **Send revision n** becomes the

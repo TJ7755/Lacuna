@@ -261,16 +261,16 @@ describe('SyncSection', () => {
     render(<SyncSection />);
     fireEvent.click(await screen.findByRole('button', { name: 'Pair' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Join another device' }));
-    fireEvent.click(screen.getByRole('radio', { name: 'Enter details' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Enter details' }));
     fireEvent.change(screen.getByLabelText('Channel id'), { target: { value: state.channelId } });
     fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
       target: { value: 'an incorrect recovery phrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Join channel' }));
-    await waitFor(() =>
-      expect(screen.getByLabelText('Recovery passphrase')).toHaveAttribute('aria-invalid', 'true'),
-    );
-    expect(screen.getByLabelText('Recovery passphrase')).toHaveFocus();
+    await waitFor(() => {
+      expect(screen.getByLabelText('Recovery passphrase')).toHaveAttribute('aria-invalid', 'true');
+      expect(screen.getByLabelText('Recovery passphrase')).toHaveFocus();
+    });
     expect(screen.getByRole('alert')).toHaveTextContent('Incorrect recovery passphrase.');
     expect(notify).not.toHaveBeenCalledWith('Incorrect recovery passphrase.', 'negative');
     fireEvent.change(screen.getByLabelText('Recovery passphrase'), {

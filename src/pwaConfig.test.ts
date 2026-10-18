@@ -8,6 +8,46 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('precaches the daily backup worker and launcher dependencies before first offline use', () => {
+    expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/backups-BACKUP01.js', isEntry: false, imports: ['assets/snapshot-BACKUP02.js'] },
+      { fileName: 'assets/snapshot-BACKUP02.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/backups-BACKUP01.js', 'assets/snapshot-BACKUP02.js']);
+  });
+  it('precaches the restore decoder and its dependencies before the first offline restore', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/portability-RESTORE1.js', isEntry: false, imports: ['assets/validation-RESTORE2.js'] },
+      { fileName: 'assets/validation-RESTORE2.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/portability-RESTORE1.js', 'assets/validation-RESTORE2.js']);
+  });
+  it('precaches the required device-local AI cleanup hook for offline restore', () => {
+    expect(collectAppShellScripts([
+      { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+      { fileName: 'assets/relay-CLEANUP1.js', isEntry: false, imports: ['assets/deviceState-CLEANUP2.js'] },
+      { fileName: 'assets/deviceState-CLEANUP2.js', isEntry: false, imports: [] },
+    ])).toEqual(['assets/app-ENTRY001.js', 'assets/relay-CLEANUP1.js', 'assets/deviceState-CLEANUP2.js']);
+  });
+  it('precaches deferred embedded-image processing before the first offline import', () => {
+    expect(
+      collectAppShellScripts([
+        { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },
+        {
+          fileName: 'assets/markdownAssets-IMAGE001.js',
+          isEntry: false,
+          imports: ['assets/imageHelpers-IMAGE002.js'],
+        },
+        { fileName: 'assets/imageHelpers-IMAGE002.js', isEntry: false, imports: [] },
+      ]),
+    ).toEqual([
+      'assets/app-ENTRY001.js',
+      'assets/markdownAssets-IMAGE001.js',
+      'assets/imageHelpers-IMAGE002.js',
+    ]);
+  });
+
   it('precaches deferred Quick search and its dependencies before first offline use', () => {
     expect(collectAppShellScripts([
       { fileName: 'assets/app-ENTRY001.js', isEntry: true, imports: [] },

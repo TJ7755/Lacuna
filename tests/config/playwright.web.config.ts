@@ -13,7 +13,21 @@ export default defineConfig({
   fullyParallel: process.env.CI === 'true',
   workers: process.env.CI === 'true' ? 2 : 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  reporter: process.env.CI
+    ? [
+        ['line'],
+        ['github'],
+        ['html', { open: 'never' }],
+        [
+          'json',
+          {
+            outputFile: fileURLToPath(
+              new URL('../../test-results/browser-results.json', import.meta.url),
+            ),
+          },
+        ],
+      ]
+    : 'list',
   use: {
     baseURL,
     reducedMotion: 'no-preference',

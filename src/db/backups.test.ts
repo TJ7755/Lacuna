@@ -35,6 +35,7 @@ describe('backups', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('takeAutoBackup stores the lesson count with the snapshot', async () => {
@@ -159,6 +160,71 @@ describe('backups', () => {
     await autoBackupIfStale();
 
     expect(await db.backups.count()).toBe(1);
+  });
+
+  function dailyWorker() {
+    const worker = {
+      postMessage: vi.fn(),
+      terminate: vi.fn(),
+      onmessage: null as ((event: MessageEvent) => void) | null,
+      onerror: null as ((event: ErrorEvent) => void) | null,
+      onmessageerror: null as (() => void) | null,
+    };
+    vi.stubGlobal(
+      'Worker',
+      vi.fn(function () {
+        return worker;
+      }),
+    );
+    return worker;
+  }
+
+  it('shares pending and successful throttles with the daily worker without transferring payloads', async () => {
+    const worker = dailyWorker();
+    const backup = autoBackupIfStale();
+    await autoBackupIfStale();
+    expect(Worker).toHaveBeenCalledTimes(1);
+    expect(worker.postMessage).toHaveBeenCalledExactlyOnceWith(null);
+    expect(await takeAutoBackup()).toBeUndefined();
+    worker.onmessage!({ data: { type: 'stored' } } as MessageEvent);
+    worker.onmessage!({ data: { type: 'done', stored: true } } as MessageEvent);
+    await backup;
+    expect(worker.terminate).toHaveBeenCalledOnce();
+    expect(await takeAutoBackup()).toBeUndefined();
+  });
+
+  it('allows another backup when the worker finds a fresh restore point', async () => {
+    const worker = dailyWorker();
+    const backup = autoBackupIfStale();
+    worker.onmessage!({ data: { type: 'done', stored: false } } as MessageEvent);
+    await backup;
+    expect(await takeAutoBackup()).toBeDefined();
+  });
+
+  it.each(['reported', 'runtime', 'unreadable'] as const)(
+    'releases failed worker reservations (%s)',
+    async (kind) => {
+      const worker = dailyWorker();
+      const backup = autoBackupIfStale();
+      const rejected = expect(backup).rejects.toThrow();
+      if (kind === 'reported')
+        worker.onmessage!({ data: { type: 'error', message: 'Storage failed' } } as MessageEvent);
+      if (kind === 'runtime') worker.onerror!({ message: 'Worker failed' } as ErrorEvent);
+      if (kind === 'unreadable') worker.onmessageerror!();
+      await rejected;
+      expect(worker.terminate).toHaveBeenCalledOnce();
+      expect(await takeAutoBackup()).toBeDefined();
+    },
+  );
+
+  it('retains the successful throttle if worker maintenance fails after storing', async () => {
+    const worker = dailyWorker();
+    const backup = autoBackupIfStale();
+    const rejected = expect(backup).rejects.toThrow('Pruning failed');
+    worker.onmessage!({ data: { type: 'stored' } } as MessageEvent);
+    worker.onmessage!({ data: { type: 'error', message: 'Pruning failed' } } as MessageEvent);
+    await rejected;
+    expect(await takeAutoBackup()).toBeUndefined();
   });
 
   it('keeps the backup when mirroring fails and warns in development', async () => {
