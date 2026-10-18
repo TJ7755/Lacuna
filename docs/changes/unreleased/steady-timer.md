@@ -1,1 +1,0 @@
-- The Pomodoro timer no longer jumps when a study step ends: the between-steps screen lays it out exactly where Learn's header has it. Learn's Undo button is now always shown (disabled until there is an answer to undo) on wide screens as on phones, so the timer also stays put when the first answer lands.

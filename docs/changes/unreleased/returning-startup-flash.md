@@ -1,1 +1,0 @@
-- Prevented the prerendered landing page flashing before Today for returning browsers, app hash links and the desktop app, while preserving first-visit landing pages and anchors.

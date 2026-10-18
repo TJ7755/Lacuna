@@ -1,1 +1,0 @@
-- Keep study cards and answer/grade controls within the viewport, scale images and occlusion masks together with compact media padding, and scroll long text inside the card. Position review notifications above the controls so they cannot cover the next card's grade buttons.

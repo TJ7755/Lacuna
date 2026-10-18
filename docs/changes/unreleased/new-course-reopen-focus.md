@@ -1,1 +1,0 @@
-- Reopening New course during its exit restores focus to the retained name field, without trapping keyboard navigation while the form is closing.

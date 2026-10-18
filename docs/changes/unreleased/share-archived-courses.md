@@ -1,1 +1,0 @@
-- Mark archived courses in the Share course picker and selected course label, and prefer active courses when opening Share without a requested course. Archived courses remain available for managing existing share links.

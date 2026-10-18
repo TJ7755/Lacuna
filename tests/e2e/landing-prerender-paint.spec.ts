@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 
-const homepage = readFileSync('dist/index.html', 'utf8');
+const homepage = readFileSync(
+  resolve(process.env.LACUNA_BROWSER_RUN_DIR ?? '.', 'dist/index.html'),
+  'utf8',
+);
 
 for (const scenario of [
   { name: 'first visit', hash: '', hidden: false },

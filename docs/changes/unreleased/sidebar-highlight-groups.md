@@ -1,1 +1,0 @@
-- Confine the sidebar selection glide to Today/Search content/Progress and Share/Settings/Help separately. Moving between groups or to a course selects directly; course rows retain direct selection and the existing slower glide remains within each navigation group.

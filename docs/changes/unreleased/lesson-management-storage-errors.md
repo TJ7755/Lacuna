@@ -1,1 +1,0 @@
-- Report failed lesson rename, reorder and deletion writes through the existing error notification, retaining the editor or confirmation so the action can be retried.

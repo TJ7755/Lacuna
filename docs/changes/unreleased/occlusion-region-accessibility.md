@@ -1,1 +1,0 @@
-- Give selectable diagram regions accessible names and expose their selected state.

@@ -1,1 +1,0 @@
-- Keep the opening course Study or Other ways panel above the closing panel throughout their transition.

@@ -1,1 +1,0 @@
-- Action menus ignore attempts to open when every action is disabled and move keyboard focus to an available action when the focused action becomes unavailable.

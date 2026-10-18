@@ -1,1 +1,0 @@
-- Make departing share-link panels inert and hidden from assistive technology as soon as their state changes, whilst their existing exit animation finishes.

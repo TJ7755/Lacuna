@@ -1,1 +1,0 @@
-- On a wide window the study sheet is a centred, rounded panel up to 672 pixels wide, rather than a strip across the full width.

@@ -1,1 +1,0 @@
-- Show warmed study images immediately in a correctly sized frame, including occlusion diagrams, instead of expanding the card after its image loads. Preserve original media and recover missing display dimensions from background decoding without changing stored data.

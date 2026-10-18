@@ -1,1 +1,0 @@
-- Share: the title no longer sits a few pixels lower than other pages' titles on phones when the course picker is beside it.

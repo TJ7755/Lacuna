@@ -23,6 +23,8 @@ interface MathsAnswerInputProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
+  onTabForward?: () => void;
+  onTabBackward?: () => void;
 }
 
 interface PaletteTemplate {
@@ -51,6 +53,8 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
       disabled = false,
       autoFocus = false,
       className,
+      onTabForward,
+      onTabBackward,
     },
     forwardedRef,
   ) {
@@ -79,6 +83,19 @@ export const MathsAnswerInput = forwardRef<HTMLInputElement, MathsAnswerInputPro
     };
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+      if (
+        event.defaultPrevented ||
+        event.nativeEvent.isComposing ||
+        event.nativeEvent.keyCode === 229
+      )
+        return;
+      if (event.key === 'Tab') {
+        const moveFocus = event.shiftKey ? onTabBackward : onTabForward;
+        if (moveFocus) {
+          moveFocus();
+          if (document.activeElement !== event.currentTarget) event.preventDefault();
+        }
+      }
       if (
         event.key === ' ' &&
         event.currentTarget.selectionStart === value.length &&

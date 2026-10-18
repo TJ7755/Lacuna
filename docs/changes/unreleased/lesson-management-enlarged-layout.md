@@ -1,1 +1,0 @@
-- Let lesson settings names, inline editors and actions wrap naturally at narrow widths and enlarged text, preventing names collapsing and reorder controls overlapping rename actions.

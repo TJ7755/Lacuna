@@ -1,1 +1,0 @@
-- Opening a landing page link such as `#landing-product` on a first visit now stays on the landing page instead of booting the study dashboard (#503)

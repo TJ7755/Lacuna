@@ -1,1 +1,0 @@
-- Fixed course settings disclosure headers shifting and scaling when opened or closed with a pointer or keyboard, retaining their existing layout, hover feedback, chevron and body motion.

@@ -1,1 +1,0 @@
-- Skip automatic Marks in the question composer Tab sequence, move directly between question rows, and retain keyboard access to marks overrides and row options.

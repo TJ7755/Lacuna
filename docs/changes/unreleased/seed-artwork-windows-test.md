@@ -1,1 +1,0 @@
-- Welcome artwork regression checks now recognise stored SVG hashes on Windows checkouts with CRLF line endings.

@@ -1,1 +1,0 @@
-- The sidebar ring and a lesson's "Exam in N days" count calendar days, so an exam a week away reads 7, not 8: exams sit at 23:59, and part-days had rounded up.

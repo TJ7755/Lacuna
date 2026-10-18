@@ -1,1 +1,0 @@
-- Course settings: the leech options are ordinary radio buttons in 44 pixel rows; they had been styled as full-width text boxes, which also made each row too short to tap comfortably.

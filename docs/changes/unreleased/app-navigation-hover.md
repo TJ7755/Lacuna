@@ -1,1 +1,0 @@
-- Removed browser hover URL previews from in-app navigation controls, including sidebar entries, course tabs and back controls. Keyboard navigation, active highlights and modified-click destinations are preserved; external links and downloads keep native link behaviour.

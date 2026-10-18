@@ -1,1 +1,0 @@
-- Search content now supports typing, arrows and Enter with visible selected results, matching excerpts and live counts. Quick search offers See all results beyond its 40-result cap; full search keeps query, Card filters, expanded results and scroll context when returning from a result. (#448)

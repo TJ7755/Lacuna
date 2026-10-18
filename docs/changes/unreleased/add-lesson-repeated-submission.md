@@ -1,1 +1,0 @@
-- Repeated Enter presses cannot create duplicate lessons while creation is pending. Reopening Add lesson before its closing animation finishes refocuses the name field.

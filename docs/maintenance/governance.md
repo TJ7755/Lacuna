@@ -1,56 +1,8 @@
-# Repository governance
+# Repository policy and live verification
 
-## Verified baseline — 6 September 2026
-
-The authenticated GitHub REST API reported:
-
-- `master` has no branch protection; the branch-protection endpoint returned `404 Branch not protected`.
-- The repository has no rulesets.
-- `TJ7755` is the only collaborator with write access, with administrator permission.
-- None of the eight environments has a required-reviewer rule. The desktop release workflow
-  created a draft and did not publish it; it does not reference a protected release environment.
-- Workflow tokens default to read access and cannot approve pull requests.
-- All 18 check runs on starting commit `988505975b21e86f278187d5499242b5634073f2` passed.
-
-These are dated observations, not guarantees about subsequent settings or commits.
-
-## Applied branch policy — 6 September 2026
-
-The maintainer approved this policy and the GitHub branch-protection API accepted it. A separate
-GET confirmed all 13 required checks, strict up-to-date checking, administrator enforcement,
-resolved conversations, zero required approvals, and disabled force pushes/deletion.
-
-`master` requires an up-to-date pull request with the following GitHub Actions checks, bound to app id
-`15368`, before merging into `master`:
-
-`typecheck`, `lint`, `test`, `relay`, `ai-mcp`, `production`, `browser-smoke`, `electron-ai`,
-`audit-root`, `audit-relay`, `audit-handwriting`, `CodeQL (actions)` and
-`CodeQL (javascript-typescript)`.
-
-The `test` job already requires every unit-test shard and both coverage suites to succeed, so
-requiring its aggregate avoids coupling protection to the number of shards. Review conversations
-must be resolved, force pushes and deletion are blocked, and administrators are included.
-
-Pull requests are required, but mandatory approval is deferred while there is only one writer. The sole
-CODEOWNER cannot approve their own pull request. When a second trusted reviewer has confirmed write
-access, decide ownership explicitly and enable one required approval with stale approvals dismissed
-and CODEOWNER review required. Do not add an unconfirmed account to CODEOWNERS.
-
-## Release review
-
-The maintainer asked on 14 October 2026 for releases to run automatically. Merging a version bump
-with its `docs/releases/<version>.md` notes into `master` is now the release approval: the workflow
-tags the commit once CI and Security pass, builds, verifies every asset and its attestation, and
-publishes the beta. Without the notes file it stops at a draft for manual publication. This is a
-single-maintainer release policy, not an independently enforced second-person approval. A protected environment on draft creation would gate draft preparation, not prevent an
-administrator from publishing a release through another route.
-
-The maintainer decided on 6 September 2026 to permit unsigned limited beta releases and require
-signing, including macOS notarisation, before wider school rollout. Mandatory second-person release
-review remains a separate decision. Build provenance and checksums do not substitute for application
-signing. Package behaviour and the rollout gate are documented in [release maintenance](release.md).
-
-## Verification commands
+GitHub settings are authoritative for enforcement. Checked-in prose cannot establish the current
+required checks, access list or protected environments. Inspect them when making a merge/release
+decision rather than relying on an old successful API response:
 
 ```bash
 gh api repos/TJ7755/Lacuna/branches/master/protection
@@ -60,5 +12,18 @@ gh api repos/TJ7755/Lacuna/environments
 gh api repos/TJ7755/Lacuna/actions/permissions/workflow
 ```
 
-After any policy change, read the server response again and compare the required check names with
-the workflows. Do not infer enforcement from a checked-in policy file.
+The adopted branch policy requires up-to-date PRs, relevant checks, resolved conversations and
+protection against force pushes/deletion, including administrators. Require aggregate checks where
+they enforce all component jobs, rather than copying a transient shard count into protection.
+After changing settings, re-read the API response and compare names with the actual workflows.
+
+Mandatory second-person approval was deferred while there is only one writer: the sole CODEOWNER
+cannot approve their own PR. When a second trusted reviewer has confirmed write access, decide
+ownership and enable approval with stale-review dismissal and CODEOWNER enforcement. Do not treat
+an unconfirmed account as a reviewer. The [contributor policy](../../CONTRIBUTING.md) still requires
+independent human approval for risk-bearing work; lack of enforced approval does not grant it.
+
+Merging a release version bump with its notes is the maintainer's publication decision, per the
+14 October 2026 policy. This is not independently enforced second-person approval. A protected
+step preparing a draft does not prevent an administrator publishing through another route.
+Signing and rollout decisions belong in [release maintenance](release.md).

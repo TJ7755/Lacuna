@@ -1,1 +1,0 @@
-- Course and lesson workspaces now enter with one restrained fade once their core content is ready. Creating a course preloads its destination modules and reuses the course snapshot for its single lesson, avoiding repeated reads and staggered page assembly.

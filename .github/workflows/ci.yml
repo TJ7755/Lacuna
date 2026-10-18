@@ -22,6 +22,20 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs
+      - run: node scripts/check-docs.mjs
+      - run: node scripts/changelog.mjs --check
+
   # Documentation-only pull requests skip the heavy jobs. Skipping at job level (never with
   # workflow-level paths filters) keeps every required check reporting, as "skipped".
   changes:
@@ -152,13 +166,14 @@ jobs:
         working-directory: tooling/${{ matrix.workspace }}
 
   test:
-    needs: [changes, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
+    needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
         env:
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          DOCUMENTATION_RESULT: ${{ needs.documentation.result }}
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
           HANDWRITING_RESULT: ${{ needs.handwriting.result }}
@@ -167,8 +182,8 @@ jobs:
         run: |
           # "skipped" passes only when the change scope was classified as documentation-only.
           ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
-          if ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
-            echo "Tests did not pass: unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
+          if [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
+            echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
             exit 1
           fi
 
@@ -300,8 +315,8 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
-  # CPU-throttled measurements need a runner with no competing functional worker.
-  browser-image-performance:
+  # Image and frame-sensitive sidebar timing run serially without competing functional workers.
+  browser-timing:
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -320,12 +335,12 @@ jobs:
       - run: bun install --frozen-lockfile
         working-directory: relay
       - run: bunx playwright install --with-deps chromium
-      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --workers=1
-      - name: Preserve image performance evidence
+      - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --project=chromium-sidebar-motion --workers=1
+      - name: Preserve browser timing evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-results-image-performance
+          name: browser-results-timing
           path: |
             playwright-report/
             test-results/
@@ -361,7 +376,7 @@ jobs:
 
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
-    needs: [changes, browser-tests, browser-image-performance, browser-mobile]
+    needs: [changes, browser-tests, browser-timing, browser-mobile]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -370,11 +385,11 @@ jobs:
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RESULT: ${{ needs.browser-tests.result }}
           MOBILE_RESULT: ${{ needs.browser-mobile.result }}
-          IMAGE_RESULT: ${{ needs.browser-image-performance.result }}
+          TIMING_RESULT: ${{ needs.browser-timing.result }}
         run: |
           # "skipped" passes only when the change scope was classified as documentation-only.
           ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
-          ok "$RESULT" && ok "$IMAGE_RESULT" && ok "$MOBILE_RESULT"
+          ok "$RESULT" && ok "$TIMING_RESULT" && ok "$MOBILE_RESULT"
 
 
   electron-ai:

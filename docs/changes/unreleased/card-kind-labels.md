@@ -1,1 +1,0 @@
-- Card kinds read the same everywhere ("Front / back", sentence case), and the course Cards list names reversed, audio, numeric and occlusion cards instead of calling them all "Front / Back".

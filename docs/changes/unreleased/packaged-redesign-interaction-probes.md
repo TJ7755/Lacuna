@@ -1,1 +1,0 @@
-- Update packaged interaction checks to open Quick search with its existing shortcut and courses through their redesigned links, and recognise the current course heading. Bound native locator waits so failed probes report the blocked action promptly.

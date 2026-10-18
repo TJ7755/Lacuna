@@ -1,1 +1,0 @@
-- The course bar (sections and View / Edit) now stays at the top while a course page scrolls, as intended; it used to scroll away because its sticky parent was only as tall as the bar.

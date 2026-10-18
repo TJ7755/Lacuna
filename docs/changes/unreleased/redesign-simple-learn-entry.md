@@ -1,1 +1,0 @@
-- Keep optional Simple Learn accessible from Study when the course page already offers the scheduled alternatives. (#389)

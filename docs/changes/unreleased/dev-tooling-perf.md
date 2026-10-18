@@ -1,1 +1,0 @@
-- Reduce development tooling resource use by excluding generated artefacts from Vite's watcher and limiting the relay, handwriting maths and AI MCP test suites to one worker each.

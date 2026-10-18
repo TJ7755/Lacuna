@@ -1,1 +1,0 @@
-- The course-menu keyboard browser regression waits for the persisted Edit mode to appear before traversing its controls, retaining its exact forward and reverse focus assertions.

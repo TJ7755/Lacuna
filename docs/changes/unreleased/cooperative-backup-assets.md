@@ -1,1 +1,0 @@
-- Keep the interface responsive during backup asset encoding by yielding after bounded amounts of byte and metadata work, preserving the existing backup data and restore behaviour.

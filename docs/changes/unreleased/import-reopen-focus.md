@@ -1,1 +1,0 @@
-- Quickly closing and reopening an Import source restores focus to its input even while the previous step animation is still finishing.

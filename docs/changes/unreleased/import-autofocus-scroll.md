@@ -1,1 +1,0 @@
-- Keep the Import heading anchored while its panel expands by focusing inline inputs without scrolling the surrounding surface.

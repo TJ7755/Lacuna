@@ -1,1 +1,0 @@
-- Clarified device pairing: a scanned QR lets you choose a recovery passphrase for this device, including reusing an existing phrase; manual pairing requires the phrase chosen when sync was first set up.
