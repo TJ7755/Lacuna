@@ -1,10 +1,21 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { QuestionSetRelatedKnowledge } from './QuestionSetRelatedKnowledge';
 import { QuestionSetReflection } from './QuestionSetReflection';
-vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: () => [{ id: 'card', front: 'What is osmosis?', back: 'Movement of water.' }],
+const relatedCards = vi.hoisted(() => ({
+  current: [
+    {
+      id: 'card',
+      type: 'front_back' as const,
+      front: 'What is osmosis?',
+      back: 'Movement of water.',
+    },
+  ],
 }));
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => relatedCards.current }));
+beforeEach(() => {
+  relatedCards.current[0].back = 'Movement of water.';
+});
 it('does not reveal related knowledge until recording assistance succeeds', async () => {
   let recorded!: () => void;
   const beforeReveal = vi.fn(
@@ -51,3 +62,25 @@ it('keeps reflection optional and saves it separately from answer evidence', () 
   expect(onChange).toHaveBeenLastCalledWith({ reasons: [], note: 'Check the command word.' });
   expect(onDirty).toHaveBeenLastCalledWith(false);
 });
+
+it.each(['1871.', '1921.', '1.', '0.'])(
+  'reveals the complete related-card answer %s',
+  async (back) => {
+    relatedCards.current[0].back = back;
+    const beforeReveal = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <QuestionSetRelatedKnowledge
+        courseId="course"
+        conceptIds={['concept']}
+        submitted
+        beforeReveal={beforeReveal}
+      />,
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Related cards' }));
+    });
+    expect(screen.getByText(back)).toBeInTheDocument();
+    expect(container.querySelector('.qs-card-preview ol')).toBeNull();
+    expect(beforeReveal).not.toHaveBeenCalled();
+  },
+);

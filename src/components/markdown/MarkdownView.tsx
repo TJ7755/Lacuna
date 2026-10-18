@@ -537,7 +537,11 @@ export const MarkdownView = memo(function MarkdownView({
         : clozeMode === 'back'
           ? renderClozeBack(resolved)
           : resolved;
-    if (literalNumericAnswer && /^\d+\.$/.test(prepared)) {
+    // Four leading spaces start a code block; up to three still allow a list marker.
+    if (
+      literalNumericAnswer &&
+      /^(?:[ \t]*\r?\n)* {0,3}\d+\.[ \t]*(?:\r?\n[ \t]*)*$/.test(prepared)
+    ) {
       prepared = prepared.replace('.', '\\.');
     }
     const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages);

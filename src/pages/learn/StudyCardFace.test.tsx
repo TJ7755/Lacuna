@@ -36,6 +36,21 @@ describe('standalone numeric card answers', () => {
     expect(container.querySelector('ol')).toBeNull();
   });
 
+  it.each([' 1871.', '1871. ', '1871.\n\n', '\n\n  1871. \n'])(
+    'keeps a padded answer %j as text',
+    (back) => {
+      const { container } = renderFace('', { card: { ...card, back }, isTyping: false });
+      expect(container.querySelector('p')?.textContent?.trim()).toBe('1871.');
+      expect(container.querySelector('ol')).toBeNull();
+    },
+  );
+
+  it('preserves an intentionally indented code answer', () => {
+    const { container } = renderFace('', { card: { ...card, back: '    1871.' }, isTyping: false });
+    expect(container.querySelector('pre code')?.textContent?.trim()).toBe('1871.');
+    expect(container.querySelector('p')).toBeNull();
+  });
+
   it.each([
     ['1871', '1871'],
     ['1871\\.', '1871.'],
