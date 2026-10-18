@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { Buffer } from 'node:buffer';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
@@ -7,6 +8,7 @@ import {
   blobToArrayBuffer,
   ASSET_GC_GRACE_MS,
   collectOrphanedAssets,
+  encodeBackupAssets,
   extractMarkdownAssets,
   referencedAssetHashes,
   referencedAssetHashesInCards,
@@ -20,6 +22,7 @@ import {
 import { compressImageBlob } from '../utils/compressImage';
 import { createCard, createCourse, createLesson, createNote } from './repository';
 import { exportDatabase, importBackup } from './portability';
+import type { MediaAsset } from './types';
 
 /** A sweep after the grace period, so fresh test assets are eligible for collection. */
 const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
@@ -44,6 +47,112 @@ async function reset() {
     db.appState.clear(),
   ]);
 }
+
+describe('backup asset encoding', () => {
+  it.each([
+    { count: 1, size: 2 * 1024 * 1024 },
+    { count: 256, size: 8 * 1024 },
+  ])('lets event-loop callbacks run during encoding ($count assets of $size bytes)', async ({ count, size }) => {
+    const assets: MediaAsset[] = Array.from({ length: count }, (_, index) => ({
+      hash: index.toString(16).padStart(64, '0'),
+      blob: new Uint8Array(size),
+      mimeType: 'image/png',
+      createdAt: index,
+    }));
+    let callbacks = 0;
+    const heartbeat = setInterval(() => { callbacks += 1; }, 0);
+    try {
+      const encoded = await encodeBackupAssets(assets);
+      expect(encoded).toHaveLength(count);
+      expect(callbacks).toBeGreaterThan(1);
+    } finally {
+      clearInterval(heartbeat);
+    }
+  });
+
+  it.each([0, 1])('bounds timer delays for 16,000 assets containing %i bytes each', async (size) => {
+    const assets: MediaAsset[] = Array.from({ length: 16_000 }, (_, index) => ({
+      hash: index.toString(16).padStart(64, '0'),
+      blob: new Uint8Array(size),
+      mimeType: 'image/png',
+      createdAt: index,
+    }));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'], loopLimit: 20_000 });
+    const scheduleTimeout = globalThis.setTimeout;
+    const timers = vi.spyOn(globalThis, 'setTimeout').mockImplementation((callback, delay) =>
+      scheduleTimeout(callback, Math.max(4, delay ?? 0)),
+    );
+    const startedAt = Date.now();
+    let elapsed = 0;
+    try {
+      const pending = encodeBackupAssets(assets).then((encoded) => {
+        elapsed = Date.now() - startedAt;
+        return encoded;
+      });
+      await vi.runAllTimersAsync();
+      const encoded = await pending;
+
+      expect(encoded).toHaveLength(16_000);
+      expect(encoded.every((asset) => asset.data === (size === 0 ? '' : 'AA=='))).toBe(true);
+      expect(elapsed).toBeLessThan(1_000);
+      expect(timers.mock.calls.length).toBeGreaterThan(0);
+      expect(timers.mock.calls.length).toBeLessThan(250);
+    } finally {
+      timers.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([0, 1, 2, 3, 393215, 393216, 393217, 2 * 1024 * 1024 + 1])(
+    'preserves all %i bytes and metadata for Blob and sliced Uint8Array assets',
+    async (size) => {
+      const buffer = Uint8Array.from({ length: size + 2 }, (_, index) => index % 256);
+      const bytes = buffer.subarray(1, size + 1);
+      const image: MediaAsset = {
+        hash: 'b'.repeat(64),
+        blob: bytes,
+        mimeType: 'image/png',
+        kind: 'image',
+        width: 30,
+        height: 20,
+        createdAt: 123,
+      };
+      const audio: MediaAsset = {
+        hash: 'a'.repeat(64),
+        blob: toBlob(bytes, 'audio/ogg'),
+        mimeType: 'audio/ogg',
+        kind: 'audio',
+        createdAt: 456,
+      };
+      const data = Buffer.from(bytes).toString('base64');
+
+      expect(await encodeBackupAssets([image, audio])).toEqual([
+        {
+          hash: image.hash,
+          data,
+          mimeType: 'image/png',
+          kind: 'image',
+          width: 30,
+          height: 20,
+          createdAt: 123,
+        },
+        {
+          hash: audio.hash,
+          data,
+          mimeType: 'audio/ogg',
+          kind: 'audio',
+          width: undefined,
+          height: undefined,
+          createdAt: 456,
+        },
+      ]);
+    },
+  );
+
+  it('returns no assets for an empty snapshot', async () => {
+    expect(await encodeBackupAssets([])).toEqual([]);
+  });
+});
 
 describe('image assets', () => {
   beforeEach(reset);
