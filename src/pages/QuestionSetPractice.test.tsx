@@ -305,8 +305,16 @@ describe('QuestionSetPractice', () => {
     expect(screen.getByRole('button', { name: /criterion 1 of 3/ })).toBeInTheDocument();
     for (const count of [1, 2, 3]) {
       const award = screen.getByRole('radio', { name: '1 / 1' });
+      await waitFor(() => expect(award).not.toBeDisabled());
       fireEvent.click(award);
       await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
+      await waitFor(() => {
+        expect(award).toBeInTheDocument();
+        expect(award).toBeChecked();
+        expect(
+          screen.getByRole('button', { name: count < 3 ? /^Continue marking/ : /^Finish attempt/ }),
+        ).not.toBeDisabled();
+      });
       fireEvent.keyDown(award, { key: 'Enter', ctrlKey: true });
       if (count < 3) {
         await screen.findByRole('button', { name: new RegExp(`criterion ${count + 1} of 3`) });

@@ -64,15 +64,21 @@ test('closing section offers app entry', async ({ page }) => {
   await expect(page).toHaveURL(/#\/$/);
 });
 
-test('welcome serves the approved landing and method shares its visual treatment', async ({
-  page,
-}) => {
+test('welcome serves the approved landing and method follows the app theme', async ({ page }) => {
   await page.goto('/#/welcome');
   await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
   await page.getByRole('link', { name: 'The method' }).click();
   const method = page.locator('.method-page');
   await expect(method).toBeVisible();
-  await expect(method).toHaveCSS('background-color', 'rgb(19, 25, 16)');
+  const paper = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = 'hsl(var(--paper))';
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return colour;
+  });
+  await expect(method).toHaveCSS('background-color', paper);
   await expect(
     page.getByRole('heading', { name: 'The thinking behind remembering.' }),
   ).toBeVisible();

@@ -27,6 +27,7 @@ export function FlipCard({
   card,
   revealed,
   motionSpeed,
+  motionMultiplier,
   phase,
   isTouchMode,
   menuOpen,
@@ -49,6 +50,7 @@ export function FlipCard({
   card: Card;
   revealed: boolean;
   motionSpeed: MotionSpeed;
+  motionMultiplier?: number;
   phase: Phase;
   isTouchMode: boolean;
   menuOpen: boolean;
@@ -71,7 +73,7 @@ export function FlipCard({
    *  when typed mode is not offered for it. */
   occlusionAnswerText?: string;
 }) {
-  const m = speedMultiplier(motionSpeed);
+  const m = motionMultiplier ?? speedMultiplier(motionSpeed);
   const isTyping = Boolean(isTypingCard);
   const [swipe, setSwipe] = useState({ x: 0, hint: null as 'left' | 'right' | null });
   const audioCard = isAudioCardFront(card.front);

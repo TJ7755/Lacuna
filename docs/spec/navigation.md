@@ -596,6 +596,8 @@ homepage carries canonical, social and website structured-data metadata.
 canonical and social metadata, and client hydration. It does not initialise or seed
 study data. Its interactive examples use component-local state and the real card
 renderer, import parser and memory model. The landing footer links to it.
+The card demo matches the server-rendered motion tree during hydration, then applies
+the visitor's motion preference before paint, including reduced motion.
 
 The public sitemap lists the homepage and comparison URL; robots.txt advertises the
 sitemap. Study routes remain hash-based and are not sitemap entries. Direct sharing

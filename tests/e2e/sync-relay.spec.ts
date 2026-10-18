@@ -59,7 +59,7 @@ test('first-device sync setup completes against a stubbed relay', async ({ page 
   const relayBase = `${new URL(page.url()).origin}/relay`;
   await stubRelay(page, relayBase, relayRequests);
 
-  await page.goto('/#/settings');
+  await page.goto('/#/settings#settings-sync');
   await expect(page.getByRole('heading', { name: 'Another device' })).toBeVisible();
 
   await page.locator('#settings-sync').getByRole('button', { name: 'Pair', exact: true }).click();

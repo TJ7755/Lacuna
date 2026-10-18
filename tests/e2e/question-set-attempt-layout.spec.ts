@@ -65,7 +65,7 @@ async function startTranslation(page: Page) {
     },
   );
   await page.goto(`/#/course/${courseId}/question-sets/${content.id}`);
-  await page.getByRole('button', { name: 'Start attempt', exact: true }).click();
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
 }
 

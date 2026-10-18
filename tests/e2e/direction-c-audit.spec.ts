@@ -164,7 +164,7 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
     const found = await page.evaluate(() => {
       const out: string[] = [];
       const controls = document.querySelectorAll<HTMLElement>(
-        'a[href], button, select, input:not([type=hidden]), [role=button], [role=switch]',
+        'a[href], [role=link], button, select, input:not([type=hidden]), [role=button], [role=switch]',
       );
       for (const el of controls) {
         if (el.closest('[inert], [aria-hidden=true]') || el.matches(':disabled')) continue;

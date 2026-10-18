@@ -15,10 +15,7 @@ async function openCourseCards(page: Page): Promise<{ courseId: string }> {
 }
 
 async function addCard(page: Page, front: string, back: string, withImage = false) {
-  await page
-    .getByRole('group', { name: 'Add content' })
-    .getByRole('button', { name: 'New card' })
-    .click();
+  await page.getByRole('button', { name: 'New card', exact: true }).click();
   const frontInput = page.getByRole('textbox', { name: 'Front' });
   await frontInput.fill(front);
   await page.getByRole('textbox', { name: 'Back' }).fill(back);
@@ -34,11 +31,11 @@ async function addCard(page: Page, front: string, back: string, withImage = fals
 }
 
 async function openRecoverySettings(page: Page) {
-  await page.goto('/#/settings');
-  await expect(page).toHaveURL(/#\/settings$/);
+  await page.goto('/#/settings#settings-export');
+  await expect(page).toHaveURL(/#\/settings#settings-export$/);
   const settingsMain = page.locator('main:has([data-route-content="/settings"])');
   await expect(settingsMain.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  await expect(settingsMain.locator('#settings-export')).toBeAttached();
+  await expect(settingsMain.locator('#settings-export')).toBeVisible();
 }
 
 test('replaces a clean browser context with a media-bearing full backup', async ({
