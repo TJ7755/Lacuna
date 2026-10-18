@@ -22,6 +22,16 @@ asset order. This responsiveness must not weaken the snapshot boundary. Pre-migr
 commit outside the upgrading database transaction so an aborted upgrade retains recovery evidence.
 A failed safety snapshot blocks destructive replacement or migration.
 
+The daily backup worker captures, encodes, stores, prunes and mirrors through the same
+[restore-point writer](../../src/db/backupRestorePoint.ts) as explicit backups. Only small status
+messages cross to the UI; bytes, metadata, asset order, protected snapshots and the five-minute
+ordinary throttle stay intact. Retain the ten most recent ordinary snapshots. Create a daily
+snapshot when none exists or the newest is at least 24 hours old; failed attempts remain retryable.
+The worker and required restore/cleanup code must be available on
+first use offline. Without Worker support, use the existing local path; worker failures stay
+non-fatal and must not replay heavy work on the UI thread. Explicit and destructive-operation
+safety backups retain their awaited path.
+
 Canonical review events are preserved and deduplicated by their evidence identity. Legacy inline
 history is normalised without losing available events. Reconstructed scheduling, receipt and
 projection data must respect existing merge ownership; a content import is not permission to
