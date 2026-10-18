@@ -66,6 +66,7 @@ function toShareLessonInput(lesson: Extract<Awaited<ReturnType<typeof decodeShar
   if (!lesson.i) throw new McpToolException({ kind: 'validation', message: 'Lineage payload lesson is missing its originating id.' });
   return {
     i: lesson.i,
+    pr: lesson.pr,
     n: lesson.n,
     d: lesson.d,
     x: lesson.x,
@@ -91,6 +92,7 @@ function toShareCardInput(card: Extract<Awaited<ReturnType<typeof decodeShare>>,
 function toExistingLesson(lesson: Lesson): ExistingLesson {
   return {
     id: lesson.id,
+    prerequisiteLessonIds: lesson.prerequisiteLessonIds,
     name: lesson.name,
     description: lesson.description,
     isExtension: lesson.isExtension,

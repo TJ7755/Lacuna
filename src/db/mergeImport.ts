@@ -30,6 +30,7 @@
  * path.
  */
 
+import { assertLessonPrerequisites, assertShareLessonPrerequisites } from './lessonPrerequisites';
 import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
 import {
@@ -40,7 +41,6 @@ import {
   deleteNote,
   updateCard,
   updateCourse,
-  updateLesson,
   updateNote,
   updateSequence,
 } from './repository';
@@ -167,6 +167,7 @@ function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLes
   if (!lesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
   return {
     i: lesson.i,
+    pr: lesson.pr,
     n: lesson.n,
     d: lesson.d,
     x: lesson.x,
@@ -199,6 +200,7 @@ function toShareCardInput(card: ShareCard): ShareCardInput {
 function toExistingLesson(lesson: Lesson): ExistingLesson {
   return {
     id: lesson.id,
+    prerequisiteLessonIds: lesson.prerequisiteLessonIds,
     name: lesson.name,
     description: lesson.description,
     isExtension: lesson.isExtension,
@@ -313,6 +315,7 @@ export function detectStudentEdits(
 
 function lessonSnapshotsEqual(a: LineageLessonSnapshot, b: LineageLessonSnapshot): boolean {
   return (
+    tagsEqual([...(a.prerequisiteLessonIds ?? [])].sort(), [...(b.prerequisiteLessonIds ?? [])].sort()) &&
     a.name === b.name &&
     a.description === b.description &&
     a.isExtension === b.isExtension &&
@@ -756,6 +759,7 @@ async function applyCreates(
 ): Promise<{ lessons: Lesson[]; notes: Note[]; cards: Card[] }> {
   const newLessons: Lesson[] = creates.lessons.map((l) => ({
     id: l.id,
+    prerequisiteLessonIds: l.prerequisiteLessonIds,
     courseId,
     name: l.name,
     ...(l.description ? { description: l.description } : {}),
@@ -849,6 +853,14 @@ async function applyCreates(
   return { lessons: newLessons, notes: newNotes, cards: newCards };
 }
 
+// Validate the final graph at each enclosing merge/review transaction boundary: a valid
+// batch can reverse an edge and briefly form a cycle while individual rows are applied.
+async function applyLineageLessonUpdate(id: string, changes: Partial<Lesson>): Promise<void> {
+  await db.lessons.update(id, stampUpdatedAt(changes));
+  const lesson = await db.lessons.get(id);
+  if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
+}
+
 /** Apply a card update, routing a lesson move through `assignCardsToLesson` so the
  *  backing deck, scheduling unit and review history follow the card. */
 async function applyCardUpdate(courseId: string, update: CardUpdate): Promise<void> {
@@ -862,6 +874,7 @@ function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCop
   return {
     name: payload.course.n || 'Shared course',
     description: payload.course.d ?? '',
+    creator: payload.by ?? undefined,
     unlockMode: payload.course.um,
   };
 }
@@ -940,6 +953,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
+  assertShareLessonPrerequisites(payload.lessons);
   // A detached copy (or the teacher's own course) already holds these ids, and
   // adoption cannot reuse them, so fall back to a plain, untracked import.
   if (await lineageIdsInUse(payload)) {
@@ -953,6 +967,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await createCourse(payload.course.n || 'Shared course', {
       description: payload.course.d ?? '',
+      creator: payload.by ?? undefined,
       examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
       createdAt: payload.course.c,
       schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
@@ -975,7 +990,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         locked: true,
         autoAcceptUpdates: false,
         source: courseSource(payload),
-        ...(payload.by ? { sourceLabel: payload.by } : {}),
+        ...(typeof payload.by === 'string' ? { sourceLabel: payload.by } : {}),
       },
     });
 
@@ -987,6 +1002,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
       if (!shareLesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
       return {
         id: shareLesson.i,
+        prerequisiteLessonIds: shareLesson.pr,
         courseId: course.id,
         name: shareLesson.n.trim() || 'Untitled lesson',
         orderIndex,
@@ -1175,6 +1191,7 @@ export async function mergeLineageUpdate(
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
 
+  assertShareLessonPrerequisites(payload.lessons);
   return db.transaction('rw', MERGE_TABLES, async (tx) => {
     const course = await db.courses.get(courseId);
     if (!course) throw new Error('Course not found.');
@@ -1267,7 +1284,7 @@ export async function mergeLineageUpdate(
     if (dc.autoAcceptUpdates) {
       for (const update of diff.updates.lessons) {
         const { id, ...changes } = update;
-        await updateLesson(id, changes);
+        await applyLineageLessonUpdate(id, changes);
         appliedUpdates++;
       }
       for (const update of diff.updates.notes) {
@@ -1363,15 +1380,15 @@ export async function mergeLineageUpdate(
     // since the last import (it no longer matches `dc.source`) is theirs to keep.
     const source = courseSource(payload);
     const detailChanges: Partial<CourseRecord> = {};
-    const local = { name: course.name, description: course.description ?? '', unlockMode: course.unlockMode };
-    for (const key of ['name', 'description', 'unlockMode'] as const) {
+    const local = { name: course.name, description: course.description ?? '', unlockMode: course.unlockMode, creator: course.creator };
+    for (const key of ['name', 'description', 'unlockMode', 'creator'] as const) {
       if (local[key] !== source[key] && (!dc.source || local[key] === dc.source[key])) {
         Object.assign(detailChanges, { [key]: source[key] });
       }
     }
     await updateCourse(courseId, {
       ...detailChanges,
-      distributedCopy: { ...dc, revision: payload.rv, source },
+      distributedCopy: { ...dc, revision: payload.rv, source, sourceLabel: payload.by ?? undefined },
     });
     await db.lineageIdMappings.put(mapping);
 
@@ -1403,6 +1420,7 @@ export async function mergeLineageUpdate(
       await db.pendingMergeReviews.add(review);
     }
 
+    assertLessonPrerequisites(await db.lessons.where('courseId').equals(courseId).toArray());
     return {
       createdLessons: created.lessons.length,
       createdNotes: created.notes.length,
@@ -1545,7 +1563,7 @@ async function applyQueuedUpdate(
   const id = update.id;
   if (kind === 'lesson') {
     const { id: _id, ...changes } = update as PendingDiff['updates']['lessons'][number];
-    await updateLesson(id, changes);
+    await applyLineageLessonUpdate(id, changes);
   } else if (kind === 'note') {
     const { id: _id, ...changes } = update as PendingDiff['updates']['notes'][number];
     await updateNote(id, changes);
@@ -1567,7 +1585,8 @@ async function takeIncomingConflict(
 ): Promise<void> {
   if (kind === 'lesson') {
     const inc = incoming as ShareLessonInput;
-    await updateLesson(entityId, {
+    await applyLineageLessonUpdate(entityId, {
+      prerequisiteLessonIds: inc.pr ?? [],
       name: inc.n.trim() || 'Untitled lesson',
       description: inc.d,
       isExtension: inc.x === 1,
@@ -1651,6 +1670,7 @@ async function resolveMergeReviewItems(
       await resolveOne(review.diff, workingMapping, ref, accept);
     }
 
+    assertLessonPrerequisites(await db.lessons.where('courseId').equals(review.courseId).toArray());
     if (mapping) await db.lineageIdMappings.put(workingMapping);
 
     if (diffIsEmpty(review.diff)) await db.pendingMergeReviews.delete(reviewId);

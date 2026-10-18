@@ -1,5 +1,6 @@
 // Import/Export: the entire database serialises to a single JSON file and back.
 
+import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { db, makeId } from './schema';
 import { addReviewHistoryInBatches } from './addReviewHistoryInBatches';
 import { migrateCardRecord, type LegacyCard } from './migrations';
@@ -592,6 +593,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           }
         }
         await db.lessons.bulkPut(mergedLessons);
+        assertLessonPrerequisites(await db.lessons.toArray());
       }
 
       if (notes.length > 0) {

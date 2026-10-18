@@ -328,6 +328,8 @@ export type UnlockMode = 'linear' | 'semi-linear' | 'open';
  * cards against the nearest applicable exam date (see src/fsrs/examDate.ts).
  */
 export interface CourseRecord {
+  /** Literal creator/project display label; not verified authorship or approval. */
+  creator?: string;
   id: string;
   name: string;
   description: string;
@@ -416,7 +418,7 @@ export interface CourseDistributedCopy {
   /** The teacher's course details as last imported. A later update applies a changed
    *  detail only where the local value still matches this, so a learner's own rename
    *  survives. Absent on copies imported before course details were updated. */
-  source?: { name: string; description: string; unlockMode: UnlockMode };
+  source?: { name: string; description: string; unlockMode: UnlockMode; creator?: string };
 }
 
 /**
@@ -704,6 +706,8 @@ export interface Occlusion {
 export type AnswerMode = 'reveal' | 'type';
 
 export interface Lesson {
+  /** Advisory same-Course Lesson ids. Absence means none; never gates study. */
+  prerequisiteLessonIds?: string[];
   /** Default for cards without their own answer mode. */
   answerMode?: AnswerMode;
   id: string;
@@ -1313,6 +1317,7 @@ export interface LineageIdMapping {
 
 /** The subset of a Lesson's fields `lineageDiff.ts` diffs on, captured for student-edit detection. */
 export interface LineageLessonSnapshot {
+  prerequisiteLessonIds?: string[];
   answerMode?: AnswerMode;
   name: string;
   description?: string;

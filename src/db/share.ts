@@ -30,6 +30,7 @@
 //        references and lesson-card links. PracticeNode remains device-local.
 //   v3 = v2 content plus stable Concepts and application Question definitions.
 
+import { assertLessonPrerequisites, assertShareLessonPrerequisites } from './lessonPrerequisites';
 import { z } from 'zod';
 import {
   assertQuestionSetPracticeNodeReferences,
@@ -236,6 +237,7 @@ const ShareNoteSchema = z.object({
 
 /** A single lesson in a v2 (course) share payload. */
 const ShareLessonSchema = z.object({
+  pr: z.array(z.string().min(1)).optional(),
   am: z.enum(['reveal', 'type']).optional(),
   n: z.string().min(1),
   d: z.string().optional(), // description
@@ -246,8 +248,7 @@ const ShareLessonSchema = z.object({
   sf: z.union([z.literal('due'), z.literal('mixed')]).optional(), // sessionFilter ('new' is the default, so omitted)
   notes: z.array(ShareNoteSchema),
   cards: z.array(ShareCardSchema),
-  // Originating lesson id, present only when the exporting course has been
-  // published (`li` set at the payload level).
+  // Payload-scoped Lesson identity, also present for ordinary prerequisite/Question Set links.
   i: z.string().optional(),
 });
 
@@ -515,6 +516,8 @@ interface ShareNote {
 
 /** A single lesson in a v2 share payload. */
 export interface ShareLesson {
+  /** Advisory prerequisites by payload-scoped Lesson i, never array position. */
+  pr?: string[];
   am?: 'reveal' | 'type';
   n: string; // name
   d?: string; // description
@@ -525,7 +528,7 @@ export interface ShareLesson {
   sf?: 'due' | 'mixed'; // sessionFilter ('new' is the default, so omitted)
   notes: ShareNote[];
   cards: ShareCard[];
-  i?: string; // originating lesson id, present only when the course has been published
+  i?: string; // payload-scoped Lesson identity; lineage imports adopt it
 }
 
 /** Course metadata in a v2 share payload. */
@@ -609,7 +612,7 @@ interface ShareOcclusion {
 /** The decoded contents of a v1 (flat deck list) share code. */
 export interface SharePayloadV1 {
   v: 1;
-  /** Creator, reserved for a future "shared by" field; currently always null. */
+  /** Literal creator/project display label; not verified authorship or approval. */
   by?: string | null;
   /** Exported-at epoch ms. */
   at: number;
@@ -619,7 +622,7 @@ export interface SharePayloadV1 {
 /** The decoded contents of a v2 (single course) share code. */
 export interface SharePayloadV2 {
   v: 2;
-  /** Creator, reserved for a future "shared by" field; currently always null. */
+  /** Literal creator/project display label; not verified authorship or approval. */
   by?: string | null;
   /** Exported-at epoch ms. */
   at: number;
@@ -747,6 +750,7 @@ export function parseSharePayload(payload: unknown): SharePayload {
   if (parse.data.v === 1) {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
+  assertShareLessonPrerequisites(parse.data.lessons);
   if (parse.data.v === 4 || parse.data.v === 5) {
     return {
       ...parse.data,
@@ -1109,6 +1113,8 @@ export async function buildCourseSharePayload(
   if (!course) throw new Error('Course not found.');
 
   const lessons = await db.lessons.where('courseId').equals(courseId).sortBy('orderIndex');
+  assertLessonPrerequisites(lessons);
+  const hasPrerequisites = lessons.some((lesson) => lesson.prerequisiteLessonIds?.length);
   const lessonIndexById = new Map(lessons.map((l, i) => [l.id, i]));
   const lessonIds = lessons.map((lesson) => lesson.id);
   const [notes, courseCards, lessonLinks, concepts, questions, questionConcepts, questionSets, practiceNodes] =
@@ -1138,14 +1144,14 @@ export async function buildCourseSharePayload(
   for (const group of notesByLesson.values()) group.sort((a, b) => a.orderIndex - b.orderIndex);
   for (const group of cardsByLesson.values()) group.sort((a, b) => a.createdAt - b.createdAt);
 
-  // Originating ids (`li`/`rv`/per-entity `i`/`oi`) are packed only when the course
-  // has published at least once (Course.distribution, Arc 7 Task 1) — a plain course
-  // export/import carries none of them and its payload shape is unchanged.
+  // Lesson ids also scope advisory prerequisites and Question Set links in ordinary exports.
+  // Only lineage imports adopt them; ordinary imports always mint fresh local ids.
   const distribution = course.distribution;
 
   const shareLessons: ShareLesson[] = lessons.map((lesson) => {
     return {
       n: lesson.name,
+      ...(lesson.prerequisiteLessonIds?.length ? { pr: [...lesson.prerequisiteLessonIds] } : {}),
       ...(lesson.description ? { d: lesson.description } : {}),
       ...(lesson.isExtension ? { x: 1 as const } : {}),
       ...(typeof lesson.releaseDate === 'number' ? { rd: lesson.releaseDate } : {}),
@@ -1157,7 +1163,7 @@ export async function buildCourseSharePayload(
       ...(lesson.answerMode ? { am: lesson.answerMode } : {}),
       notes: packNotes(notesByLesson.get(lesson.id) ?? [], !!distribution, includeMedia),
       cards: packCards(cardsByLesson.get(lesson.id) ?? [], true, includeMedia),
-      ...(distribution || questionSets.length > 0 ? { i: lesson.id } : {}),
+      ...(distribution || questionSets.length > 0 || hasPrerequisites ? { i: lesson.id } : {}),
     };
   });
 
@@ -1337,7 +1343,7 @@ export async function buildCourseSharePayload(
   assertQuestionSetPracticeNodeReferences(questionSetPracticeNodes, [course], lessons, questionSets);
   return {
     v: 5,
-    by: null,
+    by: course.creator ?? null,
     at: Date.now(),
     course: shareCourse,
     lessons: shareLessons,
@@ -1394,6 +1400,7 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
 async function importCourseSharePayload(
   payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5,
 ): Promise<ImportShareResult> {
+  assertShareLessonPrerequisites(payload.lessons);
   let cardCount = 0;
   let importedCourseId: string | null = null;
 
@@ -1446,6 +1453,7 @@ async function importCourseSharePayload(
 
       const course = await createCourse(payload.course.n || 'Shared course', {
         description: payload.course.d ?? '',
+        ...(typeof payload.by === 'string' ? { creator: payload.by } : {}),
         examObjective: payload.course.o === 1 ? 'securedTopics' : 'expectedMarks',
         createdAt: payload.course.c,
         schedulingMode: payload.course.sm === 1 ? 'steady' : 'exam',
@@ -1485,8 +1493,12 @@ async function importCourseSharePayload(
         });
         if (importedConcepts.length > 0) await db.concepts.bulkAdd(importedConcepts);
       }
+      const lessonIdMap = new Map(
+        payload.lessons.flatMap((lesson) => lesson.i ? [[lesson.i, makeId()] as const] : []),
+      );
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
-        id: makeId(),
+        id: shareLesson.i ? lessonIdMap.get(shareLesson.i)! : makeId(),
+        ...(shareLesson.pr ? { prerequisiteLessonIds: shareLesson.pr.map((id) => lessonIdMap.get(id)!) } : {}),
         courseId: course.id,
         name: shareLesson.n.trim() || 'Untitled lesson',
         orderIndex,
