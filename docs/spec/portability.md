@@ -271,9 +271,12 @@ new orphaned assets. Export refuses missing media instead of producing an incomp
 ### The Share page (`SharePage`, `src/components/share/`, `/share`)
 
 The page sends one course. It opens on the requested course (`?courseId=`), else
-one already being shared, else the first active course; a menu beneath the centred title
-switches course when there is more than one. The share link is the default and
-the one primary action, because it carries media and updates in place. A course
+an active course already being shared, else the first active course. If all courses
+are archived, it falls back to one already shared, then the first course. A menu in
+the page header switches course when there is more than one. Archived courses remain
+available for managing their share links and are marked **Archived** in both the menu
+and the selected course label, including when only one course exists. The share link
+is the default and the one primary action, because it carries media and updates in place. A course
 file, share code, QR code and plain text sit under **Other ways**, one open at a
 time; outputs survive switching between them and clear for another course. When
 a link's uploaded revision is behind the course, **Send revision n** becomes the
