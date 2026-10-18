@@ -7,7 +7,7 @@
 This document records the current scientific judgement about what Lacuna is trying to
 optimise, which parts are well supported, which are plausible but unvalidated, and where
 previous literature summaries overstated the evidence. It should be read alongside
-[`SPEC.md`](SPEC.md), which defines the behaviour the application currently implements.
+[`SPEC.md`](SPEC.md), which indexes retained product constraints; source and tests establish current behaviour.
 
 The purpose is not to claim that Lacuna has established a new learning algorithm. Its more
 defensible contribution is the integration of exam-date-aware scheduling, structured
@@ -33,80 +33,6 @@ The strongest claims should nevertheless be limited:
   the score equals expected marks on a real paper.
 - The appropriate next step is empirical calibration against future recall and exam-relevant
   outcomes, not an immediate wholesale replacement of FSRS with a research prototype.
-
-## 2. What Lacuna currently does
-
-### 2.1 Ordinary exam-objective scheduling
-
-The main exam objective is implemented in:
-
-- `src/fsrs/forwardSim.ts`
-- `src/fsrs/objective.ts`
-- `src/fsrs/progress.ts`
-
-For an ordinary scheduled session, Lacuna:
-
-1. uses the official `ts-fsrs` implementation for memory-state updates;
-2. projects current stability to an applicable exam date using the FSRS-6 power-law curve;
-3. estimates the post-review stability for an assumed **Good** review;
-4. computes the marginal exam-day improvement, Delta-R; and
-5. greedily serves the highest-scoring available card.
-
-The two objectives are:
-
-- **Expected marks:** mean predicted exam-day retrievability, with cards ordered by Delta-R;
-- **Secure topics:** the fraction of cards at or above `0.90` predicted retrievability, with
-  cards that can cross the threshold ranked ahead of cards that cannot.
-
-The `0.90` value is a chosen mastery threshold and is not, by itself, evidence that a learner
-has a 90% chance of earning the corresponding exam marks.
-
-### 2.2 Assessment revision planning
-
-Named assessment revision plans are a separate layer. They use:
-
-- `src/course/revisionPlan.ts`
-- `src/fsrs/cramAllocator.ts`
-- `src/fsrs/halfLifeLogisticModel.ts`
-- `tooling/short-term-memory/BENCHMARK.md`
-
-When the frozen short-term model and its inputs validate, the allocator simulates possible
-success and failure outcomes, estimates expected gain per unit time, and accounts for future
-revision windows. If the model cannot run safely, it records an explicit FSRS ordinary-Practice
-fallback rather than inventing confidence.
-
-This distinction matters: it is inaccurate to describe every part of Lacuna's assessment
-planning as only the basic FSRS forward-simulation heuristic.
-
-### 2.3 Response-time-informed grading
-
-The invisible grader is implemented in `src/fsrs/grading.ts`.
-
-- Incorrect answers map to Again.
-- During the first 20 correct reviews, fixed response-time thresholds are used:
-  - under 3 seconds: Easy;
-  - 3–8 seconds: Good;
-  - over 8 seconds: Hard.
-- Thereafter, thresholds use the running mean and standard deviation of correct response
-  times, with a `0.75` standard-deviation boundary.
-
-This is not percentile calibration. Response time is a useful but noisy signal: card
-complexity, reading time, typing, distraction, interface latency, and fatigue can all affect
-it. The implementation also intentionally updates the timing profile from correct reviews,
-which should remain an explicit limitation when interpreting the calibration. The current
-storage shape remains transitional: the performance row and grader are still keyed through the
-backing deck identity in parts of the repository, even though the product boundary is moving
-towards course-scoped calibration. This should not be presented as a settled per-course
-scientific result.
-
-### 2.4 FSRS parameter optimisation
-
-User-specific FSRS fitting is implemented separately in `src/fsrs/optimise.ts`. It uses the
-official binding trainer, chronological train/validation splitting, a held-out log-loss
-comparison, and a 1,000-review gate before optimisation is worthwhile. This is good defensive
-practice, but it validates next-review prediction on the available review history; it does not
-by itself validate long-range exam-day projections or prove that predicted retrievability maps
-to marks on a real examination.
 
 ## 3. Evidence strength
 
@@ -264,20 +190,6 @@ Until outcome validation exists, prefer:
 
 The product can still use concise labels such as **Expected marks** where the user benefit is
 clear, but explanatory copy should make clear that the number is a model-derived proxy.
-
-## 7. Bottom line
-
-Lacuna is targeting the right general problem and has a credible scientific foundation. Its
-most defensible novelty is the product-level combination of deadline-aware revision, structured
-mark-scheme items, and local-first workflows—not a claim to have invented a new memory law or
-proved an optimal scheduler.
-
-The current implementation is a reasonable first approximation. The highest-value work is to
-measure how well its predictions calibrate to actual recall and marks, especially under tight
-deadlines and heterogeneous card types. Research schedulers such as MACRO-related personalised
-review work, formal optimisation models, and ARTS should be treated as comparison points and
-sources of hypotheses until Lacuna-specific evidence shows that adopting one would improve real
-outcomes.
 
 ## References
 

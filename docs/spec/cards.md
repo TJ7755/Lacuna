@@ -1,202 +1,30 @@
-# 11. Cards, cloze & the editor
+# Authoring and generated Cards
 
-### Cloze (`src/utils/cloze.ts`)
+[CardEditor](../../src/pages/CardEditor.tsx), [QuestionEditor](../../src/pages/QuestionEditor.tsx)
+and [QuestionSetEditor](../../src/pages/QuestionSetEditor.tsx) own their fields and shortcuts.
+Use their tests for exact entry/repeat-save behaviour rather than maintaining a second UI manual.
 
-- Notation: `{{c1::hidden answer}}` and `{{c1::hidden answer::optional hint}}`.
-- A single card hides **all** `cN` spans at once. On the **front** each span renders
-  as a styled blank — `[...]`, or `[hint]` if a hint is given. On the **back** every
-  hidden span is revealed and highlighted inline within the full sentence
-  (`.cloze-reveal`).
-- `nextClozeIndex` powers the editor's auto-indexing Cloze button; `hasCloze` gates
-  cloze validity and import.
+Editing a recall presentation is not a reason to reset its memory state. Sequence and Occlusion
+regeneration updates surviving presentations in their owning repository transactions; generated
+Cards are edited through their source entity. Removing a source item is a deliberate removal,
+not an ordinary front/back edit. Cloze parsing is owned by [cloze](../../src/utils/cloze.ts).
 
-### Card rendering (`CardContent` -> `MarkdownView`)
+Crash drafts begin after an author change, not merely after mounting seeded content. An unresolved
+recovery choice must not be overwritten by autosave. Flush pending drafts when leaving without
+committing invalid content. Repeated entry preserves the chosen context but validates the new
+prompt and returns focus to the meaningful next field.
 
-Front/back Markdown is rendered with GFM, maths (KaTeX), syntax highlighting,
-Mermaid diagrams, wikilink (`[[Note]]`) pills and readable wrapped tables, plus
-raw HTML (for the cloze spans), inside `.prose-lacuna` styling. Memoised per card.
+A Question's answer mode, scheme and passing fixture define its semantics. Changing them is not
+a cosmetic edit. Known structured payloads share validation across authoring and imports;
+unknown versions retain a read-only fallback rather than gaining a grading path.
+See [structured verification](learn-mode.md#structured-item-verification).
 
-Mermaid fences render client-side to theme-aware SVG (`securityLevel: strict`;
-bundled locally with Mermaid and DOMPurify fetched concurrently when the Markdown
-renderer loads in a browser, before the first diagram mounts; no CSP change) with
-the source kept in a collapsible section and the code block left readable on failure. Diagrams re-render on light/dark toggles via a `documentElement` class
-observer. Wikilinks render as non-navigating pills (the target note may not exist on
-this device) and are skipped inside code. Tables render inside a scrolling card
-wrapper. Lesson notes use the same engine with `allowEmbeds`; the lesson workspace
-is `max-w-4xl` so diagrams and tables stay legible.
+A Question Set composer separates reusable set content from personal attempts. Scheme allocations
+retain identity through edits; a group stem has no scored answer of its own. Automatic totals
+and explicit manual totals remain distinguishable through the existing marks fields.
 
-Study-session note sections start their mouse disclosure on press; keyboard and touch
-use native click activation. Each section owns its open state and retains its rendered
-body, diagrams and annotation drafts while closed. Closed content is inert and hidden
-from assistive technology. Shared retained disclosures cache their natural height and
-observe content resizes, keeping measurement and Markdown/Mermaid work out of toggles.
-The height spring is critically damped, so closing never overshoots below zero and
-freezes on an invalid CSS height. It follows motion speed and becomes instant with reduced motion.
-Concurrent Mermaid renders and theme updates use distinct SVG IDs so one diagram cannot
-remove another. The development server pre-bundles Mermaid's CommonJS dependencies.
-
-The `MarkdownView` component is backed by a bounded LRU parse cache (parsed HTML
-cached by source string, with five-minute stale eviction and an LRU fallback), so
-re-renders and remounts are O(1) lookups while an entry remains cached; an evicted source
-is parsed again when needed.
-
-The `MarkdownView` effect tracks the last source it resolved for via a
-`useRef` and bails out when the prop is unchanged, so a parent re-render that passes
-the same source string does not re-assign `dangerouslySetInnerHTML` and wipe the
-user's text selection.
-
-### Cloze highlight (v0.0.2 fix)
-
-The revealed cloze span is rendered with `text-decoration: underline` (and a
-faint accent ink shadow) rather than a `background-color` fill, with an explicit
-`.cloze-reveal::selection { background-color: hsl(var(--accent) / 0.45); color:
-inherit; }` override. The previous `background-color` highlight stacked under
-the global `::selection` rule (both painted translucent amber), producing a muddy
-double-highlight on selected text inside a revealed cloze. With no element
-background, `::selection` paints cleanly across the cloze mark.
-
-### Sequence-generated cards in Learn mode
-
-When a card was generated from a Sequence (§5), `CardContent`'s `sequenceCue` prop (set in
-`LearnMode`) parses the front's header/cue-items structure (`parseSequenceFront`) and styles
-the preceding cue items as muted context above the recall prompt, rather than rendering the
-whole front as one undifferentiated block. Label cards (`isLabelCardId`) are excluded, since
-they have no cue window to style. No FSRS or session-flow changes: generated cards are
-ordinary `front_back` cards to the scheduler.
-
-### Editor (`src/pages/CardEditor.tsx`, full page)
-
-- Mode is decided by the route (`/cards/new` vs `/cards/:id/edit`).
-- **Card type** selector: Basic (front/back), Reversed, Cloze or Audio. Numeric and working
-  application content belongs to the separate Question editor. Front / back (the default) and
-  Cloze show first; **More** reveals the rest and, for a new card, **Sequence** and **Image
-  occlusion**, which open their own editors in place of this one (anything typed is kept as a
-  draft). For a new card, **Import cards** is always visible beside More, outside the type
-  selector. It imports into the lesson or, from Cards, the course's unassigned cards.
-  **More card types** passes keyboard focus to **Basic (reversed)** when it reveals the
-  further types. Tab navigates the pressed-button **Card type** group; Enter or Space
-  activates the focused type, including **Image occlusion**, which opens its editor.
-  In a lesson, More also reveals **Link existing cards**. Changing
-  type slides the new form in from the side of the chosen pill.
-  - **Basic:** standard front/back flashcard.
-  - **Reversed:** creates an independent card that tests the back as the prompt.
-  - **Cloze:** front contains `{{c1::hidden answer}}` deletions; back is empty.
-  - **Audio:** a structured file/recording slot, optional prompt and required answer write an
-    ordinary `front_back` card whose front contains `![audio](lacuna-asset://<hash>)`. Supported
-    files are MP3, M4A/MP4, Ogg, WAV and WebM up to 25 MB. Playback autoplay and speed are global
-    device settings. In Learn mode, “Hear it again” or R returns to the front presentation while
-    the answer phase, captured response time and grading controls remain intact.
-- One or two **Markdown editors** with a live preview; a formatting toolbar (bold,
-  italic, heading, lists, code, link, image, cloze auto-index, inline/block maths);
-  a cloze editor can preview the revealed answer. Each textarea takes its accessible name from the
-  visible field label (for example, Front or Back) unless its caller supplies a more specific
-  `ariaLabel`. Undo records typing, paste and other input changes; it captures pending
-  edits immediately, and editing after undo replaces the redo branch.
-- **Tags** input with deck-wide suggestions. Composition keystrokes are left to
-  the input method, without committing text or removing tags.
-- **Images** are downscaled to <= 1280 px, re-encoded (~0.8 quality), stored as a
-  `Uint8Array` in the `assets` table (deduplicated by SHA-256 hash), and referenced
-  from the Markdown as `lacuna-asset://<hash>` — **not** base64 data URIs. The render
-  path resolves references to object URLs through the shared bounded LRU cache; cache
-  eviction and app teardown revoke those URLs. This keeps card rows small (base64 inflates
-  payloads ~1/3 and drags full image data through every reactive read) and keeps exports lean.
-- **Audio** is stored without transcoding in the same content-addressed asset table. Anki
-  `[sound:filename]` references are rewritten to the same audio marker during APKG import rather
-  than being silently discarded.
-- **Validation:** front required; back required for front/back; at least one cloze
-  for cloze.
-- **Quick capture:** "Save & add another" keeps the page open, clears content,
-  retains type and tags, refocuses the first field, tallies a per-sitting count,
-  and flashes a "Saved" confirmation. A seamless Tab order runs Front -> Back ->
-  Save-and-add -> Save. `Ctrl/Cmd+Enter` saves (and, for new cards, keeps going).
-- **Crash drafts:** autosave begins only after the learner changes seeded editor content. While
-  an unresolved saved-draft prompt is visible, the editor cannot overwrite that draft. Navigating
-  between card edit routes in one mounted editor switches draft identity before any later save.
-- **Reverse cards:** for a new basic card, an "Also create reverse" toggle
-  additionally creates an independent card testing the back.
-- **Touch targets:** the toolbar buttons and type-selector are 44px tall with
-  active-state colours; on narrow viewports the toolbar scrolls horizontally with
-  a hidden scrollbar.
-- **Save feedback:** the delayed return is cancelled when the route starts exiting, unmounts
-  or changes card identity, including when an outstanding save finishes after departure.
-- **Return-to-origin back-link:** Cancel, post-save navigation and the breadcrumb
-  "back" link normally follow the route (the lesson if the URL encodes one, otherwise
-  the course's Cards page), but two entry points need to say otherwise — editing a
-  lesson-owned card from Cards, and editing a sequence (which has no
-  lesson-scoped edit route) from within a lesson. Callers that know they're not the
-  route's default surface pass an `{ origin: { path, label } }` router-state override
-  (`src/utils/editorOrigin.ts`), which both `CardEditor` and `SequenceEditor` prefer
-  over their route-derived default. A hard refresh drops router state, so the
-  route-derived fallback always applies in that case.
-
-### Question editor (`src/pages/QuestionEditor.tsx`, full page)
-
-The separate Question editor creates either a fixed problem or a built-in generated family. Every
-Question requires a name and exactly one **Primary skill practised** Concept; prerequisite Concepts
-are optional. Fixed Questions additionally require a prompt, valid numeric answer or compiled
-working scheme, and worked explanation. A generated family selects a supported generator and its
-typed configuration. Changing Question form during editing is prohibited: it would be a new
-definition, not a cosmetic edit.
-
-Content leads: the prompt, answer and worked explanation (or the generator configuration) come
-before name, lesson and Concepts, and a new fixed Question opens with focus in the prompt.
-Ctrl/Cmd+Enter saves; for a new Question it is **Save & add another**, which keeps the form, lesson,
-Concept, answer type and tags and starts the next prompt. Escape leaves only while nothing has been
-changed. A save with missing fields reports each at its field, keeps every input and focuses the
-first in page order, without a toast.
-
-Question authoring uses the same local draft store as Card authoring through a typed, generic
-storage boundary. Fixed, working and generated state — including invalid raw working source,
-fixtures and uncommitted Concept text — is isolated by Course and Question identity. Autosave begins
-only after an author change, never overwrites an unresolved recovery prompt and flushes synchronously
-before route departure or unload. Confirmed departure retains the draft; re-entry offers explicit
-Restore or Discard. Successful save and deletion clear the draft and bypass the navigation guard;
-a failed write leaves both the editor and its draft intact.
-
-Questions are post-instruction application practice. They do not appear in the Card editor, lesson
-Card study or Course path. Deleting a Question removes the definition and relationship set but
-retains its Attempt receipts as personal evidence.
+Lists may virtualise rendered rows, but surrounding layout changes must still update the measured
+range. Later Lessons cannot materialise their whole Card collection merely because the learner
+has not scrolled yet. Linked Cards are visibly distinct from owned, destructively selectable rows.
 
 [Specification index](../SPEC.md)
-
-The card editor briefly confirms a save before returning to its origin. Leaving the editor
-or switching to another card cancels that return, including when persistence finishes after
-the editor has closed.
-
-### Large card lists
-
-Virtualised lists rebuild the heights of mounted rows when the card count changes,
-so adding or deleting cards preserves spacing without waiting for another resize.
-Resize measurements include the full row border box, keeping padding and borders in the layout.
-When surrounding content changes size, each list recalculates its visible range without
-requiring a scroll, so later lessons retain only their off-screen overscan rows.
-
-### Question-set composer (`src/pages/QuestionSetEditor.tsx`)
-
-Authored question sets use one continuous, autosaving list of questions, parts and subparts.
-Each leaf has growing Markdown question and mark-scheme textareas, followed by Marks; shared
-stems span both text columns and show their leaf total. Below 720px, the scheme and marks sit
-under the question. New or empty sets focus the first Question field. Populated sets open
-without visible focus; neither entry nor returning from Preview focuses the title.
-
-Tab moves Question → Mark scheme → the next Question, inserting a sibling after the last row.
-Marks stays outside the Tab sequence, with its automatic total and editable override unchanged.
-At the end of an unselected scheme, ArrowRight focuses Marks and selects its override; ArrowLeft
-at the start of Marks, or Shift+Tab there, returns to the scheme's end. Tab in Marks also moves
-to the next Question, inserting one when needed; Enter in Marks always inserts a sibling after
-any parts. Shift+Tab in a Question returns to the preceding scheme, or its Question if it is a
-stem; the first row leaves backwards navigation to the browser. Textarea Enter and Shift+Enter
-insert newlines. Tab on an empty leaf indents to a part or subpart; an existing parent answer
-moves into its first child with an Undo toast. Shift+Tab on an empty part outdents before moving
-backwards, and Backspace deletes an empty leaf. A stem's Tab leads to its first part. Row menus
-are outside the Tab sequence, reached with Context Menu or Shift+F10 from a
-row field; Alt+Up/Down reorders siblings. Menus offer answer type, image, per-point guidance
-and dimension, knowledge links, movement and confirmed deletion. Multiple-choice options and
-correct answers appear inline; switching away from populated options requires confirmation.
-
-The header contains the title, icon-only Set details (name, lessons and exams), Preview and
-Save set. Only Saving… and Could not save are visible save statuses; Saved is announced
-without visual text. Ctrl/Cmd+Enter publishes after existing validation. Failed validation
-shows issues on their rows and focuses the first offending row. Escape leaves through the
-existing draft-flush navigation guard; Preview returns to the same composer. Row transitions,
-active wash, stem totals and disclosures follow motion speed and reduced motion.

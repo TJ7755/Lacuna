@@ -1,0 +1,103 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const root = fileURLToPath(new URL('..', import.meta.url));
+const digest = (text) => createHash('sha256').update(text).digest('hex');
+function sourceState(directory) {
+  const git = (...args) => execFileSync('git', args, { cwd: directory, encoding: 'utf8' });
+  if (git('ls-files', '--others', '--exclude-standard').trim()) {
+    throw new Error(
+      'Stage new files before verification so the recorded source fingerprint includes them',
+    );
+  }
+  return {
+    commit: git('rev-parse', 'HEAD').trim(),
+    status: git('status', '--porcelain'),
+    diffSha256: digest(
+      git(
+        'diff',
+        'HEAD',
+        '--full-index',
+        '--no-ext-diff',
+        '--no-textconv',
+        '--',
+        '.',
+        ':(exclude)**/MEMORIES.md',
+        ':(exclude)MEMORIES.md',
+      ),
+    ),
+  };
+}
+
+export function verifyBrowser({ directory = root, args = [], execute = spawnSync } = {}) {
+  if (args.some((arg) => /^(?:-c|--config(?:=|$))/.test(arg))) {
+    throw new Error(
+      'verify:browser owns its isolated configuration; pass test/project filters instead',
+    );
+  }
+  const parent = join(directory, 'artifacts', 'browser-checks');
+  mkdirSync(parent, { recursive: true });
+  const runDirectory = mkdtempSync(join(parent, 'run-'));
+  const buildDirectory = join(runDirectory, 'dist');
+  const source = sourceState(directory);
+  const report = { source, args, startedAt: new Date().toISOString(), buildDirectory };
+  const reportPath = join(runDirectory, 'source.json');
+  const save = () => writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+  save();
+  console.log(`Browser evidence: ${reportPath}`);
+  const run = (commandArgs) => {
+    const result = execute('bun', commandArgs, {
+      cwd: directory,
+      stdio: 'inherit',
+      env: { ...process.env, LACUNA_BROWSER_RUN_DIR: runDirectory },
+    });
+    if (result.error) throw result.error;
+    if (result.signal) throw new Error(`Browser command terminated by ${result.signal}`);
+    return result.status ?? 1;
+  };
+  let status = 1;
+  try {
+    status = run(['run', 'build:assets', '--outDir', buildDirectory, '--emptyOutDir']);
+    if (status === 0) {
+      report.indexSha256 = digest(readFileSync(join(buildDirectory, 'index.html')));
+      if (JSON.stringify(sourceState(directory)) !== JSON.stringify(source)) {
+        throw new Error('Source changed during the build; rerun against one candidate');
+      }
+      status = run([
+        'x',
+        'playwright',
+        'test',
+        '-c',
+        'tests/config/playwright.web.isolated.config.ts',
+        ...args,
+      ]);
+    }
+    report.sourceAfter = sourceState(directory);
+    if (JSON.stringify(report.sourceAfter) !== JSON.stringify(source)) {
+      throw new Error(
+        'Source changed during verification; results are not a frozen-candidate pass',
+      );
+    }
+  } catch (error) {
+    report.error = error.message;
+    console.error(error.message);
+    status = 1;
+  } finally {
+    report.completedAt = new Date().toISOString();
+    report.exitCode = status;
+    save();
+  }
+  return status;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    process.exitCode = verifyBrowser({ args: process.argv.slice(2).filter((arg) => arg !== '--') });
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+}
