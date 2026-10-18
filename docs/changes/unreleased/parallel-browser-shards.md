@@ -1,0 +1,1 @@
+- Run functional Chromium CI tests across four parallel shards to reduce the browser gate's longest job while retaining isolated image performance measurements and complete browser coverage.
