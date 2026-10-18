@@ -175,7 +175,7 @@ export function CardImportDialog({
     if (presentation === 'dialog') return;
     trapRef.current
       ?.querySelector<HTMLElement>(titleLabel ? '#card-import-title' : '#card-import-text')
-      ?.focus();
+      ?.focus({ preventScroll: true });
     // Only on first show: later focus belongs to the person.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
