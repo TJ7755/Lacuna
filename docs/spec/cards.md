@@ -153,8 +153,11 @@ ordinary `front_back` cards to the scheduler.
 
 The separate Question editor creates either a fixed problem or a built-in generated family. Every
 Question requires a name and exactly one **Primary skill practised** Concept; prerequisite Concepts
-are optional. Fixed Questions additionally require a prompt, valid numeric answer or compiled
-working scheme, and worked explanation. A generated family selects a supported generator and its
+are optional. A new Question leaves the primary Concept unselected, even when Concepts already
+exist in the Course; the author chooses one or creates it explicitly. Editing and restoring a draft
+retain its stored Concept, and repeat entry retains the Concept just saved. Fixed Questions
+additionally require a prompt, valid numeric answer or compiled working scheme, and worked
+explanation. A generated family selects a supported generator and its
 typed configuration. Changing Question form during editing is prohibited: it would be a new
 definition, not a cosmetic edit.
 
@@ -163,7 +166,13 @@ before name, lesson and Concepts, and a new fixed Question opens with focus in t
 Ctrl/Cmd+Enter saves; for a new Question it is **Save & add another**, which keeps the form, lesson,
 Concept, answer type and tags and starts the next prompt. Escape leaves only while nothing has been
 changed. A save with missing fields reports each at its field, keeps every input and focuses the
-first in page order, without a toast.
+first in page order, without a toast. Numeric validation uses the shared answer editor's published
+input ref to focus the first invalid accepted answer or tolerance, after the validation state commits
+and across answer-mode transitions. The focused numeric input is centred above the sticky save
+controls. Missing numeric answers focus the answer input rather than the
+answer-check buttons. Generated-family integer limits and the minimum/maximum root relationship
+are checked inline before saving; the first invalid configuration field receives focus before
+metadata, and correcting it clears its accessible error without replacing the input.
 
 Question authoring uses the same local draft store as Card authoring through a typed, generic
 storage boundary. Fixed, working and generated state — including invalid raw working source,
