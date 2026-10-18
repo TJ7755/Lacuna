@@ -248,6 +248,12 @@ the attempt rows; unresolved marks stay labelled separately. Linked concept cove
 one line, and the **All / First recorded / Repeated** filter appears only after a repeated attempt.
 Removed sets retain their title and attempt links in the same page frame.
 
+Question-set editing, overview and attempts share the page loading boundary and skeleton. A missing
+set or attempt shows a focused heading and a direct way back; failed initial reads offer **Try again**
+without reloading the application or discarding saved work. Technical error details stay collapsed
+behind **Technical details**. Read-only editing explains the restriction and keeps the saved draft.
+An attempt retry retains a navigation control the learner focused while its read was pending.
+
 Question-set attempts use one header for the set back link, part-stepper menu and
 **Save and finish later**. The stepper announces the mode, current part and marking criterion;
 its dots distinguish the current and submitted parts. Save status appears only while saving or

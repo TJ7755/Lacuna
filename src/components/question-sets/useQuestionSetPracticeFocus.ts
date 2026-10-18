@@ -58,9 +58,10 @@ export function useQuestionSetPracticeFocus(
   marking: boolean,
   complete: boolean,
   pending: boolean,
+  initialFocusOwner?: Element | null,
 ) {
   const focused = useRef('');
-  const pendingFocus = useRef<Element | null | undefined>(undefined);
+  const pendingFocus = useRef<Element | null | undefined>(initialFocusOwner);
   useEffect(() => {
     if (pending) {
       if (pendingFocus.current === undefined) pendingFocus.current = document.activeElement;
