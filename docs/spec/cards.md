@@ -109,6 +109,26 @@ ordinary `front_back` cards to the scheduler.
   retains type and tags, refocuses the first field, tallies a per-sitting count,
   and flashes a "Saved" confirmation. A seamless Tab order runs Front -> Back ->
   Save-and-add -> Save. `Ctrl/Cmd+Enter` saves (and, for new cards, keeps going).
+- The retained Numeric and Working Card controls use Question -> Expected answer / Scheme source
+  -> the enabled repeat-save action. Shift+Tab from the answer/source returns to Question. Invalid
+  drafts leave native traversal to secondary controls available. These compatibility controls stay
+  in place; the separate Question workflow remains the application-practice model above.
+  Tolerance, alternative answers, maths symbols, scheme drafting/testing, fixtures, tags and formatting
+  remain available in their existing groups. Mark-scheme suggestions consume completion keys before
+  save shortcuts; composition keys remain with the input method. Numeric entry keeps its active
+  answer target after check-mode animations finish, without requiring another edit; validation
+  still targets the first invalid accepted answer or tolerance field.
+- Audio creation starts at **Choose file**, including after repeat-save. Attachment or explicitly
+  stopped recording advances to the empty optional prompt, or to Answer when the prompt is already
+  filled, provided the learner has not moved focus elsewhere. Prompt -> Answer -> enabled repeat-save
+  is the main Tab path; Shift+Tab in Answer returns to Prompt. Selecting Audio never requests a
+  microphone or starts recording. Repeat-save clears the clip, prompt and answer.
+- Working repeat-save clears the test student answer, verdicts, scheme source and pinned fixtures.
+- Save shortcuts focus and explain the first invalid field. Saves permit one outstanding write;
+  repeated activation cannot create duplicates. Failed writes retain the draft and show a retry
+  message. Successful non-repeat saves remain guarded through the saved confirmation and departure.
+- Selected unfamiliar card types show a concise outcome/example below the picker; default Front /
+  back gains no extra help text.
 - **Crash drafts:** autosave begins only after the learner changes seeded editor content. While
   an unresolved saved-draft prompt is visible, the editor cannot overwrite that draft. Navigating
   between card edit routes in one mounted editor switches draft identity before any later save.
