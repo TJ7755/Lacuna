@@ -34,6 +34,7 @@ interface SequenceOutlineEditorProps {
   mySpeaker?: string;
   speakers: string[];
   showLabels: boolean;
+  onTabForward?: () => void;
 }
 
 export function SequenceOutlineEditor({
@@ -43,6 +44,7 @@ export function SequenceOutlineEditor({
   mySpeaker,
   speakers,
   showLabels,
+  onTabForward,
 }: SequenceOutlineEditorProps) {
   const { items } = outline;
   const { item: itemTerm, chunkLabel } = preset.terminology;
@@ -254,6 +256,7 @@ export function SequenceOutlineEditor({
                 onChange={(patch) => update(i, patch)}
                 onGesture={(gesture) => handleGesture(i, gesture)}
                 onDelete={() => deleteAt(i)}
+                onTabForward={i === items.length - 1 ? onTabForward : undefined}
                 inputRef={(input) => {
                   if (input) inputs.current.set(item.id, input);
                   else inputs.current.delete(item.id);
