@@ -75,8 +75,17 @@ The owner approved the four defaults from [#600](https://github.com/TJ7755/Lacun
 Ordinary builds leave `VITE_GAPS_REPORTING_ENABLED` unset, so no pupil transport
 is installed. Explicit trial builds set it to `true`; the relay separately requires
 `RELAY_INSIGHTS_ENABLED=1`. Neither gate is activated by connecting a course or
-publishing an invitation. Production activation still requires independent human
-security review. Relay expiry cannot erase results already retained by a teacher.
+publishing an invitation, and neither replaces explicit pupil consent.
+
+The production web trial was enabled on 19 October 2026 after the owner confirmed
+their human review and approval and requested an additional Sol review. That AI
+review found a UTC-midnight reporting defect; the fix passed a follow-up review
+and the complete CI gate before activation. This is not a formal security audit.
+Production `lacuna` sets `VITE_GAPS_REPORTING_ENABLED=true`; production
+`lacuna-relay` sets `RELAY_INSIGHTS_ENABLED=1`. Desktop builds were not activated.
+The [activation record](review-evidence/gaps-trial-activation/README.md) identifies
+the released source, deployments and live verification. Relay expiry cannot erase
+results already retained by a teacher.
 
 The trial is one class of about 30 pupils. The owner subsequently chose daily
 delivery. The planner permits one report for the latest completed UTC day and
@@ -127,8 +136,8 @@ before returning it or replacing any saved recovery material.
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
 
-Desktop safeStorage and key rotation remain separate work. Do not enable pupil delivery until the complete flow and
-independent human security review are complete. The public key is trusted only
+Desktop safeStorage and key rotation remain separate work. The production web
+trial uses the reviewed flow and approval recorded above. The public key is trusted only
 through the teacher invitation described above. Anyone holding an authentic public key
 can encrypt a fabricated result. The spike bounds evidence to 64 KiB and rejects
 unknown fields and versions; this provisional format is not a released contract.
@@ -301,8 +310,27 @@ or teacher key for an existing packet fails rather than redirecting it. The help
 does not open the learner database and persists no plaintext evidence, teacher
 secret or ownership credential.
 Lacuna installs the delivery runtime only in an explicitly enabled trial build.
-Gaps never installs pupil delivery. Production activation remains gated on the
-complete flow and independent human security review described above.
+Gaps never installs pupil delivery. The production web trial is enabled as described
+above; ordinary builds retain the default-off boundary.
+
+## Disable the trial
+
+Confirm the intended team and projects before changing production configuration.
+Set production `RELAY_INSIGHTS_ENABLED=0` on `lacuna-relay` and
+`VITE_GAPS_REPORTING_ENABLED=false` on `lacuna`, or remove those production values.
+Changing a saved variable does not change an already deployed build: deploy the
+reviewed source with those disabled values, or roll back to verified production
+deployments that captured disabled gates. Stop relay admission first, then pupil
+delivery. The relay gate disables report reads as well as uploads; retained
+ciphertext remains stored. Failed uploads retain the existing encrypted retry packet.
+
+Use `bunx vercel rollback` with the exact selected production deployment URL and
+the verified team scope. The activation record retains the initial fallback
+deployments; for later releases, check compatibility before reverting learner code.
+Disabling the saved values as well prevents a later automatic build from silently
+reactivating reporting. Rollback disables collection; it does not erase retained
+reports, teacher keys or pupil data. Keep the teacher hostname, retirement worker
+and existing storage intact.
 
 ## Trial cost assumptions
 
@@ -410,5 +438,6 @@ The branch carries separate increments for the teacher entry, encryption,
 daily cadence, relay mailbox and client transport. Their tests cover crypto,
 admission races, expiry, revocation and transport failures, so the combined branch
 exceeds the usual handwritten-line target. Review these layers separately; do
-not merge the school-trial epic as one undifferentiated change. None activates
-data collection, and the authoring agent is not the independent security reviewer.
+not merge the school-trial epic as one undifferentiated change. The separate
+production gates control collection, and the authoring agent's checks do not
+replace human review and approval.
