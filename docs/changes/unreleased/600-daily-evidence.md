@@ -1,0 +1,1 @@
+- Define bounded daily Gaps evidence for question attempts, completed papers and card recall. Reports preserve unknown/disputed marks, distinguish self marking and disclose omitted activity instead of claiming complete coverage. (#600)
