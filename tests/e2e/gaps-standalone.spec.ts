@@ -21,7 +21,7 @@ for (const width of [1280, 390]) {
         const original = indexedDB[name].bind(indexedDB);
         Object.defineProperty(indexedDB, name, {
           value: (...args: Parameters<typeof original>) => {
-            calls.push(`indexedDB.${name}`);
+            calls.push(`indexedDB.${name}:${String(args[0])}`);
             return Reflect.apply(original, indexedDB, args);
           },
         });
@@ -76,8 +76,16 @@ for (const width of [1280, 390]) {
       storage: { ...localStorage },
       fits: document.documentElement.scrollWidth <= innerWidth,
     }));
-    expect(state.calls).toEqual(['serviceWorker.getRegistrations']);
-    expect(state.databases).toEqual([]);
+    expect(
+      state.calls.filter(
+        (call) =>
+          !['indexedDB.open:lacuna.gaps.connections', 'serviceWorker.getRegistrations'].includes(
+            call,
+          ),
+      ),
+    ).toEqual([]);
+    expect(state.calls).toContain('indexedDB.open:lacuna.gaps.connections');
+    expect(state.databases).toEqual([{ name: 'lacuna.gaps.connections', version: 10 }]);
     expect(state.registrations).toEqual([]);
     expect(state.cacheNames).toEqual([]);
     expect(state.storage).toEqual({
@@ -135,7 +143,10 @@ test('standalone Gaps leaves existing learner storage intact', async ({ page }) 
       seeded: localStorage.getItem('lacuna-seeded'),
     })),
   ).toEqual({
-    databases: [{ name: 'lacuna', version: 1 }],
+    databases: [
+      { name: 'lacuna', version: 1 },
+      { name: 'lacuna.gaps.connections', version: 10 },
+    ],
     cache: 'Keep this course',
     seeded: '1',
   });

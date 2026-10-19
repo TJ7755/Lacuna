@@ -83,11 +83,15 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/teacher/TeacherHomeView.tsx',
             'src/teacher/StandaloneTeacherHome.tsx',
             'src/teacher/TeacherKeySetup.tsx',
+            'src/teacher/TeacherCourses.tsx',
+            'src/teacher/connectionFile.ts',
+            'src/teacher/connectionStore.ts',
             'src/components/ui/Field.tsx',
             'src/insights/envelope.ts',
             'src/insights/ownerStore.ts',
             'src/insights/recoveryFile.ts',
             'src/sync/crypto.ts',
+            'src/sync/relay.ts',
             'src/sync/pairingConfig.ts',
             'src/shareLinks/client.ts',
             'src/state/ThemeContext.tsx',
@@ -108,7 +112,9 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => /(?:workbox|precache|worker|\.wasm$|compare\/)/i.test(file)),
     ).toEqual([]);
     expect(files.filter((file) => /\.(?:js|html)$/.test(file))).toEqual([
+      expect.stringMatching(/^assets\/TeacherCourses-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherKeySetup-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/import-wrapper-prod-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
       'index.html',
       'sw.js',
@@ -156,7 +162,7 @@ it('keeps the teacher hosting policy separate and makes retirement updates uncac
   const policy = config.headers
     .find((entry) => entry.source === '/(.*)')
     ?.headers.find((header) => header.key === 'Content-Security-Policy')?.value;
-  expect(policy).toContain("connect-src 'none'");
+  expect(policy).toContain('connect-src https://relay.getlacuna.app;');
   expect(policy).toContain("frame-ancestors 'none'");
   expect(policy).toContain("worker-src 'none'");
 });

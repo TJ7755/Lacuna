@@ -19,9 +19,15 @@ interface PreparedKey {
   recovery: InsightsRecovery;
 }
 
-export function TeacherKeySetup({ onClose }: { onClose(): void }) {
+export function TeacherKeySetup({
+  onClose,
+  initialCourse = '',
+}: {
+  onClose(): void;
+  initialCourse?: string;
+}) {
   const [mode, setMode] = useState<Mode>('create');
-  const [course, setCourse] = useState('');
+  const [course, setCourse] = useState(initialCourse);
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [file, setFile] = useState<File | null>(null);
