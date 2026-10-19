@@ -1,0 +1,1 @@
+- Add a disabled-by-default encrypted insights relay mailbox with owner-only paginated reads, immutable retries, daily capacity limits and fixed reporting-day expiry. Add a bounded client transport tested with synthetic evidence; pupil delivery still requires key lifecycle work and independent security review. (#590)
