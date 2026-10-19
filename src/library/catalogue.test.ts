@@ -10,7 +10,16 @@ describe('libraryCourses', () => {
       'history0977',
     ]);
     expect(new Set(libraryCourses.map(({ id }) => id)).size).toBe(libraryCourses.length);
-    expect(libraryCourses.every((course) => course.reviewStatus === 'reviewed')).toBe(true);
+    expect(libraryCourses.every((course) => course.reviewStatus === 'in-progress')).toBe(true);
+  });
+
+  it('records the counts from the published cumulative draft reports', () => {
+    expect(libraryCourses.map(({ stats }) => stats)).toEqual([
+      { cards: 1322, notes: 164, practiceSets: 165, practiceMarks: 1289 },
+      { cards: 918, notes: 147, practiceSets: 152, practiceMarks: 1272 },
+      { cards: 1039, notes: 152, practiceSets: 153, practiceMarks: 1726 },
+      { cards: 708, notes: 111, practiceSets: 112, practiceMarks: 1718 },
+    ]);
   });
 
   it('keeps qualification identifiers, summaries, topics and live links together', () => {
@@ -21,7 +30,7 @@ describe('libraryCourses', () => {
         code: '4BI1',
         summary: expect.any(String),
         topics: expect.arrayContaining(['Reproduction and inheritance']),
-        shareUrl: 'https://getlacuna.app/#/s/b70862112bb460441bee556d6233fc03',
+        shareUrl: 'https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5',
       },
       {
         subject: 'Chemistry',
@@ -29,7 +38,7 @@ describe('libraryCourses', () => {
         code: '4CH1',
         summary: expect.any(String),
         topics: expect.arrayContaining(['Organic chemistry']),
-        shareUrl: 'https://getlacuna.app/#/s/dae0b77f89538747f2ff6be3e9e94ff2',
+        shareUrl: 'https://getlacuna.app/#/s/daf16de2b88b97fa236948559ede6c4c',
       },
       {
         subject: 'Physics',
@@ -37,7 +46,7 @@ describe('libraryCourses', () => {
         code: '0972',
         summary: expect.any(String),
         topics: expect.arrayContaining(['Space physics']),
-        shareUrl: 'https://getlacuna.app/#/s/48a155196a8e72bb6737affc063daf43',
+        shareUrl: 'https://getlacuna.app/#/s/52fe58acd2fcece40c1d10ffbf08276f',
       },
       {
         subject: 'History',
@@ -45,7 +54,7 @@ describe('libraryCourses', () => {
         code: '0977',
         summary: expect.any(String),
         topics: expect.arrayContaining(['Depth study B: Germany, 1918–45']),
-        shareUrl: 'https://getlacuna.app/#/s/2a768569a7b0a8987b3ef8a12947aae5',
+        shareUrl: 'https://getlacuna.app/#/s/31178fee8489ffcf1748c1dc5c570be5',
       },
     ]);
   });
