@@ -386,7 +386,7 @@ function matchPath(pathname: string): Route | null {
     parts[2] !== undefined
   ) {
     const slot = parts[2];
-    if (slot === 'payload' || slot === 'meta') {
+    if (slot === 'payload' || slot === 'meta' || slot === 'teacher') {
       return { kind: 'share-slot', id: parts[1], slot };
     }
     return { kind: 'share-slot-invalid' };

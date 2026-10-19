@@ -7,7 +7,7 @@ export { DEFAULT_RELAY_URL };
 export const SHARE_ID_RE = /^[0-9a-f]{32}$/;
 const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;
 
-export type ShareSlot = 'payload' | 'meta';
+export type ShareSlot = 'payload' | 'meta' | 'teacher';
 export type ShareLinkOperation = 'mint' | 'publish' | 'fetch' | 'remove' | 'verify';
 
 export class ShareLinkError extends Error {
@@ -229,6 +229,7 @@ export interface PutShareBytesOptions {
   /** Quoted ETag generation; `"0"` for the first write into an empty slot. */
   ifMatch: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /** Publish one slot of a share, returning the relay's new generation. */
@@ -245,6 +246,10 @@ export async function putShareBytes(
     `${relay}/shares/${shareId}/${slot}`,
     {
       method: 'PUT',
+      signal: options.signal,
+      credentials: 'omit',
+      redirect: 'error',
+      cache: 'no-store',
       headers: {
         Authorization: `Bearer ${writeToken}`,
         'Content-Type': 'application/octet-stream',
@@ -271,6 +276,7 @@ export interface GetShareBytesOptions {
   shareId: string;
   slot: ShareSlot;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /** Fetch one slot of a share; null when the slot has never been published. */
@@ -285,6 +291,9 @@ export async function getShareBytes(
     `${relay}/shares/${shareId}/${options.slot}`,
     {
       method: 'GET',
+      signal: options.signal,
+      credentials: 'omit',
+      redirect: 'error',
       cache: 'no-store',
     },
     'fetch',
@@ -298,7 +307,35 @@ export async function getShareBytes(
       status: response.status,
     });
   }
-  return { bytes: new Uint8Array(await response.arrayBuffer()), generation };
+  const limit = options.slot === 'payload' ? 4 * 1024 * 1024 : 8 * 1024;
+  const reader = response.body?.getReader();
+  if (!reader)
+    throw new ShareLinkError('The share link service gave an empty response.', {
+      operation: 'fetch',
+    });
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > limit) {
+        await reader.cancel();
+        throw new ShareLinkError('The share link response is too large.', { operation: 'fetch' });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bytes, generation };
 }
 
 export interface DeleteShareOptions {

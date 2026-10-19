@@ -15,6 +15,27 @@ import {
 
 const RELAY_URL = 'https://relay.example';
 
+it('bounds streamed public teacher-key responses before parsing them', async () => {
+  const cancelled = vi.fn();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(new Uint8Array(8193));
+    },
+    cancel: cancelled,
+  });
+  const fetchImpl = vi.fn<typeof fetch>(
+    async () => new Response(body, { headers: { ETag: '"key-1"' } }),
+  );
+  await expect(
+    getShareBytes({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), slot: 'teacher', fetchImpl }),
+  ).rejects.toThrow('too large');
+  expect(cancelled).toHaveBeenCalled();
+  expect(fetchImpl).toHaveBeenCalledWith(
+    expect.any(String),
+    expect.objectContaining({ credentials: 'omit', redirect: 'error', cache: 'no-store' }),
+  );
+});
+
 function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -50,7 +71,9 @@ describe('share link client', () => {
   });
 
   it('puts payload bytes and returns the generation', async () => {
-    const fetchImpl = vi.fn(async () => new Response(null, { status: 204, headers: { ETag: '"t7"' } }));
+    const fetchImpl = vi.fn(
+      async () => new Response(null, { status: 204, headers: { ETag: '"t7"' } }),
+    );
     const result = await putShareBytes({
       relayUrl: RELAY_URL,
       shareId: 'a'.repeat(32),
@@ -85,7 +108,12 @@ describe('share link client', () => {
     const bytes = new Uint8Array([9, 9]);
     const hit = vi.fn(async () => bytesResponse(200, bytes, '"t3"'));
     expect(
-      await getShareBytes({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), slot: 'meta', fetchImpl: hit }),
+      await getShareBytes({
+        relayUrl: RELAY_URL,
+        shareId: 'a'.repeat(32),
+        slot: 'meta',
+        fetchImpl: hit,
+      }),
     ).toEqual({ bytes, generation: '"t3"' });
     expect(hit).toHaveBeenCalledWith(
       `${RELAY_URL}/shares/${'a'.repeat(32)}/meta`,
@@ -94,13 +122,23 @@ describe('share link client', () => {
 
     const miss = vi.fn(async () => jsonResponse(404, { error: 'not found' }));
     expect(
-      await getShareBytes({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), slot: 'meta', fetchImpl: miss }),
+      await getShareBytes({
+        relayUrl: RELAY_URL,
+        shareId: 'a'.repeat(32),
+        slot: 'meta',
+        fetchImpl: miss,
+      }),
     ).toBeNull();
   });
 
   it('deletes a share and treats a missing share as deleted', async () => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 204 }));
-    await deleteShare({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), writeToken: 'b'.repeat(64), fetchImpl });
+    await deleteShare({
+      relayUrl: RELAY_URL,
+      shareId: 'a'.repeat(32),
+      writeToken: 'b'.repeat(64),
+      fetchImpl,
+    });
     expect(fetchImpl).toHaveBeenCalledWith(
       `${RELAY_URL}/shares/${'a'.repeat(32)}`,
       expect.objectContaining({ method: 'DELETE' }),
@@ -108,7 +146,12 @@ describe('share link client', () => {
 
     const gone = vi.fn(async () => jsonResponse(404, { error: 'not found' }));
     await expect(
-      deleteShare({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), writeToken: 'b'.repeat(64), fetchImpl: gone }),
+      deleteShare({
+        relayUrl: RELAY_URL,
+        shareId: 'a'.repeat(32),
+        writeToken: 'b'.repeat(64),
+        fetchImpl: gone,
+      }),
     ).resolves.toBeUndefined();
   });
 
@@ -121,7 +164,9 @@ describe('share link client', () => {
       byteSize: 1234,
       courseName: 'Biology',
     };
-    expect(parseShareManifest(new TextEncoder().encode(JSON.stringify(manifest)))).toEqual(manifest);
+    expect(parseShareManifest(new TextEncoder().encode(JSON.stringify(manifest)))).toEqual(
+      manifest,
+    );
     expect(() => parseShareManifest(new TextEncoder().encode('{broken'))).toThrow(
       'could not be read',
     );
@@ -160,7 +205,12 @@ describe('share link client', () => {
     expect((failure as ShareLinkError).operation).toBe('mint');
 
     await expect(
-      getShareBytes({ relayUrl: RELAY_URL, shareId: 'a'.repeat(32), slot: 'meta', fetchImpl: failing }),
+      getShareBytes({
+        relayUrl: RELAY_URL,
+        shareId: 'a'.repeat(32),
+        slot: 'meta',
+        fetchImpl: failing,
+      }),
     ).rejects.toThrow('Could not reach the share link service');
   });
 
