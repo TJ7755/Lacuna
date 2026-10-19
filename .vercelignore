@@ -20,5 +20,6 @@ electron/dist-electron/
 .codex/
 .agents/
 .t3/
+tooling/short-term-memory/data/
 MEMORIES.md
 **/MEMORIES.md
