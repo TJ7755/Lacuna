@@ -37,8 +37,9 @@ jobs:
       - run: node scripts/check-docs.mjs
       - run: node scripts/changelog.mjs --check
 
-  # Documentation-only pull requests skip the heavy jobs. Skipping at job level (never with
-  # workflow-level paths filters) keeps every required check reporting, as "skipped".
+  # Documentation-only pull requests skip heavy work, never the entire workflow.
+  # Required workers acknowledge that scope on a runner so their dynamic check names
+  # resolve; GitHub leaves name expressions unevaluated when skipping a whole job.
   changes:
     if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
     runs-on: ubuntu-latest
@@ -64,42 +65,61 @@ jobs:
   typecheck:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}typecheck
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
       - run: bun run typecheck
+        if: needs.changes.outputs.docs_only != 'true'
 
   lint:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}lint
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun run lint
+        if: needs.changes.outputs.docs_only != 'true'
 
   test-unit:
     needs: changes
@@ -231,77 +251,113 @@ jobs:
   relay:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}relay
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
       - run: bun run typecheck
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
       - run: bun run lint
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
       - run: bun run test
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
 
   ai-mcp:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}ai-mcp
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
       - run: bun run typecheck
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run lint
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run test
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run build
+        if: needs.changes.outputs.docs_only != 'true'
         working-directory: tooling/lacuna-ai-mcp
 
   production:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}production
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun run build:assets
+        if: needs.changes.outputs.docs_only != 'true'
       - run: node --test scripts/public-pages.test.mjs
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun run perf:check
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun run release:scenario
+        if: needs.changes.outputs.docs_only != 'true'
 
   browser-tests:
     needs: changes
@@ -439,21 +495,30 @@ jobs:
   electron-ai:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}electron-ai
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.result == 'success'
     runs-on: windows-latest
     steps:
+      - name: Report documentation-only scope
+        if: needs.changes.outputs.docs_only == 'true'
+        shell: bash
+        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           node-version: '24'
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.changes.outputs.docs_only != 'true'
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
+        if: needs.changes.outputs.docs_only != 'true'
       - run: bun run test:e2e:electron-ai
+        if: needs.changes.outputs.docs_only != 'true'
 
   electron-macos-smoke:
     needs: changes

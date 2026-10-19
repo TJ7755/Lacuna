@@ -92,6 +92,25 @@ test('aggregate gates run after dependency failures but do not run after workflo
   }
 });
 
+test('documentation-only changes resolve required names without running heavy steps', () => {
+  for (const name of required.filter((name) => !['test', 'browser-smoke'].includes(name))) {
+    const job = workflow.jobs[name];
+    assert.equal(job.if, "needs.changes.result == 'success'", name);
+    const [acknowledgement, ...heavySteps] = job.steps;
+    assert.equal(acknowledgement.if, "needs.changes.outputs.docs_only == 'true'", name);
+    assert.equal(acknowledgement.shell, 'bash', name);
+    assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
+    assert.ok(heavySteps.length > 0, name);
+    for (const step of heavySteps) {
+      assert.equal(
+        step.if,
+        "needs.changes.outputs.docs_only != 'true'",
+        `${name}: ${step.uses ?? step.run}`,
+      );
+    }
+  }
+});
+
 test('aggregate shell gates fail closed and report each dependency result', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-gates-'));
   try {
