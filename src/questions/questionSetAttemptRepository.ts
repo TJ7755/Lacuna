@@ -1,8 +1,12 @@
 import { db, makeId } from '../db/schema';
+import { resolveFamilyVariant } from './bank';
+import { normaliseQuestionSchedulerConfig, questionSchedulerConfigFingerprint } from './scheduler';
+import { QUESTION_SCHEDULER_VERSION } from './types';
 import { parseQuestionSetRecord } from './questionSetCodec';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
 import {
   answerableNodes,
+  type ConceptPracticeSelection,
   type QuestionSetAttemptAnnotation,
   type QuestionSetAttemptCorrection,
   type QuestionSetAttemptMode,
@@ -34,11 +38,24 @@ export async function startQuestionSetAttempt(
   questionSetId: string,
   mode: QuestionSetAttemptMode,
   now = Date.now(),
+  selection?: ConceptPracticeSelection,
+  familyVariantIndex?: number,
 ): Promise<QuestionSetAttemptRecord> {
   return db.transaction('rw', [db.courses, db.questionSets, db.questionSetAttempts], async () => {
     const receiptRaw = await db.questionSets.get(questionSetId);
     if (!receiptRaw) throw new Error('Question Set not found.');
-    const receipt = parseQuestionSetRecord(receiptRaw);
+    let receipt = parseQuestionSetRecord(receiptRaw);
+    if (familyVariantIndex !== undefined) {
+      if (!selection || !receipt.bank?.family) throw new Error('Invalid family variant selection.');
+      receipt = resolveFamilyVariant(receipt, familyVariantIndex);
+    }
+    if (selection) {
+      if (mode !== 'practice' || selection.questionSetId !== questionSetId)
+        throw new Error('Invalid Concept practice selection.');
+      const question = receipt.questions.find((row) => row.id === selection.questionId);
+      if (!question) throw new Error('Selected question not found.');
+      receipt = parseQuestionSetRecord({ ...receipt, questions: [question] });
+    }
     if (!(await db.courses.get(receipt.courseId))) throw new Error('Course not found.');
     const nodes = answerableNodes(receipt);
     const responseKind = new Map<string, 'written' | 'calculation' | 'multiple-choice'>();
@@ -63,6 +80,9 @@ export async function startQuestionSetAttempt(
         draft: emptyResponse(responseKind.get(node.nodeId)!),
       })),
       decisions: [],
+      firstMarking: [],
+      shownQuestionIds: [nodes[0].questionId],
+      ...(selection ? { conceptPractice: clone(selection) } : {}),
       annotations: [],
       corrections: [],
       reflection: { reasons: [], note: '' },
@@ -114,16 +134,21 @@ async function mutate(
   id: string,
   expectedRevisionId: string,
   now: number,
-  change: (record: QuestionSetAttemptRecord) => void,
+  change: (record: QuestionSetAttemptRecord) => void | Promise<void>,
 ): Promise<QuestionSetAttemptRecord> {
-  return db.transaction('rw', db.questionSetAttempts, async () => {
+  return db.transaction('rw', [db.questionSetAttempts, db.courses], async () => {
     const raw = await db.questionSetAttempts.get(id);
     if (!raw) throw new Error('Question Set attempt not found.');
     const current = parseQuestionSetAttemptRecord(raw);
     if (current.revisionId !== expectedRevisionId)
       throw new QuestionSetAttemptRevisionConflictError();
     const next = clone(current);
-    change(next);
+    await change(next);
+    const activeQuestion = answerableNodes(next.receipt).find(
+      (node) => node.nodeId === next.activeNodeId,
+    )?.questionId;
+    if (next.shownQuestionIds && activeQuestion && !next.shownQuestionIds.includes(activeQuestion))
+      next.shownQuestionIds.push(activeQuestion);
     next.revisionId = makeId();
     next.updatedAt = Math.max(now, current.updatedAt + 1);
     const parsed = parseQuestionSetAttemptRecord(next);
@@ -170,6 +195,8 @@ export function submitPracticeQuestion(
         response.submittedAt = now;
       }
     }
+    if (attempt.shownQuestionIds && !attempt.shownQuestionIds.includes(questionId))
+      attempt.shownQuestionIds.push(questionId);
     if (!attempt.revealedQuestionIds.includes(questionId))
       attempt.revealedQuestionIds.push(questionId);
     if (attempt.responses.every((response) => response.submitted)) attempt.status = 'marking';
@@ -188,6 +215,8 @@ export function submitQuestionSetPaper(
       response.submitted = clone(response.draft);
       response.submittedAt = now;
     }
+    if (attempt.shownQuestionIds)
+      attempt.shownQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';
@@ -265,12 +294,47 @@ export function completeQuestionSetAttempt(
   expectedRevisionId: string,
   now = Date.now(),
 ): Promise<QuestionSetAttemptRecord> {
-  return mutate(id, expectedRevisionId, now, (attempt) => {
+  return mutate(id, expectedRevisionId, now, async (attempt) => {
     if (attempt.status !== 'marking') throw new Error('The attempt is not ready to complete.');
     if (summariseSelfMarking(attempt.receipt, attempt.decisions).status !== 'complete') {
       throw new Error('Resolve every marking decision before completing the attempt.');
     }
+    const course = await db.courses.get(attempt.courseId);
+    if (!course) throw new Error('Course not found.');
+    const schedulerConfig = normaliseQuestionSchedulerConfig(course.fsrsParameters);
+    if (attempt.firstMarking) {
+      for (const question of attempt.receipt.questions) {
+        if (attempt.firstMarking.some((row) => row.questionId === question.id)) continue;
+        const allocationIds = new Set(
+          answerableNodes(attempt.receipt)
+            .filter((node) => node.questionId === question.id)
+            .flatMap((node) => node.allocationIds),
+        );
+        attempt.firstMarking.push({
+          questionId: question.id,
+          recordedAt: now,
+          source: 'self-mark',
+          gradeMappingVersion: 'full-good-otherwise-again-v1',
+          schedulerVersion: QUESTION_SCHEDULER_VERSION,
+          schedulerConfig: clone(schedulerConfig),
+          schedulerConfigFingerprint: questionSchedulerConfigFingerprint(schedulerConfig),
+          decisions: clone(attempt.decisions.filter((row) => allocationIds.has(row.allocationId))),
+        });
+      }
+    }
     attempt.status = 'complete';
     attempt.completedAt = now;
+  });
+}
+
+/** Undo excludes this evidence from replay without rewriting the original receipt or marks. */
+export function undoConceptPracticeAttempt(
+  id: string,
+  expectedRevisionId: string,
+  now = Date.now(),
+): Promise<QuestionSetAttemptRecord> {
+  return mutate(id, expectedRevisionId, now, (attempt) => {
+    if (!attempt.conceptPractice) throw new Error('This is not a Concept practice attempt.');
+    attempt.undoneAt ??= now;
   });
 }

@@ -1,0 +1,1 @@
+- Practise due skills with fresh multipart questions and deterministic numerical variants. Keep criterion-level first performance, assistance, corrections and undo separate from recall-card schedules. Import and export versioned offline question banks without expanding every possible variant into stored content.

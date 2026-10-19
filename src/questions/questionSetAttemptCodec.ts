@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { questionSchedulerConfigFingerprint } from './scheduler';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
 import { summariseSelfMarking } from './questionSets';
@@ -87,6 +88,44 @@ const attemptSchema = z
     updatedAt: z.number().int().nonnegative(),
     paperSubmittedAt: z.number().int().nonnegative().optional(),
     completedAt: z.number().int().nonnegative().optional(),
+    undoneAt: z.number().int().nonnegative().optional(),
+    disputedQuestionIds: z.array(z.string().min(1)).optional(),
+    shownQuestionIds: z.array(z.string().min(1)).optional(),
+    firstMarking: z
+      .array(
+        z
+          .object({
+            questionId: z.string().min(1),
+            recordedAt: z.number().int().nonnegative(),
+            source: z.literal('self-mark'),
+            gradeMappingVersion: z.literal('full-good-otherwise-again-v1'),
+            schedulerVersion: z.literal('fsrs-6-question-v1'),
+            schedulerConfigFingerprint: z.string().min(1),
+            schedulerConfig: z
+              .object({
+                w: z.array(z.number().finite()).length(21),
+                requestRetention: z.number().gt(0).lt(1),
+                enable_fuzz: z.literal(false),
+                maximum_interval: z.number().positive(),
+                learning_steps: z.array(z.string()),
+                relearning_steps: z.array(z.string()),
+              })
+              .strict(),
+            decisions: z.array(decision),
+          })
+          .strict(),
+      )
+      .optional(),
+    conceptPractice: z
+      .object({
+        conceptId: z.string().min(1),
+        questionSetId: z.string().min(1),
+        questionId: z.string().min(1),
+        novelty: z.enum(['unseen', 'familiar']),
+        fingerprint: z.string().min(1),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -221,6 +260,62 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     record.revealedQuestionIds.some((id) => !questionIds.has(id))
   )
     throw new Error('Attempt revealed questions do not match its receipt.');
+  if (record.firstMarking) {
+    const seen = new Set<string>();
+    for (const snapshot of record.firstMarking) {
+      const questionNodes = [...nodes.values()].filter(
+        (node) => node.questionId === snapshot.questionId,
+      );
+      const ids = new Set(questionNodes.flatMap((node) => node.allocationIds));
+      if (
+        seen.has(snapshot.questionId) ||
+        !questionNodes.length ||
+        questionNodes.some((node) => !submittedNodes.has(node.nodeId)) ||
+        snapshot.recordedAt < record.createdAt ||
+        snapshot.recordedAt > record.updatedAt ||
+        new Set(snapshot.decisions.map((row) => row.allocationId)).size !==
+          snapshot.decisions.length ||
+        snapshot.decisions.some(
+          (row) =>
+            !ids.has(row.allocationId) ||
+            (row.status === 'awarded' && row.marks > allocationMax.get(row.allocationId)!),
+        )
+      ) {
+        throw new Error('First marking does not match its submitted question.');
+      }
+      if (
+        snapshot.schedulerConfigFingerprint !==
+        questionSchedulerConfigFingerprint(snapshot.schedulerConfig)
+      )
+        throw new Error('First marking scheduler configuration fingerprint is invalid.');
+      seen.add(snapshot.questionId);
+    }
+  }
+  if (
+    record.shownQuestionIds &&
+    (new Set(record.shownQuestionIds).size !== record.shownQuestionIds.length ||
+      record.shownQuestionIds.some((id) => !questionIds.has(id)))
+  )
+    throw new Error('Shown questions do not match the receipt.');
+  if (
+    record.disputedQuestionIds &&
+    (new Set(record.disputedQuestionIds).size !== record.disputedQuestionIds.length ||
+      record.disputedQuestionIds.some((id) => !questionIds.has(id)))
+  )
+    throw new Error('Disputed questions do not match the receipt.');
+  if (
+    record.undoneAt !== undefined &&
+    (record.undoneAt < record.createdAt || record.undoneAt > record.updatedAt)
+  )
+    throw new Error('Attempt undo timestamp is invalid.');
+  if (
+    record.conceptPractice &&
+    (record.mode !== 'practice' ||
+      record.receipt.questions.length !== 1 ||
+      record.conceptPractice.questionSetId !== record.questionSetId ||
+      record.conceptPractice.questionId !== record.receipt.questions[0].id)
+  )
+    throw new Error('Concept practice selection does not match its receipt.');
   const allSubmitted = submittedNodes.size === nodes.size;
   if (record.mode === 'paper') {
     const paperSubmitted = record.paperSubmittedAt !== undefined;

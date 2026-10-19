@@ -73,6 +73,8 @@ export function mergeQuestionSetAttemptPair(
   )
     throw new Error(`Question Set attempt ${incoming.id} has conflicting paper submission.`);
 
+  if (canonicalJson(existing.conceptPractice) !== canonicalJson(incoming.conceptPractice))
+    throw new Error(`Question Set attempt ${incoming.id} has conflicting Concept selection.`);
   const lifecycle = { answering: 0, marking: 1, complete: 2 } as const;
   const incomingWins =
     lifecycle[incoming.status] > lifecycle[existing.status] ||
@@ -101,12 +103,53 @@ export function mergeQuestionSetAttemptPair(
   winner.assistance = [...assistance.values()].sort(
     (a, b) => a.occurredAt - b.occurredAt || canonicalJson(a).localeCompare(canonicalJson(b)),
   );
+  if (existing.shownQuestionIds || incoming.shownQuestionIds) {
+    winner.shownQuestionIds = [
+      ...new Set([...(existing.shownQuestionIds ?? []), ...(incoming.shownQuestionIds ?? [])]),
+    ].sort();
+  }
   winner.paperSubmittedAt = existing.paperSubmittedAt ?? incoming.paperSubmittedAt;
   const allSubmitted = winner.responses.every((response) => response.submitted);
   if (allSubmitted && winner.status === 'answering') winner.status = 'marking';
   if (winner.mode === 'paper' && allSubmitted) {
     winner.revealedQuestionIds = winner.receipt.questions.map((question) => question.id);
   }
+  if (existing.firstMarking || incoming.firstMarking) {
+    const snapshots = new Map<
+      string,
+      NonNullable<QuestionSetAttemptRecord['firstMarking']>[number]
+    >();
+    const disputed = new Set([
+      ...(existing.disputedQuestionIds ?? []),
+      ...(incoming.disputedQuestionIds ?? []),
+    ]);
+    for (const snapshot of [...(existing.firstMarking ?? []), ...(incoming.firstMarking ?? [])]) {
+      const prior = snapshots.get(snapshot.questionId);
+      const outcomes = (value: typeof snapshot) =>
+        canonicalJson({
+          source: value.source,
+          schedulerConfigFingerprint: value.schedulerConfigFingerprint,
+          decisions: [...value.decisions].sort((a, b) =>
+            a.allocationId.localeCompare(b.allocationId),
+          ),
+        });
+      if (prior && outcomes(prior) !== outcomes(snapshot)) disputed.add(snapshot.questionId);
+      if (
+        !prior ||
+        snapshot.recordedAt < prior.recordedAt ||
+        (snapshot.recordedAt === prior.recordedAt && canonicalJson(snapshot) < canonicalJson(prior))
+      )
+        snapshots.set(snapshot.questionId, structuredClone(snapshot));
+    }
+    winner.firstMarking = [...snapshots.values()].sort((a, b) =>
+      a.questionId.localeCompare(b.questionId),
+    );
+    if (disputed.size) winner.disputedQuestionIds = [...disputed].sort();
+  }
+  const undoTimes = [existing.undoneAt, incoming.undoneAt].filter(
+    (value): value is number => value !== undefined,
+  );
+  if (undoTimes.length) winner.undoneAt = Math.min(...undoTimes);
   winner.updatedAt = Math.max(existing.updatedAt, incoming.updatedAt);
   if (attemptState(winner) !== attemptState(selected)) {
     winner.revisionId = mergedRevisionId(attemptState(winner));

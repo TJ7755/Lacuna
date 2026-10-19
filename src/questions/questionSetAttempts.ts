@@ -1,3 +1,4 @@
+import type { FsrsParameters } from '../db/types';
 import type { QuestionSetRecord } from './questionSetCodec';
 import type { SelfMarkDecision } from './questionSets';
 
@@ -51,6 +52,25 @@ export interface QuestionSetAssistanceEvent {
   occurredAt: number;
 }
 
+export interface QuestionSetFirstMarking {
+  questionId: string;
+  recordedAt: number;
+  source: 'self-mark';
+  gradeMappingVersion: 'full-good-otherwise-again-v1';
+  schedulerVersion: 'fsrs-6-question-v1';
+  schedulerConfig: FsrsParameters;
+  schedulerConfigFingerprint: string;
+  decisions: SelfMarkDecision[];
+}
+
+export interface ConceptPracticeSelection {
+  conceptId: string;
+  questionSetId: string;
+  questionId: string;
+  novelty: 'unseen' | 'familiar';
+  fingerprint: string;
+}
+
 export interface QuestionSetAttemptRecord {
   id: string;
   courseId: string;
@@ -73,6 +93,12 @@ export interface QuestionSetAttemptRecord {
   updatedAt: number;
   paperSubmittedAt?: number;
   completedAt?: number;
+  /** Absent on legacy attempts: historical marks must never manufacture reviews. */
+  firstMarking?: QuestionSetFirstMarking[];
+  shownQuestionIds?: string[];
+  disputedQuestionIds?: string[];
+  conceptPractice?: ConceptPracticeSelection;
+  undoneAt?: number;
 }
 
 export function answerableNodes(receipt: QuestionSetRecord): Array<{

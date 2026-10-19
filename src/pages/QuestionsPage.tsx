@@ -1,4 +1,7 @@
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
+import { ConceptPracticePanel } from '../components/question-sets/ConceptPracticePanel';
+import { QuestionBankControls } from '../components/question-sets/QuestionBankControls';
+import { listConceptPractice } from '../questions/conceptPractice';
 import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import {
   COURSE_PAGE_FRAME,
@@ -63,11 +66,12 @@ export function QuestionsPage() {
   const data = useLiveQuery(async () => {
     if (!courseId) return null;
     try {
-      const [sets, drafts, legacy, attemptRows] = await Promise.all([
+      const [sets, drafts, legacy, attemptRows, skills] = await Promise.all([
         listQuestionSets(courseId),
         listQuestionSetDrafts(courseId),
         db.questions.where('courseId').equals(courseId).count(),
         db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
+        listConceptPractice(courseId),
       ]);
       const attemptsBySet = new Map<string, QuestionSetAttemptRecord[]>();
       for (const row of attemptRows) {
@@ -83,12 +87,13 @@ export function QuestionsPage() {
           continue;
         }
       }
-      return { sets, drafts, legacy, attemptsBySet, error: '' };
+      return { sets, drafts, legacy, attemptsBySet, skills, error: '' };
     } catch (cause) {
       return {
         sets: [],
         drafts: [],
         legacy: 0,
+        skills: [],
         attemptsBySet: new Map<string, QuestionSetAttemptRecord[]>(),
         error: String(cause),
       };
@@ -201,6 +206,30 @@ export function QuestionsPage() {
           </ExpandingCreateControl>
         )}
       </header>
+      <ConceptPracticePanel
+        courseId={course.id}
+        skills={data.skills ?? []}
+        blueprints={data.sets.flatMap((set) => (set.bank ? [set.bank.blueprint] : []))}
+        disabled={!!course.archived}
+        recent={
+          [...data.attemptsBySet.values()]
+            .flat()
+            .filter(
+              (attempt) =>
+                attempt.conceptPractice &&
+                attempt.status === 'complete' &&
+                attempt.undoneAt === undefined,
+            )
+            .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0]
+        }
+      />
+      {author && (
+        <QuestionBankControls
+          courseId={course.id}
+          disabled={!!course.archived}
+          bankIds={[...new Set(data.sets.flatMap((set) => (set.bank ? [set.bank.bankId] : [])))]}
+        />
+      )}
       {(error || data.error) && (
         <p role="alert" className="qs-error">
           {error || data.error}
