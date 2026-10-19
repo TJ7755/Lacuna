@@ -47,6 +47,10 @@ export interface InsightEnvelopeContext {
   isoDay: string;
 }
 
+export function parseInsightsRecovery(raw: unknown): InsightsRecovery {
+  return recoverySchema.parse(raw);
+}
+
 /** Generate a course-owner key and an encrypted recovery file; persist nothing. */
 export async function createInsightsOwner(
   passphrase: string,
@@ -97,7 +101,7 @@ export async function recoverInsightsOwner(
 ): Promise<InsightsOwner> {
   requireShareId(shareId);
   requirePassphrase(passphrase);
-  const recovery = recoverySchema.parse(raw);
+  const recovery = parseInsightsRecovery(raw);
   const publicKey = await importRecipient(recovery.recipient);
   const salt = decode(recovery.salt, 16, 16);
   const nonce = decode(recovery.n, 12, 12);
