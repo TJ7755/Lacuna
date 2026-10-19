@@ -328,22 +328,40 @@ account-wide remaining credit before enabling the trial.
 
 ## Hosting
 
-The currently published Gaps alias still uses the Lacuna project and full build,
-with `feature/594-gaps` assigned to the Gaps domain. `teach.getlacuna.app` redirects
-to it. The root [Vercel configuration](../vercel.json), main build and hostname
-fallback remain intact until a reviewed publication switches the teacher hostname.
-Changing a shared project's build command would also change Lacuna: do not do that.
+`https://gaps.getlacuna.app` serves the separate static `lacuna-gaps` Vercel project.
+`teach.getlacuna.app` redirects to it. Both teacher hostnames belong to that project;
+neither is assigned to a learner branch. The `lacuna` project continues to serve
+`getlacuna.app` with the root [Vercel configuration](../vercel.json).
+Changing that shared project's build command would also change Lacuna: do not do that.
 
-[gaps/vercel.json](../gaps/vercel.json) prepares a separate static Gaps deployment.
-For a later authorised publication, use a separate Gaps deployment target with
-repository Root Directory `gaps` and source files outside that directory included
+The Gaps project is connected to this repository with production branch `master`,
+Root Directory `gaps` and source files outside that directory included
 ([Vercel monorepo procedure](https://vercel.com/docs/monorepos/monorepo-faq)).
+[gaps/vercel.json](../gaps/vercel.json) owns its static deployment settings.
 Its install/build commands run in the repository parent with Bun 1.4.3 and the frozen
 root lockfile; output is `dist` relative to `gaps`. The teacher root contains no
-`api` directory.
-Check those settings against a preview before moving any hostname. No relay switch,
-new secret, environment change or paid service is needed for this unconnected view.
-This change does not create/configure a remote project, deploy or move domains.
+`api` directory. Hosting the teacher workspace does not activate pupil delivery.
+
+The remote Ignored Build Step runs production builds and skips automatic previews:
+
+```sh
+if [ "$VERCEL_ENV" = "production" ]; then exit 1; else exit 0; fi
+```
+
+This avoids an extra teacher build for every PR in the monorepo. Use an explicit,
+authorised staged production deployment for publication checks. Inspect the linked
+project and team before deploying; a local link to `lacuna` is the wrong target.
+Stage with `bunx vercel deploy --prod --skip-domain`, verify the returned deployment
+with `bunx vercel curl`, then promote that exact production deployment. Deployment
+protection remains enabled for generated URLs; the production teacher domain is public.
+
+For a hostname reassignment, Vercel's project-domain move endpoint also moves
+redirects pointing to that hostname. Use it with the explicit destination project
+and `gitBranch: null`; removing a domain with `domains add --force` fails while a
+redirect points to it. Preserve the old project, branch assignment and deployment
+before moving a hostname so that a failed cutover can be reversed. Later teacher
+releases can roll back to a previous ready production deployment in `lacuna-gaps`.
+Do not change the learner project's build, other hostnames or relay activation gates.
 
 Before publication, inspect the generated file list and run:
 
