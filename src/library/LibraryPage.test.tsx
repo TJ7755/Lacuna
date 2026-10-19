@@ -15,6 +15,8 @@ const courses: readonly LibraryCourse[] = [
     summary: 'Explore living systems from cells to ecosystems.',
     topics: ['Cell biology', 'Ecology'],
     shareUrl: biologyUrl,
+    reviewStatus: 'in-progress',
+    stats: { cards: 1200, notes: 80, practiceSets: 40, practiceMarks: 100 },
   },
   {
     id: 'physics',
@@ -24,6 +26,8 @@ const courses: readonly LibraryCourse[] = [
     summary: 'Explore energy, forces and matter.',
     topics: ['Energy', 'Forces'],
     shareUrl: physicsUrl,
+    reviewStatus: 'reviewed',
+    stats: { cards: 600, notes: 60, practiceSets: 30, practiceMarks: 75 },
   },
 ];
 
@@ -42,6 +46,10 @@ describe('LibraryPage', () => {
     const physics = screen.getByRole('button', { name: /Physics/ });
     expect(biology).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: 'Biology' })).toBeInTheDocument();
+    expect(screen.getByText('1,200')).toBeInTheDocument();
+    expect(screen.getByText('Review in progress')).toBeInTheDocument();
+    expect(screen.queryByText('Preview course')).not.toBeInTheDocument();
+    expect(screen.queryByText('Previewing course')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open in Lacuna' })).toHaveAttribute(
       'href',
       biologyUrl,
@@ -57,6 +65,10 @@ describe('LibraryPage', () => {
     expect(within(preview).getByText('8463')).toBeInTheDocument();
     expect(within(preview).getByText('Explore energy, forces and matter.')).toBeInTheDocument();
     expect(within(preview).getByText('Forces')).toBeInTheDocument();
+    expect(within(preview).getByText('600')).toBeInTheDocument();
+    expect(within(preview).queryByText('1,200')).not.toBeInTheDocument();
+    expect(within(preview).getByText('Reviewed')).toBeInTheDocument();
+    expect(within(preview).queryByText('Review in progress')).not.toBeInTheDocument();
     expect(within(preview).queryByText('Ecology')).not.toBeInTheDocument();
     expect(within(preview).getByRole('link', { name: 'Open in Lacuna' })).toHaveAttribute(
       'href',
@@ -84,5 +96,14 @@ describe('LibraryPage', () => {
     expect(document.documentElement).toHaveClass('dark');
     fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
     expect(document.documentElement).not.toHaveClass('dark');
+  });
+
+  it('does not invent counts or a completed review for an unreviewed course', () => {
+    renderLibrary([{ ...courses[0], stats: undefined, reviewStatus: 'not-reviewed' }]);
+    expect(screen.getByText('Awaiting review')).toBeInTheDocument();
+    expect(screen.queryByRole('definition')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Earlier terms reviewed; newer additions are awaiting review.'),
+    ).not.toBeInTheDocument();
   });
 });

@@ -5,6 +5,13 @@ import { useTheme } from '../state/ThemeContext';
 import { libraryCourses, resolveCourseShareUrl, type LibraryCourse } from './catalogue';
 import './LibraryPage.css';
 
+const count = new Intl.NumberFormat('en-GB');
+const reviewLabels = {
+  'in-progress': 'Review in progress',
+  reviewed: 'Reviewed',
+  'not-reviewed': 'Awaiting review',
+};
+
 export function LibraryPage({ courses = libraryCourses }: { courses?: readonly LibraryCourse[] }) {
   const [selectedId, setSelectedId] = useState(courses[0]?.id);
   const { resolvedTheme, setTheme } = useTheme();
@@ -39,7 +46,8 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
       <main id="library-courses" className="library-main" tabIndex={-1}>
         <div className="library-introduction">
           <h1>Library</h1>
-          <p>Choose a course to explore what you can study in Lacuna.</p>
+          <p className="library-promise">Curated courses, built around your syllabus.</p>
+          <p>Original lesson notes, focused recall cards and exam-style practice.</p>
         </div>
 
         <div className="library-browser">
@@ -56,9 +64,6 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
                 <span className="library-course-qualification">{course.qualification}</span>
                 <span className="library-course-subject">{course.subject}</span>
                 <span className="library-course-code">{course.code}</span>
-                <span className="library-course-action">
-                  {selected?.id === course.id ? 'Previewing course' : 'Preview course'}
-                </span>
               </button>
             ))}
           </section>
@@ -76,14 +81,30 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
                   <p className="library-preview-code">{selected.code}</p>
                 </div>
                 <p className="library-summary">{selected.summary}</p>
-                <div className="library-topics">
-                  <h3>What you’ll study</h3>
-                  <ul>
-                    {selected.topics.map((topic) => (
-                      <li key={topic}>{topic}</li>
-                    ))}
-                  </ul>
+                <div className="library-curation">
+                  <p className="library-syllabus-label">Authored against the syllabus</p>
+                  <p className="library-review-status">{reviewLabels[selected.reviewStatus]}</p>
+                  {selected.reviewStatus === 'in-progress' && (
+                    <p>Earlier terms reviewed; newer additions are awaiting review.</p>
+                  )}
                 </div>
+                {selected.stats && (
+                  <dl className="library-stats" aria-label="Course contents">
+                    {(
+                      [
+                        ['Cards', selected.stats.cards],
+                        ['Lesson notes', selected.stats.notes],
+                        ['Practice sets', selected.stats.practiceSets],
+                        ['Practice marks', selected.stats.practiceMarks],
+                      ] as const
+                    ).map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{count.format(value)}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
                 <div className="library-open-course">
                   {shareUrl ? (
                     <a className={buttonClassName('primary', 'lg')} href={shareUrl}>
@@ -94,6 +115,14 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
                       Available soon
                     </button>
                   )}
+                </div>
+                <div className="library-topics">
+                  <h3>What you’ll study</h3>
+                  <ul>
+                    {selected.topics.map((topic) => (
+                      <li key={topic}>{topic}</li>
+                    ))}
+                  </ul>
                 </div>
               </>
             ) : (

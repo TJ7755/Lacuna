@@ -42,6 +42,9 @@ for (const width of [1280, 390, 320]) {
     await page.goto('/');
     await expect(page).toHaveTitle('Library · Lacuna');
     await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
+    await expect(page.getByText('Curated courses, built around your syllabus.')).toBeVisible();
+    await expect(page.getByText('Preview course', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('Previewing course', { exact: true })).toHaveCount(0);
     const homeTarget = await page.getByRole('link', { name: 'Lacuna home' }).boundingBox();
     expect(homeTarget?.height).toBeGreaterThanOrEqual(44);
     for (const [subject, code] of courses) {
@@ -58,6 +61,9 @@ for (const width of [1280, 390, 320]) {
       );
     }
     await page.getByRole('button', { name: /Biology/ }).click();
+    await expect(page.getByText('1,308', { exact: true })).toBeVisible();
+    await expect(page.getByText('163', { exact: true })).toBeVisible();
+    await expect(page.getByText('Review in progress', { exact: true })).toBeVisible();
     await page.screenshot({ path: info.outputPath('library-light.png'), fullPage: true });
     await page.getByRole('button', { name: 'Use dark theme' }).click();
     await expect(page.locator('html')).toHaveClass('dark');

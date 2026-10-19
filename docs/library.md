@@ -8,10 +8,16 @@ Lacuna handles course imports and subsequent publisher updates on its existing o
 ## Add or update a course
 
 Edit [catalogue.ts](../src/library/catalogue.ts). Each entry has a subject, qualification,
-code, short summary, topic preview and an existing Lacuna share URL. Use `null` for an
+code, short summary, topic preview, review status, content counts and an existing Lacuna share URL. Use `null` for an
 unpublished course; its preview remains available with an unavailable action. The URL
 boundary accepts only canonical HTTPS links on `getlacuna.app` using the share route.
 Do not add private teaching files or owner credentials to this public catalogue.
+
+Counts are publication snapshots. Refresh them when republishing a course, using the
+actual published payload or its matching build report. Omit unknown statistics instead
+of inventing them. Mark a course reviewed only when review covers that published version;
+syllabus authorship alone does not establish completed review. Current courses have earlier
+reviewed terms and later additions awaiting review, so their status is `in-progress`.
 
 ## Develop and check
 
