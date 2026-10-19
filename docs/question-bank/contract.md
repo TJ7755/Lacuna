@@ -5,7 +5,8 @@ A bank is inert JSON, validated against [schema.json](schema.json). Examples:
 The schema version is 1; unknown fields and unsupported versions are rejected. Bank IDs, set IDs,
 family IDs, course codes and Concept IDs are stable author-chosen identifiers. Increment `bankVersion`
 when publishing changes. A bank targets one course code; the application maps its Concepts into the
-selected Course. Every criterion has exactly one primary Concept. Prerequisites are explicit.
+selected Course. The same source Concept ID and course code share a local Concept across bank shards;
+different Courses remain separate. Every criterion has exactly one primary Concept. Prerequisites are explicit.
 Existing QuestionSet, QuestionAnswer and MarkAllocation shapes are reused, including multipart
 Questions, per-criterion marks and assessment dimensions. A parent with children cannot also score.
 

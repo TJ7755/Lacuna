@@ -14,12 +14,14 @@ export function ConceptPracticePanel({
   courseId,
   skills,
   recent,
+  unfinished,
   disabled,
   blueprints = [],
 }: {
   courseId: string;
   skills: ConceptPracticeItem[];
   recent?: QuestionSetAttemptRecord;
+  unfinished?: QuestionSetAttemptRecord;
   disabled: boolean;
   blueprints?: QuestionBankMetadata['blueprint'][];
 }) {
@@ -92,7 +94,8 @@ export function ConceptPracticePanel({
         <div>
           <h2 className="text-lg font-medium">Skill practice</h2>
           <p className="text-sm text-ink-soft">
-            {due.length} skills due · Application practice is separate from recall cards.
+            {due.length} {due.length === 1 ? 'skill' : 'skills'} due · Application practice is
+            separate from recall cards.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -208,6 +211,25 @@ export function ConceptPracticePanel({
             Practise familiar questions
           </Button>
         </div>
+      )}
+      {unfinished && (
+        <Button
+          className="mt-3 mr-2"
+          disabled={disabled || busy}
+          onClick={() =>
+            void navigate(
+              `/course/${courseId}/question-sets/${unfinished.questionSetId}/attempts/${unfinished.id}`,
+              {
+                state: {
+                  questionSetReturnTo: `/course/${courseId}/questions`,
+                  questionSetReturnLabel: 'Back to skills',
+                },
+              },
+            )
+          }
+        >
+          Resume skill practice
+        </Button>
       )}
       {recent && (
         <Button className="mt-3" size="sm" disabled={disabled || busy} onClick={() => void undo()}>

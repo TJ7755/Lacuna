@@ -124,7 +124,14 @@ async function fits(page: Page) {
     ),
   );
   for (const row of widths) expect(row.scrollWidth).toBeLessThanOrEqual(row.width + 1);
-  await expect(page.locator('[data-attempt-primary]')).toBeInViewport();
+  const primary = page.locator('[data-attempt-primary]');
+  await primary.focus();
+  await primary.scrollIntoViewIfNeeded();
+  await expect(primary).toBeInViewport();
+  const box = await primary.boundingBox();
+  expect(box!.y + box!.height).toBeLessThanOrEqual(
+    page.viewportSize()!.height - (page.viewportSize()!.width < 640 ? 60 : 0),
+  );
 }
 
 async function capture(page: Page, info: TestInfo, state: string) {
@@ -172,7 +179,7 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
       await expect(page).toHaveURL(/\/questions$/);
       await importExample(page, 'static-multipart');
-      await page.getByRole('link').filter({ hasText: 'In progress' }).first().click();
+      await page.getByRole('button', { name: 'Resume skill practice', exact: true }).click();
       await expect(page).toHaveURL(attemptUrl);
       await expect(answer).toHaveValue('24 / 8 = 3 g/cm³');
       await page.reload();
@@ -273,7 +280,7 @@ for (const width of [1280, 390]) {
       await page.reload();
       await expect(page.locator('.qs-result')).toContainText('1 / 3');
       await page.goto(library);
-      await expect(page.getByRole('link').filter({ hasText: '1 / 3' }).first()).toBeVisible();
+      await expect(page.getByRole('img', { name: 'Latest score 33%', exact: true })).toBeVisible();
       await page.getByRole('button', { name: 'Undo latest skill practice', exact: true }).click();
       await expect(
         page.getByRole('button', { name: 'Undo latest skill practice', exact: true }),

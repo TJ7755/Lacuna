@@ -24,24 +24,31 @@ export async function importBank(value: unknown, courseId: string): Promise<Ques
       if (!course || course.archived || !canEditLessons(course))
         throw new Error('This Course is read-only.');
       const now = Date.now();
-      const oldSets = (await db.questionSets.where('courseId').equals(courseId).toArray()).filter(
-        (set) => set.bank?.bankId === bank.bankId,
-      );
+      const courseSets = await db.questionSets.where('courseId').equals(courseId).toArray();
+      const oldSets = courseSets.filter((set) => set.bank?.bankId === bank.bankId);
       const oldVersion = Math.max(0, ...oldSets.map((set) => set.bank!.bankVersion));
       if (bank.bankVersion < oldVersion)
         throw new Error('Cannot import an older Question bank version.');
       const previousConcepts = new Map(
-        oldSets.flatMap((set) =>
-          set.bank!.concepts.map(
-            (concept) => [concept.sourceId ?? concept.id, concept.id] as const,
+        courseSets
+          .filter((set) => set.bank?.courseCode === bank.courseCode)
+          .flatMap((set) =>
+            set.bank!.concepts.map(
+              (concept) => [concept.sourceId ?? concept.id, concept.id] as const,
+            ),
           ),
-        ),
+      );
+      const authoredConcepts = await db.concepts.bulkGet(
+        bank.concepts.map((concept) => concept.id),
       );
       const concepts = new Map(
-        bank.concepts.map((concept) => [
+        bank.concepts.map((concept, index) => [
           concept.id,
           previousConcepts.get(concept.id) ??
-            `bankc-${bankFingerprint([courseId, bank.bankId, concept.id])}`,
+            (authoredConcepts[index]?.scope === 'course' &&
+            authoredConcepts[index]?.courseId === courseId
+              ? concept.id
+              : `bankc-${bankFingerprint([courseId, bank.courseCode, concept.id])}`),
         ]),
       );
       const mapConcept = (id: string): string => {

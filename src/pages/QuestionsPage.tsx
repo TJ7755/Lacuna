@@ -211,6 +211,17 @@ export function QuestionsPage() {
         skills={data.skills ?? []}
         blueprints={data.sets.flatMap((set) => (set.bank ? [set.bank.blueprint] : []))}
         disabled={!!course.archived}
+        unfinished={
+          [...data.attemptsBySet.values()]
+            .flat()
+            .filter(
+              (attempt) =>
+                attempt.conceptPractice &&
+                attempt.status !== 'complete' &&
+                attempt.undoneAt === undefined,
+            )
+            .sort((a, b) => b.updatedAt - a.updatedAt)[0]
+        }
         recent={
           [...data.attemptsBySet.values()]
             .flat()

@@ -147,3 +147,19 @@ describe('portable Question banks', () => {
     expect(last.questions[0].answer!.allocations[0].criterion).toContain('= 10 g/cm³');
   }, 30000);
 });
+
+it('shares stable course Concepts across separate bank shards', async () => {
+  const course = await createCourse('Physics');
+  const [first] = await importQuestionBank(familyExample, course.id);
+  const shard = { ...structuredClone(familyExample), bankId: 'another-shard' };
+  const [second] = await importQuestionBank(shard, course.id);
+  expect(second.questions[0].answer!.allocations[0].targetConceptIds).toEqual(
+    first.questions[0].answer!.allocations[0].targetConceptIds,
+  );
+  expect(await db.concepts.where('courseId').equals(course.id).count()).toBe(1);
+  const otherCourse = await createCourse('Other Physics');
+  const [other] = await importQuestionBank(shard, otherCourse.id);
+  expect(other.questions[0].answer!.allocations[0].targetConceptIds).not.toEqual(
+    first.questions[0].answer!.allocations[0].targetConceptIds,
+  );
+});
