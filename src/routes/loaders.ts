@@ -7,6 +7,9 @@ export const loadSearchPage = () =>
 export const loadSharePage = () =>
   import('../pages/SharePage').then((module) => ({ default: module.SharePage }));
 
+export const loadTeacherHome = () =>
+  import('../pages/TeacherHome').then((module) => ({ default: module.TeacherHome }));
+
 export const loadAnalytics = () =>
   import('../pages/Analytics').then((module) => ({ default: module.Analytics }));
 

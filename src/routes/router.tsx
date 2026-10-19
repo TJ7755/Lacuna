@@ -38,6 +38,7 @@ import {
   loadSequenceEditor,
   loadSettings,
   loadSharePage,
+  loadTeacherHome,
   loadShareLinkPage,
   loadLanding,
 } from './loaders';
@@ -48,6 +49,7 @@ import {
 const Settings = lazy(loadSettings);
 const SearchPage = lazy(loadSearchPage);
 const SharePage = lazy(loadSharePage);
+const TeacherHome = lazy(loadTeacherHome);
 const ShareLinkPage = lazy(loadShareLinkPage);
 const Analytics = lazy(loadAnalytics);
 const ArchivedCourses = lazy(loadArchivedCourses);
@@ -104,6 +106,10 @@ export const router = createHashRouter([
   {
     element: <RouteTransition />,
     children: [
+      {
+        path: '/teach',
+        element: isolatedRoute('class insights', lazyRoute(TeacherHome)),
+      },
       {
         path: '/',
         element: <AppShell />,

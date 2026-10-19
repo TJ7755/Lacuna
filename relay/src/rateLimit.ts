@@ -6,9 +6,9 @@ import { canonicalEtag, type BlobStore } from './store.js';
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_CAS_ATTEMPTS = 5;
-export const RATE_KEY_RE = /^ai-rate\/(?:pairing|channel-mint|share-mint)\/[0-9a-f]{64}$/;
+export const RATE_KEY_RE = /^ai-rate\/(?:pairing|channel-mint|share-mint|insights)\/[0-9a-f]{64}$/;
 
-export type RateScope = 'pairing' | 'channel-mint' | 'share-mint';
+export type RateScope = 'pairing' | 'channel-mint' | 'share-mint' | 'insights';
 
 interface RateRecord {
   version: 1;
@@ -27,7 +27,23 @@ export async function consumeRatePermit(
   scope: RateScope,
 ): Promise<RatePermit> {
   const key = rateKey(scope, trustedClientAddress(request));
+  return consumeCounterPermit(store, key, now, {
+    limit: rateLimitForKey(key),
+    windowMs: RATE_WINDOW_MS,
+  });
+}
 
+export function rateLimitForKey(key: string): number {
+  return key.startsWith('ai-rate/insights/') ? 100 : RATE_LIMIT;
+}
+
+/** Server-owned counters use the same bounded compare-and-swap admission loop. */
+export async function consumeCounterPermit(
+  store: BlobStore,
+  key: string,
+  now: number,
+  policy: { limit: number; windowMs: number },
+): Promise<RatePermit> {
   for (let attempt = 0; attempt < RATE_LIMIT_CAS_ATTEMPTS; attempt += 1) {
     const stored = await store.get(key);
     if (!stored) {
@@ -36,7 +52,7 @@ export async function consumeRatePermit(
         encodeRateRecord({
           version: 1,
           count: 1,
-          resetAt: now + RATE_WINDOW_MS,
+          resetAt: now + policy.windowMs,
         }),
         { exclusive: true },
       );
@@ -44,14 +60,14 @@ export async function consumeRatePermit(
       continue;
     }
 
-    const record = decodeRateRecord(stored.body);
+    const record = decodeRateRecord(stored.body, policy.limit);
     const etag = canonicalEtag(stored.etag);
     if (!record || etag === '') return 'unavailable';
-    if (now < record.resetAt && record.count >= RATE_LIMIT) return 'limited';
+    if (now < record.resetAt && record.count >= policy.limit) return 'limited';
 
     const next: RateRecord =
       now >= record.resetAt
-        ? { version: 1, count: 1, resetAt: now + RATE_WINDOW_MS }
+        ? { version: 1, count: 1, resetAt: now + policy.windowMs }
         : { ...record, count: record.count + 1 };
     const updated = await store.put(key, encodeRateRecord(next), { ifMatch: etag });
     if (updated.ok) return 'allowed';
@@ -93,7 +109,7 @@ export function encodeRateRecord(record: RateRecord): Uint8Array {
   return new TextEncoder().encode(JSON.stringify(record));
 }
 
-export function decodeRateRecord(bytes: Uint8Array): RateRecord | null {
+export function decodeRateRecord(bytes: Uint8Array, limit = RATE_LIMIT): RateRecord | null {
   try {
     const value = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
     if (
@@ -107,7 +123,7 @@ export function decodeRateRecord(bytes: Uint8Array): RateRecord | null {
       !Number.isInteger(value.count) ||
       typeof value.count !== 'number' ||
       value.count < 0 ||
-      value.count > RATE_LIMIT ||
+      value.count > limit ||
       !isTimestamp(value.resetAt) ||
       (value.count === 0 && value.resetAt !== 0) ||
       (value.count > 0 && value.resetAt === 0)

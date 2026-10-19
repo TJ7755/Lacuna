@@ -4,7 +4,12 @@
  * the desktop main process) are unaffected. `RELAY_ALLOWED_ORIGINS` adds comma-separated
  * origins, for example a preview or self-hosted web build.
  */
-const DEFAULT_ORIGINS = ['https://getlacuna.app', 'https://lacuna-beta-one.vercel.app', 'app://.'];
+const DEFAULT_ORIGINS = [
+  'https://getlacuna.app',
+  'https://gaps.getlacuna.app',
+  'https://lacuna-beta-one.vercel.app',
+  'app://.',
+];
 const LOOPBACK_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$/;
 
 export function corsAllowOrigin(request: Request): string | null {

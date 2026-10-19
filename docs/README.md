@@ -23,6 +23,7 @@ not the entire documentation tree.
 - [Domain language](domain-language.md) and [engineering pitfalls](maintenance/engineering-notes.md).
 - [Desktop and AI setup](desktop.md), [release procedure](maintenance/release.md),
   [repository policy](maintenance/governance.md), [security reporting](../SECURITY.md).
+- [Gaps teacher entry and encryption boundaries](gaps.md).
 - [Manual release checks](WEBSITE_TEST_CHECKLIST.md), [performance measurement](PERFORMANCE.md),
   [compatibility boundary](storage-v22-compatibility.md), [scientific limits](scientific-assessment.md).
 

@@ -9,11 +9,7 @@ import {
 } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-  useCourse,
-  useCourseCards,
-  useCourseReviewHistory,
-} from '../state/useCourseData';
+import { useCourse, useCourseCards, useCourseReviewHistory } from '../state/useCourseData';
 import {
   PillSwitch,
   SettingRow,
@@ -44,6 +40,7 @@ import { useCourseSettingsForm } from './settings/useCourseSettingsForm';
 import { formatDate } from '../utils/datetime';
 import { CourseSettingsArchive } from './settings/CourseSettingsArchive';
 import { CourseSettingsDisclosure } from './settings/CourseSettingsDisclosure';
+import { CourseInsightsSection } from './settings/CourseInsightsSection';
 
 /** Common edits lead; secondary settings expand in place without a separate save step. */
 export function CourseSettings() {
@@ -117,11 +114,9 @@ export function CourseSettings() {
               <div>
                 <p className="text-sm text-ink-soft">Final exam</p>
                 <p className="mt-2 font-display text-4xl font-semibold tracking-tight">
-                  {course.examDate === undefined ? (
-                    'Steady retention'
-                  ) : (
-                    formatDate(course.examDate, course.timeZone ?? timeZone)
-                  )}
+                  {course.examDate === undefined
+                    ? 'Steady retention'
+                    : formatDate(course.examDate, course.timeZone ?? timeZone)}
                 </p>
               </div>
               <div>
@@ -331,6 +326,9 @@ export function CourseSettings() {
               courseId={course.id}
               autoAcceptUpdates={course.distributedCopy.autoAcceptUpdates === true}
             />
+          )}
+          {!course.archived && course.distributedCopy !== undefined && (
+            <CourseInsightsSection courseId={course.id} />
           )}
 
           <div id="course-settings-danger" className="scroll-mt-24">

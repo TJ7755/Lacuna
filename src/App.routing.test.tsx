@@ -3,13 +3,28 @@ import { Outlet, RouterProvider } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('./components/layout/RouteTransition', () => ({ RouteTransition: Outlet }));
-vi.mock('./components/layout/AppShell', () => ({ AppShell: Outlet }));
+vi.mock('./components/layout/AppShell', () => ({
+  AppShell: () => (
+    <div data-testid="study-shell">
+      <Outlet />
+    </div>
+  ),
+}));
 vi.mock('./pages/Dashboard', () => ({ Dashboard: () => <h1>Dashboard</h1> }));
 vi.mock('./pages/NotFound', () => ({ NotFound: () => <h1>Not found</h1> }));
+vi.mock('./pages/TeacherHome', () => ({ TeacherHome: () => <h1>Gaps</h1> }));
 
 import { router } from './App';
 
 describe('application routes', () => {
+  it('opens the teacher entry point outside the study shell', async () => {
+    render(<RouterProvider router={router} />);
+    await act(async () => {
+      await router.navigate('/teach');
+    });
+    expect(await screen.findByRole('heading', { name: 'Gaps' })).toBeInTheDocument();
+    expect(screen.queryByTestId('study-shell')).not.toBeInTheDocument();
+  });
   it('redirects a Deck bookmark to the dashboard', async () => {
     render(<RouterProvider router={router} />);
 

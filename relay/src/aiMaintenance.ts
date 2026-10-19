@@ -2,11 +2,13 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { readAiSessionExpiry } from './aiSessionMetadata.js';
 import { cleanupExpiredChannels } from './channelMaintenance.js';
 import { cleanupExpiredShares } from './shares.js';
+import { cleanupExpiredInsights } from './insights.js';
 import {
   CLEARED_RATE_RECORD,
   RATE_KEY_RE,
   decodeRateRecord,
   encodeRateRecord,
+  rateLimitForKey,
 } from './rateLimit.js';
 import { canonicalEtag, type BlobStore, type ListedObject } from './store.js';
 
@@ -22,7 +24,8 @@ export async function handleAiMaintenanceRoute(
   const ai = await cleanupAiState(store, now);
   const channels = await cleanupExpiredChannels(store, now);
   const shares = await cleanupExpiredShares(store, now);
-  return maintenanceJson(200, { ...ai, ...channels, ...shares });
+  const insights = await cleanupExpiredInsights(store, now);
+  return maintenanceJson(200, { ...ai, ...channels, ...shares, ...insights });
 }
 
 function authorisedCron(request: Request): boolean {
@@ -83,7 +86,7 @@ async function cleanupAiState(
       continue;
     }
 
-    const record = decodeRateRecord(current.body);
+    const record = decodeRateRecord(current.body, rateLimitForKey(listed.key));
     if (record?.count === 0) continue;
     const removable = record
       ? now - record.resetAt >= AI_CLEANUP_GRACE_MS

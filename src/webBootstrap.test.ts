@@ -51,6 +51,7 @@ describe('Simple Analytics bootstrap', () => {
     [false, 'https://getlacuna.app'],
     [true, 'http://localhost:5173'],
     [true, 'https://preview.vercel.app'],
+    [true, 'https://gaps.getlacuna.app'],
     [true, 'app://lacuna'],
     [true, 'file://'],
   ])('does not load analytics with production=%s on %s', (isProduction, origin) => {
@@ -79,6 +80,10 @@ describe('landing hydration decision', () => {
     expect(shouldHydrateLanding(firstVisit)).toBe(true);
   });
 
+  it('never hydrates the study landing page on the teacher domain', () => {
+    expect(shouldHydrateLanding({ ...firstVisit, hostname: 'gaps.getlacuna.app' })).toBe(false);
+  });
+
   it('keeps in-page anchors such as #landing-product on the landing page', () => {
     expect(shouldHydrateLanding({ ...firstVisit, hash: '#landing-product' })).toBe(true);
   });
@@ -99,6 +104,40 @@ describe('landing hydration decision', () => {
   });
 });
 
+it.each(['', '#how-it-works', '#/teach', '#/share', '#/s/abc'])(
+  'starts Gaps before the landing page can paint, preserving app routes (%s)',
+  (hash) => {
+    const targetDocument = document.implementation.createHTMLDocument();
+    const sourceDocument = new DOMParser().parseFromString(
+      readFileSync('index.html', 'utf8'),
+      'text/html',
+    );
+    const script = sourceDocument.querySelector('script:not([type]):not([src])')!.textContent;
+    const replaceState = vi.fn();
+    runInNewContext(script, {
+      document: targetDocument,
+      window: {
+        location: {
+          hash,
+          hostname: 'gaps.getlacuna.app',
+          protocol: 'https:',
+          pathname: '/',
+          search: '?source=trial',
+        },
+        history: { replaceState },
+      },
+      localStorage: {
+        getItem() {
+          throw new Error('Storage denied');
+        },
+      },
+    });
+    expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
+    if (hash.startsWith('#/')) expect(replaceState).not.toHaveBeenCalled();
+    else expect(replaceState).toHaveBeenCalledWith(null, '', '/?source=trial#/teach');
+  },
+);
+
 it.each(['script', 'SCRIPT'])(
   'suppresses the packaged app prerender before its preload API is available (%s tags)',
   (tagName) => {
@@ -111,7 +150,11 @@ it.each(['script', 'SCRIPT'])(
     runInNewContext(script, {
       document: targetDocument,
       window: { location: { hash: '', protocol: 'app:' } },
-      localStorage: { getItem() { throw new Error('Storage denied'); } },
+      localStorage: {
+        getItem() {
+          throw new Error('Storage denied');
+        },
+      },
     });
     expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(true);
     expect(targetDocument.documentElement.classList.contains('dark')).toBe(true);

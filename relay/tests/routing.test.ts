@@ -176,6 +176,7 @@ describe('AI maintenance route', () => {
       channelObjectsDeleted: 0,
       sharesDeleted: 0,
       shareObjectsDeleted: 0,
+      insightObjectsDeleted: 0,
     });
     expect(await store.list(`ai/${expired.sessionId}/`)).toEqual([]);
     expect(await store.list(`ai/${corruptId}/`)).toEqual([]);
@@ -234,6 +235,10 @@ describe('vercel routing contract', () => {
       ...AI_MAINTENANCE_PATHS,
       ...SHARE_PUBLIC_PATHS,
       ...SHARE_API_ALIASES,
+      '/insights/:id/:day',
+      '/insights/:id/:day/:slotId',
+      '/api/insights/:id/:day',
+      '/api/insights/:id/:day/:slotId',
     ]) {
       const rewrite = config.rewrites.find((entry) => entry.source === source);
       expect(rewrite, `missing rewrite for ${source}`).toBeTruthy();

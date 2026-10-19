@@ -106,6 +106,12 @@ test('a share link imports a course and republishes update it', async ({
   await openShare(teacher, 'Link biology');
   const code = await createShareLink(teacher);
 
+  await teacher.getByRole('link', { name: 'Class insights', exact: true }).click();
+  await expect(teacher.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+  await expect(teacher.getByRole('heading', { name: 'Link biology', exact: true })).toBeVisible();
+  await teacher.getByRole('link', { name: 'Manage sharing for Link biology' }).click();
+  await expect(teacher.getByRole('textbox', { name: 'Share link', exact: true })).toBeVisible();
+
   const studentContext = await browser.newContext();
   const student = await studentContext.newPage();
   await installShareRelay(student, handle);

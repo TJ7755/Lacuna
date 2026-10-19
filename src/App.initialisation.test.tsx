@@ -194,7 +194,7 @@ describe('App initialisation', () => {
     await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download/');
   });
-  it.each(['share', 'import'])(
+  it.each(['share', 'import', 'teach'])(
     'preserves a first visit to %s from the comparison page',
     async (route) => {
       dependencies.isFirstRun.mockResolvedValue(true);
