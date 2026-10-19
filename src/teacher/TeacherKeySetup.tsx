@@ -146,6 +146,7 @@ export function TeacherKeySetup({ onClose }: { onClose(): void }) {
                 onChange={(event) => {
                   setMode(event.target.value as Mode);
                   setError(null);
+                  setFile(null);
                   setPassphrase('');
                   setConfirmation('');
                 }}

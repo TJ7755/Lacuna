@@ -113,3 +113,19 @@ it('does not create a replacement while looking for an existing key', async () =
   expect(store.create).not.toHaveBeenCalled();
   expect(store.unlock).toHaveBeenCalledWith(shareId, passphrase);
 });
+
+it('does not restore an earlier file after switching away and back to restore mode', async () => {
+  show();
+  fireEvent.change(screen.getByLabelText('Key action'), { target: { value: 'restore' } });
+  fireEvent.change(screen.getByLabelText(/Encrypted recovery file/), {
+    target: {
+      files: [new File([serialiseInsightsRecoveryFile(shareId, recovery)], 'teacher.json')],
+    },
+  });
+  fireEvent.change(screen.getByLabelText('Key action'), { target: { value: 'download' } });
+  fireEvent.change(screen.getByLabelText('Key action'), { target: { value: 'restore' } });
+  fireEvent.change(screen.getByLabelText('Recovery passphrase'), { target: { value: passphrase } });
+  fireEvent.click(screen.getByRole('button', { name: 'Restore teacher key' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('supported Gaps');
+  expect(store.restore).not.toHaveBeenCalled();
+});
