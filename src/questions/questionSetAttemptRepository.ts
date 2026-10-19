@@ -215,8 +215,6 @@ export function submitQuestionSetPaper(
       response.submitted = clone(response.draft);
       response.submittedAt = now;
     }
-    if (attempt.shownQuestionIds)
-      attempt.shownQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';

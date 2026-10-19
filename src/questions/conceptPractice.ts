@@ -1,5 +1,9 @@
 import { db } from '../db/schema';
 import { declarativeFamilyCapacity, resolveFamilyVariant } from './bank';
+import {
+  familyPresentationRevision,
+  questionPresentationFingerprint as conceptPracticeFingerprint,
+} from './generators/declarative';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import {
@@ -13,6 +17,7 @@ import { emptyQuestionSchedule, scheduleQuestionReview } from './scheduler';
 import type { QuestionScheduleState } from './types';
 
 export { undoConceptPracticeAttempt } from './questionSetAttemptRepository';
+export { questionPresentationFingerprint as conceptPracticeFingerprint } from './generators/declarative';
 
 function answers(question: QuestionSetQuestion): Array<{ nodeId: string; answer: QuestionAnswer }> {
   return [
@@ -85,33 +90,6 @@ export function deriveConceptApplicationSchedules(
   return schedules;
 }
 
-function presentationResponse(answer?: QuestionAnswer) {
-  const response = answer?.response;
-  return response?.kind === 'multiple-choice'
-    ? {
-        kind: response.kind,
-        selection: response.selection,
-        options: response.options.map((option) => option.content),
-      }
-    : response?.kind;
-}
-
-/** Novelty follows visible prompts and options, never changes to the marking scheme. */
-export function conceptPracticeFingerprint(question: QuestionSetQuestion): string {
-  return JSON.stringify({
-    prompt: question.prompt,
-    response: presentationResponse(question.answer),
-    parts: question.parts.map((part) => ({
-      prompt: part.prompt,
-      response: presentationResponse(part.answer),
-      subparts: part.subparts.map((subpart) => ({
-        prompt: subpart.prompt,
-        response: presentationResponse(subpart.answer),
-      })),
-    })),
-  });
-}
-
 function exposedQuestions(attempt: QuestionSetAttemptRecord): QuestionSetQuestion[] {
   const ids = new Set(attempt.shownQuestionIds ?? []);
   const nodes = new Map(
@@ -121,10 +99,14 @@ function exposedQuestions(attempt: QuestionSetAttemptRecord): QuestionSetQuestio
   if (active) ids.add(active);
   for (const response of attempt.responses) {
     if (
-      response.submitted ||
-      (response.draft.kind === 'multiple-choice'
-        ? response.draft.selectedOptionIds.length > 0
-        : response.draft.text.trim().length > 0)
+      (attempt.mode === 'practice' && response.submitted) ||
+      [response.draft, response.submitted].some(
+        (value) =>
+          value &&
+          (value.kind === 'multiple-choice'
+            ? value.selectedOptionIds.length > 0
+            : value.text.trim().length > 0),
+      )
     ) {
       const id = nodes.get(response.nodeId);
       if (id) ids.add(id);
@@ -173,7 +155,10 @@ export interface ConceptPracticeItem {
 }
 
 function familyKey(set: QuestionSetRecord, questionId: string): string {
-  return `${set.bank?.bankId}:${set.bank?.family?.id}:${set.bank?.family?.version}:${questionId}`;
+  const family = set.bank?.family;
+  return family
+    ? `${set.bank!.bankId}:${family.id}:${familyPresentationRevision(family, questionId)}:${questionId}`
+    : `${set.id}:${questionId}`;
 }
 
 async function context(courseId: string) {

@@ -39,8 +39,12 @@ otherwise a large inventory copied onto every set would undo the storage savings
 
 Novelty fingerprints contain visible prompts, response format and MCQ options, excluding marks,
 correct options and explanations. Authored-content fingerprints and revisions remain separate.
-Shown-question tracking avoids treating unopened questions in a receipt as exposed. Selection
-prefers unseen presentations, avoids recent sibling families where alternatives exist and requires
+Shown-question tracking avoids treating unopened questions in a receipt as exposed. Automatically
+submitted blank Paper responses do not count as visits. Family exposure follows
+the visible template and its parameter arithmetic, so revised prompts can provide fresh work while
+feedback-only changes retain exposure. Variant validation uses the same prompt/response/option
+fingerprint as practice selection, including families whose options alone vary.
+Selection prefers unseen presentations, avoids recent sibling families where alternatives exist and requires
 an explicit familiar choice after exhaustion. Finite families do not promise inexhaustible content.
 Displayed unseen capacity counts variant indices; cross-family presentation clones can reduce the
 actual supply, and serving checks their fingerprints before exposing them.

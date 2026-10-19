@@ -76,9 +76,7 @@ describe('portable Question banks', () => {
       scope: 'course',
       name: 'Publisher-owned Density concept',
     });
-    expect(set.questions[0].parts[0].answer?.allocations[0].targetConceptIds).toEqual([
-      'density',
-    ]);
+    expect(set.questions[0].parts[0].answer?.allocations[0].targetConceptIds).toEqual(['density']);
 
     const [unchanged] = await importQuestionBank(staticExample, course.id);
     expect(unchanged).toEqual(set);
@@ -308,4 +306,24 @@ it('shares stable course Concepts across separate bank shards', async () => {
   expect(other.questions[0].answer!.allocations[0].targetConceptIds).not.toEqual(
     first.questions[0].answer!.allocations[0].targetConceptIds,
   );
+});
+
+it('accepts option-only generated presentations while rejecting feedback-only variation', () => {
+  const bank = parseQuestionBank(familyExample);
+  const family = bank.families[0];
+  family.parameters = { mass: [12, 24], volume: [2] };
+  const question = family.template.questions[0];
+  question.prompt = 'Choose the displayed mass.';
+  question.answer!.response = {
+    kind: 'multiple-choice',
+    selection: 'single',
+    options: [
+      { id: 'mass', content: '{{mass}} g' },
+      { id: 'other', content: '100 g' },
+    ],
+    correctOptionIds: ['mass'],
+  };
+  expect(materialiseQuestionBank(bank, 'course')).toHaveLength(2);
+  question.answer!.response.options[0].content = '12 g';
+  expect(() => parseQuestionBank(bank)).toThrow(/distinct.*presentations/i);
 });

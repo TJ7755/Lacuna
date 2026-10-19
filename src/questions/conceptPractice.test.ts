@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
+import familyExample from '../../docs/question-bank/examples/numeric-family.json';
 import { db } from '../db/schema';
 import { createCourse } from '../db/repository';
 import { createConcept } from './repository';
@@ -9,7 +10,9 @@ import {
   saveQuestionSetMarking,
   startQuestionSetAttempt,
   submitPracticeQuestion,
+  submitQuestionSetPaper,
 } from './questionSetAttemptRepository';
+import { importQuestionBank, parseQuestionBank } from './bank';
 import {
   deriveConceptApplicationSchedules,
   listConceptPractice,
@@ -366,4 +369,58 @@ it('uses presentation novelty and records only questions actually exposed by ord
   attempt = await saveQuestionSetAttemptPosition(attempt.id, attempt.revisionId, 'q2', null, 220);
   attempt = await saveQuestionSetAttemptPosition(attempt.id, attempt.revisionId, 'q1', null, 230);
   expect(attempt.shownQuestionIds).toEqual(['q1', 'q2']);
+});
+
+it('keeps unopened Paper questions unseen after automatic blank submission', async () => {
+  const { course, concept, set } = await fixture();
+  let attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+  attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId, 210);
+  expect((await listConceptPractice(course.id, 220))[0]).toMatchObject({
+    unseenCount: 1,
+    familiarCount: 1,
+  });
+  expect(attempt.shownQuestionIds).toEqual(['q1']);
+
+  // Older receipts have no explicit visit history; blank Paper submission is not a visit.
+  delete attempt.shownQuestionIds;
+  await db.questionSetAttempts.put(attempt);
+  expect((await listConceptPractice(course.id, 230))[0].unseenCount).toBe(1);
+  expect(
+    (await startConceptPractice(course.id, concept.id, { now: 240 })).selection.questionId,
+  ).toBe('q2');
+});
+
+it('serves revised family prompts without requiring an unrelated generator version change', async () => {
+  const course = await createCourse('Physics');
+  const [set] = await importQuestionBank(familyExample, course.id);
+  const conceptId = set.bank!.concepts[0].id;
+  for (let i = 0; i < 6; i++) await startConceptPractice(course.id, conceptId, { now: 200 + i });
+  expect((await listConceptPractice(course.id))[0].unseenCount).toBe(0);
+
+  const revised = parseQuestionBank(familyExample);
+  revised.bankVersion++;
+  revised.families[0].template.questions[0].prompt += ' Explain the unit conversion.';
+  await importQuestionBank(revised, course.id);
+  expect((await listConceptPractice(course.id))[0].unseenCount).toBe(6);
+  expect((await startConceptPractice(course.id, conceptId)).selection.novelty).toBe('unseen');
+});
+
+it('retains family exposure when only marking arithmetic and feedback change', async () => {
+  const course = await createCourse('Physics');
+  const [set] = await importQuestionBank(familyExample, course.id);
+  const conceptId = set.bank!.concepts[0].id;
+  await startConceptPractice(course.id, conceptId);
+  const revised = parseQuestionBank(familyExample);
+  revised.bankVersion++;
+  revised.families[0].derived.push({ name: 'feedbackValue', op: '*', left: 'density', right: 2 });
+  revised.families[0].template.questions[0].answer!.allocations[0].explanation =
+    'Twice the density is {{feedbackValue}}.';
+  await importQuestionBank(revised, course.id);
+  expect((await listConceptPractice(course.id))[0]).toMatchObject({
+    unseenCount: 5,
+    familiarCount: 1,
+  });
+  expect(
+    (await startConceptPractice(course.id, conceptId)).attempt.receipt.bank!.variant!.index,
+  ).toBe(1);
 });

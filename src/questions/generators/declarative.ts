@@ -1,5 +1,5 @@
 import type { DeclarativeQuestionFamily } from '../bankSchema';
-import type { QuestionSetQuestion } from '../questionSets';
+import type { QuestionAnswer, QuestionSetQuestion } from '../questionSets';
 
 export function canonicalBankJson(value: unknown): string {
   if (value === undefined) return 'null';
@@ -23,6 +23,57 @@ export function bankFingerprint(value: unknown): string {
     second = Math.imul(second ^ serialised.charCodeAt(index), 2246822519);
   }
   return `bank-v1-${(first >>> 0).toString(16).padStart(8, '0')}${(second >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+function presentationResponse(answer?: QuestionAnswer) {
+  const response = answer?.response;
+  return response?.kind === 'multiple-choice'
+    ? {
+        kind: response.kind,
+        selection: response.selection,
+        options: response.options.map((option) => option.content),
+      }
+    : response?.kind;
+}
+
+/** Visible content defines novelty; answers, marking and authoring identities do not. */
+export function questionPresentationFingerprint(question: QuestionSetQuestion): string {
+  return JSON.stringify({
+    prompt: question.prompt,
+    response: presentationResponse(question.answer),
+    parts: question.parts.map((part) => ({
+      prompt: part.prompt,
+      response: presentationResponse(part.answer),
+      subparts: part.subparts.map((subpart) => ({
+        prompt: subpart.prompt,
+        response: presentationResponse(subpart.answer),
+      })),
+    })),
+  });
+}
+
+export function familyPresentationRevision(
+  family: DeclarativeQuestionFamily,
+  questionId: string,
+): string {
+  const question = family.template.questions.find((row) => row.id === questionId);
+  if (!question) throw new Error('Family Question not found.');
+  const presentation = questionPresentationFingerprint(question);
+  const variables = new Set(
+    [...presentation.matchAll(/\{\{([a-z][a-zA-Z0-9_]*)\}\}/g)].map((match) => match[1]),
+  );
+  // Derived variables are ordered. Follow only dependencies that affect visible content.
+  for (const expression of [...family.derived].reverse()) {
+    if (!variables.has(expression.name)) continue;
+    for (const operand of [expression.left, expression.right]) {
+      if (typeof operand === 'string') variables.add(operand);
+    }
+  }
+  return bankFingerprint({
+    parameters: family.parameters,
+    derived: family.derived.filter((expression) => variables.has(expression.name)),
+    presentation,
+  });
 }
 
 export function mapBankQuestions(
@@ -144,15 +195,7 @@ export function materialiseDeclarativeFamily(
     };
     const title = substitute(family.template.title);
     const questions = mapBankQuestions(family.template.questions, substitute);
-    const presentation = canonicalBankJson(
-      questions.map((question) => ({
-        prompt: question.prompt,
-        parts: question.parts.map((part) => ({
-          prompt: part.prompt,
-          subparts: part.subparts.map((subpart) => subpart.prompt),
-        })),
-      })),
-    );
+    const presentation = canonicalBankJson(questions.map(questionPresentationFingerprint));
     if (presentations.has(presentation))
       throw new Error('Family variants must have distinct Question presentations.');
     presentations.add(presentation);
