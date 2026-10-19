@@ -4,6 +4,8 @@ import staticExample from '../../docs/question-bank/examples/static-multipart.js
 import familyExample from '../../docs/question-bank/examples/numeric-family.json';
 import { createCourse } from '../db/repository';
 import { db } from '../db/schema';
+import { importLineageFirstTime, mergeLineageUpdate } from '../db/mergeImport';
+import type { SharePayloadV4 } from '../db/share';
 import {
   declarativeFamilyCapacity,
   exportQuestionBank,
@@ -20,7 +22,151 @@ beforeEach(async () => {
   await db.open();
 });
 
+function publishedBiologyPayload(overrides: Partial<SharePayloadV4> = {}): SharePayloadV4 {
+  return {
+    v: 4,
+    by: 'Biology publisher',
+    at: 1_000,
+    course: { n: 'Biology', o: 0, c: 1_000, e: 2_000_000, um: 'open' },
+    lessons: [
+      {
+        i: 'published-cells',
+        n: 'Cells',
+        notes: [{ oi: 'published-cell-note', n: 'Cell', c: 'A cell is a basic unit of life.' }],
+        cards: [
+          {
+            id: 'published-cell-card',
+            k: 0,
+            f: 'What is a cell?',
+            b: 'A basic unit of life.',
+            co: 'density',
+          },
+        ],
+      },
+    ],
+    concepts: [{ id: 'density', n: 'Publisher-owned Density concept' }],
+    questions: [],
+    questionSets: [],
+    li: 'published-biology-lineage',
+    rv: 1,
+    ...overrides,
+  };
+}
+
 describe('portable Question banks', () => {
+  it('imports the public bank into a locked published course while retaining its lineage and content', async () => {
+    const { course } = await importLineageFirstTime(publishedBiologyPayload());
+    const card = await db.cards.get('published-cell-card');
+    const lesson = await db.lessons.get('published-cells');
+    const mapping = await db.lineageIdMappings.get('published-biology-lineage');
+
+    const [set] = await importQuestionBank(staticExample, course.id);
+
+    expect(set.bank?.bankId).toBe(staticExample.bankId);
+    expect((await db.courses.get(course.id))?.distributedCopy).toMatchObject({
+      lineageId: 'published-biology-lineage',
+      revision: 1,
+      locked: true,
+    });
+    expect(await db.lineageIdMappings.get('published-biology-lineage')).toEqual(mapping);
+    expect(await db.cards.get('published-cell-card')).toEqual(card);
+    expect(await db.lessons.get('published-cells')).toEqual(lesson);
+    expect(await db.concepts.get('density')).toMatchObject({
+      courseId: course.id,
+      scope: 'course',
+      name: 'Publisher-owned Density concept',
+    });
+    expect(set.questions[0].parts[0].answer?.allocations[0].targetConceptIds).toEqual([
+      'density',
+    ]);
+
+    const [unchanged] = await importQuestionBank(staticExample, course.id);
+    expect(unchanged).toEqual(set);
+    expect(await exportQuestionBank(course.id, staticExample.bankId)).toEqual(staticExample);
+
+    const revisedBank = structuredClone(staticExample);
+    revisedBank.bankVersion++;
+    revisedBank.sets[0].title += ' revised';
+    const [revised] = await importQuestionBank(revisedBank, course.id);
+    expect(revised.id).toBe(set.id);
+    expect(revised.contentVersion).toBe(set.contentVersion + 1);
+
+    const sameNameBank = structuredClone(staticExample);
+    sameNameBank.bankId = 'biology-same-name-supplement';
+    sameNameBank.concepts[0] = {
+      id: 'density-from-supplement',
+      name: 'Publisher-owned Density concept',
+    };
+    for (const question of sameNameBank.sets[0].questions) {
+      for (const part of question.parts) {
+        for (const allocation of part.answer?.allocations ?? []) {
+          allocation.targetConceptIds = ['density-from-supplement'];
+        }
+      }
+    }
+    const [sameNameSet] = await importQuestionBank(sameNameBank, course.id);
+    const supplementalConceptId =
+      sameNameSet.questions[0].parts[0].answer!.allocations[0].targetConceptIds[0];
+    expect(supplementalConceptId).not.toBe('density');
+    expect(await db.concepts.get(supplementalConceptId)).toMatchObject({
+      scope: 'course',
+      courseId: course.id,
+      name: 'Publisher-owned Density concept',
+    });
+    expect((await db.concepts.get('density'))?.name).toBe('Publisher-owned Density concept');
+
+    await mergeLineageUpdate(course.id, publishedBiologyPayload({ at: 2_000, rv: 2 }));
+    expect((await db.courses.get(course.id))?.distributedCopy).toMatchObject({
+      lineageId: 'published-biology-lineage',
+      revision: 2,
+      locked: true,
+    });
+    expect(await db.questionSets.get(set.id)).toEqual(revised);
+    expect(await db.questionSets.get(sameNameSet.id)).toEqual(sameNameSet);
+    expect(await db.concepts.get(supplementalConceptId)).toBeDefined();
+    expect((await db.lineageIdMappings.get('published-biology-lineage'))?.questionSetIds).toEqual(
+      [],
+    );
+    expect(await db.cards.get('published-cell-card')).toEqual(card);
+    expect(await db.lessons.get('published-cells')).toEqual(lesson);
+  });
+
+  it('rejects bank imports into an archived published course', async () => {
+    const { course } = await importLineageFirstTime(publishedBiologyPayload());
+    await db.courses.update(course.id, { archived: true });
+
+    await expect(importQuestionBank(staticExample, course.id)).rejects.toThrow(
+      'This Course is read-only.',
+    );
+  });
+
+  it('allows a no-op bank read but rejects a changed bank that targets a publisher-owned set', async () => {
+    const { course } = await importLineageFirstTime(publishedBiologyPayload());
+    const [publisherSet] = await importQuestionBank(staticExample, course.id);
+    const persistedId = 'publisher-owned-bank-set';
+    const persistedPublisherSet = { ...publisherSet, id: persistedId };
+    await db.questionSets.delete(publisherSet.id);
+    await db.questionSets.put(persistedPublisherSet);
+    const mapping = (await db.lineageIdMappings.get('published-biology-lineage'))!;
+    await db.lineageIdMappings.put({
+      ...mapping,
+      questionSetIds: [persistedId],
+      questionSetRevisions: { [persistedId]: publisherSet.contentRevisionId },
+    });
+
+    const [unchanged] = await importQuestionBank(staticExample, course.id);
+    expect(unchanged).toEqual(persistedPublisherSet);
+
+    const revisedBank = structuredClone(staticExample);
+    revisedBank.bankVersion++;
+    revisedBank.sets[0].title += ' publisher collision';
+    await expect(importQuestionBank(revisedBank, course.id)).rejects.toThrow(
+      'publisher-owned Question Set',
+    );
+    expect(await db.questionSets.get(persistedId)).toEqual(persistedPublisherSet);
+    expect(await db.questionSets.get(publisherSet.id)).toBeUndefined();
+  });
+
   it('validates static multipart marks and requires exactly one primary Concept per criterion', () => {
     expect(parseQuestionBank(staticExample).sets[0].questions[0].parts).toHaveLength(2);
     const invalid = structuredClone(staticExample);

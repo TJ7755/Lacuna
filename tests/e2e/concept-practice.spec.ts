@@ -354,3 +354,110 @@ for (const width of [1280, 390]) {
     });
   });
 }
+
+for (const width of [1280, 390]) {
+  test(`imports a public bank from a locked published course at ${width}px`, async ({
+    page,
+  }, info) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await enterFreshLacuna(page);
+    await createCourse(page, 'Published Biology');
+    const courseId = new URL(page.url()).hash.split('/')[2];
+    const lineageId = 'browser-published-biology';
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 800 });
+
+    await page.evaluate(
+      async ({ courseId, lineageId }) => {
+        const connection = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('lacuna');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const transaction = connection.transaction(
+              ['courses', 'lineageIdMappings'],
+              'readwrite',
+            );
+            const courses = transaction.objectStore('courses');
+            const request = courses.get(courseId);
+            request.onsuccess = () => {
+              if (!request.result) {
+                transaction.abort();
+                reject(new Error('Synthetic course was not saved.'));
+                return;
+              }
+              courses.put({
+                ...request.result,
+                lessonViewMode: 'study',
+                distributedCopy: {
+                  lineageId,
+                  revision: 1,
+                  locked: true,
+                  autoAcceptUpdates: false,
+                },
+              });
+              transaction.objectStore('lineageIdMappings').put({
+                id: lineageId,
+                courseId,
+                lessonIds: [],
+                noteIds: [],
+                cardIds: [],
+                conceptIds: [],
+                questionIds: [],
+                questionSetIds: [],
+                questionSetRevisions: {},
+              });
+            };
+            request.onerror = () => reject(request.error);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error);
+          });
+        } finally {
+          connection.close();
+        }
+      },
+      { courseId, lineageId },
+    );
+
+    await page.reload();
+    await page.goto(`/#/course/${courseId}/questions`);
+    await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Import question bank' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New question set' })).toHaveCount(0);
+    await importExample(page, 'static-multipart');
+    await expect(page.getByRole('button', { name: 'Export physics-density' })).toBeVisible();
+    await capture(page, info, `locked-bank-controls-${width}`);
+
+    const retainedLineage = await page.evaluate(
+      async ({ courseId, lineageId }) => {
+        const connection = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('lacuna');
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          return await new Promise<boolean>((resolve, reject) => {
+            const transaction = connection.transaction(['courses', 'lineageIdMappings']);
+            const courseRequest = transaction.objectStore('courses').get(courseId);
+            const mappingRequest = transaction
+              .objectStore('lineageIdMappings')
+              .get(lineageId);
+            transaction.oncomplete = () =>
+              resolve(
+                courseRequest.result?.distributedCopy?.locked === true &&
+                  courseRequest.result?.distributedCopy?.lineageId === lineageId &&
+                  mappingRequest.result?.courseId === courseId,
+              );
+            transaction.onerror = () => reject(transaction.error);
+          });
+        } finally {
+          connection.close();
+        }
+      },
+      { courseId, lineageId },
+    );
+    expect(retainedLineage).toBe(true);
+  });
+}

@@ -18,11 +18,18 @@ export async function importBank(value: unknown, courseId: string): Promise<Ques
   const materialised = materialiseValidatedQuestionBank(bank, courseId, true);
   return db.transaction(
     'rw',
-    [db.courses, db.concepts, db.questionSets, db.tombstones],
+    [db.courses, db.concepts, db.questionSets, db.tombstones, db.lineageIdMappings],
     async (tx) => {
       const course = await db.courses.get(courseId);
-      if (!course || course.archived || !canEditLessons(course))
+      if (!course || course.archived) throw new Error('This Course is read-only.');
+      const lockedCopy = course.distributedCopy?.locked === true;
+      const lineage = lockedCopy
+        ? await db.lineageIdMappings.get(course.distributedCopy!.lineageId)
+        : undefined;
+      if (!canEditLessons(course) && lineage?.courseId !== courseId) {
         throw new Error('This Course is read-only.');
+      }
+      const publisherSetIds = new Set(lockedCopy ? lineage?.questionSetIds ?? [] : []);
       const now = Date.now();
       const courseSets = await db.questionSets.where('courseId').equals(courseId).toArray();
       const oldSets = courseSets.filter((set) => set.bank?.bankId === bank.bankId);
@@ -98,8 +105,20 @@ export async function importBank(value: unknown, courseId: string): Promise<Ques
             old.bank?.variant?.index === set.bank!.variant?.index,
         );
         const existing = previous ?? (await db.questionSets.get(set.id));
-        if (existing && (existing.courseId !== courseId || existing.bank?.bankId !== bank.bankId))
+        const publisherOwned =
+          publisherSetIds.has(set.id) || Boolean(existing && publisherSetIds.has(existing.id));
+        if (existing && existing.courseId !== courseId)
           throw new Error('Question bank set identity collision.');
+        if (publisherOwned && !existing) {
+          throw new Error('A publisher-owned Question Set cannot be replaced by a Question bank.');
+        }
+        if (
+          existing &&
+          existing.bank?.bankId !== bank.bankId &&
+          !publisherOwned
+        ) {
+          throw new Error('Question bank set identity collision.');
+        }
         const retainedConcepts = bank.concepts
           .map((concept, sourceIndex) => ({ ...concept, sourceIndex }))
           .filter(
@@ -135,6 +154,9 @@ export async function importBank(value: unknown, courseId: string): Promise<Ques
           if (sameBankContent(content, oldContent)) {
             imported.push(existing);
             continue;
+          }
+          if (publisherOwned) {
+            throw new Error('A publisher-owned Question Set cannot be updated by a Question bank.');
           }
           if (bank.bankVersion === existing.bank?.bankVersion)
             throw new Error('Changed Question bank content requires a higher bankVersion.');

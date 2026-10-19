@@ -107,6 +107,7 @@ export function QuestionsPage() {
     return <PageLoading fallback={<CoursePathSkeleton />} />;
   if (!course || !data) return <p className="p-8 text-ink-soft">This course could not be found.</p>;
   const author = resolveLessonViewMode(course) === 'edit' && !course.archived;
+  const showBankControls = !course.archived && (author || course.distributedCopy?.locked === true);
   const draftIds = new Set(data.drafts.map((d) => d.content.id));
   const progress = new Map<string, QuestionSetProgress>();
   for (const [setId, attempts] of data.attemptsBySet) {
@@ -234,7 +235,7 @@ export function QuestionsPage() {
             .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0]
         }
       />
-      {author && (
+      {showBankControls && (
         <QuestionBankControls
           courseId={course.id}
           disabled={!!course.archived}
