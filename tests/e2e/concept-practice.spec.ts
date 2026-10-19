@@ -170,9 +170,9 @@ for (const width of [1280, 390]) {
         page.getByRole('button', { name: `Practise ${density}`, exact: true }),
       ).toHaveCount(1);
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
-      const attemptUrl = page.url();
       const answer = page.getByRole('textbox', { name: 'Your working and answer', exact: true });
       await expect(answer).toBeFocused();
+      const attemptUrl = page.url();
       await answer.fill('24 / 8 = 3 g/cm³');
       await fits(page);
       await capture(page, info, 'calculation');
@@ -277,6 +277,7 @@ for (const width of [1280, 390]) {
       await fits(page);
       await capture(page, info, 'partial-marking');
       await page.getByRole('button', { name: 'Finish attempt', exact: true }).click();
+      await expect(page.locator('[data-attempt-complete]')).toBeVisible();
       await page.reload();
       await expect(page.locator('.qs-result')).toContainText('1 / 3');
       await page.goto(library);
