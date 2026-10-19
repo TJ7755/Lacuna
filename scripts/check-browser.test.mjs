@@ -220,3 +220,39 @@ test('previews Gaps with its own root and config', () => {
     },
   });
 });
+
+test('selects and previews the isolated Library build', () => {
+  const directory = fixture();
+  assert.equal(
+    verifyBrowser({
+      directory,
+      args: ['--library', '--project=chromium'],
+      execute: (_command, args, options) => {
+        assert.equal(options.env.LACUNA_BROWSER_SITE, 'library');
+        if (args[0] === 'run') {
+          assert.equal(args[1], 'build:library:assets');
+          build(args);
+        } else assert.ok(!args.includes('--library'));
+        return { status: 0 };
+      },
+    }),
+    0,
+  );
+  previewBrowser({
+    env: { LACUNA_BROWSER_RUN_DIR: '/isolated/run', LACUNA_BROWSER_SITE: 'library' },
+    execute: (_command, args) => {
+      assert.deepEqual(args.slice(0, 5), [
+        'x',
+        'vite',
+        'preview',
+        '--config',
+        'vite.library.config.ts',
+      ]);
+      return { status: 0 };
+    },
+  });
+});
+
+test('refuses conflicting standalone site selectors', () => {
+  assert.throws(() => verifyBrowser({ args: ['--library', '--gaps'] }), /Choose one browser site/);
+});
