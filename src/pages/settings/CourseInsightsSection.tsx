@@ -80,7 +80,7 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
           href="https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md"
           target="_blank"
           rel="noreferrer"
-          className="inline-block underline underline-offset-4"
+          className="underline"
         >
           School data notice
         </a>
