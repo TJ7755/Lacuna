@@ -144,3 +144,76 @@ describe('planNextStudyStep', () => {
     );
   });
 });
+
+describe('mid-course entry', () => {
+  const nodes = [
+    lessonNode('1', 'available'),
+    practiceNode('p1', true),
+    lessonNode('2', 'available'),
+    lessonNode('3', 'locked'),
+  ];
+  const joined = () => ({
+    ...snapshot(nodes, [practiceState('p1', true)]),
+    studyStartLessonId: '2',
+  });
+
+  it('starts at the joining lesson without requiring earlier lessons or practice', () => {
+    expect(planNextStudyStep(joined())).toMatchObject({ kind: 'step', step: { lessonId: '2' } });
+  });
+
+  it('keeps current lessons ahead of catch-up, and offers catch-up when later lessons are locked', () => {
+    expect(planNextStudyStep({ ...joined(), catchUpEligibleCount: 20 })).toMatchObject({
+      kind: 'step',
+      step: { lessonId: '2' },
+    });
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        catchUpEligibleCount: 20,
+        nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
+      }),
+    ).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
+  });
+
+  it('can finish the flow without automatically repeating completed catch-up', () => {
+    expect(planNextStudyStep({ ...joined(), catchUpEligibleCount: 20,
+      nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
+    }, false)).toEqual({ kind: 'blocked', reason: 'curriculum-locked' });
+  });
+
+  it('starts at the chosen core lesson even when an extension precedes it', () => {
+    const extension = lessonNode('0', 'available');
+    if (extension.nodeType === 'lesson') extension.lesson.isExtension = true;
+    expect(planNextStudyStep({ ...joined(), nodes: [extension, ...nodes] }))
+      .toMatchObject({ kind: 'step', step: { lessonId: '2' } });
+  });
+
+  it('keeps due reviews ahead of the joining lesson', () => {
+    expect(planNextStudyStep({ ...joined(), recurringPracticeEligibleCount: 1 })).toMatchObject({
+      kind: 'step',
+      step: { nodeKey: 'due-review' },
+    });
+  });
+
+  it('continues forwards and never loops back into catch-up lessons', () => {
+    expect(
+      planNextStudyStep({
+        ...joined(),
+        nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
+      }),
+    ).toEqual({
+      kind: 'blocked',
+      reason: 'curriculum-locked',
+    });
+    expect(
+      planNextStudyStep({ ...joined(), nodes: [nodes[0], nodes[1], lessonNode('2', 'completed')] }),
+    ).toEqual({ kind: 'complete' });
+  });
+
+  it('falls back to the whole path if the starting lesson was removed', () => {
+    expect(planNextStudyStep({ ...joined(), studyStartLessonId: 'removed' })).toMatchObject({
+      kind: 'step',
+      step: { lessonId: '1' },
+    });
+  });
+});

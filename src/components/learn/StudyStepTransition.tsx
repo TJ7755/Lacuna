@@ -13,6 +13,8 @@ interface StudyStepTransitionProps {
   nextLabel?: string;
   summary: SessionSummary;
   canReviewDueCards: boolean;
+  canReviewEarlierMaterial?: boolean;
+  onReviewEarlierMaterial?: () => void;
   breakPending: boolean;
   planningNextStep: boolean;
   onContinue: () => void;
@@ -37,6 +39,8 @@ export function StudyStepTransition({
   nextLabel,
   summary,
   canReviewDueCards,
+  canReviewEarlierMaterial,
+  onReviewEarlierMaterial,
   breakPending,
   planningNextStep,
   onContinue,
@@ -155,6 +159,11 @@ export function StudyStepTransition({
           {breakPending && (
             <Button variant="ghost" size="lg" onClick={onDeferBreak}>
               Dismiss break
+            </Button>
+          )}
+          {canReviewEarlierMaterial && (
+            <Button variant="ghost" size="lg" onClick={onReviewEarlierMaterial}>
+              Review earlier material
             </Button>
           )}
           {canReviewDueCards && (

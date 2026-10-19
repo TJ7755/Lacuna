@@ -1,6 +1,13 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, expect, it } from 'vitest';
-import { createCourse } from '../db/courseRepository';
+import { createCourse, updateCourse } from '../db/courseRepository';
+import { createLessonCard } from '../db/cardRepository';
+import { createOrResumeRevisionPlan } from '../db/revisionPlanRepository';
+import { makeExamDateContext } from '../fsrs/examDate';
+import { assessmentPracticePool, currentAssessmentPracticeContext } from './assessmentPractice';
+import { buildCourseStudyFlowSnapshot } from './studyFlowSnapshot';
+import { planNextStudyStep } from './studyFlowPlanner';
+import { earlierCourseLessonIds, earlierLessonIds } from './courseEntry';
 import { createLesson, reorderLessons } from '../db/lessonRepository';
 import { db } from '../db/schema';
 import { buildPath } from './path';
@@ -8,6 +15,17 @@ import { buildPath } from './path';
 beforeEach(async () => {
   await db.delete();
   await db.open();
+});
+
+it('excludes optional extensions from prior knowledge in source and local order', async () => {
+  const course = await createCourse('Science');
+  const extension = await createLesson(course.id, 'Optional', { isExtension: true });
+  const earlier = await createLesson(course.id, 'Earlier');
+  const current = await createLesson(course.id, 'Current');
+  const lessons = [extension, earlier, current];
+  for (const order of [undefined, lessons.map((lesson) => lesson.id)]) {
+    expect(earlierLessonIds(current.id, lessons, order)).toEqual(new Set([earlier.id]));
+  }
 });
 
 it('traverses a locked copy in local order without rewriting publisher indices', async () => {
@@ -21,6 +39,46 @@ it('traverses a locked copy in local order without rewriting publisher indices',
   const assessments = await db.courseAssessments.toArray();
   expect(buildPath(local, [a, b], assessments, new Map()).map((node) => node.id)).toEqual([b.id, a.id]);
   expect([a.orderIndex, b.orderIndex]).toEqual([0, 1]);
+});
+
+it('uses the supported local entry prefix consistently without changing exam coverage', async () => {
+  const course = await createCourse('Science', { autoPractice: false,
+    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false } });
+  const a = await createLesson(course.id, 'A');
+  const b = await createLesson(course.id, 'B');
+  const c = await createLesson(course.id, 'C');
+  const lessons = [a, b, c];
+  const cards = await Promise.all(lessons.map((lesson) =>
+    createLessonCard(course.id, lesson.id, 'front_back', lesson.name, lesson.name)));
+  const local = { ...course,
+    localLessonOrder: [b.id, a.id, c.id], studyStartLessonId: a.id,
+  };
+  await updateCourse(course.id, {
+    localLessonOrder: local.localLessonOrder, studyStartLessonId: a.id,
+  });
+  const assessments = await db.courseAssessments.toArray();
+  const nodes = buildPath(local, lessons, assessments, new Map());
+  const snapshot = buildCourseStudyFlowSnapshot({
+    course: local, nodes, cards, links: [], exposures: [], meanReviewSeconds: 20,
+    examDateContext: makeExamDateContext(local, lessons, assessments),
+  });
+  expect(planNextStudyStep(snapshot)).toMatchObject({ kind: 'step', step: { lessonId: a.id } });
+  expect(snapshot.catchUpEligibleCount).toBe(1);
+  const context = { course: local, assessments, lessons, cards, links: [], exposures: [] };
+  const current = currentAssessmentPracticeContext(context);
+  expect(assessmentPracticePool(assessments[0], {
+    ...context, reachedLessonIds: current.reachedLessonIds,
+  }).map((card) => card.id)).toEqual([cards[1].id]);
+  const plan = await createOrResumeRevisionPlan(assessments[0].id, 20, {
+    projectionMode: 'fsrs-6-practice-fallback', memoryModelVersion: 'fsrs-6', fallbackReason: 'missing',
+  });
+  expect(plan.scope.coveredLessonIds).toEqual([a.id, b.id, c.id]);
+  expect(plan.scope.eligibleCardIds).toEqual([cards[1].id]);
+  expect(lessons.map((lesson) => lesson.orderIndex)).toEqual([0, 1, 2]);
+  expect(await db.lessonCardExposures.count()).toBe(0);
+  expect(await db.lessonCompletions.count()).toBe(0);
+  expect(earlierCourseLessonIds({ ...local, unlockMode: 'semi-linear' }, lessons, assessments, []))
+    .toEqual(new Set());
 });
 
 it('rejects stored-content reordering on a locked distributed copy', async () => {
