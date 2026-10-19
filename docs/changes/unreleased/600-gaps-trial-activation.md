@@ -1,0 +1,1 @@
+- Enable the approved Gaps production web trial after human review, additional Sol review and live encrypted-report verification; document the activation boundary and rollback procedure. Pupil reporting still requires explicit consent, and ordinary builds remain disabled by default.
