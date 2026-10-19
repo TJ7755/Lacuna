@@ -1,14 +1,39 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { SectionCard } from '../components/ui/SectionCard';
 import { buttonClassName } from '../components/ui/buttonStyles';
-import { TeacherEmptyState, TeacherHomeView } from './TeacherHomeView';
+import { TeacherHomeView } from './TeacherHomeView';
 
 export function StandaloneTeacherHome() {
-  const [Panel, setPanel] = useState<ComponentType<{ onClose(): void }> | null>(null);
+  const [Courses, setCourses] = useState<ComponentType<{
+    onPrepareKey(shareId: string): void;
+    keySetupOpen: boolean;
+  }> | null>(null);
+  const [courseError, setCourseError] = useState(false);
+  const [Panel, setPanel] = useState<ComponentType<{
+    onClose(): void;
+    initialCourse?: string;
+  }> | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function openKeys() {
+  useEffect(() => {
+    let active = true;
+    void import('./TeacherCourses').then(
+      (module) => {
+        if (active) setCourses(() => module.TeacherCourses);
+      },
+      () => {
+        if (active) setCourseError(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function openKeys(shareId = '') {
+    setSelectedCourse(shareId);
     setLoading(true);
     setError(null);
     try {
@@ -23,9 +48,29 @@ export function StandaloneTeacherHome() {
 
   return (
     <TeacherHomeView>
-      <TeacherEmptyState standalone />
+      {Courses ? (
+        <Courses
+          onPrepareKey={(shareId) => void openKeys(shareId)}
+          keySetupOpen={Panel !== null || loading}
+        />
+      ) : courseError ? (
+        <SectionCard>
+          <p role="alert">Could not open your courses. Reload Gaps to try again.</p>
+          <button
+            type="button"
+            className={`${buttonClassName('secondary')} mt-3`}
+            onClick={() => window.location.reload()}
+          >
+            Reload Gaps
+          </button>
+        </SectionCard>
+      ) : (
+        <p role="status" className="text-ink-soft">
+          Opening courses…
+        </p>
+      )}
       {Panel ? (
-        <Panel onClose={() => setPanel(null)} />
+        <Panel initialCourse={selectedCourse} onClose={() => setPanel(null)} />
       ) : (
         <SectionCard aria-labelledby="teacher-keys-heading">
           <h2 id="teacher-keys-heading" className="font-display text-2xl">

@@ -17,7 +17,10 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   await page.goto('/');
   await page.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
   await expect(page.getByRole('heading', { name: 'Teacher key setup' })).toBeVisible();
-  expect(await page.evaluate(() => indexedDB.databases())).toEqual([]);
+  await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+  expect(await page.evaluate(() => indexedDB.databases())).toEqual([
+    { name: 'lacuna.gaps.connections', version: 10 },
+  ]);
   await page.getByLabel(/Published course link/).fill(`https://getlacuna.app/#/s/${shareId}`);
   await page.getByLabel(/^Recovery passphrase/).fill(passphrase);
   await page.getByLabel('Repeat recovery passphrase').fill(passphrase);
@@ -34,7 +37,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   expect(text).not.toContain('privateKey');
   expect(
     (await page.evaluate(() => indexedDB.databases())).map((database) => database.name),
-  ).toEqual(['lacuna.gaps.owner-keys']);
+  ).toEqual(['lacuna.gaps.connections', 'lacuna.gaps.owner-keys']);
   await page.screenshot({ path: testInfo.outputPath('teacher-key-saved.png'), fullPage: true });
   await page.reload();
   await page.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
@@ -55,19 +58,20 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     await restored.goto(new URL('/', page.url()).href);
     await restored.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
     await restored.getByLabel('Key action').selectOption('restore');
-    await restored
-      .getByLabel(/Encrypted recovery file/)
-      .setInputFiles({
-        name: 'teacher.json',
-        mimeType: 'application/json',
-        buffer: Buffer.from(text),
-      });
+    await restored.getByLabel(/Encrypted recovery file/).setInputFiles({
+      name: 'teacher.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(text),
+    });
     await restored.getByLabel('Recovery passphrase').fill('wrong phrase');
     await restored.getByRole('button', { name: 'Restore teacher key' }).click();
     await expect(restored.getByRole('alert')).toContainText('Could not open the teacher key', {
       timeout: 15_000,
     });
-    expect(await restored.evaluate(() => indexedDB.databases())).toEqual([]);
+    await expect(restored.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+    expect(await restored.evaluate(() => indexedDB.databases())).toEqual([
+      { name: 'lacuna.gaps.connections', version: 10 },
+    ]);
     await restored.getByLabel('Recovery passphrase').fill(passphrase);
     await restored.getByRole('button', { name: 'Restore teacher key' }).click();
     await expect(restored.getByRole('status')).toContainText('Teacher key saved', {

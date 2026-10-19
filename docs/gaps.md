@@ -8,15 +8,17 @@ primitives/styles and explicitly selected local fonts/icon. It has no learner
 routes, database migration/seed, backup/sync/AI startup, study service worker,
 manifest or precache. A small, origin-guarded retirement worker replaces the old
 study worker at `/sw.js`; it is not a teacher offline cache. Only the shared theme
-preference is read/written locally on startup. Teacher-key setup loads separately
-on request and accesses isolated storage only after an explicit key action.
+preference and saved course connections are read on startup. Connections use an
+isolated teacher database; teacher-key setup loads separately on request and
+accesses key storage only after an explicit key action.
 
 The view's `children` prop is the seam: the existing in-app
 [TeacherHome](../src/pages/TeacherHome.tsx) supplies locally published-course
-management, including credential checks; standalone Gaps supplies no data source.
+management, including credential checks; standalone Gaps supplies its separately
+saved, verified course connections.
 `#/teach` remains available on the main website and desktop, linked from Share.
 The standalone build has one view and needs no router. Bare roots and old hashes
-such as `#/teach` and `#/share` render that same honest, unconnected teacher view;
+such as `#/teach` and `#/share` render that same teacher workspace;
 its sharing link explicitly opens the main site.
 
 Standalone Gaps does not automatically migrate or inspect existing courses, credentials or private
@@ -24,10 +26,42 @@ keys. It neither opens nor deletes a learner database, clears caches, nor regist
 a service worker from its entry. The retirement worker below unregisters only its
 own legacy Gaps registration. Its unconnected state does not claim that a preserved
 learner library is empty. No reports or participation totals are fabricated.
-A future teacher data adapter must be independent of learner storage and supply
-verified teacher content at this seam. Reuse the existing insights envelope/mailbox
-modules when needed; this entry does not install a transport or collect or decrypt
-pupil evidence. Those integration steps remain separate from local key preparation.
+The connection adapter is independent of learner storage. The entry does not
+install a pupil transport or collect or decrypt pupil evidence. Report integration
+remains separate from connecting courses and preparing teacher keys.
+
+## Connect a published course
+
+On the device that published a course, open its Share page and choose **Connect
+to Gaps**. Export a connection file protected by a passphrase of at least 16
+characters. In Gaps, choose **Connect a course**, select that file and enter its
+passphrase. Only the shared trial relay, `https://relay.getlacuna.app`, is supported.
+The teacher policy permits connections to that relay alone.
+
+[connectionFile.ts](../src/teacher/connectionFile.ts) defines the bounded,
+versioned file. Its ownership token is encrypted with AES-256-GCM using a fresh
+nonce and a PBKDF2-HMAC-SHA-256 key. The KDF uses the existing bounded work-factor
+policy; a distinct purpose binds the course identifier, relay, course name and
+header as authenticated data. Course name and identifier remain visible in the
+file. Its passphrase and plaintext token are never written into it. The file
+permits offline passphrase guessing, so keep it and a strong passphrase separately
+and do not share them with pupils. This is a different file from teacher-key recovery.
+
+[connectionStore.ts](../src/teacher/connectionStore.ts) opens only
+`lacuna.gaps.connections`. Import decrypts locally, checks the existing owner
+credential with an uncached HEAD, then commits the encrypted file and verification
+time. Failed decryption, failed verification, cancellation before saving or a failed
+commit cannot confirm a connection. No course bytes are uploaded or republished.
+The plaintext token exists transiently to make the owner request; it is not saved.
+The course list shows when ownership was checked, not a promise of permanent access.
+Reloading lists local connections without sending credentials again.
+
+Course cards open key setup with the selected course already filled in.
+**Remove connection** deletes only that browser's connection record: it preserves
+the published share, teacher key, recovery files and pupil copies. A saved connection
+file can be imported again with fresh verification. Clearing browser storage still
+requires the separate teacher-key recovery file and passphrase to recover that key.
+Connecting a course does not publish its teacher key or enable pupil results.
 
 ## Agreed trial boundaries
 
@@ -131,8 +165,8 @@ does not prove ownership.
 
 [verifyShareOwner](../src/shareLinks/client.ts) performs that check with a
 15-second timeout and optional cancellation. It sends the credential only in the
-bearer header, refuses redirects and accepts only 204. Neither application calls
-it yet; the encrypted course connection hand-off remains separate work.
+bearer header, refuses redirects and accepts only 204. Gaps calls it explicitly
+when importing a connection file.
 
 [insights.ts](../relay/src/insights.ts) implements the opaque mailbox behind
 `RELAY_INSIGHTS_ENABLED=1`. Without that explicit setting, insight routes return
@@ -244,7 +278,7 @@ Before publication, inspect the generated file list and run:
 
 ```bash
 bun run build:gaps
-PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts
+PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts
 PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
 ```
 

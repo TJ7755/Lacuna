@@ -307,7 +307,7 @@ jobs:
       - run: bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --shard=${{ matrix.shard }}/4
       - name: Verify standalone Gaps and teacher-key recovery
         if: matrix.shard == 1
-        run: PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts
+        run: PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts
       - name: Preserve browser test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

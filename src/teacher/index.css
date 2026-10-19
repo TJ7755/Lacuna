@@ -4,6 +4,7 @@
 @source './TeacherHomeView.tsx';
 @source './StandaloneTeacherHome.tsx';
 @source './TeacherKeySetup.tsx';
+@source './TeacherCourses.tsx';
 @source '../components/ui/Field.tsx';
 @source '../components/course/coursePageLayout.ts';
 @source '../components/ui/SectionCard.tsx';
