@@ -52,14 +52,34 @@ cannot recreate the random teacher key: the encrypted recovery file is required.
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
 
-This does not yet implement a signing trust root, key publication, storage in
-IndexedDB or desktop safeStorage, rotation, evidence schema or teacher decryption
-UI. Do not enable pupil delivery until those pieces and
+This does not yet implement a signing trust root, key publication, a key-management
+UI, desktop safeStorage, rotation, evidence schema or teacher decryption UI.
+Do not enable pupil delivery until those pieces and
 independent human security review are complete. Trust in the public key still
 depends on the course-distribution path; encryption alone does not prevent an
 active service from substituting a key. Anyone holding an authentic public key
 can encrypt a fabricated result. The spike bounds evidence to 64 KiB and rejects
 unknown fields and versions; this provisional format is not a released contract.
+
+## Isolated teacher-key storage
+
+[ownerStore.ts](../src/insights/ownerStore.ts) uses a separate
+`lacuna.gaps.owner-keys` IndexedDB database. It imports no learner database or
+startup code. Records contain only the share id and encrypted recovery material;
+neither the passphrase nor an unencrypted private key is persisted. Unlocking is
+explicit and yields a non-exportable in-memory private key. No network request
+or device synchronisation is involved.
+
+Creation returns only after its database transaction commits. Concurrent creates
+cannot silently replace one another. Restoring a recovery file verifies the
+passphrase and course binding before writing; restoring another key over an
+existing course is refused, preserving access to old envelopes. Rotation requires
+a separate explicit workflow. Restoring the same key is permitted.
+
+This helper is not installed by either application yet. It does not migrate
+share write credentials between origins, publish a public key, provide an offline
+recovery-file download or stop the browser clearing local storage. Keep the
+encrypted recovery file separately; the passphrase alone remains insufficient.
 
 ## Relay mailbox and delivery seam
 

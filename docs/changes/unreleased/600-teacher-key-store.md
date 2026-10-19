@@ -1,0 +1,1 @@
+- Add isolated teacher-key storage containing only encrypted recovery material, with explicit passphrase unlock and protection against concurrent creation or accidental key replacement. The helper does not yet activate key publication or pupil delivery. (#600)
