@@ -98,7 +98,7 @@ export async function recoverInsightsOwner(
   requireShareId(shareId);
   requirePassphrase(passphrase);
   const recovery = recoverySchema.parse(raw);
-  await importRecipient(recovery.recipient);
+  const publicKey = await importRecipient(recovery.recipient);
   const salt = decode(recovery.salt, 16, 16);
   const nonce = decode(recovery.n, 12, 12);
   const ciphertext = decode(recovery.c, 16, 3072);
@@ -110,6 +110,12 @@ export async function recoverInsightsOwner(
   );
   try {
     const privateKey = await crypto.subtle.importKey('pkcs8', bytes, RSA, false, ['decrypt']);
+    // An authenticated recovery file can still contain the wrong private key.
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const wrapped = await crypto.subtle.encrypt(RSA, publicKey, challenge);
+    const checked = new Uint8Array(await crypto.subtle.decrypt(RSA, privateKey, wrapped));
+    if (checked.length !== challenge.length || checked.some((byte, i) => byte !== challenge[i]))
+      throw new Error('The recovered teacher key does not match its public key.');
     return { recipient: recovery.recipient, privateKey, recovery };
   } finally {
     new Uint8Array(bytes).fill(0);

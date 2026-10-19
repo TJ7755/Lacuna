@@ -7,18 +7,21 @@ import {
   insightDayExpiresAt,
 } from '../src/insightsProtocol.js';
 import { MemoryStore } from '../src/store.js';
+import { cleanupExpiredShares, shareLive } from '../src/shares.js';
+import { CHANNEL_TTL_MS } from '../src/channelMaintenance.js';
 
 const day = '2026-10-18';
 const start = Date.parse('2026-10-19T00:00:00Z');
 beforeEach(() => vi.stubEnv('RELAY_INSIGHTS_ENABLED', '1'));
 afterEach(() => vi.unstubAllEnvs());
 
-async function fixture() {
-  let time = start;
+async function fixture(createdAt = start) {
+  let time = createdAt;
   const store = new MemoryStore(() => time);
   const handle = createHandler(store, { now: () => time });
   const minted = await handle(new Request('https://relay.example/shares', { method: 'POST' }));
   const { shareId, writeToken } = (await minted.json()) as { shareId: string; writeToken: string };
+  time = start;
   const envelope = {
     v: 2,
     s: shareId,
@@ -70,6 +73,64 @@ async function fixture() {
 }
 
 describe('encrypted insight mailbox', () => {
+  it('preserves owner access until report expiry when an unchanged public share expires', async () => {
+    const f = await fixture(start - 89 * 24 * 60 * 60 * 1000);
+    expect((await f.put()).status).toBe(204);
+    const later = start + 2 * 24 * 60 * 60 * 1000;
+    f.setTime(later);
+    expect(await shareLive(f.store, f.shareId, () => later)).toBe(false);
+    expect((await cleanupExpiredShares(f.store, later)).sharesDeleted).toBe(0);
+    expect((await f.read()).status).toBe(200);
+    expect((await f.put('d'.repeat(32))).status).toBe(404);
+
+    f.setTime(insightDayExpiresAt(day));
+    expect((await f.read()).status).toBe(410);
+    expect((await cleanupExpiredShares(f.store, insightDayExpiresAt(day))).sharesDeleted).toBe(1);
+    expect(await f.store.list(`insights/${f.shareId}/`)).toEqual([]);
+  });
+
+  it('keeps retained reports on an expired share until an authorised owner deletes them', async () => {
+    const f = await fixture(start - 89 * 24 * 60 * 60 * 1000);
+    expect((await f.put()).status).toBe(204);
+    f.setTime(start + 2 * 24 * 60 * 60 * 1000);
+    const url = `https://relay.example/shares/${f.shareId}`;
+    const expiredWrite = await f.handle(
+      new Request(`${url}/payload`, {
+        method: 'PUT',
+        body: 'x',
+        headers: { 'Content-Length': '1', 'If-Match': '"0"' },
+      }),
+    );
+    expect(expiredWrite.status).toBe(404);
+    expect((await f.handle(new Request(url, { method: 'DELETE' }))).status).toBe(401);
+    expect((await f.read()).status).toBe(200);
+    expect(
+      (
+        await f.handle(
+          new Request(url, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${f.writeToken}` },
+          }),
+        )
+      ).status,
+    ).toBe(204);
+    expect(await f.store.list(`insights/${f.shareId}/`)).toEqual([]);
+    expect((await f.read()).status).toBe(404);
+  });
+
+  it('does not accept an in-flight report when the public share expires during its write', async () => {
+    const createdAt = start - CHANNEL_TTL_MS + 1;
+    const f = await fixture(createdAt);
+    const put = f.store.put.bind(f.store);
+    vi.spyOn(f.store, 'put').mockImplementation(async (key, ...args) => {
+      const result = await put(key, ...args);
+      if (key.includes('/envelopes/')) f.setTime(start + 2);
+      return result;
+    });
+    expect((await f.put()).status).toBe(404);
+    expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toEqual([]);
+  });
+
   it('is disabled without touching storage until explicitly enabled', async () => {
     vi.unstubAllEnvs();
     const store = new MemoryStore();

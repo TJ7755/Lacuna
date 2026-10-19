@@ -44,7 +44,10 @@ export async function handleInsight(
   const permit = await consumeRatePermit(store, request, now(), 'insights');
   if (permit !== 'allowed')
     return reply(request, permit === 'limited' ? 429 : 503, { error: 'insights request limit' });
-  if (!(await shareLive(store, id, now)) || !(await store.get(`shares/${id}/auth`))) {
+  if (
+    (request.method === 'PUT' && !(await shareLive(store, id, now))) ||
+    !(await store.get(`shares/${id}/auth`))
+  ) {
     return reply(request, 404, { error: 'not found' });
   }
   return slotId === undefined
@@ -128,7 +131,8 @@ async function writeEnvelope(
   } catch {
     return reply(request, 400, { error: 'invalid insights envelope' });
   }
-  if (!(await store.get(`shares/${id}/auth`))) return reply(request, 404, { error: 'not found' });
+  if (!(await shareLive(store, id, now)) || !(await store.get(`shares/${id}/auth`)))
+    return reply(request, 404, { error: 'not found' });
   if (now() >= insightDayExpiresAt(day)) return reply(request, 410, { error: 'insights expired' });
   const key = `insights/${id}/${day}/envelopes/${slotId}`;
   const existing = await store.get(key);
@@ -144,7 +148,11 @@ async function writeEnvelope(
   // A failed or duplicate concurrent upload can consume a reservation. Do not
   // refund across writers: conservative capacity is safer than exceeding the cap.
   const written = await store.put(key, body, { exclusive: true });
-  if (!(await store.get(`shares/${id}/auth`)) || now() >= insightDayExpiresAt(day)) {
+  if (
+    !(await shareLive(store, id, now)) ||
+    !(await store.get(`shares/${id}/auth`)) ||
+    now() >= insightDayExpiresAt(day)
+  ) {
     await store.del([key]);
     return reply(request, 404, { error: 'not found' });
   }

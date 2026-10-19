@@ -67,6 +67,8 @@ Recovered in-memory private keys are non-exportable. The function persists
 nothing and never sends the passphrase. Possession of the recovery file permits
 offline passphrase guessing; a short PIN is inadequate. A passphrase alone
 cannot recreate the random teacher key: the encrypted recovery file is required.
+Recovery proves that the decrypted private key matches the advertised public key
+before returning it or replacing any saved recovery material.
 
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
@@ -118,11 +120,20 @@ on merely because the transport tests pass.
   consume a reservation; capacity is deliberately conservative. This is an
   operational cap, not proof of 50 distinct pupils or genuine submissions.
 - Reads and writes share a 100-request hourly limit per trusted client IP,
-  allowing one 30-pupil class behind a school address. They require a live
-  published share; reading also requires its existing owner write token.
+  allowing one 30-pupil class behind a school address. Uploads require a live
+  published share. Reads require its existing owner write token and remain
+  available for retained reports after the public share expires.
 - `GET /insights/:shareId/:day` returns at most 16 envelopes and an opaque cursor,
   with no participation totals. Fetching preserves the envelopes. Responses use
-  `Cache-Control: no-store`. Deleting a share also removes its insight objects.
+  `Cache-Control: no-store`. Explicit owner deletion of a share also removes its
+  insight objects, including when the public share has already expired.
+
+Automatic share expiry does not shorten an accepted report's retention. The
+public course link still expires after the existing inactivity window and stops
+accepting reports. Its stored share objects and owner authorisation remain until
+the last report expires, so the teacher can fetch retained history. Automatic
+share cleanup can then reclaim both. An unauthenticated request to delete or
+republish an expired share cannot erase those retained reports.
 
 An envelope expires 84 days after the end of its reporting day, regardless of
 upload or retry time. Reads and writes then return 410. The existing daily

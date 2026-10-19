@@ -26,6 +26,72 @@ function openStore() {
 }
 
 describe('isolated teacher key storage', () => {
+  it('rejects a recovery file with an unrelated private key and preserves existing evidence', async () => {
+    const store = openStore();
+    const original = await store.create(shareId, passphrase);
+    const context = { shareId, isoDay: '2026-10-18' };
+    const evidence = new TextEncoder().encode('question-4: 3/5');
+    const envelope = await sealInsightEnvelope(original.recipient, evidence, context);
+    const unrelated = await crypto.subtle.generateKey(
+      {
+        name: 'RSA-OAEP',
+        hash: 'SHA-256',
+        modulusLength: 3072,
+        publicExponent: new Uint8Array([1, 0, 1]),
+      },
+      true,
+      ['encrypt', 'decrypt'],
+    );
+    const privateBytes = await crypto.subtle.exportKey('pkcs8', unrelated.privateKey);
+    const material = await crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(passphrase),
+      'PBKDF2',
+      false,
+      ['deriveKey'],
+    );
+    const salt = Uint8Array.from(atob(original.recovery.salt), (byte) => byte.charCodeAt(0));
+    const key = await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        salt,
+        iterations: original.recovery.iterations,
+      },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt'],
+    );
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const additionalData = new TextEncoder().encode(
+      JSON.stringify([
+        'lacuna.insights.recovery.v1',
+        shareId,
+        original.recipient.keyId,
+        original.recipient.publicKey,
+        original.recovery.iterations,
+        original.recovery.salt,
+      ]),
+    );
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce, additionalData },
+      key,
+      privateBytes,
+    );
+    const encode = (bytes: ArrayBuffer | Uint8Array) => {
+      const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      return btoa(String.fromCharCode(...data));
+    };
+    const malformed = { ...original.recovery, n: encode(nonce), c: encode(ciphertext) };
+
+    await expect(store.restore(shareId, malformed, passphrase)).rejects.toThrow();
+    store.close();
+    const unlocked = (await openStore().unlock(shareId, passphrase))!;
+    expect(unlocked.recovery).toEqual(original.recovery);
+    expect(await openInsightEnvelope(unlocked, envelope, context)).toEqual(evidence);
+  }, 30_000);
+
   it('persists only encrypted recovery material and unlocks after reopening', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     const first = openStore();
