@@ -15,3 +15,4 @@ Open work belongs in [issues](https://github.com/TJ7755/Lacuna/issues).
 - [Study](spec/learn-mode.md), [authoring](spec/cards.md), [course paths](spec/course-management.md),
   [analytics](spec/analytics.md).
 - [Settings, sync and AI](spec/settings.md), [desktop authority](spec/desktop.md).
+- [Gaps reporting boundaries](gaps.md), [school data notice](gaps-school-notice.md).

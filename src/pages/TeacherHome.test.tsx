@@ -74,6 +74,10 @@ it('lists published courses, including archived ones, without pretending to have
   expect(
     screen.getByText(/Reporting requires an enabled pupil build and relay/),
   ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+    'href',
+    'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+  );
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
 

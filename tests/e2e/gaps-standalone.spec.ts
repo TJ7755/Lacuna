@@ -56,6 +56,11 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
     await expect(page.getByText('Daily class reports', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Teacher keys' })).toHaveCount(0);
+    await page.getByText('About daily reports and pupil privacy', { exact: true }).click();
+    await expect(page.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+    );
     await page.screenshot({ path: testInfo.outputPath('gaps-home.png'), fullPage: true });
     await page.getByText('Where do I get a connection file?', { exact: true }).click();
     await expect(page).toHaveTitle('Gaps · Lacuna');
