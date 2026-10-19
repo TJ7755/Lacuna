@@ -1,0 +1,1 @@
+- Added the class insights opt-in for shared courses: an off-by-default, per-device, per-course toggle with end-to-end-worded disclosure, and a weekly scheduler that sends one summary per completed ISO week, catches up only the latest week when a device reopens offline and stops immediately on opt-out; the relay transport itself waits on the #600 envelope decisions (#591).
