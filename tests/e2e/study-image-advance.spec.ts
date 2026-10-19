@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { build } from 'esbuild';
-import { largeStudyImages } from './fixtures/largeStudyImages';
+import { largeStudyImages, type StudyImageFixture } from './fixtures/largeStudyImages';
 
 interface ImageProbeEntry {
   kind: string;
@@ -74,10 +74,17 @@ async function measureAdvance(page: Page, cardId: string) {
   return page.evaluate(() => (window as unknown as ProbeWindow).imageAdvance!);
 }
 
+const directory = join(tmpdir(), 'lacuna-study-images-v1');
+let images: StudyImageFixture[];
+
+test.beforeAll('Generate original-sized JPEG and PNG fixtures', async () => {
+  // Cold image compression must not consume the browser measurement deadline.
+  test.setTimeout(600_000);
+  images = await largeStudyImages(directory);
+});
+
 test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
-  const directory = join(tmpdir(), 'lacuna-study-images-v1');
-  const images = await largeStudyImages(directory);
   await page.route('**/__study_image/*', async (route) => {
     const name = new URL(route.request().url()).pathname.split('/').pop()!;
     await route.fulfill({ contentType: name.endsWith('.png') ? 'image/png' : 'image/jpeg', body: await readFile(join(directory, name)) });
@@ -90,9 +97,9 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
   await page.route('**/__study_fixture', (route) => route.fulfill({ contentType: 'text/html', body: '<title>Study fixture</title>' }));
   await page.goto('/__study_fixture');
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  const fixture = await page.evaluate(async (images) => (window as unknown as {
+  const fixture = await test.step('Seed the image-card library', () => page.evaluate(async (images) => (window as unknown as {
     StudyLoadFixture: { seed(images: unknown): Promise<unknown> };
-  }).StudyLoadFixture.seed(images), images);
+  }).StudyLoadFixture.seed(images), images));
   await page.addInitScript(() => {
     const entries: ImageProbeEntry[] = [];
     Object.assign(window, { imageProbe: entries });
