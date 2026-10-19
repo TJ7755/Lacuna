@@ -11,7 +11,11 @@ import {
   startActiveStudyFlow,
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
-import { DUE_REVIEW_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
+import {
+  DUE_REVIEW_STEP,
+  EXAM_PRACTICE_STEP,
+  type StudyFlowStep,
+} from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
@@ -52,6 +56,7 @@ function CourseStudyFlowInner() {
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
     if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
+    if (searchParams.get('review') === 'exam') return EXAM_PRACTICE_STEP;
     return entryAssessmentId
       ? {
           kind: 'practice',

@@ -10,7 +10,7 @@ import type {
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { availableCards } from '../fsrs/eligibility';
-import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
+import { dueReviewPool, examPracticePool, lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
@@ -24,8 +24,10 @@ export interface CourseSummary {
   mastery: number;
   /** Number of core cards that have never been reviewed. */
   unreviewed: number;
-  /** Due reviews below Practice mastery plus introductions admitted by today's cap. */
+  /** Available scheduled reviews due now across the whole course. */
   eligible: number;
+  /** Optional practice below a future exam target, separate from the due count. */
+  examPracticeEligible: number;
   /** Number of core lessons whose material has been taught. */
   completedLessonCount: number;
   /** Number of core cards reviewed at least once. */
@@ -48,8 +50,9 @@ const EMPTY_SUMMARY_PROGRESS: CourseSummaryProgress = {
 
 /**
  * Per-course summary statistics for dashboard and course-header surfaces.
- * Extension-lesson cards are excluded from card-level figures; cards with a null
- * or missing primaryLessonId are included. The orphaned-card-set guard prevents
+ * Extension-lesson cards are excluded from progress figures; review pools include
+ * the whole course. Cards with a null or missing primaryLessonId are included.
+ * The orphaned-card-set guard prevents
  * cards from leaking into unrelated course summaries.
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
@@ -126,7 +129,8 @@ export function computeCourseSummaries(
       cardCount: coreCards.length,
       mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: dueStudyPool(coreCards, course, examDateContext, now, activity).length,
+      eligible: dueReviewPool(courseCards, course, now).length,
+      examPracticeEligible: examPracticePool(courseCards, course, examDateContext, now).length,
       completedLessonCount,
       reviewedCardCount: coreCards.filter((card) => card.lastReviewed !== null).length,
       reviewedTodayCount: coreCards.filter((card) =>
@@ -146,6 +150,7 @@ export function computeCourseSummaries(
       mastery: 0,
       unreviewed: 0,
       eligible: 0,
+      examPracticeEligible: 0,
       completedLessonCount: 0,
       reviewedCardCount: 0,
       reviewedTodayCount: 0,

@@ -33,7 +33,7 @@ import { listNotes as repositoryListNotes } from './noteRepository';
 import { listSequences as repositoryListSequences } from './sequenceRepository';
 import { listOcclusions as repositoryListOcclusions } from './occlusionRepository';
 import { availableCards } from '../fsrs/eligibility';
-import { dueStudyPool } from '../course/studyPools';
+import { dueReviewPool } from '../course/studyPools';
 import { makeObjectiveContext, progressValue, scoreCard, sortByObjective } from '../fsrs/objective';
 import { isLeech } from '../fsrs/leech';
 import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs/stats';
@@ -144,10 +144,8 @@ export async function getCard(cardId: string): Promise<Card | null> {
 }
 
 /**
- * Cards a study session would serve right now for a course: due reviews below
- * Practice mastery plus new cards admitted under the course's newCardsPerDay cap,
- * ranked by the course's objective (sortByObjective) and capped at `limit` when
- * given. The header's due count (courseDueReviewCards) leaves the new cards out.
+ * Scheduled reviews due now for a course, matching its dashboard and study entry.
+ * Ranked by the course objective and capped at `limit` when given.
  */
 export async function listDueCards(
   courseId: string,
@@ -162,7 +160,7 @@ export async function listDueCards(
     listCourseAssessments(courseId),
   ]);
   const examDateContext = makeExamDateContext(course, lessons, assessments);
-  const servable = dueStudyPool(cards, course, examDateContext, now);
+  const servable = dueReviewPool(cards, course, now);
   const oc = makeObjectiveContext(course, examDateContext);
   const sorted = sortByObjective(servable, oc, now).map((s) => s.card);
   return typeof limit === 'number' ? sorted.slice(0, limit) : sorted;

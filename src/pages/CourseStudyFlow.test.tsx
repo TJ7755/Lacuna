@@ -187,6 +187,8 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    examPracticeEligibleCount: 0,
+    cardCount: 0,
     dueReviewCardIds: new Set(),
     assessmentOptions,
   };
@@ -394,6 +396,13 @@ describe('CourseStudyFlow', () => {
       courseId: 'course-1',
       mode: 'recurring',
     });
+  });
+
+  it('starts optional course-wide exam practice from its query', async () => {
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
+    renderFlow('/course/course-1/study?review=exam');
+    await screen.findByTestId('learn-request');
+    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'exam' });
   });
 
   it('runs due review rather than the next step when the sheet asked for it', async () => {

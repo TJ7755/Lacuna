@@ -144,6 +144,7 @@ function forecast(ifStopped: number, hasExam = true) {
 interface DataOptions {
   summaries?: Record<string, ReturnType<typeof summary>>;
   minutes?: Record<string, number>;
+  forecastCardCounts?: Record<string, number>;
   streak?: number;
   reviewActivity?: Map<string, number[]>;
 }
@@ -166,6 +167,11 @@ function setCourseData(courses: Course[] = [mockCourse], options: DataOptions = 
           byDeck: Object.entries(options.minutes ?? {}).map(([sourceId, minutes]) => ({
             sourceId,
             minutes,
+            dueCount:
+              options.forecastCardCounts?.[sourceId] ??
+              options.summaries?.[sourceId]?.eligible ??
+              0,
+            newCount: 0,
           })),
         },
       ],
@@ -191,6 +197,15 @@ function queueTitles() {
 }
 
 describe('Dashboard', () => {
+  it('estimates due minutes without counting new or later-today cards as due work', () => {
+    setCourseData([mockCourse], {
+      summaries: { [mockCourse.id]: summary(2) },
+      minutes: { [mockCourse.id]: 30 },
+      forecastCardCounts: { [mockCourse.id]: 10 },
+    });
+    render(<Dashboard />);
+    expect(screen.getByLabelText('Today: 2 cards, about 6 minutes')).toBeInTheDocument();
+  });
   it('does not render a sharing announcement on Today', async () => {
     localStorage.clear();
     setCourseData();
@@ -297,7 +312,7 @@ describe('Dashboard', () => {
     expect(link).toHaveTextContent('Update available');
   });
 
-  it('opens the course\'s session plan from Study, as the course page does', () => {
+  it("opens the course's session plan from Study, as the course page does", () => {
     setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
     render(<Dashboard />);
     fireEvent.click(screen.getByRole('button', { name: 'Study Test Course' }));
@@ -305,7 +320,7 @@ describe('Dashboard', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith('/course/course-1/study');
   });
 
-  it('shows Done for today and no Study button once today\'s work is finished', () => {
+  it("shows Done for today and no Study button once today's work is finished", () => {
     setCourseData([mockCourse, course('course-2', 'Busy Course')], {
       summaries: { 'course-1': summary(0, { reviewedTodayCount: 4 }), 'course-2': summary(2) },
     });
@@ -413,8 +428,12 @@ describe('Dashboard', () => {
     expect(await screen.findByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Exam-day forecast' })).toBeInTheDocument();
     const legend = screen.getByRole('list', { name: 'Courses' });
-    expect(within(legend).getByRole('button', { name: 'Test Course On track' })).toBeInTheDocument();
-    expect(within(legend).getByRole('button', { name: 'Second Course Behind' })).toBeInTheDocument();
+    expect(
+      within(legend).getByRole('button', { name: 'Test Course On track' }),
+    ).toBeInTheDocument();
+    expect(
+      within(legend).getByRole('button', { name: 'Second Course Behind' }),
+    ).toBeInTheDocument();
     // Each course's figure appears once, beside its point at today.
     expect(screen.getAllByText('93%')).toHaveLength(1);
     expect(screen.getAllByText('71%')).toHaveLength(1);
@@ -466,13 +485,17 @@ describe('Dashboard', () => {
     const { rerender } = render(<Dashboard />);
 
     // Review history is still loading, so neither the forecast nor the queue shows yet.
-    expect(screen.queryByRole('region', { name: 'Today, most urgent first' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: 'Today, most urgent first' }),
+    ).not.toBeInTheDocument();
 
     mockReviewHistory = [];
     rerender(<Dashboard />);
     const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
+    expect(
+      within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' }),
+    ).toBeInTheDocument();
     expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
@@ -492,7 +515,9 @@ describe('Dashboard', () => {
         vi.advanceTimersByTime(800);
       });
       expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
-      expect(screen.queryByRole('region', { name: 'Forecast and this week' })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('region', { name: 'Forecast and this week' }),
+      ).not.toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

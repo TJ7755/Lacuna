@@ -115,7 +115,10 @@ export function Dashboard() {
         status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
         state: queueState(summaries?.[course.id]),
         due: summaries?.[course.id]?.eligible ?? 0,
-        minutes: slice?.minutes ?? 0,
+        minutes: slice
+          ? (slice.minutes / Math.max(1, slice.dueCount + slice.newCount)) *
+            (summaries?.[course.id]?.eligible ?? 0)
+          : 0,
         href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
         hasPendingUpdate: pending,
       } satisfies QueueRow & { examDate?: number };

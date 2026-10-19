@@ -41,6 +41,8 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    examPracticeEligibleCount: 0,
+    cardCount: 0,
     dueReviewCardIds: new Set(),
     assessmentOptions,
   };
@@ -64,6 +66,14 @@ function practiceState(nodeKey: string, active: boolean): StudyFlowPracticeState
 }
 
 describe('planNextStudyStep', () => {
+  it('offers scheduled reviews before available or locked curriculum', () => {
+    for (const status of ['available', 'locked'] as const) {
+      expect(planNextStudyStep(snapshot([lessonNode('1', status)], [], 1))).toMatchObject({
+        kind: 'step',
+        step: { mode: 'recurring' },
+      });
+    }
+  });
   it('selects an earlier active Practice boundary before a later lesson', () => {
     const nodes = [
       lessonNode('1', 'completed'),

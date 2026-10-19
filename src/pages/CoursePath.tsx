@@ -367,6 +367,15 @@ export function CoursePath() {
   const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
   const dueCardCount = dueReviewCardIds?.size ?? 0;
   const otherWays = [
+    ...((studyFlowSnapshot?.examPracticeEligibleCount ?? 0) > 0
+      ? [
+          {
+            label: 'Practise for exam',
+            description: 'Cards below the exam target, including cards not yet due',
+            onSelect: () => navigate(`/course/${courseId}/study?review=exam`),
+          },
+        ]
+      : []),
     {
       // Named as in the session plan's Other ways, which offers the same session.
       label: 'Only review due cards',
