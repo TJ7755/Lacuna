@@ -96,6 +96,8 @@ async function switchSurface(page: Page, trigger: Locator, opening: 'study' | 'o
 test('the opening course action stays above the closing surface in both directions', async ({
   page,
 }) => {
+  // Keep animation samples at a consistent cadence when the CI compositor drops frames.
+  await page.clock.install();
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
