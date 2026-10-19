@@ -7,22 +7,23 @@ on:
     # Long-lived redesign branches collect stacked work before it reaches master; their
     # pull requests need the same gates or regressions surface only on the final merge.
     branches: [master, main, 'redesign/**']
-    # Retargeting a stacked pull request onto master, or marking a draft ready, must
-    # produce the required checks. `edited` also fires on title and body edits; those
-    # rerun the suite rather than skip it, because skipped jobs would satisfy the
-    # required checks without testing anything.
+    # Keep retargeting checks. Metadata-only edits use separate check names below so
+    # their skipped jobs cannot satisfy branch protection for untested code.
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
 
-# A newer event for the same pull request supersedes any run still in progress.
+# Metadata edits must neither cancel real CI nor publish skipped required contexts.
+# Only an explicit title/body edit without a base change is metadata-only; unknown
+# edited payloads fail closed by running CI.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
 
 jobs:
   documentation:
+    if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -39,6 +40,7 @@ jobs:
   # Documentation-only pull requests skip the heavy jobs. Skipping at job level (never with
   # workflow-level paths filters) keeps every required check reporting, as "skipped".
   changes:
+    if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.scope.outputs.docs_only }}
@@ -60,6 +62,7 @@ jobs:
           fi
 
   typecheck:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}typecheck
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -80,6 +83,7 @@ jobs:
       - run: bun run typecheck
 
   lint:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}lint
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -118,6 +122,9 @@ jobs:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
 
+      - name: Verify CI predicates and browser diagnostics without browsers
+        if: matrix.shard == 1
+        run: node --test scripts/ci-workflow.test.mjs scripts/browser-ci-summary.test.mjs
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/4
 
   test-coverage:
@@ -166,12 +173,14 @@ jobs:
         working-directory: tooling/${{ matrix.workspace }}
 
   test:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}test
     needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
-    if: ${{ always() && !cancelled() }}
+    if: ${{ always() && !cancelled() && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
         env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           DOCUMENTATION_RESULT: ${{ needs.documentation.result }}
           UNIT_RESULT: ${{ needs.test-unit.result }}
@@ -182,7 +191,17 @@ jobs:
         run: |
           # "skipped" passes only when the change scope was classified as documentation-only.
           ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
-          if [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
+          {
+            echo '### Test dependencies'
+            echo "- Scope classification: $SCOPE_RESULT (documentation-only: $DOCS_ONLY)"
+            echo "- Documentation: $DOCUMENTATION_RESULT"
+            echo "- Unit shards: $UNIT_RESULT"
+            echo "- Coverage: $COVERAGE_RESULT"
+            echo "- Handwriting: $HANDWRITING_RESULT"
+            echo "- Python: $PYTHON_RESULT"
+            echo "- macOS Electron: $MACOS_ELECTRON_RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SCOPE_RESULT" != success ] || [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
             echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
             exit 1
           fi
@@ -210,6 +229,7 @@ jobs:
       - run: bun run test
 
   relay:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}relay
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -234,6 +254,7 @@ jobs:
         working-directory: relay
 
   ai-mcp:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}ai-mcp
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -261,6 +282,7 @@ jobs:
         working-directory: tooling/lacuna-ai-mcp
 
   production:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}production
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
@@ -386,12 +408,14 @@ jobs:
 
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}browser-smoke
     needs: [changes, browser-tests, browser-timing, browser-mobile]
-    if: always()
+    if: ${{ always() && !cancelled() && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser jobs
         env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           RESULT: ${{ needs.browser-tests.result }}
           MOBILE_RESULT: ${{ needs.browser-mobile.result }}
@@ -399,10 +423,21 @@ jobs:
         run: |
           # "skipped" passes only when the change scope was classified as documentation-only.
           ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
-          ok "$RESULT" && ok "$TIMING_RESULT" && ok "$MOBILE_RESULT"
+          {
+            echo '### Browser dependencies'
+            echo "- Scope classification: $SCOPE_RESULT (documentation-only: $DOCS_ONLY)"
+            echo "- Functional shards: $RESULT"
+            echo "- Image/sidebar timing: $TIMING_RESULT"
+            echo "- Mobile WebKit: $MOBILE_RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$RESULT" || ! ok "$TIMING_RESULT" || ! ok "$MOBILE_RESULT"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT docs-only=$DOCS_ONLY"
+            exit 1
+          fi
 
 
   electron-ai:
+    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}electron-ai
     needs: changes
     if: needs.changes.outputs.docs_only != 'true'
     runs-on: windows-latest

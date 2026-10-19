@@ -101,13 +101,26 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
-Pull requests that change only documentation skip the heavy CI jobs. The documentation job always
-checks repository file links and changelog fragments; its result feeds the required aggregate test
-gate. Run `bun run docs:check` and `bun run changelog:check` locally after documentation changes.
+Pull requests that change only documentation skip the heavy CI jobs. Each suite run still checks
+repository file links and changelog fragments in the documentation job; its result feeds the
+required aggregate test gate. Run `bun run docs:check` and `bun run changelog:check` locally after
+documentation changes.
 A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
 is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository root. Markdown under
 `src/`, `tooling/` or `public/` is not, because code consumes it. Pushes to master always run everything.
 The rule lives in `scripts/ci-change-scope.mjs`.
+
+Title/body-only PR edits do not run the suite or cancel its current run. Their skipped jobs use
+`metadata-` names for every required CI context, so they cannot approve untested code. Base changes,
+including edits that also change a title/body, retain the ordinary required names and run checks
+against the new merge ref. Unknown edited payloads run CI. Keep these event predicates, check names
+and concurrency rules together when editing `.github/workflows/ci.yml`.
+
+The aggregate test and browser jobs report dependency results in their job summaries. Browser test
+summaries also include each failed attempt's deepest failing step and source location, including
+prerequisite navigation and labelled setup stages. Retries and expected failures are labelled;
+HTML reports, JSON and retained failure traces remain the detailed evidence. The narrow CI predicate,
+gate and no-browser reporter probes run in the first unit shard.
 
 ## Behaviour and review policy
 

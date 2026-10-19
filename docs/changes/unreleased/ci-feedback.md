@@ -1,0 +1,2 @@
+- Keep active CI running during PR title/body edits without publishing skipped required checks; preserve retargeting checks and suppress misleading aggregate failures after workflow cancellation.
+- Report aggregate dependencies and browser failure stages, locations and attempts in CI job summaries while retaining existing test coverage and performance budgets.
