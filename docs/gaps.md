@@ -135,7 +135,28 @@ wording must preserve that distinction before a school trial.
 against the real relay handler with synthetic encrypted evidence. It validates
 destinations and responses, bounds streamed response size, supports cancellation
 and times out after 15 seconds. No application caller installs it or collects
-evidence yet. Persistent retry packets and key lifecycle belong in the next slice.
+evidence yet.
+
+[outbox.ts](../src/insights/outbox.ts) supplies explicit daily delivery through a
+separate pupil-side IndexedDB database, `lacuna.insights.outbox`. It saves only
+the encrypted packet and its routing identity before making a request. Concurrent
+tabs use the same committed slot and ciphertext. A lost reply, reload or failed
+acknowledgement commit retries that packet instead of resealing evidence. An
+accepted upload leaves a durable acknowledgement without the ciphertext, preventing
+a restart from sending again that day. An ambiguous failed upload can still have
+reached the relay; the immutable retry slot resolves that uncertainty.
+
+Consent is checked before collection and again before sending; an explicit abort
+signal can cancel an in-flight request. Opt-out holds a pending packet locally
+without uploading it, so opting back in on the same day cannot silently create a
+duplicate. New packets target only the latest completed UTC day and prune older
+local packets and acknowledgements; missed days are not backfilled. Cleanup runs
+when a new packet is saved, not while the application is closed. Changing the relay
+or teacher key for an existing packet fails rather than redirecting it. The helper
+does not open the learner database and persists no plaintext evidence, teacher
+secret or ownership credential.
+This helper is not installed by either application's startup; course trust,
+evidence collection and key lifecycle remain prerequisites for activation.
 
 ## Trial cost assumptions
 
