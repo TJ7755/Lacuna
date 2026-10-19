@@ -15,12 +15,24 @@ import {
   parseShareManifest,
 } from '../shareLinks/client';
 import { confirmShareImport } from '../shareLinks/linkStore';
+import { findCourseForLineage } from '../db/mergeImport';
+import { parseClassCode } from '../insights/classCode';
+import { getClassRecipient } from '../insights/classKey';
+import type { InsightsRecipient } from '../insights/recipient';
+import { enrolInClass } from '../insights/enrolment';
+import { CourseInsightsSection } from './settings/CourseInsightsSection';
 
 type ShareLinkState =
   | { status: 'loading' }
   | { status: 'unavailable'; message: string }
   | { status: 'incomplete'; message: string }
-  | { status: 'ready'; file: File; shareId: string; expectedLineageId: string };
+  | {
+      status: 'ready';
+      file: File;
+      shareId: string;
+      expectedLineageId: string;
+      recipient?: InsightsRecipient;
+    };
 
 const UNAVAILABLE_MESSAGE =
   'This link is invalid or has been removed. Ask the teacher for a fresh link.';
@@ -38,14 +50,35 @@ export function ShareLinkPage() {
   const { code } = useParams();
   const [state, setState] = useState<ShareLinkState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [joinedCourse, setJoinedCourse] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState('');
+
+  async function join(
+    shareId: string,
+    lineageId: string,
+    courseId: string,
+    recipient?: InsightsRecipient,
+  ) {
+    if (!(await confirmShareImport(shareId, lineageId, courseId)))
+      throw new Error('This imported course does not match the class invitation.');
+    if (recipient) {
+      enrolInClass(courseId, { shareId, lineageId, recipient });
+      setJoinedCourse(courseId);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    setJoinedCourse(null);
+    setJoinError('');
     setState({ status: 'loading' });
     void (async () => {
       let shareId: string;
+      let keyId: string | undefined;
       try {
-        shareId = parseShareCode(code ?? '');
+        if ((code ?? '').startsWith('GAPS1_')) ({ shareId, keyId } = parseClassCode(code!));
+        else shareId = parseShareCode(code ?? '');
       } catch {
         if (!cancelled) setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
         return;
@@ -55,6 +88,7 @@ export function ShareLinkPage() {
           relayUrl: DEFAULT_RELAY_URL,
           shareId,
           slot: 'payload',
+          signal: controller.signal,
         });
         if (cancelled) return;
         if (!result) {
@@ -72,6 +106,7 @@ export function ShareLinkPage() {
             relayUrl: DEFAULT_RELAY_URL,
             shareId,
             slot: 'meta',
+            signal: controller.signal,
           });
         } catch (error) {
           if (cancelled) return;
@@ -95,10 +130,26 @@ export function ShareLinkPage() {
           return;
         }
         if (cancelled) return;
+        const recipient = keyId
+          ? await getClassRecipient({
+              shareId,
+              keyId,
+              relayUrl: DEFAULT_RELAY_URL,
+              signal: controller.signal,
+            })
+          : undefined;
+        if (cancelled) return;
+        if (recipient) {
+          const existing = await findCourseForLineage(expectedLineageId);
+          if (existing && !cancelled)
+            await join(shareId, expectedLineageId, existing.id, recipient);
+        }
+        if (cancelled) return;
         setState({
           status: 'ready',
           shareId,
           expectedLineageId,
+          recipient,
           file: new File([toArrayBuffer(result.bytes)], 'shared-course.lacuna', {
             type: 'application/json',
           }),
@@ -114,6 +165,7 @@ export function ShareLinkPage() {
     })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [code, attempt]);
 
@@ -141,12 +193,25 @@ export function ShareLinkPage() {
             </div>
           </section>
         ) : state.status === 'ready' ? (
-          <SharedCourseImport
-            initialFile={state.file}
-            onImported={(courseId) => {
-              void confirmShareImport(state.shareId, state.expectedLineageId, courseId);
-            }}
-          />
+          <div className="space-y-6">
+            <SharedCourseImport
+              initialFile={state.file}
+              onImported={(courseId) => {
+                void join(state.shareId, state.expectedLineageId, courseId, state.recipient).catch(
+                  (error) =>
+                    setJoinError(
+                      error instanceof Error ? error.message : 'Could not join this class.',
+                    ),
+                );
+              }}
+            />
+            {joinedCourse && <CourseInsightsSection key={joinedCourse} courseId={joinedCourse} />}
+            {joinError && (
+              <p role="alert" className="text-negative">
+                {joinError}
+              </p>
+            )}
+          </div>
         ) : (
           <section className="rounded-3xl bg-surface card-surface p-6">
             <h2 className="mb-1 font-display text-xl">This link is incomplete</h2>
