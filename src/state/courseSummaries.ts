@@ -70,18 +70,9 @@ export function computeCourseSummaries(
   // Build a set of lesson ids that are extensions, for O(1) exclusion.
   const extensionLessonIds = new Set(lessons.filter((l) => l.isExtension).map((l) => l.id));
 
-  // Count non-extension lessons per course.
-  const coreLessonCount: Record<string, number> = {};
-  for (const lesson of lessons) {
-    if (!lesson.isExtension) {
-      coreLessonCount[lesson.courseId] = (coreLessonCount[lesson.courseId] ?? 0) + 1;
-    }
-  }
-
-  // Group cards by courseId; only cards with a courseId are course-eligible.
-  const byCourse: Record<string, Card[]> = {};
+  const cardsByCourse: Record<string, Card[]> = {};
   for (const card of cards) {
-    if (card.courseId) (byCourse[card.courseId] ??= []).push(card);
+    if (card.courseId) (cardsByCourse[card.courseId] ??= []).push(card);
   }
 
   const lessonsByCourse: Record<string, Lesson[]> = {};
@@ -96,7 +87,8 @@ export function computeCourseSummaries(
 
   const summaries: Record<string, CourseSummary> = {};
   for (const course of courses) {
-    const courseCards = byCourse[course.id] ?? [];
+    const courseCards = cardsByCourse[course.id] ?? [];
+    const courseLessons = lessonsByCourse[course.id] ?? [];
     // Exclude cards whose primaryLessonId belongs to an extension lesson.
     // Cards with null or absent primaryLessonId are included.
     const coreCards = courseCards.filter(
@@ -106,7 +98,7 @@ export function computeCourseSummaries(
         !extensionLessonIds.has(c.primaryLessonId),
     );
     const available = availableCards(coreCards, now);
-    const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
+    const coreLessons = courseLessons.filter((lesson) => !lesson.isExtension);
     const completedLessonCount = coreLessons.filter((lesson) =>
       lessonTaught(
         lesson.id,
@@ -118,11 +110,11 @@ export function computeCourseSummaries(
     const today = startOfDay(now, course.timeZone);
     const examDateContext = makeExamDateContext(
       course,
-      lessonsByCourse[course.id] ?? [],
+      courseLessons,
       assessmentsByCourse[course.id] ?? [],
     );
     summaries[course.id] = {
-      lessonCount: coreLessonCount[course.id] ?? 0,
+      lessonCount: coreLessons.length,
       cardCount: coreCards.length,
       mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,

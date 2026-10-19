@@ -1,0 +1,17 @@
+@media (width < 40rem) {
+  .today-course-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .today-course-row > span:not([aria-hidden]),
+  .today-course-row > [data-study-trigger] {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .today-course-row > [data-course-menu-trigger] {
+    grid-column: 3;
+    grid-row: 1;
+  }
+}

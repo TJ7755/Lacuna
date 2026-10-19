@@ -1,6 +1,29 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
+for (const width of [320, 390]) {
+  test(`keeps course names usable with nothing due at ${width}px and Larger text`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => {
+      localStorage.setItem('lacuna-font-scale', '1.3');
+      localStorage.setItem('lacuna-font-scale-user-set', '1');
+    });
+    await enterFreshLacuna(page);
+    const title = page
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true });
+    await expect(title).toBeVisible();
+    expect((await title.boundingBox())!.width).toBeGreaterThan(100);
+    await title.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath('nothing-due-narrow.png') });
+    await title.click();
+    await expect(page).toHaveURL(/#\/course\//);
+  });
+}
+
 for (const exam of [false, true]) {
   test(`keeps due reviews and early practice separate (exam: ${exam})`, async ({
     page,

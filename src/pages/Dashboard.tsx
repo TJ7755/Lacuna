@@ -106,6 +106,8 @@ export function Dashboard() {
     if (!activeCourses) return undefined;
     const unordered = activeCourses.map((course) => {
       const forecast = forecasts?.[course.id];
+      const summary = summaries?.[course.id];
+      const due = summary?.eligible ?? 0;
       const slice = today?.byDeck.find((entry) => entry.sourceId === course.id);
       const pending = pendingUpdateIds?.has(course.id) ?? false;
       return {
@@ -113,12 +115,9 @@ export function Dashboard() {
         name: course.name,
         examDate: course.examDate,
         status: forecast ? forecastStatus(forecast) : course.examDate ? 'ahead' : 'steady',
-        state: queueState(summaries?.[course.id]),
-        due: summaries?.[course.id]?.eligible ?? 0,
-        minutes: slice
-          ? (slice.minutes / Math.max(1, slice.dueCount + slice.newCount)) *
-            (summaries?.[course.id]?.eligible ?? 0)
-          : 0,
+        state: queueState(summary),
+        due,
+        minutes: slice ? (slice.minutes / Math.max(1, slice.dueCount + slice.newCount)) * due : 0,
         href: pending ? `/course/${course.id}/updates` : `/course/${course.id}`,
         hasPendingUpdate: pending,
       } satisfies QueueRow & { examDate?: number };

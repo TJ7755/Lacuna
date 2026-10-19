@@ -124,10 +124,11 @@ function course(id: string, name: string, extra: Partial<Course> = {}): Course {
 
 function summary(
   eligible: number,
-  extra: { cardCount?: number; reviewedTodayCount?: number } = {},
+  extra: { cardCount?: number; reviewedTodayCount?: number; completedLessonCount?: number } = {},
 ) {
   return {
     lessonCount: 2,
+    completedLessonCount: 2,
     cardCount: 10,
     mastery: 0.3,
     unreviewed: 5,
@@ -197,6 +198,15 @@ function queueTitles() {
 }
 
 describe('Dashboard', () => {
+  it('keeps new lessons available without marking their cards as due', () => {
+    setCourseData([course('poems', 'Poems', { examDate: undefined })], {
+      summaries: { poems: summary(0, { completedLessonCount: 0 }) },
+    });
+    render(<Dashboard />);
+    expect(screen.getByLabelText('Today: 0 cards, about 0 minutes')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Study Poems' }));
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('poems');
+  });
   it('estimates due minutes without counting new or later-today cards as due work', () => {
     setCourseData([mockCourse], {
       summaries: { [mockCourse.id]: summary(2) },

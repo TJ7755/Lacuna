@@ -79,7 +79,15 @@ describe('TodayQueue lift', () => {
 describe('TodayQueue navigation', () => {
   it('offers exam practice without claiming future cards are due or showing due minutes', () => {
     expect(
-      queueState({ cardCount: 2, eligible: 0, reviewedTodayCount: 0, examPracticeEligible: 1 }),
+      queueState({
+        cardCount: 2,
+        eligible: 0,
+        reviewedTodayCount: 0,
+        examPracticeEligible: 1,
+        unreviewed: 0,
+        completedLessonCount: 1,
+        lessonCount: 1,
+      }),
     ).toBe('study');
     render(
       <TodayQueue
