@@ -52,8 +52,7 @@ const EMPTY_SUMMARY_PROGRESS: CourseSummaryProgress = {
  * Per-course summary statistics for dashboard and course-header surfaces.
  * Extension-lesson cards are excluded from progress figures; review pools include
  * the whole course. Cards with a null or missing primaryLessonId are included.
- * The orphaned-card-set guard prevents
- * cards from leaking into unrelated course summaries.
+ * Iterating the supplied courses keeps cards from deleted courses out of the result.
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
  * and called in tests without a database. Exam dates are optional for backwards-
@@ -68,8 +67,6 @@ export function computeCourseSummaries(
   progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
   activity?: ReviewActivity,
 ): Record<string, CourseSummary> {
-  const courseById = new Map(courses.map((c) => [c.id, c]));
-
   // Build a set of lesson ids that are extensions, for O(1) exclusion.
   const extensionLessonIds = new Set(lessons.filter((l) => l.isExtension).map((l) => l.id));
 
@@ -138,22 +135,6 @@ export function computeCourseSummaries(
           (timestamp) => timestamp >= today && timestamp <= now,
         ),
       ).length,
-    };
-  }
-
-  // Skip orphaned card sets whose course was removed mid-transaction.
-  for (const [courseId] of Object.entries(byCourse)) {
-    if (!courseById.has(courseId)) continue;
-    summaries[courseId] ??= {
-      lessonCount: coreLessonCount[courseId] ?? 0,
-      cardCount: 0,
-      mastery: 0,
-      unreviewed: 0,
-      eligible: 0,
-      examPracticeEligible: 0,
-      completedLessonCount: 0,
-      reviewedCardCount: 0,
-      reviewedTodayCount: 0,
     };
   }
 
