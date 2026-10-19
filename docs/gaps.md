@@ -230,7 +230,7 @@ Before publication, inspect the generated file list and run:
 
 ```bash
 bun run build:gaps
-PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts
+PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts
 PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
 ```
 
@@ -243,6 +243,8 @@ key setup adds a separate crypto/storage chunk, with a 150 kB combined budget.
 The graph check keeps key storage and crypto out of the initial import closure.
 Browser checks record storage,
 worker/database calls, requests and desktop/mobile screenshots.
+The first functional browser shard also runs the standalone checks in CI, so
+teacher-key recovery participates in the existing required browser gate.
 
 The [retirement worker](../gaps/sw.js) occupies the old `/sw.js` URL so returning
 browsers can update the root-scoped Workbox registration even while it serves an
