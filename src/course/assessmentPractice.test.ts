@@ -149,3 +149,24 @@ describe('assessment Practice resolution', () => {
     expect(pool.map((item) => item.id)).toEqual(['c1']);
   });
 });
+
+it('includes prior knowledge in whole-course assessment practice without inventing exposures', () => {
+  const lessons = [lesson('l1', 0), lesson('l2', 1), lesson('l3', 2)];
+  const cards = [card('old', 'l1'), card('current', 'l2'), card('future', 'l3')];
+  const final = assessment(
+    'final',
+    NOW + 100 * MS_PER_DAY,
+    lessons.map((item) => item.id),
+  );
+  expect(
+    assessmentPracticePool(final, {
+      course: { ...course(), studyStartLessonId: 'l2' },
+      lessons,
+      cards,
+      links: [],
+      exposures: [],
+      reachedLessonIds: new Set(['l1', 'l2']),
+      now: NOW,
+    }).map((item) => item.id),
+  ).toEqual(['old']);
+});

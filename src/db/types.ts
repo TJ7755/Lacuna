@@ -366,6 +366,8 @@ export interface CourseRecord {
   autoPractice: boolean;
   /** Local traversal preference on supported locked copies; never published content. */
   localLessonOrder?: string[];
+  /** Local entry point; earlier material remains in catch-up and assessment practice. */
+  studyStartLessonId?: string;
   /** Minutes-to-clear threshold that triggers practice when the exam is not near. */
   practiceThresholdMinutesFar: number;
   /** Minutes-to-clear threshold that triggers practice when the exam is near. */

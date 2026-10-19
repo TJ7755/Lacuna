@@ -13,6 +13,7 @@ import {
 } from '../state/activeStudyFlow';
 import {
   DUE_REVIEW_STEP,
+  CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
@@ -55,6 +56,7 @@ function CourseStudyFlowInner() {
   const flow = useCourseStudyFlow(courseId, refreshKey);
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
+    if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
     if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
     if (searchParams.get('review') === 'exam') return EXAM_PRACTICE_STEP;
     return entryAssessmentId
@@ -307,6 +309,12 @@ function CourseStudyFlowInner() {
           !planningNextStep &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
+        canReviewEarlierMaterial={!planningNextStep && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0}
+        onReviewEarlierMaterial={() => {
+          if (pomodoro.breakPending) pomodoro.deferBreak();
+          setCurrentStep(CATCH_UP_STEP);
+          setTransition(null);
+        }}
         breakPending={pomodoro.breakPending}
         planningNextStep={planningNextStep}
         onContinue={continueFlow}

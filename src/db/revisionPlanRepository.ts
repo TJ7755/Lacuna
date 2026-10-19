@@ -1,3 +1,4 @@
+import { earlierLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   appendCompletedSession,
@@ -78,6 +79,7 @@ async function resolveCurrentRevisionInput(
       exposures,
       completions,
       reachedLessonIds,
+      priorKnowledgeLessonIds: earlierLessonIds(course.studyStartLessonId, lessons),
       projection,
       now,
     }),

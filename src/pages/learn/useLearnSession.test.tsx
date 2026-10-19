@@ -734,3 +734,68 @@ describe('useLearnSession load identity', () => {
     await waitFor(() => expect(result.current.phase).toBe('question'));
   });
 });
+
+
+it('schedules prior knowledge from real answers without completing earlier lessons', async () => {
+  const course = await createCourse('Three-year science');
+  const earlier = await createLesson(course.id, 'Year one');
+  const current = await createLesson(course.id, 'Year two');
+  const old = await createLessonCard(course.id, earlier.id, 'front_back', 'Known fact?', 'Yes');
+  await createLessonCard(course.id, current.id, 'front_back', 'New fact?', 'No');
+  await updateCourse(course.id, { studyStartLessonId: current.id, newCardsPerDay: 1 });
+  const params = sessionParams({ courseId: course.id, catchUpPractice: true });
+  const { result, unmount } = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() => expect(result.current.current?.id).toBe(old.id));
+    act(() => result.current.reveal());
+    await act(async () => {
+      await result.current.answer(true);
+    });
+    const scheduled = await db.cards.get(old.id);
+    expect(scheduled?.reps).toBeGreaterThan(0);
+    expect(scheduled?.due).not.toBeNull();
+    expect(await db.lessonCardExposures.where('lessonId').equals(earlier.id).count()).toBe(0);
+    expect(await db.lessonCompletions.where('lessonId').equals(earlier.id).count()).toBe(0);
+  } finally {
+    unmount();
+  }
+});
+
+it.each([true, false])(
+  'unlocks the next year without earlier completion (catch-up-only gate %s)',
+  async (hasEarlierGate) => {
+    const course = await createCourse('Three-year science', {
+      unlockMode: 'semi-linear',
+      autoPractice: false,
+    });
+    const earlier = await createLesson(course.id, 'Year one');
+    const current = await createLesson(course.id, 'Year two');
+    const next = await createLesson(course.id, 'Year three');
+    await createLessonCard(course.id, earlier.id, 'front_back', 'Earlier?', 'Yes');
+    const card = await createLessonCard(course.id, current.id, 'front_back', 'Current?', 'Yes');
+    await updateCourse(course.id, { studyStartLessonId: current.id });
+    if (hasEarlierGate) {
+      await createPracticeNode(course.id, {
+        type: 'manual',
+        name: 'Review year one',
+        position: current.orderIndex,
+        lessonIds: [earlier.id],
+      });
+    }
+    const params = sessionParams({ lessonId: current.id, isSimpleMode: true, mode: 'simple' });
+    const { result, unmount } = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(result.current.current?.id).toBe(card.id));
+      act(() => result.current.reveal());
+      await act(async () => {
+        await result.current.answer(true);
+      });
+      await waitFor(() => expect(result.current.phase).toBe('finished'));
+      expect((await db.lessons.get(next.id))?.unlockedAt).toBeDefined();
+      expect(await db.lessonCardExposures.where('lessonId').equals(earlier.id).count()).toBe(0);
+      expect(await db.lessonCompletions.where('lessonId').equals(earlier.id).count()).toBe(0);
+    } finally {
+      unmount();
+    }
+  },
+);

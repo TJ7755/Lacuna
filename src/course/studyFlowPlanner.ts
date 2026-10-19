@@ -1,3 +1,4 @@
+import { earlierLessonIds } from './courseEntry';
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import type { AssessmentPracticeOption } from './assessmentPractice';
 
@@ -6,7 +7,7 @@ export type StudyFlowStep =
   | {
       kind: 'practice';
       nodeKey: string;
-      mode: 'curricular' | 'recurring' | 'assessment' | 'exam';
+      mode: 'curricular' | 'recurring' | 'assessment' | 'exam' | 'catch-up';
       label: string;
       assessmentId?: string;
     }
@@ -29,6 +30,12 @@ export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   label: 'Review due cards',
 };
 
+export const CATCH_UP_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
+  kind: 'practice',
+  nodeKey: 'catch-up',
+  mode: 'catch-up',
+  label: 'Review earlier material',
+};
 export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   kind: 'practice',
   nodeKey: 'exam-practice',
@@ -51,7 +58,18 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
   let hasCurriculum = false;
   let hasLockedLesson = false;
   let step: StudyFlowStep | undefined;
+  const lessons = snapshot.nodes.flatMap((node) =>
+    node.nodeType === 'lesson' ? [node.lesson] : [],
+  );
+  const earlier = earlierLessonIds(snapshot.studyStartLessonId, lessons);
   for (const node of snapshot.nodes) {
+    if (node.nodeType === 'lesson' && earlier.has(node.id)) continue;
+    if (
+      (node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual') &&
+      earlier.size > 0 &&
+      (!node.afterLessonId || earlier.has(node.afterLessonId))
+    )
+      continue;
     if (node.nodeType === 'lesson') {
       hasCurriculum = true;
       if (node.status === 'available') {
@@ -85,6 +103,7 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
     return assessments.length > 0 ? { kind: 'choice', step, assessments } : { kind: 'step', step };
   }
 
+  if ((snapshot.catchUpEligibleCount ?? 0) > 0) return { kind: 'step', step: CATCH_UP_STEP };
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }

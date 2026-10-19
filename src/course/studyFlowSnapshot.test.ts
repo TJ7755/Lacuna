@@ -440,3 +440,59 @@ describe('buildCourseStudyFlowSnapshot', () => {
     });
   });
 });
+
+
+it('plans the joining lesson while independently counting capped earlier exam practice', () => {
+  const c = course({ studyStartLessonId: 'l2', unlockMode: 'semi-linear', newCardsPerDay: 1 });
+  const lessons = [lesson('l1', 0), lesson('l2', 1), lesson('l3', 2)];
+  const cards = [card('old1', 'l1'), card('old2', 'l1'), card('current', 'l2')];
+  const context = makeExamDateContext(c, lessons, []);
+  const nodes = buildPath(c, lessons, [], new Map(), [], 0, 10, NOW);
+  const snapshot = buildCourseStudyFlowSnapshot({
+    course: c,
+    nodes,
+    cards,
+    links: [],
+    exposures: [],
+    examDateContext: context,
+    meanReviewSeconds: 10,
+    now: NOW,
+  });
+  expect(snapshot.catchUpEligibleCount).toBe(1);
+  expect(snapshot.recurringPracticeEligibleCount).toBe(0);
+  expect(planNextStudyStep(snapshot)).toMatchObject({ kind: 'step', step: { lessonId: 'l2' } });
+});
+
+it.each([true, false])(
+  'keeps prior knowledge out of later curricular gates (learn first %s)',
+  (learnFirst) => {
+    const c = course({
+      studyStartLessonId: 'l2',
+      unlockMode: 'semi-linear',
+      learnFirst,
+      practiceThresholdMinutesFar: 0,
+    });
+    const lessons = [lesson('l1', 0), lesson('l2', 1), lesson('l3', 2)];
+    const old = card('old', 'l1');
+    const practice = manual('gate-after-current', 1);
+    const exposures = [exposure('l1', old.id)];
+    const nodes = buildPath(c, lessons, [], new Map(), [practice], 0, 10, NOW, {
+      exposures,
+      lessonCompletions: [{ lessonId: 'l2', completedAt: NOW, updatedAt: NOW }],
+      practiceMilestones: [],
+    });
+    const snapshot = buildCourseStudyFlowSnapshot({
+      course: c,
+      nodes,
+      cards: [old],
+      links: [],
+      exposures,
+      examDateContext: makeExamDateContext(c, lessons, []),
+      meanReviewSeconds: 10,
+      now: NOW,
+    });
+    expect([...snapshot.practiceByKey.get(practice.id)!.scopeLessonIds]).toEqual(['l2']);
+    expect(snapshot.activeManualNodeKeys.size).toBe(0);
+    expect(snapshot.catchUpEligibleCount).toBe(1);
+  },
+);

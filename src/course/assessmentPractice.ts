@@ -14,6 +14,7 @@ import { daysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
 import { lessonCardMembershipForLessons, practiceCardScope } from './studyPools';
+import { earlierLessonIds } from './courseEntry';
 
 export interface AssessmentPracticeOption {
   assessmentId: string;
@@ -73,14 +74,21 @@ export function assessmentPracticePool(
   const now = context.now ?? Date.now();
   const examDate = assessment.examDate;
   if (context.course.archived || examDate === undefined || examDate <= now) return [];
+  const knownCardIds = new Set([
+    ...context.exposures.map((exposure) => exposure.cardId),
+    ...lessonCardMembershipForLessons(
+      earlierLessonIds(context.course.studyStartLessonId, context.lessons),
+      context.cards,
+      context.links,
+    ).map((card) => card.id),
+  ]);
   const reachedAndExposed = practiceCardScope(
-    context.cards,
+    context.cards.filter(
+      (card) => context.course.learnFirst === false || knownCardIds.has(card.id),
+    ),
     context.links,
     context.exposures,
-    {
-      reachedLessonIds: context.reachedLessonIds,
-      requireExposure: context.course.learnFirst !== false,
-    },
+    { reachedLessonIds: context.reachedLessonIds, requireExposure: false },
     now,
     context.course.leechThreshold,
   );
@@ -109,7 +117,6 @@ export function assessmentPracticePool(
       rAtExam(card, examDate, now, decay) < MASTERY_R,
   );
 }
-
 /** Future assessments intersecting this exact Practice context, ordered by date. */
 export function assessmentPracticeOptions(
   context: AssessmentPracticeContext,

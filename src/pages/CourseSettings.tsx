@@ -28,6 +28,7 @@ import { clampRequestRetention } from '../fsrs/params';
 import type { ExamObjective } from '../db/types';
 import { SchedulingFieldsSection } from './settings/SchedulingFieldsSection';
 import { OptimisationPanel } from './settings/OptimisationPanel';
+import { CourseEntrySection } from './settings/CourseEntrySection';
 import { UnlockModeSection } from './settings/UnlockModeSection';
 import { PracticeSettingsSection } from './settings/PracticeSettingsSection';
 import { ExamDatesSection } from './settings/ExamDatesSection';
@@ -215,6 +216,7 @@ export function CourseSettings() {
             }
           >
             <div className="flex flex-col gap-8">
+              <CourseEntrySection courseId={course.id} />
               <UnlockModeSection
                 unlockMode={unlockMode}
                 onUnlockModeChange={(mode) => {
