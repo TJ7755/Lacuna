@@ -42,6 +42,8 @@ for (const width of [1280, 390, 320]) {
     await page.goto('/');
     await expect(page).toHaveTitle('Library · Lacuna');
     await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
+    const homeTarget = await page.getByRole('link', { name: 'Lacuna home' }).boundingBox();
+    expect(homeTarget?.height).toBeGreaterThanOrEqual(44);
     for (const [subject, code] of courses) {
       const button = page.getByRole('button', { name: new RegExp(subject) });
       await button.focus();

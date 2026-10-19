@@ -17,6 +17,7 @@
 
 .library-brand {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 0.5rem;
   color: hsl(var(--ink));
