@@ -1,12 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CourseInsightsSection } from './CourseInsightsSection';
-
-// The opt-in must be off by default and stay pure device-local: no stored value,
-// no send. Copy is pinned to the re-scope wording (#600) so regressions that
-// soften either the seal or the expiry honesty are caught at build time.
-// Presence is asserted rather than pixel visibility: the shared settings card
-// animates itself in, and the component owns the words, not the animation.
+import { enrolInClass } from '../../insights/enrolment';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
@@ -14,6 +9,14 @@ vi.mock('../../state/motionSpeed', () => ({
 }));
 
 const COURSE_ID = 'course-1';
+
+function joinClass() {
+  enrolInClass(COURSE_ID, {
+    shareId: 'a'.repeat(32),
+    lineageId: 'lineage',
+    recipient: { keyId: 'b'.repeat(64), publicKey: 'public' },
+  });
+}
 
 function renderSection() {
   return render(<CourseInsightsSection courseId={COURSE_ID} />);
@@ -31,8 +34,12 @@ describe('CourseInsightsSection', () => {
     expect(screen.getByText('Nothing has been sent yet.')).toBeTruthy();
   });
 
-  it('records the student\u2019s choice per course, per device, on this toggle alone', () => {
+  it('records the student\u2019s choice per course, per device, after entering an identifier and consenting', () => {
+    joinClass();
     const { rerender } = renderSection();
+    fireEvent.change(screen.getByLabelText(/^Name or class identifier/), {
+      target: { value: 'Pupil A' },
+    });
     fireEvent.click(screen.getByRole('switch', { name: 'Share insights with your teacher' }));
     expect(localStorage.getItem(`lacuna.insights.optIn.${COURSE_ID}`)).toBe('on');
 
@@ -47,7 +54,11 @@ describe('CourseInsightsSection', () => {
   });
 
   it('does not leak newly stored choices into another course', () => {
+    joinClass();
     render(<CourseInsightsSection courseId={COURSE_ID} />);
+    fireEvent.change(screen.getByLabelText(/^Name or class identifier/), {
+      target: { value: 'Pupil A' },
+    });
     fireEvent.click(screen.getByRole('switch', { name: 'Share insights with your teacher' }));
 
     expect(localStorage.getItem(`lacuna.insights.optIn.${COURSE_ID}`)).toBe('on');
@@ -62,7 +73,7 @@ describe('CourseInsightsSection', () => {
     expect(screen.getByText(/one report per completed day/i)).toBeTruthy();
     expect(screen.getByText(/expire from the relay after 12 weeks/i)).toBeTruthy();
     expect(screen.getByText(/teacher may keep results they have already received/i)).toBeTruthy();
-    expect(screen.getByText(/Daily delivery is not connected yet/i)).toBeTruthy();
+    expect(screen.getByText(/Daily delivery is not enabled in this build/i)).toBeTruthy();
     expect(screen.queryByText(/anonymous|nothing.*identifies you/i)).not.toBeInTheDocument();
   });
 
@@ -81,4 +92,11 @@ describe('CourseInsightsSection', () => {
       expect(screen.getByText('Nothing has been sent yet.')).toBeTruthy();
     },
   );
+});
+
+it('does not enable reporting through an old toggle without a verified class invitation', () => {
+  localStorage.setItem(`lacuna.insights.optIn.${COURSE_ID}`, 'on');
+  renderSection();
+  expect(screen.getByRole('switch')).toBeDisabled();
+  expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
 });

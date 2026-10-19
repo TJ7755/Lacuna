@@ -245,6 +245,23 @@ export function App() {
     };
   }, [ready]);
 
+  useEffect(() => {
+    if (!ready || import.meta.env.VITE_GAPS_REPORTING_ENABLED !== 'true') return;
+    let active = true;
+    let dispose: (() => void) | undefined;
+    void import('./insights/delivery')
+      .then(({ installInsightsDelivery }) => {
+        if (active) dispose = installInsightsDelivery();
+      })
+      .catch(() => {
+        /* Reporting can be retried from course settings. */
+      });
+    return () => {
+      active = false;
+      dispose?.();
+    };
+  }, [ready]);
+
   if (initError) {
     return (
       <div className="grid h-screen place-items-center bg-surface p-8 text-ink">

@@ -125,3 +125,14 @@ it('navigates to the link importer for a pasted full share link', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
   await waitFor(() => expect(window.location.hash).toBe(`#/s/${code}`));
 });
+
+it('preserves the teacher fingerprint in a pasted Gaps class invitation', async () => {
+  const code = `GAPS1_${'A'.repeat(64)}`;
+  window.location.hash = '#/share';
+  renderImport();
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
+    target: { value: `https://getlacuna.app/#/s/${code}` },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  await waitFor(() => expect(window.location.hash).toBe(`#/s/${code}`));
+});

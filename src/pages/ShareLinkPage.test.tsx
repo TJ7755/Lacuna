@@ -6,6 +6,8 @@ import { db } from '../db/schema';
 import type { Course } from '../db/types';
 import { getCourseIdForShare } from '../shareLinks/linkStore';
 import { ShareLinkPage } from './ShareLinkPage';
+import { formatClassCode } from '../insights/classCode';
+import { createEnrolmentSetting } from '../insights/enrolment';
 
 const SHARE_ID = 'a'.repeat(32);
 const LINEAGE_ID = 'lineage-teacher';
@@ -14,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   notify: vi.fn(),
   decodeFile: vi.fn(),
   importShare: vi.fn(),
+  findCourse: vi.fn(),
+  recipient: vi.fn(),
 }));
 
 vi.mock('html5-qrcode', () => ({
@@ -46,7 +50,11 @@ vi.mock('../db/share', () => ({
   }),
   importSharePayload: mocks.importShare,
 }));
-vi.mock('../db/mergeImport', () => ({ isLineagePayload: () => false }));
+vi.mock('../db/mergeImport', () => ({
+  isLineagePayload: () => false,
+  findCourseForLineage: mocks.findCourse,
+}));
+vi.mock('../insights/classKey', () => ({ getClassRecipient: mocks.recipient }));
 
 function open(code: string) {
   render(
@@ -84,7 +92,8 @@ function stubFetch(payloadResponse: Response, metaResponse?: Response) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: string | URL | Request) => {
-      const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      const href =
+        typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       if (href.includes('/meta')) return metaResponse ?? manifestResponse(LINEAGE_ID);
       return payloadResponse;
     }),
@@ -106,6 +115,37 @@ beforeEach(async () => {
   await db.open();
   mocks.decodeFile.mockResolvedValue({ payload: { v: 2 }, assets: [] });
   mocks.importShare.mockResolvedValue({ courses: 1, cards: 2, courseIds: ['biology'] });
+  mocks.findCourse.mockResolvedValue(null);
+  mocks.recipient.mockReset();
+});
+
+it('joins an existing imported course using a pinned class code, keeping consent off', async () => {
+  const recipient = { keyId: 'b'.repeat(64), publicKey: 'public' };
+  await seedTrackedCourse('biology', LINEAGE_ID);
+  mocks.findCourse.mockResolvedValue({ id: 'biology' });
+  mocks.recipient.mockResolvedValue(recipient);
+  stubFetch(new Response('{}', { status: 200, headers: { ETag: '"1"' } }));
+  open(formatClassCode({ shareId: SHARE_ID, keyId: recipient.keyId }));
+  const toggle = await screen.findByRole('switch', { name: 'Share insights with your teacher' });
+  expect(toggle).toHaveAttribute('aria-checked', 'false');
+  expect(createEnrolmentSetting('biology').read()).toMatchObject({
+    shareId: SHARE_ID,
+    recipient,
+    consentedAt: null,
+  });
+  expect(mocks.recipient).toHaveBeenCalledWith(
+    expect.objectContaining({ shareId: SHARE_ID, keyId: recipient.keyId }),
+  );
+  expect(mocks.importShare).not.toHaveBeenCalled();
+});
+
+it('blocks a class invitation when its teacher key cannot be verified', async () => {
+  mocks.recipient.mockRejectedValue(new Error('Teacher key does not match.'));
+  stubFetch(new Response('{}', { status: 200, headers: { ETag: '"1"' } }));
+  open(formatClassCode({ shareId: SHARE_ID, keyId: 'b'.repeat(64) }));
+  expect(await screen.findByText('This link is unavailable')).toBeInTheDocument();
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+  expect(mocks.importShare).not.toHaveBeenCalled();
 });
 
 it('shows the unavailable state without fetching for an invalid code', async () => {
