@@ -66,6 +66,28 @@ const assistance = z
     occurredAt: z.number().int().nonnegative(),
   })
   .strict();
+const firstMarkingSnapshot = z
+  .object({
+    questionId: z.string().min(1),
+    recordedAt: z.number().int().nonnegative(),
+    source: z.literal('self-mark'),
+    gradeMappingVersion: z.literal('full-good-otherwise-again-v1'),
+    schedulerVersion: z.literal('fsrs-6-question-v1'),
+    schedulerConfigFingerprint: z.string().min(1),
+    schedulerConfig: z
+      .object({
+        w: z.array(z.number().finite()).length(21),
+        requestRetention: z.number().gt(0).lt(1),
+        enable_fuzz: z.literal(false),
+        maximum_interval: z.number().positive(),
+        learning_steps: z.array(z.string()),
+        relearning_steps: z.array(z.string()),
+      })
+      .strict(),
+    decisions: z.array(decision),
+  })
+  .strict();
+
 const attemptSchema = z
   .object({
     id: z.string().min(1),
@@ -91,31 +113,8 @@ const attemptSchema = z
     undoneAt: z.number().int().nonnegative().optional(),
     disputedQuestionIds: z.array(z.string().min(1)).optional(),
     shownQuestionIds: z.array(z.string().min(1)).optional(),
-    firstMarking: z
-      .array(
-        z
-          .object({
-            questionId: z.string().min(1),
-            recordedAt: z.number().int().nonnegative(),
-            source: z.literal('self-mark'),
-            gradeMappingVersion: z.literal('full-good-otherwise-again-v1'),
-            schedulerVersion: z.literal('fsrs-6-question-v1'),
-            schedulerConfigFingerprint: z.string().min(1),
-            schedulerConfig: z
-              .object({
-                w: z.array(z.number().finite()).length(21),
-                requestRetention: z.number().gt(0).lt(1),
-                enable_fuzz: z.literal(false),
-                maximum_interval: z.number().positive(),
-                learning_steps: z.array(z.string()),
-                relearning_steps: z.array(z.string()),
-              })
-              .strict(),
-            decisions: z.array(decision),
-          })
-          .strict(),
-      )
-      .optional(),
+    firstMarking: z.array(firstMarkingSnapshot).optional(),
+    firstMarkingConflicts: z.array(firstMarkingSnapshot).optional(),
     conceptPractice: z
       .object({
         conceptId: z.string().min(1),
@@ -260,15 +259,29 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
     record.revealedQuestionIds.some((id) => !questionIds.has(id))
   )
     throw new Error('Attempt revealed questions do not match its receipt.');
-  if (record.firstMarking) {
-    const seen = new Set<string>();
-    for (const snapshot of record.firstMarking) {
+  if (
+    record.firstMarkingConflicts?.some(
+      (snapshot) => !record.disputedQuestionIds?.includes(snapshot.questionId),
+    )
+  ) {
+    throw new Error('Conflicting first marking must remain disputed.');
+  }
+  if (
+    record.firstMarking &&
+    new Set(record.firstMarking.map((row) => row.questionId)).size !== record.firstMarking.length
+  ) {
+    throw new Error('First marking must have one snapshot per Question.');
+  }
+  if (record.firstMarking || record.firstMarkingConflicts) {
+    for (const snapshot of [
+      ...(record.firstMarking ?? []),
+      ...(record.firstMarkingConflicts ?? []),
+    ]) {
       const questionNodes = [...nodes.values()].filter(
         (node) => node.questionId === snapshot.questionId,
       );
       const ids = new Set(questionNodes.flatMap((node) => node.allocationIds));
       if (
-        seen.has(snapshot.questionId) ||
         !questionNodes.length ||
         questionNodes.some((node) => !submittedNodes.has(node.nodeId)) ||
         snapshot.recordedAt < record.createdAt ||
@@ -288,7 +301,6 @@ export function parseQuestionSetAttemptRecord(value: unknown): QuestionSetAttemp
         questionSchedulerConfigFingerprint(snapshot.schedulerConfig)
       )
         throw new Error('First marking scheduler configuration fingerprint is invalid.');
-      seen.add(snapshot.questionId);
     }
   }
   if (

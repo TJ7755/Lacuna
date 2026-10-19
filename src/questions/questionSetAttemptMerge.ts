@@ -114,7 +114,12 @@ export function mergeQuestionSetAttemptPair(
   if (winner.mode === 'paper' && allSubmitted) {
     winner.revealedQuestionIds = winner.receipt.questions.map((question) => question.id);
   }
-  if (existing.firstMarking || incoming.firstMarking) {
+  if (
+    existing.firstMarking ||
+    incoming.firstMarking ||
+    existing.firstMarkingConflicts ||
+    incoming.firstMarkingConflicts
+  ) {
     const snapshots = new Map<
       string,
       NonNullable<QuestionSetAttemptRecord['firstMarking']>[number]
@@ -123,7 +128,15 @@ export function mergeQuestionSetAttemptPair(
       ...(existing.disputedQuestionIds ?? []),
       ...(incoming.disputedQuestionIds ?? []),
     ]);
-    for (const snapshot of [...(existing.firstMarking ?? []), ...(incoming.firstMarking ?? [])]) {
+    const allSnapshots = new Map(
+      [
+        ...(existing.firstMarking ?? []),
+        ...(incoming.firstMarking ?? []),
+        ...(existing.firstMarkingConflicts ?? []),
+        ...(incoming.firstMarkingConflicts ?? []),
+      ].map((snapshot) => [canonicalJson(snapshot), snapshot]),
+    );
+    for (const snapshot of allSnapshots.values()) {
       const prior = snapshots.get(snapshot.questionId);
       const outcomes = (value: typeof snapshot) =>
         canonicalJson({
@@ -144,7 +157,12 @@ export function mergeQuestionSetAttemptPair(
     winner.firstMarking = [...snapshots.values()].sort((a, b) =>
       a.questionId.localeCompare(b.questionId),
     );
-    if (disputed.size) winner.disputedQuestionIds = [...disputed].sort();
+    if (disputed.size) {
+      winner.disputedQuestionIds = [...disputed].sort();
+      winner.firstMarkingConflicts = [...allSnapshots.values()]
+        .filter((snapshot) => disputed.has(snapshot.questionId))
+        .sort((a, b) => canonicalJson(a).localeCompare(canonicalJson(b)));
+    }
   }
   const undoTimes = [existing.undoneAt, incoming.undoneAt].filter(
     (value): value is number => value !== undefined,

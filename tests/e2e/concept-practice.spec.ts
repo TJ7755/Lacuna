@@ -191,6 +191,8 @@ for (const width of [1280, 390]) {
       await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
       await award(page, '1 / 1');
       await page.locator('[data-attempt-primary]').click();
+      await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
       await award(page, '0 / 1');
       await page.getByRole('button', { name: 'Finish attempt', exact: true }).click();
       await expect(page.getByRole('link', { name: /Back to/ }).last()).toBeVisible();
@@ -273,6 +275,8 @@ for (const width of [1280, 390]) {
       await expect(correction).toBeHidden();
       await award(page, '1 / 2');
       await page.locator('[data-attempt-primary]').click();
+      await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
+      await expect(page.getByRole('radio', { name: 'Not marked', exact: true })).toBeFocused();
       await award(page, '0 / 1');
       await fits(page);
       await capture(page, info, 'partial-marking');

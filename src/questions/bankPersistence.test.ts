@@ -6,6 +6,7 @@ import { createCourse } from '../db/repository';
 import { exportDatabase, importBackup } from '../db/portability';
 import { buildCourseFile, decodeCourseFile, withCourseFileAssets } from '../db/courseFile';
 import { importSharePayload } from '../db/share';
+import { mergeQuestionSetAttemptPair } from './questionSetAttemptMerge';
 import { mergeSnapshots } from '../sync/mergeSnapshots';
 import { decodeSnapshot, encodeSnapshot } from '../sync/snapshot';
 import { exportQuestionBank, importQuestionBank } from './bank';
@@ -60,6 +61,22 @@ it('round-trips lazy families and immutable Concept evidence through backups, re
   expect(deriveConceptApplicationSchedules(await db.questionSetAttempts.toArray())).toEqual(
     schedule,
   );
+  const competing = structuredClone(attempt);
+  competing.revisionId = 'competing-first-mark';
+  competing.firstMarking![0].decisions[0] = {
+    ...competing.firstMarking![0].decisions[0],
+    status: 'awarded',
+    marks: 0,
+  };
+  const conflict = mergeQuestionSetAttemptPair(attempt, competing);
+  await db.questionSetAttempts.put(conflict);
+  await importBackup(await exportDatabase(), 'replace');
+  expect((await db.questionSetAttempts.get(attempt.id))?.firstMarkingConflicts).toEqual(
+    conflict.firstMarkingConflicts,
+  );
+  expect(conflict.firstMarkingConflicts).toHaveLength(2);
+  expect(deriveConceptApplicationSchedules([conflict]).size).toBe(0);
+  await db.questionSetAttempts.put(attempt);
   const undone = await undoConceptPracticeAttempt(attempt.id, attempt.revisionId);
   const latest = await exportDatabase();
   const merged = mergeSnapshots(original, latest);

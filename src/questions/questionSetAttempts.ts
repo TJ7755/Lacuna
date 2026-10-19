@@ -95,6 +95,8 @@ export interface QuestionSetAttemptRecord {
   completedAt?: number;
   /** Absent on legacy attempts: historical marks must never manufacture reviews. */
   firstMarking?: QuestionSetFirstMarking[];
+  /** Competing immutable snapshots are retained for audit and excluded from replay. */
+  firstMarkingConflicts?: QuestionSetFirstMarking[];
   shownQuestionIds?: string[];
   disputedQuestionIds?: string[];
   conceptPractice?: ConceptPracticeSelection;

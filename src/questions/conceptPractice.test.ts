@@ -235,6 +235,9 @@ it('attributes multipart follow-through to its own Concept, without double credi
   const merged = mergeQuestionSetAttemptPair(attempt, competing);
   expect(merged).toEqual(mergeQuestionSetAttemptPair(competing, attempt));
   expect(merged.disputedQuestionIds).toEqual(['multi']);
+  expect(merged.firstMarkingConflicts).toEqual(
+    expect.arrayContaining([...attempt.firstMarking!, ...competing.firstMarking!]),
+  );
   expect(deriveConceptApplicationSchedules([merged]).size).toBe(0);
   expect(mergeQuestionSetAttemptPair(merged, attempt)).toEqual(merged);
 });
