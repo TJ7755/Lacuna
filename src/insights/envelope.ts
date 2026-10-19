@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { PBKDF2_ITERATIONS, PBKDF2_ITERATIONS_MAX, PBKDF2_ITERATIONS_MIN } from '../sync/crypto';
 import { isoDayStartMs } from '../../relay/src/insightsDay';
+import { insightsRecipientSchema as recipientSchema, type InsightsRecipient } from './recipient';
+export type { InsightsRecipient } from './recipient';
 import {
   INSIGHT_MAX_EVIDENCE_BYTES,
   parseInsightEnvelope,
@@ -18,12 +20,6 @@ const base64 = (max: number) =>
     .min(1)
     .max(max)
     .regex(/^[A-Za-z0-9+/]+={0,2}$/);
-const recipientSchema = z
-  .object({
-    keyId: z.string().regex(/^[0-9a-f]{64}$/),
-    publicKey: base64(1024),
-  })
-  .strict();
 const recoverySchema = z
   .object({
     v: z.literal(1),
@@ -35,7 +31,6 @@ const recoverySchema = z
   })
   .strict();
 
-export type InsightsRecipient = z.infer<typeof recipientSchema>;
 export type InsightsRecovery = z.infer<typeof recoverySchema>;
 export interface InsightsOwner {
   recipient: InsightsRecipient;
@@ -200,6 +195,12 @@ async function importRecipient(raw: InsightsRecipient): Promise<CryptoKey> {
   if ((key.algorithm as RsaKeyAlgorithm).modulusLength !== 3072)
     throw new Error('Invalid teacher key size.');
   return key;
+}
+
+export async function validateInsightsRecipient(raw: unknown): Promise<InsightsRecipient> {
+  const recipient = recipientSchema.parse(raw);
+  await importRecipient(recipient);
+  return recipient;
 }
 
 function envelopeAad(context: InsightEnvelopeContext, keyId: string): Uint8Array<ArrayBuffer> {

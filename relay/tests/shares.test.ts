@@ -20,6 +20,49 @@ afterEach(() => {
 });
 
 describe('course share links', () => {
+  it('applies owner authentication, compare-and-swap and size limits to the public teacher slot', async () => {
+    const ctx = await mintedShare();
+    const bytes = new TextEncoder().encode('{"v":1,"recipient":"public-only"}');
+    expect(
+      (await ctx.handle(putShareRequest(ctx.shareId, 'teacher', 'wrong', EMPTY_SLOT_ETAG, bytes)))
+        .status,
+    ).toBe(401);
+    const published = await ctx.handle(
+      putShareRequest(ctx.shareId, 'teacher', ctx.writeToken, EMPTY_SLOT_ETAG, bytes),
+    );
+    expect(published.status).toBe(204);
+    expect(
+      (
+        await ctx.handle(
+          putShareRequest(ctx.shareId, 'teacher', ctx.writeToken, EMPTY_SLOT_ETAG, bytes),
+        )
+      ).status,
+    ).toBe(412);
+    const read = await ctx.handle(getShareRequest(ctx.shareId, 'teacher'));
+    expect(read.status).toBe(200);
+    expect(new Uint8Array(await read.arrayBuffer())).toEqual(bytes);
+    expect(
+      (
+        await ctx.handle(
+          putShareRequest(
+            ctx.shareId,
+            'teacher',
+            ctx.writeToken,
+            published.headers.get('ETag'),
+            new Uint8Array(SHARE_META_MAX_BYTES + 1),
+          ),
+        )
+      ).status,
+    ).toBe(413);
+    const removed = await ctx.handle(
+      new Request(`http://relay.test/shares/${ctx.shareId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${ctx.writeToken}` },
+      }),
+    );
+    expect(removed.status).toBe(204);
+    expect(await ctx.store.get(`shares/${ctx.shareId}/teacher`)).toBeNull();
+  });
   it('mints a share and round-trips PUT/GET on payload and meta slots', async () => {
     const ctx = await mintedShare();
     const payload = new TextEncoder().encode('{"format":"lacuna-course"}');

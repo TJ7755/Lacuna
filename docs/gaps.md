@@ -86,6 +86,24 @@ unused; it is not the encrypted evidence format.
 
 ## Encrypted daily envelopes
 
+Class invitations bind the share id to the complete SHA-256 fingerprint of the
+teacher's encryption key. [classCode.ts](../src/insights/classCode.ts) produces a
+versioned pasteable code and accepts the same code in a share URL. Pupils must
+obtain it directly from their teacher. [classKey.ts](../src/insights/classKey.ts)
+accepts only a matching, valid RSA recipient fetched from the share's public
+`teacher` slot. That slot uses existing owner authentication, compare-and-swap,
+the 8 KiB metadata limit and the share's expiry/deletion rules. Course republishes
+do not overwrite it. Publication refuses a different existing key; key rotation
+remains a separate explicit operation.
+
+The independently supplied fingerprint authenticates the recipient without an
+additional signing key. A key downloaded from the relay alone is insufficient.
+This replaces the proposal's unimplemented public-key signature with an explicit
+invitation trust anchor. It does not protect a pupil who obtains a substituted
+invitation or runs compromised application code. Ordinary course links without a
+pinned teacher fingerprint cannot enrol a device for encrypted reporting.
+These helpers do not install collection or change the relay's activation gate.
+
 [envelope.ts](../src/insights/envelope.ts) is an isolated WebCrypto spike with
 synthetic evidence tests. It generates a per-share RSA-OAEP/SHA-256 3072-bit
 recipient key. Each submission gets a fresh 256-bit AES-GCM key and random
@@ -108,12 +126,10 @@ before returning it or replacing any saved recovery material.
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
 
-This does not yet implement a signing trust root, key publication, desktop
-safeStorage, rotation, evidence schema or teacher decryption UI.
-Do not enable pupil delivery until those pieces and
-independent human security review are complete. Trust in the public key still
-depends on the course-distribution path; encryption alone does not prevent an
-active service from substituting a key. Anyone holding an authentic public key
+Desktop safeStorage, rotation, the evidence schema and teacher decryption UI
+remain separate work. Do not enable pupil delivery until the complete flow and
+independent human security review are complete. The public key is trusted only
+through the teacher invitation described above. Anyone holding an authentic public key
 can encrypt a fabricated result. The spike bounds evidence to 64 KiB and rejects
 unknown fields and versions; this provisional format is not a released contract.
 

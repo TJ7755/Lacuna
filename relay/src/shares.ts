@@ -13,7 +13,7 @@ import { insightDayExpiresAt } from './insightsProtocol.js';
  * downloading the whole course. Knowledge of the share id is the read
  * capability; writes need the bearer token minted with the share.
  */
-export type ShareSlot = 'payload' | 'meta';
+export type ShareSlot = 'payload' | 'meta' | 'teacher';
 
 /**
  * Payloads transit the relay function body, so they must stay well under
@@ -265,7 +265,7 @@ export async function authorizeShare(
 }
 
 const SHARE_CURSOR_KEY = 'maintenance/share-cursor';
-const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta)$/;
+const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher)$/;
 
 /**
  * Reclaim shares untouched for longer than the channel TTL plus grace, so an
@@ -296,7 +296,7 @@ export async function cleanupExpiredShares(
     if (now - latest < CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS) continue;
 
     const fresh = await Promise.all(
-      ['auth', 'payload', 'meta'].map((name) => store.get(`${prefix}${name}`)),
+      ['auth', 'payload', 'meta', 'teacher'].map((name) => store.get(`${prefix}${name}`)),
     );
     if (
       fresh.some(
@@ -330,7 +330,12 @@ function shareSlotKey(id: string, slot: ShareSlot): string {
 
 export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
   const stamps: number[] = [];
-  for (const key of [shareAuthKey(id), shareSlotKey(id, 'payload'), shareSlotKey(id, 'meta')]) {
+  for (const key of [
+    shareAuthKey(id),
+    shareSlotKey(id, 'payload'),
+    shareSlotKey(id, 'meta'),
+    shareSlotKey(id, 'teacher'),
+  ]) {
     const stored = await store.get(key);
     if (stored) stamps.push(stored.uploadedAt);
   }

@@ -88,6 +88,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/teacher/connectionStore.ts',
             'src/components/ui/Field.tsx',
             'src/insights/envelope.ts',
+            'src/insights/recipient.ts',
             'src/insights/ownerStore.ts',
             'src/insights/recoveryFile.ts',
             'src/sync/crypto.ts',
