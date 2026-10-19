@@ -50,5 +50,5 @@ it('reports a rejected connection without claiming success and clears its passph
   fireEvent.submit(screen.getByRole('form', { name: 'Connect a class' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/passphrase/);
   expect(screen.getByLabelText('Connection passphrase')).toHaveValue('');
-  expect(screen.queryByText('Course connected.')).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Class connected\./)).not.toBeInTheDocument();
 });
