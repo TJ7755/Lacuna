@@ -238,7 +238,7 @@ async function putShareSlot(
   return new Response(null, { status: 204, headers });
 }
 
-async function authorizeShare(
+export async function authorizeShare(
   store: BlobStore,
   id: string,
   request: Request,
@@ -295,7 +295,7 @@ export async function cleanupExpiredShares(
     ) {
       continue;
     }
-    await store.del(objects.map((object) => object.key));
+    await sweepShare(store, id);
     sharesDeleted += 1;
     shareObjectsDeleted += objects.length;
   }
@@ -317,7 +317,7 @@ function shareSlotKey(id: string, slot: ShareSlot): string {
   return `shares/${id}/${slot}`;
 }
 
-async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
+export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
   const stamps: number[] = [];
   for (const key of [shareAuthKey(id), shareSlotKey(id, 'payload'), shareSlotKey(id, 'meta')]) {
     const stored = await store.get(key);
@@ -328,7 +328,9 @@ async function shareLive(store: BlobStore, id: string, now: () => number): Promi
 }
 
 async function sweepShare(store: BlobStore, id: string): Promise<void> {
-  const objects = await store.list(`shares/${id}/`);
+  const objects = (
+    await Promise.all([store.list(`shares/${id}/`), store.list(`insights/${id}/`)])
+  ).flat();
   if (objects.length > 0) await store.del(objects.map((object) => object.key));
 }
 
