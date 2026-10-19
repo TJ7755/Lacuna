@@ -20,11 +20,12 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
 
       <SectionCard aria-labelledby="delivery-heading">
         <h2 id="delivery-heading" className="font-display text-2xl">
-          Daily delivery is not connected yet
+          Daily class reports
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
-          Gaps is being prepared for the school trial. No pupil results are collected or displayed
-          here yet.
+          Connect a published course, prepare its teacher key and give pupils the class code.
+          Pupils choose whether to share encrypted results. Delivery requires a trial-enabled
+          Lacuna build; ordinary releases do not send reports yet.
         </p>
       </SectionCard>
 

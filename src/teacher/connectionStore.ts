@@ -23,6 +23,13 @@ export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
   database.version(1).stores({ connections: 'shareId' });
   const connections = database.table<StoredConnection, string>('connections');
   return {
+    async unlock(shareId: string, passphrase: string) {
+      const saved = await connections.get(shareId);
+      if (!saved) return null;
+      const file = parseGapsConnectionFile(JSON.stringify(saved.file));
+      if (file.shareId !== shareId) throw new Error('Invalid saved connection.');
+      return openGapsConnection(file, passphrase);
+    },
     async list(): Promise<ConnectedGapsCourse[]> {
       return (await connections.toArray())
         .map((row) => {

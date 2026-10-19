@@ -26,9 +26,9 @@ keys. It neither opens nor deletes a learner database, clears caches, nor regist
 a service worker from its entry. The retirement worker below unregisters only its
 own legacy Gaps registration. Its unconnected state does not claim that a preserved
 learner library is empty. No reports or participation totals are fabricated.
-The connection adapter is independent of learner storage. The entry does not
-install a pupil transport or collect or decrypt pupil evidence. Report integration
-remains separate from connecting courses and preparing teacher keys.
+The connection adapter is independent of learner storage. The entry does not install a pupil transport or collect evidence. Opening a class
+loads its report panel separately; decryption happens only after explicit unlock
+and a request for a reporting day.
 
 ## Connect a published course
 
@@ -72,10 +72,11 @@ The owner approved the four defaults from [#600](https://github.com/TJ7755/Lacun
 - Recover the teacher key using an offline passphrase and a saved encrypted recovery file.
 - Do not display keyless participation counters in v1.
 
-These are implementation decisions, not claims that the pipeline is live. The
-current opt-in records consent locally; no transport is installed and no pupil
-results leave the device. The teacher entry says this explicitly. Relay expiry
-will not erase results a teacher has already decrypted and retained.
+Ordinary builds leave `VITE_GAPS_REPORTING_ENABLED` unset, so no pupil transport
+is installed. Explicit trial builds set it to `true`; the relay separately requires
+`RELAY_INSIGHTS_ENABLED=1`. Neither gate is activated by connecting a course or
+publishing an invitation. Production activation still requires independent human
+security review. Relay expiry cannot erase results already retained by a teacher.
 
 The trial is one class of about 30 pupils. The owner subsequently chose daily
 delivery. The planner permits one report for the latest completed UTC day and
@@ -126,12 +127,65 @@ before returning it or replacing any saved recovery material.
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
 
-Desktop safeStorage, rotation, the evidence schema and teacher decryption UI
-remain separate work. Do not enable pupil delivery until the complete flow and
+Desktop safeStorage and key rotation remain separate work. Do not enable pupil delivery until the complete flow and
 independent human security review are complete. The public key is trusted only
 through the teacher invitation described above. Anyone holding an authentic public key
 can encrypt a fabricated result. The spike bounds evidence to 64 KiB and rejects
 unknown fields and versions; this provisional format is not a released contract.
+
+## Pupil consent and daily evidence
+
+A verified class invitation enrols only the imported course with the matching
+lineage. [enrolment.ts](../src/insights/enrolment.ts) stores the pinned recipient,
+random course/device identifier and explicit consent locally. Ordinary share links
+and legacy experimental toggle values cannot grant reporting consent. Rejoining
+the same class preserves the choice; replacing its teacher key is refused.
+
+The join page and course settings show the evidence and metadata disclosure before
+consent. The pupil supplies a name or class identifier, which is encrypted with the
+results. It is self-reported and device-specific, not authenticated pupil identity.
+Consent includes yesterday’s recorded activity. Opt-out stops future sends and
+aborts an active upload, but cannot retract a packet already accepted by the relay.
+
+[evidence.ts](../src/insights/evidence.ts) defines a strict versioned plaintext
+schema, separate from the encrypted envelope version. It carries recorded prompts,
+answers, marks, criterion detail, recall, marking method and disputes, bounded to
+200 activities and 64 KiB. [collectEvidence.ts](../src/insights/collectEvidence.ts)
+reads only the selected course and UTC day in a readonly transaction. Undone
+questions, reconstructed legacy Question receipts and incomplete papers are excluded.
+Genuine Card recall history can still be reported without inventing its old prompt.
+Multiple-choice paper answers resolve selected identifiers against the immutable
+receipt's option text; unknown identifiers are explicitly labelled. Unknown/withheld marks stay unknown;
+self-marked paper evidence is labelled. Card recall does not reinterpret an old
+mark scheme from mutable current card text. Text and criterion limits are disclosed,
+and omitted activity is a lower bound, not a completeness claim. Private notes,
+annotations and reflections are excluded.
+
+[delivery.ts](../src/insights/delivery.ts) checks explicit consent, the imported
+course mapping and lineage, then uses the existing durable encrypted outbox.
+Automatic failures back off for an hour on each device; course settings offers an
+explicit retry. At most one accepted packet is sent per latest completed UTC day,
+with no backfill. The application must be open and online. The accepted-day marker
+is updated only after the outbox acknowledgement commits.
+
+## Teacher class workspace
+
+The lazy [class panel](../src/teacher/TeacherClassReports.tsx) explicitly unlocks
+the encrypted connection and teacher key using their respective passphrases. It
+publishes only the public recipient to produce the class code/link. Neither teacher
+credential file belongs in a pupil invitation.
+
+[readReports.ts](../src/teacher/readReports.ts) reads bounded mailbox pages and
+decrypts locally. Repeated cursors/slots and excess pages fail. Unreadable encrypted
+packets are reported separately; they never become zero scores. The screen shows
+one day’s device reports and per-activity/criterion detail, preserving unknown,
+self-marked, shortened and disputed evidence. Missing reports do not imply no study
+or absence. A class-code holder can fabricate results; these are study signals,
+not verified attainment or attendance. There are no keyless participation counters.
+
+Unlocked credentials and decrypted reports remain in panel memory, with no report
+export or plaintext database. Closing the panel aborts requests and drops that
+memory. Opening the teacher site still never opens the learner database.
 
 ## Isolated teacher-key storage
 
@@ -225,8 +279,8 @@ wording must preserve that distinction before a school trial.
 [mailbox.ts](../src/insights/mailbox.ts) is an explicit client transport, tested
 against the real relay handler with synthetic encrypted evidence. It validates
 destinations and responses, bounds streamed response size, supports cancellation
-and times out after 15 seconds. No application caller installs it or collects
-evidence yet.
+and times out after 15 seconds. The gated pupil delivery runtime collects evidence
+and uses this client; the teacher workspace uses its authenticated read path.
 
 [outbox.ts](../src/insights/outbox.ts) supplies explicit daily delivery through a
 separate pupil-side IndexedDB database, `lacuna.insights.outbox`. It saves only
@@ -246,8 +300,9 @@ when a new packet is saved, not while the application is closed. Changing the re
 or teacher key for an existing packet fails rather than redirecting it. The helper
 does not open the learner database and persists no plaintext evidence, teacher
 secret or ownership credential.
-This helper is not installed by either application's startup; course trust,
-evidence collection and key lifecycle remain prerequisites for activation.
+Lacuna installs the delivery runtime only in an explicitly enabled trial build.
+Gaps never installs pupil delivery. Production activation remains gated on the
+complete flow and independent human security review described above.
 
 ## Trial cost assumptions
 
@@ -296,6 +351,7 @@ Before publication, inspect the generated file list and run:
 bun run build:gaps
 PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts
 PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
+VITE_GAPS_REPORTING_ENABLED=true PLAYWRIGHT_WEB_PORT=4337 bun run verify:browser -- --project=chromium gaps-daily-flow.spec.ts
 ```
 
 Stage intended new files before browser verification. `--gaps` selects the teacher
@@ -303,7 +359,7 @@ build/config within the existing isolated runner; each run owns its output, sour
 fingerprint and browser evidence. Without the flag the runner still checks Lacuna.
 The build-graph test fails if learner modules, workers or extra JavaScript entries
 enter Gaps. The initial JavaScript remains bounded to 80 kB compressed; explicit
-key setup adds a separate crypto/storage chunk, with a 150 kB combined budget.
+key setup and class reports load separate chunks, with a 150 kB combined budget.
 The graph check keeps key storage and crypto out of the initial import closure.
 Browser checks record storage,
 worker/database calls, requests and desktop/mobile screenshots.

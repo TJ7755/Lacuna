@@ -2,11 +2,13 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { SectionCard } from '../components/ui/SectionCard';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { TeacherHomeView } from './TeacherHomeView';
+import type { ConnectedGapsCourse } from './connectionStore';
 
 export function StandaloneTeacherHome() {
   const [Courses, setCourses] = useState<ComponentType<{
     onPrepareKey(shareId: string): void;
     keySetupOpen: boolean;
+    onOpenClass(course: ConnectedGapsCourse): void;
   }> | null>(null);
   const [courseError, setCourseError] = useState(false);
   const [Panel, setPanel] = useState<ComponentType<{
@@ -14,6 +16,11 @@ export function StandaloneTeacherHome() {
     initialCourse?: string;
   }> | null>(null);
   const [selectedCourse, setSelectedCourse] = useState('');
+  const [Report, setReport] = useState<ComponentType<{
+    course: ConnectedGapsCourse;
+    onClose(): void;
+  }> | null>(null);
+  const [reportCourse, setReportCourse] = useState<ConnectedGapsCourse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,12 +53,27 @@ export function StandaloneTeacherHome() {
     }
   }
 
+  async function openClass(course: ConnectedGapsCourse) {
+    setLoading(true);
+    setError(null);
+    try {
+      const { TeacherClassReports } = await import('./TeacherClassReports');
+      setReportCourse(course);
+      setReport(() => TeacherClassReports);
+    } catch {
+      setError('Could not open the class workspace. Reload Gaps and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <TeacherHomeView>
       {Courses ? (
         <Courses
           onPrepareKey={(shareId) => void openKeys(shareId)}
-          keySetupOpen={Panel !== null || loading}
+          keySetupOpen={Panel !== null || Report !== null || loading}
+          onOpenClass={(course) => void openClass(course)}
         />
       ) : courseError ? (
         <SectionCard>
@@ -69,7 +91,16 @@ export function StandaloneTeacherHome() {
           Opening courses…
         </p>
       )}
-      {Panel ? (
+      {Report && reportCourse ? (
+        <Report
+          key={reportCourse.shareId}
+          course={reportCourse}
+          onClose={() => {
+            setReport(null);
+            setReportCourse(null);
+          }}
+        />
+      ) : Panel ? (
         <Panel initialCourse={selectedCourse} onClose={() => setPanel(null)} />
       ) : (
         <SectionCard aria-labelledby="teacher-keys-heading">

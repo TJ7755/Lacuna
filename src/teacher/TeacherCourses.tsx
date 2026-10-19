@@ -9,9 +9,11 @@ import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectio
 export function TeacherCourses({
   onPrepareKey,
   keySetupOpen,
+  onOpenClass,
 }: {
   onPrepareKey(shareId: string): void;
   keySetupOpen: boolean;
+  onOpenClass(course: ConnectedGapsCourse): void;
 }) {
   const [courses, setCourses] = useState<ConnectedGapsCourse[] | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -173,10 +175,18 @@ export function TeacherCourses({
                 Ownership checked {new Date(course.verifiedAt).toLocaleDateString('en-GB')}
               </p>
               <p className="mt-4 text-sm text-ink-soft">
-                Results are not enabled for this course yet. Prepare or restore its teacher key to
-                get ready.
+                Prepare or restore its teacher key, then open the class to publish an invitation and
+                read encrypted daily reports.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={buttonClassName('primary')}
+                  disabled={busy || keySetupOpen}
+                  onClick={() => onOpenClass(course)}
+                >
+                  Open class
+                </button>
                 <button
                   type="button"
                   className={buttonClassName('secondary')}
@@ -188,7 +198,7 @@ export function TeacherCourses({
                 <button
                   type="button"
                   className={buttonClassName('ghost')}
-                  disabled={busy}
+                  disabled={busy || keySetupOpen}
                   onClick={() => void forget(course.shareId)}
                 >
                   Remove connection
