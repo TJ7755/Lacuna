@@ -70,6 +70,8 @@ the study preview and between steps, and becomes the next step when no later cur
 ready. Ordinary due reviews retain priority. Earlier Lessons stay outside later curricular Practice gates, including when lesson introductions
 are switched off, so catch-up cannot hold the current class behind a year of earlier work.
 Cards explicitly linked into a current Lesson still belong to its practice scope.
+Automatic catch-up runs at most once per Study flow; further catch-up remains an explicit action.
+Optional extension Lessons are not treated as prior knowledge or added to catch-up automatically.
 
 Full-course assessment coverage and scheduling horizons are retained. Earlier Cards can enter
 assessment Practice and dated revision windows without an in-app Lesson introduction; later

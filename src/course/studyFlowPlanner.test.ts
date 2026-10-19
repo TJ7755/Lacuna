@@ -175,6 +175,19 @@ describe('mid-course entry', () => {
     ).toMatchObject({ kind: 'step', step: { mode: 'catch-up' } });
   });
 
+  it('can finish the flow without automatically repeating completed catch-up', () => {
+    expect(planNextStudyStep({ ...joined(), catchUpEligibleCount: 20,
+      nodes: [nodes[0], nodes[1], lessonNode('2', 'completed'), nodes[3]],
+    }, false)).toEqual({ kind: 'blocked', reason: 'curriculum-locked' });
+  });
+
+  it('starts at the chosen core lesson even when an extension precedes it', () => {
+    const extension = lessonNode('0', 'available');
+    if (extension.nodeType === 'lesson') extension.lesson.isExtension = true;
+    expect(planNextStudyStep({ ...joined(), nodes: [extension, ...nodes] }))
+      .toMatchObject({ kind: 'step', step: { lessonId: '2' } });
+  });
+
   it('keeps due reviews ahead of the joining lesson', () => {
     expect(planNextStudyStep({ ...joined(), recurringPracticeEligibleCount: 1 })).toMatchObject({
       kind: 'step',

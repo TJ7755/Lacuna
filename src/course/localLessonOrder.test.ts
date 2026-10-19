@@ -7,7 +7,7 @@ import { makeExamDateContext } from '../fsrs/examDate';
 import { assessmentPracticePool, currentAssessmentPracticeContext } from './assessmentPractice';
 import { buildCourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import { planNextStudyStep } from './studyFlowPlanner';
-import { earlierCourseLessonIds } from './courseEntry';
+import { earlierCourseLessonIds, earlierLessonIds } from './courseEntry';
 import { createLesson, reorderLessons } from '../db/lessonRepository';
 import { db } from '../db/schema';
 import { buildPath } from './path';
@@ -15,6 +15,17 @@ import { buildPath } from './path';
 beforeEach(async () => {
   await db.delete();
   await db.open();
+});
+
+it('excludes optional extensions from prior knowledge in source and local order', async () => {
+  const course = await createCourse('Science');
+  const extension = await createLesson(course.id, 'Optional', { isExtension: true });
+  const earlier = await createLesson(course.id, 'Earlier');
+  const current = await createLesson(course.id, 'Current');
+  const lessons = [extension, earlier, current];
+  for (const order of [undefined, lessons.map((lesson) => lesson.id)]) {
+    expect(earlierLessonIds(current.id, lessons, order)).toEqual(new Set([earlier.id]));
+  }
 });
 
 it('traverses a locked copy in local order without rewriting publisher indices', async () => {

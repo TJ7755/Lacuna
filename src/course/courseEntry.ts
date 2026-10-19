@@ -9,14 +9,16 @@ export function earlierLessonIds(
   orderedIds?: readonly string[],
 ): Set<string> {
   if (!startLessonId) return new Set();
-  const start = lessons.find((lesson) => lesson.id === startLessonId && !lesson.isExtension);
+  const core = lessons.filter((lesson) => !lesson.isExtension);
+  const start = core.find((lesson) => lesson.id === startLessonId);
   if (start && orderedIds) {
     const index = orderedIds.indexOf(start.id);
-    return new Set(index < 0 ? [] : orderedIds.slice(0, index));
+    const coreIds = new Set(core.map((lesson) => lesson.id));
+    return new Set(index < 0 ? [] : orderedIds.slice(0, index).filter((id) => coreIds.has(id)));
   }
   return new Set(
     start
-      ? lessons.filter((lesson) => lessonOrder(lesson, start) < 0).map((lesson) => lesson.id)
+      ? core.filter((lesson) => lessonOrder(lesson, start) < 0).map((lesson) => lesson.id)
       : [],
   );
 }

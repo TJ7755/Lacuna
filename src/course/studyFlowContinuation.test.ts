@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SessionSummary } from '../components/learn/types';
-import type { StudyFlowDecision, StudyFlowStep } from './studyFlowPlanner';
+import { CATCH_UP_STEP, type StudyFlowDecision, type StudyFlowStep } from './studyFlowPlanner';
 import { continuesWithoutPause } from './studyFlowContinuation';
 
 const practice = (nodeKey: string): StudyFlowStep => ({
@@ -22,6 +22,11 @@ const summary = (overrides: Partial<SessionSummary> = {}): SessionSummary => ({
 const next: StudyFlowDecision = { kind: 'step', step: practice('practice-2') };
 
 describe('continuesWithoutPause', () => {
+  it('never chains catch-up into itself while prior material remains eligible', () => {
+    expect(continuesWithoutPause(CATCH_UP_STEP, summary(), {
+      kind: 'step', step: CATCH_UP_STEP,
+    }, false)).toBe(false);
+  });
   it('continues contiguous Practice after its work is cleared', () => {
     expect(continuesWithoutPause(practice('practice-1'), summary(), next, false)).toBe(true);
   });

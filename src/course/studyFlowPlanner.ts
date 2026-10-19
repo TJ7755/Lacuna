@@ -1,4 +1,3 @@
-import { earlierLessonIds } from './courseEntry';
 import type { CourseStudyFlowSnapshot } from './studyFlowSnapshot';
 import type { AssessmentPracticeOption } from './assessmentPractice';
 
@@ -47,7 +46,10 @@ export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = 
  * Chooses one step from the latest authoritative course snapshot. The caller
  * must rebuild the snapshot after each step rather than retaining a queue.
  */
-export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowDecision {
+export function planNextStudyStep(
+  snapshot: CourseStudyFlowSnapshot,
+  allowCatchUp = true,
+): StudyFlowDecision {
   if (snapshot.archived) return { kind: 'blocked', reason: 'archived' };
   if (snapshot.recurringPracticeEligibleCount > 0) {
     return snapshot.assessmentOptions.length > 0
@@ -58,20 +60,11 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
   let hasCurriculum = false;
   let hasLockedLesson = false;
   let step: StudyFlowStep | undefined;
-  const lessons = snapshot.nodes.flatMap((node) =>
-    node.nodeType === 'lesson' ? [node.lesson] : [],
+  const startIndex = snapshot.nodes.findIndex(
+    (node) => node.nodeType === 'lesson' && !node.lesson.isExtension &&
+      node.id === snapshot.studyStartLessonId,
   );
-  const earlier = earlierLessonIds(
-    snapshot.studyStartLessonId, lessons, lessons.map((lesson) => lesson.id),
-  );
-  for (const node of snapshot.nodes) {
-    if (node.nodeType === 'lesson' && earlier.has(node.id)) continue;
-    if (
-      (node.nodeType === 'practice-auto' || node.nodeType === 'practice-manual') &&
-      earlier.size > 0 &&
-      (!node.afterLessonId || earlier.has(node.afterLessonId))
-    )
-      continue;
+  for (const node of snapshot.nodes.slice(Math.max(0, startIndex))) {
     if (node.nodeType === 'lesson') {
       hasCurriculum = true;
       if (node.status === 'available') {
@@ -105,7 +98,8 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
     return assessments.length > 0 ? { kind: 'choice', step, assessments } : { kind: 'step', step };
   }
 
-  if ((snapshot.catchUpEligibleCount ?? 0) > 0) return { kind: 'step', step: CATCH_UP_STEP };
+  if (allowCatchUp && (snapshot.catchUpEligibleCount ?? 0) > 0)
+    return { kind: 'step', step: CATCH_UP_STEP };
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }

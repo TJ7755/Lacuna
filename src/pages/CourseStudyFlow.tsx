@@ -15,6 +15,7 @@ import {
   DUE_REVIEW_STEP,
   CATCH_UP_STEP,
   EXAM_PRACTICE_STEP,
+  planNextStudyStep,
   type StudyFlowStep,
 } from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
@@ -53,7 +54,15 @@ function CourseStudyFlowInner() {
     courseId ? identityFor(courseId) : null,
   );
   const [refreshKey, setRefreshKey] = useState(0);
-  const flow = useCourseStudyFlow(courseId, refreshKey);
+  const [catchUpFinished, setCatchUpFinished] = useState(false);
+  const plannedFlow = useCourseStudyFlow(courseId, refreshKey);
+  // Reaching a session objective need not empty the broader catch-up pool.
+  const flow = useMemo(
+    () => plannedFlow && catchUpFinished
+      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+      : plannedFlow,
+    [catchUpFinished, plannedFlow],
+  );
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
     if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
@@ -203,6 +212,7 @@ function CourseStudyFlowInner() {
       if (completed.kind === 'practice' && completed.mode === 'assessment') {
         setRevisionSession(null);
       }
+      if (completed.kind === 'practice' && completed.mode === 'catch-up') setCatchUpFinished(true);
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
@@ -294,6 +304,8 @@ function CourseStudyFlowInner() {
     );
   } else if (transition) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
+    const catchUpIsNext = flow?.decision.kind === 'step' &&
+      flow.decision.step.kind === 'practice' && flow.decision.step.mode === 'catch-up';
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step.label
@@ -309,7 +321,9 @@ function CourseStudyFlowInner() {
           !planningNextStep &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
-        canReviewEarlierMaterial={!planningNextStep && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0}
+        canReviewEarlierMaterial={
+          !planningNextStep && !catchUpIsNext && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0
+        }
         onReviewEarlierMaterial={() => {
           if (pomodoro.breakPending) pomodoro.deferBreak();
           setCurrentStep(CATCH_UP_STEP);
