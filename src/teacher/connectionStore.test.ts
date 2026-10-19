@@ -71,6 +71,12 @@ it('verifies ownership, commits only encrypted credentials, and restores its cou
   const store = openStore();
   await store.connect(text, phrase, { fetchImpl });
   await store.connect(text, phrase, { fetchImpl });
+  expect(await store.unlock(owner.shareId, phrase)).toMatchObject({
+    ...owner,
+    courseName: 'GCSE Biology',
+  });
+  await expect(store.unlock(owner.shareId, 'wrong phrase')).rejects.toThrow();
+  expect(await store.unlock('a'.repeat(32), phrase)).toBeNull();
   expect(writes).not.toHaveBeenCalled();
   store.close();
   const courses = await openStore().list();

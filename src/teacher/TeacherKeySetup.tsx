@@ -136,7 +136,7 @@ export function TeacherKeySetup({
             Key fingerprint: <code className="break-all">{prepared.recovery.recipient.keyId}</code>
           </p>
           <p className="text-sm text-ink-soft">
-            The course is not connected yet. No pupil results are collected.
+            Key setup does not start reporting. Pupils must join the class and choose to share results.
           </p>
           <button type="button" onClick={download} className={buttonClassName('primary')}>
             Download encrypted recovery file

@@ -14,11 +14,15 @@ beforeEach(() => {
 
 it('shows saved courses and offers key setup for the selected course', async () => {
   const shareId = 'a'.repeat(32),
-    onPrepareKey = vi.fn();
+    onPrepareKey = vi.fn(),
+    onOpenClass = vi.fn();
   store.list.mockResolvedValue([{ shareId, courseName: 'GCSE Biology', verifiedAt: Date.now() }]);
-  render(<TeacherCourses onPrepareKey={onPrepareKey} keySetupOpen={false} />);
+  render(
+    <TeacherCourses onPrepareKey={onPrepareKey} onOpenClass={onOpenClass} keySetupOpen={false} />,
+  );
   expect(await screen.findByRole('heading', { name: 'GCSE Biology' })).toBeVisible();
-  expect(screen.getByText(/Results are not enabled/)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Open class' }));
+  expect(onOpenClass).toHaveBeenCalledWith(expect.objectContaining({ shareId }));
   fireEvent.click(screen.getByRole('button', { name: 'Set up teacher key' }));
   expect(onPrepareKey).toHaveBeenCalledWith(shareId);
   fireEvent.click(screen.getByRole('button', { name: 'Remove connection' }));
@@ -28,7 +32,7 @@ it('shows saved courses and offers key setup for the selected course', async () 
 
 it('reports a rejected connection without claiming success and clears its passphrase', async () => {
   store.connect.mockRejectedValue(new Error('decrypt failed'));
-  render(<TeacherCourses onPrepareKey={vi.fn()} keySetupOpen={false} />);
+  render(<TeacherCourses onPrepareKey={vi.fn()} onOpenClass={vi.fn()} keySetupOpen={false} />);
   await screen.findByRole('heading', { name: 'No courses connected' });
   fireEvent.click(screen.getByRole('button', { name: 'Connect a course' }));
   fireEvent.change(screen.getByLabelText(/^Encrypted connection file/), {

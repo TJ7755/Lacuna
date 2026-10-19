@@ -80,7 +80,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     await expect(
       restored.getByText(backup.recovery.recipient.keyId, { exact: true }),
     ).toBeVisible();
-    await expect(restored.getByText(/The course is not connected yet/)).toBeVisible();
+    await expect(restored.getByText(/Key setup does not start reporting/)).toBeVisible();
     expect(await restored.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );

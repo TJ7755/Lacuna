@@ -71,9 +71,14 @@ for (const width of [1440, 390]) {
         if (!(await visual.count())) continue;
         await expect(visual).toHaveAttribute('aria-hidden', 'true');
         await expect(visual.locator('button, a, input, [tabindex]')).toHaveCount(0);
-        const textBox = (await section.locator('.landing-feature-copy').boundingBox())!;
-        const visualBox = (await visual.boundingBox())!;
-        if (width === 390) expect(textBox.y + textBox.height).toBeLessThan(visualBox.y);
+        if (width === 390) {
+          // Smooth scrolling can move the viewport between separate position reads.
+          const { copyBottom, visualTop } = await section.evaluate((node) => ({
+            copyBottom: node.querySelector('.landing-feature-copy')!.getBoundingClientRect().bottom,
+            visualTop: node.querySelector('.landing-feature-visual')!.getBoundingClientRect().top,
+          }));
+          expect(copyBottom).toBeLessThan(visualTop);
+        }
       }
       if (width === 1440) {
         const sections = await page.locator('.landing-feature').all();

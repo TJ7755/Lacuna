@@ -63,7 +63,7 @@ it('offers a recovery download only after persistence succeeds without claiming 
   expect(await screen.findByRole('status')).toHaveTextContent('Teacher key saved');
   expect(store.create).toHaveBeenCalledWith(shareId, passphrase);
   expect(screen.getByRole('button', { name: 'Download encrypted recovery file' })).toBeEnabled();
-  expect(screen.getByText(/The course is not connected yet/)).toBeInTheDocument();
+  expect(screen.getByText(/Key setup does not start reporting/)).toBeInTheDocument();
   expect(screen.queryByDisplayValue(passphrase)).not.toBeInTheDocument();
   expect(store.close).toHaveBeenCalled();
 });

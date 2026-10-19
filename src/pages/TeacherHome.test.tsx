@@ -70,7 +70,7 @@ it('lists published courses, including archived ones, without pretending to have
   expect(
     await screen.findByRole('link', { name: 'Manage sharing for Biology' }),
   ).toBeInTheDocument();
-  expect(screen.getByText(/Daily delivery is not connected yet/)).toBeInTheDocument();
+  expect(screen.getByText(/ordinary releases do not send reports yet/)).toBeInTheDocument();
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
 

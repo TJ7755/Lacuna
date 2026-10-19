@@ -54,7 +54,7 @@ for (const width of [1280, 390]) {
     await page.goto('/?source=trial');
     await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
-    await expect(page.getByText('Daily delivery is not connected yet')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Daily class reports' })).toBeVisible();
     await expect(page).toHaveTitle('Gaps · Lacuna');
     await expect(page.getByRole('link', { name: 'Open sharing on the main site' })).toHaveAttribute(
       'href',
