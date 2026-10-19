@@ -149,6 +149,67 @@ for (const width of [1280, 390]) {
   test.describe(`Concept practice at ${width}px`, () => {
     test.use({ viewport: { width, height: width === 390 ? 844 : 800 } });
 
+    test('keeps the long skill chooser inside the library and usable from the keyboard', async ({
+      page,
+    }, info) => {
+      await openLibrary(page);
+      const concepts = Array.from({ length: 7 }, (_, index) => ({
+        id: `long-skill-${index}`,
+        name: `Apply evidence in unfamiliar context ${index}: distinguish the relationship between measurements, their limitations and the assumptions needed for a justified conclusion`,
+      }));
+      await upload(page, {
+        format: 'lacuna-question-bank',
+        schemaVersion: 1,
+        bankId: 'long-skill-demo',
+        bankVersion: 1,
+        courseCode: 'DEMO',
+        concepts,
+        families: [],
+        sets: concepts.map((concept, index) => ({
+          id: `set-${index}`,
+          title: `Evidence ${index}`,
+          source,
+          blueprint: {
+            skill: concept.name,
+            type: 'written',
+            difficulty: 'standard',
+            context: 'Public browser fixture',
+          },
+          questions: [
+            {
+              id: `q-${index}`,
+              prompt: 'Use the evidence to justify a conclusion.',
+              parts: [],
+              answer: {
+                maxMarks: 1,
+                response: { kind: 'written' },
+                prerequisiteConceptIds: [],
+                allocations: [allocation(`a-${index}`, concept.id, 1)],
+              },
+            },
+          ],
+        })),
+      });
+      const chooser = page.getByRole('combobox', { name: 'All skills', exact: true });
+      await expect(chooser).toBeVisible();
+      await chooser.scrollIntoViewIfNeeded();
+      const bounds = await chooser.boundingBox();
+      const main = await page.locator('main').boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(main!.x);
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(main!.x + main!.width);
+      await chooser.focus();
+      // Native typeahead works without a platform popup in headless macOS Chromium.
+      await chooser.press('a');
+      await expect(chooser).not.toHaveValue('');
+      await expect(chooser).toBeFocused();
+      await capture(page, info, 'skills-library');
+      await chooser.press('Tab');
+      const practise = page.getByRole('button', { name: 'Practise selected skill', exact: true });
+      await expect(practise).toBeFocused();
+      await practise.press('Enter');
+      await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
+    });
+
     test('imports a public multipart bank, retains saved work on reimport and requires explicit familiar practice', async ({
       page,
     }, info) => {

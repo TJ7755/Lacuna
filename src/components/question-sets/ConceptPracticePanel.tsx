@@ -155,7 +155,7 @@ export function ConceptPracticePanel({
       <ul className="space-y-2">
         {available.slice(0, 6).map((skill) => (
           <li key={skill.conceptId} className="flex flex-wrap items-center justify-between gap-2">
-            <span>
+            <span className="min-w-0 flex-1 basis-48">
               {skill.name}{' '}
               <span className="text-sm text-ink-soft">
                 · {skill.due ? 'due' : 'scheduled'} · {skill.unseenCount} unseen
@@ -163,20 +163,21 @@ export function ConceptPracticePanel({
             </span>
             <Button
               size="sm"
+              aria-label={`Practise ${skill.name}`}
               disabled={disabled || busy}
               onClick={() => void start(skill.conceptId)}
             >
-              Practise {skill.name}
+              Practise
             </Button>
           </li>
         ))}
       </ul>
       {available.length > 6 && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label>
+          <label className="min-w-0 max-w-full flex-1 basis-64">
             All skills
             <select
-              className="ml-2 max-w-full rounded border border-line bg-surface p-2"
+              className="mt-1 block w-full min-w-0 max-w-full rounded border border-line bg-surface p-2"
               value={selectedSkill}
               onChange={(event) => setSelectedSkill(event.target.value)}
               disabled={disabled || busy}
