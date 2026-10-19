@@ -24,7 +24,9 @@ for (const viewport of [
     await expect(page).toHaveURL('https://gaps.getlacuna.app/?source=trial#/teach');
     await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No published courses here' })).toBeVisible();
-    await expect(page.getByText(/ordinary releases do not send reports yet/)).toBeVisible();
+    await page.getByText('About daily reports and pupil privacy', { exact: true }).click();
+    await expect(page.getByText(/Reporting requires an enabled pupil build and relay/)).toBeVisible();
+    await expect(page.getByText(/Pupils choose whether to share results/)).toBeVisible();
     await expect(page.locator('.landing-page')).toHaveCount(0);
     await expect(page).toHaveTitle('Gaps · Lacuna');
     expect(
