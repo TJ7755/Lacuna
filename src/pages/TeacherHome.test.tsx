@@ -46,6 +46,10 @@ it('distinguishes loading from no published courses', () => {
   );
   expect(screen.getByRole('heading', { name: 'No published courses here' })).toBeInTheDocument();
   expect(screen.getByText(/separate browser storage/i)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open Lacuna' })).toHaveAttribute(
+    'href',
+    'https://getlacuna.app/#/',
+  );
 });
 
 it('lists published courses, including archived ones, without pretending to have pupil data', async () => {

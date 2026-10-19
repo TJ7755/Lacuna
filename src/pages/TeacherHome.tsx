@@ -19,8 +19,8 @@ export function TeacherHome() {
           <h1 className={PAGE_TITLE}>Gaps</h1>
           <p className="mt-3 text-lg text-ink-soft">Class insights from the courses you share.</p>
         </div>
-        <a href="https://getlacuna.app/#/teach" className={buttonClassName('secondary')}>
-          Open on the main site
+        <a href="https://getlacuna.app/#/" className={buttonClassName('secondary')}>
+          Open Lacuna
         </a>
       </header>
 
@@ -46,7 +46,7 @@ export function TeacherHome() {
           <p className="mt-3 max-w-2xl text-sm text-ink-soft">
             Gaps and the main Lacuna site have separate browser storage. Courses and teacher
             credentials from the main site or desktop app do not appear here automatically. For
-            existing courses, open Class insights where you published them.
+            existing courses, keep using the browser or desktop app where you published them.
           </p>
           <a
             href="https://getlacuna.app/#/share"
