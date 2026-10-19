@@ -121,7 +121,7 @@ const DesktopUpdateController = lazy(() => import('./components/updates/DesktopU
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
   // through first-run setup, including course sharing and material import.
-  return /^#\/(?:welcome|landing|download|share|import|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
+  return /^#\/(?:welcome|landing|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
 }
 
 export function App() {

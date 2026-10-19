@@ -54,10 +54,15 @@ describe('CourseInsightsSection', () => {
     expect(localStorage.getItem('lacuna.insights.optIn.other-course')).toBeNull();
   });
 
-  it('states the end-to-end seal and the expiry honesty of the re-scoped disclosure', () => {
+  it('discloses teacher visibility, service metadata, retention and the disconnected transport', () => {
     renderSection();
-    expect(screen.getByText(/sealed end-to-end/i)).toBeTruthy();
-    expect(screen.getByText(/cannot be deleted one item at a time/i)).toBeTruthy();
+    expect(screen.getByText(/only your teacher can read/i)).toBeTruthy();
+    expect(screen.getByText(/may be able to recognise you/i)).toBeTruthy();
+    expect(screen.getByText(/submission time and packet size/i)).toBeTruthy();
+    expect(screen.getByText(/expire from the relay after 12 weeks/i)).toBeTruthy();
+    expect(screen.getByText(/teacher may keep results they have already received/i)).toBeTruthy();
+    expect(screen.getByText(/Weekly delivery is not connected yet/i)).toBeTruthy();
+    expect(screen.queryByText(/anonymous|nothing.*identifies you/i)).not.toBeInTheDocument();
   });
 
   it('shows the recorded week once a completed send exists', () => {
