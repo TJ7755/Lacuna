@@ -120,6 +120,20 @@ the passphrase alone remains insufficient.
 
 ## Relay mailbox and delivery seam
 
+The existing share owner credential can be checked with `HEAD /shares/:shareId`.
+It returns 204 for a live share and matching bearer token, 401 for a missing or
+wrong credential, 404 for a missing share or invalid identifier, and 410 for an
+expired share whose credential still matches. These responses have no body and
+use `Cache-Control: no-store`. Verification never writes, refreshes expiry or
+deletes stored objects. This is a point-in-time check, not a lasting grant:
+subsequent owner requests must still authenticate. A public share link alone
+does not prove ownership.
+
+[verifyShareOwner](../src/shareLinks/client.ts) performs that check with a
+15-second timeout and optional cancellation. It sends the credential only in the
+bearer header, refuses redirects and accepts only 204. Neither application calls
+it yet; the encrypted course connection hand-off remains separate work.
+
 [insights.ts](../relay/src/insights.ts) implements the opaque mailbox behind
 `RELAY_INSIGHTS_ENABLED=1`. Without that explicit setting, insight routes return
 503 before accessing storage. No deployment or environment change should turn it
