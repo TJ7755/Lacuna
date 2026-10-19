@@ -148,14 +148,13 @@ async function writeEnvelope(
   // A failed or duplicate concurrent upload can consume a reservation. Do not
   // refund across writers: conservative capacity is safer than exceeding the cap.
   const written = await store.put(key, body, { exclusive: true });
-  if (
-    !(await shareLive(store, id, now)) ||
-    !(await store.get(`shares/${id}/auth`)) ||
-    now() >= insightDayExpiresAt(day)
-  ) {
+  if (!(await store.get(`shares/${id}/auth`)) || now() >= insightDayExpiresAt(day)) {
     await store.del([key]);
     return reply(request, 404, { error: 'not found' });
   }
+  // Another exact retry may already have acknowledged this slot. Public-share
+  // expiry cannot roll it back; retain ambiguous writes until their own deadline.
+  if (!(await shareLive(store, id, now))) return reply(request, 404, { error: 'not found' });
   if (!written.ok) {
     const other = await store.get(key);
     return reply(request, other && Buffer.from(other.body).equals(body) ? 204 : 409);

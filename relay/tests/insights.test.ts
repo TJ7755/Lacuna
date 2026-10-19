@@ -118,7 +118,7 @@ describe('encrypted insight mailbox', () => {
     expect((await f.read()).status).toBe(404);
   });
 
-  it('does not accept an in-flight report when the public share expires during its write', async () => {
+  it('does not acknowledge an in-flight report when the public share expires during its write', async () => {
     const createdAt = start - CHANNEL_TTL_MS + 1;
     const f = await fixture(createdAt);
     const put = f.store.put.bind(f.store);
@@ -128,8 +128,49 @@ describe('encrypted insight mailbox', () => {
       return result;
     });
     expect((await f.put()).status).toBe(404);
+    // Retaining an ambiguous packet is safer than deleting a slot another retry saw.
+    expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toHaveLength(1);
+    await cleanupExpiredInsights(f.store, insightDayExpiresAt(day));
     expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toEqual([]);
   });
+
+  it.each(['before', 'after'] as const)(
+    'preserves an acknowledged report when a retry pauses %s writing across public expiry',
+    async (pause) => {
+      const f = await fixture(start - CHANNEL_TTL_MS + 1);
+      const put = f.store.put.bind(f.store);
+      let release!: () => void;
+      let arrived!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        arrived = resolve;
+      });
+      const resume = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let first = true;
+      vi.spyOn(f.store, 'put').mockImplementation(async (key, ...args) => {
+        if (key.includes('/envelopes/') && first) {
+          first = false;
+          const result = pause === 'after' ? await put(key, ...args) : undefined;
+          arrived();
+          await resume;
+          return result ?? put(key, ...args);
+        }
+        return put(key, ...args);
+      });
+      const pending = f.put();
+      await paused;
+      expect((await f.put()).status).toBe(204);
+      f.setTime(start + 2);
+      release();
+      expect((await pending).status).toBe(404);
+      const page = await f.read();
+      expect(page.status).toBe(200);
+      expect(await page.json()).toMatchObject({
+        envelopes: [{ slotId: 'c'.repeat(32), envelope: f.envelope }],
+      });
+    },
+  );
 
   it('is disabled without touching storage until explicitly enabled', async () => {
     vi.unstubAllEnvs();
