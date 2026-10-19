@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test';
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'library', 'Run verify:browser -- --library');
 
 const courses = [
-  ['Biology', 'b70862112bb460441bee556d6233fc03'],
-  ['Chemistry', 'dae0b77f89538747f2ff6be3e9e94ff2'],
-  ['Physics', '48a155196a8e72bb6737affc063daf43'],
-  ['History', '2a768569a7b0a8987b3ef8a12947aae5'],
+  ['Biology', '6fb10671c70197caeff8616f80697ac5'],
+  ['Chemistry', 'daf16de2b88b97fa236948559ede6c4c'],
+  ['Physics', '52fe58acd2fcece40c1d10ffbf08276f'],
+  ['History', '31178fee8489ffcf1748c1dc5c570be5'],
 ] as const;
 
 for (const width of [1280, 390, 320]) {
@@ -42,9 +42,7 @@ for (const width of [1280, 390, 320]) {
     await page.goto('/');
     await expect(page).toHaveTitle('Library · Lacuna');
     await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
-    await expect(
-      page.getByText('Curated courses, authored and reviewed for your syllabus.'),
-    ).toBeVisible();
+    await expect(page.getByText('Curated courses, built around your syllabus.')).toBeVisible();
     await expect(page.getByText('Preview course', { exact: true })).toHaveCount(0);
     await expect(page.getByText('Previewing course', { exact: true })).toHaveCount(0);
     const homeTarget = await page.getByRole('link', { name: 'Lacuna home' }).boundingBox();
@@ -61,11 +59,15 @@ for (const width of [1280, 390, 320]) {
         'href',
         `https://getlacuna.app/#/s/${code}`,
       );
+      await expect(page.getByText('Review in progress', { exact: true })).toBeVisible();
+      await expect(
+        page.getByText('Earlier terms reviewed; newer additions are awaiting review.'),
+      ).toBeVisible();
     }
     await page.getByRole('button', { name: /Biology/ }).click();
-    await expect(page.getByText('1,308', { exact: true })).toBeVisible();
-    await expect(page.getByText('163', { exact: true })).toBeVisible();
-    await expect(page.getByText('Reviewed', { exact: true })).toBeVisible();
+    await expect(page.getByText('1,322', { exact: true })).toBeVisible();
+    await expect(page.getByText('164', { exact: true })).toBeVisible();
+    await expect(page.getByText('Reviewed', { exact: true })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('library-light.png'), fullPage: true });
     await page.getByRole('button', { name: 'Use dark theme' }).click();
     await expect(page.locator('html')).toHaveClass('dark');
@@ -91,6 +93,6 @@ for (const width of [1280, 390, 320]) {
       }),
     );
     await page.getByRole('link', { name: 'Open in Lacuna', exact: true }).click();
-    await expect(page).toHaveURL('https://getlacuna.app/#/s/b70862112bb460441bee556d6233fc03');
+    await expect(page).toHaveURL('https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5');
   });
 }
