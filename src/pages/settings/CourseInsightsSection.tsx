@@ -76,6 +76,14 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
           inside the encrypted report. Another device can appear separately. This is not verified
           pupil identity.
         </p>
+        <a
+          href="https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          School data notice
+        </a>
       </div>
       {enrolment && (
         <div className="mb-4">

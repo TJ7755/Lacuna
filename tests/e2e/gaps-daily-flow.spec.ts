@@ -160,6 +160,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await pupil.getByRole('button', { name: 'Add to my courses' }).click();
     const consent = pupil.getByRole('switch', { name: 'Share insights with your teacher' });
     await expect(consent).toHaveAttribute('aria-checked', 'false');
+    await expect(pupil.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+    );
     expect(uploads).toHaveLength(0);
     await pupil.getByLabel(/^Name or class identifier/).fill('Pupil A');
     await consent.click();

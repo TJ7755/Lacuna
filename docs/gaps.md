@@ -70,6 +70,12 @@ Connecting a course does not publish its teacher key or enable pupil results.
 
 ## Agreed trial boundaries
 
+The forwardable [school data notice](gaps-school-notice.md) describes the current web
+trial in plain English. The [teacher walkthrough](gaps-teacher-walkthrough.md) is ready
+for a later human session; the [operations procedure](gaps-trial-operations.md) covers
+delivery, maintenance and spending. These are not claims that a teacher usability
+session or the first real class's follow-through has been completed.
+
 The owner approved the four defaults from [#600](https://github.com/TJ7755/Lacuna/issues/600):
 
 - An opaque relay mailbox retains submissions for 12 weeks; fetching does not delete them.

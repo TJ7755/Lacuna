@@ -34,6 +34,14 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
               Names are self-reported, not verified identity or attendance. The relay retains
               encrypted reports for 84 days; physical deletion may lag.
             </p>
+            <a
+              href="https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              School data notice
+            </a>
           </div>
         </details>
       </footer>
