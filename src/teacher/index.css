@@ -2,6 +2,9 @@
 
 /* The Gaps root sits outside src, so scan only the view and its shared primitives. */
 @source './TeacherHomeView.tsx';
+@source './StandaloneTeacherHome.tsx';
+@source './TeacherKeySetup.tsx';
+@source '../components/ui/Field.tsx';
 @source '../components/course/coursePageLayout.ts';
 @source '../components/ui/SectionCard.tsx';
 @source '../components/ui/buttonStyles.ts';

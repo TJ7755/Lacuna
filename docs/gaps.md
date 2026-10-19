@@ -8,7 +8,8 @@ primitives/styles and explicitly selected local fonts/icon. It has no learner
 routes, database migration/seed, backup/sync/AI startup, study service worker,
 manifest or precache. A small, origin-guarded retirement worker replaces the old
 study worker at `/sw.js`; it is not a teacher offline cache. Only the shared theme
-preference is read/written locally.
+preference is read/written locally on startup. Teacher-key setup loads separately
+on request and accesses isolated storage only after an explicit key action.
 
 The view's `children` prop is the seam: the existing in-app
 [TeacherHome](../src/pages/TeacherHome.tsx) supplies locally published-course
@@ -18,15 +19,15 @@ The standalone build has one view and needs no router. Bare roots and old hashes
 such as `#/teach` and `#/share` render that same honest, unconnected teacher view;
 its sharing link explicitly opens the main site.
 
-Standalone Gaps does not migrate or inspect existing courses, credentials or private
+Standalone Gaps does not automatically migrate or inspect existing courses, credentials or private
 keys. It neither opens nor deletes a learner database, clears caches, nor registers
 a service worker from its entry. The retirement worker below unregisters only its
 own legacy Gaps registration. Its unconnected state does not claim that a preserved
 learner library is empty. No reports or participation totals are fabricated.
 A future teacher data adapter must be independent of learner storage and supply
 verified teacher content at this seam. Reuse the existing insights envelope/mailbox
-modules when needed; this entry does not install a transport or implement key
-recovery, evidence collection or decryption. Those integration steps remain separate.
+modules when needed; this entry does not install a transport or collect or decrypt
+pupil evidence. Those integration steps remain separate from local key preparation.
 
 ## Agreed trial boundaries
 
@@ -73,8 +74,8 @@ before returning it or replacing any saved recovery material.
 The daily envelope uses experimental version 2; the unactivated weekly version 1
 is rejected. Recovery files remain version 1 because their format has not changed.
 
-This does not yet implement a signing trust root, key publication, a key-management
-UI, desktop safeStorage, rotation, evidence schema or teacher decryption UI.
+This does not yet implement a signing trust root, key publication, desktop
+safeStorage, rotation, evidence schema or teacher decryption UI.
 Do not enable pupil delivery until those pieces and
 independent human security review are complete. Trust in the public key still
 depends on the course-distribution path; encryption alone does not prevent an
@@ -97,10 +98,25 @@ passphrase and course binding before writing; restoring another key over an
 existing course is refused, preserving access to old envelopes. Rotation requires
 a separate explicit workflow. Restoring the same key is permitted.
 
-This helper is not installed by either application yet. It does not migrate
-share write credentials between origins, publish a public key, provide an offline
-recovery-file download or stop the browser clearing local storage. Keep the
-encrypted recovery file separately; the passphrase alone remains insufficient.
+The standalone [key setup](../src/teacher/TeacherKeySetup.tsx) uses this helper after
+an explicit create, restore or saved-file action. Its code and database are not
+opened with the preparation screen. New keys require a matching passphrase of at
+least 16 characters; recovery still accepts earlier passphrases so an existing
+key is not locked out by the new-key rule. The view retains only the encrypted
+recovery material after each operation and clears passphrase inputs.
+
+The [recovery-file wrapper](../src/insights/recoveryFile.ts) carries its public
+course binding and encrypted recovery material in a bounded, versioned JSON file.
+Unknown fields, unsupported versions and excessive work factors are refused
+before recovery. The passphrase and raw private key are not included. Import
+verifies the passphrase, course binding and key pair before saving; a wrong file
+cannot silently replace a different saved key. An existing saved key can produce
+another recovery download after explicit passphrase verification.
+
+Preparing a key does not prove ownership or connect a course. This workflow does
+not migrate share write credentials between origins, publish a public key or stop
+the browser clearing local storage. Keep the encrypted recovery file separately;
+the passphrase alone remains insufficient.
 
 ## Relay mailbox and delivery seam
 
@@ -214,7 +230,7 @@ Before publication, inspect the generated file list and run:
 
 ```bash
 bun run build:gaps
-PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts
+PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts
 PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
 ```
 
@@ -222,8 +238,13 @@ Stage intended new files before browser verification. `--gaps` selects the teach
 build/config within the existing isolated runner; each run owns its output, source
 fingerprint and browser evidence. Without the flag the runner still checks Lacuna.
 The build-graph test fails if learner modules, workers or extra JavaScript entries
-enter Gaps, and limits compressed JavaScript to 80 kB. Browser checks record storage,
+enter Gaps. The initial JavaScript remains bounded to 80 kB compressed; explicit
+key setup adds a separate crypto/storage chunk, with a 150 kB combined budget.
+The graph check keeps key storage and crypto out of the initial import closure.
+Browser checks record storage,
 worker/database calls, requests and desktop/mobile screenshots.
+The first functional browser shard also runs the standalone checks in CI, so
+teacher-key recovery participates in the existing required browser gate.
 
 The [retirement worker](../gaps/sw.js) occupies the old `/sw.js` URL so returning
 browsers can update the root-scoped Workbox registration even while it serves an
