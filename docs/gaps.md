@@ -34,7 +34,7 @@ and a request for a reporting day.
 
 On the device that published a course, open its Share page and choose **Connect
 to Gaps**. Export a connection file protected by a passphrase of at least 16
-characters. In Gaps, choose **Connect a course**, select that file and enter its
+characters. In Gaps, choose **Connect a class**, select that file and enter its
 passphrase. Only the shared trial relay, `https://relay.getlacuna.app`, is supported.
 The teacher policy permits connections to that relay alone.
 
@@ -56,8 +56,13 @@ The plaintext token exists transiently to make the owner request; it is not save
 The course list shows when ownership was checked, not a promise of permanent access.
 Reloading lists local connections without sending credentials again.
 
-Course cards open key setup with the selected course already filled in.
-**Remove connection** deletes only that browser's connection record: it preserves
+The class list opens one workspace at a time. A newly connected class offers setup with its
+course already selected; returning classes open the explicit unlock form. Setup keeps recovery
+separate from the connection file and rejects recovery files belonging to another selected class.
+After requesting a recovery download, the teacher can continue to unlock and share a class code.
+Returning unlocked classes start on daily results; sharing is a separate visible task. Closing
+the workspace returns to the class list and clears its transient secrets and plaintext.
+**Remove connection** asks for confirmation, then deletes only that browser's connection record: it preserves
 the published share, teacher key, recovery files and pupil copies. A saved connection
 file can be imported again with fresh verification. Clearing browser storage still
 requires the separate teacher-key recovery file and passphrase to recover that key.

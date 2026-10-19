@@ -88,7 +88,7 @@ test('retires a cached Gaps learner shell without touching courses or the main-s
   });
   // The retirement worker refreshes only teacher home after dropping the old fetch handler.
   await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
   await expect(page).toHaveTitle('Gaps · Lacuna');
   expect(
     await page.evaluate(async () => ({

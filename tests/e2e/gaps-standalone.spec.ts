@@ -53,8 +53,11 @@ for (const width of [1280, 390]) {
 
     await page.goto('/?source=trial');
     await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Daily class reports' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
+    await expect(page.getByText('Daily class reports', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Teacher keys' })).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('gaps-home.png'), fullPage: true });
+    await page.getByText('Where do I get a connection file?', { exact: true }).click();
     await expect(page).toHaveTitle('Gaps · Lacuna');
     await expect(page.getByRole('link', { name: 'Open sharing on the main site' })).toHaveAttribute(
       'href',
@@ -135,7 +138,7 @@ test('standalone Gaps leaves existing learner storage intact', async ({ page }) 
   });
   await page.goto('/#/teach');
   await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
   expect(
     await page.evaluate(async () => ({
       databases: await indexedDB.databases(),
@@ -149,5 +152,29 @@ test('standalone Gaps leaves existing learner storage intact', async ({ page }) 
     ],
     cache: 'Keep this course',
     seeded: '1',
+  });
+});
+
+test('uses Lacuna’s saved light theme and supports keyboard connection entry at 390px', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
+  await page.goto('/');
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Connect a class' }).click();
+  await expect(page.getByLabel(/^Encrypted connection file/)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+  await page.getByLabel('Connection passphrase', { exact: true }).fill('temporary phrase');
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.getByRole('form', { name: 'Connect a class' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Connect a class' }).click();
+  await expect(page.getByLabel('Connection passphrase', { exact: true })).toHaveValue('');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('gaps-connect-light-mobile.png'),
+    fullPage: true,
   });
 });

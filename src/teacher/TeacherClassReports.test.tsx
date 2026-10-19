@@ -32,7 +32,7 @@ async function unlock() {
   fireEvent.change(screen.getByLabelText('Connection passphrase'), {
     target: { value: 'connection secret' },
   });
-  fireEvent.change(screen.getByLabelText('Teacher-key passphrase'), {
+  fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
     target: { value: 'teacher secret' },
   });
   fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
@@ -100,4 +100,42 @@ it('aborts a read and drops unlocked credentials when the panel unmounts', async
   expect(signal?.aborted).toBe(false);
   panel.unmount();
   expect(signal?.aborted).toBe(true);
+});
+
+it('offers an actionable setup route when this browser has no saved teacher key', async () => {
+  mocks.unlockKey.mockResolvedValue(null);
+  const onPrepareKey = vi.fn();
+  render(<TeacherClassReports course={course} onClose={vi.fn()} onPrepareKey={onPrepareKey} />);
+  fireEvent.change(screen.getByLabelText('Connection passphrase'), {
+    target: { value: 'connection secret' },
+  });
+  fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+    target: { value: 'teacher secret' },
+  });
+  fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
+  await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: 'Set up or restore this class' }));
+  expect(onPrepareKey).toHaveBeenCalledOnce();
+  expect(mocks.read).not.toHaveBeenCalled();
+});
+
+it('keeps invitations behind an explicit choice while daily results are the returning task', async () => {
+  render(<TeacherClassReports course={course} onClose={vi.fn()} />);
+  await unlock();
+  expect(screen.queryByRole('button', { name: 'Publish class code' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Share class code' }));
+  expect(screen.getByRole('button', { name: 'Publish class code' })).toBeVisible();
+  expect(mocks.read).not.toHaveBeenCalled();
+});
+
+it('explains an empty reporting day and offers the class code without claiming no study', async () => {
+  mocks.read.mockResolvedValue({ unreadable: 0, reports: [] });
+  render(<TeacherClassReports course={course} onClose={vi.fn()} />);
+  await unlock();
+  fireEvent.click(screen.getByRole('button', { name: 'Read reports' }));
+  expect(await screen.findByText(/This does not mean pupils have not studied/)).toBeVisible();
+  expect(screen.getByText(/Try another day or read again later/)).toBeVisible();
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  fireEvent.click(screen.getAllByRole('button', { name: 'Share class code' })[1]);
+  expect(screen.getByRole('button', { name: 'Publish class code' })).toBeVisible();
 });

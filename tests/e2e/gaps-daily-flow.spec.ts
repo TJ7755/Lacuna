@@ -100,7 +100,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       await route.fulfill({ body: await readFile(file), contentType: type });
     });
     await teacher.goto('https://gaps.getlacuna.app/');
-    await teacher.getByRole('button', { name: 'Connect a course' }).click();
+    await teacher.getByRole('button', { name: 'Connect a class' }).click();
     await teacher.getByLabel(/^Encrypted connection file/).setInputFiles({
       name: 'gaps-course.json',
       mimeType: 'application/json',
@@ -108,22 +108,48 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
     await teacher.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
     await teacher.getByRole('button', { name: 'Verify and connect' }).click();
-    await teacher.getByRole('button', { name: 'Set up teacher key', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Set up class', exact: true }).click();
     await teacher.getByLabel(/^Recovery passphrase/).fill(phrase);
     await teacher.getByLabel('Repeat recovery passphrase').fill(phrase);
-    await teacher.getByRole('button', { name: 'Prepare teacher key', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Protect class reports', exact: true }).click();
     await expect(
-      teacher.getByText('Teacher key saved. Download its recovery file.', { exact: true }),
+      teacher.getByText('Class protected. Download its recovery file.', { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
-    await teacher.getByRole('button', { name: 'Close key setup' }).click();
-    await teacher.getByRole('button', { name: 'Open class', exact: true }).click();
+    await teacher.screenshot({ path: testInfo.outputPath('class-protected.png'), fullPage: true });
+    const recoveryDownload = teacher.waitForEvent('download');
+    await teacher.getByRole('button', { name: 'Download encrypted recovery file' }).click();
+    await recoveryDownload;
+    await teacher.getByRole('button', { name: 'Continue to class' }).click();
+    await expect(teacher.getByRole('heading', { name: 'Your classes' })).toHaveCount(0);
+    await expect(teacher.getByRole('heading', { name: 'Class biology' })).toBeFocused();
+    await teacher.screenshot({ path: testInfo.outputPath('unlock-class.png'), fullPage: true });
     await teacher.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
-    await teacher.getByLabel('Teacher-key passphrase', { exact: true }).fill(phrase);
+    await teacher.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
     await teacher.getByRole('button', { name: 'Unlock class', exact: true }).click();
     await teacher.getByRole('button', { name: 'Publish class code', exact: true }).click();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^GAPS1_[A-Za-z0-9_-]{64}$/);
     expect(await relay.get(`shares/${shareId}/teacher`)).not.toBeNull();
+    await teacher.screenshot({ path: testInfo.outputPath('share-class-code.png'), fullPage: true });
+    await teacher.getByRole('button', { name: 'Daily results', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Read reports', exact: true }).click();
+    await expect(
+      teacher.getByText(`No readable reports received for ${day}.`, { exact: true }),
+    ).toBeVisible();
+    await expect(teacher.getByText(/This does not mean pupils have not studied/)).toBeVisible();
+    await teacher.screenshot({
+      path: testInfo.outputPath('empty-results-desktop.png'),
+      fullPage: true,
+    });
+    await teacher.setViewportSize({ width: 390, height: 844 });
+    expect(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await teacher.screenshot({
+      path: testInfo.outputPath('empty-results-mobile.png'),
+      fullPage: true,
+    });
+    await teacher.setViewportSize({ width: 1280, height: 900 });
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
     await enterFreshLacuna(pupil);
@@ -154,6 +180,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     expect(uploads[0]).not.toContain('Pupil A');
     expect(uploads[0]).not.toContain('Membrane');
     await pupil.screenshot({ path: testInfo.outputPath('pupil-consent.png'), fullPage: true });
+    await teacher.getByRole('button', { name: 'Daily results', exact: true }).click();
     await teacher.getByRole('button', { name: 'Read reports', exact: true }).click();
     await teacher.getByRole('button', { name: /Pupil A.*recorded activities/ }).click();
     await expect(teacher.getByRole('region', { name: 'Evidence for Pupil A' })).toContainText(
