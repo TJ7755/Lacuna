@@ -17,6 +17,7 @@ export default defineConfig({
     ? [
         ['line'],
         ['github'],
+        [fileURLToPath(new URL('../../scripts/browser-ci-summary.mjs', import.meta.url))],
         ['html', { open: 'never' }],
         [
           'json',

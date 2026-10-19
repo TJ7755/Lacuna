@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { devNull } from 'node:os';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
@@ -447,7 +448,8 @@ describe('release configuration', () => {
     expect(gate).toContain(
       'needs: [changes, browser-tests, browser-timing, browser-mobile]',
     );
-    expect(gate).toMatch(/^ {4}if: always\(\)$/m);
+    expect(gate).toContain('if: ${{ always() && !cancelled() && (');
+    expect(gate).toContain('SCOPE_RESULT: ${{ needs.changes.result }}');
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
     expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
     expect(gate).toContain('TIMING_RESULT: ${{ needs.browser-timing.result }}');
@@ -455,7 +457,9 @@ describe('release configuration', () => {
     expect(gate).toContain(
       'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
     );
-    expect(gate).toContain('ok "$RESULT" && ok "$TIMING_RESULT" && ok "$MOBILE_RESULT"');
+    expect(gate).toContain(
+      'if [ "$SCOPE_RESULT" != success ] || ! ok "$RESULT" || ! ok "$TIMING_RESULT" || ! ok "$MOBILE_RESULT"; then',
+    );
   });
 
   it('fails the browser gate when any required browser job fails or is unexpectedly skipped', () => {
@@ -465,6 +469,7 @@ describe('release configuration', () => {
     const gate = workflow.jobs['browser-smoke'].steps.find((step) => step.run)?.run;
     expect(gate).toBeDefined();
     const success = {
+      SCOPE_RESULT: 'success',
       DOCS_ONLY: 'false',
       RESULT: 'success',
       TIMING_RESULT: 'success',
@@ -472,17 +477,18 @@ describe('release configuration', () => {
     };
     const runGate = (env: Record<string, string>) =>
       spawnSync('sh', ['-c', gate!], {
-        env: { ...process.env, ...env },
+        env: { ...process.env, ...env, GITHUB_STEP_SUMMARY: devNull },
       }).status;
     expect(runGate(success)).toBe(0);
-    for (const job of ['RESULT', 'TIMING_RESULT', 'MOBILE_RESULT']) {
-      for (const result of ['failure', 'cancelled', 'skipped']) {
+    for (const job of ['SCOPE_RESULT', 'RESULT', 'TIMING_RESULT', 'MOBILE_RESULT']) {
+      for (const result of ['failure', 'cancelled', 'skipped', '']) {
         expect(runGate({ ...success, [job]: result })).not.toBe(0);
       }
       expect(runGate({ ...success, DOCS_ONLY: 'true', [job]: 'failure' })).not.toBe(0);
     }
     expect(
       runGate({
+        SCOPE_RESULT: 'success',
         DOCS_ONLY: 'true',
         RESULT: 'skipped',
         TIMING_RESULT: 'skipped',
@@ -517,7 +523,10 @@ describe('release configuration', () => {
 
   it('requires documentation checks even when heavy jobs are skipped', () => {
     const documentation = workflowJob(ciWorkflow, 'documentation');
-    expect(documentation).not.toContain('if:');
+    expect(documentation).toContain(
+      "if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}",
+    );
+    expect(documentation).not.toContain('docs_only');
     expect(documentation).toContain('node scripts/check-docs.mjs');
     expect(documentation).toContain('node scripts/changelog.mjs --check');
     expect(documentation).not.toContain('bun install');
@@ -526,6 +535,8 @@ describe('release configuration', () => {
     const run = blockScalarValues(gate, 'run').join('\n');
     const environment = {
       ...process.env,
+      GITHUB_STEP_SUMMARY: devNull,
+      SCOPE_RESULT: 'success',
       DOCS_ONLY: 'true',
       UNIT_RESULT: 'skipped',
       COVERAGE_RESULT: 'skipped',
