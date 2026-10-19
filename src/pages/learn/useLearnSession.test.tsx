@@ -736,17 +736,21 @@ describe('useLearnSession load identity', () => {
 });
 
 
-it('schedules prior knowledge from real answers without completing earlier lessons', async () => {
-  const course = await createCourse('Three-year science');
+it.each([true, false])('schedules prior knowledge without earlier completion (introductions %s)', async (learnFirst) => {
+  const course = await createCourse('Three-year science', { learnFirst });
   const earlier = await createLesson(course.id, 'Year one');
   const current = await createLesson(course.id, 'Year two');
   const old = await createLessonCard(course.id, earlier.id, 'front_back', 'Known fact?', 'Yes');
+  const second = await createLessonCard(course.id, earlier.id, 'front_back', 'Another fact?', 'Yes');
+  await db.cards.update(old.id, { createdAt: 1 });
+  await db.cards.update(second.id, { createdAt: 2 });
   await createLessonCard(course.id, current.id, 'front_back', 'New fact?', 'No');
   await updateCourse(course.id, { studyStartLessonId: current.id, newCardsPerDay: 1 });
   const params = sessionParams({ courseId: course.id, catchUpPractice: true });
   const { result, unmount } = renderHook(() => useLearnSession(params));
   try {
     await waitFor(() => expect(result.current.current?.id).toBe(old.id));
+    expect(result.current.sessionCardIds).toEqual([old.id]);
     act(() => result.current.reveal());
     await act(async () => {
       await result.current.answer(true);
@@ -758,6 +762,14 @@ it('schedules prior knowledge from real answers without completing earlier lesso
     expect(await db.lessonCompletions.where('lessonId').equals(earlier.id).count()).toBe(0);
   } finally {
     unmount();
+  }
+  const resumedParams = sessionParams({ courseId: course.id, catchUpPractice: true });
+  const resumed = renderHook(() => useLearnSession(resumedParams));
+  try {
+    await waitFor(() => expect(resumed.result.current.phase).not.toBe('loading'));
+    expect(resumed.result.current.sessionCardIds).not.toContain(second.id);
+  } finally {
+    resumed.unmount();
   }
 });
 

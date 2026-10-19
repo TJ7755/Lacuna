@@ -61,6 +61,8 @@ stops without recording completion or mastery. Semi-linear access opens the sele
 and the earlier catch-up prefix; later Lessons retain their usual completion gates. Linear
 release dates still apply. Resetting to the beginning does not erase real progress or unlocks.
 A removed starting Lesson falls back to the beginning.
+The entry prefix follows the resolved path order, including a supported local lesson order;
+assessment coverage and published lesson indices remain unchanged.
 
 **Review earlier material** offers the earlier Cards directly through FSRS, using real recall
 answers and the shared daily new-Card allowance. It is available beside the current Lesson in

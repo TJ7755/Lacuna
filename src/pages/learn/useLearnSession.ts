@@ -1,4 +1,5 @@
 import { catchUpPracticePool } from '../../course/catchUpPractice';
+import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
@@ -584,6 +585,7 @@ export function useLearnSession({
     );
     const currentPractice = currentAssessmentPracticeContext({
       course,
+      practiceNodes,
       assessments: examDates,
       lessons,
       cards: courseCards,
@@ -1237,6 +1239,7 @@ export function useLearnSession({
         cards = catchUpPractice
           ? catchUpPracticePool(
               allCards, course, courseLessons, courseLinks, examDateContext, reachedLessonIds,
+              Date.now(), earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
             )
           : standaloneSimple
           ? course.archived
@@ -1249,6 +1252,8 @@ export function useLearnSession({
                 )
               : assessmentPracticePool(selectedAssessment, {
                   course,
+                  assessments: examDates,
+                  practiceNodes: manualNodes,
                   lessons: courseLessons,
                   cards: allCards,
                   links: courseLinks,

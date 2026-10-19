@@ -61,7 +61,9 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
   const lessons = snapshot.nodes.flatMap((node) =>
     node.nodeType === 'lesson' ? [node.lesson] : [],
   );
-  const earlier = earlierLessonIds(snapshot.studyStartLessonId, lessons);
+  const earlier = earlierLessonIds(
+    snapshot.studyStartLessonId, lessons, lessons.map((lesson) => lesson.id),
+  );
   for (const node of snapshot.nodes) {
     if (node.nodeType === 'lesson' && earlier.has(node.id)) continue;
     if (

@@ -1,4 +1,4 @@
-import { earlierLessonIds } from '../course/courseEntry';
+import { earlierCourseLessonIds } from '../course/courseEntry';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   appendCompletedSession,
@@ -31,6 +31,7 @@ const revisionPlanInputTables = [
   db.lessonCardExposures,
   db.lessonCompletions,
   db.reviewHistory,
+  db.practiceNodes,
 ];
 
 async function resolveCurrentRevisionInput(
@@ -44,7 +45,7 @@ async function resolveCurrentRevisionInput(
     throw new Error('Steady retention does not have an assessment deadline.');
   }
   const datedAssessment = assessment as CourseAssessment & { examDate: number };
-  const [courseRecord, assessments, lessons, cards, links, exposures, completions] =
+  const [courseRecord, assessments, lessons, cards, links, exposures, completions, practiceNodes] =
     await Promise.all([
       db.courses.get(assessment.courseId),
       db.courseAssessments.where('courseId').equals(assessment.courseId).toArray(),
@@ -53,6 +54,7 @@ async function resolveCurrentRevisionInput(
       db.lessonCards.toArray(),
       db.lessonCardExposures.toArray(),
       db.lessonCompletions.toArray(),
+      db.practiceNodes.where('courseId').equals(assessment.courseId).toArray(),
     ]);
   if (!courseRecord) throw new Error('The course could not be found.');
   const hydratedCards = await hydrateCardsWithHistory(cards);
@@ -68,6 +70,7 @@ async function resolveCurrentRevisionInput(
     links,
     exposures,
     now,
+    practiceNodes,
   }).reachedLessonIds;
   return {
     assessment: datedAssessment,
@@ -79,7 +82,7 @@ async function resolveCurrentRevisionInput(
       exposures,
       completions,
       reachedLessonIds,
-      priorKnowledgeLessonIds: earlierLessonIds(course.studyStartLessonId, lessons),
+      priorKnowledgeLessonIds: earlierCourseLessonIds(course, lessons, assessments, practiceNodes),
       projection,
       now,
     }),

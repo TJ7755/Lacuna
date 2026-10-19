@@ -13,9 +13,10 @@ export function catchUpPracticePool(
   examDateContext: ExamDateContext,
   reachedLessonIds: ReadonlySet<string>,
   now: number = Date.now(),
+  priorKnowledgeLessonIds: ReadonlySet<string> = earlierLessonIds(course.studyStartLessonId, lessons),
 ): Card[] {
   const earlier = new Set(
-    [...earlierLessonIds(course.studyStartLessonId, lessons)].filter((id) =>
+    [...priorKnowledgeLessonIds].filter((id) =>
       reachedLessonIds.has(id),
     ),
   );
