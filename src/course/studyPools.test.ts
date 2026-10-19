@@ -11,6 +11,7 @@ import { makeExamDateContext } from '../fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import {
   eligiblePracticePool,
+  examPracticePool,
   directLessonStudyPool,
   lessonCardMembership,
   lessonStudyPool,
@@ -94,6 +95,45 @@ const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
   cardId,
   taughtAt: NOW,
   updatedAt: NOW,
+});
+
+it('uses scheduled dates instead of a maintenance mastery target without an exam', () => {
+  const course = { ...makeCourse(), examDate: undefined };
+  const due = makeCard('due', null, { state: 2, due: NOW, stability: 1e8, lastReviewed: NOW });
+  const future = { ...due, id: 'future', due: NOW + MS_PER_DAY, stability: 0.1 };
+  const context = makeExamDateContext(course, [], []);
+  expect(eligiblePracticePool([due, future], course, context, NOW)).toEqual([due]);
+  expect(examPracticePool([due, future], course, context, NOW)).toEqual([]);
+});
+
+it('offers early practice only for an applicable future exam, respecting availability', () => {
+  const course = { ...makeCourse(), examDate: undefined };
+  const lessons = [makeLesson('l1', NOW + MS_PER_DAY), makeLesson('l2', NOW - 1)];
+  const weak = makeCard('weak', 'l1', {
+    state: 2,
+    due: NOW + MS_PER_DAY,
+    stability: 0.1,
+    lastReviewed: NOW,
+  });
+  const cards = [
+    weak,
+    { ...weak, id: 'secure', stability: 1e8 },
+    { ...weak, id: 'past', primaryLessonId: 'l2' },
+    { ...weak, id: 'no-exam', primaryLessonId: null },
+    { ...weak, id: 'suspended', suspended: true },
+    { ...weak, id: 'buried', buriedUntil: NOW + MS_PER_DAY },
+  ];
+  expect(examPracticePool(cards, course, makeExamDateContext(course, lessons, []), NOW)).toEqual([
+    weak,
+  ]);
+  expect(
+    examPracticePool(
+      cards,
+      { ...course, archived: true },
+      makeExamDateContext(course, lessons, []),
+      NOW,
+    ),
+  ).toEqual([]);
 });
 
 describe('lesson pools', () => {

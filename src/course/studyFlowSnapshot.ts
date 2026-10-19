@@ -11,6 +11,7 @@ import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
   dueReviewPool,
+  examPracticePool,
   eligiblePracticePool,
   practiceCardScope,
   practiceReadiness,
@@ -40,6 +41,8 @@ export interface CourseStudyFlowSnapshot {
   activeManualNodeKeys: ReadonlySet<string>;
   completedManualNodeKeys: ReadonlySet<string>;
   recurringPracticeEligibleCount: number;
+  examPracticeEligibleCount: number;
+  cardCount: number;
   /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
   dueReviewCardIds: ReadonlySet<string>;
   assessmentOptions: AssessmentPracticeOption[];
@@ -208,7 +211,8 @@ export function buildCourseStudyFlowSnapshot({
           // Milestones written before #358 carry the live session fingerprint. Honour one
           // only while that exact scope still holds, so it can never complete a checkpoint
           // it did not cover; otherwise the step is offered once and rewritten correctly.
-          (sessionScope.length > 0 && milestone.scopeVersion === practiceScopeVersion(sessionScope))),
+          (sessionScope.length > 0 &&
+            milestone.scopeVersion === practiceScopeVersion(sessionScope))),
       active: false,
       manual: node.nodeType === 'practice-manual',
       pathIndex,
@@ -256,11 +260,8 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
-  // Recurring review contains scheduled reviews due now; unseen and future weak
-  // cards still belong to curricular Practice. Same rules as courseDueReviewCards.
-  const dueReviewCardIds = new Set(
-    dueReviewPool(recurringScope, course, examDateContext, now).map((card) => card.id),
-  );
+  // Scheduled reviews cannot be gated by lesson membership or exposure.
+  const dueReviewCardIds = new Set(dueReviewPool(cards, course, now).map((card) => card.id));
   const activeManualNodeKeys = new Set(
     [...practiceByKey.values()]
       .filter((practice) => practice.nodeType === 'practice-manual' && practice.active)
@@ -280,6 +281,8 @@ export function buildCourseStudyFlowSnapshot({
     activeManualNodeKeys,
     completedManualNodeKeys,
     recurringPracticeEligibleCount: dueReviewCardIds.size,
+    examPracticeEligibleCount: examPracticePool(cards, course, examDateContext, now).length,
+    cardCount: cards.length,
     dueReviewCardIds,
     assessmentOptions: recurringAssessmentOptions,
   };

@@ -6,7 +6,7 @@ export type StudyFlowStep =
   | {
       kind: 'practice';
       nodeKey: string;
-      mode: 'curricular' | 'recurring' | 'assessment';
+      mode: 'curricular' | 'recurring' | 'assessment' | 'exam';
       label: string;
       assessmentId?: string;
     }
@@ -20,9 +20,7 @@ export type StudyFlowDecision =
   | { kind: 'empty' };
 
 /**
- * The one due-review step, whether the planner reaches it at the end of the curriculum
- * or the reader picks it from the study sheet: scheduled reviews due now that are not
- * yet secure for the exam (see courseDueReviewCards).
+ * Scheduled reviews lead the default session and can also be opened explicitly.
  */
 export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   kind: 'practice',
@@ -31,12 +29,24 @@ export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   label: 'Review due cards',
 };
 
+export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
+  kind: 'practice',
+  nodeKey: 'exam-practice',
+  mode: 'exam',
+  label: 'Practise for exam',
+};
+
 /**
  * Chooses one step from the latest authoritative course snapshot. The caller
  * must rebuild the snapshot after each step rather than retaining a queue.
  */
 export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowDecision {
   if (snapshot.archived) return { kind: 'blocked', reason: 'archived' };
+  if (snapshot.recurringPracticeEligibleCount > 0) {
+    return snapshot.assessmentOptions.length > 0
+      ? { kind: 'choice', step: DUE_REVIEW_STEP, assessments: snapshot.assessmentOptions }
+      : { kind: 'step', step: DUE_REVIEW_STEP };
+  }
 
   let hasCurriculum = false;
   let hasLockedLesson = false;
@@ -76,10 +86,5 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
   }
 
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
-  if (snapshot.recurringPracticeEligibleCount > 0) {
-    return snapshot.assessmentOptions.length > 0
-      ? { kind: 'choice', step: DUE_REVIEW_STEP, assessments: snapshot.assessmentOptions }
-      : { kind: 'step', step: DUE_REVIEW_STEP };
-  }
-  return hasCurriculum ? { kind: 'complete' } : { kind: 'empty' };
+  return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }

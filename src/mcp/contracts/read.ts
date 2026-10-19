@@ -91,8 +91,8 @@ export const getCardContract = {
 export const listDueCardsContract = {
   name: 'lacuna.list_due_cards',
   description:
-    'List the cards a study session would serve right now for a course: due reviews plus ' +
-    "new cards admitted under the course's daily cap, ranked by the course's objective.",
+    'List available scheduled reviews due now for a course, ranked by its objective. ' +
+    'Excludes new and future cards.',
   inputSchema: z.object({ courseId: courseIdSchema, limit: limitSchema }),
   requiredScope: 'read',
 } satisfies ToolContract;

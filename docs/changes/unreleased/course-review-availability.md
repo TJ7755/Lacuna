@@ -1,0 +1,1 @@
+- Count and serve scheduled course reviews consistently across Today and Study, regardless of lesson introductions or exam readiness. Keep new and future cards out of due counts, retain Study for new lessons, and offer optional revision below a future exam target. Keep course titles readable beside study controls on narrow screens.

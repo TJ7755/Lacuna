@@ -21,14 +21,8 @@ import type {
   LessonCardExposure,
   LessonCardLink,
 } from '../db/types';
-import { makeExamDateContext } from '../fsrs/examDate';
-import { dueReviewPool, practiceCardScope } from './studyPools';
-import {
-  nearestExamDate,
-  examIsUrgent,
-  isLessonUnlocked,
-  lessonEffectiveReleaseDates,
-} from './path';
+import { dueReviewPool } from './studyPools';
+import { nearestExamDate, examIsUrgent } from './path';
 
 export interface CourseHeaderStats {
   nearestExam?: number;
@@ -59,33 +53,13 @@ export interface CourseDueReviewInput {
 }
 
 /**
- * The cards a Review due cards session serves: introduced cards in reached lessons
- * whose review is due now and which are not yet secure at their exam horizon. The
- * study-flow snapshot applies the same rules to its recurring scope, so every due
- * count matches the session it opens.
+ * The cards a Review due cards session serves. Scheduled reviews remain available
+ * regardless of lesson introductions, lesson locks or predicted exam readiness.
  */
 export function courseDueReviewCards({
   course,
-  lessons,
-  assessments,
   cards,
-  links,
-  exposures,
   now = Date.now(),
 }: CourseDueReviewInput): Card[] {
-  const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
-  const reachedLessonIds = new Set(
-    lessons
-      .filter((lesson) => isLessonUnlocked(course, lesson, effectiveDates, lessons, now))
-      .map((lesson) => lesson.id),
-  );
-  const scope = practiceCardScope(
-    cards,
-    links,
-    exposures,
-    { reachedLessonIds, requireExposure: course.learnFirst !== false },
-    now,
-    course.leechThreshold,
-  );
-  return dueReviewPool(scope, course, makeExamDateContext(course, lessons, assessments), now);
+  return dueReviewPool(cards, course, now);
 }

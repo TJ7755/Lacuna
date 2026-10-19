@@ -45,6 +45,8 @@ import {
 } from '../../course/studyFlowSnapshot';
 import {
   eligiblePracticePool,
+  dueReviewPool,
+  examPracticePool,
   directLessonStudyPool,
   lessonCardMembership,
   lessonStudyPool,
@@ -176,6 +178,8 @@ export interface UseLearnSessionParams {
   isSimpleMode: boolean;
   /** An explicitly requested pass, independent of curricular introductions and practice. */
   standaloneSimple?: boolean;
+  /** Optional revision below a future exam target, without a curricular scope. */
+  examPractice?: boolean;
   mode: LearnModeType;
   navigate: NavigateFunction;
   onFlowExit?: () => void;
@@ -211,6 +215,7 @@ export function useLearnSession({
   reviewSessionKind,
   isSimpleMode,
   standaloneSimple = false,
+  examPractice = false,
   mode,
   navigate,
   onFlowExit,
@@ -1197,23 +1202,26 @@ export function useLearnSession({
           );
         }
         // Optional passes need scheduling context, but no curricular eligibility planning.
-        const fullScope = standaloneSimple
-          ? allCards
-          : selectedAssessment
-            ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
-                .cards
-            : practiceCardScope(
-                allCards,
-                courseLinks,
-                courseExposures,
-                {
-                  reachedLessonIds,
-                  practiceNode,
-                  requireExposure: course.learnFirst !== false,
-                },
-                Date.now(),
-                course.leechThreshold,
-              );
+        const dueReview =
+          !selectedAssessment && !practiceNodeKeyParam && filterParams.includes('due');
+        const fullScope =
+          standaloneSimple || dueReview || examPractice
+            ? allCards
+            : selectedAssessment
+              ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
+                  .cards
+              : practiceCardScope(
+                  allCards,
+                  courseLinks,
+                  courseExposures,
+                  {
+                    reachedLessonIds,
+                    practiceNode,
+                    requireExposure: course.learnFirst !== false,
+                  },
+                  Date.now(),
+                  course.leechThreshold,
+                );
         const examDateContext = selectedAssessment
           ? {
               courseExamDate: selectedAssessment.examDate,
@@ -1238,7 +1246,11 @@ export function useLearnSession({
                   exposures: courseExposures,
                   reachedLessonIds,
                 })
-            : eligiblePracticePool(fullScope, course, examDateContext);
+            : dueReview
+              ? dueReviewPool(fullScope, course)
+              : examPractice
+                ? examPracticePool(fullScope, course, examDateContext)
+                : eligiblePracticePool(fullScope, course, examDateContext);
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
@@ -1514,6 +1526,7 @@ export function useLearnSession({
     mode,
     isGlobal,
     standaloneSimple,
+    examPractice,
     practiceNodeKeyParam,
     requestScopeLessonIdsKey,
     requestMilestoneLessonIdsKey,

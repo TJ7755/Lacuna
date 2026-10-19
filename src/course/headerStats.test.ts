@@ -122,7 +122,7 @@ function dueCount(course: Course, cards: Card[], now = NOW, lessons: Lesson[] = 
 }
 
 describe('courseHeaderStats', () => {
-  it('uses the primary lesson exam override in headers and dashboard counts', () => {
+  it('counts a scheduled review even when secure at its lesson exam override', () => {
     const course = makeCourse();
     const lesson: Lesson = {
       id: 'lesson',
@@ -142,12 +142,12 @@ describe('courseHeaderStats', () => {
       stability: 2,
       lastReviewed: NOW - MS_PER_DAY,
     });
-    expect(dueCount(course, [card], NOW, [lesson])).toBe(0);
-    expect(computeCourseSummaries([course], [lesson], [card], [], NOW)[course.id].eligible).toBe(0);
+    expect(dueCount(course, [card], NOW, [lesson])).toBe(1);
+    expect(computeCourseSummaries([course], [lesson], [card], [], NOW)[course.id].eligible).toBe(1);
   });
 
   it.each(['expectedMarks', 'securedTopics'] as const)(
-    'omits secured overdue cards before the exam for %s, retaining weak reviews',
+    'counts secured overdue cards for %s separately from exam practice',
     (examObjective) => {
       const course = makeCourse({ examDate: NOW + 60 * 60 * 1000, examObjective });
       const secured = makeCard('secured', {
@@ -161,9 +161,9 @@ describe('courseHeaderStats', () => {
       const cards = [secured, weak];
       const context = makeExamDateContext(course, [], []);
       expect(eligiblePracticePool(cards, course, context, NOW)).toEqual([weak]);
-      expect(dueCount(course, cards)).toBe(1);
-      expect(computeCourseSummaries([course], [], cards, [], NOW)[course.id].eligible).toBe(1);
-      expect(dueCount(course, [secured])).toBe(0);
+      expect(dueCount(course, cards)).toBe(2);
+      expect(computeCourseSummaries([course], [], cards, [], NOW)[course.id].eligible).toBe(2);
+      expect(dueCount(course, [secured])).toBe(1);
       // Once the exam passes, ordinary Practice uses the maintenance horizon.
       const afterExam = course.examDate! + 1;
       expect(eligiblePracticePool(cards, course, context, afterExam)).toHaveLength(2);
@@ -257,6 +257,11 @@ describe('courseHeaderStats', () => {
       ],
       now: NOW,
     });
-    expect(due.map((card) => card.id)).toEqual(['served']);
+    expect(due.map((card) => card.id)).toEqual([
+      'served',
+      'unintroduced',
+      'locked-lesson',
+      'no-lesson',
+    ]);
   });
 });

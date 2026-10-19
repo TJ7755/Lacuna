@@ -136,6 +136,7 @@ function CourseStudyOptions({
     snapshot !== undefined &&
     snapshot.recurringPracticeEligibleCount > 0 &&
     !plan?.startsWithDueReview;
+  const canPractiseForExam = (snapshot?.examPracticeEligibleCount ?? 0) > 0;
   return (
     <>
       {onBack && <AllCoursesButton onClick={onBack} />}
@@ -165,6 +166,14 @@ function CourseStudyOptions({
       )}
 
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {canPractiseForExam && (
+          <Button variant="secondary" onClick={() => start('?review=exam')}>
+            Practise for exam
+            <span className="ml-1 text-sm opacity-70 tabular-nums">
+              {snapshot?.examPracticeEligibleCount}
+            </span>
+          </Button>
+        )}
         {otherWays && (canReviewDueCards || assessments.length > 0) && (
           <Button
             variant="ghost"
@@ -280,7 +289,7 @@ function NothingToStudy({
       </p>
     );
   }
-  return <p className="py-1 text-sm text-ink-soft">Everything here is finished for now.</p>;
+  return <p className="py-1 text-sm text-ink-soft">Nothing is due right now.</p>;
 }
 
 function AllCoursesButton({ onClick }: { onClick: () => void }) {
