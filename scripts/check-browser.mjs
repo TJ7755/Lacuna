@@ -42,7 +42,11 @@ export function previewBrowser({ directory = root, env = process.env, execute = 
       'x',
       'vite',
       'preview',
-      ...(env.LACUNA_BROWSER_SITE === 'gaps' ? ['--config', 'vite.gaps.config.ts'] : []),
+      ...(env.LACUNA_BROWSER_SITE === 'gaps'
+        ? ['--config', 'vite.gaps.config.ts']
+        : env.LACUNA_BROWSER_SITE === 'library'
+          ? ['--config', 'vite.library.config.ts']
+          : []),
       '--host',
       '127.0.0.1',
       '--port',
@@ -69,8 +73,11 @@ export function verifyBrowser({
       'verify:browser owns its isolated configuration, output and reporters; pass test/project filters instead',
     );
   }
-  const site = args.includes('--gaps') ? 'gaps' : 'lacuna';
-  args = args.filter((arg) => arg !== '--gaps');
+  if (args.includes('--gaps') && args.includes('--library')) {
+    throw new Error('Choose one browser site: --gaps or --library');
+  }
+  const site = args.includes('--library') ? 'library' : args.includes('--gaps') ? 'gaps' : 'lacuna';
+  args = args.filter((arg) => arg !== '--gaps' && arg !== '--library');
   const parent = join(directory, 'artifacts', 'browser-checks');
   mkdirSync(parent, { recursive: true });
   const runDirectory = mkdtempSync(join(parent, 'run-'));
@@ -112,7 +119,11 @@ export function verifyBrowser({
   try {
     status = run([
       'run',
-      site === 'gaps' ? 'build:gaps:assets' : 'build:assets',
+      site === 'library'
+        ? 'build:library:assets'
+        : site === 'gaps'
+          ? 'build:gaps:assets'
+          : 'build:assets',
       '--outDir',
       buildDirectory,
       '--emptyOutDir',

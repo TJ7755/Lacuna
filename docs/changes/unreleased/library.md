@@ -1,0 +1,1 @@
+- Add a separate Lacuna Library with course previews and links into existing course sharing, plus isolated static hosting and browser checks.
