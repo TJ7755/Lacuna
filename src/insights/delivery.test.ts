@@ -34,7 +34,10 @@ beforeEach(async () => {
   recordShareImport(shareId, courseId);
   enrolInClass(courseId, { shareId, lineageId: 'lineage', recipient: owner.recipient });
 });
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 it('sends no evidence for an old toggle, a disabled build or a different imported course', async () => {
   const fetchImpl = vi.fn<typeof fetch>();
@@ -114,4 +117,32 @@ it('backs off failed automatic attempts for an hour but permits an explicit retr
   await expect(deliverCourseInsights(courseId, { now, fetchImpl, retry: true })).rejects.toThrow();
   expect(fetchImpl).toHaveBeenCalledTimes(2);
   expect(createInsightsLastSentDaySetting(courseId).read()).toBeNull();
+});
+
+it('abandons an attempt crossing UTC midnight before collecting and sends the new day next time', async () => {
+  setReportingConsent(courseId, true, 'Pupil A');
+  let clock = Date.parse('2026-10-19T23:59:59.999Z');
+  const getCourse = db.courses.get.bind(db.courses);
+  vi.spyOn(db.courses, 'get').mockImplementationOnce((key) =>
+    getCourse(key).then((course) => {
+      clock = Date.parse('2026-10-20T00:00:00.001Z');
+      return course;
+    }),
+  );
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+
+  await deliverCourseInsights(courseId, { now: () => clock, fetchImpl });
+  expect(fetchImpl).not.toHaveBeenCalled();
+  expect(createInsightsLastSentDaySetting(courseId).read()).toBeNull();
+
+  await deliverCourseInsights(courseId, { now: () => clock, fetchImpl });
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+  const envelope = JSON.parse(String(fetchImpl.mock.calls[0][1]?.body));
+  expect(envelope.d).toBe('2026-10-19');
+  const report = parseDailyEvidence(
+    await openInsightEnvelope(owner, envelope, { shareId, isoDay: envelope.d }),
+    { shareId, day: envelope.d },
+  );
+  expect(report.day).toBe(envelope.d);
+  expect(createInsightsLastSentDaySetting(courseId).read()).toBe('2026-10-19');
 });
