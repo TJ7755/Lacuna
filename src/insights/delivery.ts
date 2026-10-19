@@ -47,6 +47,7 @@ async function deliver(
   const optIn = createInsightsOptInSetting(courseId);
   const allowed = () =>
     !controller.signal.aborted &&
+    completedIsoDayLabel(now()) === day &&
     optIn.read() &&
     JSON.stringify(setting.read()) === JSON.stringify(enrolment) &&
     getCourseIdForShare(enrolment.shareId) === courseId;

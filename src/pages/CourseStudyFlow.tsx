@@ -11,7 +11,13 @@ import {
   startActiveStudyFlow,
   touchActiveStudyFlow,
 } from '../state/activeStudyFlow';
-import { DUE_REVIEW_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
+import {
+  DUE_REVIEW_STEP,
+  CATCH_UP_STEP,
+  EXAM_PRACTICE_STEP,
+  planNextStudyStep,
+  type StudyFlowStep,
+} from '../course/studyFlowPlanner';
 import type { SessionSummary } from '../components/learn/types';
 import { StudyStepTransition } from '../components/learn/StudyStepTransition';
 import { StudyFlowMessage } from '../components/learn/StudyFlowMessage';
@@ -48,10 +54,20 @@ function CourseStudyFlowInner() {
     courseId ? identityFor(courseId) : null,
   );
   const [refreshKey, setRefreshKey] = useState(0);
-  const flow = useCourseStudyFlow(courseId, refreshKey);
+  const [catchUpFinished, setCatchUpFinished] = useState(false);
+  const plannedFlow = useCourseStudyFlow(courseId, refreshKey);
+  // Reaching a session objective need not empty the broader catch-up pool.
+  const flow = useMemo(
+    () => plannedFlow && catchUpFinished
+      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+      : plannedFlow,
+    [catchUpFinished, plannedFlow],
+  );
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
+    if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
     if (searchParams.get('review') === 'due') return DUE_REVIEW_STEP;
+    if (searchParams.get('review') === 'exam') return EXAM_PRACTICE_STEP;
     return entryAssessmentId
       ? {
           kind: 'practice',
@@ -196,6 +212,7 @@ function CourseStudyFlowInner() {
       if (completed.kind === 'practice' && completed.mode === 'assessment') {
         setRevisionSession(null);
       }
+      if (completed.kind === 'practice' && completed.mode === 'catch-up') setCatchUpFinished(true);
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
@@ -287,6 +304,8 @@ function CourseStudyFlowInner() {
     );
   } else if (transition) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
+    const catchUpIsNext = flow?.decision.kind === 'step' &&
+      flow.decision.step.kind === 'practice' && flow.decision.step.mode === 'catch-up';
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step.label
@@ -302,6 +321,14 @@ function CourseStudyFlowInner() {
           !planningNextStep &&
           (flow?.snapshot.recurringPracticeEligibleCount ?? 0) > 0
         }
+        canReviewEarlierMaterial={
+          !planningNextStep && !catchUpIsNext && (flow?.snapshot.catchUpEligibleCount ?? 0) > 0
+        }
+        onReviewEarlierMaterial={() => {
+          if (pomodoro.breakPending) pomodoro.deferBreak();
+          setCurrentStep(CATCH_UP_STEP);
+          setTransition(null);
+        }}
         breakPending={pomodoro.breakPending}
         planningNextStep={planningNextStep}
         onContinue={continueFlow}

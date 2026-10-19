@@ -161,6 +161,7 @@ export function CoursePath() {
       ? currentAssessmentPracticeContext({
           course,
           assessments: assessments ?? [],
+          practiceNodes: practiceNodes ?? [],
           lessons: lessons ?? [],
           cards: courseCards ?? [],
           links: lessonLinks ?? [],
@@ -177,7 +178,7 @@ export function CoursePath() {
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf]);
+  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf, practiceNodes]);
 
   const nodes = useMemo(
     () =>
@@ -367,6 +368,15 @@ export function CoursePath() {
   const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
   const dueCardCount = dueReviewCardIds?.size ?? 0;
   const otherWays = [
+    ...((studyFlowSnapshot?.examPracticeEligibleCount ?? 0) > 0
+      ? [
+          {
+            label: 'Practise for exam',
+            description: 'Cards below the exam target, including cards not yet due',
+            onSelect: () => navigate(`/course/${courseId}/study?review=exam`),
+          },
+        ]
+      : []),
     {
       // Named as in the session plan's Other ways, which offers the same session.
       label: 'Only review due cards',

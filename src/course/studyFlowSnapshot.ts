@@ -1,3 +1,5 @@
+import { earlierLessonIds } from './courseEntry';
+import { catchUpPracticePool } from './catchUpPractice';
 import type {
   Card,
   Course,
@@ -11,6 +13,7 @@ import type { PathNode, PracticePathNode } from './path';
 import { assessmentPracticeOptions, type AssessmentPracticeOption } from './assessmentPractice';
 import {
   dueReviewPool,
+  examPracticePool,
   eligiblePracticePool,
   practiceCardScope,
   practiceReadiness,
@@ -34,12 +37,16 @@ export interface StudyFlowPracticeState {
 
 export interface CourseStudyFlowSnapshot {
   courseId: string;
+  studyStartLessonId?: string;
+  catchUpEligibleCount?: number;
   archived: boolean;
   nodes: PathNode[];
   practiceByKey: ReadonlyMap<string, StudyFlowPracticeState>;
   activeManualNodeKeys: ReadonlySet<string>;
   completedManualNodeKeys: ReadonlySet<string>;
   recurringPracticeEligibleCount: number;
+  examPracticeEligibleCount: number;
+  cardCount: number;
   /** Cards behind recurringPracticeEligibleCount, for lesson-level due counts. */
   dueReviewCardIds: ReadonlySet<string>;
   assessmentOptions: AssessmentPracticeOption[];
@@ -125,14 +132,24 @@ export function buildCourseStudyFlowSnapshot({
       .filter((node) => node.nodeType === 'lesson' && node.status !== 'locked')
       .map((node) => node.id),
   );
+  const lessons = [...examDateContext.lessonsById.values()];
+  const earlier = earlierLessonIds(
+    course.studyStartLessonId,
+    lessons,
+    nodes.flatMap((node) => node.nodeType === 'lesson' ? [node.id] : []),
+  );
+  const curricularReachedLessonIds = new Set(
+    [...reachedLessonIds].filter((id) => !earlier.has(id)),
+  );
   const assessmentContext = {
     course,
     assessments: examDateContext.courseAssessments,
-    lessons: [...examDateContext.lessonsById.values()],
+    lessons,
     cards,
     links,
     exposures,
     reachedLessonIds,
+    priorKnowledgeLessonIds: earlier,
     now,
   };
   const recurringScope = practiceCardScope(
@@ -144,13 +161,30 @@ export function buildCourseStudyFlowSnapshot({
     course.leechThreshold,
   );
   const recurringAssessmentOptions = assessmentPracticeOptions(assessmentContext, recurringScope);
+  const curricularScope =
+    earlier.size === 0
+      ? recurringScope
+      : practiceCardScope(
+          cards,
+          links,
+          exposures,
+          {
+            reachedLessonIds: curricularReachedLessonIds,
+            requireExposure: course.learnFirst !== false,
+          },
+          now,
+          course.leechThreshold,
+        );
   const provisional: Array<
     StudyFlowPracticeState & { manual: boolean; pathIndex: number; nearestAssessmentDate?: number }
   > = [];
 
   for (const [pathIndex, node] of nodes.entries()) {
     if (node.nodeType !== 'practice-auto' && node.nodeType !== 'practice-manual') continue;
-    const scopeLessonIds = practicePrefixLessonIds(nodes, node.nodeKey);
+    if (earlier.size > 0 && (!node.afterLessonId || earlier.has(node.afterLessonId))) continue;
+    const scopeLessonIds = new Set(
+      [...practicePrefixLessonIds(nodes, node.nodeKey)].filter((id) => !earlier.has(id)),
+    );
     const scope = practiceCardScope(
       cards,
       links,
@@ -166,17 +200,21 @@ export function buildCourseStudyFlowSnapshot({
     const scopeVersion = practiceScopeVersion(scope);
     const readiness = practiceReadiness(scope, course, examDateContext, now);
     const sessionScopeLessonIds = node.practiceNode?.lessonIds
-      ? new Set(node.practiceNode.lessonIds.filter((lessonId) => reachedLessonIds.has(lessonId)))
-      : reachedLessonIds;
+      ? new Set(
+          node.practiceNode.lessonIds.filter((lessonId) =>
+            curricularReachedLessonIds.has(lessonId),
+          ),
+        )
+      : curricularReachedLessonIds;
     const sessionScope =
       node.nodeType === 'practice-auto'
-        ? recurringScope
+        ? curricularScope
         : practiceCardScope(
             cards,
             links,
             exposures,
             {
-              reachedLessonIds,
+              reachedLessonIds: curricularReachedLessonIds,
               practiceNode: node.practiceNode,
               requireExposure: course.learnFirst !== false,
             },
@@ -208,7 +246,8 @@ export function buildCourseStudyFlowSnapshot({
           // Milestones written before #358 carry the live session fingerprint. Honour one
           // only while that exact scope still holds, so it can never complete a checkpoint
           // it did not cover; otherwise the step is offered once and rewritten correctly.
-          (sessionScope.length > 0 && milestone.scopeVersion === practiceScopeVersion(sessionScope))),
+          (sessionScope.length > 0 &&
+            milestone.scopeVersion === practiceScopeVersion(sessionScope))),
       active: false,
       manual: node.nodeType === 'practice-manual',
       pathIndex,
@@ -217,7 +256,7 @@ export function buildCourseStudyFlowSnapshot({
   }
 
   const firstLockedLessonIndex = nodes.findIndex(
-    (node) => node.nodeType === 'lesson' && node.status === 'locked',
+    (node) => node.nodeType === 'lesson' && node.status === 'locked' && !earlier.has(node.id),
   );
   const lastRelevantUrgentManual = [...provisional]
     .reverse()
@@ -256,11 +295,8 @@ export function buildCourseStudyFlowSnapshot({
     practiceByKey.set(practice.nodeKey, state);
   }
 
-  // Recurring review contains scheduled reviews due now; unseen and future weak
-  // cards still belong to curricular Practice. Same rules as courseDueReviewCards.
-  const dueReviewCardIds = new Set(
-    dueReviewPool(recurringScope, course, examDateContext, now).map((card) => card.id),
-  );
+  // Scheduled reviews cannot be gated by lesson membership or exposure.
+  const dueReviewCardIds = new Set(dueReviewPool(cards, course, now).map((card) => card.id));
   const activeManualNodeKeys = new Set(
     [...practiceByKey.values()]
       .filter((practice) => practice.nodeType === 'practice-manual' && practice.active)
@@ -274,12 +310,19 @@ export function buildCourseStudyFlowSnapshot({
 
   return {
     courseId: course.id,
+    studyStartLessonId: course.studyStartLessonId,
+    catchUpEligibleCount: catchUpPracticePool(
+      cards, course, lessons, links,
+      examDateContext, reachedLessonIds, now, earlier,
+    ).length,
     archived: course.archived === true,
     nodes,
     practiceByKey,
     activeManualNodeKeys,
     completedManualNodeKeys,
     recurringPracticeEligibleCount: dueReviewCardIds.size,
+    examPracticeEligibleCount: examPracticePool(cards, course, examDateContext, now).length,
+    cardCount: cards.length,
     dueReviewCardIds,
     assessmentOptions: recurringAssessmentOptions,
   };

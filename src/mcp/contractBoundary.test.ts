@@ -26,12 +26,12 @@ const PACKAGED_MCP_ENTRY_POINTS = [
   'electron/mcp/aiCompanion.ts',
   'electron/mcp/aiCompanionEntry.ts',
 ] as const;
-// Zod 4.6 repairs closed intersection/union schemas and normalises nullable
-// types and description ordering. Runtime tool inputs and version stay unchanged.
+// The due-card description excludes new and future cards. Names, schemas,
+// permission scopes and the tool-surface version remain unchanged.
 const REVIEWED_TOOL_SURFACE = {
   version: 3,
   toolCount: 64,
-  sha256: 'ed5ae5bdff584c3c6767d9b2c853f09c9f1403ed1b3f46c4316997514a0afedd',
+  sha256: '115307e290f325cd6558f66e0f78cacb0429d1b64f98f3e7247eb28bc42dc662',
 } as const;
 
 function normalise(filePath: string): string {

@@ -80,6 +80,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
           ![
             'src/teacher/main.tsx',
             'src/teacher/index.css',
+            'src/teacher/teacherWorkspace.css',
             'src/teacher/TeacherHomeView.tsx',
             'src/teacher/StandaloneTeacherHome.tsx',
             'src/teacher/TeacherKeySetup.tsx',

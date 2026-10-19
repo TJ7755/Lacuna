@@ -17,6 +17,14 @@ protection against force pushes/deletion, including administrators. Require aggr
 they enforce all component jobs, rather than copying a transient shard count into protection.
 After changing settings, re-read the API response and compare names with the actual workflows.
 
+Aggregate jobs such as `test` and `browser-smoke` are scheduled after their dependencies finish;
+their check runs can therefore appear later than other required checks. CI consumers must compare
+the complete live protection context list with checks for the current candidate, treating missing
+contexts as pending. All currently reported checks passing does not establish that every required
+check exists or passed. Workflow cancellation suppresses the aggregate jobs rather than reporting
+a second failure for superseded work; a failed or independently cancelled dependency in an active
+run still fails its aggregate. Do not publish early green or skipped placeholders under required names.
+
 Mandatory second-person approval was deferred while there is only one writer: the sole CODEOWNER
 cannot approve their own PR. When a second trusted reviewer has confirmed write access, decide
 ownership and enable approval with stale-review dismissal and CODEOWNER enforcement. Do not treat

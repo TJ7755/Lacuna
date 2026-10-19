@@ -11,7 +11,7 @@ import type {
   PracticeNode,
   SchedulerConfig,
 } from '../db/types';
-import type { ExamDateContext } from '../fsrs/examDate';
+import { resolveCardExamDate, type ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { cardSchedulingHorizon } from '../fsrs/horizon';
@@ -174,7 +174,7 @@ export function practiceCardScope(
   return cardCount > 0 ? scope.slice(0, cardCount) : scope;
 }
 
-/** Cards in the node scope which still fall below mastery at their own horizon. */
+/** Exam-target practice, or scheduled work and new cards without a future exam. */
 export function eligiblePracticePool(
   scope: Card[],
   course: Course,
@@ -185,6 +185,10 @@ export function eligiblePracticePool(
   const decay = decayOf(course.fsrsParameters);
   return scope.filter((card) => {
     if (!isAvailable(card, now)) return false;
+    const examDate = resolveCardExamDate(card, examDateContext, now);
+    if (examDate === undefined || examDate < now) {
+      return card.state === 0 || (card.due !== null && card.due <= now);
+    }
     const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
     return rAtExam(card, horizon, now, decay) < MASTERY_R;
   });
@@ -196,30 +200,22 @@ export interface PracticeReadiness {
   fraction: number;
 }
 
-/** Due reviews still needing Practice, plus introductions admitted by the daily cap. */
-export function dueStudyPool(
-  cards: Card[],
-  course: Course,
-  examDateContext: ExamDateContext,
-  now: number = Date.now(),
-  activity?: ReviewActivity,
-): Card[] {
-  const due = studyPool(cards, course, now, activity).filter(
-    (card) => card.state === 0 || (card.due !== null && card.due !== undefined && card.due <= now),
-  );
-  // A scheduled review can already be secured at a nearby exam horizon.
-  // Use Practice's mastery rule so the count does not promise that review.
-  return eligiblePracticePool(due, course, examDateContext, now);
+/** Scheduled reviews due now, independent of lessons and exam readiness. */
+export function dueReviewPool(cards: Card[], course: Course, now: number = Date.now()): Card[] {
+  return course.archived ? [] : dueCards(cards, now);
 }
 
-/** Scheduled reviews due now and still below Practice mastery. */
-export function dueReviewPool(
+/** Optional early revision for cards below their own future exam target. */
+export function examPracticePool(
   cards: Card[],
   course: Course,
   examDateContext: ExamDateContext,
   now: number = Date.now(),
 ): Card[] {
-  return eligiblePracticePool(dueCards(cards, now), course, examDateContext, now);
+  return eligiblePracticePool(cards, course, examDateContext, now).filter((card) => {
+    const examDate = resolveCardExamDate(card, examDateContext, now);
+    return examDate !== undefined && examDate >= now;
+  });
 }
 
 /**

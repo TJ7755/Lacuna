@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Course } from '../db/types';
@@ -70,7 +70,14 @@ it('lists published courses, including archived ones, without pretending to have
   expect(
     await screen.findByRole('link', { name: 'Manage sharing for Biology' }),
   ).toBeInTheDocument();
-  expect(screen.getByText(/ordinary releases do not send reports yet/)).toBeInTheDocument();
+  fireEvent.click(screen.getByText('About daily reports and pupil privacy'));
+  expect(
+    screen.getByText(/Reporting requires an enabled pupil build and relay/),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+    'href',
+    'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+  );
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
 });
 

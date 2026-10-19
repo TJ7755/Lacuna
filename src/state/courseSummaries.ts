@@ -10,7 +10,7 @@ import type {
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { availableCards } from '../fsrs/eligibility';
-import { dueStudyPool, lessonCardMembership } from '../course/studyPools';
+import { dueReviewPool, examPracticePool, lessonCardMembership } from '../course/studyPools';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
@@ -24,8 +24,10 @@ export interface CourseSummary {
   mastery: number;
   /** Number of core cards that have never been reviewed. */
   unreviewed: number;
-  /** Due reviews below Practice mastery plus introductions admitted by today's cap. */
+  /** Available scheduled reviews due now across the whole course. */
   eligible: number;
+  /** Optional practice below a future exam target, separate from the due count. */
+  examPracticeEligible: number;
   /** Number of core lessons whose material has been taught. */
   completedLessonCount: number;
   /** Number of core cards reviewed at least once. */
@@ -48,9 +50,9 @@ const EMPTY_SUMMARY_PROGRESS: CourseSummaryProgress = {
 
 /**
  * Per-course summary statistics for dashboard and course-header surfaces.
- * Extension-lesson cards are excluded from card-level figures; cards with a null
- * or missing primaryLessonId are included. The orphaned-card-set guard prevents
- * cards from leaking into unrelated course summaries.
+ * Extension-lesson cards are excluded from progress figures; review pools include
+ * the whole course. Cards with a null or missing primaryLessonId are included.
+ * Iterating the supplied courses keeps cards from deleted courses out of the result.
  *
  * Pure — accepts only already-loaded arrays so it can be reused by combined hooks
  * and called in tests without a database. Exam dates are optional for backwards-
@@ -65,23 +67,12 @@ export function computeCourseSummaries(
   progress: CourseSummaryProgress = EMPTY_SUMMARY_PROGRESS,
   activity?: ReviewActivity,
 ): Record<string, CourseSummary> {
-  const courseById = new Map(courses.map((c) => [c.id, c]));
-
   // Build a set of lesson ids that are extensions, for O(1) exclusion.
   const extensionLessonIds = new Set(lessons.filter((l) => l.isExtension).map((l) => l.id));
 
-  // Count non-extension lessons per course.
-  const coreLessonCount: Record<string, number> = {};
-  for (const lesson of lessons) {
-    if (!lesson.isExtension) {
-      coreLessonCount[lesson.courseId] = (coreLessonCount[lesson.courseId] ?? 0) + 1;
-    }
-  }
-
-  // Group cards by courseId; only cards with a courseId are course-eligible.
-  const byCourse: Record<string, Card[]> = {};
+  const cardsByCourse: Record<string, Card[]> = {};
   for (const card of cards) {
-    if (card.courseId) (byCourse[card.courseId] ??= []).push(card);
+    if (card.courseId) (cardsByCourse[card.courseId] ??= []).push(card);
   }
 
   const lessonsByCourse: Record<string, Lesson[]> = {};
@@ -96,7 +87,8 @@ export function computeCourseSummaries(
 
   const summaries: Record<string, CourseSummary> = {};
   for (const course of courses) {
-    const courseCards = byCourse[course.id] ?? [];
+    const courseCards = cardsByCourse[course.id] ?? [];
+    const courseLessons = lessonsByCourse[course.id] ?? [];
     // Exclude cards whose primaryLessonId belongs to an extension lesson.
     // Cards with null or absent primaryLessonId are included.
     const coreCards = courseCards.filter(
@@ -106,7 +98,7 @@ export function computeCourseSummaries(
         !extensionLessonIds.has(c.primaryLessonId),
     );
     const available = availableCards(coreCards, now);
-    const coreLessons = (lessonsByCourse[course.id] ?? []).filter((lesson) => !lesson.isExtension);
+    const coreLessons = courseLessons.filter((lesson) => !lesson.isExtension);
     const completedLessonCount = coreLessons.filter((lesson) =>
       lessonTaught(
         lesson.id,
@@ -118,15 +110,16 @@ export function computeCourseSummaries(
     const today = startOfDay(now, course.timeZone);
     const examDateContext = makeExamDateContext(
       course,
-      lessonsByCourse[course.id] ?? [],
+      courseLessons,
       assessmentsByCourse[course.id] ?? [],
     );
     summaries[course.id] = {
-      lessonCount: coreLessonCount[course.id] ?? 0,
+      lessonCount: coreLessons.length,
       cardCount: coreCards.length,
       mastery: progressValue(available, course, now, examDateContext),
       unreviewed: available.filter((c) => c.lastReviewed === null).length,
-      eligible: dueStudyPool(coreCards, course, examDateContext, now, activity).length,
+      eligible: dueReviewPool(courseCards, course, now).length,
+      examPracticeEligible: examPracticePool(courseCards, course, examDateContext, now).length,
       completedLessonCount,
       reviewedCardCount: coreCards.filter((card) => card.lastReviewed !== null).length,
       reviewedTodayCount: coreCards.filter((card) =>
@@ -134,21 +127,6 @@ export function computeCourseSummaries(
           (timestamp) => timestamp >= today && timestamp <= now,
         ),
       ).length,
-    };
-  }
-
-  // Skip orphaned card sets whose course was removed mid-transaction.
-  for (const [courseId] of Object.entries(byCourse)) {
-    if (!courseById.has(courseId)) continue;
-    summaries[courseId] ??= {
-      lessonCount: coreLessonCount[courseId] ?? 0,
-      cardCount: 0,
-      mastery: 0,
-      unreviewed: 0,
-      eligible: 0,
-      completedLessonCount: 0,
-      reviewedCardCount: 0,
-      reviewedTodayCount: 0,
     };
   }
 

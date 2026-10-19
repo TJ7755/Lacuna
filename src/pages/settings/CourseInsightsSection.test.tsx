@@ -74,6 +74,10 @@ describe('CourseInsightsSection', () => {
     expect(screen.getByText(/expire from the relay after 12 weeks/i)).toBeTruthy();
     expect(screen.getByText(/teacher may keep results they have already received/i)).toBeTruthy();
     expect(screen.getByText(/Daily delivery is not enabled in this build/i)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+    );
     expect(screen.queryByText(/anonymous|nothing.*identifies you/i)).not.toBeInTheDocument();
   });
 

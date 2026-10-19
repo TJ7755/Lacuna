@@ -1,0 +1,162 @@
+/* Local layout only: colours, type and controls inherit Lacuna's theme. */
+.teacher-workspace {
+  max-width: 1160px;
+}
+.teacher-masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid hsl(var(--line));
+}
+.teacher-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 2.5rem;
+  align-items: start;
+}
+.teacher-guide {
+  padding: 1.5rem 0;
+}
+.teacher-guide p {
+  max-width: 34rem;
+}
+.teacher-journey {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.teacher-journey li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  color: hsl(var(--ink-soft));
+  font-size: 0.875rem;
+}
+.teacher-step {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border: 1px solid hsl(var(--line-strong));
+  border-radius: 50%;
+  font-weight: 600;
+}
+.teacher-journey [aria-current='step'] {
+  color: hsl(var(--ink));
+  font-weight: 600;
+}
+.teacher-journey [aria-current='step'] .teacher-step {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-fg));
+  border-color: transparent;
+}
+.teacher-guide .teacher-journey {
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-block: 1.5rem;
+}
+.teacher-class-row {
+  padding-block: 1.5rem;
+  border-top: 1px solid hsl(var(--line));
+}
+.teacher-task {
+  max-width: 38rem;
+}
+.teacher-task p {
+  line-height: 1.65;
+}
+.teacher-notice {
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: hsl(var(--accent-soft));
+  color: hsl(var(--ink));
+}
+.teacher-footer {
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid hsl(var(--line));
+}
+.teacher-workspace summary {
+  cursor: pointer;
+}
+.teacher-workspace summary:focus-visible {
+  outline: 2px solid hsl(var(--accent-ink));
+  outline-offset: 4px;
+}
+.teacher-workspace h2:focus {
+  outline: none;
+}
+.teacher-workspace button,
+.teacher-workspace a {
+  text-wrap: balance;
+}
+@media (max-width: 760px) {
+  .teacher-home-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .teacher-guide {
+    padding: 0.5rem;
+  }
+  .teacher-guide .teacher-journey {
+    gap: 1rem;
+  }
+  .teacher-masthead {
+    align-items: start;
+    margin-bottom: 1.25rem;
+  }
+  .teacher-journey {
+    gap: 0.5rem;
+  }
+  .teacher-journey li {
+    align-items: start;
+    flex-direction: column;
+    font-size: 0.8rem;
+  }
+  .teacher-guide .teacher-journey li {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .teacher-workspace *,
+  .teacher-workspace *::before,
+  .teacher-workspace *::after {
+    transition: none;
+    animation: none;
+  }
+}
+
+.teacher-masthead > a {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.teacher-step-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem;
+  margin: -0.5rem;
+  min-height: 44px;
+  text-align: left;
+  border-radius: 1rem;
+  width: 100%;
+}
+.teacher-step-link:hover {
+  background: hsl(var(--ink) / 0.05);
+}
+.teacher-step-link:focus-visible {
+  outline: 2px solid hsl(var(--accent-ink));
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .teacher-step-link {
+    flex-direction: column;
+    align-items: start;
+  }
+}

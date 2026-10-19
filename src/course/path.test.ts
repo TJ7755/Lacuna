@@ -1132,3 +1132,48 @@ describe('buildPath progress and manual-node edge cases', () => {
     expect(nodes.map((node) => node.id)).toEqual(['l0', 'a-tied', 'b-tied', 'later']);
   });
 });
+
+describe('mid-course access', () => {
+  const lessons = [0, 1, 2].map((orderIndex) =>
+    makeLesson({ id: String(orderIndex), courseId: 'c', orderIndex }),
+  );
+  const course = makeCourse({ id: 'c', unlockMode: 'semi-linear', studyStartLessonId: '1' });
+
+  it('opens the starting lesson and earlier catch-up lessons without completing them', () => {
+    expect(lessons.map((lesson) => isLessonUnlocked(course, lesson, new Map(), lessons))).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(
+      buildPath(course, lessons, [], new Map(), [], 0, 10).map(
+        (node) => node.nodeType === 'lesson' && node.status,
+      ),
+    ).toEqual(['available', 'available', 'locked']);
+  });
+
+  it('retains dated release rules and falls back safely for a missing start', () => {
+    const dated = {
+      ...course,
+      unlockMode: 'linear' as const,
+      linearCadence: { anchorDate: 100, intervalDays: 7 },
+    };
+    expect(
+      isLessonUnlocked(
+        dated,
+        lessons[1],
+        lessonEffectiveReleaseDates(dated, lessons),
+        lessons,
+        100,
+      ),
+    ).toBe(false);
+    expect(
+      isLessonUnlocked(
+        { ...course, studyStartLessonId: 'missing' },
+        lessons[1],
+        new Map(),
+        lessons,
+      ),
+    ).toBe(false);
+  });
+});

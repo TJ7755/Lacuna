@@ -15,17 +15,19 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     if (['xhr', 'fetch'].includes(request.resourceType())) requests.push(request.url());
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
-  await expect(page.getByRole('heading', { name: 'Teacher key setup' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+  await page.getByText('Recover a class or save another recovery file', { exact: true }).click();
+  await page.getByRole('button', { name: 'Open recovery options' }).click();
+  await expect(page.getByRole('heading', { name: 'Class recovery' })).toBeVisible();
+  await page.getByLabel('What do you need to do?').selectOption('create');
+  await expect(page.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(0);
   expect(await page.evaluate(() => indexedDB.databases())).toEqual([
     { name: 'lacuna.gaps.connections', version: 10 },
   ]);
   await page.getByLabel(/Published course link/).fill(`https://getlacuna.app/#/s/${shareId}`);
   await page.getByLabel(/^Recovery passphrase/).fill(passphrase);
   await page.getByLabel('Repeat recovery passphrase').fill(passphrase);
-  await page.getByRole('button', { name: 'Prepare teacher key', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('Teacher key saved', { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Protect class reports', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Class protected', { timeout: 15_000 });
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download encrypted recovery file' }).click();
   const download = await downloadEvent;
@@ -40,12 +42,13 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   ).toEqual(['lacuna.gaps.connections', 'lacuna.gaps.owner-keys']);
   await page.screenshot({ path: testInfo.outputPath('teacher-key-saved.png'), fullPage: true });
   await page.reload();
-  await page.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
-  await page.getByLabel('Key action').selectOption('download');
+  await page.getByText('Recover a class or save another recovery file', { exact: true }).click();
+  await page.getByRole('button', { name: 'Open recovery options' }).click();
+  await page.getByLabel('What do you need to do?').selectOption('download');
   await page.getByLabel(/Published course link/).fill(shareId);
   await page.getByLabel('Recovery passphrase').fill(passphrase);
-  await page.getByRole('button', { name: 'Open saved key' }).click();
-  await expect(page.getByRole('status')).toContainText('Teacher key saved', { timeout: 15_000 });
+  await page.getByRole('button', { name: 'Open saved recovery file' }).click();
+  await expect(page.getByRole('status')).toContainText('Class protected', { timeout: 15_000 });
   expect(requests).toEqual([]);
 
   const fresh = await browser.newContext({ viewport: { width: 390, height: 900 } });
@@ -56,31 +59,39 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
       if (['xhr', 'fetch'].includes(request.resourceType())) freshRequests.push(request.url());
     });
     await restored.goto(new URL('/', page.url()).href);
-    await restored.getByRole('button', { name: 'Set up or recover a teacher key' }).click();
-    await restored.getByLabel('Key action').selectOption('restore');
+    await restored
+      .getByText('Recover a class or save another recovery file', { exact: true })
+      .click();
+    await restored.getByRole('button', { name: 'Open recovery options' }).click();
+    await restored.getByLabel('What do you need to do?').selectOption('restore');
     await restored.getByLabel(/Encrypted recovery file/).setInputFiles({
       name: 'teacher.json',
       mimeType: 'application/json',
       buffer: Buffer.from(text),
     });
     await restored.getByLabel('Recovery passphrase').fill('wrong phrase');
-    await restored.getByRole('button', { name: 'Restore teacher key' }).click();
-    await expect(restored.getByRole('alert')).toContainText('Could not open the teacher key', {
+    await restored.getByRole('button', { name: 'Restore class access' }).click();
+    await expect(restored.getByRole('alert')).toContainText('Could not open class recovery', {
       timeout: 15_000,
     });
-    await expect(restored.getByRole('heading', { name: 'No courses connected' })).toBeVisible();
+    await expect(restored.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(
+      0,
+    );
     expect(await restored.evaluate(() => indexedDB.databases())).toEqual([
       { name: 'lacuna.gaps.connections', version: 10 },
     ]);
     await restored.getByLabel('Recovery passphrase').fill(passphrase);
-    await restored.getByRole('button', { name: 'Restore teacher key' }).click();
-    await expect(restored.getByRole('status')).toContainText('Teacher key saved', {
+    await restored.getByRole('button', { name: 'Restore class access' }).click();
+    await expect(restored.getByRole('status')).toContainText('Class protected', {
       timeout: 15_000,
     });
+    await restored.getByText('Technical details', { exact: true }).click();
     await expect(
       restored.getByText(backup.recovery.recipient.keyId, { exact: true }),
     ).toBeVisible();
-    await expect(restored.getByText(/Key setup does not start reporting/)).toBeVisible();
+    await expect(
+      restored.getByText(/Protecting this class does not start reporting/),
+    ).toBeVisible();
     expect(await restored.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
