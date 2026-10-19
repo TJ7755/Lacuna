@@ -81,6 +81,15 @@ export async function handleShareItem(
   id: string,
   now: () => number,
 ): Promise<Response> {
+  if (request.method === 'HEAD') {
+    const headers = shareCorsHeaders(request);
+    headers.set('Cache-Control', 'no-store');
+    if (!SHARE_ID_RE.test(id)) return new Response(null, { status: 404, headers });
+    const auth = await authorizeShare(store, id, request);
+    const status = auth === 'ok' ? ((await shareLive(store, id, now)) ? 204 : 410) : auth;
+    // Verification must not renew the share or run the expired-share deletion path.
+    return new Response(null, { status, headers });
+  }
   if (!SHARE_ID_RE.test(id)) {
     return shareJson(404, request, { error: 'not found' });
   }
