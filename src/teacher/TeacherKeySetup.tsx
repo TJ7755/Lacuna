@@ -11,6 +11,7 @@ import {
 } from '../insights/recoveryFile';
 import type { InsightsRecovery } from '../insights/envelope';
 import { parseShareCode, ShareLinkError } from '../shareLinks/client';
+import { TeacherJourney } from './TeacherHomeView';
 import { validateRecoveryPassphrase } from '../sync/pairingConfig';
 
 type Mode = 'create' | 'restore' | 'download';
@@ -22,11 +23,17 @@ interface PreparedKey {
 export function TeacherKeySetup({
   onClose,
   initialCourse = '',
+  initialMode = 'create',
+  onContinue,
+  courseName,
 }: {
   onClose(): void;
   initialCourse?: string;
+  courseName?: string;
+  initialMode?: Mode;
+  onContinue?(): void;
 }) {
-  const [mode, setMode] = useState<Mode>('create');
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [course, setCourse] = useState(initialCourse);
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
@@ -34,6 +41,8 @@ export function TeacherKeySetup({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedKey | null>(null);
+
+  const [downloaded, setDownloaded] = useState(false);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -62,6 +71,12 @@ export function TeacherKeySetup({
         if (!file || file.size > INSIGHTS_RECOVERY_FILE_MAX_BYTES)
           throw new InsightsRecoveryFileError();
         const saved = parseInsightsRecoveryFile(await file.text());
+        if (initialCourse && saved.shareId !== initialCourse) {
+          setError(
+            'This recovery file belongs to another class. Choose the recovery file for this class, or go back to classes.',
+          );
+          return;
+        }
         shareId = saved.shareId;
         recovery = (await store.restore(shareId, saved.recovery, passphrase)).recovery;
       } else {
@@ -87,8 +102,8 @@ export function TeacherKeySetup({
           cause instanceof ShareLinkError
           ? cause.message
           : mode === 'create'
-            ? 'Could not save the teacher key in this browser. Check that browser storage is available and try again.'
-            : 'Could not open the teacher key. Check the recovery file, course link and passphrase.',
+            ? 'Could not protect this class in this browser. Check that browser storage is available and try again.'
+            : 'Could not open class recovery. Check the recovery file, course link and passphrase.',
       );
     } finally {
       store.close();
@@ -107,6 +122,7 @@ export function TeacherKeySetup({
       anchor.href = url;
       anchor.download = `gaps-teacher-${prepared.shareId}.json`;
       anchor.click();
+      setDownloaded(true);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError(
@@ -117,35 +133,63 @@ export function TeacherKeySetup({
 
   return (
     <SectionCard aria-labelledby="key-setup-heading">
-      <h2 id="key-setup-heading" className="font-display text-2xl">
-        Teacher key setup
+      <h2 tabIndex={-1} id="key-setup-heading" className="font-display text-2xl">
+        {initialCourse ? 'Protect your class reports' : 'Class recovery'}
       </h2>
+      {initialCourse && (
+        <div className="mt-5">
+          <TeacherJourney current={2} />
+        </div>
+      )}
+      {courseName && <p className="mt-2 font-semibold">{courseName}</p>}
       <p className="mt-3 max-w-2xl text-sm text-ink-soft">
-        Keys stay in this browser, protected by your recovery passphrase. Keep the encrypted
-        recovery file and passphrase separately. The passphrase alone cannot recover a lost key.
+        {mode === 'create'
+          ? 'Choose a recovery passphrase to protect pupil results. Next, download the recovery file. Keep the file and passphrase separately; you need both if this browser loses its saved key.'
+          : 'Use the recovery passphrase you chose for this class. To restore access on a new device, you also need its saved recovery file. Keep that file and passphrase separately.'}{' '}
+        This is separate from your course connection file.
       </p>
       {prepared ? (
         <div className="mt-5 space-y-3">
           <p role="status" className="text-sm text-ink">
-            Teacher key saved. Download its recovery file.
+            Class protected. Download its recovery file.
           </p>
+          <details className="text-sm text-ink-soft">
+            <summary>Technical details</summary>
+            <p className="mt-3">
+              Course code: <code className="break-all">{prepared.shareId}</code>
+            </p>
+            <p className="text-sm text-ink-soft">
+              Key fingerprint:{' '}
+              <code className="break-all">{prepared.recovery.recipient.keyId}</code>
+            </p>
+          </details>
           <p className="text-sm text-ink-soft">
-            Course code: <code className="break-all">{prepared.shareId}</code>
+            Protecting this class does not start reporting. Pupils must join the class and choose to
+            share results.
           </p>
-          <p className="text-sm text-ink-soft">
-            Key fingerprint: <code className="break-all">{prepared.recovery.recipient.keyId}</code>
-          </p>
-          <p className="text-sm text-ink-soft">
-            Key setup does not start reporting. Pupils must join the class and choose to share results.
-          </p>
-          <button type="button" onClick={download} className={buttonClassName('primary')}>
+          <button
+            type="button"
+            onClick={download}
+            className={buttonClassName(downloaded && onContinue ? 'secondary' : 'primary')}
+          >
             Download encrypted recovery file
           </button>
+          {downloaded && (
+            <p className="text-sm text-ink-soft">
+              Download requested. Check your Downloads folder and keep the file somewhere safe
+              before continuing.
+            </p>
+          )}
+          {onContinue && downloaded && (
+            <button type="button" className={buttonClassName('primary')} onClick={onContinue}>
+              Continue to class
+            </button>
+          )}
         </div>
       ) : (
-        <form onSubmit={(event) => void submit(event)} className="mt-5 space-y-4">
+        <form onSubmit={(event) => void submit(event)} className="teacher-task mt-5 space-y-4">
           <fieldset disabled={busy} className="space-y-4">
-            <Field label="Key action">
+            <Field label="What do you need to do?">
               <select
                 value={mode}
                 className={inputClassName}
@@ -157,9 +201,9 @@ export function TeacherKeySetup({
                   setConfirmation('');
                 }}
               >
-                <option value="create">Prepare a new key</option>
+                <option value="create">Set up this class for the first time</option>
                 <option value="restore">Restore from a recovery file</option>
-                <option value="download">Download an existing key’s recovery file</option>
+                <option value="download">Save another recovery file</option>
               </select>
             </Field>
             {mode === 'restore' ? (
@@ -173,6 +217,10 @@ export function TeacherKeySetup({
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
               </Field>
+            ) : initialCourse ? (
+              <p className="text-sm text-ink-soft">
+                Setting up the selected class. No course link is needed.
+              </p>
             ) : (
               <Field
                 label="Published course link"
@@ -218,10 +266,10 @@ export function TeacherKeySetup({
               {busy
                 ? 'Preparing key…'
                 : mode === 'create'
-                  ? 'Prepare teacher key'
+                  ? 'Protect class reports'
                   : mode === 'restore'
-                    ? 'Restore teacher key'
-                    : 'Open saved key'}
+                    ? 'Restore class access'
+                    : 'Open saved recovery file'}
             </button>
           </fieldset>
         </form>
@@ -237,7 +285,7 @@ export function TeacherKeySetup({
         onClick={onClose}
         className={`${buttonClassName('ghost')} mt-4`}
       >
-        Close key setup
+        Back to classes
       </button>
     </SectionCard>
   );

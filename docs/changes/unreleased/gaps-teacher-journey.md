@@ -1,0 +1,1 @@
+- Reorganise Gaps around connecting a class, sharing its code and reading daily results. Keep class setup and recovery together, explain empty results and confirm local connection removal, using Lacuna’s existing colours and controls.
