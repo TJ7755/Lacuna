@@ -17,6 +17,8 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
   const { resolvedTheme, setTheme } = useTheme();
   const selected = courses.find((course) => course.id === selectedId) ?? courses[0];
   const shareUrl = selected ? resolveCourseShareUrl(selected.shareUrl) : null;
+  const allReviewed =
+    courses.length > 0 && courses.every((course) => course.reviewStatus === 'reviewed');
 
   return (
     <div className="library-page">
@@ -46,7 +48,11 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
       <main id="library-courses" className="library-main" tabIndex={-1}>
         <div className="library-introduction">
           <h1>Library</h1>
-          <p className="library-promise">Curated courses, built around your syllabus.</p>
+          <p className="library-promise">
+            {allReviewed
+              ? 'Curated courses, authored and reviewed for your syllabus.'
+              : 'Curated courses, built around your syllabus.'}
+          </p>
           <p>Original lesson notes, focused recall cards and exam-style practice.</p>
         </div>
 

@@ -16,8 +16,8 @@ Do not add private teaching files or owner credentials to this public catalogue.
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Mark a course reviewed only when review covers that published version;
-syllabus authorship alone does not establish completed review. Current courses have earlier
-reviewed terms and later additions awaiting review, so their status is `in-progress`.
+syllabus authorship alone does not establish completed review. The course owner confirmed review of all four listed courses on 19 October 2026;
+their catalogue status is `reviewed`. Keep this status specific to the published version.
 
 ## Develop and check
 

@@ -31,7 +31,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Use of biological resources',
     ],
     shareUrl: 'https://getlacuna.app/#/s/b70862112bb460441bee556d6233fc03',
-    reviewStatus: 'in-progress',
+    reviewStatus: 'reviewed',
     stats: { cards: 1308, notes: 163, practiceSets: 164, practiceMarks: 1269 },
   },
   {
@@ -47,7 +47,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Organic chemistry',
     ],
     shareUrl: 'https://getlacuna.app/#/s/dae0b77f89538747f2ff6be3e9e94ff2',
-    reviewStatus: 'in-progress',
+    reviewStatus: 'reviewed',
     stats: { cards: 908, notes: 146, practiceSets: 147, practiceMarks: 1227 },
   },
   {
@@ -65,7 +65,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Space physics',
     ],
     shareUrl: 'https://getlacuna.app/#/s/48a155196a8e72bb6737affc063daf43',
-    reviewStatus: 'in-progress',
+    reviewStatus: 'reviewed',
     stats: { cards: 1024, notes: 150, practiceSets: 151, practiceMarks: 1640 },
   },
   {
@@ -83,7 +83,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Depth study B: Germany, 1918–45',
     ],
     shareUrl: 'https://getlacuna.app/#/s/2a768569a7b0a8987b3ef8a12947aae5',
-    reviewStatus: 'in-progress',
+    reviewStatus: 'reviewed',
     stats: { cards: 697, notes: 109, practiceSets: 110, practiceMarks: 1638 },
   },
 ];

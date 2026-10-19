@@ -10,6 +10,7 @@ describe('libraryCourses', () => {
       'history0977',
     ]);
     expect(new Set(libraryCourses.map(({ id }) => id)).size).toBe(libraryCourses.length);
+    expect(libraryCourses.every((course) => course.reviewStatus === 'reviewed')).toBe(true);
   });
 
   it('keeps qualification identifiers, summaries, topics and live links together', () => {
