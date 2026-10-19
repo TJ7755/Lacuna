@@ -1,13 +1,32 @@
 # Gaps: teacher insights
 
-Gaps uses the existing Lacuna web build. `gaps.getlacuna.app` opens `#/teach` before
-the study landing page paints. Explicit app hash routes still work. `#/teach` also
-works on the main website and desktop; Share links to it.
+The separate [Gaps entry](../src/teacher/main.tsx) renders the shared teacher view
+without the learner App, hash router or database. `build:gaps` typechecks the web
+source and builds [its Vite configuration](../vite.gaps.config.ts) into `gaps/dist`.
+The output contains React, the theme provider, teacher presentation, shared visual
+primitives/styles and explicitly selected local fonts/icon. It has no learner
+routes, database migration/seed, backup/sync/AI startup, study service worker,
+manifest or precache. A small, origin-guarded retirement worker replaces the old
+study worker at `/sw.js`; it is not a teacher offline cache. Only the shared theme
+preference is read/written locally.
 
-The teacher entry lists locally published courses and checks for the existing
-share write credentials before offering sharing management. Its empty state
-explains that Gaps, the main website and desktop have separate storage. Opening
-the new domain does not migrate courses, write tokens or private keys.
+The view's `children` prop is the seam: the existing in-app
+[TeacherHome](../src/pages/TeacherHome.tsx) supplies locally published-course
+management, including credential checks; standalone Gaps supplies no data source.
+`#/teach` remains available on the main website and desktop, linked from Share.
+The standalone build has one view and needs no router. Bare roots and old hashes
+such as `#/teach` and `#/share` render that same honest, unconnected teacher view;
+its sharing link explicitly opens the main site.
+
+Standalone Gaps does not migrate or inspect existing courses, credentials or private
+keys. It neither opens nor deletes a learner database, clears caches, nor registers
+a service worker from its entry. The retirement worker below unregisters only its
+own legacy Gaps registration. Its unconnected state does not claim that a preserved
+learner library is empty. No reports or participation totals are fabricated.
+A future teacher data adapter must be independent of learner storage and supply
+verified teacher content at this seam. Reuse the existing insights envelope/mailbox
+modules when needed; this entry does not install a transport or implement key
+recovery, evidence collection or decryption. Those integration steps remain separate.
 
 ## Agreed trial boundaries
 
@@ -142,11 +161,59 @@ account-wide remaining credit before enabling the trial.
 
 ## Hosting
 
-The Lacuna Vercel project's Gaps domain is assigned to `feature/594-gaps`.
-`teach.getlacuna.app` redirects to Gaps. Keep that branch assignment and the
-project's allowed preview build branch in step. No DNS change is needed for the
-teacher entry. Validate the deployed hostname's bare root and an explicit hash
-route after publishing the branch; a local build does not prove the remote alias.
+The currently published Gaps alias still uses the Lacuna project and full build,
+with `feature/594-gaps` assigned to the Gaps domain. `teach.getlacuna.app` redirects
+to it. The root [Vercel configuration](../vercel.json), main build and hostname
+fallback remain intact until a reviewed publication switches the teacher hostname.
+Changing a shared project's build command would also change Lacuna: do not do that.
+
+[gaps/vercel.json](../gaps/vercel.json) prepares a separate static Gaps deployment.
+For a later authorised publication, use a separate Gaps deployment target with
+repository Root Directory `gaps` and source files outside that directory included
+([Vercel monorepo procedure](https://vercel.com/docs/monorepos/monorepo-faq)).
+Its install/build commands run in the repository parent with Bun 1.4.3 and the frozen
+root lockfile; output is `dist` relative to `gaps`. The teacher root contains no
+`api` directory.
+Check those settings against a preview before moving any hostname. No relay switch,
+new secret, environment change or paid service is needed for this unconnected view.
+This change does not create/configure a remote project, deploy or move domains.
+
+Before publication, inspect the generated file list and run:
+
+```bash
+bun run build:gaps
+PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts
+PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
+```
+
+Stage intended new files before browser verification. `--gaps` selects the teacher
+build/config within the existing isolated runner; each run owns its output, source
+fingerprint and browser evidence. Without the flag the runner still checks Lacuna.
+The build-graph test fails if learner modules, workers or extra JavaScript entries
+enter Gaps, and limits compressed JavaScript to 80 kB. Browser checks record storage,
+worker/database calls, requests and desktop/mobile screenshots.
+
+The [retirement worker](../gaps/sw.js) occupies the old `/sw.js` URL so returning
+browsers can update the root-scoped Workbox registration even while it serves an
+old cached shell. Installation succeeds only for that worker path and root
+scope on `https://gaps.getlacuna.app`. It takes control, unregisters itself and
+refreshes only the old teacher home/bare root; other learner views stay open until
+their next navigation to avoid discarding edits. It has no fetch handler and never
+opens/deletes IndexedDB or deletes caches. No learner worker on `getlacuna.app` is
+registered, claimed or unregistered. Serve `/sw.js` with `no-store` and retain this
+retirement asset through the migration window; removing it early strands browsers
+that have not returned yet. The existing cached study assets may remain on disk.
+
+Before moving the hostname, verify a preview and then the production origin with
+both a fresh profile and an existing installation. The latter must update its old
+registration; a browser that delays worker updates may require a reload. Check
+bare root, old hashes, preserved course data, missing assets (must not return HTML),
+sharing and the main site's study/desktop behaviour. The migration browser test
+installs a cached learner-shell fixture on the real Gaps hostname through local interception, updates it to the candidate worker and
+checks that course data and the separate main-site worker survive. The test changes
+only the worker URL query because Chromium background update fetches bypass
+Playwright routing; it exercises the same registration takeover and activation.
+It does not prove the remote assignment or update timing of an existing production installation.
 
 The branch carries separate increments for the teacher entry, encryption,
 daily cadence, relay mailbox and client transport. Their tests cover crypto,

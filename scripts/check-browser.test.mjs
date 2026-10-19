@@ -180,3 +180,43 @@ test('does not inherit shared reporter destinations or reporter replacement', ()
   );
   assert.equal(env.PW_TEST_REPORTER, 'shared-output');
 });
+
+test('selects the isolated Gaps build and removes its selector before Playwright', () => {
+  const directory = fixture();
+  assert.equal(
+    verifyBrowser({
+      directory,
+      args: ['--gaps', '--project=chromium'],
+      execute: (_command, args, options) => {
+        assert.equal(options.env.LACUNA_BROWSER_SITE, 'gaps');
+        if (args[0] === 'run') {
+          assert.equal(args[1], 'build:gaps:assets');
+          build(args);
+        } else {
+          assert.ok(!args.includes('--gaps'));
+          assert.ok(args.includes('--project=chromium'));
+        }
+        return { status: 0 };
+      },
+    }),
+    0,
+  );
+  assert.equal(evidence(directory)[0].site, 'gaps');
+});
+
+test('previews Gaps with its own root and config', () => {
+  previewBrowser({
+    env: { LACUNA_BROWSER_RUN_DIR: '/isolated/run', LACUNA_BROWSER_SITE: 'gaps' },
+    execute: (_command, args) => {
+      assert.deepEqual(args.slice(0, 5), [
+        'x',
+        'vite',
+        'preview',
+        '--config',
+        'vite.gaps.config.ts',
+      ]);
+      assert.equal(args[args.indexOf('--outDir') + 1], '/isolated/run/dist');
+      return { status: 0 };
+    },
+  });
+});
