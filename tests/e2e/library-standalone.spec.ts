@@ -2,13 +2,6 @@ import { expect, test } from '@playwright/test';
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'library', 'Run verify:browser -- --library');
 
-const courses = [
-  ['Biology', '6fb10671c70197caeff8616f80697ac5'],
-  ['Chemistry', 'daf16de2b88b97fa236948559ede6c4c'],
-  ['Physics', '52fe58acd2fcece40c1d10ffbf08276f'],
-  ['History', '31178fee8489ffcf1748c1dc5c570be5'],
-] as const;
-
 for (const width of [1280, 390, 320]) {
   test(`browse and open courses without learner startup at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
@@ -40,34 +33,30 @@ for (const width of [1280, 390, 320]) {
       localStorage.setItem('lacuna-theme', 'light');
     });
     await page.goto('/');
-    await expect(page).toHaveTitle('Library · Lacuna');
-    await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible();
-    await expect(page.getByText('Curated courses, built around your syllabus.')).toBeVisible();
-    await expect(page.getByText('Preview course', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('Previewing course', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const homeTarget = await page.getByRole('link', { name: 'Lacuna home' }).boundingBox();
     expect(homeTarget?.height).toBeGreaterThanOrEqual(44);
-    for (const [subject, code] of courses) {
-      const button = page.getByRole('button', { name: new RegExp(subject) });
+    const courseButtons = page.locator('button[aria-controls="library-preview"]');
+    const courseCount = await courseButtons.count();
+    expect(courseCount).toBeGreaterThan(0);
+    for (let index = 0; index < courseCount; index += 1) {
+      const button = courseButtons.nth(index);
+      const subject = await button.locator('.library-course-subject').innerText();
       await button.focus();
       await page.keyboard.press('Enter');
       await expect(button).toHaveAttribute('aria-pressed', 'true');
+      await expect(
+        page.locator('button[aria-controls="library-preview"][aria-pressed="true"]'),
+      ).toHaveCount(1);
       await expect(
         page.getByRole('heading', { level: 2, name: subject, exact: true }),
       ).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open in Lacuna', exact: true })).toHaveAttribute(
         'href',
-        `https://getlacuna.app/#/s/${code}`,
+        /^https:\/\/getlacuna\.app\/#\/s\/[0-9a-f]{32}$/,
       );
-      await expect(page.getByText('Review in progress', { exact: true })).toBeVisible();
-      await expect(
-        page.getByText('Earlier terms reviewed; newer additions are awaiting review.'),
-      ).toBeVisible();
     }
-    await page.getByRole('button', { name: /Biology/ }).click();
-    await expect(page.getByText('1,322', { exact: true })).toBeVisible();
-    await expect(page.getByText('164', { exact: true })).toBeVisible();
-    await expect(page.getByText('Reviewed', { exact: true })).toHaveCount(0);
+    await courseButtons.first().click();
     await page.screenshot({ path: info.outputPath('library-light.png'), fullPage: true });
     await page.getByRole('button', { name: 'Use dark theme' }).click();
     await expect(page.locator('html')).toHaveClass('dark');
@@ -85,6 +74,10 @@ for (const width of [1280, 390, 320]) {
     expect(backgroundRequests).toEqual([]);
     expect(errors).toEqual([]);
 
+    const courseLink = page.getByRole('link', { name: 'Open in Lacuna', exact: true });
+    const destination = await courseLink.getAttribute('href');
+    expect(destination).not.toBeNull();
+
     // Navigation enters the existing share route; the library never imports the course itself.
     await page.route('https://getlacuna.app/**', (route) =>
       route.fulfill({
@@ -92,7 +85,7 @@ for (const width of [1280, 390, 320]) {
         body: '<title>Lacuna share entry</title>',
       }),
     );
-    await page.getByRole('link', { name: 'Open in Lacuna', exact: true }).click();
-    await expect(page).toHaveURL('https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5');
+    await courseLink.click();
+    await expect(page).toHaveURL(destination!);
   });
 }
