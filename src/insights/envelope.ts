@@ -1,11 +1,17 @@
 import { z } from 'zod';
 import { PBKDF2_ITERATIONS, PBKDF2_ITERATIONS_MAX, PBKDF2_ITERATIONS_MIN } from '../sync/crypto';
-import { isoWeekStartMs } from './isoWeek';
+import { isoDayStartMs } from '../../relay/src/insightsDay';
+import {
+  INSIGHT_MAX_EVIDENCE_BYTES,
+  parseInsightEnvelope,
+  type InsightEnvelope,
+} from '../../relay/src/insightsProtocol';
+export type { InsightEnvelope } from '../../relay/src/insightsProtocol';
 
 // Experimental #600 format. No network or persistence callers yet. Keep the
 // teacher's RSA private key out of share payloads and pupil devices.
 const RSA = { name: 'RSA-OAEP', hash: 'SHA-256' } as const;
-const MAX_PLAINTEXT_BYTES = 65_536;
+const MAX_PLAINTEXT_BYTES = INSIGHT_MAX_EVIDENCE_BYTES;
 const base64 = (max: number) =>
   z
     .string()
@@ -16,17 +22,6 @@ const recipientSchema = z
   .object({
     keyId: z.string().regex(/^[0-9a-f]{64}$/),
     publicKey: base64(1024),
-  })
-  .strict();
-const envelopeSchema = z
-  .object({
-    v: z.literal(1),
-    s: z.string().regex(/^[0-9a-f]{32}$/),
-    w: z.string().max(8),
-    k: z.string().regex(/^[0-9a-f]{64}$/),
-    x: base64(512),
-    n: base64(16),
-    c: base64(Math.ceil((MAX_PLAINTEXT_BYTES + 16) / 3) * 4),
   })
   .strict();
 const recoverySchema = z
@@ -41,7 +36,6 @@ const recoverySchema = z
   .strict();
 
 export type InsightsRecipient = z.infer<typeof recipientSchema>;
-export type InsightEnvelope = z.infer<typeof envelopeSchema>;
 export type InsightsRecovery = z.infer<typeof recoverySchema>;
 export interface InsightsOwner {
   recipient: InsightsRecipient;
@@ -50,7 +44,7 @@ export interface InsightsOwner {
 }
 export interface InsightEnvelopeContext {
   shareId: string;
-  isoWeek: string;
+  isoDay: string;
 }
 
 /** Generate a course-owner key and an encrypted recovery file; persist nothing. */
@@ -143,9 +137,9 @@ export async function sealInsightEnvelope(
     );
     const ciphertext = await crypto.subtle.encrypt(gcm(nonce, aad), key, copy(plaintext));
     return {
-      v: 1,
+      v: 2,
       s: context.shareId,
-      w: context.isoWeek,
+      d: context.isoDay,
       k: recipient.keyId,
       x: encode(wrapped),
       n: encode(nonce),
@@ -161,14 +155,14 @@ export async function openInsightEnvelope(
   raw: unknown,
   context: InsightEnvelopeContext,
 ): Promise<Uint8Array> {
-  const envelope = envelopeSchema.parse(raw);
+  const envelope = parseInsightEnvelope(raw, context);
   const aad = envelopeAad(context, owner.recipient.keyId);
   if (
     envelope.s !== context.shareId ||
-    envelope.w !== context.isoWeek ||
+    envelope.d !== context.isoDay ||
     envelope.k !== owner.recipient.keyId
   ) {
-    throw new Error('The insights envelope belongs to another course, week or teacher key.');
+    throw new Error('The insights envelope belongs to another course, day or teacher key.');
   }
   const nonce = decode(envelope.n, 12, 12);
   const wrapped = decode(envelope.x, 384, 384);
@@ -200,8 +194,8 @@ async function importRecipient(raw: InsightsRecipient): Promise<CryptoKey> {
 
 function envelopeAad(context: InsightEnvelopeContext, keyId: string): Uint8Array<ArrayBuffer> {
   requireShareId(context.shareId);
-  isoWeekStartMs(context.isoWeek);
-  return text(['lacuna.insights.envelope.v1', context.shareId, context.isoWeek, keyId]);
+  isoDayStartMs(context.isoDay);
+  return text(['lacuna.insights.envelope.v2', context.shareId, context.isoDay, keyId]);
 }
 
 function recoveryAad(

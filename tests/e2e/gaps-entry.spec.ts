@@ -24,7 +24,7 @@ for (const viewport of [
     await expect(page).toHaveURL('https://gaps.getlacuna.app/?source=trial#/teach');
     await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No published courses here' })).toBeVisible();
-    await expect(page.getByText(/Weekly delivery is not connected yet/)).toBeVisible();
+    await expect(page.getByText(/Daily delivery is not connected yet/)).toBeVisible();
     await expect(page.locator('.landing-page')).toHaveCount(0);
     await expect(page).toHaveTitle('Gaps · Lacuna');
     expect(

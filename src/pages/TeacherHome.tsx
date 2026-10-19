@@ -26,7 +26,7 @@ export function TeacherHome() {
 
       <SectionCard aria-labelledby="delivery-heading">
         <h2 id="delivery-heading" className="font-display text-2xl">
-          Weekly delivery is not connected yet
+          Daily delivery is not connected yet
         </h2>
         <p className="mt-2 text-sm text-ink-soft">
           Gaps is being prepared for the school trial. No pupil results are collected or displayed

@@ -1,6 +1,6 @@
 import { Toggle } from '../../components/ui/Toggle';
 import {
-  createInsightsLastSentWeekSetting,
+  createInsightsLastSentDaySetting,
   createInsightsOptInSetting,
 } from '../../state/insightsOptIn';
 import { SettingsCard } from './SettingsUi';
@@ -12,15 +12,15 @@ export interface CourseInsightsSectionProps {
 /** Device-local consent for distributed courses; delivery is still disconnected. */
 export function CourseInsightsSection({ courseId }: CourseInsightsSectionProps) {
   const optIn = createInsightsOptInSetting(courseId);
-  const lastSentWeek = createInsightsLastSentWeekSetting(courseId);
+  const lastSentDay = createInsightsLastSentDaySetting(courseId);
   const [optedIn, setOptedIn] = optIn.use();
-  const [lastSent] = lastSentWeek.use();
+  const [lastSent] = lastSentDay.use();
 
   return (
     <SettingsCard>
       <h2 className="mb-1 font-display text-2xl font-semibold tracking-tight">Class insights</h2>
       <p className="mb-4 text-sm text-ink-soft">
-        Weekly delivery is not connected yet. Turning this on records your choice on this device; no
+        Daily delivery is not connected yet. Turning this on records your choice on this device; no
         results are sent.
       </p>
       <div className="mb-4 flex items-start justify-between gap-3 pt-1">
@@ -34,8 +34,8 @@ export function CourseInsightsSection({ courseId }: CourseInsightsSectionProps) 
             detail.
           </p>
           <p className="mt-1 text-sm text-ink-soft">
-            The service will see the course, week, submission time and packet size, but not your
-            results.
+            At most one report per completed day will be sent. The service will see the course,
+            reporting day, submission time and packet size, but not your results.
           </p>
           <p className="mt-1 text-sm text-ink-soft">
             Turning it off stops future sends. Encrypted submissions will expire from the relay

@@ -1,8 +1,8 @@
 import { createLocalSetting, type LocalSetting } from './localSetting';
-import { ISO_WEEK_LABEL_RE } from '../insights/isoWeek';
+import { isoDayStartMs } from '../../relay/src/insightsDay';
 
 /**
- * The class-insights opt-in and its weekly marker, stored per course on the
+ * The class-insights opt-in and its daily marker, stored per course on the
  * device only (issue #591). Both ride the shared device-local preference
  * machinery: a localStorage value under `lacuna.` keys and cross-tab events on
  * the `lacuna:` convention. Nothing here is part of the synced course payload,
@@ -21,12 +21,22 @@ export function createInsightsOptInSetting(courseId: string): LocalSetting<boole
   });
 }
 
-/** `lacuna.insights.lastSentWeek.<courseId>`: the last week the transport completed. */
-export function createInsightsLastSentWeekSetting(courseId: string): LocalSetting<string | null> {
+/** `lacuna.insights.lastSentDay.<courseId>`: the last day the transport completed. */
+export function createInsightsLastSentDaySetting(courseId: string): LocalSetting<string | null> {
   return createLocalSetting<string | null>({
-    key: `lacuna.insights.lastSentWeek.${courseId}`,
-    event: `lacuna:insights-last-sent-week-${courseId}`,
-    parse: (raw) => (raw !== null && ISO_WEEK_LABEL_RE.test(raw) ? raw : null),
+    key: `lacuna.insights.lastSentDay.${courseId}`,
+    event: `lacuna:insights-last-sent-day-${courseId}`,
+    parse: (raw) => {
+      try {
+        if (raw !== null) {
+          isoDayStartMs(raw);
+          return raw;
+        }
+      } catch {
+        /* A corrupt or old weekly marker is not a daily acknowledgement. */
+      }
+      return null;
+    },
     serialise: (value) => value ?? '',
   });
 }

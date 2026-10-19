@@ -1,124 +1,79 @@
 import { describe, expect, it } from 'vitest';
-import { planWeeklyInsightsSend, runWeeklyInsightsSend } from './optIn';
+import { planDailyInsightsSend, runDailyInsightsSend } from './optIn';
 
-// Timing anchors on the trial grid: 12-18 October 2026 is exactly ISO week 2026-W42,
-// Monday 19 October 00:00 Z opens 2026-W43 and completes W42, and short offline gaps
-// stand in for the offline-tolerant catch-up of issue #591.
-
-const SUN_OCT_18_MIDDAY = Date.UTC(2026, 9, 18, 12, 0);
-const MON_OCT_19_MIDNIGHT = Date.UTC(2026, 9, 19, 0, 0);
-const SAT_OCT_31 = Date.UTC(2026, 9, 31, 9, 0);
-
-describe('planWeeklyInsightsSend', () => {
-  it('stays idle while opted out, however far behind the marker is', () => {
-    expect(
-      planWeeklyInsightsSend({ optedIn: false, lastSentWeek: '2026-W39' }, SUN_OCT_18_MIDDAY),
-    ).toEqual({ action: 'idle' });
-    expect(
-      planWeeklyInsightsSend({ optedIn: false, lastSentWeek: null }, SUN_OCT_18_MIDDAY),
-    ).toEqual({ action: 'idle' });
-  });
-
-  it('never sends the running week', () => {
-    // Sunday midday: 2026-W42 is still running, so W42 must not appear.
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: null }, SUN_OCT_18_MIDDAY),
-    ).toEqual({
-      action: 'send',
-      week: '2026-W41',
+const now = Date.parse('2026-10-19T00:00:00Z');
+describe('daily insights planning', () => {
+  it('stays idle when consent is off', () => {
+    expect(planDailyInsightsSend({ optedIn: false, lastSentDay: null }, now)).toEqual({
+      action: 'idle',
     });
   });
-
-  it('sends the latest completed week once a week has rolled over', () => {
-    const fresh = { optedIn: true, lastSentWeek: null } as const;
-    // Monday 00:00:00.000 exactly completes W42.
-    expect(planWeeklyInsightsSend(fresh, MON_OCT_19_MIDNIGHT)).toEqual({
+  it.each([
+    ['2026-10-19T00:00:00Z', '2026-10-18'],
+    ['2026-10-19T23:59:59Z', '2026-10-18'],
+    ['2027-01-01T00:00:00Z', '2026-12-31'],
+    ['2024-03-01T12:00:00Z', '2024-02-29'],
+  ])('sends only the latest completed UTC day at %s', (time, day) => {
+    expect(planDailyInsightsSend({ optedIn: true, lastSentDay: null }, Date.parse(time))).toEqual({
       action: 'send',
-      week: '2026-W42',
+      day,
     });
   });
-
-  it('catches up to the latest completed week only, without backfilling skipped weeks', () => {
-    // Last sent W39, weeks offline, now in W42: W40 and W41 are never sent;
-    // only the latest completed week goes out on the next connection.
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W39' }, SUN_OCT_18_MIDDAY),
-    ).toEqual({ action: 'send', week: '2026-W41' });
+  it('catches up once after offline days without backfilling', () => {
+    expect(planDailyInsightsSend({ optedIn: true, lastSentDay: '2026-10-01' }, now)).toEqual({
+      action: 'send',
+      day: '2026-10-18',
+    });
   });
-
-  it('stays idle once the completed week has already been sent', () => {
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W42' }, SUN_OCT_18_MIDDAY),
-    ).toEqual({ action: 'idle' });
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W42' }, MON_OCT_19_MIDNIGHT),
-    ).toEqual({ action: 'idle' });
-  });
-
-  it('sends again as soon as a newer completed week opens, even across the year rollover', () => {
-    // The instant W53 opens, W52 has merely just completed: a marker on W52
-    // stops there, and an older marker sends W52 - not the running week.
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W52' }, Date.UTC(2026, 11, 28)),
-    ).toEqual({ action: 'idle' });
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W51' }, Date.UTC(2026, 11, 28)),
-    ).toEqual({ action: 'send', week: '2026-W52' });
-    // By New Year's Monday, 2026-W53 is complete and becomes the catch-up target.
-    expect(
-      planWeeklyInsightsSend({ optedIn: true, lastSentWeek: '2026-W50' }, Date.UTC(2027, 0, 4)),
-    ).toEqual({ action: 'send', week: '2026-W53' });
+  it('suppresses repeats until the next completed day', () => {
+    const state = { optedIn: true, lastSentDay: '2026-10-18' };
+    expect(planDailyInsightsSend(state, now)).toEqual({ action: 'idle' });
+    expect(planDailyInsightsSend(state, now + 86_400_000)).toEqual({
+      action: 'send',
+      day: '2026-10-19',
+    });
   });
 });
 
-describe('runWeeklyInsightsSend', () => {
-  it('marks the week sent only after the transport accepted the send', async () => {
+describe('daily insights scheduler', () => {
+  it('records acceptance after the transport completes and respects opt-out', async () => {
+    let optedIn = false,
+      calls = 0;
     const marked: string[] = [];
-    const outcome = await runWeeklyInsightsSend({
-      readState: () => ({ optedIn: true, lastSentWeek: null }),
-      markSent: (week) => marked.push(week),
-      now: () => SUN_OCT_18_MIDDAY,
-      send: async () => undefined,
-    });
-    expect(outcome).toBe('sent');
-    expect(marked).toEqual(['2026-W41']);
+    const deps = {
+      readState: () => ({ optedIn, lastSentDay: null }),
+      now: () => now,
+      markSent: (day: string) => marked.push(day),
+      send: async () => {
+        calls++;
+        expect(marked).toEqual([]);
+      },
+    };
+    expect(await runDailyInsightsSend(deps)).toBe('idle');
+    expect(calls).toBe(0);
+    optedIn = true;
+    expect(await runDailyInsightsSend(deps)).toBe('sent');
+    expect(marked).toEqual(['2026-10-18']);
+    optedIn = false;
+    expect(await runDailyInsightsSend(deps)).toBe('idle');
+    expect(calls).toBe(1);
   });
-
-  it('does not mark a week when the transport has not run yet', async () => {
+  it('never marks unavailable or failed deliveries as sent', async () => {
     const marked: string[] = [];
-    const outcome = await runWeeklyInsightsSend({
-      readState: () => ({ optedIn: true, lastSentWeek: null }),
-      markSent: (week) => marked.push(week),
-      now: () => SUN_OCT_18_MIDDAY,
-      send: null, // The wire is undecided in issue #600; the scheduler must not pretend.
-    });
-    expect(outcome).toBe('blocked');
+    const deps = {
+      readState: () => ({ optedIn: true, lastSentDay: null }),
+      now: () => now,
+      markSent: (day: string) => marked.push(day),
+    };
+    expect(await runDailyInsightsSend({ ...deps, send: null })).toBe('blocked');
+    expect(
+      await runDailyInsightsSend({
+        ...deps,
+        send: async () => {
+          throw new Error('offline');
+        },
+      }),
+    ).toBe('failed');
     expect(marked).toEqual([]);
-  });
-
-  it('reports a transport failure without marking, for a retry on the next open', async () => {
-    const outcome = await runWeeklyInsightsSend({
-      readState: () => ({ optedIn: true, lastSentWeek: null }),
-      markSent: () => undefined,
-      now: () => SAT_OCT_31,
-      send: async () => {
-        throw new Error('relay unavailable');
-      },
-    });
-    expect(outcome).toBe('failed');
-  });
-
-  it('never calls the transport when the plan says idle', async () => {
-    let sent = 0;
-    const outcome = await runWeeklyInsightsSend({
-      readState: () => ({ optedIn: true, lastSentWeek: '2026-W42' }),
-      markSent: () => undefined,
-      now: () => SUN_OCT_18_MIDDAY,
-      send: async () => {
-        sent += 1;
-      },
-    });
-    expect(outcome).toBe('idle');
-    expect(sent).toBe(0);
   });
 });

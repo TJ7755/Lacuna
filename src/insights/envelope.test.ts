@@ -8,7 +8,7 @@ import {
 } from './envelope';
 
 const shareId = 'a'.repeat(32);
-const context = { shareId, isoWeek: '2026-W42' };
+const context = { shareId, isoDay: '2026-10-18' };
 const passphrase = 'six unrelated words kept safely offline';
 const evidence = new TextEncoder().encode('pupil-17: question-4, criterion-2, 3/5 marks');
 let owner: InsightsOwner;
@@ -22,7 +22,7 @@ describe('insights encrypted envelopes', () => {
     const envelope = await sealInsightEnvelope(owner.recipient, evidence, context);
     expect(await openInsightEnvelope(owner, envelope, context)).toEqual(evidence);
     expect(owner.privateKey.extractable).toBe(false);
-    expect(Object.keys(envelope).sort()).toEqual(['c', 'k', 'n', 's', 'v', 'w', 'x']);
+    expect(Object.keys(envelope).sort()).toEqual(['c', 'd', 'k', 'n', 's', 'v', 'x']);
     expect(JSON.stringify(envelope)).not.toContain('pupil-17');
     expect(JSON.stringify(envelope)).not.toContain('criterion-2');
   });
@@ -37,11 +37,11 @@ describe('insights encrypted envelopes', () => {
 
   it.each([
     { ...context, shareId: 'b'.repeat(32) },
-    { ...context, isoWeek: '2026-W41' },
-  ])('rejects moving an envelope to another course or week: %j', async (other) => {
+    { ...context, isoDay: '2026-10-17' },
+  ])('rejects moving an envelope to another course or day: %j', async (other) => {
     const envelope = await sealInsightEnvelope(owner.recipient, evidence, context);
     await expect(openInsightEnvelope(owner, envelope, other)).rejects.toThrow();
-    const relabelled = { ...envelope, s: other.shareId, w: other.isoWeek };
+    const relabelled = { ...envelope, s: other.shareId, d: other.isoDay };
     await expect(openInsightEnvelope(owner, relabelled, other)).rejects.toThrow();
   });
 
@@ -66,7 +66,7 @@ describe('insights encrypted envelopes', () => {
   it('rejects unsupported versions and malformed transport values', async () => {
     const envelope = await sealInsightEnvelope(owner.recipient, evidence, context);
     for (const changed of [
-      { ...envelope, v: 2 },
+      { ...envelope, v: 1 },
       { ...envelope, n: 'not base64' },
       { ...envelope, n: btoa('too short') },
       { ...envelope, x: '' },
@@ -78,12 +78,12 @@ describe('insights encrypted envelopes', () => {
     }
   });
 
-  it('bounds payloads and rejects impossible ISO weeks before encryption', async () => {
+  it('bounds payloads and rejects impossible ISO days before encryption', async () => {
     await expect(
       sealInsightEnvelope(owner.recipient, new Uint8Array(65_537), context),
     ).rejects.toThrow();
     await expect(
-      sealInsightEnvelope(owner.recipient, evidence, { ...context, isoWeek: '2025-W53' }),
+      sealInsightEnvelope(owner.recipient, evidence, { ...context, isoDay: '2025-02-30' }),
     ).rejects.toThrow();
     await expect(
       sealInsightEnvelope({ ...owner.recipient, keyId: '0'.repeat(64) }, evidence, context),
