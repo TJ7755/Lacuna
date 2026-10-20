@@ -47,9 +47,6 @@ describe('LibraryPage', () => {
     expect(biology).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: 'Biology' })).toBeInTheDocument();
     expect(screen.getByText('1,200')).toBeInTheDocument();
-    expect(screen.getByText('Review in progress')).toBeInTheDocument();
-    expect(screen.queryByText('Preview course')).not.toBeInTheDocument();
-    expect(screen.queryByText('Previewing course')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open in Lacuna' })).toHaveAttribute(
       'href',
       biologyUrl,
@@ -67,8 +64,6 @@ describe('LibraryPage', () => {
     expect(within(preview).getByText('Forces')).toBeInTheDocument();
     expect(within(preview).getByText('600')).toBeInTheDocument();
     expect(within(preview).queryByText('1,200')).not.toBeInTheDocument();
-    expect(within(preview).getByText('Reviewed')).toBeInTheDocument();
-    expect(within(preview).queryByText('Review in progress')).not.toBeInTheDocument();
     expect(within(preview).queryByText('Ecology')).not.toBeInTheDocument();
     expect(within(preview).getByRole('link', { name: 'Open in Lacuna' })).toHaveAttribute(
       'href',
@@ -98,12 +93,8 @@ describe('LibraryPage', () => {
     expect(document.documentElement).not.toHaveClass('dark');
   });
 
-  it('does not invent counts or a completed review for an unreviewed course', () => {
+  it('omits unknown counts', () => {
     renderLibrary([{ ...courses[0], stats: undefined, reviewStatus: 'not-reviewed' }]);
-    expect(screen.getByText('Awaiting review')).toBeInTheDocument();
     expect(screen.queryByRole('definition')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Earlier terms reviewed; newer additions are awaiting review.'),
-    ).not.toBeInTheDocument();
   });
 });

@@ -52,4 +52,31 @@ once, ignores stale IDs and appends omitted/new lessons in canonical publisher o
 Published content, lineage snapshots, assessment coverage, FSRS/exam targeting and
 release/unlock obligations retain source order. New lessons are never hidden.
 
+
+### Joining part-way through
+
+Course settings → Lessons → **Start Study from** selects a core Lesson for this learner’s
+copy, including locked imports. Study bypasses earlier Lessons and their curricular Practice
+stops without recording completion or mastery. Semi-linear access opens the selected Lesson
+and the earlier catch-up prefix; later Lessons retain their usual completion gates. Linear
+release dates still apply. Resetting to the beginning does not erase real progress or unlocks.
+A removed starting Lesson falls back to the beginning.
+The entry prefix follows the resolved path order, including a supported local lesson order;
+assessment coverage and published lesson indices remain unchanged.
+
+**Review earlier material** offers the earlier Cards directly through FSRS, using real recall
+answers and the shared daily new-Card allowance. It is available beside the current Lesson in
+the study preview and between steps, and becomes the next step when no later curriculum is
+ready. Ordinary due reviews retain priority. Earlier Lessons stay outside later curricular Practice gates, including when lesson introductions
+are switched off, so catch-up cannot hold the current class behind a year of earlier work.
+Cards explicitly linked into a current Lesson still belong to its practice scope.
+Automatic catch-up runs at most once per Study flow; further catch-up remains an explicit action.
+Optional extension Lessons are not treated as prior knowledge or added to catch-up automatically.
+
+Full-course assessment coverage and scheduling horizons are retained. Earlier Cards can enter
+assessment Practice and dated revision windows without an in-app Lesson introduction; later
+untaught material keeps its existing eligibility rules. No prior knowledge is assumed mastered.
+The optional, unindexed `Course.studyStartLessonId` survives backups and peer sync but is not
+published in course files or share payloads, and publisher updates retain the local preference.
+
 [Specification index](../SPEC.md)

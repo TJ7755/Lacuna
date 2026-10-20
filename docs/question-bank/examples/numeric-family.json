@@ -1,0 +1,79 @@
+{
+  "format": "lacuna-question-bank",
+  "schemaVersion": 1,
+  "bankId": "physics-density-family",
+  "bankVersion": 1,
+  "courseCode": "PHYS-DEMO",
+  "concepts": [
+    {
+      "id": "density",
+      "name": "Density as mass per unit volume"
+    }
+  ],
+  "sets": [],
+  "families": [
+    {
+      "id": "density-family",
+      "version": 1,
+      "source": {
+        "title": "Original demonstration content",
+        "reference": "Lacuna concept question bank example 1",
+        "author": "Lacuna contributors",
+        "licence": "CC0-1.0"
+      },
+      "blueprint": {
+        "skill": "Calculate density",
+        "type": "calculation",
+        "difficulty": "introductory",
+        "context": "Laboratory measurements"
+      },
+      "parameters": {
+        "mass": [
+          12,
+          24,
+          36
+        ],
+        "volume": [
+          2,
+          4
+        ]
+      },
+      "derived": [
+        {
+          "name": "density",
+          "op": "/",
+          "left": "mass",
+          "right": "volume"
+        }
+      ],
+      "template": {
+        "title": "Density calculation",
+        "questions": [
+          {
+            "id": "q1",
+            "prompt": "A sample has mass {{mass}} g and volume {{volume}} cm³. Calculate its density.",
+            "parts": [],
+            "answer": {
+              "maxMarks": 1,
+              "response": {
+                "kind": "calculation"
+              },
+              "allocations": [
+                {
+                  "id": "density-mark",
+                  "criterion": "Density = {{mass}} ÷ {{volume}} = {{density}} g/cm³.",
+                  "maxMarks": 1,
+                  "dimension": "application",
+                  "targetConceptIds": [
+                    "density"
+                  ]
+                }
+              ],
+              "prerequisiteConceptIds": []
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
