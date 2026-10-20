@@ -62,3 +62,31 @@ describe('ShareCodeImportPanel', () => {
     expect(mocks.importSharePayload).toHaveBeenCalledWith({ v: 2 });
   });
 });
+
+it('keeps warnings before confirmation and places confirmation before all 164 lessons', async () => {
+  mocks.summariseShare.mockReturnValueOnce({
+    kind: 'course',
+    courseName: 'Large biology',
+    lessonCount: 164,
+    noteCount: 164,
+    cardCount: 1322,
+    deckCount: 164,
+    deckNames: Array.from({ length: 164 }, (_, i) => `Lesson ${i + 1}`),
+    exportedAt: Date.now(),
+    omittedImages: true,
+  });
+  render(<ShareCodeImportPanel />);
+  fireEvent.change(
+    screen.getByPlaceholderText('Paste a Lacuna share code here (it starts with LAC)...'),
+    { target: { value: 'LAC1large' } },
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  expect(
+    screen.getByText(/This share code omitted media/).compareDocumentPosition(add) &
+      Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  expect(
+    add.compareDocumentPosition(screen.getByText('Lesson 1')) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+});

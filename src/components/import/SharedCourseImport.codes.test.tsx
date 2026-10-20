@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { decodeShare, importSharePayload } from '../../db/share';
+import { decodeShare, importSharePayload, summariseShare } from '../../db/share';
 import { SharedCourseImport } from './SharedCourseImport';
 import type { Course } from '../../db/types';
 
@@ -242,10 +242,9 @@ describe('SharedCourseImport with course codes and files', () => {
   describe('decode-time merge routing (Arc 7 §7.5)', () => {
     async function inspectCode() {
       render(<SharedCourseImport />);
-      fireEvent.change(
-        screen.getByPlaceholderText('Paste a share link or code'),
-        { target: { value: 'LAC2-some-code' } },
-      );
+      fireEvent.change(screen.getByPlaceholderText('Paste a share link or code'), {
+        target: { value: 'LAC2-some-code' },
+      });
       fireEvent.click(screen.getByText('Read code'));
       await screen.findByRole('heading', { level: 3 });
     }
@@ -383,4 +382,31 @@ it('routes a typed short class code to the invitation importer', () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
   expect(window.location.hash).toBe('#/s/K7QM4XTP');
+});
+
+it('offers import after the warning and before a long lesson list', async () => {
+  vi.mocked(summariseShare).mockReturnValueOnce({
+    kind: 'course',
+    courseName: 'Large biology',
+    lessonCount: 164,
+    noteCount: 164,
+    cardCount: 1322,
+    deckCount: 164,
+    deckNames: Array.from({ length: 164 }, (_, i) => `Lesson ${i + 1}`),
+    exportedAt: Date.now(),
+    omittedImages: true,
+  });
+  render(<SharedCourseImport />);
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
+    target: { value: 'LAC2-large' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  const warning = screen.getByText(/This share code omitted media/);
+  expect(warning.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(
+    add.compareDocumentPosition(screen.getByText('Lesson 1')) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('button', { name: 'Add to my courses' })).not.toBeInTheDocument();
 });

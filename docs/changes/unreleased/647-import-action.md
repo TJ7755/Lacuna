@@ -1,0 +1,1 @@
+- Keep Add to my courses above the lesson list in shared-course previews, with import warnings visible before confirmation. (#647)
