@@ -535,6 +535,9 @@ describe('relay', () => {
       logged.push(args.map(String).join(' '));
     });
     const handle = createHandler({
+      async stat() {
+        throw new Error('unused');
+      },
       async get() {
         throw new Error('blob read failed', {
           cause: new Error(`Vercel Blob: missing token for c/${channelId}/state`),
@@ -807,6 +810,7 @@ function flakyStore(inner: MemoryStore): {
   const puts: { key: string; opts: PutOptions }[] = [];
   return {
     store: {
+      stat: (key) => inner.stat(key),
       async get(key) {
         const stored = await inner.get(key);
         if (stored && key.endsWith('/state') && lost) {
@@ -853,6 +857,7 @@ function emptyFirstStatePut(
   const puts: { key: string; opts: PutOptions }[] = [];
   return {
     store: {
+      stat: (key) => inner.stat(key),
       get: (key) => inner.get(key),
       async put(key, body, opts) {
         puts.push({ key, opts });

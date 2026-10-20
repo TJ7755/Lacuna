@@ -6,6 +6,7 @@ import {
   createHandler,
 } from '../src/relay.js';
 import { cleanupExpiredShares } from '../src/shares.js';
+import { CHANNEL_TTL_MS, CHANNEL_CLEANUP_GRACE_MS } from '../src/channelMaintenance.js';
 import { MemoryStore, type PutOptions } from '../src/store.js';
 
 const ORIGIN = 'https://getlacuna.app';
@@ -20,6 +21,161 @@ afterEach(() => {
 });
 
 describe('course share links', () => {
+  it.each([
+    ['meta', false],
+    ['payload', false],
+    ['teacher', false],
+    ['meta', true],
+    ['payload', true],
+  ] as const)(
+    'reads only the requested %s body, once, without downloading other slots (linked: %s)',
+    async (slot, linked) => {
+      const ctx = await mintedShare();
+      const bodies = {
+        payload: new Uint8Array(1_928_490).fill(7),
+        meta: new TextEncoder().encode('{}'),
+        teacher: new Uint8Array([1, 2, 3]),
+      };
+      let expectedEtag = '';
+      for (const name of ['payload', 'meta', 'teacher'] as const) {
+        const written = await ctx.handle(
+          putShareRequest(ctx.shareId, name, ctx.writeToken, EMPTY_SLOT_ETAG, bodies[name]),
+        );
+        expect(written.status).toBe(204);
+        if (name === slot) expectedEtag = written.headers.get('ETag')!;
+      }
+      let requestedId = ctx.shareId;
+      if (linked) {
+        const minted = await ctx.handle(
+          new Request('http://relay.test/shares', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${MINT_SECRET}` },
+            body: JSON.stringify({ sourceShareId: ctx.shareId }),
+          }),
+        );
+        expect(minted.status).toBe(201);
+        requestedId = ((await minted.json()) as { shareId: string }).shareId;
+      }
+      const get = ctx.store.get.bind(ctx.store);
+      let bodyBytesRead = 0;
+      vi.spyOn(ctx.store, 'get').mockImplementation(async (key) => {
+        const stored = await get(key);
+        // Linked reads need the immutable source id, never its other bodies.
+        if (!key.endsWith('/source')) bodyBytesRead += stored?.body.byteLength ?? 0;
+        return stored;
+      });
+
+      const response = await ctx.handle(getShareRequest(requestedId, slot));
+      expect(response.status).toBe(200);
+      expectCors(response);
+      expect(response.headers.get('ETag')).toBe(expectedEtag);
+      expect(response.headers.get('Content-Type')).toBe('application/octet-stream');
+      expect(response.headers.get('Cache-Control')).toBe('no-store');
+      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bodies[slot]);
+      expect(bodyBytesRead).toBe(bodies[slot].byteLength);
+    },
+  );
+
+  it.each(['payload', 'meta', 'teacher', 'class-code'])(
+    'expires from the latest %s write rather than the original auth upload',
+    async (slot) => {
+      let now = 0;
+      const ctx = await mintedShare(new MemoryStore(() => now), () => now);
+      await ctx.store.put(`shares/${ctx.shareId}/meta`, new TextEncoder().encode('{}'), {
+        exclusive: true,
+      });
+      now = CHANNEL_TTL_MS - 1;
+      await ctx.store.put(`shares/${ctx.shareId}/${slot}`, new TextEncoder().encode('{}'), {
+        overwrite: true,
+      });
+      const get = ctx.store.get.bind(ctx.store);
+      let bodyBytesRead = 0;
+      vi.spyOn(ctx.store, 'get').mockImplementation(async (key) => {
+        const stored = await get(key);
+        bodyBytesRead += stored?.body.byteLength ?? 0;
+        return stored;
+      });
+      now = CHANNEL_TTL_MS;
+      expect((await ctx.handle(getShareRequest(ctx.shareId, 'meta'))).status).toBe(200);
+      expect(bodyBytesRead).toBe(2);
+      now = 2 * CHANNEL_TTL_MS - 1;
+      bodyBytesRead = 0;
+      const expired = await ctx.handle(getShareRequest(ctx.shareId, 'meta'));
+      expect(expired.status).toBe(404);
+      expect(await expired.json()).toEqual({ error: 'not found' });
+      expect(bodyBytesRead).toBe(0);
+    },
+  );
+
+  it.each(['missing auth', 'auth deleted during liveness', 'payload deleted during liveness'])(
+    'does not serve orphaned or missing payload bytes with %s',
+    async (race) => {
+      const ctx = await mintedShare();
+      const prefix = `shares/${ctx.shareId}/`;
+      await ctx.store.put(`${prefix}payload`, new Uint8Array(1_928_490), { exclusive: true });
+      if (race === 'missing auth') await ctx.store.del([`${prefix}auth`]);
+      const stat = ctx.store.stat.bind(ctx.store);
+      vi.spyOn(ctx.store, 'stat').mockImplementation(async (key) => {
+        const metadata = await stat(key);
+        if (key === `${prefix}payload` && race !== 'missing auth') {
+          await ctx.store.del([`${prefix}${race.startsWith('auth') ? 'auth' : 'payload'}`]);
+        }
+        return metadata;
+      });
+      const get = ctx.store.get.bind(ctx.store);
+      let bodyBytesRead = 0;
+      vi.spyOn(ctx.store, 'get').mockImplementation(async (key) => {
+        const stored = await get(key);
+        bodyBytesRead += stored?.body.byteLength ?? 0;
+        return stored;
+      });
+      const response = await ctx.handle(getShareRequest(ctx.shareId, 'payload'));
+      expectCors(response);
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({ error: 'not found' });
+      expect(bodyBytesRead).toBe(0);
+    },
+  );
+
+  it.each(['after listing', 'after the first stat', 'after the known-key recheck'])(
+    'retains a share refreshed %s during cleanup',
+    async (race) => {
+      let now = 0;
+      const ctx = await mintedShare(new MemoryStore(() => now), () => now);
+      const prefix = `shares/${ctx.shareId}/`;
+      await ctx.store.put(`${prefix}payload`, new Uint8Array(1_928_490), { exclusive: true });
+      now = CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS;
+      const list = ctx.store.list.bind(ctx.store);
+      vi.spyOn(ctx.store, 'list').mockImplementation(async (key) => {
+        const objects = await list(key);
+        if (key === prefix && race === 'after listing') {
+          await ctx.store.put(`${prefix}meta`, new TextEncoder().encode('{}'), { exclusive: true });
+        }
+        return objects;
+      });
+      const stat = ctx.store.stat.bind(ctx.store);
+      let payloadStats = 0;
+      vi.spyOn(ctx.store, 'stat').mockImplementation(async (key) => {
+        const metadata = await stat(key);
+        if (key === `${prefix}payload`) {
+          payloadStats += 1;
+          const refreshOn = race === 'after the first stat' ? 1 : 2;
+          if (race !== 'after listing' && payloadStats === refreshOn) {
+            await ctx.store.put(key, new Uint8Array([9]), { overwrite: true });
+          }
+        }
+        return metadata;
+      });
+      const del = vi.spyOn(ctx.store, 'del');
+      expect(await cleanupExpiredShares(ctx.store, now)).toEqual({
+        sharesDeleted: 0,
+        shareObjectsDeleted: 0,
+      });
+      expect(del).not.toHaveBeenCalled();
+      expect((await ctx.handle(getShareRequest(ctx.shareId, 'payload'))).status).toBe(200);
+    },
+  );
+
   it('applies owner authentication, compare-and-swap and size limits to the public teacher slot', async () => {
     const ctx = await mintedShare();
     const bytes = new TextEncoder().encode('{"v":1,"recipient":"public-only"}');
@@ -338,7 +494,7 @@ describe('course share links', () => {
     expect((await mint(createHandler(new MemoryStore()))).status).toBe(201);
   });
 
-  it('sweeps shares untouched past the TTL plus grace', async () => {
+  it('sweeps shares untouched past the TTL plus grace without reading their bodies', async () => {
     let now = 0;
     const store = new MemoryStore(() => now);
     const handle = createHandler(store, { now: () => now });
@@ -353,15 +509,23 @@ describe('course share links', () => {
       shareId: string;
       writeToken: string;
     };
-    const payload = new Uint8Array([1, 2]);
+    const payload = new Uint8Array(1_928_490);
     expect(
       (await handle(putShareRequest(shareId, 'payload', writeToken, EMPTY_SLOT_ETAG, payload)))
         .status,
     ).toBe(204);
 
     now += 91 * 24 * 60 * 60 * 1000;
+    const get = store.get.bind(store);
+    let bodyBytesRead = 0;
+    vi.spyOn(store, 'get').mockImplementation(async (key) => {
+      const stored = await get(key);
+      bodyBytesRead += stored?.body.byteLength ?? 0;
+      return stored;
+    });
     const result = await cleanupExpiredShares(store, now);
     expect(result).toEqual({ sharesDeleted: 1, shareObjectsDeleted: 2 });
+    expect(bodyBytesRead).toBe(0);
     expect((await handle(getShareRequest(shareId, 'payload'))).status).toBe(404);
   });
 
@@ -384,9 +548,8 @@ describe('course share links', () => {
   });
 });
 
-async function mintedShare() {
-  const store = new MemoryStore();
-  const handle = createHandler(store);
+async function mintedShare(store = new MemoryStore(), now?: () => number) {
+  const handle = createHandler(store, { now });
   const res = await handle(
     new Request('http://relay.test/shares', {
       method: 'POST',
