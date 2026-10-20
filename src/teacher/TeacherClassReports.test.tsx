@@ -63,9 +63,17 @@ beforeEach(() => {
 });
 
 /** Holds the session as the shell does, so locking and re-rendering behave as in Gaps. */
-function Harness({ request = unlockRequest }: { request?: ClassRequest | null }) {
-  const [cache] = useState(createClassSessions);
-  const [session, setSession] = useState<ClassSession | null>(null);
+function Harness({
+  request = unlockRequest,
+  cache: existingCache,
+}: {
+  request?: ClassRequest | null;
+  cache?: ReturnType<typeof createClassSessions>;
+}) {
+  const [cache] = useState(() => existingCache ?? createClassSessions());
+  const [session, setSession] = useState<ClassSession | null>(
+    cache.sessions.get(course.shareId) ?? null,
+  );
   const [, setRevision] = useState(0);
   const onChanged = useCallback(() => setRevision((value) => value + 1), []);
   return (
@@ -396,4 +404,24 @@ it('labels grouped answers with their marking method, dispute and shortening', a
   ).toBeVisible();
   expect(within(answers).getByText(/Automatic marking/)).toBeVisible();
   expect(within(answers).queryByText('Ada, Ben')).not.toBeInTheDocument();
+});
+
+it('restores an earlier day’s read evidence after navigation without another fetch', async () => {
+  const cache = createClassSessions();
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [{ slotId: 'saved', report: report('Retained pupil', [event()]) }],
+  });
+  const page = render(<Harness cache={cache} />);
+  await unlock();
+  await screen.findByRole('table');
+  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
+  await screen.findByRole('table');
+  page.unmount();
+  mocks.read.mockRejectedValue(new Error('offline'));
+  render(<Harness cache={cache} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  expect(await screen.findByRole('button', { name: 'Retained pupil' })).toBeVisible();
+  expect(mocks.read).toHaveBeenCalledTimes(2);
 });
