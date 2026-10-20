@@ -76,9 +76,27 @@ describe('ShareLinkPanel exit', () => {
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
     await act(async () => finishCredentials(null));
-    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
     await settle();
+    expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
+      `${window.location.origin}/#/s/${'b'.repeat(32)}`,
+    );
+    expect(publish).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Link management'));
     expect(screen.getByRole('button', { name: 'Replace link' }).closest('[inert]')).toBeNull();
   });
+});
+
+it('forwards an imported course link without publishing a new lineage', async () => {
+  const shareId = 'c'.repeat(32);
+  localStorage.setItem('lacuna.shareImports', JSON.stringify({ [shareId]: course.id }));
+  render(view({ ...course, distributedCopy: { lineageId: 'publisher', revision: 7 } } as Course));
+  expect(await screen.findByRole('textbox', { name: 'Share link' })).toHaveValue(
+    `${window.location.origin}/#/s/${shareId}`,
+  );
+  expect(screen.queryByRole('button', { name: 'Create share link' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
+  expect(screen.getByText(/publisher’s updates/)).toBeVisible();
+  expect(publish).not.toHaveBeenCalled();
+  localStorage.removeItem('lacuna.shareImports');
 });

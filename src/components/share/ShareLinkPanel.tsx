@@ -4,6 +4,7 @@ import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
 import type { Course } from '../../db/types';
 import { formatShareLink } from '../../shareLinks/client';
+import { getShareIdForCourse } from '../../shareLinks/linkStore';
 import { readShareCredentials } from '../../shareLinks/credentials';
 import {
   publishShareLink,
@@ -37,7 +38,10 @@ function ShareLinkSurface(props: HTMLMotionProps<'div'>) {
 
 function linkFromCourse(course: Course): LinkState | null {
   const distribution = course.distribution;
-  if (!distribution?.shareId) return null;
+  if (!distribution?.shareId) {
+    const shareId = course.distributedCopy ? getShareIdForCourse(course.id) : null;
+    return shareId ? { shareId, revision: course.distributedCopy!.revision } : null;
+  }
   return {
     shareId: distribution.shareId,
     revision: distribution.shareRevision ?? distribution.revision,
@@ -213,8 +217,17 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
     }
   }
 
-  const pending = link !== null && managed === null;
-  const state = pending ? 'pending' : managed === false ? 'unmanaged' : link ? 'live' : 'none';
+  const forwarded = link !== null && !course.distribution?.shareId && !!course.distributedCopy;
+  const pending = link !== null && !forwarded && managed === null;
+  const state = pending
+    ? 'pending'
+    : forwarded
+      ? 'forwarded'
+      : managed === false
+        ? 'unmanaged'
+        : link
+          ? 'live'
+          : 'none';
 
   return (
     <div
@@ -240,32 +253,6 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
               <Skeleton className="mt-4 h-12 w-48 rounded-full bg-ink/10" />
             </DelayedFallback>
           )}
-          {state === 'unmanaged' && (
-            <div className="mt-3">
-              <p className="text-sm text-ink-soft">
-                This link was created on another device, so it can&apos;t be updated here.
-              </p>
-              <div className="mt-4">
-                <ConfirmInlineSwap
-                  active={confirmingReplace}
-                  onCancel={() => setConfirmingReplace(false)}
-                  message="Replace the link? The old link stays live until it expires."
-                  confirmLabel="Yes, replace it"
-                  onConfirm={() => publish(true)}
-                  disabled={busy}
-                >
-                  <Button
-                    variant="primary"
-                    onClick={() => setConfirmingReplace(true)}
-                    disabled={busy}
-                  >
-                    Replace link
-                  </Button>
-                </ConfirmInlineSwap>
-              </div>
-            </div>
-          )}
-
           {state === 'none' && (
             <Button
               ref={actionFocus.restore}
@@ -282,7 +269,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
             </Button>
           )}
 
-          {state === 'live' && link && (
+          {(state === 'live' || state === 'forwarded' || state === 'unmanaged') && link && (
             <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -302,48 +289,102 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                     <> · updated {formatRelativeTime(course.distribution.publishedAt)}</>
                   )}
                 </p>
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant={behind ? 'primary' : 'secondary'}
-                    onClick={() => void publish()}
-                    disabled={busy}
-                  >
-                    {busy
-                      ? 'Updating…'
-                      : behind
-                        ? `Send revision ${courseRevision}`
-                        : 'Update link'}
-                  </Button>
-                  <ConfirmInlineSwap
-                    active={confirmingStop}
-                    onCancel={() => setConfirmingStop(false)}
-                    message="Stop sharing? Students keep their copies but stop receiving updates."
-                    confirmLabel="Stop sharing"
-                    onConfirm={stop}
-                    disabled={busy}
-                  >
+                {state === 'forwarded' && (
+                  <p className="mt-3 text-sm text-ink-soft">
+                    Pass on this link to keep receiving the publisher’s updates. To use this course
+                    with your own class, paste the link into{' '}
+                    <a className="underline" href="https://gaps.getlacuna.app">
+                      Gaps
+                    </a>
+                    .
+                  </p>
+                )}
+                {state === 'unmanaged' && (
+                  <div className="mt-3 text-sm text-ink-soft">
+                    <p>
+                      Copy and pass on this link. Updates still come from the device that publishes
+                      it.
+                    </p>
+                    <p className="mt-2">
+                      For your own class, paste the link into{' '}
+                      <a className="underline" href="https://gaps.getlacuna.app">
+                        Gaps
+                      </a>
+                      .
+                    </p>
+                    <details className="mt-4">
+                      <summary>Link management</summary>
+                      <p className="mt-3">
+                        Only the original publishing device can update this link. Replacing it
+                        creates a separate link that existing recipients will not follow.
+                      </p>
+                      <div className="mt-3">
+                        <ConfirmInlineSwap
+                          active={confirmingReplace}
+                          onCancel={() => setConfirmingReplace(false)}
+                          message="Replace the link? The old link stays live until it expires."
+                          confirmLabel="Yes, replace it"
+                          onConfirm={() => publish(true)}
+                          disabled={busy}
+                        >
+                          <Button
+                            variant="secondary"
+                            onClick={() => setConfirmingReplace(true)}
+                            disabled={busy}
+                          >
+                            Replace link
+                          </Button>
+                        </ConfirmInlineSwap>
+                      </div>
+                    </details>
+                  </div>
+                )}
+                {state === 'live' && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => setConfirmingStop(true)}
+                      variant={behind ? 'primary' : 'secondary'}
+                      onClick={() => void publish()}
                       disabled={busy}
                     >
-                      Stop sharing
+                      {busy
+                        ? 'Updating…'
+                        : behind
+                          ? `Send revision ${courseRevision}`
+                          : 'Update link'}
                     </Button>
-                  </ConfirmInlineSwap>
-                </div>
-                <div className="mt-4">
-                  <Suspense
-                    fallback={<p className="text-sm text-ink-soft">Opening Gaps connection…</p>}
-                  >
-                    <GapsConnectionExport
-                      key={link.shareId}
-                      shareId={link.shareId}
-                      courseName={course.name}
-                    />
-                  </Suspense>
-                </div>
+                    <ConfirmInlineSwap
+                      active={confirmingStop}
+                      onCancel={() => setConfirmingStop(false)}
+                      message="Stop sharing? Students keep their copies but stop receiving updates."
+                      confirmLabel="Stop sharing"
+                      onConfirm={stop}
+                      disabled={busy}
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmingStop(true)}
+                        disabled={busy}
+                      >
+                        Stop sharing
+                      </Button>
+                    </ConfirmInlineSwap>
+                  </div>
+                )}
+                {state === 'live' && (
+                  <div className="mt-4">
+                    <Suspense
+                      fallback={<p className="text-sm text-ink-soft">Opening Gaps connection…</p>}
+                    >
+                      <GapsConnectionExport
+                        key={link.shareId}
+                        shareId={link.shareId}
+                        courseName={course.name}
+                      />
+                    </Suspense>
+                  </div>
+                )}
               </div>
               <motion.div
                 initial={m > 0 ? { scale: 0.85, opacity: 0 } : false}
