@@ -1,3 +1,5 @@
+import type { QuestionBankMetadata } from './bankMetadata';
+
 /** Ordered, shareable question content. Markdown source includes images and maths. */
 export interface QuestionSet {
   id: string;
@@ -6,6 +8,7 @@ export interface QuestionSet {
   lessonIds: string[];
   assessmentIds: string[];
   questions: QuestionSetQuestion[];
+  bank?: QuestionBankMetadata;
 }
 
 export interface QuestionSetQuestion {

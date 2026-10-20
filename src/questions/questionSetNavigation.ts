@@ -10,7 +10,7 @@ export function questionSetReturn(state: unknown, courseId: string) {
       ? { questionSetReturnTo: path, questionSetReturnLabel: label }
       : undefined;
   }
-  if (label === 'Back to Questions') {
+  if (label === 'Back to Questions' || label === 'Back to skills') {
     const questionsPath = `${root}/questions`;
     return path === questionsPath || path.startsWith(`${questionsPath}?`)
       ? { questionSetReturnTo: path, questionSetReturnLabel: label }

@@ -407,3 +407,50 @@ describe('Question Set attempt repository', () => {
     expect(await db.questionSetAttempts.count()).toBe(0);
   });
 });
+
+describe('first application evidence', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+  it('records only the presented question as exposed when a set is opened', async () => {
+    const set = await setFixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    expect(attempt.shownQuestionIds).toEqual(['q1']);
+    expect(attempt.responses.find((row) => row.nodeId === 'q2')?.submitted).toBeUndefined();
+  });
+
+  it('freezes original criterion marks separately from later corrections and marking', async () => {
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'practice', 200);
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, 'q1', 210);
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, 'q2', 220);
+    const input = {
+      decisions: [
+        { allocationId: 'a1', status: 'awarded' as const, marks: 0 },
+        { allocationId: 'a2', status: 'awarded' as const, marks: 1 },
+      ],
+      annotations: [],
+      corrections: [],
+      reflection: { reasons: [], note: '' },
+      activeNodeId: 'q1',
+      activeAllocationId: 'a1',
+    };
+    attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, input, 230);
+    attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId, 240);
+    expect(attempt.firstMarking?.[0].decisions).toEqual([input.decisions[0]]);
+    const first = structuredClone(attempt.firstMarking);
+    attempt = await saveQuestionSetMarking(
+      attempt.id,
+      attempt.revisionId,
+      {
+        ...input,
+        decisions: input.decisions.map((row) => ({ ...row, marks: 1 })),
+        corrections: [{ nodeId: 'q1', content: 'Corrected after feedback', updatedAt: 250 }],
+      },
+      250,
+    );
+    expect(attempt.firstMarking).toEqual(first);
+    expect(attempt.firstMarking?.[0].gradeMappingVersion).toBe('full-good-otherwise-again-v1');
+  });
+});

@@ -62,7 +62,9 @@ function describeStep(
   }
   if (step.kind === 'practice') {
     const count =
-      step.mode === 'recurring'
+      step.mode === 'catch-up'
+        ? (snapshot.catchUpEligibleCount ?? 0)
+        : step.mode === 'recurring'
         ? snapshot.recurringPracticeEligibleCount
         : (snapshot.practiceByKey.get(step.nodeKey)?.eligibleCount ?? 0);
     return {

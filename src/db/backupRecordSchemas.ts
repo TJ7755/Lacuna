@@ -179,6 +179,7 @@ export const course = object({
   linearCadence: object({ anchorDate: number, intervalDays: number }).optional(),
   autoPractice: flag,
   localLessonOrder: ids.optional(),
+  studyStartLessonId: id.optional(),
   practiceThresholdMinutesFar: number,
   practiceThresholdMinutesNear: number,
   practiceUrgentWindowDays: number,

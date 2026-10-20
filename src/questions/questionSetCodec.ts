@@ -1,3 +1,4 @@
+import { parseQuestionBankMetadata } from './bankMetadata';
 import {
   validateQuestionSet,
   type AssessmentDimension,
@@ -171,6 +172,7 @@ export function parseQuestionSetRecord(value: unknown): QuestionSetRecord {
     'contentRevisionId',
     'createdAt',
     'updatedAt',
+    'bank',
   ]);
   if (!Array.isArray(row.questions)) throw new Error('questionSet.questions must be an array.');
   const record: QuestionSetRecord = {
@@ -186,6 +188,7 @@ export function parseQuestionSetRecord(value: unknown): QuestionSetRecord {
     contentRevisionId: string(row.contentRevisionId, 'questionSet.contentRevisionId'),
     createdAt: timestamp(row.createdAt, 'questionSet.createdAt'),
     updatedAt: timestamp(row.updatedAt, 'questionSet.updatedAt'),
+    ...(row.bank === undefined ? {} : { bank: parseQuestionBankMetadata(row.bank) }),
   };
   if (!record.contentRevisionId.trim()) {
     throw new Error('questionSet.contentRevisionId must not be empty.');

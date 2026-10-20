@@ -1,0 +1,86 @@
+{
+  "format": "lacuna-question-bank",
+  "schemaVersion": 1,
+  "bankId": "physics-density",
+  "bankVersion": 1,
+  "courseCode": "PHYS-DEMO",
+  "concepts": [
+    {
+      "id": "density",
+      "name": "Density as mass per unit volume"
+    }
+  ],
+  "sets": [
+    {
+      "id": "density-multipart",
+      "title": "Density and units",
+      "source": {
+        "title": "Original demonstration content",
+        "reference": "Lacuna concept question bank example 1",
+        "author": "Lacuna contributors",
+        "licence": "CC0-1.0"
+      },
+      "blueprint": {
+        "skill": "Calculate density",
+        "type": "calculation",
+        "difficulty": "introductory",
+        "context": "Laboratory measurements"
+      },
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "A sample has mass 24 g and volume 8 cm³.",
+          "parts": [
+            {
+              "id": "a",
+              "prompt": "Calculate its density.",
+              "answer": {
+                "maxMarks": 1,
+                "response": {
+                  "kind": "calculation"
+                },
+                "allocations": [
+                  {
+                    "id": "a-density",
+                    "criterion": "Density = 24 ÷ 8 = 3 g/cm³.",
+                    "maxMarks": 1,
+                    "dimension": "application",
+                    "targetConceptIds": [
+                      "density"
+                    ]
+                  }
+                ],
+                "prerequisiteConceptIds": []
+              },
+              "subparts": []
+            },
+            {
+              "id": "b",
+              "prompt": "State the mass of 2 cm³ of this material.",
+              "answer": {
+                "maxMarks": 1,
+                "response": {
+                  "kind": "calculation"
+                },
+                "allocations": [
+                  {
+                    "id": "b-mass",
+                    "criterion": "Mass = 3 × 2 = 6 g.",
+                    "maxMarks": 1,
+                    "dimension": "application",
+                    "targetConceptIds": [
+                      "density"
+                    ]
+                  }
+                ],
+                "prerequisiteConceptIds": []
+              },
+              "subparts": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "families": []
+}
