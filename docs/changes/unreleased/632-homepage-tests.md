@@ -1,0 +1,1 @@
+- Keep homepage tests focused on readable prerendered content, navigation and accessibility rather than fixed marketing copy or content counts. (#632)
