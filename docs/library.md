@@ -7,18 +7,18 @@ Lacuna handles course imports and subsequent publisher updates on its existing o
 
 ## Add or update a course
 
-Edit [catalogue.ts](../src/library/catalogue.ts). Each entry has a subject, qualification,
-code, short summary, topic preview, review status, content counts and an existing Lacuna share URL. Use `null` for an
-unpublished course; its preview remains available with an unavailable action. The URL
+Edit [catalogue.ts](../src/library/catalogue.ts). Each entry has a subject, awarding body,
+qualification, code, short summary, topic preview, content counts and an existing Lacuna share
+URL. The awarding body filters the library when courses come from more than one. Use `null`
+for an unpublished course; its sheet remains available with an unavailable action. The URL
 boundary accepts only canonical HTTPS links on `getlacuna.app` using the share route.
 Do not add private teaching files or owner credentials to this public catalogue.
 
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
-of inventing them. Mark a course reviewed only when review covers that published version;
-syllabus authorship alone does not establish completed review. The current links publish cumulative drafts: Biology revision 17, Chemistry revision 12,
-Physics revision 11 and History revision 11. Earlier review does not cover all newer additions;
-their catalogue status is `in-progress`. Keep this status specific to the published version.
+of inventing them. Publish a course or revision only after its review is complete; the library
+therefore shows no review or progress status. The current links publish Biology revision 17,
+Chemistry revision 12, Physics revision 11 and History revision 11.
 
 These links retain the source files' lineage and entity identities. Earlier library links used
 a separate publisher lineage; importing a current link therefore does not migrate an earlier
@@ -32,6 +32,12 @@ bun run dev:library
 bun run build:library
 PLAYWRIGHT_WEB_PORT=4347 bun run verify:browser -- --library --project=chromium library-standalone.spec.ts
 ```
+
+The build check caps all JavaScript together at 125 kB gzipped, including the library entry
+and the shared Motion feature chunk. This replaces the previous single-bundle 80 kB budget
+to support the app's shared cover expansion and filter motion. The feature chunk loads when
+the library mounts; it is included in the cap even though its import is asynchronous. The
+complete module graph must still exclude learner startup, storage, synchronisation and AI.
 
 ## Hosting
 
