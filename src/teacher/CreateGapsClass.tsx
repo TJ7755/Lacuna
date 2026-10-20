@@ -109,47 +109,59 @@ export function CreateGapsClass({
         <h2 ref={doneHeading} tabIndex={-1} className="font-display text-3xl font-semibold">
           Class created
         </h2>
-        <div>
-          <p id="recovery-code-label" className="text-sm font-semibold">
-            Recovery code
-          </p>
-          <div
-            aria-labelledby="recovery-code-label"
-            className={`mt-2 select-text font-mono text-xl leading-relaxed sm:text-2xl ${inputFrameClassName}`}
-          >
-            <span className="block whitespace-nowrap">
-              {formatRecoveryCode(created.code.slice(0, 12))}
-            </span>
-            <span className="block whitespace-nowrap">
-              {formatRecoveryCode(created.code.slice(12))}
-            </span>
+        <fieldset className="min-w-0 space-y-4">
+          <legend className="mb-3 font-display text-xl font-semibold">
+            Keep this private to reopen the class
+          </legend>
+          <div>
+            <p id="recovery-code-label" className="text-sm font-semibold">
+              Recovery code
+            </p>
+            <div
+              aria-labelledby="recovery-code-label"
+              className={`mt-2 select-text font-mono text-xl leading-relaxed sm:text-2xl ${inputFrameClassName}`}
+            >
+              <span className="block whitespace-nowrap">
+                {formatRecoveryCode(created.code.slice(0, 12))}
+              </span>
+              <span className="block whitespace-nowrap">
+                {formatRecoveryCode(created.code.slice(12))}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            className={buttonClassName('secondary')}
-            onClick={() => {
-              void navigator.clipboard.writeText(formatRecoveryCode(created.code)).then(
-                () => setCopied(true),
-                () => undefined,
-              );
-            }}
-          >
-            {copied ? 'Copied' : 'Copy code'}
-          </button>
-          <button
-            type="button"
-            className={buttonClassName('primary')}
-            onClick={() => void download()}
-          >
-            Download class recovery file
-          </button>
-        </div>
-        <p className="text-sm text-ink-soft">
-          You need this code and the file to open the class on another device. This is the only time
-          the code is shown.
-        </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className={buttonClassName('secondary')}
+              onClick={() => {
+                void navigator.clipboard.writeText(formatRecoveryCode(created.code)).then(
+                  () => setCopied(true),
+                  () => undefined,
+                );
+              }}
+            >
+              {copied ? 'Copied' : 'Copy code'}
+            </button>
+            <button
+              type="button"
+              className={buttonClassName('primary')}
+              onClick={() => void download()}
+            >
+              Download class recovery file
+            </button>
+          </div>
+          <p className="text-sm text-ink-soft">
+            You need this code and the file to open the class on another device. This is the only
+            time the code is shown.
+          </p>
+          <p className="text-sm text-ink-soft">Do not send this code or file to pupils.</p>
+        </fieldset>
+        <fieldset className="border-t border-line pt-4">
+          <legend className="font-semibold">Give this to pupils</legend>
+          <p className="mt-2 text-sm text-ink-soft">
+            The class code or join link from Invite, after continuing to the class.
+          </p>
+        </fieldset>
         <button
           type="button"
           className={buttonClassName('primary')}

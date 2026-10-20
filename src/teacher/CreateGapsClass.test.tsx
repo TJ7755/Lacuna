@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { CreateGapsClass } from './CreateGapsClass';
 
@@ -204,3 +204,19 @@ it.each(['resolve', 'reject'] as const)(
     expect(connected).toHaveBeenCalledWith(shareId, expect.objectContaining({ connection, owner }));
   },
 );
+
+it('keeps the one-time recovery material private and points pupil sharing to Invite', async () => {
+  render(<CreateGapsClass onConnected={vi.fn()} />);
+  submit();
+  await screen.findByRole('heading', { name: 'Class created' });
+  const privateItem = screen.getAllByRole('group', { name: /keep .* private .* reopen/i });
+  const pupil = screen.getAllByRole('group', { name: /give .* pupils/i });
+  expect(privateItem).toHaveLength(1);
+  expect(pupil).toHaveLength(1);
+  expect(within(privateItem[0]).getByLabelText('Recovery code')).toBeVisible();
+  expect(
+    within(privateItem[0]).getByRole('button', { name: 'Download class recovery file' }),
+  ).toBeEnabled();
+  expect(pupil[0]).toHaveTextContent(/class code or join link.*Invite/i);
+  expect(within(pupil[0]).queryByLabelText('Recovery code')).not.toBeInTheDocument();
+});

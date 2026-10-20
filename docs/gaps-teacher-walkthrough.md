@@ -12,7 +12,9 @@ Use the teacher's normal device and browser, or record why that is not possible.
 
 The facilitator prepares a published synthetic course with a pinned class key and
 one synthetic report for a completed UTC day. Create it with **Create class**, copy the generated recovery code and download
-its class recovery file before continuing. Keep the file and code separately
+its class recovery file under **Keep this private to reopen the class** before continuing.
+Use **Give this to pupils** on **Invite** for the pupil class code or join link.
+Keep the recovery file and code separately
 available through a private channel. Legacy classes still use separate connection
 and teacher recovery files with their existing passphrases; rehearse that flow
 separately when it is relevant to the participant. Verify the report through the live relay first. Do not put credentials
