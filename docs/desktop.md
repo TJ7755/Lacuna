@@ -90,15 +90,21 @@ environment variables in Vercel; never use a `VITE_` prefix:
 | `AI_ACCESS_CREDENTIAL_HASHES` | JSON object mapping individual learner IDs to lowercase SHA-256 access-code hashes. Codes must be 32–256 characters. Remove an entry to revoke its sessions. |
 | `AI_SESSION_SIGNING_KEY` | Random secret of at least 32 characters for one-hour session tokens. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Secure Redis REST endpoint and token for atomic usage, concurrent-run admission and the access-code exchange rate limit. Both AI endpoints are unavailable without it. |
-| `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `inclusionai/ling-3.0-flash-fin` and `poolside/laguna-s-2.1-free` are selected, in that order, and only while every live catalogue price field is zero for each route. |
+| `AI_GATEWAY_API_KEY` | Optional Vercel AI Gateway key. Only `nvidia/nemotron-3.5-lightning-free`, `stealth/cat-jam` and `poolside/laguna-s-2.1-free` are selected, in that order, and only while every live catalogue price field is zero for each route. Missing pricing or any non-zero price excludes the route; there is no paid fallback. |
 | `OPENROUTER_API_KEY` | Preferred provider. The pinned `nvidia/nemotron-3-ultra-550b-a55b:free` and `google/gemma-4-31b-it:free` routes precede `openrouter/free`; each is selected only while the live catalogue reports zero pricing and tool support. Free-account rate limits still apply. |
 | `GOOGLE_GENERATIVE_AI_API_KEY`, `AI_GOOGLE_FREE_TIER_CONFIRMED=1` | Optional final fallback through Gemini 2.5 Flash Lite. Set the confirmation only for a project verified to remain on the free tier. |
 | `AI_SERVICE_DISABLED=1` | Immediately refuse new sessions and inference requests. |
 
 At least one provider key is required for inference. If access or Redis configuration is missing,
-the service fails closed. Default admission is 50 inference steps per learner per day, 600 per
-month, 1,000 globally per day, six per learner per minute, with two learner and twelve global
-in-flight steps. Multi-step tool conversations consume multiple steps. Responses are limited to
+the service fails closed. Admission for the two-tester beta is 200 inference steps per learner per
+day, 3,000 per month, 400 globally per day, 6,000 globally per month and twenty per learner per
+minute, with two learner and four global in-flight steps. Multi-step tool conversations consume multiple
+steps; two complete nine-step runs fit within the minute allowance. Daily and monthly counters
+use UTC calendar windows, and the shared ceilings can stop requests before an individual's
+allowance is exhausted. These are app ceilings, not guaranteed provider capacity. The shared
+monthly cap also bounds successful quota-store traffic; see the
+[tester capacity policy](maintenance/2026-10-18-tester-ai-limits.md).
+Responses are limited to
 768 output tokens per step, eight continuations and a 30-second request timeout. The server
 never accepts a client-selected model. Review actual provider pricing and free-tier conditions
 before enabling a key. No paid route is configured by this implementation.

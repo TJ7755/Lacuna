@@ -33,6 +33,7 @@ function sessionWith(patch: Partial<AiSessionSnapshot> = {}): AiSession {
 }
 
 beforeEach(() => {
+  localStorage.removeItem('lacuna.aiPrivacyNoticeDismissed');
   Object.defineProperty(window, 'electronAPI', {
     configurable: true,
     value: undefined,
@@ -44,6 +45,24 @@ beforeEach(() => {
 });
 
 describe('AiPanel', () => {
+  it('remembers dismissal of the built-in AI privacy notice after reopening', () => {
+    const session = { ...sessionWith({ connection: { status: 'hosted', lastActivityAt: 1 } }), provider: 'hosted' as const };
+    const view = render(<AiPanel session={session} onClose={vi.fn()} />);
+
+    expect(screen.getByText("Don't share personal information with AI.")).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss privacy notice' }));
+    expect(screen.queryByText("Don't share personal information with AI.")).not.toBeInTheDocument();
+
+    view.unmount();
+    render(<AiPanel session={session} onClose={vi.fn()} />);
+    expect(screen.queryByText("Don't share personal information with AI.")).not.toBeInTheDocument();
+  });
+
+  it('shows the privacy notice before connecting built-in AI', () => {
+    render(<AiPanel session={{ ...sessionWith(), provider: 'hosted' }} onClose={vi.fn()} />);
+    expect(screen.getByText("Don't share personal information with AI.")).toBeVisible();
+  });
+
   it('waits for the native companion in Electron instead of starting relay pairing', () => {
     Object.defineProperty(window, 'electronAPI', {
       configurable: true,
