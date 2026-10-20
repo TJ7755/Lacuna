@@ -1,0 +1,1 @@
+- Add an exam-day recall projection for keeping up with due reviews, alongside the stop-now estimate, with distinct line patterns and accessible descriptions. (#666)

@@ -2,8 +2,8 @@
 //
 // Answers "if I stopped studying now, how much would I recall on exam day?" for the
 // dashboard, and how that answer has moved over recent days. No future reviews are
-// assumed: a forecast that presumes every card is reviewed on time, and answered
-// Good, flatters a course that has barely been started.
+// assumed in the stop-now estimate. The separate keep-up scenario estimates due
+// reviews with retrievability-weighted outcomes rather than assuming every answer is Good.
 //
 //  - an unreviewed card contributes 0 recall;
 //  - a course without a future exam is measured `steadyDays` ahead instead.
@@ -28,7 +28,7 @@ export interface CourseForecast {
   ifStopped: number;
 }
 
-type ForecastCourse = SchedulerConfig & { examDate?: number };
+export type ForecastCourse = SchedulerConfig & { examDate?: number };
 
 export function courseForecast(
   cards: readonly Card[],
@@ -80,10 +80,14 @@ export function examDayHistory(
     const stored = card.stability !== null && card.lastReviewed !== null;
     // Memory states in time order: each is the review instant and the stability after it.
     const states = (byCard.get(card.id) ?? [])
-      .filter((entry) => entry.timestamp <= now && (!stored || entry.timestamp < (card.lastReviewed as number)))
+      .filter(
+        (entry) =>
+          entry.timestamp <= now && (!stored || entry.timestamp < (card.lastReviewed as number)),
+      )
       .sort((a, b) => a.timestamp - b.timestamp)
       .map((entry) => ({ at: entry.timestamp, stability: entry.stabilityAfter }));
-    if (stored) states.push({ at: card.lastReviewed as number, stability: card.stability as number });
+    if (stored)
+      states.push({ at: card.lastReviewed as number, stability: card.stability as number });
     if (states.length === 0) continue;
 
     let index = -1;

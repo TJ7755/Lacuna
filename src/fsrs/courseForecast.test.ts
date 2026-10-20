@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { courseForecast, examDayHistory } from './courseForecast';
+import { keepUpProjection } from './keepUpProjection';
 import { rAtExam } from './forwardSim';
+import { applyReview, makeEngine } from './fsrs';
 import { defaultFsrsParameters, MS_PER_DAY } from './params';
 import type { Card, SchedulerConfig } from '../db/types';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
@@ -59,6 +61,85 @@ function reviewedCard(id: string, stability: number, daysAgo: number): Card {
 
 const decay = -defaultFsrsParameters().w[20];
 
+describe('keepUpProjection', () => {
+  it('starts at today’s stop-now estimate and improves exam-day recall by reviewing due cards', () => {
+    const cards = [reviewedCard('a', 2, 3), reviewedCard('b', 4, 2)];
+    const course = makeCourse({ examDate: NOW + 30 * MS_PER_DAY });
+    const stopped = courseForecast(cards, course, NOW).ifStopped;
+    const points = keepUpProjection(cards, course, NOW);
+    expect(points[0]).toEqual({ at: NOW, recall: stopped });
+    expect(points.at(-1)?.at).toBe(course.examDate);
+    expect(points.at(-1)?.recall).toBeGreaterThan(stopped);
+    expect(points.every((point) => point.recall >= stopped && point.recall <= 1)).toBe(true);
+  });
+
+  it('weights a due review’s exam-day outcomes by retrievability rather than assuming a pass', () => {
+    const card = { ...reviewedCard('a', 2, 5), due: NOW + 3_600_000 };
+    const course = makeCourse({ examDate: NOW + 7_200_000 });
+    const engine = makeEngine({ ...course.fsrsParameters, enable_fuzz: false });
+    const probability = engine.get_retrievability(
+      {
+        due: new Date(card.due),
+        stability: 2,
+        difficulty: 5,
+        elapsed_days: 5,
+        scheduled_days: 2,
+        learning_steps: 0,
+        reps: 3,
+        lapses: 0,
+        state: 2,
+        last_review: new Date(card.lastReviewed!),
+      },
+      card.due,
+      false,
+    );
+    const recall = (grade: 1 | 3) =>
+      rAtExam(
+        { ...card, ...applyReview(engine, card, grade, card.due).memory },
+        course.examDate!,
+        NOW,
+        decay,
+      );
+    const projected = keepUpProjection([card], course, NOW).at(-1)!.recall;
+    expect(projected).toBeCloseTo(probability * recall(3) + (1 - probability) * recall(1), 6);
+    expect(projected).toBeLessThan(recall(3));
+  });
+
+  it('leaves cards, parameters and review history untouched and is deterministic', () => {
+    const card = reviewedCard('a', 2, 3);
+    card.history = [entry('a', 3, 2)];
+    const course = makeCourse({ examDate: NOW + 30 * MS_PER_DAY });
+    const before = structuredClone({ card, course });
+    Object.freeze(card.history[0]);
+    Object.freeze(card.history);
+    Object.freeze(card);
+    Object.freeze(course.fsrsParameters.w);
+    Object.freeze(course.fsrsParameters);
+    const first = keepUpProjection([card], course, NOW);
+    expect(keepUpProjection([card], course, NOW)).toEqual(first);
+    expect({ card, course }).toEqual(before);
+  });
+
+  it('excludes missing or past exams, and leaves cards due after the exam flat', () => {
+    const card = { ...reviewedCard('a', 12, 1), due: NOW + 60 * MS_PER_DAY };
+    expect(keepUpProjection([card], makeCourse(), NOW)).toEqual([]);
+    expect(keepUpProjection([card], makeCourse({ examDate: NOW }), NOW)).toEqual([]);
+    const course = makeCourse({ examDate: NOW + 30 * MS_PER_DAY });
+    const points = keepUpProjection([card], course, NOW);
+    expect(points.every((point) => point.recall === points[0].recall)).toBe(true);
+  });
+
+  it('bounds work for a large course with a distant exam and preserves input order independence', () => {
+    const cards = Array.from({ length: 5000 }, (_, i) => reviewedCard(`c${i}`, 1 + (i % 7), 3));
+    const course = makeCourse({ examDate: NOW + 3650 * MS_PER_DAY });
+    const start = performance.now();
+    const points = keepUpProjection(cards, course, NOW);
+    expect(performance.now() - start).toBeLessThan(1000);
+    expect(points.at(-1)!.recall).toBeGreaterThanOrEqual(points[0].recall);
+    expect(keepUpProjection([...cards].reverse(), course, NOW)).toEqual(points);
+  });
+});
+
 function entry(cardId: string, daysAgo: number, stabilityAfter: number): ReviewHistoryEntry {
   return {
     id: `${cardId}-${daysAgo}`,
@@ -111,7 +192,10 @@ describe('examDayHistory', () => {
     expect(points).toHaveLength(10);
     expect(points[0].at).toBe(from);
     expect(points[9].at).toBe(NOW);
-    expect(points[9].recall).toBeCloseTo(courseForecast([card, makeCard({ id: 'new' })], course, NOW).ifStopped, 12);
+    expect(points[9].recall).toBeCloseTo(
+      courseForecast([card, makeCard({ id: 'new' })], course, NOW).ifStopped,
+      12,
+    );
   });
 
   it('is 0 before a card was first reviewed and rises once it was', () => {
@@ -119,7 +203,9 @@ describe('examDayHistory', () => {
     const history = [entry('a', 10, 2), entry('a', 2, 5)];
     const points = examDayHistory([card], history, course, end, from, NOW, 19);
     const before = points.filter((point) => point.at < NOW - 10 * MS_PER_DAY);
-    const after = points.filter((point) => point.at >= NOW - 10 * MS_PER_DAY && point.at < NOW - 2 * MS_PER_DAY);
+    const after = points.filter(
+      (point) => point.at >= NOW - 10 * MS_PER_DAY && point.at < NOW - 2 * MS_PER_DAY,
+    );
     expect(before.every((point) => point.recall === 0)).toBe(true);
     expect(after.every((point) => point.recall > 0)).toBe(true);
   });
@@ -127,9 +213,15 @@ describe('examDayHistory', () => {
   it('uses the stability each past review recorded, so a lapse lowers the figure', () => {
     const card = reviewedCard('a', 5, 1);
     const at = (stability: number) =>
-      examDayHistory([card], [entry('a', 12, 4), entry('a', 6, stability)], course, end, from, NOW, 19).find(
-        (point) => point.at >= NOW - 6 * MS_PER_DAY,
-      )!.recall;
+      examDayHistory(
+        [card],
+        [entry('a', 12, 4), entry('a', 6, stability)],
+        course,
+        end,
+        from,
+        NOW,
+        19,
+      ).find((point) => point.at >= NOW - 6 * MS_PER_DAY)!.recall;
     expect(at(0.5)).toBeLessThan(at(12));
   });
 
