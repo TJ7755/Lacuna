@@ -40,7 +40,7 @@ function render(value, action, changes = {}, cancelled = false) {
   );
 }
 
-test('metadata edits neither cancel CI nor publish any required context', () => {
+test('metadata edits resolve distinct contexts without cancelling CI or running validation', () => {
   for (const changes of [
     { title: { from: 'Old title' } },
     { body: { from: null } },
@@ -48,8 +48,17 @@ test('metadata edits neither cancel CI nor publish any required context', () => 
   ]) {
     assert.equal(render(workflow.concurrency.group, 'edited', changes), 'ci-metadata-9001');
     assert.equal(render(workflow.concurrency['cancel-in-progress'], 'edited', changes), 'false');
-    for (const job of ['changes', 'documentation', 'test', 'browser-smoke']) {
-      assert.equal(render(workflow.jobs[job].if, 'edited', changes), 'false', job);
+    assert.equal(workflow.jobs.changes.if, undefined);
+    assert.equal(render(workflow.jobs.documentation.if, 'edited', changes), 'false');
+    const metadata = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
+    assert.equal(render(metadata.if, 'edited', changes), 'true');
+    assert.match(metadata.run, /docs_only=true/);
+    for (const step of workflow.jobs.changes.steps.filter((step) => step.id !== 'metadata')) {
+      assert.equal(render(step.if, 'edited', changes), 'false', step.id ?? step.uses);
+    }
+    for (const job of ['test', 'browser-smoke']) {
+      assert.equal(render(workflow.jobs[job].if, 'edited', changes), 'true', job);
+      assert.equal(render(workflow.jobs[job].steps[0].if, 'edited', changes), 'false', job);
     }
     for (const job of required) {
       assert.equal(render(workflow.jobs[job].name, 'edited', changes), `metadata-${job}`);
@@ -77,7 +86,7 @@ test('retargets, code events and unknown edits retain the real gates and concurr
       render(workflow.concurrency['cancel-in-progress'], action, changes),
       String(Boolean(action)),
     );
-    for (const job of ['changes', 'documentation', 'test', 'browser-smoke']) {
+    for (const job of ['documentation', 'test', 'browser-smoke']) {
       assert.equal(render(workflow.jobs[job].if, action, changes), 'true', job);
     }
     for (const job of required) assert.equal(render(workflow.jobs[job].name, action, changes), job);

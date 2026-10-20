@@ -114,9 +114,10 @@ Required worker jobs acknowledge documentation-only scope on a runner so GitHub 
 required check names; their install/check steps and non-required heavy jobs remain skipped. GitHub
 does not evaluate dynamic names on jobs skipped before scheduling.
 
-Title/body-only PR edits do not run the suite or cancel its current run. Their skipped jobs have
-distinct name expressions, so they cannot publish ordinary required contexts or approve untested
-code. GitHub may display those expressions literally for skipped jobs. Base changes,
+Title/body-only PR edits do not run validation or cancel its current run. Small acknowledgement
+jobs run under distinct `metadata-` names so GitHub resolves their check names without publishing
+ordinary required contexts or approving untested code. Skipping whole jobs leaves dynamic name
+expressions unresolved and can block an otherwise checked head. Base changes,
 including edits that also change a title/body, retain the ordinary required names and run checks
 against the new merge ref. Unknown edited payloads run CI. Keep these event predicates, check names
 and concurrency rules together when editing `.github/workflows/ci.yml`.

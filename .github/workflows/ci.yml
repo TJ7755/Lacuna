@@ -8,13 +8,13 @@ on:
     # pull requests need the same gates or regressions surface only on the final merge.
     branches: [master, main, 'redesign/**']
     # Keep retargeting checks. Metadata-only edits use separate check names below so
-    # their skipped jobs cannot satisfy branch protection for untested code.
+    # their acknowledgement jobs cannot satisfy protection for untested code.
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
 
-# Metadata edits must neither cancel real CI nor publish skipped required contexts.
+# Metadata edits must neither cancel real CI nor publish required contexts.
 # Only an explicit title/body edit without a base change is metadata-only; unknown
 # edited payloads fail closed by running CI.
 concurrency:
@@ -41,16 +41,20 @@ jobs:
   # Required workers acknowledge that scope on a runner so their dynamic check names
   # resolve; GitHub leaves name expressions unevaluated when skipping a whole job.
   changes:
-    if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
     runs-on: ubuntu-latest
     outputs:
-      docs_only: ${{ steps.scope.outputs.docs_only }}
+      docs_only: ${{ steps.metadata.outputs.docs_only || steps.scope.outputs.docs_only }}
     steps:
+      - id: metadata
+        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
+        run: echo "docs_only=true" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
           fetch-depth: 0
           persist-credentials: false
       - id: scope
+        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -195,10 +199,11 @@ jobs:
   test:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}test
     needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
-    if: ${{ always() && !cancelled() && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Verify test jobs passed
+        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
@@ -225,6 +230,10 @@ jobs:
             echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
             exit 1
           fi
+
+      - name: Acknowledge metadata edit
+        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
+        run: echo "Metadata-only edit; validation results remain on the code-event run." >> "$GITHUB_STEP_SUMMARY"
 
   handwriting:
     needs: changes
@@ -466,10 +475,11 @@ jobs:
   browser-smoke:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}browser-smoke
     needs: [changes, browser-tests, browser-timing, browser-mobile]
-    if: ${{ always() && !cancelled() && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Require all browser jobs
+        if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
           DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
@@ -491,6 +501,10 @@ jobs:
             exit 1
           fi
 
+
+      - name: Acknowledge metadata edit
+        if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
+        run: echo "Metadata-only edit; validation results remain on the code-event run." >> "$GITHUB_STEP_SUMMARY"
 
   electron-ai:
     name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}electron-ai

@@ -1,0 +1,1 @@
+- Resolve metadata-only CI check names on runners without rerunning validation or cancelling code checks. (#652)
