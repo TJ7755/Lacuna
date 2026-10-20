@@ -725,7 +725,7 @@ describe('mergeImport: v4 Question Set lineage', () => {
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
     await manualMerge(intact);
     expect(await db.concepts.get('concept-quadratic')).toEqual(intact.concepts![0]);
-    expect(await db.tombstones.get(['concepts', 'concept-quadratic'])).toBeUndefined();
+    expect(await db.tombstones.get(['concepts', 'concept-quadratic'])).toMatchObject({ deletedAt: 2_000 });
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
     const repaired = await exportDatabase();
     await importBackup(repaired, 'replace');
@@ -733,6 +733,27 @@ describe('mergeImport: v4 Question Set lineage', () => {
     expect(await db.questionSets.get('set-quadratics')).toMatchObject({ courseId: course.id });
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
     expect(() => mergeSnapshots(repaired, damaged)).not.toThrow();
+  });
+
+  it('atomically rejects removal of a learner-edited published set and preserves syncable evidence', async () => {
+    const initial = questionPayloadV4({ questions: [], lessons: [] });
+    initial.questionSets[0].lessonIds = [];
+    const { course } = await importLineageFirstTime(initial);
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
+    const imported = (await db.questionSets.get('set-quadratics'))!;
+    const edited = await updateQuestionSet(imported.id, { ...imported, title: 'Learner revision' },
+      { expectedContentRevisionId: imported.contentRevisionId, now: 1_500 });
+    const attempt = await startQuestionSetAttempt(imported.id, 'paper', 1_600);
+    const before = await exportDatabase();
+    await expect(mergeLineageUpdate(course.id, questionPayloadV4({ at: 2_000, rv: 2,
+      concepts: [], questions: [], questionSets: [], lessons: [] })))
+      .rejects.toThrow('locally edited Question Set');
+    const after = await exportDatabase();
+    expect(after.concepts).toEqual(before.concepts);
+    expect(await db.questionSets.get(imported.id)).toEqual(edited);
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    expect(after.tombstones).toEqual(before.tombstones);
+    expect(() => mergeSnapshots(after, before)).not.toThrow();
   });
 
   it('adopts a set and applies a later teacher revision', async () => {

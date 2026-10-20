@@ -236,12 +236,25 @@ describe('Question peer merge', () => {
       expect(merged.concepts).toEqual([concept()]);
       expect(merged.questionSets).toEqual([set]);
       expect(merged.questionSetAttempts).toEqual([receipt]);
-      expect(merged.tombstones).not.toContainEqual(damaged.tombstones![0]);
+      expect(merged.tombstones).toContainEqual(damaged.tombstones![0]);
       expect(mergeSnapshots(intact, damaged)).toEqual(merged);
       expect(mergeSnapshots(merged, damaged)).toEqual(merged);
       expect(mergeSnapshots(merged, merged)).toEqual(merged);
     },
   );
+
+  it('keeps deletion evidence so later set deletion converges across three peers', () => {
+    const authored = backup({ questions: [], questionConcepts: [], questionSets: [authoredSet()] });
+    const conceptDeleted = backup({ concepts: [], questions: [], questionConcepts: [],
+      tombstones: [{ table: 'concepts', recordId: 'concept-1', deletedAt: 50 }] });
+    const setDeleted = backup({ concepts: [], questions: [], questionConcepts: [],
+      tombstones: [{ table: 'questionSets', recordId: 'set-1', deletedAt: 60 }] });
+    const recoveredThenDeleted = mergeSnapshots(mergeSnapshots(authored, conceptDeleted), setDeleted);
+    const deletedThenRecovered = mergeSnapshots(authored, mergeSnapshots(conceptDeleted, setDeleted));
+    expect(recoveredThenDeleted).toEqual(deletedThenRecovered);
+    expect(recoveredThenDeleted.concepts).toEqual([]);
+    expect(recoveredThenDeleted.questionSets).toEqual([]);
+  });
 
   it('does not invent missing Concepts or accept cross-Course replacements', () => {
     const damaged = backup({

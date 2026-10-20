@@ -151,8 +151,9 @@ Recovery snapshots and user confirmation remain required at their existing destr
 Published-course updates retain Concepts referenced by surviving Question Sets, including targets
 and prerequisites at question, part and subpart depth. During peer sync or manual Combine, a
 surviving Question Set prevents deletion of a referenced Concept when an original record belonging
-to that Course remains in either snapshot. The merge removes that Concept's deletion receipt;
-ordinary unreferenced Concept deletions and deleted Question Sets still honour their receipts.
+to that Course remains in either snapshot. The merge defers that Concept's deletion while keeping its receipt, so later removal of the
+last referencing set honours the original deletion independently of peer merge order. Ordinary
+unreferenced Concept deletions and deleted Question Sets still honour their receipts.
 
 For databases already damaged by earlier course updates, keep a full export of the affected device
 and obtain an intact full backup from before the update or another paired device. Use Settings'
