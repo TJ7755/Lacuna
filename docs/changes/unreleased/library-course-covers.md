@@ -1,0 +1,2 @@
+- Redesign the course library in the app's own style: each course is a cover that grows into its full course sheet when opened and shrinks back when closed, with an exam board filter and the shared theme control.
+- Remove review and progress status from the library, since only reviewed courses are published.

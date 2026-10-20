@@ -47,6 +47,7 @@ describe('design rules', () => {
       join('components', 'layout', 'AppShell.tsx'),
       join('teacher', 'GapsSidebar.tsx'),
       join('teacher', 'StandaloneTeacherHome.tsx'),
+      join('library', 'LibraryPage.tsx'),
       join('components', 'occlusion', 'OcclusionMaskLayer.tsx'),
     ]);
     const offenders = sourceFiles(SRC)

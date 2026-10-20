@@ -1,12 +1,13 @@
 export interface LibraryCourse {
   id: string;
   subject: string;
+  /** Awarding body, used to filter the library. */
+  board: string;
   qualification: string;
   code: string;
   summary: string;
   topics: readonly string[];
   shareUrl: string | null;
-  reviewStatus: 'in-progress' | 'reviewed' | 'not-reviewed';
   stats?: {
     cards: number;
     notes: number;
@@ -20,6 +21,7 @@ export const libraryCourses: readonly LibraryCourse[] = [
   {
     id: 'biology4bi1',
     subject: 'Biology',
+    board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
     code: '4BI1',
     summary: 'Cells, organisms and the processes that keep them alive.',
@@ -31,12 +33,12 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Use of biological resources',
     ],
     shareUrl: 'https://getlacuna.app/#/s/6fb10671c70197caeff8616f80697ac5',
-    reviewStatus: 'in-progress',
     stats: { cards: 1322, notes: 164, practiceSets: 165, practiceMarks: 1289 },
   },
   {
     id: 'chemistry4ch1',
     subject: 'Chemistry',
+    board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
     code: '4CH1',
     summary: 'Particles, reactions and the chemistry of everyday materials.',
@@ -47,12 +49,12 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Organic chemistry',
     ],
     shareUrl: 'https://getlacuna.app/#/s/daf16de2b88b97fa236948559ede6c4c',
-    reviewStatus: 'in-progress',
     stats: { cards: 918, notes: 147, practiceSets: 152, practiceMarks: 1272 },
   },
   {
     id: 'physics0972',
     subject: 'Physics',
+    board: 'Cambridge',
     qualification: 'Cambridge IGCSE (9–1)',
     code: '0972',
     summary: 'Forces, energy, waves and electricity.',
@@ -65,12 +67,12 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Space physics',
     ],
     shareUrl: 'https://getlacuna.app/#/s/52fe58acd2fcece40c1d10ffbf08276f',
-    reviewStatus: 'in-progress',
     stats: { cards: 1039, notes: 152, practiceSets: 153, practiceMarks: 1726 },
   },
   {
     id: 'history0977',
     subject: 'History',
+    board: 'Cambridge',
     qualification: 'Cambridge IGCSE (9–1)',
     code: '0977',
     summary: 'The twentieth-century world and Germany, 1918–45.',
@@ -83,7 +85,6 @@ export const libraryCourses: readonly LibraryCourse[] = [
       'Depth study B: Germany, 1918–45',
     ],
     shareUrl: 'https://getlacuna.app/#/s/31178fee8489ffcf1748c1dc5c570be5',
-    reviewStatus: 'in-progress',
     stats: { cards: 708, notes: 111, practiceSets: 112, practiceMarks: 1718 },
   },
 ];
