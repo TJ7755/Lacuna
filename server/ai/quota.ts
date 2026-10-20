@@ -1,23 +1,24 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 const RESERVE_SCRIPT = `
-redis.call('ZREMRANGEBYSCORE', KEYS[5], '-inf', ARGV[2])
 redis.call('ZREMRANGEBYSCORE', KEYS[6], '-inf', ARGV[2])
+redis.call('ZREMRANGEBYSCORE', KEYS[7], '-inf', ARGV[2])
 local values = {}
-for i = 1, 4 do values[i] = tonumber(redis.call('GET', KEYS[i]) or '0') end
+for i = 1, 5 do values[i] = tonumber(redis.call('GET', KEYS[i]) or '0') end
 if values[1] >= tonumber(ARGV[3]) or values[2] >= tonumber(ARGV[4]) or
    values[3] >= tonumber(ARGV[5]) or values[4] >= tonumber(ARGV[6]) or
-   redis.call('ZCARD', KEYS[5]) >= tonumber(ARGV[7]) or
-   redis.call('ZCARD', KEYS[6]) >= tonumber(ARGV[8]) then return 0 end
-for i = 1, 4 do
+   values[5] >= tonumber(ARGV[7]) or
+   redis.call('ZCARD', KEYS[6]) >= tonumber(ARGV[8]) or
+   redis.call('ZCARD', KEYS[7]) >= tonumber(ARGV[9]) then return 0 end
+for i = 1, 5 do
   redis.call('INCR', KEYS[i])
-  local ttl = {172800, 3024000, 172800, 120}
+  local ttl = {172800, 3024000, 172800, 120, 3024000}
   redis.call('EXPIRE', KEYS[i], ttl[i])
 end
-redis.call('ZADD', KEYS[5], ARGV[9], ARGV[1])
-redis.call('ZADD', KEYS[6], ARGV[9], ARGV[1])
-redis.call('EXPIRE', KEYS[5], 60)
+redis.call('ZADD', KEYS[6], ARGV[10], ARGV[1])
+redis.call('ZADD', KEYS[7], ARGV[10], ARGV[1])
 redis.call('EXPIRE', KEYS[6], 60)
+redis.call('EXPIRE', KEYS[7], 60)
 return 1
 `;
 
@@ -40,18 +41,20 @@ export interface AiQuotaLimits {
   userDaily: number;
   userMonthly: number;
   globalDaily: number;
+  globalMonthly: number;
   userMinute: number;
   userConcurrent: number;
   globalConcurrent: number;
 }
 
 export const DEFAULT_AI_QUOTA_LIMITS: AiQuotaLimits = {
-  userDaily: 50,
-  userMonthly: 600,
-  globalDaily: 1_000,
-  userMinute: 6,
+  userDaily: 200,
+  userMonthly: 3_000,
+  globalDaily: 400,
+  globalMonthly: 6_000,
+  userMinute: 20,
   userConcurrent: 2,
-  globalConcurrent: 12,
+  globalConcurrent: 4,
 };
 
 function quotaCommand(
@@ -130,14 +133,15 @@ export function createAiQuotaStore(
       const userActive = `lacuna:ai:active:user:${credentialId}`;
       const globalActive = 'lacuna:ai:active:global';
       const granted = await command([
-        'EVAL', RESERVE_SCRIPT, 6,
+        'EVAL', RESERVE_SCRIPT, 7,
         `lacuna:ai:day:user:${credentialId}:${day}`,
         `lacuna:ai:month:user:${credentialId}:${month}`,
         `lacuna:ai:day:global:${day}`,
         `lacuna:ai:minute:user:${credentialId}:${minute}`,
+        `lacuna:ai:month:global:${month}`,
         userActive, globalActive,
         identifier, timestamp, limits.userDaily, limits.userMonthly,
-        limits.globalDaily, limits.userMinute, limits.userConcurrent,
+        limits.globalDaily, limits.userMinute, limits.globalMonthly, limits.userConcurrent,
         limits.globalConcurrent, timestamp + 60_000,
       ]);
       if (granted !== 1) return null;
