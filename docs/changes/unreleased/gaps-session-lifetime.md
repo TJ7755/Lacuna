@@ -1,0 +1,1 @@
+- Retain unlocked Gaps classes and their read reports within the current tab until explicit lock, connection removal or workspace closure; revoke pending unlocks when a class is locked or removed.
