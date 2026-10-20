@@ -2,11 +2,13 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const headings = [
+  'From exam date to everyday revision.',
   'Scheduled for your exam, not for ever.',
   'One number, and it means something.',
   "Did you know it? That's the whole question.",
   'Practise the exam, not just the facts.',
   'Yours, on your device.',
+  'Know what to teach next.',
   'A few questions.',
   'Your exam has a date. Start there.',
 ];
@@ -20,6 +22,17 @@ const copy = [
 const allowed = new Set([
   ...headings,
   ...copy,
+  'Plan your revision, study lesson by lesson, and put what you know into practice.',
+  'Watch the film',
+  'Lacuna in action',
+  '1 min 33 sec',
+  'Gaps for teachers and tutors',
+  'A whole class or one learner. See where understanding breaks down, then read the answers behind the scores.',
+  'Next-day reports from the practice your pupils choose to share.',
+  'Open Gaps',
+  'Gaps in action',
+  '1 min 4 sec',
+  'Real interfaces, fictional pupils and demonstration data.',
   'Exam',
   '1d',
   '4d',
@@ -64,7 +77,7 @@ for (const width of [1440, 390]) {
       await expect(discover).toHaveAttribute('href', '#how-it-works');
       await discover.click();
       await expect(page.locator('#how-it-works')).toBeFocused();
-      await expect(page.getByRole('heading', { name: headings[0], exact: true })).toBeInViewport();
+      await expect(page.getByRole('heading', { name: headings[1], exact: true })).toBeInViewport();
       for (const section of await page.locator('.landing-feature').all()) {
         await expect(section.locator('h2')).toHaveCount(1);
         const visual = section.locator('.landing-feature-visual');
@@ -117,8 +130,9 @@ test('below-hero visible text matches the allowlist, including expanded FAQ answ
   await expect(page.locator('main h2')).toHaveText(headings);
   for (const summary of await page.locator('.landing-faq summary').all()) await summary.click();
   const lines = await page.evaluate(() => {
-    const bodyText = document.body.innerText;
-    const firstHeading = document.querySelector('#how-it-works h2')!.textContent!;
+    const descriptions = [...document.querySelectorAll('.landing-film-description')].map((node) => node.textContent);
+    const bodyText = descriptions.reduce((text, description) => text.replace(description ?? '', ''), document.body.innerText);
+    const firstHeading = document.querySelector('#student-film-title')!.textContent!;
     return [
       ...new Set(
         bodyText
@@ -177,3 +191,22 @@ test('enlarged text fits the phone without clipping the new sections', async ({ 
     expect(copyBounds.y + copyBounds.height).toBeLessThanOrEqual(bounds.y + bounds.height);
   }
 });
+
+for (const film of ['Lacuna', 'Gaps']) {
+  test(`${film} film loads on demand and plays the hosted 4K video`, async ({ page }) => {
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (request.url().includes('.mp4')) requests.push(request.url());
+    });
+    await page.goto('/#/landing');
+    await expect(page.locator('main h2')).toHaveText(headings);
+    expect(requests).toEqual([]);
+    await page.getByRole('button', { name: new RegExp(`Watch ${film} in action`) }).click();
+    const video = page.getByLabel(`${film} in action`, { exact: true });
+    await expect(video).toBeVisible();
+    await expect.poll(() => video.evaluate((node) => (node as HTMLVideoElement).currentTime), { timeout: 30000 }).toBeGreaterThan(0);
+    expect(await video.evaluate((node) => (node as HTMLVideoElement).videoWidth)).toBe(3840);
+    expect(requests.length).toBeGreaterThan(0);
+    await page.screenshot({ path: `artifacts/landing-rework/${film.toLowerCase()}-playback.png` });
+  });
+}
