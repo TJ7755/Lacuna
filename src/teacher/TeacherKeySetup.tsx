@@ -159,139 +159,161 @@ export function TeacherKeySetup({
   return (
     <div className="space-y-5">
       {courseName && <p className="font-semibold">{courseName}</p>}
-      {prepared ? (
-        <div className="gaps-fade space-y-5">
-          <div className="flex items-center gap-4 rounded-2xl bg-positive/10 p-4">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-positive text-paper">
-              <CheckIcon width={20} height={20} />
-            </span>
-            <p role="status" className="font-semibold">
-              Class protected. Download its recovery file.
+      <fieldset className="min-w-0 space-y-5">
+        <legend className="mb-3 font-display text-xl font-semibold">
+          Keep this private to reopen the class
+        </legend>
+        <p className="text-sm text-ink-soft">
+          Your recovery file and its code or passphrase are for you. Do not send them to pupils.
+          Keep the file and code or passphrase separately.
+        </p>
+        {prepared ? (
+          <div className="gaps-fade space-y-5">
+            <div className="flex items-center gap-4 rounded-2xl bg-positive/10 p-4">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-positive text-paper">
+                <CheckIcon width={20} height={20} />
+              </span>
+              <p role="status" className="font-semibold">
+                Class protected. Download its recovery file.
+              </p>
+            </div>
+            <p className="text-sm text-ink-soft">
+              Keep the file and passphrase apart. Protecting this class does not start reporting:
+              pupils join and choose to share.
             </p>
-          </div>
-          <p className="text-sm text-ink-soft">
-            Keep the file and passphrase apart. Protecting this class does not start reporting:
-            pupils join and choose to share.
-          </p>
-          <button
-            type="button"
-            onClick={download}
-            className={`${buttonClassName(downloaded && onContinue ? 'secondary' : 'primary', 'lg')} w-full`}
-          >
-            Download encrypted recovery file
-          </button>
-          {downloaded && (
-            <p className="gaps-fade text-sm text-ink-soft">
-              Download requested. Keep it somewhere safe.
-            </p>
-          )}
-          {onContinue && downloaded && (
             <button
               type="button"
-              className={`${buttonClassName('primary', 'lg')} gaps-fade w-full`}
-              onClick={onContinue}
+              onClick={download}
+              className={`${buttonClassName(downloaded && onContinue ? 'secondary' : 'primary', 'lg')} w-full`}
             >
-              Continue to class
+              Download encrypted recovery file
             </button>
-          )}
-          <details className="text-xs text-ink-faint">
-            <summary className="cursor-pointer">Technical details</summary>
-            <p className="mt-2">
-              Course code: <code className="break-all">{prepared.shareId}</code>
-            </p>
-            <p>
-              Key fingerprint:{' '}
-              <code className="break-all">{prepared.recovery.recipient.keyId}</code>
-            </p>
-          </details>
-        </div>
-      ) : (
-        <form onSubmit={(event) => void submit(event)} className="space-y-5">
-          <fieldset disabled={busy || reading} className="space-y-5">
-            <Field label="What do you need to do?">
-              <select
-                value={mode}
-                className={inputClassName}
-                onChange={(event) => {
-                  setMode(event.target.value as Mode);
-                  setError(null);
-                  setFile(null);
-                  setPassphrase('');
-                  setConfirmation('');
-                }}
+            {downloaded && (
+              <p className="gaps-fade text-sm text-ink-soft">
+                Download requested. Keep it somewhere safe.
+              </p>
+            )}
+            {onContinue && downloaded && (
+              <button
+                type="button"
+                className={`${buttonClassName('primary', 'lg')} gaps-fade w-full`}
+                onClick={onContinue}
               >
-                <option value="create">Set up this class for the first time</option>
-                <option value="restore">Restore from a recovery file</option>
-                <option value="download">Save another recovery file</option>
-              </select>
-            </Field>
-            {mode === 'restore' ? (
-              <Field label="Encrypted recovery file">
-                <Input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                />
-              </Field>
-            ) : (
-              !initialCourse && (
-                <Field
-                  label="Published course link"
-                  hint="The share link or its 32-character code."
+                Continue to class
+              </button>
+            )}
+            <details className="text-xs text-ink-faint">
+              <summary className="cursor-pointer">Technical details</summary>
+              <p className="mt-2">
+                Course code: <code className="break-all">{prepared.shareId}</code>
+              </p>
+              <p>
+                Key fingerprint:{' '}
+                <code className="break-all">{prepared.recovery.recipient.keyId}</code>
+              </p>
+            </details>
+          </div>
+        ) : (
+          <form onSubmit={(event) => void submit(event)} className="space-y-5">
+            <fieldset disabled={busy || reading} className="space-y-5">
+              <Field label="What do you need to do?">
+                <select
+                  value={mode}
+                  className={inputClassName}
+                  onChange={(event) => {
+                    setMode(event.target.value as Mode);
+                    setError(null);
+                    setFile(null);
+                    setPassphrase('');
+                    setConfirmation('');
+                  }}
                 >
+                  <option value="restore">Restore from a recovery file</option>
+                  <optgroup label="Older classes with a passphrase">
+                    <option value="create">Set up this class for the first time</option>
+                    <option value="download">Save another recovery file</option>
+                  </optgroup>
+                </select>
+              </Field>
+              {mode === 'restore' ? (
+                <Field label="Encrypted recovery file">
                   <Input
-                    value={course}
-                    onChange={(event) => setCourse(event.target.value)}
-                    autoComplete="off"
-                    spellCheck={false}
-                    required
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                   />
                 </Field>
-              )
-            )}
-            <Field
-              label={codeProtected ? 'Recovery code' : 'Recovery passphrase'}
-              hint={
-                mode === 'create' ? 'Several unrelated words, at least 16 characters.' : undefined
-              }
-            >
-              <Input
-                type="password"
-                spellCheck={codeProtected ? false : undefined}
-                autoCapitalize={codeProtected ? 'characters' : undefined}
-                value={passphrase}
-                autoComplete="off"
-                onChange={(event) => setPassphrase(event.target.value)}
-                required
-              />
-            </Field>
-            {codeProtected && <RememberClassCheckbox checked={remember} onChange={setRemember} />}
-            {mode === 'create' && (
-              <Field label="Repeat recovery passphrase">
+              ) : (
+                !initialCourse && (
+                  <Field
+                    label="Published course link"
+                    hint="The share link or its 32-character code."
+                  >
+                    <Input
+                      value={course}
+                      onChange={(event) => setCourse(event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      required
+                    />
+                  </Field>
+                )
+              )}
+              {!codeProtected && (
+                <p className="text-xs text-ink-faint">
+                  Older classes use their existing recovery passphrase instead of a recovery code.
+                </p>
+              )}
+              <Field
+                label={codeProtected ? 'Recovery code' : 'Recovery passphrase'}
+                hint={
+                  mode === 'create' ? 'Several unrelated words, at least 16 characters.' : undefined
+                }
+              >
                 <Input
                   type="password"
-                  value={confirmation}
+                  spellCheck={codeProtected ? false : undefined}
+                  autoCapitalize={codeProtected ? 'characters' : undefined}
+                  value={passphrase}
                   autoComplete="off"
-                  onChange={(event) => setConfirmation(event.target.value)}
+                  onChange={(event) => setPassphrase(event.target.value)}
                   required
                 />
               </Field>
-            )}
-            <button
-              type="submit"
-              className={`${buttonClassName('primary', 'lg')} gaps-press w-full`}
-            >
-              {busy
-                ? 'Preparing key…'
-                : mode === 'create'
-                  ? 'Protect class reports'
-                  : mode === 'restore'
-                    ? 'Restore class access'
-                    : 'Open saved recovery file'}
-            </button>
-          </fieldset>
-        </form>
-      )}
+              {codeProtected && <RememberClassCheckbox checked={remember} onChange={setRemember} />}
+              {mode === 'create' && (
+                <Field label="Repeat recovery passphrase">
+                  <Input
+                    type="password"
+                    value={confirmation}
+                    autoComplete="off"
+                    onChange={(event) => setConfirmation(event.target.value)}
+                    required
+                  />
+                </Field>
+              )}
+              <button
+                type="submit"
+                className={`${buttonClassName('primary', 'lg')} gaps-press w-full`}
+              >
+                {busy
+                  ? 'Preparing key…'
+                  : mode === 'create'
+                    ? 'Protect class reports'
+                    : mode === 'restore'
+                      ? 'Restore class access'
+                      : 'Open saved recovery file'}
+              </button>
+            </fieldset>
+          </form>
+        )}
+      </fieldset>
+      <fieldset className="border-t border-line pt-4">
+        <legend className="font-semibold">Give this to pupils</legend>
+        <p className="mt-2 text-sm text-ink-soft">
+          The class code or join link from Invite, after opening the class.
+        </p>
+      </fieldset>
       {error && (
         <p role="alert" className="gaps-shake text-sm text-negative">
           {error}

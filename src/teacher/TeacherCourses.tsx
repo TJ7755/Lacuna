@@ -290,7 +290,7 @@ export function ConnectClassForm({
           <button
             type="button"
             aria-pressed={useFile}
-            className={buttonClassName(useFile ? 'primary' : 'secondary')}
+            className={buttonClassName(useFile ? 'primary' : 'ghost')}
             onClick={() => {
               setUseFile(true);
               setError('');

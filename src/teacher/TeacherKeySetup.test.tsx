@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { TeacherKeySetup } from './TeacherKeySetup';
 import { serialiseInsightsRecoveryFile } from '../insights/recoveryFile';
@@ -210,3 +210,50 @@ it('opens a combined class file with one recovery code and a remember checkbox',
     'Could not open class recovery. Check the file and recovery code.',
   );
 });
+
+it.each(['restore', 'create', 'download'] as const)(
+  'names one pupil invitation and one private recovery item in %s mode',
+  async (initialMode) => {
+    render(<TeacherKeySetup initialMode={initialMode} />);
+    const pupil = screen.getAllByRole('group', { name: /give .* pupils/i });
+    const privateItem = screen.getAllByRole('group', { name: /keep .* private .* reopen/i });
+    expect(pupil).toHaveLength(1);
+    expect(privateItem).toHaveLength(1);
+    expect(pupil[0]).toHaveTextContent(/class code or join link.*Invite/i);
+    expect(within(pupil[0]).queryByRole('textbox')).not.toBeInTheDocument();
+    expect(within(privateItem[0]).getByLabelText(/^Recovery passphrase/)).toHaveAttribute(
+      'type',
+      'password',
+    );
+    if (initialMode === 'restore') {
+      expect(within(privateItem[0]).getByLabelText('Encrypted recovery file')).toHaveAttribute(
+        'type',
+        'file',
+      );
+    } else {
+      if (initialMode === 'create') fillCreate();
+      else {
+        fireEvent.change(screen.getByLabelText(/Published course link/), {
+          target: { value: shareId },
+        });
+        fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+          target: { value: passphrase },
+        });
+      }
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: initialMode === 'create' ? 'Protect class reports' : 'Open saved recovery file',
+        }),
+      );
+      await screen.findByRole('status');
+      expect(screen.getAllByRole('group', { name: /give .* pupils/i })).toHaveLength(1);
+      expect(screen.getAllByRole('group', { name: /keep .* private .* reopen/i })).toHaveLength(1);
+      expect(
+        within(screen.getByRole('group', { name: /keep .* private .* reopen/i })).getByRole(
+          'button',
+          { name: 'Download encrypted recovery file' },
+        ),
+      ).toBeEnabled();
+    }
+  },
+);

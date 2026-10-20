@@ -640,3 +640,30 @@ it('shows recovery-code feedback when WebCrypto rejects without a message', asyn
     'Could not unlock. Check the recovery code.',
   );
 });
+
+it.each([true, false])(
+  'separates the pupil invitation from private recovery (short code: %s)',
+  async (shortCode) => {
+    if (!shortCode) mocks.shortCode.mockRejectedValue(new Error('offline'));
+    render(<Harness />);
+    await unlock();
+    fireEvent.click(await screen.findByRole('button', { name: 'Share class code' }));
+    expect(screen.getAllByRole('group', { name: /give .* pupils/i })).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: /keep .* private .* reopen/i })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Publish class code' }));
+    await screen.findByLabelText('Pupil join link');
+    await waitFor(() => expect(mocks.shortCode).toHaveBeenCalled());
+    const pupil = screen.getAllByRole('group', { name: /give .* pupils/i });
+    const privateItem = screen.getAllByRole('group', { name: /keep .* private .* reopen/i });
+    expect(pupil).toHaveLength(1);
+    expect(privateItem).toHaveLength(1);
+    expect(within(pupil[0]).getByLabelText('Pupil join link')).toHaveAttribute(
+      'value',
+      expect.stringContaining('/s/GAPS1_'),
+    );
+    expect(within(pupil[0]).queryByLabelText('Class code') !== null).toBe(shortCode);
+    expect(within(pupil[0]).queryByText(/recovery/i)).not.toBeInTheDocument();
+    expect(privateItem[0]).toHaveTextContent(/recovery/i);
+    expect(within(privateItem[0]).queryByRole('textbox')).not.toBeInTheDocument();
+  },
+);
