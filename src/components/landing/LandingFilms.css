@@ -39,6 +39,7 @@
   overflow: hidden;
 }
 .landing-film-screen video,
+.landing-film-screen > img,
 .landing-film-play,
 .landing-film-play img {
   display: block;
@@ -56,7 +57,8 @@
   background: var(--sheet);
   color: var(--cinema);
 }
-.landing-film-play img {
+.landing-film-play img,
+.landing-film-screen > img {
   object-fit: contain;
 }
 .landing-film-play-label {

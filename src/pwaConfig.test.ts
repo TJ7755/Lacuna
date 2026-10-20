@@ -8,6 +8,9 @@ import {
 } from '../scripts/app-shell-precache';
 
 describe('service-worker asset caching', () => {
+  it('excludes landing films and local posters from the offline application shell', () => {
+    expect(workbox.globIgnores).toEqual(expect.arrayContaining(['films/**', 'landing/films/**']));
+  });
   it('precaches the daily backup worker and launcher dependencies before first offline use', () => {
     expect(workbox.globPatterns).toContain('assets/dailyBackup.worker-*.js');
     expect(collectAppShellScripts([

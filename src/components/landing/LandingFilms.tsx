@@ -7,13 +7,18 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
   const [failed, setFailed] = useState(false);
   const content = films[film];
   const player = useRef<HTMLVideoElement>(null);
+  const fallback = useRef<HTMLParagraphElement>(null);
+  const focusFallback = useRef(false);
   useEffect(() => {
-    if (playing) player.current?.focus();
-  }, [playing]);
+    if (failed && focusFallback.current) fallback.current?.focus();
+    else if (playing && !failed) player.current?.focus();
+  }, [playing, failed]);
   return (
     <figure className="landing-film">
       <div className="landing-film-screen">
-        {playing ? (
+        {failed ? (
+          <img src={content.poster} width={1920} height={1080} alt={content.title} />
+        ) : playing ? (
           <video
             ref={player}
             tabIndex={0}
@@ -25,7 +30,10 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
             preload="none"
             aria-label={content.title}
             aria-describedby={`${film}-film-description`}
-            onError={() => setFailed(true)}
+            onError={() => {
+              focusFallback.current = document.activeElement === player.current;
+              setFailed(true);
+            }}
           />
         ) : (
           <button
@@ -64,7 +72,7 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
         {content.description} Fictional demonstration data. Music, no spoken narration.
       </p>
       {failed && (
-        <p className="landing-film-fallback">
+        <p ref={fallback} role="status" tabIndex={-1} className="landing-film-fallback">
           The film couldn’t load.{' '}
           <a href={content.externalSrc} target="_blank" rel="noreferrer">
             Open the video directly
