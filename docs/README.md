@@ -20,6 +20,8 @@ not the entire documentation tree.
 
 ## References
 
+- [Concept application practice decision](adr/0001-concept-application-practice.md) and
+  [portable bank authoring](question-bank/contract.md).
 - [Domain language](domain-language.md) and [engineering pitfalls](maintenance/engineering-notes.md).
 - [Desktop and AI setup](desktop.md), [release procedure](maintenance/release.md),
   [repository policy](maintenance/governance.md), [security reporting](../SECURITY.md).

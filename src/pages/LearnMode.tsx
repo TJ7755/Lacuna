@@ -125,7 +125,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     standaloneSimple ||
     (lessonId
       ? lessonCourse?.learnFirst !== false
-      : dueReviewRequest || (request?.kind === 'practice' && request.mode === 'exam')
+      : dueReviewRequest || (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
         ? false
         : studyMode === 'simple');
 
@@ -247,6 +247,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isSimpleMode,
     standaloneSimple,
     examPractice: request?.kind === 'practice' && request.mode === 'exam',
+    catchUpPractice: request?.kind === 'practice' && request.mode === 'catch-up',
     mode,
     navigate,
     onFlowExit,

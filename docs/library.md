@@ -16,8 +16,14 @@ Do not add private teaching files or owner credentials to this public catalogue.
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Mark a course reviewed only when review covers that published version;
-syllabus authorship alone does not establish completed review. The course owner confirmed review of all four listed courses on 19 October 2026;
-their catalogue status is `reviewed`. Keep this status specific to the published version.
+syllabus authorship alone does not establish completed review. The current links publish cumulative drafts: Biology revision 17, Chemistry revision 12,
+Physics revision 11 and History revision 11. Earlier review does not cover all newer additions;
+their catalogue status is `in-progress`. Keep this status specific to the published version.
+
+These links retain the source files' lineage and entity identities. Earlier library links used
+a separate publisher lineage; importing a current link therefore does not migrate an earlier
+subscriber's course or learner evidence. Keep old links available until that migration has
+been designed and verified. Use the same current link for later revisions.
 
 ## Develop and check
 
