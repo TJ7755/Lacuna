@@ -9,6 +9,8 @@ import { AiConnectionState } from './AiConnectionState';
 import { AiConversation } from './AiConversation';
 import { isElectronRuntime } from '../../electron/runtime';
 
+const PRIVACY_NOTICE_DISMISSED_KEY = 'lacuna.aiPrivacyNoticeDismissed';
+
 export function AiPanel({
   session,
   onClose,
@@ -28,6 +30,13 @@ export function AiPanel({
   const closeRef = useRef<HTMLButtonElement>(null);
   const [connectionBusy, setConnectionBusy] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [privacyNoticeDismissed, setPrivacyNoticeDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(PRIVACY_NOTICE_DISMISSED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const connection = snapshot.connection;
   const hosted = session.provider === 'hosted';
   const local = isElectronRuntime() && !hosted;
@@ -234,6 +243,27 @@ export function AiPanel({
             session={session}
             autoFocus={pendingApproval}
           />
+        )}
+
+        {hosted && !privacyNoticeDismissed && (
+          <div className="flex shrink-0 items-center gap-2 border-t border-line px-3 py-2 text-xs text-ink-soft">
+            <p className="flex-1">Don&apos;t share personal information with AI.</p>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Dismiss privacy notice"
+              onClick={() => {
+                setPrivacyNoticeDismissed(true);
+                try {
+                  localStorage.setItem(PRIVACY_NOTICE_DISMISSED_KEY, 'true');
+                } catch {
+                  // Dismissal still works for this session when storage is unavailable.
+                }
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
         )}
 
         <AiComposer

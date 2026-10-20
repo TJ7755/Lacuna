@@ -20,6 +20,21 @@ async function openHostedAi(page: Page) {
   return page.getByRole('textbox', { name: 'Message AI' });
 }
 
+test('built-in AI remembers dismissal of the personal-information notice', async ({ page }, testInfo) => {
+  await openHostedAi(page);
+  const notice = page.getByText("Don't share personal information with AI.");
+  await expect(notice).toBeVisible();
+  await page.getByRole('complementary', { name: 'AI conversation' }).screenshot({
+    path: testInfo.outputPath('ai-privacy-notice.png'),
+  });
+  await page.getByRole('button', { name: 'Dismiss privacy notice' }).click();
+  await expect(notice).toHaveCount(0);
+  await page.reload();
+  await page.getByRole('button', { name: 'AI', exact: true }).first().click();
+  await expect(page.getByText('Built-in AI connected')).toBeVisible();
+  await expect(notice).toHaveCount(0);
+});
+
 test('hosted AI answers, approves one local write and survives reload', async ({ page }) => {
   let inferenceCalls = 0;
   await page.route('**/api/ai/inference', async (route) => {
