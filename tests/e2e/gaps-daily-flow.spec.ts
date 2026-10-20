@@ -7,6 +7,7 @@ import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { DAY_MS, completedIsoDayLabel } from '../../relay/src/insightsDay';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { parseClassCode } from '../../src/insights/classCode';
 import { addLessonCard, reviewOnlyCard } from './fixtures/syncConvergence';
 
 test.skip(
@@ -69,14 +70,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   await author.getByRole('menuitem', { name: /^Class biology/ }).click();
   await author.getByRole('button', { name: 'Create share link' }).click();
   await expect(author.getByRole('textbox', { name: 'Share link', exact: true })).toBeVisible();
-  await author.getByRole('button', { name: 'Connect to Gaps', exact: true }).click();
-  await author.getByLabel(/^Connection passphrase/).fill(phrase);
-  await author.getByLabel('Repeat connection passphrase', { exact: true }).fill(phrase);
-  const downloading = author.waitForEvent('download');
-  await author.getByRole('button', { name: 'Download connection file' }).click();
-  const download = await downloading,
-    connectionFile = await readFile((await download.path())!);
-  const shareId = JSON.parse(connectionFile.toString()).shareId as string;
+  const sourceLink = await author
+    .getByRole('textbox', { name: 'Share link', exact: true })
+    .inputValue();
+  const sourceShareId = sourceLink.split('/').pop()!;
 
   const teacherContext = await browser.newContext(),
     pupilContext = await browser.newContext();
@@ -101,14 +98,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
     await teacher.goto('https://gaps.getlacuna.app/');
     await teacher.getByRole('button', { name: 'Connect a class' }).click();
-    await teacher.getByRole('button', { name: 'Use a connection file' }).click();
-    await teacher.getByLabel(/^Encrypted connection file/).setInputFiles({
-      name: 'gaps-course.json',
-      mimeType: 'application/json',
-      buffer: connectionFile,
-    });
-    await teacher.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
-    await teacher.getByRole('button', { name: 'Verify and connect' }).click();
+    await teacher.getByLabel('Course link or code').fill(sourceLink);
+    await teacher.getByLabel(/^Connection passphrase/).fill(phrase);
+    await teacher.getByLabel('Repeat connection passphrase').fill(phrase);
+    await teacher.getByRole('button', { name: 'Create class', exact: true }).click();
     await teacher.getByRole('button', { name: 'Set up class', exact: true }).click();
     await teacher.getByLabel(/^Recovery passphrase/).fill(phrase);
     await teacher.getByLabel('Repeat recovery passphrase').fill(phrase);
@@ -130,6 +123,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.getByRole('button', { name: 'Publish class code', exact: true }).click();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^GAPS1_[A-Za-z0-9_-]{64}$/);
+    const { shareId } = parseClassCode(code);
+    expect(shareId).not.toBe(sourceShareId);
+    expect(await relay.get(`shares/${sourceShareId}/teacher`)).toBeNull();
     expect(await relay.get(`shares/${shareId}/teacher`)).not.toBeNull();
     await teacher.screenshot({ path: testInfo.outputPath('share-class-code.png'), fullPage: true });
     await teacher.getByRole('button', { name: 'Daily results', exact: true }).click();
@@ -182,6 +178,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       timeout: 15_000,
     });
     expect(uploads).toHaveLength(1);
+    expect(await relay.list(`insights/${sourceShareId}/`)).toEqual([]);
+    expect((await relay.list(`insights/${shareId}/`)).length).toBeGreaterThan(0);
     expect(uploads[0]).not.toContain('Pupil A');
     expect(uploads[0]).not.toContain('Membrane');
     await pupil.screenshot({ path: testInfo.outputPath('pupil-consent.png'), fullPage: true });
