@@ -54,7 +54,10 @@ vi.mock('../db/mergeImport', () => ({
   isLineagePayload: () => false,
   findCourseForLineage: mocks.findCourse,
 }));
-vi.mock('../insights/classKey', () => ({ getClassRecipient: mocks.recipient }));
+vi.mock('../insights/classKey', () => ({
+  getClassRecipient: mocks.recipient,
+  getPublishedClassRecipient: mocks.recipient,
+}));
 
 function open(code: string) {
   render(
@@ -267,4 +270,41 @@ it('recovers tracking after the manifest returns', async () => {
   expect(JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')).toEqual({
     [SHARE_ID]: 'biology',
   });
+});
+
+it('accepts a typed short code and reaches consent using the relay teacher key', async () => {
+  const recipient = { keyId: 'c'.repeat(64), publicKey: 'public' };
+  await seedTrackedCourse('biology', LINEAGE_ID);
+  mocks.findCourse.mockResolvedValue({ id: 'biology' });
+  mocks.recipient.mockResolvedValue(recipient);
+  const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith('/class-codes/K7QM4XTP')) return Response.json({ shareId: SHARE_ID });
+    if (url.endsWith('/meta')) return manifestResponse(LINEAGE_ID);
+    return new Response('{}', { headers: { ETag: '"1"' } });
+  });
+  vi.stubGlobal('fetch', fetchImpl);
+  open('k7qm-4xtp');
+  expect(
+    await screen.findByRole('switch', { name: 'Share insights with your teacher' }),
+  ).toHaveAttribute('aria-checked', 'false');
+  expect(createEnrolmentSetting('biology').read()).toMatchObject({
+    shareId: SHARE_ID,
+    recipient,
+    consentedAt: null,
+  });
+  expect(mocks.recipient).toHaveBeenCalledWith(expect.objectContaining({ shareId: SHARE_ID }));
+});
+
+it.each([
+  [404, 'No class uses that code. Check it with your teacher.'],
+  [429, 'Too many attempts. Wait a few minutes and try again.'],
+])('reports short-code lookup HTTP %s without offering consent', async (status, message) => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('{}', { status })),
+  );
+  open('K7QM4XTP');
+  expect(await screen.findByText(message)).toBeVisible();
+  expect(screen.queryByRole('switch')).not.toBeInTheDocument();
 });

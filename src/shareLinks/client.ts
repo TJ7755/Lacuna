@@ -403,3 +403,65 @@ async function shareHttpError(
     { operation, status: response.status },
   );
 }
+
+export async function requestShortClassCode(options: VerifyShareOwnerOptions): Promise<string> {
+  const relay = relayFor(options.relayUrl, 'publish');
+  const shareId = requireShareId(options.shareId, 'publish');
+  const token = requireWriteToken(options.writeToken, 'publish');
+  const response = await shareFetch(
+    requireFetch(options.fetchImpl),
+    `${relay}/shares/${shareId}/class-code`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: options.signal,
+      cache: 'no-store',
+      credentials: 'omit',
+      redirect: 'error',
+    },
+    'publish',
+  );
+  if (!response.ok) throw await shareHttpError('publish', response);
+  const parsed = z
+    .object({ code: z.string().regex(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/) })
+    .parse(await response.json());
+  return parsed.code;
+}
+
+export async function resolveShortClassCode(options: {
+  relayUrl: string;
+  code: string;
+  fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
+}): Promise<string> {
+  const relay = relayFor(options.relayUrl, 'fetch');
+  let response: Response;
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 300 + Math.floor(Math.random() * 701)));
+      options.signal?.throwIfAborted();
+    }
+    response = await shareFetch(
+      requireFetch(options.fetchImpl),
+      `${relay}/class-codes/${encodeURIComponent(options.code)}`,
+      {
+        method: 'GET',
+        signal: options.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        redirect: 'error',
+      },
+      'fetch',
+    );
+    if (response.status !== 503 || attempt === 2) break;
+  }
+  if (response.status === 404 || response.status === 429)
+    throw new ShareLinkError(
+      response.status === 404
+        ? 'No class uses that code. Check it with your teacher.'
+        : 'Too many attempts. Wait a few minutes and try again.',
+      { operation: 'fetch', status: response.status },
+    );
+  if (!response.ok) throw await shareHttpError('fetch', response);
+  return z.object({ shareId: z.string().regex(SHARE_ID_RE) }).parse(await response.json()).shareId;
+}

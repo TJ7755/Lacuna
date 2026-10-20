@@ -12,12 +12,13 @@ import {
   DEFAULT_RELAY_URL,
   getShareBytes,
   parseShareCode,
+  resolveShortClassCode,
   parseShareManifest,
 } from '../shareLinks/client';
 import { confirmShareImport } from '../shareLinks/linkStore';
 import { findCourseForLineage } from '../db/mergeImport';
-import { parseClassCode } from '../insights/classCode';
-import { getClassRecipient } from '../insights/classKey';
+import { parseClassCode, normaliseShortClassCode } from '../insights/classCode';
+import { getClassRecipient, getPublishedClassRecipient } from '../insights/classKey';
 import type { InsightsRecipient } from '../insights/recipient';
 import { enrolInClass } from '../insights/enrolment';
 import { CourseInsightsSection } from './settings/CourseInsightsSection';
@@ -76,11 +77,22 @@ export function ShareLinkPage() {
     void (async () => {
       let shareId: string;
       let keyId: string | undefined;
+      const shortCode = normaliseShortClassCode(code ?? '');
       try {
-        if ((code ?? '').startsWith('GAPS1_')) ({ shareId, keyId } = parseClassCode(code!));
+        if (shortCode)
+          shareId = await resolveShortClassCode({
+            relayUrl: DEFAULT_RELAY_URL,
+            code: shortCode,
+            signal: controller.signal,
+          });
+        else if ((code ?? '').startsWith('GAPS1_')) ({ shareId, keyId } = parseClassCode(code!));
         else shareId = parseShareCode(code ?? '');
-      } catch {
-        if (!cancelled) setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
+      } catch (error) {
+        if (!cancelled)
+          setState({
+            status: 'unavailable',
+            message: shortCode && error instanceof Error ? error.message : UNAVAILABLE_MESSAGE,
+          });
         return;
       }
       try {
@@ -130,14 +142,12 @@ export function ShareLinkPage() {
           return;
         }
         if (cancelled) return;
-        const recipient = keyId
-          ? await getClassRecipient({
-              shareId,
-              keyId,
-              relayUrl: DEFAULT_RELAY_URL,
-              signal: controller.signal,
-            })
-          : undefined;
+        const keyOptions = { shareId, relayUrl: DEFAULT_RELAY_URL, signal: controller.signal };
+        const recipient = shortCode
+          ? await getPublishedClassRecipient(keyOptions)
+          : keyId
+            ? await getClassRecipient({ ...keyOptions, keyId })
+            : undefined;
         if (cancelled) return;
         if (recipient) {
           const existing = await findCourseForLineage(expectedLineageId);

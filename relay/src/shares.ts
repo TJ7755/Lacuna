@@ -25,6 +25,9 @@ export const SHARE_PAYLOAD_MAX_BYTES = 4 * 1024 * 1024;
 /** The polling manifest is a small JSON document, never course content. */
 export const SHARE_META_MAX_BYTES = 8 * 1024;
 
+export const SHORT_CLASS_CODE_RE = /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/;
+const CLASS_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
 export const SHARE_ID_RE = /^[0-9a-f]{32}$/;
 
 const SHARE_ID_BYTES = 16;
@@ -133,6 +136,71 @@ export async function handleShareMint(
     }
   }
   return shareJson(500, request, { error: 'internal error' });
+}
+
+export async function handleClassCodeCreate(
+  store: BlobStore,
+  request: Request,
+  id: string,
+  now: () => number,
+): Promise<Response> {
+  if (!SHARE_ID_RE.test(id)) return shareJson(404, request, { error: 'not found' });
+  if (request.method !== 'POST') return shareJson(405, request, { error: 'method not allowed' });
+  const auth = await authorizeShare(store, id, request);
+  if (auth !== 'ok')
+    return shareJson(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+  if (!(await shareLive(store, id, now)) || !(await store.get(`shares/${id}/teacher`)))
+    return shareJson(409, request, { error: 'teacher key required' });
+  const pointer = `shares/${id}/class-code`;
+  const existing = await store.get(pointer);
+  if (existing) return shareJson(200, request, { code: new TextDecoder().decode(existing.body) });
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = Array.from(randomBytes(8), (byte) => CLASS_CODE_ALPHABET[byte & 31]).join('');
+    const mapping = `class-codes/${code}`;
+    const created = await store.put(mapping, new TextEncoder().encode(id), { exclusive: true });
+    if (!created.ok) continue;
+    const linked = await store.put(pointer, new TextEncoder().encode(code), { exclusive: true });
+    if (!linked.ok) {
+      await store.del([mapping]);
+      const winner = await store.get(pointer);
+      if (winner && (await store.get(shareAuthKey(id))))
+        return shareJson(200, request, { code: new TextDecoder().decode(winner.body) });
+      return shareJson(404, request, { error: 'not found' });
+    }
+    // Revoke an allocation that raced share deletion, just as slot uploads do.
+    if (!(await store.get(shareAuthKey(id)))) {
+      await store.del([mapping, pointer]);
+      return shareJson(404, request, { error: 'not found' });
+    }
+    return shareJson(201, request, { code });
+  }
+  return shareJson(500, request, { error: 'internal error' });
+}
+
+export async function handleClassCodeLookup(
+  store: BlobStore,
+  request: Request,
+  code: string,
+  now: () => number,
+): Promise<Response> {
+  if (!SHORT_CLASS_CODE_RE.test(code)) return shareJson(404, request, { error: 'not found' });
+  if (request.method !== 'GET') return shareJson(405, request, { error: 'method not allowed' });
+  const permit = await consumeRatePermit(store, request, now(), 'class-code');
+  if (permit === 'limited') return shareJson(429, request, { error: 'rate limited' });
+  if (permit === 'unavailable') return shareJson(503, request, { error: 'rate limit unavailable' });
+  const mapping = await store.get(`class-codes/${code}`);
+  const id = mapping ? new TextDecoder().decode(mapping.body) : '';
+  if (!SHARE_ID_RE.test(id)) return shareJson(404, request, { error: 'not found' });
+  const pointer = await store.get(`shares/${id}/class-code`);
+  const matches = pointer && new TextDecoder().decode(pointer.body) === code;
+  if (!(await shareLive(store, id, now)) || !(await store.get(shareAuthKey(id)))) {
+    await store.del([`class-codes/${code}`, ...(matches ? [`shares/${id}/class-code`] : [])]);
+    return shareJson(404, request, { error: 'not found' });
+  }
+  if (!matches || !(await store.get(`shares/${id}/teacher`)))
+    return shareJson(404, request, { error: 'not found' });
+  return shareJson(200, request, { shareId: id });
 }
 
 export async function handleShareItem(
@@ -330,7 +398,7 @@ export async function authorizeShare(
 }
 
 const SHARE_CURSOR_KEY = 'maintenance/share-cursor';
-const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher|source)$/;
+const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher|source|class-code)$/;
 
 /**
  * Reclaim shares untouched for longer than the channel TTL plus grace, so an
@@ -361,7 +429,9 @@ export async function cleanupExpiredShares(
     if (now - latest < CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS) continue;
 
     const fresh = await Promise.all(
-      ['auth', 'payload', 'meta', 'teacher', 'source'].map((name) => store.get(`${prefix}${name}`)),
+      ['auth', 'payload', 'meta', 'teacher', 'source', 'class-code'].map((name) =>
+        store.get(`${prefix}${name}`),
+      ),
     );
     if (
       fresh.some(
@@ -383,7 +453,36 @@ export async function cleanupExpiredShares(
     await store.del([SHARE_CURSOR_KEY]);
   }
 
+  await cleanupOrphanClassCodes(store, now);
   return { sharesDeleted, shareObjectsDeleted };
+}
+
+async function cleanupOrphanClassCodes(store: BlobStore, now: number): Promise<void> {
+  const cursorKey = 'maintenance/class-code-cursor';
+  const stored = await store.get(cursorKey);
+  const page = await store.listPage(
+    'class-codes/',
+    stored ? new TextDecoder().decode(stored.body) : undefined,
+    100,
+  );
+  for (const object of page.objects) {
+    const code = object.key.slice('class-codes/'.length);
+    if (!SHORT_CLASS_CODE_RE.test(code)) continue;
+    // Leave an in-flight allocation time to commit its reverse pointer.
+    if (now - object.uploadedAt < CHANNEL_CLEANUP_GRACE_MS) continue;
+    const mapping = await store.get(object.key);
+    const id = mapping ? new TextDecoder().decode(mapping.body) : '';
+    const pointer = SHARE_ID_RE.test(id) ? await store.get(`shares/${id}/class-code`) : null;
+    if (
+      !pointer ||
+      new TextDecoder().decode(pointer.body) !== code ||
+      !(await store.get(shareAuthKey(id)))
+    )
+      await store.del([object.key]);
+  }
+  if (page.cursor)
+    await store.put(cursorKey, new TextEncoder().encode(page.cursor), { overwrite: true });
+  else if (stored) await store.del([cursorKey]);
 }
 
 function shareSourceKey(id: string): string {
@@ -437,7 +536,7 @@ export async function shareLive(store: BlobStore, id: string, now: () => number)
 
 async function lastShareWrite(store: BlobStore, id: string): Promise<number | null> {
   const objects = await Promise.all(
-    ['auth', 'payload', 'meta', 'teacher', 'source'].map((name) =>
+    ['auth', 'payload', 'meta', 'teacher', 'source', 'class-code'].map((name) =>
       store.get(`shares/${id}/${name}`),
     ),
   );
@@ -446,6 +545,9 @@ async function lastShareWrite(store: BlobStore, id: string): Promise<number | nu
 }
 
 async function sweepShare(store: BlobStore, id: string): Promise<void> {
+  const pointer = await store.get(`shares/${id}/class-code`);
+  const code = pointer ? new TextDecoder().decode(pointer.body) : '';
+  if (SHORT_CLASS_CODE_RE.test(code)) await store.del([`class-codes/${code}`]);
   const objects = (
     await Promise.all([store.list(`shares/${id}/`), store.list(`insights/${id}/`)])
   ).flat();
@@ -524,10 +626,11 @@ function shareCorsHeaders(request: Request): Headers {
 function shareJson(
   status: number,
   request: Request,
-  body: { error?: string; shareId?: string; writeToken?: string },
+  body: { error?: string; shareId?: string; writeToken?: string; code?: string },
 ): Response {
   const headers = shareCorsHeaders(request);
   headers.set('Content-Type', 'application/json');
+  headers.set('Cache-Control', 'no-store');
   return new Response(JSON.stringify(body), { status, headers });
 }
 

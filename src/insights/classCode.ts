@@ -28,3 +28,17 @@ export function parseClassCode(value: string): ClassInvitation {
   if (formatClassCode(invitation) !== code) throw new Error('That is not a Gaps class code.');
   return invitation;
 }
+
+export function normaliseShortClassCode(value: string): string | null {
+  const code = value
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]/g, '')
+    .replace(/O/g, '0')
+    .replace(/[IL]/g, '1');
+  return /^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{8}$/.test(code) ? code : null;
+}
+
+export function formatShortClassCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}

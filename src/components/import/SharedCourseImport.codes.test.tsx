@@ -375,3 +375,12 @@ describe('SharedCourseImport with course codes and files', () => {
     });
   });
 });
+
+it('routes a typed short class code to the invitation importer', () => {
+  render(<SharedCourseImport />);
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
+    target: { value: 'k7qm-4xtp' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  expect(window.location.hash).toBe('#/s/K7QM4XTP');
+});

@@ -150,9 +150,29 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.setViewportSize({ width: 1280, height: 900 });
     await teacher.getByRole('button', { name: 'Share class code', exact: true }).click();
     await teacher.getByRole('button', { name: 'Publish class code', exact: true }).click();
+    await expect(teacher.getByLabel('Class code', { exact: true })).toHaveValue(
+      /^[0-9A-Z]{4}-[0-9A-Z]{4}$/,
+    );
+    await expect(teacher.getByRole('button', { name: 'Copy code', exact: true })).toBeVisible();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
-    expect(code).toMatch(/^GAPS1_[A-Za-z0-9_-]{64}$/);
-    const { shareId } = parseClassCode(code);
+    expect(code).toMatch(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
+    const link = await teacher.getByLabel('Pupil join link', { exact: true }).inputValue();
+    const { shareId } = parseClassCode(link);
+    await teacher.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('invitation-desktop.png'),
+      fullPage: true,
+    });
+    await teacher.setViewportSize({ width: 390, height: 844 });
+    expect(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await teacher.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('invitation-mobile.png'),
+      fullPage: true,
+    });
+    await teacher.setViewportSize({ width: 1280, height: 900 });
     expect(shareId).not.toBe(sourceShareId);
     expect(await relay.get(`shares/${sourceShareId}/teacher`)).toBeNull();
     expect(await relay.get(`shares/${shareId}/teacher`)).not.toBeNull();

@@ -3,7 +3,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
-import { formatClassCode, parseClassCode } from '../../insights/classCode';
+import { formatClassCode, parseClassCode, normaliseShortClassCode } from '../../insights/classCode';
 import { useCourseQrScanner } from './useCourseQrScanner';
 import { CourseFileImportButton } from './CourseFileControls';
 import {
@@ -70,6 +70,8 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
 /** A share-link code (or full link) when the text is one, else null. Text share
  *  codes fall through to the ordinary decode path. */
 function tryParseShareCode(raw: string): string | null {
+  const shortCode = normaliseShortClassCode(raw);
+  if (shortCode) return shortCode;
   try {
     return formatClassCode(parseClassCode(raw));
   } catch {

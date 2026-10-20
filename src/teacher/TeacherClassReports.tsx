@@ -32,7 +32,8 @@ import {
   isoDayStartMs,
 } from '../../relay/src/insightsDay';
 import { publishClassRecipient } from '../insights/classKey';
-import { formatClassCode } from '../insights/classCode';
+import { requestShortClassCode } from '../shareLinks/client';
+import { formatClassCode, formatShortClassCode } from '../insights/classCode';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { createInsightsOwnerStore } from '../insights/ownerStore';
 import {
@@ -1268,6 +1269,7 @@ function Invite({
   const [copied, setCopied] = useState('');
   const request = useRef<AbortController | null>(null);
   const code = session.code;
+  const shortCode = session.shortCode ? formatShortClassCode(session.shortCode) : '';
   const link = code ? `https://getlacuna.app/#/s/${code}` : '';
 
   useEffect(() => () => request.current?.abort(), []);
@@ -1295,6 +1297,17 @@ function Invite({
         keyId: session.owner.recipient.keyId,
       });
       onChanged();
+      try {
+        session.shortCode = await requestShortClassCode({
+          ...session.connection,
+          signal: controller.signal,
+        });
+        controller.signal.throwIfAborted();
+        onChanged();
+      } catch {
+        if (!controller.signal.aborted)
+          setError('Could not create a short code. Pupils can still use the join link.');
+      }
     } catch (cause) {
       if (!controller.signal.aborted)
         setError(cause instanceof Error ? cause.message : 'Could not publish the class code.');
@@ -1342,14 +1355,16 @@ function Invite({
               className="font-mono text-sm"
             />
           </Field>
-          <Field label="Class code">
-            <Input
-              readOnly
-              value={code}
-              onFocus={(event) => event.target.select()}
-              className="font-mono text-sm"
-            />
-          </Field>
+          {shortCode && (
+            <Field label="Class code">
+              <Input
+                readOnly
+                value={shortCode}
+                onFocus={(event) => event.target.select()}
+                className="font-mono text-3xl tracking-wider"
+              />
+            </Field>
+          )}
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -1358,13 +1373,15 @@ function Invite({
             >
               Copy join link
             </button>
-            <button
-              type="button"
-              className={`${buttonClassName('secondary')} gaps-press`}
-              onClick={() => void copy(code, 'Class code copied')}
-            >
-              Copy class code
-            </button>
+            {shortCode && (
+              <button
+                type="button"
+                className={`${buttonClassName('secondary')} gaps-press`}
+                onClick={() => void copy(shortCode, 'Class code copied')}
+              >
+                Copy code
+              </button>
+            )}
             {copied && (
               <span
                 role="status"
