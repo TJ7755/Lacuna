@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { sealGapsConnection } from '../../src/teacher/connectionFile';
+import { formatClassCode } from '../../src/insights/classCode';
 import { DEFAULT_RELAY_URL } from '../../src/sync/pairingConfig';
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'gaps', 'Requires the standalone Gaps build');
@@ -153,11 +154,23 @@ for (const width of [1280, 390]) {
         body: Buffer.from(await response.arrayBuffer()),
       });
     });
+    const classResponse = await handle(
+      new Request(`${DEFAULT_RELAY_URL}/shares`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceShareId: source.shareId }),
+      }),
+    );
+    const otherClass = (await classResponse.json()) as { shareId: string; writeToken: string };
+    const code = formatClassCode({ shareId: otherClass.shareId, keyId: 'c'.repeat(64) });
     await page.goto('/');
     await page.getByRole('button', { name: 'Connect a class' }).click();
     await page
       .getByLabel('Course link or code')
-      .fill(`https://getlacuna.app/#/s/${source.shareId}`);
+      .fill(
+        width === 390
+          ? `https://getlacuna.app/#/s/${code}`
+          : `https://getlacuna.app/#/s/${source.shareId}`,
+      );
     await page.getByLabel(/^Connection passphrase/).fill(phrase);
     await page.getByLabel('Repeat connection passphrase').fill(phrase);
     await page.screenshot({
@@ -176,6 +189,10 @@ for (const width of [1280, 390]) {
     const text = await readFile((await download.path())!, 'utf8');
     const connection = await openGapsConnection(parseGapsConnectionFile(text), phrase);
     expect(connection.shareId).not.toBe(source.shareId);
+    expect(connection.shareId).not.toBe(otherClass.shareId);
+    expect(
+      new TextDecoder().decode((await store.get(`shares/${connection.shareId}/source`))!.body),
+    ).toBe(source.shareId);
     expect(connection.writeToken).not.toBe(source.writeToken);
     expect(text).not.toContain(connection.writeToken);
     expect(
