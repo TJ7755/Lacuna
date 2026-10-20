@@ -328,19 +328,26 @@ describe('remembered credentials', () => {
     expect(writeSyncStateMock).not.toHaveBeenCalled();
   });
 
-  it('unlocking with the passphrase re-remembers the credentials', async () => {
+  it.each([
+    [DEFAULT_RELAY_URL, DEFAULT_RELAY_URL],
+    ['https://private-relay.example/sync', 'https://private-relay.example/sync'],
+    ['https://lacuna-relay.vercel.app/sync', 'https://lacuna-relay.vercel.app/sync'],
+    ['https://lacuna-relay.vercel.app:443', 'https://lacuna-relay.vercel.app'],
+  ])('unlocking with the passphrase re-remembers credentials at %s', async (relayUrl, expectedUrl) => {
     const keybag = await wrapKeybag(CHANNEL_KEY, PASSPHRASE, WRITE_TOKEN, {
       channelId: CHANNEL_ID,
     });
     const state: SyncState = {
-      relayUrl: DEFAULT_RELAY_URL,
+      relayUrl,
       channelId: CHANNEL_ID,
       wrappedKeyMaterial: Array.from(keybag, (byte) => byte.toString(16).padStart(2, '0')).join(''),
       lastError: null,
     };
     readSyncStateMock.mockResolvedValue(state);
 
-    await unlockSyncState(state, PASSPHRASE);
+    const credentials = await unlockSyncState(state, PASSPHRASE);
+
+    expect(credentials.relayUrl).toBe(expectedUrl);
 
     expect(writeSyncStateMock).toHaveBeenCalledWith(
       expect.objectContaining({

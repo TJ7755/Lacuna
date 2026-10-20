@@ -16,6 +16,7 @@ import {
 import {
   DEFAULT_RELAY_URL,
   MIN_RECOVERY_PASSPHRASE_LENGTH,
+  migrateLegacyRelayUrl,
   validateRecoveryPassphrase,
 } from './pairingConfig';
 import {
@@ -102,7 +103,7 @@ export async function setupFirstDevice(
   passphrase: string,
   options: PairingOperationOptions = {},
 ): Promise<PairingSession> {
-  const url = requireRelayUrl(relayUrl);
+  const url = migrateLegacyRelayUrl(requireRelayUrl(relayUrl));
   requirePassphrase(passphrase);
 
   const minted = await mintChannel(url, mintSecret, options.fetchImpl);
@@ -146,7 +147,7 @@ export async function joinWithPassphrase(
   passphrase: string,
   options: PairingOperationOptions = {},
 ): Promise<PairingSession> {
-  const url = requireRelayUrl(relayUrl);
+  const url = migrateLegacyRelayUrl(requireRelayUrl(relayUrl));
   const id = requireChannelId(channelId);
   requirePassphrase(passphrase);
   const keybag = await pullRelaySlot(url, id, 'keybag', options.fetchImpl);
@@ -355,7 +356,7 @@ function session(credentials: SyncCredentials, result: SyncResult): Promise<Pair
 
 function credentialsFromPayload(payload: PairingPayload): SyncCredentials {
   return {
-    relayUrl: normaliseRelayUrl(payload.relayUrl),
+    relayUrl: migrateLegacyRelayUrl(requireRelayUrl(payload.relayUrl)),
     channelId: payload.channelId,
     channelKey: hexToBytes(payload.channelKeyHex),
     writeToken: payload.writeToken,
