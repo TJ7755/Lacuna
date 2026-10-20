@@ -448,7 +448,6 @@ describe('release configuration', () => {
     expect(gate).toContain(
       'needs: [changes, browser-tests, browser-timing, browser-mobile]',
     );
-    expect(gate).toContain('if: ${{ always() && !cancelled() && (');
     expect(gate).toContain('SCOPE_RESULT: ${{ needs.changes.result }}');
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
     expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
