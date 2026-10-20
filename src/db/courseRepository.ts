@@ -13,7 +13,6 @@ import type {
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import type { QuestionSetDraft } from '../questions/questionSetDrafts';
-import { readLessonViewMode } from '../state/lessonViewMode';
 import { readPracticeDefaults } from '../state/practiceDefaults';
 import { defaultExamDate, getLocalTimeZone } from '../utils/datetime';
 import { courseToRecord, finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
@@ -163,16 +162,7 @@ export async function createCourse(name: string, opts?: CreateCourseOptions): Pr
  * in localStorage, not IndexedDB — an upgrade() callback cannot depend on it
  * reliably (e.g. across origins/devices with mismatched localStorage).
  */
-export async function stampMissingLessonViewModes(): Promise<void> {
-  const globalDefault = readLessonViewMode();
-  // lessonViewMode is not an indexed field, so this is a full-table filter
-  // rather than a where() query — acceptable for a one-off migration.
-  const unstamped = await db.courses.filter((c) => c.lessonViewMode === undefined).toArray();
-  if (unstamped.length === 0) return;
-  await db.courses.bulkUpdate(
-    unstamped.map((c) => ({ key: c.id, changes: { lessonViewMode: globalDefault } })),
-  );
-}
+export { stampMissingLessonViewModes } from './lessonViewModeMigration';
 
 export async function updateCourse(id: string, changes: Partial<CourseRecord>): Promise<void> {
   try {

@@ -7,8 +7,6 @@ import { dialogKeyDown } from '../../hooks/dialogKeys';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
-import { createCourse } from '../../db/courseRepository';
-import { createLesson } from '../../db/lessonRepository';
 import { cn } from '../ui/cn';
 import { fieldLabelClassName } from '../ui/Field';
 import { CourseStudyTarget } from './CourseStudyTarget';
@@ -67,6 +65,10 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
     setNameError(null);
     setSaving(true);
     try {
+      const [{ createCourse }, { createLesson }] = await Promise.all([
+        import('../../db/courseRepository'),
+        import('../../db/lessonRepository'),
+      ]);
       const course = await createCourse(
         trimmedName,
         schedulingMode === 'exam' ? { schedulingMode, examDate, timeZone } : { schedulingMode },

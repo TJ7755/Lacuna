@@ -30,7 +30,6 @@ import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardFore
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
 import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
-import { updateCourse } from '../db/courseRepository';
 import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
@@ -340,7 +339,10 @@ export function Dashboard() {
                 notify(`${archiveTarget.course.name} archived`, 'positive', {
                   actionLabel: 'Undo',
                   onAction: () => {
-                    void updateCourse(archiveTarget.course.id, { archived: false })
+                    void import('../db/courseRepository')
+                      .then(({ updateCourse }) =>
+                        updateCourse(archiveTarget.course.id, { archived: false }),
+                      )
                       .then(() => notify(`${archiveTarget.course.name} restored`, 'positive'))
                       .catch(() =>
                         notify(`Could not restore ${archiveTarget.course.name}`, 'negative'),
