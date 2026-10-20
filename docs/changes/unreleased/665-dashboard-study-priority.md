@@ -1,0 +1,1 @@
+- Put the dashboard Study queue before the forecast so starting revision stays visible on smaller laptop screens and with enlarged text. (#665)
