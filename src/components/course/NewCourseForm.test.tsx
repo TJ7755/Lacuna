@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NewCourseForm } from './NewCourseForm';
 import { defaultExamDate, fromDateTimeLocalValue, getLocalTimeZone } from '../../utils/datetime';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -17,6 +18,16 @@ vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
 vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
 vi.mock('../../db/lessonRepository', () => ({ createLesson: mocks.createLesson }));
 describe('NewCourseForm', () => {
+  it('offers the library as an external alternative to creating a course', () => {
+    render(<NewCourseForm onClose={vi.fn()} inline />);
+    const link = screen
+      .getAllByRole('link')
+      .find((anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN);
+    expect(link).toHaveAccessibleName();
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-08-11T12:00:00Z'));

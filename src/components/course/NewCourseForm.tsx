@@ -13,6 +13,7 @@ import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 interface NewCourseFormProps {
   onClose: () => void;
@@ -96,6 +97,14 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const fields = (
     <>
       <div className="flex flex-col gap-5 px-6 py-6">
+        <a
+          href={LIBRARY_ORIGIN}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-ink-soft underline underline-offset-4 hover:text-ink"
+        >
+          Browse the course library
+        </a>
         <div className="flex flex-col gap-2">
           <label htmlFor={nameInputId} className={fieldLabelClassName}>
             Course name

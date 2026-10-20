@@ -16,6 +16,7 @@ import './ImportPanel.css';
 import { Field, Input } from '../ui/Field';
 import { normaliseShortClassCode } from '../../insights/classCode';
 import { countOf } from '../../utils/plural';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 type Source = 'class' | 'lacuna' | 'anki' | 'text';
 const sources = [
@@ -159,6 +160,14 @@ export function ImportPanel({
               </header>
               {!source ? (
                 <>
+                  <a
+                    href={LIBRARY_ORIGIN}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mb-3 block py-2 text-sm text-ink-soft underline underline-offset-4 hover:text-ink"
+                  >
+                    Browse the course library
+                  </a>
                   <div className="import-sources">
                     {sources.map(({ id, title, detail, icon: Icon }, index) => (
                       <button
