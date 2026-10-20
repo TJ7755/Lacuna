@@ -166,6 +166,12 @@ function CourseStudyOptions({
       )}
 
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
+        {(snapshot?.catchUpEligibleCount ?? 0) > 0 && (
+          <Button variant="secondary" onClick={() => start('?review=earlier')}>
+            Review earlier material
+            <span className="ml-1 text-sm opacity-70 tabular-nums">{snapshot?.catchUpEligibleCount}</span>
+          </Button>
+        )}
         {canPractiseForExam && (
           <Button variant="secondary" onClick={() => start('?review=exam')}>
             Practise for exam

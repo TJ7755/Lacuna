@@ -30,28 +30,25 @@ export function buildCardConcept(args: {
   now: number;
   provisional?: boolean;
 }): Concept {
-  if (args.courseId) {
-    return {
-      id: args.id,
-      scope: 'course',
-      scopeKey: `course:${args.courseId}`,
-      courseId: args.courseId,
-      name: args.name,
-      provisional: args.provisional ?? false,
-      createdAt: args.now,
-      updatedAt: args.now,
-    };
-  }
   return {
     id: args.id,
-    scope: 'legacy-scheduling-unit',
-    scopeKey: `legacy-scheduling-unit:${args.schedulingUnitId}`,
-    courseId: null,
-    legacySchedulingUnitId: args.schedulingUnitId,
     name: args.name,
-    provisional: true,
     createdAt: args.now,
     updatedAt: args.now,
+    ...(args.courseId
+      ? {
+          scope: 'course',
+          scopeKey: `course:${args.courseId}`,
+          courseId: args.courseId,
+          provisional: args.provisional ?? false,
+        }
+      : {
+          scope: 'legacy-scheduling-unit',
+          scopeKey: `legacy-scheduling-unit:${args.schedulingUnitId}`,
+          courseId: null,
+          legacySchedulingUnitId: args.schedulingUnitId,
+          provisional: true,
+        }),
   };
 }
 

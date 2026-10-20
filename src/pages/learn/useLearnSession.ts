@@ -1,3 +1,5 @@
+import { catchUpPracticePool } from '../../course/catchUpPractice';
+import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
@@ -180,6 +182,7 @@ export interface UseLearnSessionParams {
   standaloneSimple?: boolean;
   /** Optional revision below a future exam target, without a curricular scope. */
   examPractice?: boolean;
+  catchUpPractice?: boolean;
   mode: LearnModeType;
   navigate: NavigateFunction;
   onFlowExit?: () => void;
@@ -216,6 +219,7 @@ export function useLearnSession({
   isSimpleMode,
   standaloneSimple = false,
   examPractice = false,
+  catchUpPractice = false,
   mode,
   navigate,
   onFlowExit,
@@ -581,6 +585,7 @@ export function useLearnSession({
     );
     const currentPractice = currentAssessmentPracticeContext({
       course,
+      practiceNodes,
       assessments: examDates,
       lessons,
       cards: courseCards,
@@ -635,7 +640,9 @@ export function useLearnSession({
       const practiceGoalReached =
         currentPracticeGoalReached === undefined &&
         lId === lessonN.id &&
-        manualPracticeGateKeysAfterLesson(coreLessons, practiceNodes, lessonN.id).length > 0
+        manualPracticeGateKeysAfterLesson(coreLessons, practiceNodes, lessonN.id).some(
+          (nodeKey) => (snapshot.practiceByKey.get(nodeKey)?.totalCount ?? 0) > 0,
+        )
           ? false
           : currentPracticeGoalReached;
       const lessonComplete =
@@ -1229,7 +1236,12 @@ export function useLearnSession({
               courseAssessments: [],
             }
           : makeExamDateContext(course, courseLessons, examDates);
-        cards = standaloneSimple
+        cards = catchUpPractice
+          ? catchUpPracticePool(
+              allCards, course, courseLessons, courseLinks, examDateContext, reachedLessonIds,
+              Date.now(), earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
+            )
+          : standaloneSimple
           ? course.archived
             ? []
             : allCards
@@ -1240,6 +1252,8 @@ export function useLearnSession({
                 )
               : assessmentPracticePool(selectedAssessment, {
                   course,
+                  assessments: examDates,
+                  practiceNodes: manualNodes,
                   lessons: courseLessons,
                   cards: allCards,
                   links: courseLinks,
@@ -1256,7 +1270,8 @@ export function useLearnSession({
           ...schedulingUnit,
           // Introductions have already rationed new cards for traditional courses.
           // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
-          newCardsPerDay: course.learnFirst === false ? schedulingUnit.newCardsPerDay : undefined,
+          newCardsPerDay:
+            course.learnFirst === false || catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
         };
         if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
           cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
@@ -1527,6 +1542,7 @@ export function useLearnSession({
     isGlobal,
     standaloneSimple,
     examPractice,
+    catchUpPractice,
     practiceNodeKeyParam,
     requestScopeLessonIdsKey,
     requestMilestoneLessonIdsKey,

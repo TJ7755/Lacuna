@@ -6,7 +6,7 @@ export type StudyFlowStep =
   | {
       kind: 'practice';
       nodeKey: string;
-      mode: 'curricular' | 'recurring' | 'assessment' | 'exam';
+      mode: 'curricular' | 'recurring' | 'assessment' | 'exam' | 'catch-up';
       label: string;
       assessmentId?: string;
     }
@@ -29,6 +29,12 @@ export const DUE_REVIEW_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   label: 'Review due cards',
 };
 
+export const CATCH_UP_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
+  kind: 'practice',
+  nodeKey: 'catch-up',
+  mode: 'catch-up',
+  label: 'Review earlier material',
+};
 export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = {
   kind: 'practice',
   nodeKey: 'exam-practice',
@@ -40,7 +46,10 @@ export const EXAM_PRACTICE_STEP: Extract<StudyFlowStep, { kind: 'practice' }> = 
  * Chooses one step from the latest authoritative course snapshot. The caller
  * must rebuild the snapshot after each step rather than retaining a queue.
  */
-export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowDecision {
+export function planNextStudyStep(
+  snapshot: CourseStudyFlowSnapshot,
+  allowCatchUp = true,
+): StudyFlowDecision {
   if (snapshot.archived) return { kind: 'blocked', reason: 'archived' };
   if (snapshot.recurringPracticeEligibleCount > 0) {
     return snapshot.assessmentOptions.length > 0
@@ -51,7 +60,11 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
   let hasCurriculum = false;
   let hasLockedLesson = false;
   let step: StudyFlowStep | undefined;
-  for (const node of snapshot.nodes) {
+  const startIndex = snapshot.nodes.findIndex(
+    (node) => node.nodeType === 'lesson' && !node.lesson.isExtension &&
+      node.id === snapshot.studyStartLessonId,
+  );
+  for (const node of snapshot.nodes.slice(Math.max(0, startIndex))) {
     if (node.nodeType === 'lesson') {
       hasCurriculum = true;
       if (node.status === 'available') {
@@ -85,6 +98,8 @@ export function planNextStudyStep(snapshot: CourseStudyFlowSnapshot): StudyFlowD
     return assessments.length > 0 ? { kind: 'choice', step, assessments } : { kind: 'step', step };
   }
 
+  if (allowCatchUp && (snapshot.catchUpEligibleCount ?? 0) > 0)
+    return { kind: 'step', step: CATCH_UP_STEP };
   if (hasLockedLesson) return { kind: 'blocked', reason: 'curriculum-locked' };
   return hasCurriculum || snapshot.cardCount > 0 ? { kind: 'complete' } : { kind: 'empty' };
 }
