@@ -46,7 +46,7 @@ function submit() {
   fireEvent.change(screen.getByLabelText('Course link or code'), { target: { value: shareId } });
   fireEvent.submit(screen.getByRole('form', { name: 'Create class from a course link' }));
 }
-it('creates both secrets with one generated code and continues only after download', async () => {
+it('creates both secrets with one generated code and continues without downloading', async () => {
   const connected = vi.fn();
   render(<CreateGapsClass onConnected={connected} />);
   expect(screen.queryByLabelText(/passphrase/i)).not.toBeInTheDocument();
@@ -70,8 +70,8 @@ it('creates both secrets with one generated code and continues only after downlo
       'You need this code and the file to open the class on another device. This is the only time the code is shown.',
     ),
   ).toBeVisible();
-  expect(screen.queryByRole('button', { name: 'Continue to class' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Download class recovery file' }));
+  expect(screen.getByRole('button', { name: 'Continue to class' })).toBeEnabled();
+  expect(mocks.download).not.toHaveBeenCalled();
   fireEvent.click(await screen.findByRole('button', { name: 'Continue to class' }));
   expect(connected).toHaveBeenCalledWith(shareId, expect.objectContaining({ connection, owner }));
 });
@@ -167,6 +167,7 @@ it('copies the formatted code and resets the success label after two seconds', a
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Copy code' }));
     });
+    expect(screen.getByRole('button', { name: 'Continue to class' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Copied' })).toBeVisible();
     expect(writeText).toHaveBeenCalledWith(
       mocks.createFromLink.mock.calls[0][1].match(/.{4}/g).join('-'),
@@ -183,3 +184,23 @@ it('copies the formatted code and resets the success label after two seconds', a
     vi.useRealTimers();
   }
 });
+
+it.each(['resolve', 'reject'] as const)(
+  'keeps Continue available after a download %s',
+  async (outcome) => {
+    mocks.download.mockImplementationOnce(() =>
+      outcome === 'resolve' ? Promise.resolve() : Promise.reject(new Error('download failed')),
+    );
+    const connected = vi.fn();
+    render(<CreateGapsClass onConnected={connected} />);
+    submit();
+    await screen.findByRole('heading', { name: 'Class created' });
+    expect(screen.getByRole('button', { name: 'Continue to class' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Download class recovery file' }));
+    await waitFor(() => expect(mocks.download).toHaveBeenCalledWith(shareId));
+    if (outcome === 'reject')
+      expect(await screen.findByRole('alert')).toHaveTextContent('Could not download');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to class' }));
+    expect(connected).toHaveBeenCalledWith(shareId, expect.objectContaining({ connection, owner }));
+  },
+);

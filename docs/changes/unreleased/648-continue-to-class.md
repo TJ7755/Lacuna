@@ -1,0 +1,1 @@
+- Show Continue to class immediately after creating a Gaps class, with recovery download failures reported separately. (#648)
