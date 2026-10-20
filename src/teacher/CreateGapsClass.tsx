@@ -28,7 +28,6 @@ export function CreateGapsClass({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [downloaded, setDownloaded] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const doneHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -99,9 +98,8 @@ export function CreateGapsClass({
     setError(null);
     try {
       await downloadClassRecoveryFile(created.shareId);
-      setDownloaded(true);
     } catch {
-      setError('Could not finish setting up the class. Try again.');
+      setError('Could not download the recovery file. Try downloading it again.');
     }
   }
 
@@ -152,15 +150,13 @@ export function CreateGapsClass({
           You need this code and the file to open the class on another device. This is the only time
           the code is shown.
         </p>
-        {downloaded && (
-          <button
-            type="button"
-            className={buttonClassName('primary')}
-            onClick={() => onConnected(created.shareId, created.session)}
-          >
-            Continue to class
-          </button>
-        )}
+        <button
+          type="button"
+          className={buttonClassName('primary')}
+          onClick={() => onConnected(created.shareId, created.session)}
+        >
+          Continue to class
+        </button>
         {error && (
           <p role="alert" className="text-sm text-negative">
             {error}

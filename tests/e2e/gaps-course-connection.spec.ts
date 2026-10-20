@@ -353,7 +353,7 @@ for (const width of [1280, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await expect(page.getByRole('button', { name: 'Continue to class' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Continue to class' })).toBeEnabled();
     await page.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath(`class-created-${width}.png`),
