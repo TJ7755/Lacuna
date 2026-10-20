@@ -152,6 +152,19 @@ it('opens recovery and the explanation of Gaps as pages from the sidebar', async
 });
 
 it('focuses and traps mobile navigation while the background is inert', async () => {
+  const matchMedia = window.matchMedia.bind(window);
+  const media = vi
+    .spyOn(window, 'matchMedia')
+    .mockImplementation((query) =>
+      query === '(min-width: 768px)'
+        ? {
+            ...matchMedia(query),
+            matches: false,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          }
+        : matchMedia(query),
+    );
   show();
   await screen.findByRole('button', { name: 'Open class' });
   const trigger = screen.getByRole('button', { name: 'Open navigation' });
@@ -169,4 +182,5 @@ it('focuses and traps mobile navigation while the background is inert', async ()
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(trigger).toHaveFocus();
   expect(trigger.closest('[inert]')).toBeNull();
+  media.mockRestore();
 });

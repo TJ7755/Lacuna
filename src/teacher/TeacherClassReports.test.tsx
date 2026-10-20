@@ -425,3 +425,22 @@ it('restores an earlier day’s read evidence after navigation without another f
   expect(await screen.findByRole('button', { name: 'Retained pupil' })).toBeVisible();
   expect(mocks.read).toHaveBeenCalledTimes(2);
 });
+
+it('shows textual outcomes for written answer groups with known and unknown scores', async () => {
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [
+      { slotId: 'a', report: report('Ada', [event({ disputed: false, shortened: false })]) },
+      {
+        slotId: 'b',
+        report: report('Ben', [event({ earned: 1, disputed: false, shortened: false })]),
+      },
+    ],
+  });
+  render(<Harness />);
+  await unlock();
+  fireEvent.click(await screen.findByRole('button', { name: /^Explain osmosis/ }));
+  const answers = await screen.findByRole('region', { name: 'Answers' });
+  expect(within(answers).getByText(/Unknown \/ 2 marks/)).toBeVisible();
+  expect(within(answers).getByText(/1 \/ 2 marks/)).toBeVisible();
+});

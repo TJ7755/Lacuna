@@ -437,7 +437,7 @@ function DayStepper({
   onReload?(): void;
 }) {
   const arrow =
-    'grid h-10 w-10 place-items-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink disabled:pointer-events-none disabled:opacity-30';
+    'hit-target grid h-10 w-10 place-items-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink disabled:pointer-events-none disabled:opacity-30';
   return (
     <div
       role="group"
@@ -594,7 +594,7 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                       aria-controls={`${base}-item`}
                       title={item.prompt}
                       className={cn(
-                        'group block w-full rounded-xl px-2 pb-2 pt-1 text-left transition-colors hover:bg-ink/5',
+                        'hit-target group block w-full rounded-xl px-2 pb-2 pt-1 text-left transition-colors hover:bg-ink/5',
                         open?.kind === 'item' && open.itemId === item.itemId && 'bg-ink/[0.06]',
                       )}
                     >
@@ -640,7 +640,7 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                           aria-expanded={expanded}
                           aria-controls={`${base}-${row}`}
                           className={cn(
-                            'block w-full truncate rounded-full py-1.5 text-left transition-colors hover:text-ink group-hover/row:text-ink',
+                            'hit-target block w-full truncate rounded-full py-1.5 text-left transition-colors hover:text-ink group-hover/row:text-ink',
                             expanded ? 'font-semibold text-ink' : 'text-ink-soft',
                           )}
                         >
@@ -668,7 +668,7 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                                 } as CSSProperties
                               }
                               className={cn(
-                                'gaps-cell block h-9 w-full rounded-[10px] text-xs font-semibold text-ink transition-[transform,filter] duration-200 hover:scale-[1.06] hover:brightness-110',
+                                'hit-target gaps-cell block h-9 w-full rounded-[10px] text-xs font-semibold text-ink transition-[transform,filter] duration-200 hover:scale-[1.06] hover:brightness-110',
                                 attempted ? 'opacity-85' : 'bg-ink/[0.05]',
                               )}
                             >
@@ -1026,7 +1026,7 @@ function ItemAnswers({ item }: { item: ItemSummary }) {
                   {[...new Set(group.answers.map(({ report }) => report.pupil.label))].join(', ')}
                 </p>
                 <p className="mt-1.5 text-xs text-ink-soft">
-                  {markingLabel(group.answers[0].event)}
+                  {outcomeLabel(group.answers[0].event)} · {markingLabel(group.answers[0].event)}
                   {group.answers[0].event.disputed && ' · disputed by the pupil'}
                   {group.answers[0].event.shortened && ' · shortened for this report'}
                 </p>

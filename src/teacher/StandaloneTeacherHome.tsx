@@ -52,10 +52,21 @@ export function StandaloneTeacherHome() {
   const drawerNavigated = useRef(false);
   const wasDrawerOpen = useRef(false);
   useEffect(() => {
-    if (wasDrawerOpen.current && !drawerOpen && !drawerNavigated.current)
-      drawerTrigger.current?.focus();
+    if (wasDrawerOpen.current && !drawerOpen) {
+      if (window.matchMedia('(min-width: 768px)').matches)
+        document.querySelector<HTMLElement>('[data-page-title]')?.focus();
+      else if (!drawerNavigated.current) drawerTrigger.current?.focus();
+    }
     wasDrawerOpen.current = drawerOpen;
   }, [drawerOpen]);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = () => {
+      if (desktop.matches) setDrawerOpen(false);
+    };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  }, []);
   const latestDay = completedIsoDayLabel(Date.now());
 
   const reload = useCallback(async () => {

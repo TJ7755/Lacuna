@@ -183,3 +183,15 @@ test('uses Lacuna’s saved light theme and supports keyboard connection entry a
   });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('closes mobile navigation when widening into the desktop layout', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.getByRole('dialog', { name: 'Navigation' })).toHaveCount(0);
+  const nav = page.getByRole('complementary', { name: 'Gaps' });
+  await nav.getByRole('button', { name: 'About Gaps' }).click();
+  await expect(page.getByRole('heading', { name: 'About Gaps', level: 1 })).toBeFocused();
+});

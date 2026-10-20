@@ -274,7 +274,7 @@ export function SlidingTabs<T extends string>({
           onClick={() => onChange(option.value)}
           onKeyDown={(event) => onKeyDown(event, index)}
           className={cn(
-            'relative min-h-10 rounded-full px-5 text-sm font-semibold transition-colors duration-200',
+            'hit-target relative min-h-10 rounded-full px-5 text-sm font-semibold transition-colors duration-200',
             option.value === value ? 'text-ink' : 'text-ink-soft hover:text-ink',
           )}
         >

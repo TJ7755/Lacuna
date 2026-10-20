@@ -216,6 +216,14 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.getByRole('button', { name: 'Toggle colour theme' }).click();
     await expect(teacher.locator('html')).toHaveClass(/dark/);
     const answerCell = teacher.getByRole('table').locator('tbody td button').first();
+    for (const target of [teacher.getByRole('button', { name: 'Previous day' }), answerCell]) {
+      const hitArea = await target.evaluate((element) => {
+        const before = getComputedStyle(element, '::before');
+        return { width: Number.parseFloat(before.width), height: Number.parseFloat(before.height) };
+      });
+      expect(hitArea.width).toBeGreaterThanOrEqual(44);
+      expect(hitArea.height).toBeGreaterThanOrEqual(44);
+    }
     await answerCell.focus();
     await expect(answerCell).toBeFocused();
     await answerCell.press('Enter');
