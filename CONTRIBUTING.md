@@ -111,16 +111,19 @@ is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository r
 The rule lives in `scripts/ci-change-scope.mjs`.
 
 Required worker jobs acknowledge documentation-only scope on a runner so GitHub resolves their
-required check names; their install/check steps and non-required heavy jobs remain skipped. GitHub
-does not evaluate dynamic names on jobs skipped before scheduling.
+required check names; their install/check steps and non-required heavy jobs remain skipped.
 
-Title/body-only PR edits do not run validation or cancel its current run. Small acknowledgement
-jobs run under distinct `metadata-` names so GitHub resolves their check names without publishing
-ordinary required contexts or approving untested code. Skipping whole jobs leaves dynamic name
-expressions unresolved and can block an otherwise checked head. Base changes,
-including edits that also change a title/body, retain the ordinary required names and run checks
-against the new merge ref. Unknown edited payloads run CI. Keep these event predicates, check names
-and concurrency rules together when editing `.github/workflows/ci.yml`.
+Title/body-only PR edits do not repeat validation or cancel its current run. They reuse the latest
+successful CI validation run for the exact test merge commit and PR head, waiting if necessary.
+The validation run identity is recorded in the changes job summary. Missing, failed or cancelled
+validation fails closed; reopen the PR or push a commit to establish validation after adopting this
+workflow. The test and browser gates reject failed reuse even when their other dependencies skip.
+
+Metadata runs retain the ordinary required names because a newer suite with separate names can
+block a checked head despite successful older contexts. Reuse is allowed only after actual validation;
+metadata acknowledgements alone cannot approve untested code. Base changes, mixed and unknown edits
+run validation against the new merge commit. Keep event predicates, run names, check names and
+concurrency together when editing `.github/workflows/ci.yml`.
 
 The aggregate test and browser jobs report dependency results in their job summaries. Browser test
 summaries also include each failed attempt's deepest failing step and source location, including

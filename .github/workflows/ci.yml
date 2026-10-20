@@ -1,4 +1,5 @@
 name: CI
+run-name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('CI metadata {0}', github.sha) || format('CI validation {0}', github.sha) }}
 
 on:
   push:
@@ -7,14 +8,15 @@ on:
     # Long-lived redesign branches collect stacked work before it reaches master; their
     # pull requests need the same gates or regressions surface only on the final merge.
     branches: [master, main, 'redesign/**']
-    # Keep retargeting checks. Metadata-only edits use separate check names below so
-    # their acknowledgement jobs cannot satisfy protection for untested code.
+    # Retargets validate the new merge commit. Metadata edits reuse successful
+    # validation of that exact merge commit without cancelling it.
     types: [opened, synchronize, reopened, ready_for_review, edited]
 
 permissions:
   contents: read
+  actions: read
 
-# Metadata edits must neither cancel real CI nor publish required contexts.
+# Metadata edits must not cancel validation. Reused results require the exact tested merge commit.
 # Only an explicit title/body edit without a base change is metadata-only; unknown
 # edited payloads fail closed by running CI.
 concurrency:
@@ -38,8 +40,8 @@ jobs:
       - run: node scripts/changelog.mjs --check
 
   # Documentation-only pull requests skip heavy work, never the entire workflow.
-  # Required workers acknowledge that scope on a runner so their dynamic check names
-  # resolve; GitHub leaves name expressions unevaluated when skipping a whole job.
+  # Metadata edits skip heavy work only after the exact merge commit passes validation.
+  # Documentation-only changes retain the normal lightweight validation path.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -47,7 +49,24 @@ jobs:
     steps:
       - id: metadata
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        run: echo "docs_only=true" >> "$GITHUB_OUTPUT"
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          VALIDATION_TITLE: CI validation ${{ github.sha }}
+        run: |
+          run_id=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$HEAD_SHA&event=pull_request&per_page=100" |
+            jq -r --arg title "$VALIDATION_TITLE" '[.workflow_runs[] | select(.display_title == $title)] | first | .id // empty')
+          if [ -z "$run_id" ]; then
+            echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
+            exit 1
+          fi
+          gh run watch "$run_id" --repo "$GH_REPO" --exit-status
+          conclusion=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .conclusion)
+          [ "$conclusion" = success ]
+          echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
+          echo "docs_only=true" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
@@ -67,7 +86,7 @@ jobs:
           fi
 
   typecheck:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}typecheck
+    name: typecheck
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
@@ -98,7 +117,7 @@ jobs:
         if: needs.changes.outputs.docs_only != 'true'
 
   lint:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}lint
+    name: lint
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
@@ -197,7 +216,7 @@ jobs:
         working-directory: tooling/${{ matrix.workspace }}
 
   test:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}test
+    name: test
     needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -231,9 +250,14 @@ jobs:
             exit 1
           fi
 
-      - name: Acknowledge metadata edit
+      - name: Require successful reused validation
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        run: echo "Metadata-only edit; validation results remain on the code-event run." >> "$GITHUB_STEP_SUMMARY"
+        env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
+        shell: bash
+        run: |
+          [ "$SCOPE_RESULT" = success ]
+          echo "Exact merge commit passed validation; see the changes job for its run." >> "$GITHUB_STEP_SUMMARY"
 
   handwriting:
     needs: changes
@@ -258,7 +282,7 @@ jobs:
       - run: bun run test
 
   relay:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}relay
+    name: relay
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
@@ -294,7 +318,7 @@ jobs:
         working-directory: relay
 
   ai-mcp:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}ai-mcp
+    name: ai-mcp
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
@@ -335,7 +359,7 @@ jobs:
         working-directory: tooling/lacuna-ai-mcp
 
   production:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}production
+    name: production
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
@@ -473,7 +497,7 @@ jobs:
 
   # Keep the existing branch-protection check name and require every browser job.
   browser-smoke:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}browser-smoke
+    name: browser-smoke
     needs: [changes, browser-tests, browser-timing, browser-mobile]
     if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
@@ -502,12 +526,17 @@ jobs:
           fi
 
 
-      - name: Acknowledge metadata edit
+      - name: Require successful reused validation
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
-        run: echo "Metadata-only edit; validation results remain on the code-event run." >> "$GITHUB_STEP_SUMMARY"
+        env:
+          SCOPE_RESULT: ${{ needs.changes.result }}
+        shell: bash
+        run: |
+          [ "$SCOPE_RESULT" = success ]
+          echo "Exact merge commit passed validation; see the changes job for its run." >> "$GITHUB_STEP_SUMMARY"
 
   electron-ai:
-    name: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && 'metadata-' || '' }}electron-ai
+    name: electron-ai
     needs: changes
     if: needs.changes.result == 'success'
     runs-on: windows-latest

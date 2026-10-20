@@ -1,1 +1,1 @@
-- Resolve metadata-only CI check names on runners without rerunning validation or cancelling code checks. (#652)
+- Reuse successful CI validation for the exact merge commit after title/body edits, preserving required checks without repeating validation or cancelling code checks. (#652)
