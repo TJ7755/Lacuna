@@ -408,18 +408,6 @@ export function SharedCourseImport({
                   course.
                 </p>
               )}
-              {!pending.merge && pending.summary.deckNames.length > 0 && (
-                <ul className="mb-4 flex flex-wrap gap-1.5">
-                  {pending.summary.deckNames.map((name, i) => (
-                    <li
-                      key={`${name}-${i}`}
-                      className="rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink-soft"
-                    >
-                      {name}
-                    </li>
-                  ))}
-                </ul>
-              )}
               {!pending.merge && pending.summary.omittedImages && (
                 <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear
@@ -442,6 +430,18 @@ export function SharedCourseImport({
                   </Button>
                 )}
               </div>
+              {!pending.merge && pending.summary.deckNames.length > 0 && (
+                <ul className="mt-4 flex flex-wrap gap-1.5">
+                  {pending.summary.deckNames.map((name, i) => (
+                    <li
+                      key={`${name}-${i}`}
+                      className="rounded-full bg-ink/[0.06] px-3 py-1 text-xs text-ink-soft"
+                    >
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </motion.div>
         )}
