@@ -5,6 +5,7 @@ import {
   type InsightsOwner,
   type InsightsRecovery,
 } from './envelope';
+import { serialiseInsightsRecoveryFile } from './recoveryFile';
 import { INSIGHT_ID_RE } from '../../relay/src/insightsProtocol';
 
 interface StoredOwner {
@@ -63,6 +64,12 @@ export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys'
       return owner;
     },
 
+    async exportRecovery(shareId: string): Promise<string> {
+      const stored = await owners.get(shareId);
+      if (!stored) throw new Error('This browser has no key for this class yet.');
+      return serialiseInsightsRecoveryFile(shareId, stored.recovery);
+    },
+
     async unlock(shareId: string, passphrase: string): Promise<InsightsOwner | null> {
       if (!INSIGHT_ID_RE.test(shareId)) throw new Error('The share link code is invalid.');
       const stored = await owners.get(shareId);
@@ -106,6 +113,13 @@ export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys'
 
     async forgetRemembered(shareId: string): Promise<void> {
       await remembered.delete(shareId);
+    },
+
+    async forget(shareId: string): Promise<void> {
+      await database.transaction('rw', owners, remembered, async () => {
+        await remembered.delete(shareId);
+        await owners.delete(shareId);
+      });
     },
 
     close(): void {

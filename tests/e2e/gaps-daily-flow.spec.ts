@@ -33,8 +33,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   test.setTimeout(180_000);
   process.env.RELAY_INSIGHTS_ENABLED = '1';
   const clock = Date.now(),
-    day = completedIsoDayLabel(clock),
-    phrase = 'several separate words for the school trial';
+    day = completedIsoDayLabel(clock);
   const relay = new MemoryStore(() => clock),
     handle = createHandler(relay, { now: () => clock });
   const uploads: string[] = [];
@@ -99,35 +98,30 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
     await teacher.goto('https://gaps.getlacuna.app/');
     await teacher.getByLabel('Course link or code').fill(sourceLink);
-    await teacher.getByLabel(/^Connection passphrase/).fill(phrase);
-    await teacher.getByLabel('Repeat connection passphrase').fill(phrase);
+    await teacher.getByRole('checkbox', { name: 'Remember this class on this device' }).uncheck();
     await teacher.getByRole('button', { name: 'Create class', exact: true }).click();
-    await expect(teacher.getByRole('heading', { name: 'Protect this class' })).toBeVisible();
-    await teacher.getByLabel(/^Recovery passphrase/).fill(phrase);
-    await teacher.getByLabel('Repeat recovery passphrase').fill(phrase);
-    await teacher.getByRole('button', { name: 'Protect class reports', exact: true }).click();
-    await expect(
-      teacher.getByText('Class protected. Download its recovery file.', { exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(teacher.getByRole('heading', { name: 'Class created' })).toBeFocused();
+    const recoveryCode = (await teacher.getByLabel('Recovery code').innerText()).replace(/\s/g, '');
     await teacher.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath('class-protected.png'),
       fullPage: true,
     });
     const recoveryDownload = teacher.waitForEvent('download');
-    await teacher.getByRole('button', { name: 'Download encrypted recovery file' }).click();
+    await teacher.getByRole('button', { name: 'Download class recovery file', exact: true }).click();
     await recoveryDownload;
     await teacher.getByRole('button', { name: 'Continue to class' }).click();
+    await expect(teacher.getByText(/No report does not mean no study/)).toBeVisible();
+    await teacher.getByRole('button', { name: 'Lock', exact: true }).click();
     const unlock = teacher.getByRole('form', { name: 'Unlock class' });
-    await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+    await expect(unlock.getByLabel('Recovery code', { exact: true })).toBeVisible();
     await expect(teacher.getByRole('heading', { name: 'Class biology', level: 1 })).toBeAttached();
     await teacher.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath('unlock-class.png'),
       fullPage: true,
     });
-    await unlock.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
-    await unlock.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
+    await unlock.getByLabel('Recovery code', { exact: true }).fill(recoveryCode);
     await unlock.getByRole('checkbox', { name: 'Remember this class on this device' }).uncheck();
     await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
     // Unlocking reads the latest completed day; an empty day does not claim no study.

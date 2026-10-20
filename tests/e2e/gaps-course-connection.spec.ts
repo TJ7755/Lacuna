@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { sealGapsConnection } from '../../src/teacher/connectionFile';
+import { openSidebarItem } from './fixtures/gaps';
 import { formatClassCode } from '../../src/insights/classCode';
 import { DEFAULT_RELAY_URL } from '../../src/sync/pairingConfig';
 
@@ -316,6 +317,16 @@ for (const width of [1280, 390]) {
     );
     const otherClass = (await classResponse.json()) as { shareId: string; writeToken: string };
     const code = formatClassCode({ shareId: otherClass.shareId, keyId: 'c'.repeat(64) });
+    await page.addInitScript(() => {
+      const random = crypto.getRandomValues.bind(crypto);
+      crypto.getRandomValues = <T extends ArrayBufferView<ArrayBuffer>>(array: T): T => {
+        if (array instanceof Uint8Array && array.length === 24) {
+          array.set(Array.from({ length: 24 }, (_, index) => index));
+          return array;
+        }
+        return random(array) as T;
+      };
+    });
     await page.goto('/');
     await page
       .getByLabel('Course link or code')
@@ -324,24 +335,42 @@ for (const width of [1280, 390]) {
           ? `https://getlacuna.app/#/s/${code}`
           : `https://getlacuna.app/#/s/${source.shareId}`,
       );
-    await page.getByLabel(/^Connection passphrase/).fill(phrase);
-    await page.getByLabel('Repeat connection passphrase').fill(phrase);
+    await expect(
+      page.getByRole('checkbox', { name: 'Remember this class on this device' }),
+    ).toBeChecked();
     await page.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath(`course-link-form-${width}.png`),
       fullPage: true,
     });
+    await page.getByRole('checkbox', { name: 'Remember this class on this device' }).uncheck();
     await page.getByRole('button', { name: 'Create class', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
-    await page.getByRole('button', { name: /^Class settings/ }).click();
+    await expect(page.getByRole('heading', { name: 'Class created' })).toBeFocused();
+    await expect(page.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Class connection method' })).toHaveCount(0);
+    const recovery = page.getByLabel('Recovery code');
+    await expect(recovery.locator('span')).toHaveText(['0123-4567-89AB', 'CDEF-GHJK-MNPQ']);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(page.getByRole('button', { name: 'Continue to class' })).toHaveCount(0);
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`class-created-${width}.png`),
+      fullPage: true,
+    });
     const downloading = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Download connection file', exact: true }).click();
+    await page.getByRole('button', { name: 'Download class recovery file', exact: true }).click();
     const download = await downloading;
     const { readFile } = await import('node:fs/promises');
-    const { parseGapsConnectionFile, openGapsConnection } =
-      await import('../../src/teacher/connectionFile');
+    const { parseClassRecoveryFile } = await import('../../src/teacher/classRecoveryFile');
+    const { openGapsConnection } = await import('../../src/teacher/connectionFile');
     const text = await readFile((await download.path())!, 'utf8');
-    const connection = await openGapsConnection(parseGapsConnectionFile(text), phrase);
+    const saved = parseClassRecoveryFile(text);
+    const recoveryCode = '0123456789ABCDEFGHJKMNPQ';
+    const connection = await openGapsConnection(saved.connection, recoveryCode);
+    expect(download.suggestedFilename()).toBe(`gaps-class-${connection.shareId}.json`);
+    expect(text).not.toContain(recoveryCode);
     expect(connection.shareId).not.toBe(source.shareId);
     expect(connection.shareId).not.toBe(otherClass.shareId);
     expect(
@@ -354,18 +383,69 @@ for (const width of [1280, 390]) {
         .map(({ key }) => key.split('/').pop())
         .sort(),
     ).toEqual(['auth', 'source']);
-    await page.reload();
+    await page.getByRole('button', { name: 'Continue to class', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
-    expect((await page.evaluate(() => indexedDB.databases())).map((db) => db.name)).toEqual([
-      'lacuna.gaps.connections',
-    ]);
+    await expect(page.getByRole('form', { name: 'Unlock class' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Lock', exact: true }).click();
+    const unlock = page.getByRole('form', { name: 'Unlock class' });
+    await expect(unlock.getByLabel('Recovery code')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'First time? Set up' })).toHaveCount(0);
+    await expect(page.getByLabel(/passphrase/)).toHaveCount(0);
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`recovery-code-unlock-${width}.png`),
+      fullPage: true,
+    });
+    await unlock.getByLabel('Recovery code').fill('short');
+    await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
+    await expect(unlock.getByRole('alert')).toHaveText(
+      'Check the recovery code. It has 24 letters and numbers.',
+    );
+    await unlock.getByLabel('Recovery code').fill('z'.repeat(24));
+    await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
+    await expect(unlock.getByRole('alert')).toBeVisible();
+    await unlock.getByLabel('Recovery code').fill('o123-4567-89ab-cdef-ghjk-mnpq');
+    await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
+    await expect(unlock).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: /^Class settings/ }).click();
+    await expect(
+      page.getByRole('button', { name: 'Download class recovery file', exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Download connection file', exact: true }),
+    ).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await page.screenshot({
-      animations: 'disabled',
-      path: testInfo.outputPath(`linked-class-${width}.png`),
-      fullPage: true,
+
+    // Removing the local connection simulates a fresh device without touching the relay.
+    await page.getByRole('button', { name: 'Remove connection', exact: true }).click();
+    await page.getByRole('button', { name: 'Remove from this browser', exact: true }).click();
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('lacuna.gaps.owner-keys');
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
     });
+    await openSidebarItem(page, width === 1280 ? 'Recover a class' : 'Today');
+    if (width === 390) await page.getByRole('button', { name: 'Use a connection file' }).click();
+    const fileLabel = width === 1280 ? 'Encrypted recovery file' : 'Connection file';
+    await page.getByLabel(fileLabel, { exact: true }).setInputFiles({
+      name: 'class.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(text),
+    });
+    await page.getByLabel('Recovery code', { exact: true }).fill(recoveryCode);
+    await page
+      .getByRole('button', {
+        name: width === 1280 ? 'Restore class access' : 'Connect',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
+    await expect(page.getByRole('form', { name: 'Unlock class' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
   });
 }

@@ -142,6 +142,7 @@ it('reports a rejected connection without claiming success and clears its passph
   fireEvent.change(screen.getByLabelText('Connection passphrase'), {
     target: { value: 'my connection phrase' },
   });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled());
   fireEvent.submit(screen.getByRole('form', { name: 'Connect a class' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/passphrase/);
   expect(screen.getByLabelText('Connection passphrase')).toHaveValue('');
@@ -155,26 +156,10 @@ it('rejects an oversized file before touching the connection store', async () =>
     target: { files: [new File(['x'.repeat(9000)], 'course.json')] },
   });
   fireEvent.change(screen.getByLabelText('Connection passphrase'), { target: { value: 'phrase' } });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Connect' })).toBeEnabled());
   fireEvent.submit(screen.getByRole('form', { name: 'Connect a class' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('smaller than 8 KiB');
   await waitFor(() => expect(store.connect).not.toHaveBeenCalled());
-});
-
-it('opens the independently created class in the redesigned workspace', async () => {
-  const course = { shareId, courseName: 'Biology', verifiedAt: 0 };
-  store.createFromLink.mockResolvedValue(shareId);
-  store.list.mockResolvedValue([course]);
-  const onConnected = vi.fn();
-  render(<ConnectClassForm onConnected={onConnected} />);
-  fireEvent.change(screen.getByLabelText('Course link or code'), { target: { value: shareId } });
-  fireEvent.change(screen.getByLabelText(/^Connection passphrase/), {
-    target: { value: 'several separate teacher words' },
-  });
-  fireEvent.change(screen.getByLabelText('Repeat connection passphrase'), {
-    target: { value: 'several separate teacher words' },
-  });
-  fireEvent.submit(screen.getByRole('form', { name: 'Create class from a course link' }));
-  await waitFor(() => expect(onConnected).toHaveBeenCalledWith(course));
 });
 
 it.each([{ courses: [] }, { courses: [biology] }])(
@@ -195,7 +180,7 @@ it.each([{ courses: [] }, { courses: [biology] }])(
     expect(screen.getByLabelText('Course link or code')).toHaveValue(
       `https://getlacuna.app/#/s/${shareId}`,
     );
-    await waitFor(() => expect(screen.getByLabelText(/^Connection passphrase/)).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create class' })).toHaveFocus());
     expect(store.createFromLink).not.toHaveBeenCalled();
     expect(window.location.hash).toBe('');
     expect(window.location.pathname + window.location.search).toBe('/gaps?source=share');

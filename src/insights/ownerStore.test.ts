@@ -227,3 +227,14 @@ it('silently declines remembering when CryptoKey cloning fails, retaining passph
   expect(await store.readRemembered(shareId)).toBeNull();
   expect((await store.unlock(shareId, passphrase))!.recipient).toEqual(owner.recipient);
 });
+
+it('removes the sealed owner key and remembered access together', async () => {
+  const store = openStore();
+  const owner = await store.create(shareId, passphrase);
+  expect(await store.rememberOnDevice(shareId, owner)).toBe(true);
+  await store.forget(shareId);
+  store.close();
+  const reopened = openStore();
+  expect(await reopened.unlock(shareId, passphrase)).toBeNull();
+  expect(await reopened.readRemembered(shareId)).toBeNull();
+});

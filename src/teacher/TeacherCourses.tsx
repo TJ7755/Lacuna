@@ -1,3 +1,4 @@
+import { RememberClassCheckbox } from './gapsUi';
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { buttonClassName } from '../components/ui/buttonStyles';
@@ -21,6 +22,14 @@ import {
 } from './connectionFile';
 import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectionStore';
 import { BandDot, ExpandingAction, focusFirstField, ScoreBar, Spinner } from './gapsUi';
+import {
+  CLASS_RECOVERY_FILE_MAX_BYTES,
+  CLASS_RECOVERY_ERROR,
+  parseClassRecoveryFile,
+  restoreClassRecovery,
+} from './classRecoveryFile';
+import { normaliseRecoveryCode } from './recoveryCode';
+import { useClassRecoverySelection } from './classRecoveryFile';
 import { CreateGapsClass } from './CreateGapsClass';
 import type { ClassSession } from './StandaloneTeacherHome';
 
@@ -39,13 +48,14 @@ export function TodayPage({
   /** Each new non-zero value opens the connection form, as the sidebar's shortcut asks. */
   connectRequest: number;
   onOpen(course: ConnectedGapsCourse): void;
-  onConnected(course: ConnectedGapsCourse): void;
+  onConnected(course: ConnectedGapsCourse, session?: ClassSession): void;
 }) {
   const [initialCourseLink] = useState(() => {
     const hash = window.location.hash;
     const match = /^#course=([0-9a-f]{32})$/.exec(hash);
     return match && match[0] === hash ? `https://getlacuna.app/#/s/${match[1]}` : '';
   });
+  const [classCreated, setClassCreated] = useState(false);
   const [connecting, setConnecting] = useState(Boolean(initialCourseLink));
   useEffect(() => {
     if (initialCourseLink) {
@@ -110,19 +120,29 @@ export function TodayPage({
 
       {courses.length === 0 ? (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-16 text-center md:py-20">
-          <StudyDrawing kind="course" className="mb-6 h-24 w-24" />
-          <h2 className="font-display text-3xl font-semibold tracking-tight">
-            Connect your first class
-          </h2>
-          <p className="mt-3 max-w-sm text-ink-soft">
-            Paste a published course or class link, or restore a saved connection file.
-          </p>
+          {!classCreated && (
+            <>
+              <StudyDrawing kind="course" className="mb-6 h-24 w-24" />
+              <h2 className="font-display text-3xl font-semibold tracking-tight">
+                Connect your first class
+              </h2>
+              <p className="mt-3 max-w-sm text-ink-soft">
+                Paste a published course or class link, or restore a saved connection file.
+              </p>
+            </>
+          )}
           <div ref={first} className="mt-10 w-full max-w-sm text-left">
-            <ConnectClassForm initialCourseLink={initialCourseLink} onConnected={onConnected} />
+            <ConnectClassForm
+              initialCourseLink={initialCourseLink}
+              onConnected={onConnected}
+              onCreated={() => setClassCreated(true)}
+            />
           </div>
-          <a href="https://getlacuna.app/#/share" className={`${buttonClassName('ghost')} mt-4`}>
-            Open Share in Lacuna
-          </a>
+          {!classCreated && (
+            <a href="https://getlacuna.app/#/share" className={`${buttonClassName('ghost')} mt-4`}>
+              Open Share in Lacuna
+            </a>
+          )}
         </SectionCard>
       ) : (
         <>
@@ -218,10 +238,13 @@ function Stat({ value, label }: { value: number | string; label: string }) {
 export function ConnectClassForm({
   initialCourseLink = '',
   onConnected,
+  onCreated,
 }: {
   initialCourseLink?: string;
-  onConnected(course: ConnectedGapsCourse): void;
+  onCreated?(): void;
+  onConnected(course: ConnectedGapsCourse, session?: ClassSession): void;
 }) {
+  const [classCreated, setClassCreated] = useState(false);
   const [useFile, setUseFile] = useState(false);
   const [error, setError] = useState('');
   const root = useRef<HTMLDivElement>(null);
@@ -236,12 +259,12 @@ export function ConnectClassForm({
     if (useFile || !initialCourseLink) focusFirstField(root.current);
   }, [useFile, initialCourseLink]);
 
-  async function created(shareId: string) {
+  async function created(shareId: string, session: ClassSession) {
     const store = createGapsConnectionStore();
     try {
       const course = (await store.list()).find((row) => row.shareId === shareId);
       if (!course) throw new Error();
-      if (active.current) onConnected(course);
+      if (active.current) onConnected(course, session);
     } catch {
       if (active.current) setError('Class saved. Reload Gaps to open its details.');
     } finally {
@@ -251,36 +274,42 @@ export function ConnectClassForm({
 
   return (
     <div ref={root} className="space-y-5">
-      <div role="group" aria-label="Class connection method" className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          aria-pressed={!useFile}
-          className={buttonClassName(useFile ? 'secondary' : 'primary')}
-          onClick={() => {
-            setUseFile(false);
-            setError('');
-          }}
-        >
-          Course link
-        </button>
-        <button
-          type="button"
-          aria-pressed={useFile}
-          className={buttonClassName(useFile ? 'primary' : 'secondary')}
-          onClick={() => {
-            setUseFile(true);
-            setError('');
-          }}
-        >
-          Use a connection file
-        </button>
-      </div>
+      {!classCreated && (
+        <div role="group" aria-label="Class connection method" className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            aria-pressed={!useFile}
+            className={buttonClassName(useFile ? 'secondary' : 'primary')}
+            onClick={() => {
+              setUseFile(false);
+              setError('');
+            }}
+          >
+            Course link
+          </button>
+          <button
+            type="button"
+            aria-pressed={useFile}
+            className={buttonClassName(useFile ? 'primary' : 'secondary')}
+            onClick={() => {
+              setUseFile(true);
+              setError('');
+            }}
+          >
+            Use a connection file
+          </button>
+        </div>
+      )}
       {useFile ? (
         <ConnectionFileForm onConnected={onConnected} />
       ) : (
         <CreateGapsClass
           initialCourseLink={initialCourseLink}
-          onConnected={(shareId) => void created(shareId)}
+          onCreated={() => {
+            setClassCreated(true);
+            onCreated?.();
+          }}
+          onConnected={(shareId, session) => void created(shareId, session)}
         />
       )}
       {error && (
@@ -293,9 +322,15 @@ export function ConnectClassForm({
 }
 
 /** Verifies ownership with the relay before saving; the passphrase never leaves the device. */
-function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGapsCourse): void }) {
+function ConnectionFileForm({
+  onConnected,
+}: {
+  onConnected(course: ConnectedGapsCourse, session?: ClassSession): void;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [phrase, setPhrase] = useState('');
+  const [remember, setRemember] = useState(true);
+  const { codeProtected, reading } = useClassRecoverySelection(file);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -305,9 +340,12 @@ function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGaps
 
   async function connect(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || reading) return;
     setError(null);
-    if (!file || file.size > GAPS_CONNECTION_FILE_MAX_BYTES) {
+    if (
+      !file ||
+      file.size > (codeProtected ? CLASS_RECOVERY_FILE_MAX_BYTES : GAPS_CONNECTION_FILE_MAX_BYTES)
+    ) {
       setError('Choose a Gaps connection file smaller than 8 KiB.');
       setAttempt((value) => value + 1);
       return;
@@ -318,24 +356,36 @@ function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGaps
     const store = createGapsConnectionStore();
     try {
       const text = await file.text();
-      await store.connect(text, phrase, { signal: request.signal });
-      const shareId = parseGapsConnectionFile(text).shareId;
+      let session: ClassSession | undefined;
+      if (codeProtected) {
+        const code = normaliseRecoveryCode(phrase);
+        if (!code) {
+          setError('Check the recovery code. It has 24 letters and numbers.');
+          return;
+        }
+        session = await restoreClassRecovery(parseClassRecoveryFile(text), code, remember, {
+          signal: request.signal,
+        });
+      } else await store.connect(text, phrase, { signal: request.signal });
+      const shareId = session?.connection.shareId ?? parseGapsConnectionFile(text).shareId;
       const connected = (await store.list()).find((course) => course.shareId === shareId);
-      if (connected) onConnected(connected);
+      if (connected) onConnected(connected, session);
     } catch (cause) {
       setAttempt((value) => value + 1);
       setError(
-        request.signal.aborted
-          ? 'Connection cancelled.'
-          : cause instanceof ShareLinkError
-            ? cause.status === 401
-              ? 'This file does not own the course. Export a fresh connection from the device that published it.'
-              : cause.status === 404 || cause.status === 410
-                ? 'This share link is missing or expired. Publish it again in Lacuna, then export a new connection.'
-                : 'Could not verify course ownership with the relay. Try again later.'
-            : cause instanceof GapsConnectionFileError
-              ? cause.message
-              : 'Could not open the connection. Check the file and passphrase.',
+        codeProtected
+          ? CLASS_RECOVERY_ERROR
+          : request.signal.aborted
+            ? 'Connection cancelled.'
+            : cause instanceof ShareLinkError
+              ? cause.status === 401
+                ? 'This file does not own the course. Export a fresh connection from the device that published it.'
+                : cause.status === 404 || cause.status === 410
+                  ? 'This share link is missing or expired. Publish it again in Lacuna, then export a new connection.'
+                  : 'Could not verify course ownership with the relay. Try again later.'
+              : cause instanceof GapsConnectionFileError
+                ? cause.message
+                : 'Could not open the connection. Check the file and passphrase.',
       );
     } finally {
       store.close();
@@ -351,7 +401,7 @@ function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGaps
       aria-label="Connect a class"
       className="space-y-5"
     >
-      <fieldset disabled={busy} className="space-y-5">
+      <fieldset disabled={busy || reading} className="space-y-5">
         <Field label="Connection file">
           <Input
             type="file"
@@ -360,15 +410,18 @@ function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGaps
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
           />
         </Field>
-        <Field label="Connection passphrase">
+        <Field label={codeProtected ? 'Recovery code' : 'Connection passphrase'}>
           <Input
             type="password"
             autoComplete="off"
             required
+            spellCheck={codeProtected ? false : undefined}
+            autoCapitalize={codeProtected ? 'characters' : undefined}
             value={phrase}
             onChange={(event) => setPhrase(event.target.value)}
           />
         </Field>
+        {codeProtected && <RememberClassCheckbox checked={remember} onChange={setRemember} />}
       </fieldset>
       {error && (
         <p key={attempt} role="alert" className="gaps-shake text-sm text-negative">
@@ -378,7 +431,7 @@ function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGaps
       <div className="flex gap-3">
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || reading}
           className={`${buttonClassName('primary', 'lg')} gaps-press flex-1`}
         >
           {busy && <Spinner />}
