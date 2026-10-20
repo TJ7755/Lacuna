@@ -16,10 +16,12 @@ export function TeacherCourses({
   onPrepareKey,
   keySetupOpen,
   onOpenClass,
+  onForgotten,
 }: {
   onPrepareKey(course: ConnectedGapsCourse): void;
   keySetupOpen: boolean;
   onOpenClass(course: ConnectedGapsCourse): void;
+  onForgotten?(shareId: string): void;
 }) {
   const [courses, setCourses] = useState<ConnectedGapsCourse[] | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -130,6 +132,7 @@ export function TeacherCourses({
     const store = createGapsConnectionStore();
     try {
       await store.forget(shareId);
+      onForgotten?.(shareId);
       setCourses((current) => current?.filter((course) => course.shareId !== shareId) ?? null);
     } catch {
       setError('Could not remove this connection from Gaps. Try again.');

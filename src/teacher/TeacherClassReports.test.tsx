@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { TeacherClassReports } from './TeacherClassReports';
+import { createClassSessions } from './classSessions';
 
 const mocks = vi.hoisted(() => ({
   unlockConnection: vi.fn(),
@@ -38,6 +39,57 @@ async function unlock() {
   fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
   await screen.findByRole('button', { name: 'Read reports' });
 }
+
+it('retains a class across navigation and explicitly drops it on lock', async () => {
+  const cache = createClassSessions();
+  const onClose = vi.fn();
+  const props = {
+    course,
+    onClose,
+    beginUnlock: () => cache.beginUnlock(course.shareId),
+    onLock: () => cache.lock(course.shareId),
+  };
+  const panel = render(<TeacherClassReports {...props} />);
+  await unlock();
+  expect(cache.sessions.has(course.shareId)).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Back to classes' }));
+  expect(onClose).toHaveBeenCalledOnce();
+  panel.unmount();
+  render(<TeacherClassReports {...props} session={cache.sessions.get(course.shareId)} />);
+  expect(screen.queryByRole('form', { name: 'Unlock class' })).not.toBeInTheDocument();
+  expect(mocks.read).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Close and lock' }));
+  expect(cache.sessions.has(course.shareId)).toBe(false);
+});
+
+it('does not complete a pending unlock after its connection has been removed', async () => {
+  const cache = createClassSessions();
+  let finish!: (owner: unknown) => void;
+  mocks.unlockKey.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  render(
+    <TeacherClassReports
+      course={course}
+      onClose={vi.fn()}
+      beginUnlock={() => cache.beginUnlock(course.shareId)}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText('Connection passphrase'), {
+    target: { value: 'connection secret' },
+  });
+  fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
+    target: { value: 'teacher secret' },
+  });
+  fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
+  await waitFor(() => expect(mocks.unlockKey).toHaveBeenCalledOnce());
+  cache.lock(course.shareId);
+  await act(async () => finish({ recipient: { keyId: 'key' }, privateKey: {} }));
+  expect(cache.sessions.size).toBe(0);
+  expect(screen.getByRole('form', { name: 'Unlock class' })).toBeVisible();
+});
 
 it('requires explicit unlock/read and preserves unknown, self-marked and disputed evidence', async () => {
   mocks.read.mockResolvedValue({
@@ -138,4 +190,41 @@ it('explains an empty reporting day and offers the class code without claiming n
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   fireEvent.click(screen.getAllByRole('button', { name: 'Share class code' })[1]);
   expect(screen.getByRole('button', { name: 'Publish class code' })).toBeVisible();
+});
+
+it('restores an earlier day’s read evidence after navigation without another fetch', async () => {
+  const cache = createClassSessions();
+  const props = { course, onClose: vi.fn(), beginUnlock: () => cache.beginUnlock(course.shareId) };
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [
+      {
+        slotId: 'saved',
+        report: {
+          v: 1,
+          shareId: course.shareId,
+          day: '2026-10-18',
+          pupil: { id: 'pupil', label: 'Retained pupil' },
+          events: [],
+          omitted: 0,
+        },
+      },
+    ],
+  });
+  const panel = render(<TeacherClassReports {...props} />);
+  await unlock();
+  fireEvent.change(screen.getByLabelText('Reporting day (UTC)'), {
+    target: { value: '2026-10-18' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read reports' }));
+  await screen.findByRole('button', { name: /Retained pupil/ });
+  fireEvent.click(screen.getByRole('button', { name: 'Back to classes' }));
+  panel.unmount();
+  mocks.read.mockRejectedValue(new Error('offline'));
+  render(<TeacherClassReports {...props} session={cache.sessions.get(course.shareId)} />);
+  fireEvent.change(screen.getByLabelText('Reporting day (UTC)'), {
+    target: { value: '2026-10-18' },
+  });
+  expect(screen.getByRole('button', { name: /Retained pupil/ })).toBeVisible();
+  expect(mocks.read).toHaveBeenCalledOnce();
 });

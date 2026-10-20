@@ -4,41 +4,44 @@ import { SectionCard } from '../components/ui/SectionCard';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { completedIsoDayLabel, DAY_MS, isoDayLabel } from '../../relay/src/insightsDay';
 import { createInsightsOwnerStore } from '../insights/ownerStore';
-import type { InsightsOwner } from '../insights/envelope';
 import { publishClassRecipient } from '../insights/classKey';
 import { formatClassCode } from '../insights/classCode';
 import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectionStore';
-import type { GapsCourseConnection } from './connectionFile';
 import { TeacherJourney } from './TeacherHomeView';
 import { readClassReports, type ReadClassReports } from './readReports';
 import type { DailyEvidence } from '../insights/evidence';
-
-type Unlocked = { connection: GapsCourseConnection; owner: InsightsOwner };
+import type { ClassSession } from './classSessions';
 
 export function TeacherClassReports({
   course,
   onClose,
   onPrepareKey,
   initialTask = 'results',
+  session = null,
+  beginUnlock,
+  onLock,
 }: {
   course: ConnectedGapsCourse;
   onClose(): void;
   onPrepareKey?(): void;
   initialTask?: 'results' | 'invite';
+  session?: ClassSession | null;
+  beginUnlock?(): (session: ClassSession) => boolean;
+  onLock?(): void;
 }) {
   const [connectionPhrase, setConnectionPhrase] = useState(''),
     [keyPhrase, setKeyPhrase] = useState('');
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [day, setDay] = useState(() => completedIsoDayLabel(Date.now()));
-  const [invitation, setInvitation] = useState('');
+  const [invitation, setInvitation] = useState(session?.code ?? '');
   const [copyMessage, setCopyMessage] = useState('');
-  const [result, setResult] = useState<ReadClassReports | null>(null);
+  const [result, setResult] = useState<ReadClassReports | null>(session?.days.get(day) ?? null);
   const [selected, setSelected] = useState('');
   const [view, setView] = useState<'results' | 'invite'>(initialTask);
-  const unlocked = useRef<Unlocked | null>(null),
+  const unlocked = useRef<ClassSession | null>(session),
     request = useRef<AbortController | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(session !== null);
   useEffect(
     () => () => {
       request.current?.abort();
@@ -50,6 +53,7 @@ export function TeacherClassReports({
   async function unlock(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    const retain = beginUnlock?.();
     const controller = new AbortController();
     request.current = controller;
     setBusy(true);
@@ -65,7 +69,9 @@ export function TeacherClassReports({
           'This browser cannot open the class yet. Set up this class, or restore its recovery file.',
         );
       controller.signal.throwIfAborted();
-      unlocked.current = { connection, owner };
+      const next = { connection, owner, days: new Map<string, ReadClassReports>() };
+      if (retain && !retain(next)) return;
+      unlocked.current = next;
       setIsUnlocked(true);
     } catch (cause) {
       if (!controller.signal.aborted)
@@ -97,7 +103,9 @@ export function TeacherClassReports({
         signal: controller.signal,
       });
       controller.signal.throwIfAborted();
-      setInvitation(formatClassCode({ shareId: course.shareId, keyId: owner.recipient.keyId }));
+      const code = formatClassCode({ shareId: course.shareId, keyId: owner.recipient.keyId });
+      if (unlocked.current) unlocked.current.code = code;
+      setInvitation(code);
     } catch (cause) {
       if (!controller.signal.aborted)
         setError(cause instanceof Error ? cause.message : 'Could not publish the class code.');
@@ -124,6 +132,7 @@ export function TeacherClassReports({
         signal: controller.signal,
       });
       controller.signal.throwIfAborted();
+      unlocked.current?.days.set(day, loaded);
       setResult(loaded);
     } catch (cause) {
       if (!controller.signal.aborted)
@@ -134,6 +143,13 @@ export function TeacherClassReports({
   }
 
   function close() {
+    request.current?.abort();
+    unlocked.current = null;
+    onLock?.();
+    onClose();
+  }
+
+  function leave() {
     request.current?.abort();
     unlocked.current = null;
     onClose();
@@ -162,9 +178,14 @@ export function TeacherClassReports({
             {course.courseName}
           </h2>
         </div>
-        <button type="button" className={buttonClassName('ghost')} onClick={close}>
-          Close and lock
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={buttonClassName('ghost')} onClick={leave}>
+            Back to classes
+          </button>
+          <button type="button" className={buttonClassName('ghost')} onClick={close}>
+            Close and lock
+          </button>
+        </div>
       </div>
       <div className="mt-6">
         <TeacherJourney
@@ -333,7 +354,8 @@ export function TeacherClassReports({
                     min={isoDayLabel(Date.now() - 84 * DAY_MS)}
                     onChange={(event) => {
                       setDay(event.target.value);
-                      setResult(null);
+                      setResult(unlocked.current?.days.get(event.target.value) ?? null);
+                      setError('');
                       setSelected('');
                     }}
                   />

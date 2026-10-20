@@ -224,9 +224,12 @@ self-marked, shortened and disputed evidence. Missing reports do not imply no st
 or absence. A class-code holder can fabricate results; these are study signals,
 not verified attainment or attendance. There are no keyless participation counters.
 
-Unlocked credentials and decrypted reports remain in panel memory, with no report
-export or plaintext database. Closing the panel aborts requests and drops that
-memory. Opening the teacher site still never opens the learner database.
+Unlocked credentials and decrypted reports remain in the teacher tab’s memory,
+with no report export or plaintext database. Back to classes aborts requests while
+retaining that class’s unlocked session. Close and lock, removing the connection,
+or closing the teacher workspace drops its session and invalidates pending unlocks.
+Returning to a class reuses its session; a fresh tab still requires explicit unlock.
+Opening the teacher site still never opens the learner database.
 
 ## Isolated teacher-key storage
 
