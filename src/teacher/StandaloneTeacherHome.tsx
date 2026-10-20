@@ -47,7 +47,15 @@ export function StandaloneTeacherHome() {
   const [, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const drawer = usePresence(drawerOpen, 220);
-  const drawerRef = useFocusTrap(drawer.rendered);
+  const drawerRef = useFocusTrap(drawerOpen, { returnFocus: false });
+  const drawerTrigger = useRef<HTMLButtonElement>(null);
+  const drawerNavigated = useRef(false);
+  const wasDrawerOpen = useRef(false);
+  useEffect(() => {
+    if (wasDrawerOpen.current && !drawerOpen && !drawerNavigated.current)
+      drawerTrigger.current?.focus();
+    wasDrawerOpen.current = drawerOpen;
+  }, [drawerOpen]);
   const latestDay = completedIsoDayLabel(Date.now());
 
   const reload = useCallback(async () => {
@@ -99,6 +107,7 @@ export function StandaloneTeacherHome() {
   }, [pageKey, Class, Keys]);
 
   function go(next: GapsPage, ask: ClassRequest['kind'] | 'connect' | null = null) {
+    drawerNavigated.current = true;
     setPage(next);
     setRequest((current) =>
       ask && ask !== 'connect' ? { kind: ask, id: (current?.id ?? 0) + 1 } : null,
@@ -227,7 +236,7 @@ export function StandaloneTeacherHome() {
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <div inert={drawer.rendered} className="hidden md:block">
+      <div inert={drawerOpen} className="hidden md:block">
         {sidebar(false)}
       </div>
 
@@ -240,6 +249,8 @@ export function StandaloneTeacherHome() {
           />
           <div
             ref={drawerRef}
+            inert={!drawerOpen}
+            aria-hidden={!drawerOpen || undefined}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
@@ -251,11 +262,15 @@ export function StandaloneTeacherHome() {
         </div>
       )}
 
-      <div inert={drawer.rendered} className="flex min-w-0 flex-1 flex-col">
+      <div inert={drawerOpen} className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 bg-paper px-4 pb-1 pt-2 md:hidden">
           <button
             type="button"
-            onClick={() => setDrawerOpen(true)}
+            ref={drawerTrigger}
+            onClick={() => {
+              drawerNavigated.current = false;
+              setDrawerOpen(true);
+            }}
             aria-label="Open navigation"
             className="flex h-11 w-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-ink/5"
           >
