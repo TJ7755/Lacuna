@@ -1,0 +1,1 @@
+- Search question sets by question wording, options, linked lessons and Concepts, or bank metadata in the Questions library and a roomier course-path picker, with plain-text match excerpts and cancellable single-set selection. (#686)

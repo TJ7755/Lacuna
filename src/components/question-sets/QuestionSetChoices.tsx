@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 
 export function QuestionSetChoices({
   label,
@@ -10,7 +10,7 @@ export function QuestionSetChoices({
 }: {
   label: string;
   value: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; description?: ReactNode }[];
   onChange: (value: string) => void;
   disabled?: boolean;
   describedBy?: string;
@@ -29,7 +29,10 @@ export function QuestionSetChoices({
               checked={value === option.value}
               onChange={() => onChange(option.value)}
             />
-            <span>{option.label}</span>
+            <span>
+              {option.label}
+              {option.description}
+            </span>
           </label>
         ))}
       </div>
