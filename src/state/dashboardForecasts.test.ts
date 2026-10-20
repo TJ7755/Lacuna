@@ -3,9 +3,9 @@ import {
   clearForecastCache,
   dashboardForecasts,
   dashboardForecastHistories,
-  dashboardKeepUpProjections,
   urgencyOrder,
 } from './dashboardForecasts';
+import { clearKeepUpCache, dashboardKeepUpProjections } from './dashboardKeepUp';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type { Card, Course } from '../db/types';
 
@@ -69,6 +69,7 @@ describe('dashboardForecasts', () => {
 
   it('reuses keep-up estimates per course and recomputes after a review or changed history', () => {
     clearForecastCache();
+    clearKeepUpCache();
     const cards = [card('a', 4)];
     const project = (
       values = cards,

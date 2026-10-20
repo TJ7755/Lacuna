@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { courseForecast, examDayHistory, keepUpProjection } from './courseForecast';
+import { courseForecast, examDayHistory } from './courseForecast';
+import { keepUpProjection } from './keepUpProjection';
 import { rAtExam } from './forwardSim';
 import { applyReview, makeEngine } from './fsrs';
 import { defaultFsrsParameters, MS_PER_DAY } from './params';

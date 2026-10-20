@@ -28,11 +28,8 @@ import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import {
-  dashboardForecastHistories,
-  dashboardKeepUpProjections,
-  urgencyOrder,
-} from '../state/dashboardForecasts';
+import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import type { ForecastPoint } from '../fsrs/courseForecast';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
 import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
@@ -155,19 +152,27 @@ export function Dashboard() {
       now,
     );
   }, [data, forecasts, reviewHistory, chartWindow.past]);
-  const keepUp = useMemo(
-    () =>
-      data && reviewHistory
-        ? dashboardKeepUpProjections(
-            data.courses,
-            data.lessons,
-            data.allCards,
-            reviewHistory,
-            Date.now(),
-          )
-        : undefined,
-    [data, reviewHistory],
-  );
+  // The keep-up simulation needs the FSRS engine, so it loads after the first paint.
+  const [keepUp, setKeepUp] = useState<Record<string, ForecastPoint[]>>();
+  useEffect(() => {
+    if (!data || !reviewHistory) return;
+    let current = true;
+    void import('../state/dashboardKeepUp').then(({ dashboardKeepUpProjections }) => {
+      if (!current) return;
+      setKeepUp(
+        dashboardKeepUpProjections(
+          data.courses,
+          data.lessons,
+          data.allCards,
+          reviewHistory,
+          Date.now(),
+        ),
+      );
+    });
+    return () => {
+      current = false;
+    };
+  }, [data, reviewHistory]);
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {
