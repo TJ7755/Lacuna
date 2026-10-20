@@ -1,3 +1,4 @@
+import { referencedQuestionSetConceptIds } from '../questions/questionSets';
 /**
  * Classroom-distribution merge importer (docs/spec/portability.md).
  *
@@ -633,6 +634,7 @@ async function pruneRemovedLineageConcepts(
 ): Promise<void> {
   const incoming = new Set(mapping.conceptIds ?? []);
   const candidates = previousIds.filter((id) => !incoming.has(id));
+  const referenced = new Set((await db.questionSets.toArray()).flatMap(referencedQuestionSetConceptIds));
   const removed: string[] = [];
   for (const id of candidates) {
     const [card, set] = await Promise.all([
@@ -644,7 +646,7 @@ async function pruneRemovedLineageConcepts(
         )
         .first(),
     ]);
-    if (!card && !set) removed.push(id);
+    if (!card && !set && !referenced.has(id)) removed.push(id);
   }
   if (removed.length > 0) {
     await db.concepts.bulkDelete(removed);

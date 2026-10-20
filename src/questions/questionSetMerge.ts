@@ -1,6 +1,7 @@
 import type { Tombstone } from '../db/types';
 import type { QuestionSetRecord } from './questionSetCodec';
 import type { Concept } from './types';
+import { referencedQuestionSetConceptIds } from './questionSets';
 
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -33,26 +34,11 @@ export function assertQuestionSetReferences(
     if (record.assessmentIds.some((id) => assessmentCourse.get(id) !== record.courseId)) {
       throw new Error('A Question Set refers to a missing or cross-Course Assessment.');
     }
-    const linkedConcepts = record.questions.flatMap((question) => [
-      ...(question.answer ? conceptsInAnswer(question.answer) : []),
-      ...question.parts.flatMap((part) => [
-        ...(part.answer ? conceptsInAnswer(part.answer) : []),
-        ...part.subparts.flatMap((subpart) =>
-          subpart.answer ? conceptsInAnswer(subpart.answer) : [],
-        ),
-      ]),
-    ]);
+    const linkedConcepts = referencedQuestionSetConceptIds(record);
     if (linkedConcepts.some((id) => conceptCourse.get(id) !== record.courseId)) {
       throw new Error('A Question Set refers to a missing or cross-Course Concept.');
     }
   }
-}
-
-function conceptsInAnswer(answer: QuestionSetRecord['questions'][number]['answer'] & {}): string[] {
-  return [
-    ...answer.prerequisiteConceptIds,
-    ...answer.allocations.flatMap((allocation) => allocation.targetConceptIds),
-  ];
 }
 
 /** Merge mutable authored aggregates deterministically while honouring deletion receipts. */
