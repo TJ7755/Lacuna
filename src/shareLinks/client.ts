@@ -435,18 +435,26 @@ export async function resolveShortClassCode(options: {
   signal?: AbortSignal;
 }): Promise<string> {
   const relay = relayFor(options.relayUrl, 'fetch');
-  const response = await shareFetch(
-    requireFetch(options.fetchImpl),
-    `${relay}/class-codes/${encodeURIComponent(options.code)}`,
-    {
-      method: 'GET',
-      signal: options.signal,
-      cache: 'no-store',
-      credentials: 'omit',
-      redirect: 'error',
-    },
-    'fetch',
-  );
+  let response: Response;
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 300 + Math.floor(Math.random() * 701)));
+      options.signal?.throwIfAborted();
+    }
+    response = await shareFetch(
+      requireFetch(options.fetchImpl),
+      `${relay}/class-codes/${encodeURIComponent(options.code)}`,
+      {
+        method: 'GET',
+        signal: options.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        redirect: 'error',
+      },
+      'fetch',
+    );
+    if (response.status !== 503 || attempt === 2) break;
+  }
   if (response.status === 404 || response.status === 429)
     throw new ShareLinkError(
       response.status === 404

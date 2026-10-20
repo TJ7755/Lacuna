@@ -115,10 +115,25 @@ it.each(['k7qm4xtp', 'K7QM-4XTP', 'K7QM4XTU', '1234567', '123456789'])(
   },
 );
 
-it('admits 600 lookups from one address, limits the 601st and resets after an hour', async () => {
+it('admits 35 simultaneous valid lookups from one classroom address', async () => {
   const f = await fixture();
   const code = await f.allocate();
-  for (let i = 0; i < 600; i++) expect((await f.lookup(code)).status).toBe(200);
+  const responses = await Promise.all(Array.from({ length: 35 }, () => f.lookup(code)));
+  expect(responses.map((response) => response.status)).toEqual(Array(35).fill(200));
+});
+
+it('bounds the hourly allowance at 608 and resets after an hour', async () => {
+  const f = await fixture();
+  const code = await f.allocate();
+  let allowed = 0;
+  for (let i = 0; i < 1000; i++) {
+    const response = await f.lookup(code);
+    expect([200, 429]).toContain(response.status);
+    if (response.status === 200) allowed++;
+    if (i >= 900) expect(response.status).toBe(429);
+  }
+  expect(allowed).toBeGreaterThan(550);
+  expect(allowed).toBeLessThanOrEqual(608);
   const limited = await f.lookup(code);
   expect(limited.status).toBe(429);
   expect(await limited.json()).toEqual({ error: 'rate limited' });

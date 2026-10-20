@@ -1379,7 +1379,7 @@ function Invite({
                 className={`${buttonClassName('secondary')} gaps-press`}
                 onClick={() => void copy(shortCode, 'Class code copied')}
               >
-                Copy
+                Copy code
               </button>
             )}
             {copied && (

@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomInt } from 'node:crypto';
 import { canonicalEtag, type BlobStore } from './store.js';
 
 // Persisted per-address limiter for anonymous mints and AI pairing. Counters live in the same
@@ -7,7 +7,7 @@ const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_CAS_ATTEMPTS = 5;
 export const RATE_KEY_RE =
-  /^ai-rate\/(?:pairing|channel-mint|share-mint|insights|class-code)\/[0-9a-f]{64}$/;
+  /^ai-rate\/(?:(?:pairing|channel-mint|share-mint|insights)\/[0-9a-f]{64}|class-code\/[0-9a-f]{64}(?:\/(?:[0-9]|1[0-5]))?)$/;
 
 export type RateScope = 'pairing' | 'channel-mint' | 'share-mint' | 'insights' | 'class-code';
 
@@ -28,14 +28,22 @@ export async function consumeRatePermit(
   scope: RateScope,
 ): Promise<RatePermit> {
   const key = rateKey(scope, trustedClientAddress(request));
-  return consumeCounterPermit(store, key, now, {
-    limit: rateLimitForKey(key),
-    windowMs: RATE_WINDOW_MS,
-  });
+  const shards = Array.from({ length: 16 }, (_, index) => index);
+  for (let attempt = 0; attempt < (scope === 'class-code' ? 3 : 1); attempt += 1) {
+    const counterKey =
+      scope === 'class-code' ? `${key}/${shards.splice(randomInt(shards.length), 1)[0]}` : key;
+    const permit = await consumeCounterPermit(store, counterKey, now, {
+      limit: rateLimitForKey(counterKey),
+      windowMs: RATE_WINDOW_MS,
+    });
+    if (permit !== 'limited') return permit;
+  }
+  return 'limited';
 }
 
 export function rateLimitForKey(key: string): number {
-  if (key.startsWith('ai-rate/class-code/')) return 600;
+  // Retain the old unsharded limit so maintenance can decode records from before sharding.
+  if (key.startsWith('ai-rate/class-code/')) return key.split('/').length === 4 ? 38 : 600;
   return key.startsWith('ai-rate/insights/') ? 100 : RATE_LIMIT;
 }
 
@@ -46,7 +54,11 @@ export async function consumeCounterPermit(
   now: number,
   policy: { limit: number; windowMs: number },
 ): Promise<RatePermit> {
-  for (let attempt = 0; attempt < RATE_LIMIT_CAS_ATTEMPTS; attempt += 1) {
+  const classCode = key.startsWith('ai-rate/class-code/');
+  const attempts = classCode ? 8 : RATE_LIMIT_CAS_ATTEMPTS;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (classCode && attempt > 0)
+      await new Promise((resolve) => setTimeout(resolve, randomInt(5, 41)));
     const stored = await store.get(key);
     if (!stored) {
       const created = await store.put(

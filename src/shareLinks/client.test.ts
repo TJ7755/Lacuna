@@ -231,4 +231,33 @@ it.each([404, 429])('exposes short-code lookup HTTP %s as a typed error', async 
   }).catch((cause: unknown) => cause);
   expect(error).toBeInstanceOf(ShareLinkError);
   expect(error).toMatchObject({ status, operation: 'fetch' });
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+});
+
+it.each([200, 503])('retries short-code 503 responses twice before HTTP %s', async (status) => {
+  vi.useFakeTimers();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+  try {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(503, {}))
+      .mockResolvedValueOnce(jsonResponse(503, {}))
+      .mockResolvedValueOnce(jsonResponse(status, { shareId: 'a'.repeat(32) }));
+    const result = resolveShortClassCode({
+      relayUrl: RELAY_URL,
+      code: 'K7QM4XTP',
+      fetchImpl,
+    }).catch((cause: unknown) => cause);
+    await vi.advanceTimersByTimeAsync(299);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(701);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1000);
+    if (status === 200) expect(await result).toBe('a'.repeat(32));
+    else expect(await result).toMatchObject({ status: 503, operation: 'fetch' });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  } finally {
+    random.mockRestore();
+    vi.useRealTimers();
+  }
 });

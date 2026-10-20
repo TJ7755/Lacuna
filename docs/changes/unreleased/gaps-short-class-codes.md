@@ -1,1 +1,2 @@
 - Add eight-character Gaps class codes for pupils to type, while keeping pinned teacher fingerprints in join links.
+- Allow classroom bursts of class-code lookups with sharded rate counters and retry temporary lookup failures. Label the invitation action “Copy code”. (#644)

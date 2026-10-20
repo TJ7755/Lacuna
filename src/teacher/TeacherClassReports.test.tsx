@@ -221,7 +221,7 @@ it('explains an empty day without claiming no study and leads to the class code'
     /\/s\/GAPS1_/,
   );
   expect(screen.queryByText(/GAPS1_/)).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /^Copy$/ })).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Copy code' })).toBeVisible();
 });
 
 it('reads an earlier day on request and keeps days already read for this session', async () => {
