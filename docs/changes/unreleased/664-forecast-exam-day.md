@@ -1,0 +1,1 @@
+- Explain the dashboard’s predicted exam-day recall and extend a dashed “If you stop now” estimate from today to each exam, with explicit explanations when a future exam date or study data is missing, without pushing Study off a phone’s first screen. (#664, #661)

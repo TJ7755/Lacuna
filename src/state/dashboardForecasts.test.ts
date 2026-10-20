@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { clearForecastCache, dashboardForecasts, urgencyOrder } from './dashboardForecasts';
+import {
+  clearForecastCache,
+  dashboardForecasts,
+  dashboardForecastHistories,
+  urgencyOrder,
+} from './dashboardForecasts';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type { Card, Course } from '../db/types';
 
@@ -13,7 +18,11 @@ describe('urgencyOrder', () => {
       { id: 'chemistry', examDate: NOW + 28 * DAY, due: 14 },
       { id: 'biology', examDate: NOW + 22 * DAY, due: 24 },
     ];
-    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual(['biology', 'chemistry', 'french']);
+    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual([
+      'biology',
+      'chemistry',
+      'french',
+    ]);
   });
 
   it('treats a past exam like no exam and breaks ties by the larger workload', () => {
@@ -56,5 +65,16 @@ describe('dashboardForecasts', () => {
     const reviewed = [card('a', 12), card('b', 9)];
     expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio).not.toBe(first);
   });
-});
 
+  it('distinguishes absent study data from a historical forecast', () => {
+    const unstudied = { ...card('a', 4), stability: null, lastReviewed: null };
+    const forecasts = dashboardForecasts([course], [], [unstudied], NOW);
+    expect(
+      dashboardForecastHistories([course], [], [unstudied], [], forecasts, NOW - DAY, NOW).bio,
+    ).toEqual([]);
+    const studied = card('a', 4);
+    expect(
+      dashboardForecastHistories([course], [], [studied], [], forecasts, NOW - DAY, NOW).bio.length,
+    ).toBeGreaterThan(0);
+  });
+});
