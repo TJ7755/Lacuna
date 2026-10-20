@@ -424,3 +424,23 @@ export function Spinner({ className }: { className?: string }) {
     />
   );
 }
+
+export function RememberClassCheckbox({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange(checked: boolean): void;
+}) {
+  return (
+    <label className="flex items-center gap-3 text-sm text-ink-soft">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="h-4 w-4 accent-accent"
+      />
+      Remember this class on this device
+    </label>
+  );
+}

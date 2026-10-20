@@ -150,3 +150,15 @@ function decode(value: string, length: number): Uint8Array<ArrayBuffer> {
   if (bytes.byteLength !== length || encode(bytes) !== value) throw new GapsConnectionFileError();
   return bytes;
 }
+
+export function downloadGapsFile(text: string, filename: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  try {
+    anchor.click();
+  } finally {
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}

@@ -89,6 +89,8 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/teacher/TeacherKeySetup.tsx',
             'src/teacher/TeacherCourses.tsx',
             'src/teacher/CreateGapsClass.tsx',
+            'src/teacher/recoveryCode.ts',
+            'src/teacher/classRecoveryFile.ts',
             'src/teacher/TeacherClassReports.tsx',
             'src/teacher/readReports.ts',
             'src/teacher/connectionFile.ts',
@@ -128,16 +130,14 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => /(?:workbox|precache|worker|\.wasm$|compare\/)/i.test(file)),
     ).toEqual([]);
     expect(files.filter((file) => /\.(?:js|html)$/.test(file))).toEqual([
-      expect.stringMatching(/^assets\/Field-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/StudyDrawing-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherClassReports-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherCourses-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherKeySetup-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/client-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/classRecoveryFile-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/connectionStore-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/ownerStore-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/rolldown-runtime-[\w-]+\.js$/),
       'index.html',
       'sw.js',
     ]);
@@ -154,7 +154,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => file.endsWith('.js')).map((file) => readFile(join(directory, file))),
     );
     expect(scripts.reduce((size, script) => size + gzipSync(script).byteLength, 0)).toBeLessThan(
-      160_000,
+      162_000,
     );
     for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
       expect(files).toContain(`fonts/${name}-Variable.ttf`);

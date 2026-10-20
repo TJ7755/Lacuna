@@ -219,7 +219,13 @@ export function StandaloneTeacherHome() {
     content = (
       <Page title="Recover a class">
         <SectionCard className="gaps-rise max-w-xl p-6 md:p-8">
-          <Keys.TeacherKeySetup initialMode="restore" />
+          <Keys.TeacherKeySetup
+            initialMode="restore"
+            onOpened={(session) => {
+              sessionCache.beginUnlock(session.connection.shareId)(session);
+              void reload().then(() => go({ kind: 'class', shareId: session.connection.shareId }));
+            }}
+          />
         </SectionCard>
       </Page>
     );
@@ -239,9 +245,11 @@ export function StandaloneTeacherHome() {
         day={latestDay}
         connectRequest={connectRequest}
         onOpen={openClass}
-        onConnected={(connected) => {
-          // A new class is protected next, on its own page, once the list includes it.
-          void reload().then(() => go({ kind: 'class', shareId: connected.shareId }, 'setup'));
+        onConnected={(connected, session) => {
+          if (session) sessionCache.beginUnlock(connected.shareId)(session);
+          void reload().then(() =>
+            go({ kind: 'class', shareId: connected.shareId }, session ? null : 'setup'),
+          );
         }}
       />
     );

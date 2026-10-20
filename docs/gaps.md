@@ -37,14 +37,36 @@ passed in `#course=<id>`; Gaps removes that hash after prefilling the form and w
 for you to complete class set-up.
 
 In Gaps, choose **Connect a class**, paste any published Lacuna course link and
-set a connection passphrase of at least 16 characters. Gaps creates a separate
-class link which reads the original publisher’s current course and updates. The
-teacher owns only this class’s key and results; they cannot change the source
-course. Links to another teacher’s class resolve to the original publisher, so
-neither their key nor their results are inherited. Give pupils the new class code
-after key setup; the source course link alone does not enrol them in your class.
-Save **Download connection file** under **Class settings**, and keep
-its passphrase separately. The teacher-key recovery file remains separate.
+choose **Create class**. New classes generate a 24-character recovery code, shown
+once in six groups of four. **Remember this class on this device** is ticked by
+default. Copy the code and choose **Download class recovery file**, then
+**Continue to class** to open it unlocked. Keep the code separately from the file;
+both are needed on another device or after clearing browser storage.
+
+Gaps creates a separate class link which reads the original publisher’s current
+course and updates. The teacher owns only this class’s key and results; they cannot
+change the source course. Links to another teacher’s class resolve to the original
+publisher, so neither their key nor their results are inherited. Give pupils the
+new class code from **Invite**; the source course link alone does not enrol them.
+The recovery code is private and is different from the pupil class code.
+
+The [class recovery wrapper](../src/teacher/classRecoveryFile.ts) contains the
+existing sealed connection and teacher recovery objects, bound to the same share
+identifier. It exports without unlocking either object. The canonical recovery
+code protects both halves with the existing encryption and iteration parameters;
+the app keeps it only in the creation view’s memory. The connection record marks
+new classes as code-protected without a new index or migration. **Class settings**
+offers **Download class recovery file** again without revealing the code.
+
+Open a new class with its **Recovery code**. Hyphens, spaces and letter case are
+ignored; I/L mean 1 and O means 0. **Recover a class** and **Use a connection file**
+accept the combined file, restore both halves and open the class. Failed recovery
+reports an error and permits retry. If relay verification fails after restoring
+the key, the sealed key remains available for retry without exposing a new class
+connection. A conflicting saved teacher key is never replaced.
+
+Existing classes retain their connection and recovery passphrases, separate files
+and first-time key setup. Their files and earlier passphrases remain supported.
 
 To restore a saved connection, choose **Use a connection file**. Existing
 publisher-owned connections remain supported: on the publishing device, open the
@@ -67,7 +89,8 @@ policy; a distinct purpose binds the course identifier, relay, course name and
 header as authenticated data. Course name and identifier remain visible in the
 file. Its passphrase and plaintext token are never written into it. The file
 permits offline passphrase guessing, so keep it and a strong passphrase separately
-and do not share them with pupils. This is a different file from teacher-key recovery.
+and do not share them with pupils. Legacy exports keep this file separate from
+teacher-key recovery; the new class file wraps both sealed objects.
 
 [connectionStore.ts](../src/teacher/connectionStore.ts) opens only
 `lacuna.gaps.connections`. File import decrypts locally, checks the existing owner
@@ -85,16 +108,17 @@ The workspace follows the study app's layout: a collapsible sidebar lists **Toda
 class. Connecting a class expands its button into a form; unlock, setup, settings and evidence
 open in place. **Today** shows each class with one default
 next step (the first locked class is the primary action) and, for unlocked classes, the latest
-day's summary. A newly connected class opens setup with its course already selected; opening a
-locked class asks for both passphrases unless it is remembered on this device. Setup keeps recovery separate from the connection file
-and rejects recovery files belonging to another selected class. **Recover a class** in the
-sidebar opens restore without a selected class. After requesting a recovery download, the
-teacher can continue to unlock and share a class code. Unlocked classes start on daily results;
-the class code is a separate **Invite** tab. Motion is CSS-only and respects reduced motion.
-**Remove connection** asks for confirmation, then deletes that browser's connection and remembered credentials: it preserves
-the published share, teacher key, recovery files and pupil copies. A saved connection
-file can be imported again with fresh verification. Clearing browser storage still
-requires the separate teacher-key recovery file and passphrase to recover that key.
+day's summary. A newly created class opens unlocked after the recovery download
+is requested. Legacy imported connections open setup with the course selected.
+Locked classes ask for a recovery code or their two legacy passphrases unless
+remembered on this device. Contextual setup rejects another class’s recovery file.
+**Recover a class** opens restore without a selected class. Unlocked classes start
+on daily results; the class code is a separate **Invite** tab. Motion is CSS-only
+and respects reduced motion. **Remove connection** asks for confirmation, then
+deletes that browser's connection and remembered credentials: it preserves the
+published share, teacher key, recovery files and pupil copies. Importing a class
+file restores both halves; legacy classes still need their separate files and
+passphrases after clearing browser storage.
 Connecting a course does not publish its teacher key or enable pupil results.
 
 ## Agreed trial boundaries
@@ -296,8 +320,9 @@ course binding and encrypted recovery material in a bounded, versioned JSON file
 Unknown fields, unsupported versions and excessive work factors are refused
 before recovery. The passphrase and raw private key are not included. Import
 verifies the passphrase, course binding and key pair before saving; a wrong file
-cannot silently replace a different saved key. An existing saved key can produce
-another recovery download after explicit passphrase verification.
+cannot silently replace a different saved key. An existing legacy key can produce
+another recovery download after explicit passphrase verification. Code-protected
+classes export both sealed halves together without passphrase verification.
 
 Preparing a key does not prove ownership or connect a course. This workflow does
 not migrate share write credentials between origins, publish a public key or stop
@@ -478,7 +503,7 @@ build/config within the existing isolated runner; each run owns its output, sour
 fingerprint and browser evidence. Without the flag the runner still checks Lacuna.
 The build-graph test fails if learner modules, workers or extra JavaScript entries
 enter Gaps. The initial JavaScript remains bounded to 80 kB compressed; explicit
-key setup and class reports load separate chunks, with a 160 kB combined budget.
+key setup and class reports load separate chunks, with a 162 kB combined budget.
 The graph check keeps key storage and crypto out of the initial import closure.
 Browser checks record storage,
 worker/database calls, requests and desktop/mobile screenshots.

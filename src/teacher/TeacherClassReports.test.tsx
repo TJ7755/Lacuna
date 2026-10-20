@@ -586,3 +586,57 @@ it('keeps the pinned link usable when short code creation fails', async () => {
   );
   expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument();
 });
+
+it('unlocks a code-protected class with one normalised code and no first-time setup', async () => {
+  const onUnlocked = vi.fn();
+  render(
+    <ClassPage
+      course={{ ...course, secret: 'recovery-code' }}
+      session={null}
+      request={unlockRequest}
+      onUnlocked={onUnlocked}
+      onChanged={vi.fn()}
+      onLock={vi.fn()}
+      onRemoved={vi.fn()}
+    />,
+  );
+  const input = await screen.findByLabelText('Recovery code');
+  expect(screen.queryAllByLabelText(/passphrase/)).toHaveLength(0);
+  expect(screen.queryByRole('button', { name: 'First time? Set up' })).not.toBeInTheDocument();
+  expect(input).toHaveAttribute('autocomplete', 'off');
+  expect(input).toHaveAttribute('spellcheck', 'false');
+  expect(input).toHaveAttribute('autocapitalize', 'characters');
+  fireEvent.change(input, { target: { value: 'short' } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Check the recovery code. It has 24 letters and numbers.',
+  );
+  expect(mocks.unlockConnection).not.toHaveBeenCalled();
+  fireEvent.change(input, { target: { value: 'oill-2345-6789-abcd-efgh-jkmn' } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
+  await waitFor(() => expect(onUnlocked).toHaveBeenCalled());
+  expect(mocks.unlockConnection).toHaveBeenCalledWith(course.shareId, '011123456789ABCDEFGHJKMN');
+  expect(mocks.unlockKey).toHaveBeenCalledWith(course.shareId, '011123456789ABCDEFGHJKMN');
+});
+
+it('shows recovery-code feedback when WebCrypto rejects without a message', async () => {
+  mocks.unlockConnection.mockRejectedValue(new DOMException('', 'OperationError'));
+  render(
+    <ClassPage
+      course={{ ...course, secret: 'recovery-code' }}
+      session={null}
+      request={unlockRequest}
+      onUnlocked={vi.fn()}
+      onChanged={vi.fn()}
+      onLock={vi.fn()}
+      onRemoved={vi.fn()}
+    />,
+  );
+  fireEvent.change(await screen.findByLabelText('Recovery code'), {
+    target: { value: 'Z'.repeat(24) },
+  });
+  fireEvent.submit(screen.getByRole('form', { name: 'Unlock class' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not unlock. Check the recovery code.',
+  );
+});

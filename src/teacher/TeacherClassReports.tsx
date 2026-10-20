@@ -1,3 +1,4 @@
+import { RememberClassCheckbox } from './gapsUi';
 import {
   Fragment,
   useEffect,
@@ -64,6 +65,9 @@ import {
   Spinner,
   usePresence,
 } from './gapsUi';
+import { downloadGapsFile } from './connectionFile';
+import { normaliseRecoveryCode } from './recoveryCode';
+import { downloadClassRecoveryFile } from './classRecoveryFile';
 import { forgetRememberedClass, readRememberedClass, rememberClass } from './rememberedClass';
 import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
@@ -224,7 +228,7 @@ export function ClassPage({
             className="gaps-fade flex flex-col gap-3 rounded-2xl border border-negative/20 bg-negative/5 p-4 sm:flex-row sm:items-center"
           >
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-ink-soft">
+              <p hidden={course.secret === 'recovery-code'} className="text-sm text-ink-soft">
                 This browser will ask for both passphrases next time. Your class, reports and
                 recovery file are not affected.
               </p>
@@ -445,7 +449,9 @@ function LockedClass({
     // One device lookup per mounted class; callbacks do not change its identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course.shareId]);
-  const [step, setStep] = useState<ClassRequest['kind']>(request?.kind ?? 'unlock');
+  const [step, setStep] = useState<ClassRequest['kind']>(
+    course.secret ? 'unlock' : (request?.kind ?? 'unlock'),
+  );
   const card = useRef<HTMLDivElement>(null);
   // The step whose first field takes focus once it has rendered.
   const focusNext = useRef<ClassRequest['kind'] | null>(request?.kind ?? null);
@@ -453,9 +459,10 @@ function LockedClass({
 
   useEffect(() => {
     if (!request) return;
-    setStep(request.kind);
-    focusNext.current = request.kind;
-  }, [request]);
+    const next = course.secret ? 'unlock' : request.kind;
+    setStep(next);
+    focusNext.current = next;
+  }, [request, course.secret]);
   // Focus waits for the step's form, which may still be loading.
   useEffect(() => {
     if (checking || focusNext.current !== step || (step === 'setup' && !keys.Keys)) return;
@@ -496,19 +503,24 @@ function LockedClass({
                 <Keys.TeacherKeySetup
                   initialCourse={course.shareId}
                   initialMode="create"
+                  onOpened={(session) => {
+                    if (!beginUnlock || beginUnlock()(session)) onUnlocked(session);
+                  }}
                   onContinue={() => show('unlock')}
                 />
               )}
             </KeySetupSlot>
           )}
         </div>
-        <button
-          type="button"
-          onClick={() => show(step === 'unlock' ? 'setup' : 'unlock')}
-          className={`${buttonClassName('ghost')} mt-4`}
-        >
-          {step === 'unlock' ? 'First time? Set up' : 'Back to unlock'}
-        </button>
+        {!course.secret && (
+          <button
+            type="button"
+            onClick={() => show(step === 'unlock' ? 'setup' : 'unlock')}
+            className={`${buttonClassName('ghost')} mt-4`}
+          >
+            {step === 'unlock' ? 'First time? Set up' : 'Back to unlock'}
+          </button>
+        )}
       </div>
     </SectionCard>
   );
@@ -1162,6 +1174,14 @@ function UnlockForm({
   async function unlock(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    const code = course.secret ? normaliseRecoveryCode(connectionPhrase) : null;
+    if (course.secret && !code) {
+      setError({
+        message: 'Check the recovery code. It has 24 letters and numbers.',
+        setup: false,
+      });
+      return;
+    }
     const controller = new AbortController();
     pending.current = controller;
     const retain = beginUnlock?.();
@@ -1170,12 +1190,12 @@ function UnlockForm({
     const connections = createGapsConnectionStore(),
       keys = createInsightsOwnerStore();
     try {
-      const connection = await connections.unlock(course.shareId, connectionPhrase);
+      const connection = await connections.unlock(course.shareId, code ?? connectionPhrase);
       if (!connection) throw new Error('This course connection was removed. Connect it again.');
-      const owner = await keys.unlock(course.shareId, keyPhrase);
+      const owner = await keys.unlock(course.shareId, code ?? keyPhrase);
       controller.signal.throwIfAborted();
       if (!owner) {
-        setError({ message: 'This browser has no key for this class yet.', setup: true });
+        setError({ message: 'This browser has no key for this class yet.', setup: !course.secret });
         return;
       }
       const session: ClassSession = { connection, owner, days: new Map() };
@@ -1188,8 +1208,13 @@ function UnlockForm({
     } catch (cause) {
       if (controller.signal.aborted) return;
       setError({
-        message:
-          cause instanceof Error ? cause.message : 'Could not unlock. Check both passphrases.',
+        message: course.secret
+          ? cause instanceof Error && cause.message
+            ? cause.message.replace(/passphrases?/gi, 'recovery code')
+            : 'Could not unlock. Check the recovery code.'
+          : cause instanceof Error
+            ? cause.message
+            : 'Could not unlock. Check both passphrases.',
         setup: false,
       });
     } finally {
@@ -1205,33 +1230,29 @@ function UnlockForm({
   return (
     <form onSubmit={(event) => void unlock(event)} aria-label="Unlock class" className="space-y-5">
       <fieldset disabled={busy} className="space-y-5">
-        <Field label="Connection passphrase">
+        <Field label={course.secret ? 'Recovery code' : 'Connection passphrase'}>
           <Input
             type="password"
             autoComplete="off"
             required
+            spellCheck={course.secret ? false : undefined}
+            autoCapitalize={course.secret ? 'characters' : undefined}
             value={connectionPhrase}
             onChange={(event) => setConnectionPhrase(event.target.value)}
           />
         </Field>
-        <Field label="Recovery passphrase">
-          <Input
-            type="password"
-            autoComplete="off"
-            required
-            value={keyPhrase}
-            onChange={(event) => setKeyPhrase(event.target.value)}
-          />
-        </Field>
-        <label className="flex items-center gap-3 text-sm text-ink-soft">
-          <input
-            type="checkbox"
-            checked={remember}
-            onChange={(event) => setRemember(event.target.checked)}
-            className="h-4 w-4 accent-accent"
-          />
-          Remember this class on this device
-        </label>
+        {!course.secret && (
+          <Field label="Recovery passphrase">
+            <Input
+              type="password"
+              autoComplete="off"
+              required
+              value={keyPhrase}
+              onChange={(event) => setKeyPhrase(event.target.value)}
+            />
+          </Field>
+        )}
+        <RememberClassCheckbox checked={remember} onChange={setRemember} />
       </fieldset>
       {error && (
         <div key={attempt} role="alert" className="gaps-shake space-y-3 text-sm text-negative">
@@ -1419,13 +1440,12 @@ function ClassSettings({
     setDownloadError('');
     const store = createGapsConnectionStore();
     try {
+      if (course.secret) {
+        await downloadClassRecoveryFile(course.shareId);
+        return;
+      }
       const text = await store.exportConnection(course.shareId);
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `gaps-course-${course.shareId}.json`;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadGapsFile(text, `gaps-course-${course.shareId}.json`);
     } catch {
       setDownloadError('Could not download the saved connection. Try again.');
     } finally {
@@ -1457,7 +1477,7 @@ function ClassSettings({
         </button>
       </h2>
       <Disclosure open={open} id={id} className="flex flex-col gap-8 px-2 pb-8 pt-2">
-        {!locked && (
+        {!locked && !course.secret && (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -1492,7 +1512,7 @@ function ClassSettings({
             className={buttonClassName('secondary')}
             onClick={() => void downloadConnection()}
           >
-            Download connection file
+            {course.secret ? 'Download class recovery file' : 'Download connection file'}
           </button>
           {downloadError && (
             <p role="alert" className="mt-2 text-sm text-negative">

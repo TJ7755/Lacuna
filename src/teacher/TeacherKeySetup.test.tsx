@@ -86,7 +86,7 @@ it('rejects a malformed recovery file before attempting a restore, then accepts 
   fireEvent.change(screen.getByLabelText('What do you need to do?'), {
     target: { value: 'restore' },
   });
-  const choose = (text: string) => {
+  const choose = async (text: string) => {
     const file = new File([text], 'teacher.json', { type: 'application/json' });
     fireEvent.change(screen.getByLabelText(/Encrypted recovery file/), {
       target: { files: [file] },
@@ -94,12 +94,18 @@ it('rejects a malformed recovery file before attempting a restore, then accepts 
     fireEvent.change(screen.getByLabelText(/^Recovery passphrase/), {
       target: { value: passphrase },
     });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
   };
-  choose('{"privateKey":"wrong file"}');
+  await choose('{"privateKey":"wrong file"}');
   expect(await screen.findByRole('alert')).toHaveTextContent('supported Gaps');
   expect(store.restore).not.toHaveBeenCalled();
-  choose(serialiseInsightsRecoveryFile(shareId, recovery));
+  await choose(serialiseInsightsRecoveryFile(shareId, recovery));
   await waitFor(() => expect(store.restore).toHaveBeenCalledWith(shareId, recovery, passphrase));
   expect(await screen.findByRole('status')).toHaveTextContent('Class protected');
 });
@@ -135,6 +141,9 @@ it('does not restore an earlier file after switching away and back to restore mo
     target: { value: 'restore' },
   });
   fireEvent.change(screen.getByLabelText('Recovery passphrase'), { target: { value: passphrase } });
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('supported Gaps');
   expect(store.restore).not.toHaveBeenCalled();
@@ -150,8 +159,54 @@ it('rejects another class’s recovery file before restoring it in contextual se
     },
   });
   fireEvent.change(screen.getByLabelText('Recovery passphrase'), { target: { value: passphrase } });
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('belongs to another class');
   expect(store.restore).not.toHaveBeenCalled();
   expect(screen.getByLabelText('Recovery passphrase')).toHaveValue('');
+});
+
+it('opens a combined class file with one recovery code and a remember checkbox', async () => {
+  const { sealGapsConnection } = await import('./connectionFile');
+  const { DEFAULT_RELAY_URL } = await import('../sync/pairingConfig');
+  const { serialiseClassRecoveryFile } = await import('./classRecoveryFile');
+  const code = '0123456789ABCDEFGHJKMNPQ';
+  const connection = JSON.parse(
+    await sealGapsConnection(
+      { shareId, courseName: 'Biology', relayUrl: DEFAULT_RELAY_URL, writeToken: 'c'.repeat(64) },
+      code,
+    ),
+  );
+  const text = serialiseClassRecoveryFile(
+    shareId,
+    connection,
+    JSON.parse(serialiseInsightsRecoveryFile(shareId, recovery)),
+  );
+  render(<TeacherKeySetup initialMode="restore" />);
+  fireEvent.change(screen.getByLabelText('Encrypted recovery file'), {
+    target: { files: [new File([text], 'class.json')] },
+  });
+  expect(await screen.findByLabelText('Recovery code')).toBeVisible();
+  expect(screen.queryAllByLabelText(/passphrase/)).toHaveLength(0);
+  expect(
+    screen.getByRole('checkbox', { name: 'Remember this class on this device' }),
+  ).toBeChecked();
+  fireEvent.change(screen.getByLabelText('Recovery code'), { target: { value: 'short' } });
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Check the recovery code. It has 24 letters and numbers.',
+  );
+  fireEvent.change(screen.getByLabelText('Recovery code'), { target: { value: 'Z'.repeat(24) } });
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Restore class access' })).toBeEnabled(),
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Restore class access' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not open class recovery. Check the file and recovery code.',
+  );
 });

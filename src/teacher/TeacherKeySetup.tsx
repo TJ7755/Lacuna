@@ -1,3 +1,4 @@
+import { RememberClassCheckbox } from './gapsUi';
 import { useState, type FormEvent } from 'react';
 import { Field, Input, inputClassName } from '../components/ui/Field';
 import { CheckIcon } from '../components/ui/icons';
@@ -11,6 +12,16 @@ import {
 } from '../insights/recoveryFile';
 import type { InsightsRecovery } from '../insights/envelope';
 import { parseShareCode, ShareLinkError } from '../shareLinks/client';
+import {
+  CLASS_RECOVERY_FILE_MAX_BYTES,
+  CLASS_RECOVERY_ERROR,
+  parseClassRecoveryFile,
+  restoreClassRecovery,
+} from './classRecoveryFile';
+import { downloadGapsFile } from './connectionFile';
+import { normaliseRecoveryCode } from './recoveryCode';
+import { useClassRecoverySelection } from './classRecoveryFile';
+import type { ClassSession } from './classSessions';
 import { validateRecoveryPassphrase } from '../sync/pairingConfig';
 
 type Mode = 'create' | 'restore' | 'download';
@@ -25,18 +36,22 @@ export function TeacherKeySetup({
   initialMode = 'create',
   onContinue,
   courseName,
+  onOpened,
 }: {
   onClose?(): void;
   initialCourse?: string;
   courseName?: string;
   initialMode?: Mode;
   onContinue?(): void;
+  onOpened?(session: ClassSession): void;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [course, setCourse] = useState(initialCourse);
   const [passphrase, setPassphrase] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [remember, setRemember] = useState(true);
+  const { codeProtected, reading } = useClassRecoverySelection(file);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<PreparedKey | null>(null);
@@ -45,7 +60,7 @@ export function TeacherKeySetup({
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || reading) return;
     setError(null);
     if (mode === 'create') {
       const invalid = validateRecoveryPassphrase(passphrase);
@@ -57,7 +72,7 @@ export function TeacherKeySetup({
         setError('The passphrases do not match.');
         return;
       }
-    } else if (!passphrase.trim()) {
+    } else if (!codeProtected && !passphrase.trim()) {
       setError('Enter the key’s recovery passphrase.');
       return;
     }
@@ -66,6 +81,20 @@ export function TeacherKeySetup({
     try {
       let shareId: string;
       let recovery: InsightsRecovery;
+      if (mode === 'restore' && codeProtected) {
+        const code = normaliseRecoveryCode(passphrase);
+        if (!code) {
+          setError('Check the recovery code. It has 24 letters and numbers.');
+          return;
+        }
+        if (!file || file.size > CLASS_RECOVERY_FILE_MAX_BYTES)
+          throw new Error(CLASS_RECOVERY_ERROR);
+        const saved = parseClassRecoveryFile(await file.text());
+        if (initialCourse && saved.shareId !== initialCourse) throw new Error(CLASS_RECOVERY_ERROR);
+        const session = await restoreClassRecovery(saved, code, remember);
+        onOpened?.(session);
+        return;
+      }
       if (mode === 'restore') {
         if (!file || file.size > INSIGHTS_RECOVERY_FILE_MAX_BYTES)
           throw new InsightsRecoveryFileError();
@@ -96,13 +125,15 @@ export function TeacherKeySetup({
       setPrepared({ shareId, recovery });
     } catch (cause) {
       setError(
-        cause instanceof InsightsOwnerConflictError ||
-          cause instanceof InsightsRecoveryFileError ||
-          cause instanceof ShareLinkError
-          ? cause.message
-          : mode === 'create'
-            ? 'Could not protect this class in this browser. Check that browser storage is available and try again.'
-            : 'Could not open class recovery. Check the recovery file, course link and passphrase.',
+        codeProtected
+          ? CLASS_RECOVERY_ERROR
+          : cause instanceof InsightsOwnerConflictError ||
+              cause instanceof InsightsRecoveryFileError ||
+              cause instanceof ShareLinkError
+            ? cause.message
+            : mode === 'create'
+              ? 'Could not protect this class in this browser. Check that browser storage is available and try again.'
+              : 'Could not open class recovery. Check the recovery file, course link and passphrase.',
       );
     } finally {
       store.close();
@@ -116,13 +147,8 @@ export function TeacherKeySetup({
     if (!prepared) return;
     try {
       const text = serialiseInsightsRecoveryFile(prepared.shareId, prepared.recovery);
-      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `gaps-teacher-${prepared.shareId}.json`;
-      anchor.click();
+      downloadGapsFile(text, `gaps-teacher-${prepared.shareId}.json`);
       setDownloaded(true);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError(
         'Could not download the recovery file. Your saved key is still in this browser; try again.',
@@ -181,7 +207,7 @@ export function TeacherKeySetup({
         </div>
       ) : (
         <form onSubmit={(event) => void submit(event)} className="space-y-5">
-          <fieldset disabled={busy} className="space-y-5">
+          <fieldset disabled={busy || reading} className="space-y-5">
             <Field label="What do you need to do?">
               <select
                 value={mode}
@@ -224,19 +250,22 @@ export function TeacherKeySetup({
               )
             )}
             <Field
-              label="Recovery passphrase"
+              label={codeProtected ? 'Recovery code' : 'Recovery passphrase'}
               hint={
                 mode === 'create' ? 'Several unrelated words, at least 16 characters.' : undefined
               }
             >
               <Input
                 type="password"
+                spellCheck={codeProtected ? false : undefined}
+                autoCapitalize={codeProtected ? 'characters' : undefined}
                 value={passphrase}
                 autoComplete="off"
                 onChange={(event) => setPassphrase(event.target.value)}
                 required
               />
             </Field>
+            {codeProtected && <RememberClassCheckbox checked={remember} onChange={setRemember} />}
             {mode === 'create' && (
               <Field label="Repeat recovery passphrase">
                 <Input

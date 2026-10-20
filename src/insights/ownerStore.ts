@@ -5,6 +5,7 @@ import {
   type InsightsOwner,
   type InsightsRecovery,
 } from './envelope';
+import { serialiseInsightsRecoveryFile } from './recoveryFile';
 import { INSIGHT_ID_RE } from '../../relay/src/insightsProtocol';
 
 interface StoredOwner {
@@ -61,6 +62,12 @@ export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys'
       const owner = await recoverInsightsOwner(recovery, passphrase, shareId);
       await remember(shareId, owner, true);
       return owner;
+    },
+
+    async exportRecovery(shareId: string): Promise<string> {
+      const stored = await owners.get(shareId);
+      if (!stored) throw new Error('This browser has no key for this class yet.');
+      return serialiseInsightsRecoveryFile(shareId, stored.recovery);
     },
 
     async unlock(shareId: string, passphrase: string): Promise<InsightsOwner | null> {

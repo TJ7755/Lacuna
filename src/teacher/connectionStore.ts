@@ -22,11 +22,13 @@ interface StoredConnection {
   shareId: string;
   file: EncryptedGapsConnection;
   verifiedAt: number;
+  secret?: 'recovery-code';
 }
 export interface ConnectedGapsCourse {
   shareId: string;
   courseName: string;
   verifiedAt: number;
+  secret?: 'recovery-code';
 }
 
 /** Separate teacher storage contains encrypted capabilities, never learner data or passphrases. */
@@ -96,6 +98,10 @@ export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
         throw error;
       }
     },
+    async markRecoveryCode(shareId: string): Promise<void> {
+      if (!(await connections.update(shareId, { secret: 'recovery-code' })))
+        throw new Error('The saved connection could not be found.');
+    },
     async exportConnection(shareId: string): Promise<string> {
       const saved = await connections.get(shareId);
       if (!saved) throw new Error('The saved connection could not be found.');
@@ -114,7 +120,12 @@ export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
           const file = parseGapsConnectionFile(JSON.stringify(row.file));
           if (row.shareId !== file.shareId || !Number.isFinite(row.verifiedAt))
             throw new Error('Invalid saved connection.');
-          return { shareId: row.shareId, courseName: file.courseName, verifiedAt: row.verifiedAt };
+          return {
+            shareId: row.shareId,
+            courseName: file.courseName,
+            verifiedAt: row.verifiedAt,
+            ...(row.secret === 'recovery-code' ? { secret: row.secret } : {}),
+          };
         })
         .sort((a, b) => a.courseName.localeCompare(b.courseName, 'en-GB'));
     },
