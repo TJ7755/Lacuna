@@ -158,7 +158,7 @@ for (const width of [1280, 390]) {
     await page
       .getByLabel('Course link or code')
       .fill(`https://getlacuna.app/#/s/${source.shareId}`);
-    await page.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
+    await page.getByLabel(/^Connection passphrase/).fill(phrase);
     await page.getByLabel('Repeat connection passphrase').fill(phrase);
     await page.screenshot({
       path: testInfo.outputPath(`course-link-form-${width}.png`),
