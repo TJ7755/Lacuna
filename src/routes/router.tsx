@@ -41,6 +41,7 @@ import {
   loadTeacherHome,
   loadShareLinkPage,
   loadLanding,
+  loadPupilClassPage,
 } from './loaders';
 
 // Keep the dashboard as the only eager page. Every other route is loaded on demand
@@ -51,6 +52,7 @@ const SearchPage = lazy(loadSearchPage);
 const SharePage = lazy(loadSharePage);
 const TeacherHome = lazy(loadTeacherHome);
 const ShareLinkPage = lazy(loadShareLinkPage);
+const PupilClassPage = lazy(loadPupilClassPage);
 const Analytics = lazy(loadAnalytics);
 const ArchivedCourses = lazy(loadArchivedCourses);
 const HelpPage = lazy(loadHelpPage);
@@ -120,6 +122,7 @@ export const router = createHashRouter([
           { path: 'search', element: lazyRoute(SearchPage) },
           { path: 'share', element: lazyRoute(SharePage) },
           { path: 's/:code', element: lazyRoute(ShareLinkPage) },
+          { path: 'gaps/:courseId', element: lazyRoute(PupilClassPage) },
           { path: 'import', element: <Navigate to="/?import=1" replace /> },
           { path: 'analytics', element: lazyRoute(Analytics) },
           { path: 'archived', element: lazyRoute(ArchivedCourses) },

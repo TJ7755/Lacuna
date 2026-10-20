@@ -13,6 +13,7 @@ import {
   loadSearchPage,
   loadSettings,
   loadSharePage,
+  loadPupilClassPage,
 } from './loaders';
 
 import { loadRouteModule, type RouteLoader } from './routeModule';
@@ -61,6 +62,8 @@ const prefetchedRoutes = new Set<string>();
 
 function prefetchTarget(path: string): { key: string; loader: RouteLoader } | undefined {
   const normalised = path.split('?')[0].split('#')[0];
+  if (/^\/gaps\/[^/]+\/?$/.test(normalised))
+    return { key: 'pupil-class', loader: loadPupilClassPage };
   if (normalised.startsWith('/course/')) {
     const match = COURSE_PREFETCH_LOADERS.find(({ pattern }) => pattern.test(normalised));
     return match ? { key: match.key, loader: match.loader } : undefined;

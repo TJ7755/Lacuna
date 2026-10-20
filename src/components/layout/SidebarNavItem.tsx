@@ -77,7 +77,7 @@ export function NavItem({
             <span className={cn('relative z-10 shrink-0', !drawer && 'flex w-5 justify-center')}>
               {icon}
             </span>
-            <SidebarLabel className={cn('relative z-10', drawer && 'truncate')}>
+            <SidebarLabel className="relative z-10 min-w-0 truncate">
               {label}
             </SidebarLabel>
           </>

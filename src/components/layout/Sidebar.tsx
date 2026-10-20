@@ -26,6 +26,7 @@ import {
   SparklesIcon,
   SunIcon,
 } from '../ui/icons';
+import { useEnrolledCourseIds } from '../../insights/useEnrolledCourseIds';
 import { useSidebarData } from '../../state/useCourseData';
 import type { Lesson } from '../../db/types';
 import { calendarDaysUntil, formatDate } from '../../utils/datetime';
@@ -80,6 +81,9 @@ export function Sidebar({
     () => courses?.filter((course) => !course.archived) ?? [],
     [courses],
   );
+
+  const enrolledCourseIds = useEnrolledCourseIds(sidebarCourses);
+  const classCourses = sidebarCourses.filter((course) => enrolledCourseIds.includes(course.id));
 
   // The shell supplies the guarded traversal order for each course.
   const lessonsByCourse = useMemo(() => {
@@ -350,6 +354,26 @@ export function Sidebar({
           </div>
         </div>
       </nav>
+
+      {classCourses.length > 0 && (
+        <nav aria-label="Gaps" className="flex max-h-[30dvh] min-h-0 shrink-0 flex-col px-3">
+          <SidebarLabel className="flex h-11 shrink-0 items-center px-3 pb-2 font-display text-sm text-ink-soft">
+            Gaps
+          </SidebarLabel>
+          <div className="scroll-edge-fade min-h-0 overflow-x-hidden overflow-y-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {classCourses.map((course) => (
+              <NavItem
+                key={course.id}
+                to={`/gaps/${course.id}`}
+                icon={<ChartIcon />}
+                label={course.name}
+                collapsed={collapsed}
+                compact={sidebarSettings.compactMode}
+              />
+            ))}
+          </div>
+        </nav>
+      )}
 
       {/* Footer: Share, Settings and Help, then the theme toggle and collapse button */}
       <nav

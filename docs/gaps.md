@@ -164,7 +164,14 @@ Pupils choose **Join a class** on Today, or **Import** then **Join a class**, an
 enter the eight-character code shown on the teacher's Invite tab. Case, spaces and
 the displayed hyphen are accepted. The existing invitation flow previews the course
 and connects an already imported copy without replacing local work or enabling
-reporting consent. Invalid entry stays in the form; an unavailable class offers
+reporting consent. Once joined, the learner sidebar automatically shows a **Gaps**
+section with each joined active course. Those links open the pupil's existing class
+insights, identifier, consent and delivery status at `/#/gaps/<courseId>` without
+reopening an invitation. The section persists across reloads and remains available
+with consent off; archived or removed courses are not listed. This navigation does
+not change completed-day reporting or publish current-day work.
+
+Invalid entry stays in the form; an unavailable class offers
 **Enter another class code**. The relay looks up the code to find the class share. Lookups are limited to 600 per hour per address. Short-code joins trust
 the relay to return the teacher key; the join link and QR keep the full pinned
 teacher-key fingerprint.
