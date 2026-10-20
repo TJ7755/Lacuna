@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   clearForecastCache,
+  forecastCards,
   dashboardForecasts,
   dashboardForecastHistories,
   urgencyOrder,
@@ -73,8 +74,8 @@ describe('dashboardForecasts', () => {
     const cards = [card('a', 4)];
     const project = (
       values = cards,
-      history: Parameters<typeof dashboardKeepUpProjections>[3] = [],
-    ) => dashboardKeepUpProjections([course], [], values, history, NOW).bio;
+      history: Parameters<typeof dashboardKeepUpProjections>[1] = [],
+    ) => dashboardKeepUpProjections(forecastCards([course], [], values, NOW), history, NOW).bio;
     const first = project();
     expect(project()).toBe(first);
     const reviewed = [
@@ -101,7 +102,9 @@ describe('dashboardForecasts', () => {
       ]),
     ).not.toBe(next);
     const steady = { ...course, examDate: undefined };
-    expect(dashboardKeepUpProjections([steady], [], cards, [], NOW).bio).toBeUndefined();
+    expect(
+      dashboardKeepUpProjections(forecastCards([steady], [], cards, NOW), [], NOW).bio,
+    ).toBeUndefined();
   });
 
   it('distinguishes absent study data from a historical forecast', () => {

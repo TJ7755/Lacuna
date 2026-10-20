@@ -8,7 +8,7 @@ import {
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import type { Card, Course, Lesson } from '../db/types';
 
-export const HOUR = 3_600_000;
+const HOUR = 3_600_000;
 
 // The forecast is computed once per course and reused until that course's cards, exam
 // date or target change, or the hour turns over. Navigation and the dashboard both read

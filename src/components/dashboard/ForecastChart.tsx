@@ -314,9 +314,8 @@ export function ForecastChart({
         </h2>
         <p id={`${titleId}-measure`} className="sr-only">
           Predicted exam-day recall (%). Each past point uses study up to that date to estimate
-          recall on the exam date. The dashed line assumes no further reviews. The dash-dot line
-          assumes every due card is reviewed, weighting pass and fail outcomes by retrievability.
-          These are estimates, not exam marks or guarantees.
+          recall on the exam date. The dashed line assumes no further reviews; the dash-dot line,
+          every due review. These are estimates, not exam marks or guarantees.
         </p>
         <ul
           className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4"
@@ -383,7 +382,7 @@ export function ForecastChart({
               const projection = projections.get(line.id)!;
               return projection.explanation
                 ? `${line.name}: ${projection.explanation}`
-                : `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)}. Dashed: If you stop now, from today to the exam with no further reviews. ${line.keepUp?.length ? `Dash-dot: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up with due reviews.` : ''}`;
+                : `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)}. Dashed: If you stop now, from today to the exam with no further reviews.${line.keepUp?.length ? ` Dash-dot: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up with due reviews.` : ''}`;
             })
             .join('. ')}
         </desc>
@@ -527,7 +526,7 @@ export function ForecastChart({
                   strokeLinecap="round"
                   aria-label={`${line.name}: If you keep up`}
                 >
-                  <title>{`${line.name}: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)} if you keep up with due reviews`}</title>
+                  <title>{`${line.name}: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up`}</title>
                 </path>
               )}
               {(!context || focused) && projection.points.length > 0 && (
