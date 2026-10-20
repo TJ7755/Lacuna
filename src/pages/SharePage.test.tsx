@@ -212,11 +212,12 @@ beforeEach(() => {
 });
 
 async function expectShareLinkRevision(revision: number) {
-  const heading = await screen.findByRole('heading', { name: 'Share link', level: 2 });
-  const revisionLabel = await within(heading.parentElement!).findByText(
-    new RegExp(`^Revision ${revision}(?: ·|$)`),
-  );
-  expect(heading.parentElement).toContainElement(revisionLabel);
+  await waitFor(() => {
+    const heading = screen.getByRole('heading', { name: 'Share link', level: 2 });
+    expect(
+      within(heading.parentElement!).getByText(new RegExp(`^Revision ${revision}(?: ·|$)`)),
+    ).toBeVisible();
+  });
 }
 
 describe('defaultShareCourse', () => {
