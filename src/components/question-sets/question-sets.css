@@ -596,3 +596,25 @@
     padding: 20px 16px 100px;
   }
 }
+
+.qs-picker-results {
+  max-height: 50dvh;
+}
+.qs-picker .qs-choices {
+  margin: 8px 0 20px;
+}
+.qs-picker .qs-choices > div {
+  display: grid;
+  gap: 8px;
+}
+.qs-picker .qs-choices span {
+  display: block;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.qs-picker small {
+  display: block;
+  margin-top: 6px;
+  color: hsl(var(--ink-soft));
+  font-size: 13px;
+}

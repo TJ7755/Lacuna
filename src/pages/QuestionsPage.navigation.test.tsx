@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { QuestionsPage } from './QuestionsPage';
+import type { QuestionSetQuestion } from '../questions/questionSets';
 
 const mocks = vi.hoisted(() => ({
   data: undefined as
@@ -12,7 +13,7 @@ const mocks = vi.hoisted(() => ({
           title: string;
           lessonIds: string[];
           assessmentIds: string[];
-          questions: never[];
+          questions: QuestionSetQuestion[];
         }>;
         drafts: never[];
         legacy: number;
@@ -150,6 +151,32 @@ describe('QuestionsPage navigation', () => {
     );
     expect(screen.getByRole('heading', { name: 'Kinetics questions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cell structure' })).not.toBeInTheDocument();
+  });
+
+  it('finds wording inside a question and displays a plain matching excerpt', () => {
+    mocks.data = {
+      sets: [
+        {
+          id: 'set-one',
+          courseId: 'course-1',
+          title: 'Practice paper',
+          lessonIds: [],
+          assessmentIds: [],
+          questions: [
+            { id: 'q1', prompt: 'Explain **selective permeability** in membranes.', parts: [] },
+          ],
+        },
+      ],
+      drafts: [],
+      legacy: 0,
+      attemptsBySet: new Map(),
+      error: '',
+    };
+    renderLibrary('/course/course-1/questions?q=selective%20permeability');
+    expect(screen.getByRole('heading', { name: 'Practice paper' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Question 1: Explain selective permeability in membranes/),
+    ).toBeInTheDocument();
   });
 
   it('keeps library searches scoped to the course in the URL', async () => {

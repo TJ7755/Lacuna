@@ -35,6 +35,7 @@ import { questionSetProgress, type QuestionSetProgress } from '../questions/ques
 import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
+import { searchQuestionSets } from '../questions/questionSetSearch';
 import { countOf } from '../utils/plural';
 import { formatRelativeTime } from '../utils/datetime';
 
@@ -66,12 +67,14 @@ export function QuestionsPage() {
   const data = useLiveQuery(async () => {
     if (!courseId) return null;
     try {
-      const [sets, drafts, legacy, attemptRows, skills] = await Promise.all([
+      const [sets, drafts, legacy, attemptRows, skills, lessons, concepts] = await Promise.all([
         listQuestionSets(courseId),
         listQuestionSetDrafts(courseId),
         db.questions.where('courseId').equals(courseId).count(),
         db.questionSetAttempts.where('courseId').equals(courseId).toArray(),
         listConceptPractice(courseId),
+        db.lessons.where('courseId').equals(courseId).toArray(),
+        db.concepts.where('courseId').equals(courseId).toArray(),
       ]);
       const attemptsBySet = new Map<string, QuestionSetAttemptRecord[]>();
       for (const row of attemptRows) {
@@ -87,7 +90,7 @@ export function QuestionsPage() {
           continue;
         }
       }
-      return { sets, drafts, legacy, attemptsBySet, skills, error: '' };
+      return { sets, drafts, legacy, attemptsBySet, skills, lessons, concepts, error: '' };
     } catch (cause) {
       return {
         sets: [],
@@ -117,12 +120,18 @@ export function QuestionsPage() {
       // A receipt that no longer validates cannot be scored; the set stays unscored.
     }
   }
-  const rows = [
+  const visibleRows = [
     ...data.drafts.filter(() => author).map((d) => ({ content: d.content, draft: true })),
     ...data.sets
       .filter((s) => !author || !draftIds.has(s.id))
       .map((content) => ({ content, draft: false })),
-  ].filter((row) => row.content.title.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  ];
+  const drafts = new Set(visibleRows.filter((row) => row.draft).map((row) => row.content.id));
+  const rows = searchQuestionSets(
+    visibleRows.map((row) => row.content),
+    search,
+    data,
+  ).map((hit) => ({ ...hit, draft: drafts.has(hit.content.id) }));
   const create = async () => {
     if (creating || !name.trim()) return;
     setCreating(true);
@@ -259,7 +268,7 @@ export function QuestionsPage() {
         </label>
       )}
       <section className="qs-set-list" aria-label="Question sets">
-        {rows.map(({ content, draft }) => (
+        {rows.map(({ content, draft, location: matchLocation, excerpt }) => (
           <div className="qs-library-row" key={content.id}>
             <div className="qs-set-row qs-scored-row">
               <Link
@@ -277,6 +286,11 @@ export function QuestionsPage() {
                       ? ` · last tried ${formatRelativeTime(progress.get(content.id)!.lastTriedAt!)}`
                       : ' · not tried yet'}
                 </p>
+                {search.trim() && (
+                  <p>
+                    {matchLocation}: {excerpt}
+                  </p>
+                )}
               </Link>
               {!draft && <QuestionSetScore progress={progress.get(content.id) ?? NO_PROGRESS} />}
               {author ? (

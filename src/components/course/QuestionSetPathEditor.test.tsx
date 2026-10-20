@@ -99,6 +99,30 @@ describe('QuestionSetPathEditor', () => {
   });
   afterEach(cleanup);
 
+  it('focuses content search and cancels a pending choice without changing the activity', async () => {
+    const { course, firstLesson } = await fixture();
+    render(
+      <QuestionSetPathEditor
+        courseId={course.id}
+        afterLessonId={firstLesson.id}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
+    const search = await screen.findByRole('searchbox', { name: 'Search question sets' });
+    expect(search).toHaveFocus();
+    fireEvent.change(search, { target: { value: 'describe a cell' } });
+    const choice = await screen.findByRole('radio', { name: /Cell structure/ });
+    expect(screen.getByText(/Question 1: Describe a cell/)).toBeInTheDocument();
+    expect(screen.getByText(/1 question · 1 answerable part · 1 mark/)).toBeInTheDocument();
+    fireEvent.click(choice);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Choose a question set' })).toHaveFocus();
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(await screen.findByText('Choose a question set.')).toBeInTheDocument();
+  });
+
   it('creates an activity from a saved set at the selected lesson anchor', async () => {
     const { course, firstLesson, set } = await fixture();
     const onClose = vi.fn();
@@ -114,8 +138,9 @@ describe('QuestionSetPathEditor', () => {
       await screen.findByRole('dialog', { name: 'Add practice questions' }),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
-    await screen.findByRole('radio', { name: 'Cell structure' });
-    fireEvent.click(screen.getByRole('radio', { name: 'Cell structure' }));
+    await screen.findByRole('radio', { name: /Cell structure/ });
+    fireEvent.click(screen.getByRole('radio', { name: /Cell structure/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
     await waitFor(() =>
@@ -137,12 +162,13 @@ describe('QuestionSetPathEditor', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
-    const choice = await screen.findByRole('radio', { name: 'Cell structure' });
+    const choice = await screen.findByRole('radio', { name: /Cell structure/ });
     fireEvent.keyDown(choice, { key: 'Enter', ctrlKey: true });
     expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
-    await screen.findByText('Choose a question set.');
+    expect(screen.getByRole('searchbox', { name: 'Search question sets' })).toBeInTheDocument();
     fireEvent.click(choice);
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Cell structure' }), {
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: /Cell structure/ }), {
       key: 'Enter',
       ctrlKey: true,
     });
@@ -182,7 +208,8 @@ describe('QuestionSetPathEditor', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
-    fireEvent.click(await screen.findByRole('radio', { name: 'Cell structure' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Cell structure/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
     await db.questionSets.delete(set.id);
     await screen.findByText('Save a question set before adding it to the path.');
     vi.mocked(createQuestionSetPracticeNode).mockRejectedValueOnce(

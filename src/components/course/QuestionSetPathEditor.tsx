@@ -7,9 +7,9 @@ import {
   updateQuestionSetPracticeNode,
   deleteQuestionSetPracticeNode,
 } from '../../db/practiceNodeRepository';
-import { QuestionSetChoices } from '../question-sets/QuestionSetChoices';
+import { QuestionSetPicker } from '../question-sets/QuestionSetPicker';
+import { listQuestionSets } from '../../questions/questionSetRepository';
 import { PathEditorSurface } from './PathEditorSurface';
-import { PathEditorPopover } from './PathEditorPopover';
 import '../question-sets/question-sets.css';
 
 export function QuestionSetPathEditor({
@@ -25,8 +25,10 @@ export function QuestionSetPathEditor({
 }) {
   const data = useLiveQuery(
     () =>
-      db.transaction('r', [db.questionSets, db.lessons], async () => ({
-        sets: await db.questionSets.where('courseId').equals(courseId).toArray(),
+      db.transaction('r', [db.questionSets, db.lessons, db.concepts, db.courses], async () => ({
+        sets: await listQuestionSets(courseId),
+        concepts: await db.concepts.where('courseId').equals(courseId).toArray(),
+        course: await db.courses.get(courseId),
         lessons: (await db.lessons.where('courseId').equals(courseId).toArray()).sort(
           (a, b) => a.orderIndex - b.orderIndex,
         ),
@@ -34,6 +36,8 @@ export function QuestionSetPathEditor({
     [courseId],
   );
   const [setId, setSetId] = useState(node?.questionSetId ?? '');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const sentence = useRef<HTMLParagraphElement>(null);
   const title = data?.sets.find((set) => set.id === setId)?.title;
@@ -83,23 +87,34 @@ export function QuestionSetPathEditor({
             value={title ?? node.name}
           />
         ) : (
-          <PathEditorPopover initialFocus label={title ?? 'Choose a question set'}>
-            {(close) => (
-              <QuestionSetChoices
-                label="Question set"
-                value={setId}
-                onChange={(id) => {
-                  setSetId(id);
-                  setError('');
-                  close();
-                }}
-                options={data?.sets.map((set) => ({ value: set.id, label: set.title })) ?? []}
-              />
-            )}
-          </PathEditorPopover>
+          <button
+            ref={trigger}
+            type="button"
+            data-path-editor-focus
+            className="path-editor-chip"
+            aria-haspopup="dialog"
+            aria-expanded={pickerOpen}
+            onClick={() => setPickerOpen(true)}
+          >
+            {title ?? 'Choose a question set'}
+          </button>
         )}
         .
       </p>
+      {pickerOpen && data && trigger.current && (
+        <QuestionSetPicker
+          sets={data.sets}
+          context={data}
+          courseName={data.course?.name ?? 'Current course'}
+          value={setId}
+          host={trigger.current.closest<HTMLElement>('[data-path-editor-host]') ?? document.body}
+          onChange={(id) => {
+            setSetId(id);
+            setError('');
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       {error && (
         <p role="alert" className="mt-2 text-sm text-negative">
           {error}
