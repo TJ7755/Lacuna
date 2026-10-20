@@ -86,10 +86,11 @@ it('holds the cold surface at trigger size until content is available, then reop
   await act(async () => request.resolve({ default: Panel }));
   expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
   expect(surface()).toHaveAttribute('data-animation', expect.stringContaining('"height":"auto"'));
-  expect(screen.getByRole('region', { name: 'Import sources' }).closest('.pt-11')).toHaveAttribute(
-    'data-content-width',
-    'min(448px, calc(100vw - 48px))',
+  const panel = document.getElementById(
+    screen.getByRole('button', { name: 'Close' }).getAttribute('aria-controls')!,
   );
+  expect(panel).toContainElement(screen.getByRole('region', { name: 'Import sources' }));
+  expect(panel).toHaveAttribute('data-content-width', 'min(448px, calc(100vw - 48px))');
   fireEvent.click(screen.getByRole('button', { name: 'Cancel import' }));
   expect(screen.getByRole('button', { name: 'Import' })).toHaveFocus();
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));

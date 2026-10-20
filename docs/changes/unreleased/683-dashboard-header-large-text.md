@@ -1,0 +1,1 @@
+- Keep the dashboard's New course and Import labels and keyboard focus visible at enlarged text sizes, with expanding surfaces that fit their controls. (#683)

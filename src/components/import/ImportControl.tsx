@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useSearchParams } from 'react-router-dom';
 import { loadImportPanel } from '../../routes/loaders';
@@ -37,6 +37,18 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
     };
   }, [open, panelModule, attempt]);
   const trigger = useRef<HTMLButtonElement>(null);
+  const [triggerHeight, setTriggerHeight] = useState(44);
+  useLayoutEffect(() => {
+    const button = trigger.current;
+    if (!button) return;
+    const measure = () => {
+      if (button.offsetHeight > 0) setTriggerHeight(button.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
   const panelId = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
@@ -67,13 +79,13 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
   }
 
   return (
-    <div className="relative z-[6] h-11 w-[100px] shrink-0">
+    <div className="relative z-[6] w-[100px] shrink-0" style={{ height: triggerHeight }}>
       <motion.div
         initial={false}
         animate={{
           width: expanded ? panelWidth : 100,
-          height: expanded ? 'auto' : 44,
-          borderRadius: expanded ? 24 : 22,
+          height: expanded ? 'auto' : triggerHeight,
+          borderRadius: expanded ? 24 : triggerHeight / 2,
         }}
         transition={transition}
         className={`absolute right-0 top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${expanded ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
@@ -98,7 +110,7 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
           onClick={() => changeOpen(!open)}
           data-press="none"
           transition={transition}
-          className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:outline-offset-[-3px] disabled:opacity-40"
+          className="absolute right-0 top-0 flex min-h-11 w-[100px] items-center justify-center rounded-full text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink disabled:opacity-40"
         >
           {pending ? 'Loading…' : open ? 'Close' : 'Import'}
         </motion.button>
@@ -108,9 +120,8 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
               <motion.div
                 key="panel"
                 id={panelId}
-                className="pt-11"
                 // Measure final wrapping before the surrounding surface expands.
-                style={{ width: panelWidth }}
+                style={{ width: panelWidth, paddingTop: triggerHeight }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -129,7 +140,10 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
         </div>
       </motion.div>
       {open && loadError && (
-        <div className="absolute right-0 top-12 w-56 rounded-xl bg-surface-raised p-3 text-sm card-surface">
+        <div
+          className="absolute right-0 w-56 rounded-xl bg-surface-raised p-3 text-sm card-surface"
+          style={{ top: triggerHeight + 4 }}
+        >
           <p role="alert">Could not load import.</p>
           <button
             type="button"

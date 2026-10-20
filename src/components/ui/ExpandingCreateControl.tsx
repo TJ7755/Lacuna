@@ -23,6 +23,19 @@ export function ExpandingCreateControl({
   onOpenChange: (open: boolean) => void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const [triggerHeight, setTriggerHeight] = useState(44);
+  useLayoutEffect(() => {
+    const button = trigger.current;
+    if (!button) return;
+    // The surface and form clearance follow wrapped or enlarged trigger text.
+    const measure = () => {
+      if (button.offsetHeight > 0) setTriggerHeight(button.offsetHeight);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(button);
+    return () => observer.disconnect();
+  }, []);
   const formId = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
@@ -61,19 +74,19 @@ export function ExpandingCreateControl({
   return (
     <div
       ref={root}
-      className={`relative ${open ? 'z-[7]' : 'z-[5]'} h-11 shrink-0 ${className}`}
-      style={{ width: closedWidth }}
+      className={`relative ${open ? 'z-[7]' : 'z-[5]'} shrink-0 ${className}`}
+      style={{ width: closedWidth, height: triggerHeight }}
     >
       <motion.div
         initial={false}
         animate={{
           x: open ? offset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
-          height: open ? 'auto' : 44,
-          borderRadius: open ? 24 : 22,
+          height: open ? 'auto' : triggerHeight,
+          borderRadius: open ? 24 : triggerHeight / 2,
         }}
         transition={transition}
-        // The closed button uses an inset ring to fill its 44px height; the open form is a flat card.
+        // The closed button uses an inset ring; the open form is a flat card.
         className={`absolute ${anchor} top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
       >
         <motion.button
@@ -89,7 +102,7 @@ export function ExpandingCreateControl({
           data-press="none"
           transition={transition}
           style={{ width: closedWidth }}
-          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline-offset-[-3px]`}
+          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
         >
           <motion.span
             aria-hidden="true"
@@ -115,7 +128,7 @@ export function ExpandingCreateControl({
               <motion.div
                 key="form"
                 id={formId}
-                className="pt-11"
+                style={{ paddingTop: triggerHeight }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
