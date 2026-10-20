@@ -31,6 +31,11 @@ loads its workspace separately; reading and decryption happen only after an expl
 
 ## Connect a published course
 
+In Lacuna’s Share panel, choose **Set up a class in Gaps** above **Connect to Gaps**
+to open Gaps with the published course link filled in. Only the public share id is
+passed in `#course=<id>`; Gaps removes that hash after prefilling the form and waits
+for you to complete class set-up.
+
 In Gaps, choose **Connect a class**, paste any published Lacuna course link and
 set a connection passphrase of at least 16 characters. Gaps creates a separate
 class link which reads the original publisher’s current course and updates. The

@@ -4,8 +4,14 @@ import { buttonClassName } from '../components/ui/buttonStyles';
 import { validateRecoveryPassphrase } from '../sync/pairingConfig';
 import { createGapsConnectionStore } from './connectionStore';
 
-export function CreateGapsClass({ onConnected }: { onConnected(shareId: string): void }) {
-  const [link, setLink] = useState('');
+export function CreateGapsClass({
+  initialCourseLink = '',
+  onConnected,
+}: {
+  initialCourseLink?: string;
+  onConnected(shareId: string): void;
+}) {
+  const [link, setLink] = useState(initialCourseLink);
   const [phrase, setPhrase] = useState('');
   const [repeat, setRepeat] = useState('');
   const [busy, setBusy] = useState(false);
@@ -14,7 +20,15 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
   const [repeatError, setRepeatError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const linkInput = useRef<HTMLInputElement>(null);
-  useEffect(() => linkInput.current?.focus(), []);
+  useEffect(() => {
+    const form = linkInput.current?.form;
+    const next = initialCourseLink
+      ? (Array.from(form?.querySelectorAll<HTMLInputElement>('input[required]') ?? []).find(
+          (input) => !input.value,
+        ) ?? form?.querySelector<HTMLButtonElement>('button[type="submit"]'))
+      : linkInput.current;
+    next?.focus();
+  }, [initialCourseLink]);
   useEffect(() => () => controller.current?.abort(), []);
 
   async function create(event: FormEvent) {

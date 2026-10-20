@@ -41,7 +41,21 @@ export function TodayPage({
   onOpen(course: ConnectedGapsCourse): void;
   onConnected(course: ConnectedGapsCourse): void;
 }) {
-  const [connecting, setConnecting] = useState(false);
+  const [initialCourseLink] = useState(() => {
+    const hash = window.location.hash;
+    const match = /^#course=([0-9a-f]{32})$/.exec(hash);
+    return match && match[0] === hash ? `https://getlacuna.app/#/s/${match[1]}` : '';
+  });
+  const [connecting, setConnecting] = useState(Boolean(initialCourseLink));
+  useEffect(() => {
+    if (initialCourseLink) {
+      window.history.replaceState(
+        window.history.state,
+        '',
+        window.location.pathname + window.location.search,
+      );
+    }
+  }, [initialCourseLink]);
   const first = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!connectRequest) return;
@@ -89,7 +103,7 @@ export function TodayPage({
             onOpenChange={setConnecting}
             className="ml-auto"
           >
-            <ConnectClassForm onConnected={onConnected} />
+            <ConnectClassForm initialCourseLink={initialCourseLink} onConnected={onConnected} />
           </ExpandingAction>
         )}
       </div>
@@ -104,7 +118,7 @@ export function TodayPage({
             Paste a published course or class link, or restore a saved connection file.
           </p>
           <div ref={first} className="mt-10 w-full max-w-sm text-left">
-            <ConnectClassForm onConnected={onConnected} />
+            <ConnectClassForm initialCourseLink={initialCourseLink} onConnected={onConnected} />
           </div>
           <a href="https://getlacuna.app/#/share" className={`${buttonClassName('ghost')} mt-4`}>
             Open Share in Lacuna
@@ -202,8 +216,10 @@ function Stat({ value, label }: { value: number | string; label: string }) {
 }
 
 export function ConnectClassForm({
+  initialCourseLink = '',
   onConnected,
 }: {
+  initialCourseLink?: string;
   onConnected(course: ConnectedGapsCourse): void;
 }) {
   const [useFile, setUseFile] = useState(false);
@@ -216,7 +232,9 @@ export function ConnectClassForm({
       active.current = false;
     };
   }, []);
-  useEffect(() => focusFirstField(root.current), [useFile]);
+  useEffect(() => {
+    if (useFile || !initialCourseLink) focusFirstField(root.current);
+  }, [useFile, initialCourseLink]);
 
   async function created(shareId: string) {
     const store = createGapsConnectionStore();
@@ -260,7 +278,10 @@ export function ConnectClassForm({
       {useFile ? (
         <ConnectionFileForm onConnected={onConnected} />
       ) : (
-        <CreateGapsClass onConnected={(shareId) => void created(shareId)} />
+        <CreateGapsClass
+          initialCourseLink={initialCourseLink}
+          onConnected={(shareId) => void created(shareId)}
+        />
       )}
       {error && (
         <p role="alert" className="text-sm text-negative">

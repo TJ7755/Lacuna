@@ -17,6 +17,15 @@ test('exports a published course connection without putting ownership secrets in
   await createCourse(page, 'Gaps biology');
   await openShare(page, 'Gaps biology');
   const shareId = await createShareLink(page);
+  const setup = page.getByRole('link', { name: 'Set up a class in Gaps', exact: true });
+  await expect(setup).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
+  await expect(setup).toHaveAttribute('target', '_blank');
+  await expect(setup).toHaveAttribute('rel', 'noopener noreferrer');
+  await expect(setup).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('share-panel-desktop.png'),
+    fullPage: true,
+  });
   await page.getByRole('button', { name: 'Connect to Gaps', exact: true }).click();
   const phrase = 'several separate words for a course connection';
   await page.getByLabel(/^Connection passphrase/).fill(phrase);

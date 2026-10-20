@@ -14,6 +14,7 @@ import {
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
+import { buttonClassName } from '../ui/buttonStyles';
 import { DelayedFallback } from '../ui/DelayedFallback';
 import { Skeleton } from '../ui/Skeleton';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
@@ -372,6 +373,16 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                     </ConfirmInlineSwap>
                   </div>
                 )}
+                <div className="mt-4">
+                  <a
+                    href={`https://gaps.getlacuna.app/#course=${link.shareId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonClassName('primary')}
+                  >
+                    Set up a class in Gaps
+                  </a>
+                </div>
                 {state === 'live' && (
                   <div className="mt-4">
                     <Suspense

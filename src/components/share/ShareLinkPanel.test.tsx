@@ -97,6 +97,25 @@ it('forwards an imported course link without publishing a new lineage', async ()
   expect(screen.queryByRole('button', { name: 'Create share link' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
   expect(screen.getByText(/publisher’s updates/)).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Set up a class in Gaps' })).toHaveAttribute(
+    'href',
+    `https://gaps.getlacuna.app/#course=${shareId}`,
+  );
   expect(publish).not.toHaveBeenCalled();
   localStorage.removeItem('lacuna.shareImports');
+});
+
+it('offers class set-up for a published course with only its public share id', async () => {
+  const shareId = 'd'.repeat(32);
+  credentials.mockResolvedValue({ token: 'private-token' });
+  render(view({ ...course, distribution: { shareId, revision: 1, publishedAt: 0 } } as Course));
+  const link = await screen.findByRole('link', { name: 'Set up a class in Gaps' });
+  expect(link).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+it('does not offer class set-up without a share link', () => {
+  render(view(course));
+  expect(screen.queryByRole('link', { name: 'Set up a class in Gaps' })).not.toBeInTheDocument();
 });
