@@ -85,7 +85,8 @@ export function dashboardForecasts(
 
 /**
  * How each active course's exam-day forecast has moved from `from` to `now`, measured
- * against the same exam as its current forecast. Courses without cards have no line.
+ * against the same exam as its current forecast. Courses without cards have no line;
+ * an empty history explicitly identifies courses without a usable memory state.
  */
 export function dashboardForecastHistories(
   courses: readonly Course[],
@@ -100,6 +101,18 @@ export function dashboardForecastHistories(
   for (const [course, courseCards] of forecastCards(courses, lessons, cards, now)) {
     const forecast = forecasts[course.id];
     if (!forecast || courseCards.length === 0) continue;
+    if (
+      !courseCards.some(
+        (card) =>
+          card.stability !== null &&
+          card.stability > 0 &&
+          card.lastReviewed !== null &&
+          card.lastReviewed <= now,
+      )
+    ) {
+      histories[course.id] = [];
+      continue;
+    }
     histories[course.id] = examDayHistory(courseCards, history, course, forecast.end, from, now);
   }
   return histories;

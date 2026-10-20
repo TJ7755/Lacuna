@@ -29,7 +29,7 @@ describe('course identity colours', () => {
         status: 'steady',
         forecast: {
           end: now + 28 * 86_400_000,
-          hasExam: false,
+          hasExam: true,
           target: 0.9,
           ifStopped: 0.8 - index * 0.1,
         },

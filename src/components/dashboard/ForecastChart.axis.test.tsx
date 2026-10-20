@@ -64,10 +64,26 @@ describe('ForecastChart axis', () => {
     }
   });
 
-  it('points to an exam beyond the window from the axis edge', () => {
-    renderChart(40);
-    expect(screen.queryByText(/· Exam/)).not.toBeInTheDocument();
-    expect(screen.getByText(/^Exam .+ →$/)).toBeInTheDocument();
+  it('extends the plot and the flat projection to an exam beyond the selected window', () => {
+    const { container } = renderChart(40);
+    const width = Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2]);
+    const projection = container.querySelector('path[aria-label]')!;
+    const coordinates = projection
+      .getAttribute('d')!
+      .match(/[\d.]+/g)!
+      .map(Number);
+    expect(coordinates[2]).toBeCloseTo(width - 16);
+    expect(coordinates[1]).toBe(coordinates[3]);
+    expect(screen.getByText(/· Exam/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Exam .+ →$/)).not.toBeInTheDocument();
+  });
+
+  it('names the predicted measure and its exam-day time reference accessibly', () => {
+    renderChart(7);
+    const chart = screen.getByRole('img', { name: 'Exam-day forecast' });
+    expect(chart).toHaveAccessibleDescription(/predicted exam-day recall/i);
+    expect(chart).toHaveAccessibleDescription(/each past point.*study up to that date/i);
+    expect(chart).toHaveAccessibleDescription(/no further reviews/i);
   });
 
   it('colours each course apart and states its status in the legend', () => {
