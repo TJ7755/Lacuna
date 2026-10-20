@@ -23,7 +23,13 @@ export class InsightsOwnerConflictError extends Error {
 export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys') {
   const database = new Dexie(databaseName);
   database.version(1).stores({ owners: 'shareId' });
+  database.version(2).stores({ owners: 'shareId', remembered: 'shareId' });
   const owners = database.table<StoredOwner, string>('owners');
+
+  const remembered = database.table<
+    { shareId: string; keyId: string; privateKey: CryptoKey },
+    string
+  >('remembered');
 
   async function remember(
     shareId: string,
@@ -61,6 +67,45 @@ export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys'
       if (!INSIGHT_ID_RE.test(shareId)) throw new Error('The share link code is invalid.');
       const stored = await owners.get(shareId);
       return stored ? recoverInsightsOwner(stored.recovery, passphrase, shareId) : null;
+    },
+
+    async rememberOnDevice(shareId: string, owner: InsightsOwner): Promise<boolean> {
+      try {
+        if (owner.privateKey.extractable) return false;
+        return await database.transaction('rw', owners, remembered, async () => {
+          const saved = await owners.get(shareId);
+          if (saved?.recovery.recipient.keyId !== owner.recipient.keyId) return false;
+          await remembered.put({
+            shareId,
+            keyId: owner.recipient.keyId,
+            privateKey: owner.privateKey,
+          });
+          return true;
+        });
+      } catch {
+        return false;
+      }
+    },
+
+    async readRemembered(shareId: string): Promise<InsightsOwner | null> {
+      return database.transaction('rw', owners, remembered, async () => {
+        const saved = await owners.get(shareId);
+        const row = await remembered.get(shareId);
+        if (!row) return null;
+        if (!saved || row.keyId !== saved.recovery.recipient.keyId) {
+          await remembered.delete(shareId);
+          return null;
+        }
+        return {
+          recipient: saved.recovery.recipient,
+          recovery: saved.recovery,
+          privateKey: row.privateKey,
+        };
+      });
+    },
+
+    async forgetRemembered(shareId: string): Promise<void> {
+      await remembered.delete(shareId);
     },
 
     close(): void {

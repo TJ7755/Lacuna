@@ -14,6 +14,7 @@ import {
   parseGapsConnectionFile,
   sealGapsConnection,
   type EncryptedGapsConnection,
+  type GapsCourseConnection,
 } from './connectionFile';
 import { validateRecoveryPassphrase } from '../sync/pairingConfig';
 
@@ -32,7 +33,19 @@ export interface ConnectedGapsCourse {
 export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
   const database = new Dexie(name);
   database.version(1).stores({ connections: 'shareId' });
+  database.version(2).stores({ connections: 'shareId', remembered: 'shareId', deviceKeys: 'id' });
   const connections = database.table<StoredConnection, string>('connections');
+  const remembered = database.table<
+    {
+      shareId: string;
+      connectionCiphertext: string;
+      nonce: Uint8Array<ArrayBuffer>;
+      ciphertext: ArrayBuffer;
+    },
+    string
+  >('remembered');
+  const deviceKeys = database.table<{ id: string; key: CryptoKey }, string>('deviceKeys');
+  const aad = (shareId: string) => new TextEncoder().encode(`lacuna-gaps-device-v1|${shareId}`);
   return {
     async createFromLink(
       link: string,
@@ -118,8 +131,84 @@ export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
         connections.put({ shareId: file.shareId, file, verifiedAt: Date.now() }),
       );
     },
+    async rememberOnDevice(connection: GapsCourseConnection): Promise<boolean> {
+      const { shareId } = connection;
+      try {
+        const saved = await connections.get(shareId);
+        if (!saved) return false;
+        // WebCrypto must finish before entering a Dexie transaction.
+        const candidate = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, [
+          'encrypt',
+          'decrypt',
+        ]);
+        const key = await database.transaction('rw', deviceKeys, async () => {
+          const existing = await deviceKeys.get('device');
+          if (existing) return existing.key;
+          await deviceKeys.put({ id: 'device', key: candidate });
+          return candidate;
+        });
+        const nonce = crypto.getRandomValues(new Uint8Array(12));
+        const bytes = new TextEncoder().encode(connection.writeToken);
+        let ciphertext: ArrayBuffer;
+        try {
+          ciphertext = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: nonce, additionalData: aad(shareId) },
+            key,
+            bytes,
+          );
+        } finally {
+          bytes.fill(0);
+        }
+        return await database.transaction('rw', connections, remembered, async () => {
+          const current = await connections.get(shareId);
+          if (current?.file.c !== saved.file.c) return false;
+          await remembered.put({ shareId, connectionCiphertext: saved.file.c, nonce, ciphertext });
+          return true;
+        });
+      } catch {
+        return false;
+      }
+    },
+    async readRemembered(shareId: string): Promise<GapsCourseConnection | null> {
+      const saved = await connections.get(shareId);
+      const row = await remembered.get(shareId);
+      const device = await deviceKeys.get('device');
+      if (!row) return null;
+      if (!saved || !device || row.connectionCiphertext !== saved.file.c) {
+        await remembered.delete(shareId);
+        return null;
+      }
+      const file = parseGapsConnectionFile(JSON.stringify(saved.file));
+      const bytes = new Uint8Array(
+        await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: row.nonce, additionalData: aad(shareId) },
+          device.key,
+          row.ciphertext,
+        ),
+      );
+      try {
+        const writeToken = new TextDecoder().decode(bytes);
+        if (!/^[0-9a-f]{64}$/.test(writeToken)) throw new Error('Invalid device credential.');
+        return { shareId, courseName: file.courseName, relayUrl: file.relayUrl, writeToken };
+      } finally {
+        bytes.fill(0);
+      }
+    },
+    async forgetRemembered(shareId: string): Promise<void> {
+      await remembered.delete(shareId);
+    },
     async forget(shareId: string): Promise<void> {
-      await connections.delete(shareId);
+      const { createInsightsOwnerStore } = await import('../insights/ownerStore');
+      const keys = createInsightsOwnerStore();
+      try {
+        await keys.forgetRemembered(shareId);
+        await database.transaction('rw', connections, remembered, async () => {
+          await remembered.delete(shareId);
+          await connections.delete(shareId);
+        });
+      } finally {
+        keys.close();
+      }
     },
     close(): void {
       database.close();

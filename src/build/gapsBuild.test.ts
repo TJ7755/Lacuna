@@ -93,6 +93,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/teacher/readReports.ts',
             'src/teacher/connectionFile.ts',
             'src/teacher/connectionStore.ts',
+            'src/teacher/rememberedClass.ts',
             'src/components/ui/Field.tsx',
             'src/insights/envelope.ts',
             'src/insights/recipient.ts',
@@ -132,9 +133,8 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       expect.stringMatching(/^assets\/TeacherClassReports-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherCourses-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherKeySetup-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/client-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/connectionStore-[\w-]+\.js$/),
-      // The shared validation and storage vendors; Rolldown names the chunk after one module.
-      expect.stringMatching(/^assets\/import-wrapper-prod-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/ownerStore-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/rolldown-runtime-[\w-]+\.js$/),

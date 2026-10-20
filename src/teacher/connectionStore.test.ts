@@ -219,3 +219,49 @@ it('refuses an older relay that ignores the source link instead of saving a froz
   expect(await store.list()).toEqual([]);
   expect(await relay.list('shares/')).toEqual(before);
 });
+
+it('encrypts remembered tokens with a non-extractable device key and deletes them on forget or removal', async () => {
+  const { owner, text, fetchImpl } = await fixture();
+  const store = openStore();
+  await store.connect(text, phrase, { fetchImpl });
+  const connection = (await store.unlock(owner.shareId, phrase))!;
+  expect(await store.rememberOnDevice(connection)).toBe(true);
+  store.close();
+  const reopened = openStore();
+  expect(await reopened.readRemembered(owner.shareId)).toEqual(connection);
+  const inspection = new Dexie(name);
+  await inspection.open();
+  const first = await inspection.table('remembered').get(owner.shareId);
+  const device = await inspection.table('deviceKeys').get('device');
+  expect(device.key.extractable).toBe(false);
+  expect(device.key.algorithm).toEqual({ name: 'AES-GCM', length: 256 });
+  expect(first.nonce.byteLength).toBe(12);
+  const raw = JSON.stringify(await Promise.all(inspection.tables.map((table) => table.toArray())));
+  expect(raw).not.toContain(phrase);
+  expect(raw).not.toContain(owner.writeToken);
+  expect(new TextDecoder().decode(first.ciphertext)).not.toContain(owner.writeToken);
+  await reopened.rememberOnDevice(connection);
+  const second = await inspection.table('remembered').get(owner.shareId);
+  expect(second.nonce).not.toEqual(first.nonce);
+  await reopened.forgetRemembered(owner.shareId);
+  expect(await reopened.readRemembered(owner.shareId)).toBeNull();
+  expect(await reopened.unlock(owner.shareId, phrase)).toEqual(connection);
+  await reopened.rememberOnDevice(connection);
+  await reopened.forget(owner.shareId);
+  expect(await inspection.table('remembered').count()).toBe(0);
+  inspection.close();
+});
+
+it('silently declines remembering when the device key cannot be cloned', async () => {
+  const { owner, text, fetchImpl } = await fixture();
+  const store = openStore();
+  await store.connect(text, phrase, { fetchImpl });
+  const connection = (await store.unlock(owner.shareId, phrase))!;
+  const commit = vi
+    .spyOn(Dexie.prototype, 'transaction')
+    .mockRejectedValueOnce(new DOMException('Cannot clone key', 'DataCloneError'));
+  expect(await store.rememberOnDevice(connection)).toBe(false);
+  commit.mockRestore();
+  expect(await store.readRemembered(owner.shareId)).toBeNull();
+  expect(await store.unlock(owner.shareId, phrase)).toEqual(connection);
+});

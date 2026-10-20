@@ -63,6 +63,7 @@ import {
   Spinner,
   usePresence,
 } from './gapsUi';
+import { forgetRememberedClass, readRememberedClass, rememberClass } from './rememberedClass';
 import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import type * as KeysExports from './TeacherKeySetup';
@@ -97,6 +98,17 @@ export function ClassPage({
 }) {
   const latest = completedIsoDayLabel(Date.now());
   const earliest = isoDayLabel(isoDayStartMs(latest) - (RETENTION_DAYS - 1) * DAY_MS);
+  const [forgetting, setForgetting] = useState(false);
+  const [forgetBusy, setForgetBusy] = useState(false);
+  const [forgetError, setForgetError] = useState('');
+  const forgetTrigger = useRef<HTMLButtonElement>(null);
+  const cancelForget = useRef<HTMLButtonElement>(null);
+  const wasForgetting = useRef(false);
+  useEffect(() => {
+    if (forgetting) cancelForget.current?.focus();
+    else if (wasForgetting.current) forgetTrigger.current?.focus();
+    wasForgetting.current = forgetting;
+  }, [forgetting]);
   const [tab, setTab] = useState<Tab>('results');
   const [day, setDay] = useState(latest);
   const [loading, setLoading] = useState(false);
@@ -169,7 +181,7 @@ export function ClassPage({
         <h1 tabIndex={-1} data-page-title className={cn(PAGE_TITLE, 'min-w-0 break-words')}>
           {course.courseName}
         </h1>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {session && (
             <>
               <button
@@ -179,13 +191,82 @@ export function ClassPage({
               >
                 <QrCodeIcon width={18} height={18} /> Class code
               </button>
+              {session.remembered && (
+                <button
+                  ref={forgetTrigger}
+                  type="button"
+                  className={buttonClassName('ghost')}
+                  onClick={() => setForgetting(true)}
+                >
+                  Forget on this device
+                </button>
+              )}
               <button type="button" onClick={onLock} className={buttonClassName('ghost')}>
-                Lock
+                {session.remembered ? 'Close' : 'Lock'}
               </button>
             </>
           )}
         </div>
       </header>
+
+      {session?.remembered && forgetting && (
+        <div className="mb-4">
+          <div
+            role="group"
+            aria-busy={forgetBusy}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !forgetBusy) {
+                setForgetError('');
+                setForgetting(false);
+              }
+            }}
+            className="gaps-fade flex flex-col gap-3 rounded-2xl border border-negative/20 bg-negative/5 p-4 sm:flex-row sm:items-center"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-ink-soft">
+                This browser will ask for both passphrases next time. Your class, reports and
+                recovery file are not affected.
+              </p>
+              {forgetError && (
+                <p role="alert" className="text-negative text-sm">
+                  {forgetError}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={forgetBusy}
+                className={buttonClassName('danger', 'sm')}
+                onClick={() => {
+                  setForgetError('');
+                  setForgetBusy(true);
+                  void forgetRememberedClass(course.shareId)
+                    .then(onLock)
+                    .catch(() => {
+                      setForgetError('Could not forget this class. Try again.');
+                      setForgetBusy(false);
+                    });
+                }}
+              >
+                Forget
+              </button>
+              <button
+                ref={cancelForget}
+                type="button"
+                disabled={forgetBusy}
+                className={buttonClassName('secondary', 'sm')}
+                onClick={() => {
+                  setForgetError('');
+                  setForgetting(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!session ? (
         <LockedClass
@@ -347,6 +428,22 @@ function LockedClass({
   onUnlocked(session: ClassSession): void;
   beginUnlock?(): (session: ClassSession) => boolean;
 }) {
+  const [checking, setChecking] = useState(request?.kind !== 'setup');
+  useEffect(() => {
+    if (request?.kind === 'setup') return;
+    let active = true;
+    const retain = beginUnlock?.();
+    void readRememberedClass(course.shareId).then((saved) => {
+      if (!active) return;
+      if (saved && (!retain || retain(saved))) onUnlocked(saved);
+      setChecking(false);
+    });
+    return () => {
+      active = false;
+    };
+    // One device lookup per mounted class; callbacks do not change its identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course.shareId]);
   const [step, setStep] = useState<ClassRequest['kind']>(request?.kind ?? 'unlock');
   const card = useRef<HTMLDivElement>(null);
   // The step whose first field takes focus once it has rendered.
@@ -360,15 +457,17 @@ function LockedClass({
   }, [request]);
   // Focus waits for the step's form, which may still be loading.
   useEffect(() => {
-    if (focusNext.current !== step || (step === 'setup' && !keys.Keys)) return;
+    if (checking || focusNext.current !== step || (step === 'setup' && !keys.Keys)) return;
     focusNext.current = null;
     focusFirstField(card.current);
-  }, [step, keys.Keys, request]);
+  }, [step, keys.Keys, request, checking]);
 
   function show(next: ClassRequest['kind']) {
     setStep(next);
     focusNext.current = next;
   }
+
+  if (checking) return <ResultsSkeleton />;
 
   return (
     <SectionCard className="gaps-rise flex flex-col items-center px-6 py-14 text-center md:py-16">
@@ -1050,6 +1149,7 @@ function UnlockForm({
   beginUnlock?(): (session: ClassSession) => boolean;
   onSetup(): void;
 }) {
+  const [remember, setRemember] = useState(true);
   const [connectionPhrase, setConnectionPhrase] = useState('');
   const [keyPhrase, setKeyPhrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -1077,8 +1177,12 @@ function UnlockForm({
         setError({ message: 'This browser has no key for this class yet.', setup: true });
         return;
       }
-      const session = { connection, owner, days: new Map() };
-      if (retain && !retain(session)) return;
+      const session: ClassSession = { connection, owner, days: new Map() };
+      if (remember) session.remembered = await rememberClass(session);
+      if (controller.signal.aborted || (retain && !retain(session))) {
+        if (session.remembered) await forgetRememberedClass(course.shareId);
+        return;
+      }
       onUnlocked(session);
     } catch (cause) {
       if (controller.signal.aborted) return;
@@ -1118,6 +1222,15 @@ function UnlockForm({
             onChange={(event) => setKeyPhrase(event.target.value)}
           />
         </Field>
+        <label className="flex items-center gap-3 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(event) => setRemember(event.target.checked)}
+            className="h-4 w-4 accent-accent"
+          />
+          Remember this class on this device
+        </label>
       </fieldset>
       {error && (
         <div key={attempt} role="alert" className="gaps-shake space-y-3 text-sm text-negative">

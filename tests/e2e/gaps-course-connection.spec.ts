@@ -1,3 +1,5 @@
+import { sealInsightEnvelope, type InsightsRecipient } from '../../src/insights/envelope';
+import { completedIsoDayLabel, isoDayStartMs } from '../../relay/src/insightsDay';
 import { expect, test } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
@@ -32,13 +34,25 @@ for (const width of [1280, 390]) {
       const request = route.request();
       requests.push(request.method());
       expect(request.url()).not.toContain(owner.writeToken);
+      if (request.url().includes('/insights/')) {
+        expect(request.headers().authorization).toBe(`Bearer ${owner.writeToken}`);
+        expect(reportEnvelope).toBeDefined();
+        await route.fulfill({
+          json: {
+            v: 2,
+            envelopes: [{ slotId: 'd'.repeat(32), envelope: reportEnvelope }],
+            cursor: null,
+          },
+        });
+        return;
+      }
       const response = await handle(
         new Request(request.url(), { method: request.method(), headers: request.headers() }),
       );
       await route.fulfill({
         status: response.status,
         headers: Object.fromEntries(response.headers),
-        body: '',
+        body: Buffer.from(await response.arrayBuffer()),
       });
     });
     await page.goto('/');
@@ -62,7 +76,10 @@ for (const width of [1280, 390]) {
     await expect(page.getByLabel('What do you need to do?')).toBeFocused();
     await expect(page.getByLabel(/^Published course link/)).toHaveCount(0);
     expect(requests).toEqual(['HEAD']);
-    await page.screenshot({ path: testInfo.outputPath(`protect-class-${width}.png`) });
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`protect-class-${width}.png`),
+    });
     await page.reload();
     await expect(page.getByRole('heading', { name: 'GCSE Biology' })).toBeVisible();
     expect(requests).toEqual(['HEAD']);
@@ -88,6 +105,7 @@ for (const width of [1280, 390]) {
       true,
     );
     await page.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath(`connected-course-${width}.png`),
       fullPage: true,
     });
@@ -106,6 +124,112 @@ for (const width of [1280, 390]) {
     ).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: 'Back to unlock' }).click();
     await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+    await expect(
+      unlock.getByRole('checkbox', { name: 'Remember this class on this device' }),
+    ).toBeChecked();
+    const recipient = await page.evaluate(
+      (shareId) =>
+        new Promise<InsightsRecipient>((resolve) => {
+          const opening = indexedDB.open('lacuna.gaps.owner-keys');
+          opening.onsuccess = () => {
+            const database = opening.result;
+            const read = database.transaction('owners').objectStore('owners').get(shareId);
+            read.onsuccess = () => {
+              database.close();
+              resolve(read.result.recovery.recipient);
+            };
+          };
+        }),
+      owner.shareId,
+    );
+    const day = completedIsoDayLabel(Date.now());
+    const reportEnvelope = await sealInsightEnvelope(
+      recipient,
+      new TextEncoder().encode(
+        JSON.stringify({
+          v: 1,
+          shareId: owner.shareId,
+          day,
+          pupil: { id: 'e'.repeat(32), label: 'Synthetic pupil' },
+          events: [
+            {
+              id: 'event',
+              itemId: 'card',
+              kind: 'card',
+              at: isoDayStartMs(day),
+              prompt: 'Membrane recall',
+              answer: '',
+              earned: null,
+              available: null,
+              retained: false,
+              marking: 'recall',
+              disputed: false,
+              shortened: false,
+              conceptIds: [],
+              criteria: [],
+            },
+          ],
+          omitted: 0,
+        }),
+      ),
+      { shareId: owner.shareId, isoDay: day },
+    );
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`unlock-${width}.png`),
+      fullPage: true,
+    });
+    await unlock.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
+    await unlock.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
+    await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Synthetic pupil', exact: true })).toBeVisible();
+    const header = page
+      .locator('header')
+      .filter({ has: page.getByRole('heading', { name: 'GCSE Biology', exact: true }) });
+    const forgetTrigger = header.getByRole('button', { name: 'Forget on this device' });
+    await expect(forgetTrigger).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Close', exact: true })).toHaveClass(
+      (await forgetTrigger.getAttribute('class')) ?? '',
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`remembered-${width}.png`),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'Unlock GCSE Biology' }).click();
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+    await expect(unlock).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Synthetic pupil', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Forget on this device' }).click();
+    await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
+    await expect(
+      page.getByText(
+        'This browser will ask for both passphrases next time. Your class, reports and recovery file are not affected.',
+      ),
+    ).toBeVisible();
+    await page.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath(`forget-${width}.png`),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(forgetTrigger).toBeFocused();
+    await page.getByRole('button', { name: 'Forget on this device' }).click();
+    await page.getByRole('button', { name: 'Forget', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Unlock GCSE Biology' }).click();
+    await expect(unlock).toBeVisible();
+    await unlock.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
+    await unlock.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
+    await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^Class settings/ }).click();
     const settings = page
       .locator('section')
@@ -121,7 +245,27 @@ for (const width of [1280, 390]) {
       'lacuna.gaps.connections',
       'lacuna.gaps.owner-keys',
     ]);
-    expect(requests).toEqual(['HEAD']);
+    expect(requests.filter((method) => method !== 'GET')).toEqual(['HEAD']);
+    const rememberedCounts = await page.evaluate(async () => {
+      const counts = [];
+      for (const name of ['lacuna.gaps.connections', 'lacuna.gaps.owner-keys']) {
+        counts.push(
+          await new Promise<number>((resolve) => {
+            const opening = indexedDB.open(name);
+            opening.onsuccess = () => {
+              const database = opening.result;
+              const read = database.transaction('remembered').objectStore('remembered').count();
+              read.onsuccess = () => {
+                database.close();
+                resolve(read.result);
+              };
+            };
+          }),
+        );
+      }
+      return counts;
+    });
+    expect(rememberedCounts).toEqual([0, 0]);
   });
 }
 
@@ -183,6 +327,7 @@ for (const width of [1280, 390]) {
     await page.getByLabel(/^Connection passphrase/).fill(phrase);
     await page.getByLabel('Repeat connection passphrase').fill(phrase);
     await page.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath(`course-link-form-${width}.png`),
       fullPage: true,
     });
@@ -218,6 +363,7 @@ for (const width of [1280, 390]) {
       true,
     );
     await page.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath(`linked-class-${width}.png`),
       fullPage: true,
     });

@@ -1,0 +1,1 @@
+- Gaps can remember unlocked classes on this device, with an explicit forget action; anyone using the same browser profile can reopen them without passphrases.

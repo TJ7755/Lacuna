@@ -86,12 +86,12 @@ class. Connecting a class expands its button into a form; unlock, setup, setting
 open in place. **Today** shows each class with one default
 next step (the first locked class is the primary action) and, for unlocked classes, the latest
 day's summary. A newly connected class opens setup with its course already selected; opening a
-locked class asks for both passphrases. Setup keeps recovery separate from the connection file
+locked class asks for both passphrases unless it is remembered on this device. Setup keeps recovery separate from the connection file
 and rejects recovery files belonging to another selected class. **Recover a class** in the
 sidebar opens restore without a selected class. After requesting a recovery download, the
 teacher can continue to unlock and share a class code. Unlocked classes start on daily results;
 the class code is a separate **Invite** tab. Motion is CSS-only and respects reduced motion.
-**Remove connection** asks for confirmation, then deletes only that browser's connection record: it preserves
+**Remove connection** asks for confirmation, then deletes that browser's connection and remembered credentials: it preserves
 the published share, teacher key, recovery files and pupil copies. A saved connection
 file can be imported again with fresh verification. Clearing browser storage still
 requires the separate teacher-key recovery file and passphrase to recover that key.
@@ -220,7 +220,8 @@ is updated only after the outbox acknowledgement commits.
 ## Teacher class workspace
 
 The lazy [class workspace](../src/teacher/TeacherClassReports.tsx) explicitly unlocks
-the encrypted connection and teacher key using their respective passphrases. Unlocking reads
+the encrypted connection and teacher key using their respective passphrases, or reopens remembered
+credentials on this device. Unlocking reads
 the latest completed day; stepping to another of the 84 retained days reads that day, after a
 short pause so stepping through several days makes one request. Each day read is kept for the
 session, so returning to it makes no request. It
@@ -236,19 +237,41 @@ self-marked, shortened and disputed evidence. Missing reports do not imply no st
 or absence. A class-code holder can fabricate results; these are study signals,
 not verified attainment or attendance. There are no keyless participation counters.
 
-Unlocked credentials and decrypted reports remain in this tab's memory until the class is
-locked or removed, or the tab is closed, so moving between **Today** and classes does not ask
-for the passphrases again. There is no report export or plaintext database. Locking, removing
-or leaving a class aborts its outstanding requests; locking or removing also drops its memory. Opening the teacher site still never opens the learner database.
+Decrypted reports remain in this tab's memory until the class is locked, closed or removed,
+or the tab is closed. Moving between **Today** and classes keeps that session. Reports are
+never persisted in plaintext. Leaving a class aborts its outstanding requests; locking,
+closing or removing also drops its session. Opening Gaps never opens the learner database.
+
+**Remember this class on this device** is checked by default when unlocking. A remembered
+class reopens without either passphrase, including after a reload or in another tab.
+**Close** drops the tab session and returns to **Today**, keeping remembered credentials.
+**Forget on this device** asks for confirmation, deletes those credentials and closes the
+class; the next opening asks for both passphrases. It leaves the class, reports and recovery
+file intact. **Remove connection** also deletes remembered credentials. Without remembering,
+**Lock** keeps its existing behaviour and leaves the unlock form open.
 
 ## Isolated teacher-key storage
 
-[ownerStore.ts](../src/insights/ownerStore.ts) uses a separate
-`lacuna.gaps.owner-keys` IndexedDB database. It imports no learner database or
-startup code. Records contain only the share id and encrypted recovery material;
-neither the passphrase nor an unencrypted private key is persisted. Unlocking is
-explicit and yields a non-exportable in-memory private key. No network request
-or device synchronisation is involved.
+[ownerStore.ts](../src/insights/ownerStore.ts) uses `lacuna.gaps.owner-keys` IndexedDB;
+[connectionStore.ts](../src/teacher/connectionStore.ts) uses `lacuna.gaps.connections`.
+Neither opens learner storage. Version 2 adds device credential tables without changing
+connection or recovery files. The teacher's already non-extractable RSA-OAEP `CryptoKey`
+is stored directly by structured clone with its `keyId`, beside the encrypted recovery.
+Reading checks that `keyId` against the saved recovery recipient; a mismatch deletes the
+remembered entry and returns to passphrase unlock.
+
+The connection write token is encrypted with AES-GCM-256 using a per-database,
+non-extractable device `CryptoKey`, also stored by structured clone. Every write uses a fresh
+96-bit nonce and additional authenticated data `lacuna-gaps-device-v1|<shareId>`. Rows contain
+ciphertext, nonce and non-secret metadata, never passphrases, raw key bytes or plaintext
+tokens. WebCrypto finishes before Dexie write transactions. If storing a `CryptoKey` fails,
+unlock still succeeds but remembering silently falls back to the existing passphrase flow.
+No network request or device synchronisation is involved in remembering.
+
+Anyone with access to this browser profile can open remembered classes, like a signed-in
+email account. The device key protects stored token bytes; it does not protect against
+someone using the same profile. Keep recovery and connection files with their passphrases
+separately for another device or cleared browser storage.
 
 Creation returns only after its database transaction commits. Concurrent creates
 cannot silently replace one another. Restoring a recovery file verifies the

@@ -184,3 +184,46 @@ describe('isolated teacher key storage', () => {
     expect(await store.unlock(shareId, passphrase)).toBeNull();
   }, 30_000);
 });
+
+it('remembers a non-extractable key, reopens reports without a passphrase, and forgets it', async () => {
+  const store = openStore();
+  const owner = await store.create(shareId, passphrase);
+  const context = { shareId, isoDay: '2026-10-18' };
+  const envelope = await sealInsightEnvelope(
+    owner.recipient,
+    new TextEncoder().encode('report'),
+    context,
+  );
+  expect(await store.rememberOnDevice(shareId, owner)).toBe(true);
+  store.close();
+  const reopened = openStore();
+  const remembered = (await reopened.readRemembered(shareId))!;
+  expect(remembered.privateKey.extractable).toBe(false);
+  expect(new TextDecoder().decode(await openInsightEnvelope(remembered, envelope, context))).toBe(
+    'report',
+  );
+  const inspection = new Dexie(databaseName);
+  await inspection.open();
+  const raw = await inspection.table('remembered').get(shareId);
+  expect(raw.keyId).toBe(owner.recipient.keyId);
+  expect(JSON.stringify(raw)).not.toContain(passphrase);
+  await inspection.table('remembered').update(shareId, { keyId: 'wrong' });
+  expect(await reopened.readRemembered(shareId)).toBeNull();
+  expect(await inspection.table('remembered').get(shareId)).toBeUndefined();
+  expect(await reopened.rememberOnDevice(shareId, owner)).toBe(true);
+  await reopened.forgetRemembered(shareId);
+  expect(await reopened.readRemembered(shareId)).toBeNull();
+  inspection.close();
+});
+
+it('silently declines remembering when CryptoKey cloning fails, retaining passphrase unlock', async () => {
+  const store = openStore();
+  const owner = await store.create(shareId, passphrase);
+  const commit = vi
+    .spyOn(Dexie.prototype, 'transaction')
+    .mockRejectedValueOnce(new DOMException('Cannot clone key', 'DataCloneError'));
+  expect(await store.rememberOnDevice(shareId, owner)).toBe(false);
+  commit.mockRestore();
+  expect(await store.readRemembered(shareId)).toBeNull();
+  expect((await store.unlock(shareId, passphrase))!.recipient).toEqual(owner.recipient);
+});

@@ -203,7 +203,9 @@ export function StandaloneTeacherHome() {
         }}
         onChanged={refresh}
         onLock={() => {
+          const remembered = sessions.get(course.shareId)?.remembered;
           sessionCache.lock(course.shareId);
+          if (remembered) go({ kind: 'today' });
           refresh();
         }}
         onRemoved={() => {
