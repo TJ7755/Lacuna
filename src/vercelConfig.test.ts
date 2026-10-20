@@ -15,6 +15,19 @@ describe('Vercel configuration', () => {
     );
   });
 
+  it('keeps partial film responses out of the external rewrite cache', async () => {
+    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+    for (const film of Object.values(landingFilms)) {
+      expect(
+        config.headers.find((entry: { source: string }) => entry.source === film.src)?.headers ??
+          [],
+      ).toContainEqual({
+        key: 'x-vercel-enable-rewrite-caching',
+        value: '0',
+      });
+    }
+  });
+
   it('typechecks the Vite configuration when Vercel supplies the library deployment configuration', async () => {
     await mkdir('artifacts', { recursive: true });
     const directory = await mkdtemp(resolve('artifacts/vercel-library-config-'));

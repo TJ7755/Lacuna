@@ -13,6 +13,11 @@ Film metadata also supplies Vite's local proxy; it does not import the root `ver
 which a subproject deployment can replace with its own configuration. A configuration test
 keeps the two deployed rewrites aligned with that metadata.
 
+Both film routes disable Vercel's external rewrite cache with
+`x-vercel-enable-rewrite-caching: 0`. A cached partial response can otherwise be returned
+for a different byte range and prevent playback. The Blob origin still serves range requests
+through its own CDN. See [Vercel's per-path cache opt-out](https://vercel.com/changelog/vercels-cdn-now-respects-cache-control-headers-from-external-origins-by-default).
+
 Posters in `public/landing/films` are frames from the student film at 3.3 seconds and the
 Gaps film at 12.5 seconds, converted to 1920×1080 WebP. The library and pupil data are
 fictional. Do not advertise a weekly course-publishing commitment.
