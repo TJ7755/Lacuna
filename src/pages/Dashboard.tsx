@@ -249,7 +249,7 @@ export function Dashboard() {
             Join a class
           </AppLink>
         </div>
-        <div className="ml-auto flex shrink-0 gap-2">
+        <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
           <div inert={importing}>
             <NewCourseControl
               open={creatingCourse && !importing}
