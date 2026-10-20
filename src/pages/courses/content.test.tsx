@@ -6,6 +6,7 @@ import { libraryCourses } from '../../library/catalogue';
 import { CoursePage } from './CoursePage';
 import { courseMetadata } from './content';
 import { LIBRARY_ORIGIN } from '../../config/origins';
+import { renderHead } from './entry-server';
 
 describe('public course catalogue', () => {
   it.each([undefined, ...libraryCourses])(
@@ -23,6 +24,41 @@ describe('public course catalogue', () => {
       expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
     },
   );
+
+  it.each([
+    ['physics0972', '0972', '0625'],
+    ['history0977', '0977', '0470'],
+  ])(
+    'includes both codes in %s content, metadata and structured data',
+    (id, primary, alternative) => {
+      const course = libraryCourses.find((entry) => entry.id === id)!;
+      const metadata = courseMetadata(course);
+      for (const value of [metadata.title, metadata.ogTitle, metadata.description]) {
+        expect(value).toContain(primary);
+        expect(value).toContain(alternative);
+      }
+      expect(metadata.canonical).toBe(`https://getlacuna.app/courses/${id}/`);
+      for (const selected of [course, undefined]) {
+        const doc = new DOMParser().parseFromString(
+          renderToStaticMarkup(<CoursePage course={selected} />),
+          'text/html',
+        );
+        const heading = selected
+          ? doc.querySelector('h1')
+          : doc.querySelector(`a[href="/courses/${id}/"]`);
+        expect(heading?.textContent).toContain(primary);
+        expect(heading?.textContent).toContain(alternative);
+      }
+      const head = new DOMParser().parseFromString(renderHead(`/courses/${id}/`), 'text/html');
+      const data = JSON.parse(
+        head.querySelector('script[type="application/ld+json"]')!.textContent!,
+      );
+      expect(data.name).toContain(primary);
+      expect(data.name).toContain(alternative);
+      expect(data.url).toBe(metadata.canonical);
+    },
+  );
+
   it('advertises every course in both source crawl files', () => {
     for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
       const source = readFileSync(path, 'utf8');

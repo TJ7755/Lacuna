@@ -41,6 +41,54 @@ a separate publisher lineage; importing a current link therefore does not migrat
 subscriber's course or learner evidence. Keep old links available until that migration has
 been designed and verified. Use the same current link for later revisions.
 
+## Cambridge alternative codes
+
+The catalogue keeps `0972` and `0977` as the primary codes and retains the existing course
+IDs and share URLs. `alternativeCodes` supplies `0625` and `0470` for display, text search and
+public-page metadata. These are two grading versions of the same subject content, not extra
+courses. The qualification label is Cambridge IGCSE because the combined listing serves both
+the A*–G and 9–1 scales.
+
+### Official syllabus check
+
+Checked on 20 October 2026 against the following Cambridge International PDFs. Neither the
+catalogue nor its course sheet declares exam years; this check is limited to the editions below
+and does not establish coverage for later syllabuses or audit every published lesson.
+
+- Physics, exams 2026–28: [0625, version 2](https://www.cambridgeinternational.org/Images/697209-2026-2028-syllabus.pdf)
+  and [0972, version 2](https://www.cambridgeinternational.org/Images/697240-2026-2028-syllabus.pdf),
+  subject content pp. 12–41. Both state: “Use this syllabus for exams in 2026, 2027 and 2028.”
+  Comparing the complete subject-content sections after removing page headers, footers and
+  whitespace finds only grading-label differences: maximum Core grade C versus 5, and Extended
+  target grades A*–C versus 9–4. Learning objectives, Core/Supplement content and all six topic
+  groups match. Cambridge's [0972 overview](https://www.cambridgeinternational.org/programmes-and-qualifications/cambridge-igcse-physics-9-1-0972/)
+  explicitly confirms it is “graded from 9 to 1 but is otherwise the same as Cambridge IGCSE Physics (0625)”.
+- History, exams 2024–26: [0470, version 1](https://www.cambridgeinternational.org/Images/649636-2024-2026-syllabus.pdf)
+  and [0977, version 2](https://www.cambridgeinternational.org/Images/649638-2024-2026-syllabus.pdf),
+  subject content pp. 11–28. Both include “Option B The twentieth century: international relations
+  since 1919.” and “Depth study B: Germany, 1918–45”. The complete subject-content text matches
+  after removing page headers, footers and whitespace. This comparison, rather than a blanket
+  equivalence sentence in these PDFs, establishes the content equivalence.
+- History, exams 2027–28: [0470, version 1](https://www.cambridgeinternational.org/Images/721327-2027-2028-syllabus.pdf)
+  and [0977, version 1](https://www.cambridgeinternational.org/Images/721357-2027-2028-syllabus.pdf),
+  subject content pp. 11–28. Again the paired subject-content text matches. Both say:
+  “There are no significant changes which affect teaching.” The changes section on p. 41 repeats this teaching-continuity statement; Paper 2 still uses
+  year- and series-specific prescribed topics (p. 30).
+  The change in introductory wording and added faculty feedback does not change the subject
+  objectives between the two History periods checked.
+
+Both History codes offer Core Option A or B and the same five depth studies: the First World
+War; Germany; Russia; the United States; and the Second World War in Europe and the Asia–Pacific.
+Lacuna advertises only its listed Option B topics and Germany, 1918–45. The preview does not
+list the sixth Option B question on USSR control of Eastern Europe, and does not establish full
+Option B coverage. Adding 0470 does not claim all History options, coursework support or full
+exam preparation. Paper 2 prescribed topics depend on the exam year and series.
+
+The codes also differ in entry arrangements, not just grades. The PDF covers offer June and
+November for all four codes, with an additional March series in India for 0625/0470. The 9–1
+versions have administrative-zone restrictions; consult the current Cambridge syllabus pages
+before making entries. Do not treat these metadata aliases as interchangeable exam-entry codes.
+
 ## Develop and check
 
 ```bash

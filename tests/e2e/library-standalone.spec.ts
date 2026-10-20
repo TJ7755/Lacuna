@@ -24,6 +24,48 @@ async function settle(page: Page) {
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'library', 'Run verify:browser -- --library');
 
 for (const width of [1280, 390, 320]) {
+  test(`find either Cambridge code and open its existing share at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    const search = page.getByRole('searchbox', { name: 'Search courses' });
+    const covers = page.getByRole('region', { name: 'Courses' }).getByRole('button');
+    for (const [subject, primary, alternative, shareId] of [
+      ['Physics', '0972', '0625', '52fe58acd2fcece40c1d10ffbf08276f'],
+      ['History', '0977', '0470', '31178fee8489ffcf1748c1dc5c570be5'],
+    ]) {
+      for (const code of [primary, alternative]) {
+        await search.fill(code);
+        await expect(covers).toHaveCount(1);
+        await expect(covers).toContainText(primary);
+        await expect(covers).toContainText(alternative);
+      }
+      await covers.click();
+      const sheet = page.getByRole('dialog', { name: subject });
+      await expect(sheet).toContainText(primary);
+      await expect(sheet).toContainText(alternative);
+      await expect(
+        sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }),
+      ).toHaveAttribute('href', `https://getlacuna.app/#/s/${shareId}`);
+      await page.keyboard.press('Escape');
+      await expect(sheet).toHaveCount(0);
+    }
+    await search.fill('  cAmBrIdGe 0625  ');
+    await expect(covers).toHaveCount(1);
+    await page.getByRole('radio', { name: 'Pearson Edexcel', exact: true }).click();
+    await expect(covers).toHaveCount(0);
+    await expect(page.getByRole('status')).toBeVisible();
+    await page.getByRole('radio', { name: 'All', exact: true }).click();
+    await expect(covers).toHaveCount(1);
+    await search.fill('');
+    await expect(covers).toHaveCount(4);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  });
+}
+
+for (const width of [1280, 390, 320]) {
   test(`browse and open courses without learner startup at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });
     const errors: string[] = [];

@@ -1,4 +1,4 @@
-import { libraryCourses, type LibraryCourse } from '../../library/catalogue';
+import { courseCodes, libraryCourses, type LibraryCourse } from '../../library/catalogue';
 import { CourseProvenance } from '../../library/CourseProvenance';
 import { Header, SectionHeading } from '../quizlet/ComparisonUi';
 import { LIBRARY_ORIGIN } from '../../config/origins';
@@ -19,7 +19,7 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
           <>
             <div className="course-intro">
               <h1>
-                {course.subject} {course.code}
+                {course.subject} {courseCodes(course)}
               </h1>
               <p>{course.qualification}</p>
               <p>{course.summary}</p>
@@ -79,7 +79,7 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
               <section className="course-index-entry" key={entry.id}>
                 <h2>
                   <a href={`/courses/${entry.id}/`}>
-                    {entry.subject} {entry.code}
+                    {entry.subject} {courseCodes(entry)}
                   </a>
                 </h2>
                 <p>{entry.qualification}</p>

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '../state/ThemeContext';
 import { LibraryPage } from './LibraryPage';
-import type { LibraryCourse } from './catalogue';
+import { libraryCourses, type LibraryCourse } from './catalogue';
 
 const biologyUrl = 'https://getlacuna.app/#/s/0123456789abcdef0123456789abcdef';
 const physicsUrl = 'https://getlacuna.app/#/s/abcdef0123456789abcdef0123456789';
@@ -58,6 +58,28 @@ describe('LibraryPage', () => {
     });
   });
   afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ['Physics', '0972', '0625'],
+    ['History', '0977', '0470'],
+  ])(
+    'finds %s by either syllabus code and shows both on its cover and sheet',
+    async (subject, primary, alternative) => {
+      renderLibrary(libraryCourses);
+      const search = screen.getByRole('searchbox', { name: 'Search courses' });
+      for (const code of [primary, alternative]) {
+        fireEvent.change(search, { target: { value: code } });
+        const course = cover(subject);
+        expect(course).toHaveTextContent(primary);
+        expect(course).toHaveTextContent(alternative);
+        expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
+      }
+      fireEvent.click(cover(subject));
+      const sheet = await screen.findByRole('dialog', { name: subject });
+      expect(sheet).toHaveTextContent(primary);
+      expect(sheet).toHaveTextContent(alternative);
+    },
+  );
 
   it('shows every course as a cover with its counts and no link until it is opened', () => {
     renderLibrary();
