@@ -10,6 +10,8 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.goto('/#/settings');
     const sizes = page.getByRole('radiogroup', { name: 'Text size', exact: true });
     await expect(sizes).toBeVisible();
+    // Park the pointer so hover scaling from an earlier click cannot count as springing.
+    await page.mouse.move(0, 0);
     await page.waitForTimeout(700);
     for (const label of ['Larger', 'Small', 'Default']) {
       await sizes.getByRole('radio', { name: label, exact: true }).focus();
