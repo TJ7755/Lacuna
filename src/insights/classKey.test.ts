@@ -3,7 +3,8 @@ import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { CHANNEL_TTL_MS } from '../../relay/src/channelMaintenance';
 import { createInsightsOwner } from './envelope';
-import { getClassRecipient, publishClassRecipient } from './classKey';
+import { requestShortClassCode, resolveShortClassCode } from '../shareLinks/client';
+import { getClassRecipient, getPublishedClassRecipient, publishClassRecipient } from './classKey';
 
 afterEach(() => vi.unstubAllEnvs());
 it('publishes only the public key under owner authentication and refuses a substituted recipient', async () => {
@@ -32,6 +33,13 @@ it('publishes only the public key under owner authentication and refuses a subst
   await publishClassRecipient({ ...options, recipient: keys.recipient });
   await publishClassRecipient({ ...options, recipient: keys.recipient });
   expect(await getClassRecipient({ ...options, keyId: keys.recipient.keyId })).toEqual(
+    keys.recipient,
+  );
+  const code = await requestShortClassCode(options);
+  expect(await requestShortClassCode(options)).toBe(code);
+  const resolvedId = await resolveShortClassCode({ ...options, code });
+  expect(resolvedId).toBe(owner.shareId);
+  expect(await getPublishedClassRecipient({ ...options, shareId: resolvedId })).toEqual(
     keys.recipient,
   );
   const stored = new TextDecoder().decode(

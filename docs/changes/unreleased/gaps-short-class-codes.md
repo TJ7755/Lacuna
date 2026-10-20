@@ -1,0 +1,1 @@
+- Add eight-character Gaps class codes for pupils to type, while keeping pinned teacher fingerprints in join links.

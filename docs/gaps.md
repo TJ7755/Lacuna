@@ -136,6 +136,11 @@ unused; it is not the encrypted evidence format.
 
 ## Encrypted daily envelopes
 
+Pupils can type an eight-character class code, which the relay looks up to find the
+class share. Lookups are limited to 600 per hour per address. Short-code joins trust
+the relay to return the teacher key; the join link and QR keep the full pinned
+teacher-key fingerprint.
+
 Class invitations bind the share id to the complete SHA-256 fingerprint of the
 teacher's encryption key. [classCode.ts](../src/insights/classCode.ts) produces a
 versioned pasteable code and accepts the same code in a share URL. Pupils must

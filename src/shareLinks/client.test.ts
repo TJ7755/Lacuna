@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   deleteShare,
+  resolveShortClassCode,
   formatShareLink,
   getShareBytes,
   mintShare,
@@ -219,4 +220,15 @@ describe('share link client', () => {
     await expect(mintShare('http://relay.example', fetchImpl)).rejects.toThrow(ShareLinkError);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
+});
+
+it.each([404, 429])('exposes short-code lookup HTTP %s as a typed error', async (status) => {
+  const fetchImpl = vi.fn(async () => jsonResponse(status, { error: 'unavailable' }));
+  const error = await resolveShortClassCode({
+    relayUrl: RELAY_URL,
+    code: 'K7QM4XTP',
+    fetchImpl,
+  }).catch((cause: unknown) => cause);
+  expect(error).toBeInstanceOf(ShareLinkError);
+  expect(error).toMatchObject({ status, operation: 'fetch' });
 });

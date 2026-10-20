@@ -30,14 +30,22 @@ function parsePublication(bytes: Uint8Array, shareId: string) {
 export async function getClassRecipient(
   options: ClassKeyOptions & Pick<ClassInvitation, 'keyId'>,
 ): Promise<InsightsRecipient> {
+  const recipient = await getPublishedClassRecipient(options);
+  if (recipient.keyId !== options.keyId)
+    throw new Error(
+      'The teacher key does not match the class code. Ask your teacher for a fresh code.',
+    );
+  return recipient;
+}
+
+/** Short-code joins trust the relay for the teacher key rather than pinning a fingerprint. */
+export async function getPublishedClassRecipient(
+  options: ClassKeyOptions,
+): Promise<InsightsRecipient> {
   return timed(options, async (signal) => {
     const stored = await getShareBytes({ ...options, signal, slot: 'teacher' });
     if (!stored) throw new Error('This class does not have a published teacher key.');
     const { recipient } = parsePublication(stored.bytes, options.shareId);
-    if (recipient.keyId !== options.keyId)
-      throw new Error(
-        'The teacher key does not match the class code. Ask your teacher for a fresh code.',
-      );
     return validateInsightsRecipient(recipient);
   });
 }

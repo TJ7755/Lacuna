@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   publish: vi.fn(),
   close: vi.fn(),
+  shortCode: vi.fn(),
   remember: vi.fn(),
   readRemembered: vi.fn(),
   forgetRemembered: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('./connectionStore', () => ({
 vi.mock('../insights/ownerStore', () => ({
   createInsightsOwnerStore: () => ({ unlock: mocks.unlockKey, close: mocks.close }),
 }));
+vi.mock('../shareLinks/client', () => ({ requestShortClassCode: mocks.shortCode }));
 vi.mock('./readReports', () => ({ readClassReports: mocks.read }));
 vi.mock('../insights/classKey', () => ({ publishClassRecipient: mocks.publish }));
 vi.mock('./TeacherKeySetup', () => ({
@@ -70,6 +72,7 @@ beforeEach(() => {
   });
   mocks.read.mockResolvedValue({ unreadable: 0, reports: [] });
   mocks.publish.mockResolvedValue(undefined);
+  mocks.shortCode.mockResolvedValue('K7QM4XTP');
   mocks.forget.mockResolvedValue(undefined);
 });
 
@@ -213,8 +216,12 @@ it('explains an empty day without claiming no study and leads to the class code'
     ),
   );
   const code = ((await screen.findByLabelText('Class code')) as HTMLInputElement).value;
-  expect(code).toMatch(/^GAPS1_/);
-  expect(screen.getByLabelText('Pupil join link')).toHaveValue(`https://getlacuna.app/#/s/${code}`);
+  expect(code).toBe('K7QM-4XTP');
+  expect((screen.getByLabelText('Pupil join link') as HTMLInputElement).value).toMatch(
+    /\/s\/GAPS1_/,
+  );
+  expect(screen.queryByText(/GAPS1_/)).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Copy$/ })).toBeVisible();
 });
 
 it('reads an earlier day on request and keeps days already read for this session', async () => {
@@ -563,4 +570,19 @@ it('keeps failed Forget visible and retryable until cancelled or retried', async
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   await act(async () => finish());
   expect(await screen.findByRole('form', { name: 'Unlock class' })).toBeVisible();
+});
+
+it('keeps the pinned link usable when short code creation fails', async () => {
+  mocks.shortCode.mockRejectedValue(new Error('offline'));
+  render(<Harness />);
+  await unlock();
+  fireEvent.click(await screen.findByRole('button', { name: 'Share class code' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Publish class code' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not create a short code. Pupils can still use the join link.',
+  );
+  expect((screen.getByLabelText('Pupil join link') as HTMLInputElement).value).toMatch(
+    /\/s\/GAPS1_/,
+  );
+  expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument();
 });

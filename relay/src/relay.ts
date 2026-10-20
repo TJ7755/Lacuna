@@ -4,7 +4,14 @@ import { handleAiRelayRoute, matchAiRelayPath, type AiRelayRoute } from './aiRel
 import { handleAiMaintenanceRoute } from './aiMaintenance.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
-import { handleShareItem, handleShareMint, handleShareSlot, type ShareSlot } from './shares.js';
+import {
+  handleClassCodeCreate,
+  handleClassCodeLookup,
+  handleShareItem,
+  handleShareMint,
+  handleShareSlot,
+  type ShareSlot,
+} from './shares.js';
 import { relayCorsHeaders } from './cors.js';
 import { handleInsight } from './insights.js';
 
@@ -74,6 +81,10 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
           return await handleSlot(store, request, route.id, route.slot, now);
         case 'slot-invalid':
           return json(400, request, { error: 'invalid slot' });
+        case 'class-code':
+          return await handleClassCodeLookup(store, request, route.code, now);
+        case 'share-class-code':
+          return await handleClassCodeCreate(store, request, route.id, now);
         case 'share-collection':
           return await handleShareMint(store, request, now());
         case 'share-item':
@@ -316,6 +327,8 @@ export type Route =
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
   | { kind: 'slot-invalid' }
+  | { kind: 'class-code'; code: string }
+  | { kind: 'share-class-code'; id: string }
   | { kind: 'share-collection' }
   | { kind: 'share-item'; id: string }
   | { kind: 'share-slot'; id: string; slot: ShareSlot }
@@ -375,6 +388,10 @@ function matchPath(pathname: string): Route | null {
     }
     return { kind: 'slot-invalid' };
   }
+  if (parts.length === 2 && parts[0] === 'class-codes')
+    return { kind: 'class-code', code: parts[1]! };
+  if (parts.length === 3 && parts[0] === 'shares' && parts[2] === 'class-code')
+    return { kind: 'share-class-code', id: parts[1]! };
   if (parts.length === 1 && parts[0] === 'shares') return { kind: 'share-collection' };
   if (parts.length === 2 && parts[0] === 'shares' && parts[1] !== undefined) {
     return { kind: 'share-item', id: parts[1] };

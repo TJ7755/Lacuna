@@ -8,6 +8,7 @@ export interface ClassSession {
   days: Map<string, ReadClassReports>;
   code?: string;
   remembered?: boolean;
+  shortCode?: string;
 }
 
 /** Tab-local sessions with revocable unlock completions; nothing is persisted. */

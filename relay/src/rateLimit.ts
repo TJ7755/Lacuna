@@ -6,9 +6,10 @@ import { canonicalEtag, type BlobStore } from './store.js';
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT_CAS_ATTEMPTS = 5;
-export const RATE_KEY_RE = /^ai-rate\/(?:pairing|channel-mint|share-mint|insights)\/[0-9a-f]{64}$/;
+export const RATE_KEY_RE =
+  /^ai-rate\/(?:pairing|channel-mint|share-mint|insights|class-code)\/[0-9a-f]{64}$/;
 
-export type RateScope = 'pairing' | 'channel-mint' | 'share-mint' | 'insights';
+export type RateScope = 'pairing' | 'channel-mint' | 'share-mint' | 'insights' | 'class-code';
 
 interface RateRecord {
   version: 1;
@@ -34,6 +35,7 @@ export async function consumeRatePermit(
 }
 
 export function rateLimitForKey(key: string): number {
+  if (key.startsWith('ai-rate/class-code/')) return 600;
   return key.startsWith('ai-rate/insights/') ? 100 : RATE_LIMIT;
 }
 
