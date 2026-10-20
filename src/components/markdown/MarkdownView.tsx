@@ -29,6 +29,8 @@ type ClozeMode = 'front' | 'back' | 'none';
 
 interface MarkdownViewProps {
   source: string;
+  /** Treat a whole card answer such as `1871.` as text rather than an empty list. */
+  literalNumericAnswer?: boolean;
   /** For cloze cards: render blanks (front) or reveal highlighted answers (back). */
   clozeMode?: ClozeMode;
   className?: string;
@@ -478,6 +480,7 @@ function renderMarkdownToHtml(
  */
 export const MarkdownView = memo(function MarkdownView({
   source,
+  literalNumericAnswer = false,
   clozeMode = 'none',
   className,
   allowEmbeds = false,
@@ -528,17 +531,24 @@ export const MarkdownView = memo(function MarkdownView({
   }, [source]);
 
   const html = useMemo(() => {
-    const prepared =
+    let prepared =
       clozeMode === 'front'
         ? renderClozeFront(resolved)
         : clozeMode === 'back'
           ? renderClozeBack(resolved)
           : resolved;
+    // Four leading spaces start a code block; up to three still allow a list marker.
+    if (
+      literalNumericAnswer &&
+      /^(?:[ \t]*\r?\n)* {0,3}\d+\.[ \t]*(?:\r?\n[ \t]*)*$/.test(prepared)
+    ) {
+      prepared = prepared.replace('.', '\\.');
+    }
     const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages);
     return typedAnswerFeedback
       ? typedAnswerFeedbackHtml(rendered, typedAnswerFeedback, clozeMode === 'back')
       : rendered;
-  }, [resolved, clozeMode, allowEmbeds, enlargeImages, typedAnswerFeedback]);
+  }, [resolved, clozeMode, literalNumericAnswer, allowEmbeds, enlargeImages, typedAnswerFeedback]);
 
   useEffect(() => {
     const players = containerRef.current?.querySelectorAll('audio') ?? [];

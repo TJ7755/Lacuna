@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { BackupFile } from './types';
+import { assertLessonPrerequisites } from './lessonPrerequisites';
+import type { BackupFile, Lesson } from './types';
 import { recordSchemas } from './backupRecordSchemas';
 import { stateSchemas } from './backupStateSchemas';
 
@@ -28,6 +29,11 @@ export const backupSchema = z
     userPerformance: z.array(recordSchemas.userPerformance),
   })
   .superRefine((backup, context) => {
+    try {
+      assertLessonPrerequisites((backup.lessons ?? []) as Lesson[]);
+    } catch (error) {
+      context.addIssue({ code: 'custom', path: ['lessons'], message: (error as Error).message });
+    }
     const require = (key: string, version: number) => {
       if (backup[key] === undefined)
         context.addIssue({

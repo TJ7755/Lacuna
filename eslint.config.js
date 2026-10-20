@@ -91,6 +91,10 @@ export default [
     languageOptions: { globals: { ...globals.node, ...globals.browser, ...globals.es2021 } },
   },
   {
+    files: ['gaps/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     // Command-line tooling reports through the console by design.
     files: ['scripts/**', 'tooling/**'],
     rules: { 'no-console': 'off' },

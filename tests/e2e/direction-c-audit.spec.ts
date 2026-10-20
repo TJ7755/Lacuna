@@ -247,7 +247,7 @@ test('the course bar stays at the top while a course page scrolls', async ({ pag
   expect(y).toBeLessThanOrEqual(1);
 });
 
-test('Today keeps Study on the first phone screen without a sharing announcement', async ({ page }) => {
+test('Today keeps Study on the first phone screen without a sharing announcement', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
@@ -258,6 +258,7 @@ test('Today keeps Study on the first phone screen without a sharing announcement
   // The first course's Study is on the first screen.
   const start = (await queue.getByRole('button', { name: /^Study / }).first().boundingBox())!;
   expect(start.y + start.height).toBeLessThanOrEqual(844);
+  await page.screenshot({ path: testInfo.outputPath('today-first-phone-screen.png') });
 });
 
 for (const width of [390, 1280]) {

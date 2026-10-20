@@ -1,0 +1,1 @@
+- Let pupils join a teacher’s class using a key-bound code, choose an encrypted class identifier and explicitly consent to daily reports. Delivery remains disabled unless the trial build flag is set; opt-out aborts active uploads and failed automatic attempts back off for an hour. (#600)

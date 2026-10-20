@@ -329,6 +329,8 @@ export type UnlockMode = 'linear' | 'semi-linear' | 'open';
  * cards against the nearest applicable exam date (see src/fsrs/examDate.ts).
  */
 export interface CourseRecord {
+  /** Literal creator/project display label; not verified authorship or approval. */
+  creator?: string;
   id: string;
   name: string;
   description: string;
@@ -362,6 +364,10 @@ export interface CourseRecord {
   linearCadence?: { anchorDate: number; intervalDays: number };
   /** When true, the system auto-inserts practice nodes between lessons. */
   autoPractice: boolean;
+  /** Local traversal preference on supported locked copies; never published content. */
+  localLessonOrder?: string[];
+  /** Local entry point; earlier material remains in catch-up and assessment practice. */
+  studyStartLessonId?: string;
   /** Minutes-to-clear threshold that triggers practice when the exam is not near. */
   practiceThresholdMinutesFar: number;
   /** Minutes-to-clear threshold that triggers practice when the exam is near. */
@@ -422,6 +428,7 @@ export interface CourseDistributedCopy {
     name: string;
     description: string;
     unlockMode: UnlockMode;
+    creator?: string;
     examBoard?: string;
     specification?: string;
     specificationRef?: SpecificationReference;
@@ -713,6 +720,8 @@ export interface Occlusion {
 export type AnswerMode = 'reveal' | 'type';
 
 export interface Lesson {
+  /** Advisory same-Course Lesson ids. Absence means none; never gates study. */
+  prerequisiteLessonIds?: string[];
   /** Default for cards without their own answer mode. */
   answerMode?: AnswerMode;
   id: string;
@@ -1322,6 +1331,7 @@ export interface LineageIdMapping {
 
 /** The subset of a Lesson's fields `lineageDiff.ts` diffs on, captured for student-edit detection. */
 export interface LineageLessonSnapshot {
+  prerequisiteLessonIds?: string[];
   answerMode?: AnswerMode;
   name: string;
   description?: string;

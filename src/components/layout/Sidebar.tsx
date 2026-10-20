@@ -81,17 +81,13 @@ export function Sidebar({
     [courses],
   );
 
-  // Group lessons by course, preserving per-course orderIndex order.
+  // The shell supplies the guarded traversal order for each course.
   const lessonsByCourse = useMemo(() => {
     const map = new Map<string, Lesson[]>();
     for (const lesson of allLessons ?? []) {
       const list = map.get(lesson.courseId) ?? [];
       list.push(lesson);
       map.set(lesson.courseId, list);
-    }
-    // Ensure per-course ordering is correct regardless of the global sort order.
-    for (const [, list] of map) {
-      list.sort((a, b) => a.orderIndex - b.orderIndex);
     }
     return map;
   }, [allLessons]);

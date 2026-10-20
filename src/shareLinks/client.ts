@@ -7,8 +7,8 @@ export { DEFAULT_RELAY_URL };
 export const SHARE_ID_RE = /^[0-9a-f]{32}$/;
 const WRITE_TOKEN_RE = /^[0-9a-f]{64}$/;
 
-export type ShareSlot = 'payload' | 'meta';
-export type ShareLinkOperation = 'mint' | 'publish' | 'fetch' | 'remove';
+export type ShareSlot = 'payload' | 'meta' | 'teacher';
+export type ShareLinkOperation = 'mint' | 'publish' | 'fetch' | 'remove' | 'verify';
 
 export class ShareLinkError extends Error {
   readonly operation: ShareLinkOperation;
@@ -149,7 +149,12 @@ export async function mintShare(
   fetchImpl?: typeof fetch,
 ): Promise<{ shareId: string; writeToken: string }> {
   const fetcher = requireFetch(fetchImpl);
-  const response = await shareFetch(fetcher, `${relayFor(relayUrl, 'mint')}/shares`, { method: 'POST' }, 'mint');
+  const response = await shareFetch(
+    fetcher,
+    `${relayFor(relayUrl, 'mint')}/shares`,
+    { method: 'POST' },
+    'mint',
+  );
   if (!response.ok) throw await shareHttpError('mint', response);
   let raw: unknown;
   try {
@@ -170,6 +175,51 @@ export async function mintShare(
   return parsed.data;
 }
 
+export interface VerifyShareOwnerOptions {
+  relayUrl: string;
+  shareId: string;
+  writeToken: string;
+  fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
+}
+
+/** Check the current owner credential without fetching or republishing course bytes. */
+export async function verifyShareOwner(options: VerifyShareOwnerOptions): Promise<void> {
+  const relay = relayFor(options.relayUrl, 'verify');
+  const shareId = requireShareId(options.shareId, 'verify');
+  const writeToken = requireWriteToken(options.writeToken, 'verify');
+  const fetcher = requireFetch(options.fetchImpl);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) abort();
+  else options.signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(abort, 15_000);
+  try {
+    const response = await shareFetch(
+      fetcher,
+      `${relay}/shares/${shareId}`,
+      {
+        method: 'HEAD',
+        headers: { Authorization: `Bearer ${writeToken}` },
+        signal: controller.signal,
+        cache: 'no-store',
+        credentials: 'omit',
+        redirect: 'error',
+      },
+      'verify',
+    );
+    if (response.status !== 204) {
+      throw new ShareLinkError(`Could not verify the share link owner (HTTP ${response.status}).`, {
+        operation: 'verify',
+        status: response.status,
+      });
+    }
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abort);
+  }
+}
+
 export interface PutShareBytesOptions {
   relayUrl: string;
   shareId: string;
@@ -179,10 +229,13 @@ export interface PutShareBytesOptions {
   /** Quoted ETag generation; `"0"` for the first write into an empty slot. */
   ifMatch: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /** Publish one slot of a share, returning the relay's new generation. */
-export async function putShareBytes(options: PutShareBytesOptions): Promise<{ generation: string }> {
+export async function putShareBytes(
+  options: PutShareBytesOptions,
+): Promise<{ generation: string }> {
   const { slot, bytes, ifMatch } = options;
   const fetcher = requireFetch(options.fetchImpl);
   const relay = relayFor(options.relayUrl, 'publish');
@@ -193,6 +246,10 @@ export async function putShareBytes(options: PutShareBytesOptions): Promise<{ ge
     `${relay}/shares/${shareId}/${slot}`,
     {
       method: 'PUT',
+      signal: options.signal,
+      credentials: 'omit',
+      redirect: 'error',
+      cache: 'no-store',
       headers: {
         Authorization: `Bearer ${writeToken}`,
         'Content-Type': 'application/octet-stream',
@@ -219,6 +276,7 @@ export interface GetShareBytesOptions {
   shareId: string;
   slot: ShareSlot;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
 }
 
 /** Fetch one slot of a share; null when the slot has never been published. */
@@ -233,6 +291,9 @@ export async function getShareBytes(
     `${relay}/shares/${shareId}/${options.slot}`,
     {
       method: 'GET',
+      signal: options.signal,
+      credentials: 'omit',
+      redirect: 'error',
       cache: 'no-store',
     },
     'fetch',
@@ -246,7 +307,35 @@ export async function getShareBytes(
       status: response.status,
     });
   }
-  return { bytes: new Uint8Array(await response.arrayBuffer()), generation };
+  const limit = options.slot === 'payload' ? 4 * 1024 * 1024 : 8 * 1024;
+  const reader = response.body?.getReader();
+  if (!reader)
+    throw new ShareLinkError('The share link service gave an empty response.', {
+      operation: 'fetch',
+    });
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.byteLength;
+      if (length > limit) {
+        await reader.cancel();
+        throw new ShareLinkError('The share link response is too large.', { operation: 'fetch' });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { bytes, generation };
 }
 
 export interface DeleteShareOptions {
@@ -296,7 +385,14 @@ async function shareHttpError(
   } catch {
     // The platform may have answered without a readable body.
   }
-  const verb = operation === 'mint' ? 'create' : operation === 'fetch' ? 'fetch' : operation === 'remove' ? 'remove' : 'publish';
+  const verb =
+    operation === 'mint'
+      ? 'create'
+      : operation === 'fetch'
+        ? 'fetch'
+        : operation === 'remove'
+          ? 'remove'
+          : 'publish';
   return new ShareLinkError(
     `Could not ${verb} the share link (HTTP ${response.status}).${detail}${reason}`,
     { operation, status: response.status },

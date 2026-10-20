@@ -1,4 +1,5 @@
 import { MissingRecord } from '../components/course/MissingRecord';
+import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 // Course path page — renders the ordered sequence of lessons for a course.
 // Route: /course/:courseId
 // British English throughout.
@@ -160,6 +161,7 @@ export function CoursePath() {
       ? currentAssessmentPracticeContext({
           course,
           assessments: assessments ?? [],
+          practiceNodes: practiceNodes ?? [],
           lessons: lessons ?? [],
           cards: courseCards ?? [],
           links: lessonLinks ?? [],
@@ -176,7 +178,7 @@ export function CoursePath() {
     // `now` is deliberately excluded: recomputation is scoped to data changes
     // (cards/perf), not wall-clock drift, and live-query updates re-render anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf]);
+  }, [assessments, course, courseCards, exposures, lessonLinks, lessons, perf, practiceNodes]);
 
   const nodes = useMemo(
     () =>
@@ -310,6 +312,14 @@ export function CoursePath() {
   }
 
   const lastLesson = lessons[lessons.length - 1];
+  const orderReason = course.localLessonOrder
+    ? localLessonOrderUnavailableReason(course, lessons, assessments, practiceNodes)
+    : undefined;
+  const orderNotice = orderReason ? (
+    <p role="status" className="text-sm text-ink-soft">
+      Saved lesson order is suspended. {orderReason} Using publisher order.
+    </p>
+  ) : null;
   const pathEditors = archived ? null : (
     <AnimatePresence>
       {selectedAssessmentId &&
@@ -358,6 +368,15 @@ export function CoursePath() {
   const dueReviewCardIds = studyFlowSnapshot?.dueReviewCardIds;
   const dueCardCount = dueReviewCardIds?.size ?? 0;
   const otherWays = [
+    ...((studyFlowSnapshot?.examPracticeEligibleCount ?? 0) > 0
+      ? [
+          {
+            label: 'Practise for exam',
+            description: 'Cards below the exam target, including cards not yet due',
+            onSelect: () => navigate(`/course/${courseId}/study?review=exam`),
+          },
+        ]
+      : []),
     {
       // Named as in the session plan's Other ways, which offers the same session.
       label: 'Only review due cards',
@@ -399,6 +418,7 @@ export function CoursePath() {
     const LessonView = getLoadedRouteModule(loadLessonView)?.default ?? LazyLessonView;
     return (
       <>
+        {orderNotice}
         {!archived && pendingUpdate && (
           <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
             <Link
@@ -457,6 +477,7 @@ export function CoursePath() {
   const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
     <CoursePageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+      {orderNotice}
       <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
         <CourseHeader
           className="min-w-0 flex-[1_1_320px]"

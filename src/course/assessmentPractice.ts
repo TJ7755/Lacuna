@@ -5,6 +5,7 @@ import type {
   Lesson,
   LessonCardExposure,
   LessonCardLink,
+  PracticeNode,
 } from '../db/types';
 import { isAvailable } from '../fsrs/eligibility';
 import { rAtExam } from '../fsrs/forwardSim';
@@ -14,6 +15,7 @@ import { daysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
 import { lessonCardMembershipForLessons, practiceCardScope } from './studyPools';
+import { earlierCourseLessonIds } from './courseEntry';
 
 export interface AssessmentPracticeOption {
   assessmentId: string;
@@ -30,6 +32,8 @@ export interface AssessmentPracticeContext {
   links: LessonCardLink[];
   exposures: LessonCardExposure[];
   reachedLessonIds: ReadonlySet<string>;
+  practiceNodes?: PracticeNode[];
+  priorKnowledgeLessonIds?: ReadonlySet<string>;
   now?: number;
 }
 
@@ -68,19 +72,34 @@ export function currentAssessmentPracticeContext(
 /** Ordinary Practice cards for one selected assessment and no other horizon. */
 export function assessmentPracticePool(
   assessment: CourseAssessment,
-  context: Omit<AssessmentPracticeContext, 'assessments' | 'course'> & { course: Course },
+  context: Omit<AssessmentPracticeContext, 'assessments' | 'course'> & {
+    course: Course;
+    assessments?: CourseAssessment[];
+  },
 ): Card[] {
   const now = context.now ?? Date.now();
   const examDate = assessment.examDate;
   if (context.course.archived || examDate === undefined || examDate <= now) return [];
+  const knownCardIds = new Set([
+    ...context.exposures.map((exposure) => exposure.cardId),
+    ...lessonCardMembershipForLessons(
+      context.priorKnowledgeLessonIds ?? earlierCourseLessonIds(
+        context.course,
+        context.lessons,
+        context.assessments ?? [assessment],
+        context.practiceNodes ?? [],
+      ),
+      context.cards,
+      context.links,
+    ).map((card) => card.id),
+  ]);
   const reachedAndExposed = practiceCardScope(
-    context.cards,
+    context.cards.filter(
+      (card) => context.course.learnFirst === false || knownCardIds.has(card.id),
+    ),
     context.links,
     context.exposures,
-    {
-      reachedLessonIds: context.reachedLessonIds,
-      requireExposure: context.course.learnFirst !== false,
-    },
+    { reachedLessonIds: context.reachedLessonIds, requireExposure: false },
     now,
     context.course.leechThreshold,
   );
@@ -109,7 +128,6 @@ export function assessmentPracticePool(
       rAtExam(card, examDate, now, decay) < MASTERY_R,
   );
 }
-
 /** Future assessments intersecting this exact Practice context, ordered by date. */
 export function assessmentPracticeOptions(
   context: AssessmentPracticeContext,

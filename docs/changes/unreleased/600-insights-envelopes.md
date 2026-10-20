@@ -1,0 +1,1 @@
+- Add an isolated Class insights encryption spike with teacher-key recovery and authenticated course/week binding; pupil delivery remains disconnected pending key lifecycle, relay and security review (#600).

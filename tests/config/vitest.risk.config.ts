@@ -11,6 +11,8 @@ export default defineConfig({
       'src/db/migrations.test.ts',
       'src/db/schemaV*.test.ts',
       'src/db/courseRepository.test.ts',
+      'src/db/lessonPrerequisites.test.ts',
+      'src/db/localLessonOrder.test.ts',
       'src/db/arc4Persistence.test.ts',
       'src/db/repository.mutation.test.ts',
       'src/db/repository.test.ts',

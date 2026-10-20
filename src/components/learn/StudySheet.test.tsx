@@ -24,7 +24,11 @@ const mockFlows: Record<
   string,
   {
     course: Course;
-    snapshot: { recurringPracticeEligibleCount: number; practiceByKey: Map<string, unknown> };
+    snapshot: {
+      recurringPracticeEligibleCount: number;
+      examPracticeEligibleCount?: number;
+      practiceByKey: Map<string, unknown>;
+    };
     decision: { kind: 'step'; step: { kind: 'lesson'; lessonId: string; label: string } };
     lessonCardsById: Map<string, Card[]>;
     meanReviewSeconds: number;
@@ -35,6 +39,10 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
   return { ...actual, useNavigate: () => mockNavigate };
 });
+
+vi.mock('../../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => ({ lessons: [{ id: 'l1', name: 'Atomic structure' }] }),
+}));
 
 vi.mock('../../state/useCourseData', () => ({
   useCourses: () => mockCourses,
@@ -119,6 +127,12 @@ beforeEach(() => {
 });
 
 describe('StudySheet', () => {
+  it('offers early exam practice separately from due reviews and the default plan', () => {
+    mockFlows.chem.snapshot.examPracticeEligibleCount = 4;
+    renderSheet('chem');
+    fireEvent.click(screen.getByRole('button', { name: 'Practise for exam 4' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/chem/study?review=exam');
+  });
   it('expands the preview before navigating under the cover', async () => {
     motionPreference.multiplier = 1;
     renderSheet('chem');

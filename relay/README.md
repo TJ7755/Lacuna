@@ -22,7 +22,7 @@ Name.com DNS (configured 27 September 2026, TTL 300):
 Vercel provisions HTTPS for each domain. Use the current project Domains settings
 as the authority if Vercel changes these DNS targets.
 
-Browsers may read relay responses only from `https://getlacuna.app`, `https://lacuna-beta-one.vercel.app`,
+Browsers may read relay responses only from `https://getlacuna.app`, `https://gaps.getlacuna.app`, `https://lacuna-beta-one.vercel.app`,
 the desktop app (`app://.`) and loopback development servers. Set `RELAY_ALLOWED_ORIGINS` to a
 comma-separated list to add others, such as a preview or self-hosted web build. Requests without an
 `Origin` header, such as the terminal companion's, are unaffected.
@@ -68,6 +68,12 @@ trusted client-address header before storing the shared compare-and-swap counter
 counters are separate from the device-sync mint limit.
 
 ## Daily maintenance
+
+The experimental Gaps mailbox is described in [the Gaps boundaries](../docs/gaps.md).
+It remains disabled unless `RELAY_INSIGHTS_ENABLED=1`; its client is not installed
+in the app. Encrypted daily envelopes have a fixed 84-day expiry from the end of
+their reporting day. Maintenance scans up to 500 insight objects per run using a
+stored cursor, so physical deletion can lag the immediate read/write expiry.
 
 Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. The job removes AI sessions 24
 hours after their pairing or claimed-session expiry, and removes corrupt or orphaned AI objects

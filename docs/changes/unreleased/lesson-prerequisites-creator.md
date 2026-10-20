@@ -1,0 +1,1 @@
+- Preserve advisory Lesson prerequisites and literal Course creator labels through Course sharing, imports, published updates and backups, with stable prerequisite identities and safe deletion undo.

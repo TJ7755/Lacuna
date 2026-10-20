@@ -42,6 +42,7 @@ export function SharePage() {
     <div className={`${PAGE_FRAME} pb-12`}>
       <header className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Share</h1>
+        <Link to="/teach" className={buttonClassName('secondary')}>Class insights</Link>
         {course && courses && courses.length > 1 && (
           <Menu
             label="Course to share"

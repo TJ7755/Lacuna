@@ -28,6 +28,66 @@ function renderFace(typedAnswer: string, overrides = {}) {
   );
 }
 
+describe('standalone numeric card answers', () => {
+  it.each(['1871.', '1921.', '1.', '0.'])('shows %s as literal answer text', (back) => {
+    const { container } = renderFace('', { card: { ...card, back }, isTyping: false });
+    expect(container.querySelector('[data-study-face="back"]')?.textContent).toBe(back);
+    expect(container.querySelector('p')?.textContent).toBe(back);
+    expect(container.querySelector('ol')).toBeNull();
+  });
+
+  it.each([' 1871.', '1871. ', '1871.\n\n', '\n\n  1871. \n'])(
+    'keeps a padded answer %j as text',
+    (back) => {
+      const { container } = renderFace('', { card: { ...card, back }, isTyping: false });
+      expect(container.querySelector('p')?.textContent?.trim()).toBe('1871.');
+      expect(container.querySelector('ol')).toBeNull();
+    },
+  );
+
+  it('preserves an intentionally indented code answer', () => {
+    const { container } = renderFace('', { card: { ...card, back: '    1871.' }, isTyping: false });
+    expect(container.querySelector('pre code')?.textContent?.trim()).toBe('1871.');
+    expect(container.querySelector('p')).toBeNull();
+  });
+
+  it.each([
+    ['1871', '1871'],
+    ['1871\\.', '1871.'],
+    ['1.5', '1.5'],
+    ['0.5', '0.5'],
+    ['-1.', '-1.'],
+    ['+1.', '+1.'],
+  ])('preserves the numeric control %s', (back, expected) => {
+    const { container } = renderFace('', { card: { ...card, back }, isTyping: false });
+    expect(container.querySelector('p')?.textContent).toBe(expected);
+    expect(container.querySelector('ol')).toBeNull();
+  });
+
+  it.each(['1. First answer\n2. Second answer', '1871. First answer\n1872. Second answer'])(
+    'preserves a genuine ordered-list answer: %s',
+    (back) => {
+      const { container } = renderFace('', { card: { ...card, back }, isTyping: false });
+      expect(container.querySelector('ol')).not.toBeNull();
+      expect(container.querySelector('ol')?.start).toBe(Number(back.split('.')[0]));
+      expect([...container.querySelectorAll('li')].map((item) => item.textContent)).toEqual([
+        'First answer',
+        'Second answer',
+      ]);
+    },
+  );
+
+  it('shows the same literal answer while measuring the card', () => {
+    const { container } = renderFace('', {
+      card: { ...card, back: '1871.' },
+      isTyping: false,
+      measuring: true,
+    });
+    expect(container.querySelector('p')?.textContent).toBe('1871.');
+    expect(container.querySelector('ol')).toBeNull();
+  });
+});
+
 describe('inline typed answer card face', () => {
   it.each([false, true])('highlights only missing words (measuring: %s)', (measuring) => {
     const { container } = renderFace('timetable', { measuring });

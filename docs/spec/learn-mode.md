@@ -25,6 +25,11 @@ Objective ordering, cooldown, due-only review and assessment revision are separa
 Keep their boundaries explicit; due-only must respect saved due times and cannot introduce new
 Cards. Availability and denominator rules are in [eligibility](eligibility.md).
 
+Today and Study share a course-wide pool of scheduled reviews due now. Lesson locks,
+introductions and predicted exam readiness cannot hide those reviews. Without a future exam,
+future scheduled Cards are held until due; optional exam practice admits only Cards below their
+applicable future exam target and is never labelled as due work.
+
 The timer captures recall time when the answer is revealed or submitted. Thinking during marking
 and editing must not inflate it. Incorrect answers, inferred grades and manual grades use the
 same real FSRS transition. Hint penalties apply at the answer boundary, without contaminating the

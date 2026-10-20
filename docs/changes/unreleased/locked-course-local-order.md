@@ -1,0 +1,1 @@
+- Reorder lessons locally on supported locked imported courses without changing publisher content or losing the update connection. Course settings provides Move up/down and Use publisher order; unsupported sequencing suspends the preference with an explanation. Personal backups and peer sync retain the preference; course shares keep publisher order.

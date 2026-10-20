@@ -267,6 +267,17 @@ function PracticeWorkspace({
           )}
         </div>
       </header>
+      {attempt.conceptPractice && (
+        <p className="px-5 text-sm text-ink-soft" role="note">
+          Skill practice ·{' '}
+          {attempt.conceptPractice.novelty === 'unseen'
+            ? 'Unseen question'
+            : 'Familiar question — previously exposed content'}
+          {attempt.receipt.bank?.blueprint &&
+            ` · ${attempt.receipt.bank.blueprint.type} · ${attempt.receipt.bank.blueprint.difficulty} · ${attempt.receipt.bank.blueprint.context}`}
+          {attempt.undoneAt !== undefined && ' · Undone: excluded from skill scheduling'}
+        </p>
+      )}
       {(progress.error || actionError) && (
         <div className="qs-error" role="alert">
           {progress.error?.message ?? actionError}

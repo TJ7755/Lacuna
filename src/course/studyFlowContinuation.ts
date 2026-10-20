@@ -37,6 +37,8 @@ export function continuesWithoutPause(
     mayContinueWithoutPause(completed, summary, breakPending) &&
     next.kind === 'step' &&
     next.step.kind === 'practice' &&
-    next.step.mode !== 'assessment'
+    next.step.mode !== 'assessment' &&
+    !(completed.kind === 'practice' && completed.mode === 'catch-up' &&
+      next.step.mode === 'catch-up')
   );
 }

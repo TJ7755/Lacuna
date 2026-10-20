@@ -45,6 +45,7 @@ export function useCourseStudyFlow(
     const currentPractice = currentAssessmentPracticeContext({
       course: records.course,
       assessments: records.assessments,
+      practiceNodes: records.practiceNodes,
       lessons: records.lessons,
       cards: records.cards,
       links: records.links,

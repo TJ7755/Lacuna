@@ -1,0 +1,1 @@
+- Generate the image-performance test's large fixtures before its browser measurement deadline starts, so cold compression cannot prevent the rendering checks from running.

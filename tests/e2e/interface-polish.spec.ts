@@ -7,8 +7,10 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 1000 });
     await enterFreshLacuna(page);
-    await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
+    await page
+      .getByRole('region', { name: 'Today, most urgent first' })
+      .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+      .click();
     const drawings = page.locator('[data-path-drawing]');
     await expect(drawings).toHaveCount(0);
     const lessons = page.getByRole('list', { name: 'Course path' });
@@ -29,8 +31,13 @@ for (const width of [390, 1440]) {
     await expect(page.getByText('Collaborate', { exact: true })).toHaveCount(0);
     const heading = page.getByRole('heading', { name: 'Share', exact: true });
     await expect(heading).toBeVisible();
-    // The header holds the title and the course being shared, nothing descriptive.
-    await expect(heading.locator('xpath=ancestor::header[1]')).toHaveText('ShareWelcome to Lacuna');
+    const header = heading.locator('xpath=ancestor::header[1]');
+    await expect(header).toHaveText('ShareClass insightsWelcome to Lacuna');
+    await header.getByRole('link', { name: 'Class insights', exact: true }).press('Enter');
+    await expect(page).toHaveURL(/#\/teach$/);
+    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await page.goBack();
+    await expect(heading).toBeVisible();
     const linkSection = page
       .getByRole('heading', { name: 'Share link', exact: true })
       .locator('xpath=ancestor::section[1]');

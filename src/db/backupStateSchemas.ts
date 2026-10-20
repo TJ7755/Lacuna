@@ -114,6 +114,7 @@ const incomingCard = object({
 });
 const incomingNote = object({ i: id, n: text, c: text });
 const incomingLesson = object({
+  pr: ids.optional(),
   i: id,
   n: text,
   d: text.optional(),

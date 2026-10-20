@@ -21,7 +21,6 @@ import { AppLink as Link } from '../components/ui/AppLink';
 import { originFrom } from '../utils/editorOrigin';
 import {
   useCourse,
-  useLessons,
   useCourseCardProjections,
   useOcclusions,
   useSequences,
@@ -38,6 +37,7 @@ import { arrivalDelay } from './settings/SettingsUi';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import type { Card, Lesson, Occlusion, SchedulingUnitRecord, Sequence } from '../db/types';
+import { useLessonOrderData } from '../state/useLessonOrderData';
 
 /**
  * Navigate from Cards so the destination's Back returns here with the same search,
@@ -88,7 +88,7 @@ export function CardsPage() {
   const multiplier = speedMultiplier(motionSpeed);
 
   const course = useCourse(courseId);
-  const lessons = useLessons(courseId);
+  const lessons = useLessonOrderData(courseId)?.lessons;
   const cards = useCourseCardProjections(courseId);
   const sequences = useSequences(courseId);
   const occlusions = useOcclusions(courseId);

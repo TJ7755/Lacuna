@@ -121,7 +121,7 @@ const DesktopUpdateController = lazy(() => import('./components/updates/DesktopU
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
   // through first-run setup, including course sharing and material import.
-  return /^#\/(?:welcome|landing|download|share|import|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
+  return /^#\/(?:welcome|landing|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
 }
 
 export function App() {
@@ -238,6 +238,23 @@ export function App() {
       .catch(() => {
         // Automatic sync is optional background work; Settings can still load
         // the same runtime for deliberate sync if this fetch was interrupted.
+      });
+    return () => {
+      active = false;
+      dispose?.();
+    };
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready || import.meta.env.VITE_GAPS_REPORTING_ENABLED !== 'true') return;
+    let active = true;
+    let dispose: (() => void) | undefined;
+    void import('./insights/delivery')
+      .then(({ installInsightsDelivery }) => {
+        if (active) dispose = installInsightsDelivery();
+      })
+      .catch(() => {
+        /* Reporting can be retried from course settings. */
       });
     return () => {
       active = false;

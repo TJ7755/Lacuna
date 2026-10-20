@@ -4,7 +4,12 @@
  * the desktop main process) are unaffected. `RELAY_ALLOWED_ORIGINS` adds comma-separated
  * origins, for example a preview or self-hosted web build.
  */
-const DEFAULT_ORIGINS = ['https://getlacuna.app', 'https://lacuna-beta-one.vercel.app', 'app://.'];
+const DEFAULT_ORIGINS = [
+  'https://getlacuna.app',
+  'https://gaps.getlacuna.app',
+  'https://lacuna-beta-one.vercel.app',
+  'app://.',
+];
 const LOOPBACK_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d{1,5})?$/;
 
 export function corsAllowOrigin(request: Request): string | null {
@@ -19,7 +24,7 @@ export function corsAllowOrigin(request: Request): string | null {
 /** Shared CORS headers; an unlisted Origin gets no Access-Control-Allow-Origin, so browsers block it. */
 export function relayCorsHeaders(request: Request, exposeHeaders: string): Headers {
   const headers = new Headers({
-    'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, HEAD, PUT, POST, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
     'Access-Control-Expose-Headers': exposeHeaders,
     'Access-Control-Max-Age': '86400',

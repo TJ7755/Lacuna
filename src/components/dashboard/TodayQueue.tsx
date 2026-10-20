@@ -8,6 +8,8 @@ import { MOTION_DURATION, MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
 import { STATUS_COLOUR, type ForecastStatus } from './forecastStatus';
 import { contextMenuHandlers } from '../ui/contextMenu';
+import type { CourseSummary } from '../../state/courseSummaries';
+import './TodayQueue.css';
 
 /**
  * What a row can offer today: work to study, today's work finished, nothing due
@@ -16,10 +18,23 @@ import { contextMenuHandlers } from '../ui/contextMenu';
 export type QueueState = 'study' | 'done' | 'clear' | 'empty' | 'loading';
 
 export function queueState(
-  summary: { cardCount: number; eligible: number; reviewedTodayCount: number } | undefined,
+  summary:
+    | Pick<
+        CourseSummary,
+        | 'cardCount'
+        | 'eligible'
+        | 'reviewedTodayCount'
+        | 'examPracticeEligible'
+        | 'unreviewed'
+        | 'completedLessonCount'
+        | 'lessonCount'
+      >
+    | undefined,
 ): QueueState {
   if (!summary) return 'loading';
   if (summary.eligible > 0) return 'study';
+  if (summary.examPracticeEligible) return 'study';
+  if (summary.unreviewed && summary.completedLessonCount < summary.lessonCount) return 'study';
   if (summary.cardCount === 0) return 'empty';
   return summary.reviewedTodayCount > 0 ? 'done' : 'clear';
 }
@@ -109,7 +124,7 @@ export function TodayQueue({
               if (!event.currentTarget.contains(event.relatedTarget as Node | null))
                 setFocusedId(null);
             }}
-            className="group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 card-surface card-surface-control transition-colors hover:bg-surface-raised"
+            className="today-course-row group flex items-center gap-3 rounded-[18px] bg-surface py-3 pl-4 pr-2 sm:gap-4 sm:pl-5 sm:pr-3 card-surface card-surface-control transition-colors hover:bg-surface-raised"
           >
             <span
               aria-hidden="true"
@@ -153,15 +168,21 @@ export function TodayQueue({
               </span>
             ) : row.state === 'study' ? (
               <>
-                <span className="hidden items-center gap-1.5 text-ink-soft tabular-nums sm:inline-flex">
-                  <CardsIcon width={16} height={16} aria-hidden="true" />
-                  <span className="sr-only">Cards due:</span>
-                  {row.due}
-                </span>
-                <span className="hidden min-w-[72px] items-center gap-1.5 whitespace-nowrap text-ink-soft tabular-nums sm:inline-flex">
-                  <ClockIcon width={16} height={16} aria-hidden="true" />
-                  {Math.max(1, Math.round(row.minutes))} min
-                </span>
+                {row.due > 0 ? (
+                  <>
+                    <span className="hidden items-center gap-1.5 text-ink-soft tabular-nums sm:inline-flex">
+                      <CardsIcon width={16} height={16} aria-hidden="true" />
+                      <span className="sr-only">Cards due:</span>
+                      {row.due}
+                    </span>
+                    <span className="hidden min-w-[72px] items-center gap-1.5 whitespace-nowrap text-ink-soft tabular-nums sm:inline-flex">
+                      <ClockIcon width={16} height={16} aria-hidden="true" />
+                      {Math.max(1, Math.round(row.minutes))} min
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-ink-faint max-sm:sr-only">Nothing due</span>
+                )}
                 {/* Study opens the course's session plan, as Study does on the course page. */}
                 <Button
                   data-study-trigger={row.id}

@@ -15,6 +15,22 @@ vi.mock('../../db/assetCache', () => ({
   resolveAssetMarkdownCached: vi.fn((md: string) => Promise.resolve(md)),
 }));
 
+describe('MarkdownView numeric answer opt-in', () => {
+  it('keeps ordinary Markdown list semantics and cached answer rendering separate', () => {
+    const { container, rerender } = render(<MarkdownView source="1871." />);
+    expect(container.querySelector('ol')).toHaveAttribute('start', '1871');
+    expect(container.querySelector('li')?.textContent).toBe('');
+
+    rerender(<MarkdownView source="1871." literalNumericAnswer />);
+    expect(container.querySelector('p')?.textContent).toBe('1871.');
+    expect(container.querySelector('ol')).toBeNull();
+
+    rerender(<MarkdownView source="1871." />);
+    expect(container.querySelector('ol')).toHaveAttribute('start', '1871');
+    expect(container.querySelector('li')?.textContent).toBe('');
+  });
+});
+
 describe('MarkdownView — embed rendering (allowEmbeds true)', () => {
   it('converts a bare YouTube watch URL to a youtube-nocookie iframe', () => {
     const { container } = render(

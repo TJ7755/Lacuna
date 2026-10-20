@@ -5,8 +5,13 @@ import { Button } from '../../components/ui/Button';
 import { ConfirmInline } from '../../components/ui/ConfirmInline';
 import { AddLessonControl } from '../../components/course/AddLessonControl';
 import { ChevronDownIcon, TrashIcon, EditIcon } from '../../components/ui/icons';
-import { useLessons } from '../../state/useCourseData';
-import { updateLesson, deleteLesson, reorderLessons } from '../../db/lessonRepository';
+import { useLessonOrderData } from '../../state/useLessonOrderData';
+import {
+  updateLesson,
+  deleteLesson,
+  reorderLessons,
+  setLocalLessonOrder,
+} from '../../db/lessonRepository';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { useActionFocus } from '../../hooks/useActionFocus';
 import { useToast } from '../../components/ui/Toast';
@@ -17,14 +22,17 @@ export interface LessonManagementSectionProps {
 
 /**
  * Course-only lesson management: rename, reorder and delete lessons on the course
- * path. Ordered by `orderIndex` via `useLessons`. Reordering swaps two adjacent
- * lessons and persists via a single `reorderLessons` call; deletion cascades in the
- * repository (notes, lesson-card links, card unassignment) so a plain confirm suffices.
+ * path. Locked copies expose only the guarded local traversal preference.
  */
 export function LessonManagementSection({ courseId }: LessonManagementSectionProps) {
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
-  const lessons = useLessons(courseId);
+  const data = useLessonOrderData(courseId);
+  const lessons = data?.lessons;
+  const locked = data?.course.distributedCopy?.locked === true;
+  const canAuthor = !!data && !locked;
+  const canMove = !!data && (canAuthor || !data.unavailableReason);
+  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -49,7 +57,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   // field open, and Enter followed by the unmount's blur saves once.
   const renaming = useRef(false);
   async function commitRename() {
-    if (renaming.current || !editingId) return;
+    if (!canAuthor || renaming.current || !editingId) return;
     const name = nameDraft.trim();
     if (!name || name === lessons?.find((lesson) => lesson.id === editingId)?.name) {
       setEditingId(null);
@@ -67,19 +75,36 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
   }
 
   async function move(index: number, direction: -1 | 1) {
-    if (!lessons) return;
+    if (!lessons || !canMove || saving) return;
     const target = index + direction;
     if (target < 0 || target >= lessons.length) return;
     const orderedIds = lessons.map((l) => l.id);
     [orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]];
     try {
-      await reorderLessons(courseId, orderedIds);
+      setSaving(true);
+      if (locked) await setLocalLessonOrder(courseId, orderedIds);
+      else await reorderLessons(courseId, orderedIds);
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Could not reorder the lessons.', 'negative');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reset() {
+    setSaving(true);
+    try {
+      await setLocalLessonOrder(courseId);
+      notify('Using publisher lesson order.');
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Could not reset lesson order.', 'negative');
+    } finally {
+      setSaving(false);
     }
   }
 
   async function remove(id: string) {
+    if (!canAuthor) return;
     try {
       await deleteLesson(id);
       setConfirmDeleteId(null);
@@ -90,6 +115,29 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
 
   return (
     <div className="flex flex-col gap-3">
+      {locked && (
+        <div className="flex flex-col items-start gap-2">
+          <h3 className="font-semibold text-ink">Lesson order</h3>
+          <p className="text-sm text-ink-soft">
+            Order lessons for this copy. Publisher corrections and learner progress are retained.
+            New lessons appear at the end. Content remains locked.
+          </p>
+          {data?.unavailableReason && (
+            <p role="status" className="text-sm text-ink-soft">
+              {data.course.localLessonOrder ? 'Saved lesson order is suspended. ' : ''}
+              {data.unavailableReason} Using publisher order.
+            </p>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={saving || !data?.course.localLessonOrder}
+            onClick={() => void reset()}
+          >
+            Use publisher order
+          </Button>
+        </div>
+      )}
       {lessons?.length === 0 && (
         <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
       )}
@@ -108,7 +156,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                   size="sm"
                   type="button"
                   onClick={() => void move(index, -1)}
-                  disabled={index === 0}
+                  disabled={!canMove || saving || index === 0}
                   aria-label={`Move ${lesson.name} up`}
                   className="min-w-11 px-0"
                 >
@@ -119,14 +167,14 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                   size="sm"
                   type="button"
                   onClick={() => void move(index, 1)}
-                  disabled={index === lessons.length - 1}
+                  disabled={!canMove || saving || index === lessons.length - 1}
                   aria-label={`Move ${lesson.name} down`}
                   className="min-w-11 px-0"
                 >
                   <ChevronDownIcon width={14} height={14} />
                 </Button>
               </div>
-              {editingId === lesson.id ? (
+              {canAuthor && editingId === lesson.id ? (
                 <input
                   autoFocus
                   aria-label="Lesson name"
@@ -149,30 +197,32 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                 </span>
               )}
             </div>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => startEdit(lesson.id, lesson.name)}
-                aria-label={`Rename ${lesson.name}`}
-              >
-                <EditIcon width={16} height={16} />
-              </Button>
-              <Button
-                ref={(button) => {
-                  if (button) deleteButtons.current.set(lesson.id, button);
-                  else deleteButtons.current.delete(lesson.id);
-                }}
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDeleteId(lesson.id)}
-                aria-label={`Delete ${lesson.name}`}
-              >
-                <TrashIcon width={16} height={16} />
-              </Button>
-            </div>
+            {canAuthor && (
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(lesson.id, lesson.name)}
+                  aria-label={`Rename ${lesson.name}`}
+                >
+                  <EditIcon width={16} height={16} />
+                </Button>
+                <Button
+                  ref={(button) => {
+                    if (button) deleteButtons.current.set(lesson.id, button);
+                    else deleteButtons.current.delete(lesson.id);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDeleteId(lesson.id)}
+                  aria-label={`Delete ${lesson.name}`}
+                >
+                  <TrashIcon width={16} height={16} />
+                </Button>
+              </div>
+            )}
           </div>
-          {confirmDeleteId === lesson.id && (
+          {canAuthor && confirmDeleteId === lesson.id && (
             <div
               data-lesson-delete-confirmation
               className="border-t border-line bg-paper/50 px-4 py-3"
@@ -193,7 +243,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
           )}
         </motion.div>
       ))}
-      <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />
+      {canAuthor && <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />}
     </div>
   );
 }

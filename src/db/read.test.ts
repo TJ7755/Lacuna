@@ -204,7 +204,7 @@ describe('read.ts', () => {
   });
 
   describe('listDueCards', () => {
-    it('omits due cards already secured for a lesson exam later today', async () => {
+    it('includes due cards already secured for a lesson exam later today', async () => {
       const course = await createCourse('Exam course');
       const lesson = await createLesson(course.id, 'Exam lesson');
       const now = Date.now();
@@ -216,14 +216,16 @@ describe('read.ts', () => {
         stability: 2,
         lastReviewed: now - 86_400_000,
       });
-      expect(await listDueCards(course.id, undefined, now)).toEqual([]);
+      expect((await listDueCards(course.id, undefined, now)).map((card) => card.id)).toEqual([
+        card.id,
+      ]);
     });
 
     it('returns [] for a missing course', async () => {
       expect(await listDueCards('missing')).toEqual([]);
     });
 
-    it('scopes to the course and serves due plus new cards, respecting limit', async () => {
+    it('scopes to the course and serves only scheduled reviews, respecting limit', async () => {
       const course = await createCourse('Course A');
       const otherCourse = await createCourse('Course B');
       const lesson = await createLesson(course.id, 'Lesson 1');
@@ -247,7 +249,8 @@ describe('read.ts', () => {
 
       const result = await listDueCards(course.id, undefined, now);
       const ids = result.map((c) => c.id).sort();
-      expect(ids).toEqual([dueCard.id, newCard.id].sort());
+      expect(ids).toEqual([dueCard.id]);
+      expect(ids).not.toContain(newCard.id);
       expect(ids).not.toContain(futureCard.id);
       expect(ids).not.toContain(otherDue.id);
 

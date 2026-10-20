@@ -23,6 +23,12 @@ let mockCourse: Course | null | undefined;
 let mockCards: Card[] | undefined;
 let mockAssessmentsPending = false;
 
+vi.mock('../state/useLessonOrderData', () => ({
+  useLessonOrderData: () => mockCourse
+    ? { course: mockCourse, lessons: [], unavailableReason: undefined }
+    : undefined,
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
   function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {

@@ -22,7 +22,9 @@ vi.mock('../../db/repository', () => ({
 vi.mock('../markdown/MarkdownView', () => ({
   MarkdownView: ({ source }: { source: string }) => (
     <div className="prose-lacuna" tabIndex={-1}>
-      <p>{source}</p>
+      {source.split('\n\n').map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
     </div>
   ),
 }));
@@ -74,6 +76,30 @@ describe('AnnotatedNoteContent', () => {
       expect(createAnnotation).toHaveBeenCalledWith('note-1', 6, 10, 'beta', 'Key term');
     });
   });
+
+  it.each(['mouseUp', 'keyUp'] as const)(
+    'ignores cross-paragraph selections without a notice on %s',
+    (event) => {
+      const { container } = render(
+        <AnnotatedNoteContent note={{ ...note, content: 'First paragraph\n\nSecond paragraph' }} />,
+      );
+      const paragraphs = container.querySelectorAll('.prose-lacuna p');
+      const range = document.createRange();
+      range.setStart(paragraphs[0].firstChild!, 0);
+      range.setEnd(paragraphs[1].firstChild!, 6);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      fireEvent[event](paragraphs[1]);
+
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Save highlight' })).not.toBeInTheDocument();
+      expect(createAnnotation).not.toHaveBeenCalled();
+      expect(selection.rangeCount).toBe(1);
+    },
+  );
 
   it('surfaces detached anchors and provides edit and confirmed-delete controls', async () => {
     liveAnnotations = [

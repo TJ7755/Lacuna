@@ -136,6 +136,7 @@ export const card = cardContent
     'Payload requires a front/back card',
   );
 export const lessonContent = object({
+  prerequisiteLessonIds: ids.optional(),
   answerMode,
   name: text,
   description: text.optional(),
@@ -158,6 +159,7 @@ const distribution = object({
   shareRevision: number.optional(),
 });
 export const course = object({
+  creator: text.optional(),
   ...scheduler,
   ...timestamps,
   name: text,
@@ -176,6 +178,8 @@ export const course = object({
   unlockMode: z.enum(['linear', 'semi-linear', 'open']),
   linearCadence: object({ anchorDate: number, intervalDays: number }).optional(),
   autoPractice: flag,
+  localLessonOrder: ids.optional(),
+  studyStartLessonId: id.optional(),
   practiceThresholdMinutesFar: number,
   practiceThresholdMinutesNear: number,
   practiceUrgentWindowDays: number,
@@ -189,6 +193,7 @@ export const course = object({
     autoAcceptUpdates: flag,
     sourceLabel: text.optional(),
     source: object({
+      creator: text.optional(),
       name: text,
       description: text,
       unlockMode: z.enum(['linear', 'semi-linear', 'open']),

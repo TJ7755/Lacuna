@@ -1,6 +1,7 @@
 // High-level data operations that combine the FSRS engine with persistence.
 // Components call these rather than touching Dexie tables directly.
 
+import { assertLessonPrerequisites } from './lessonPrerequisites';
 import { resolveAssessmentCoverage } from '../course/assessmentCoverage';
 import type { QuestionSetRecord } from '../questions/questionSetCodec';
 import { scheduleAssetGc } from './assets';
@@ -76,6 +77,7 @@ export async function createLesson(
           },
           createdAt,
         );
+        assertLessonPrerequisites([...existing, lesson]);
         await db.lessons.add(lesson);
         await syncCourseSchedulingUnits(courseId);
         return lesson;
@@ -99,6 +101,19 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
         db.schedulingPerformance,
       ],
       async () => {
+        const existing = await db.lessons.get(id);
+        if (existing) {
+          if (changes.id !== undefined && changes.id !== id) {
+            throw new Error('Lesson identity cannot change.');
+          }
+          if (changes.courseId !== undefined && changes.courseId !== existing.courseId) {
+            throw new Error('A Lesson cannot move between Courses.');
+          }
+          const lessons = await db.lessons.where('courseId').equals(existing.courseId).toArray();
+          assertLessonPrerequisites(
+            lessons.map((lesson) => lesson.id === id ? { ...lesson, ...changes } : lesson),
+          );
+        }
         await db.lessons.update(id, stampUpdatedAt(changes));
         const lesson = await db.lessons.get(id);
         if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
@@ -112,6 +127,7 @@ export async function updateLesson(id: string, changes: Partial<Lesson>): Promis
 /** Everything {@link deleteLesson} removes or rewrites, captured for undo. */
 export interface LessonSnapshot {
   lesson: Lesson;
+  dependentLessons?: Lesson[];
   notes: Note[];
   noteAnnotations: NoteAnnotation[];
   lessonCards: LessonCardLink[];
@@ -172,6 +188,8 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
 
   return {
     lesson,
+    dependentLessons: (await db.lessons.where('courseId').equals(lesson.courseId).toArray())
+      .filter((candidate) => candidate.prerequisiteLessonIds?.includes(id)),
     notes,
     noteAnnotations,
     lessonCards,
@@ -251,6 +269,17 @@ export async function restoreLesson(snapshot: LessonSnapshot): Promise<void> {
             ? db.schedulingPerformance.put(snapshot.schedulingPerformance)
             : Promise.resolve(),
         ]);
+        for (const dependent of snapshot.dependentLessons ?? []) {
+          const current = await db.lessons.get(dependent.id);
+          if (current?.courseId === snapshot.lesson.courseId && !current.prerequisiteLessonIds?.includes(snapshot.lesson.id)) {
+            await db.lessons.update(current.id, stampUpdatedAt({
+              prerequisiteLessonIds: [...(current.prerequisiteLessonIds ?? []), snapshot.lesson.id],
+            }, Math.max(Date.now(), current.updatedAt + 1)));
+          }
+        }
+        assertLessonPrerequisites(
+          await db.lessons.where('courseId').equals(snapshot.lesson.courseId).toArray(),
+        );
         await clearTombstone(tx, 'lessons', snapshot.lesson.id);
         await clearTombstones(
           tx,
@@ -424,6 +453,13 @@ export async function deleteLesson(id: string): Promise<void> {
         await db.practiceNodes.delete(node.id);
         await recordTombstone(tx, 'practiceNodes', node.id, Math.max(now, node.updatedAt + 1));
       }
+      const dependants = await db.lessons.where('courseId').equals(lesson.courseId).toArray();
+      for (const dependent of dependants) {
+        if (!dependent.prerequisiteLessonIds?.includes(id)) continue;
+        await db.lessons.update(dependent.id, stampUpdatedAt({
+          prerequisiteLessonIds: dependent.prerequisiteLessonIds.filter((target) => target !== id),
+        }, Math.max(now, dependent.updatedAt + 1)));
+      }
       await db.lessons.delete(id);
       await recordTombstone(tx, 'lessons', id);
       await recordTombstones(tx, 'notes', noteIds);
@@ -490,9 +526,15 @@ export async function deleteLesson(id: string): Promise<void> {
  * Assign a fresh orderIndex to each lesson based on its position in
  * orderedLessonIds, in one transaction.
  */
-export async function reorderLessons(_courseId: string, orderedLessonIds: string[]): Promise<void> {
+export async function reorderLessons(courseId: string, orderedLessonIds: string[]): Promise<void> {
+  const { validateLessonPermutation } = await import('./lessonOrder');
   const now = Date.now();
-  await db.transaction('rw', db.lessons, async () => {
+  await db.transaction('rw', [db.courses, db.lessons], async () => {
+    const course = await db.courses.get(courseId);
+    if (!course) throw new Error('Course not found.');
+    if (course.distributedCopy?.locked) throw new Error('Published lesson order is locked.');
+    const lessons = await db.lessons.where('courseId').equals(courseId).toArray();
+    validateLessonPermutation(lessons, orderedLessonIds);
     await db.lessons.bulkUpdate(
       orderedLessonIds.map((id, orderIndex) => ({
         key: id,
@@ -500,6 +542,12 @@ export async function reorderLessons(_courseId: string, orderedLessonIds: string
       })),
     );
   });
+}
+
+/** Save only the local Course preference; reset is also allowed while suspended. */
+export async function setLocalLessonOrder(courseId: string, ids?: string[]): Promise<void> {
+  const { setLocalLessonOrder } = await import('./lessonOrder');
+  return setLocalLessonOrder(courseId, ids);
 }
 
 // ---------------------------------------------------------------------------

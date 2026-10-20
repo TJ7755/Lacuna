@@ -29,6 +29,7 @@ export interface RevisionPlanContext {
   exposures: LessonCardExposure[];
   completions: LessonCompletion[];
   reachedLessonIds: ReadonlySet<string>;
+  priorKnowledgeLessonIds?: ReadonlySet<string>;
   projection: RevisionProjection;
   now: number;
 }
@@ -91,8 +92,12 @@ export function resolveRevisionPlanInput(context: RevisionPlanContext): Resolved
   );
   const reachedLessonIds = reachedCoveredLessons.map((lesson) => lesson.id).sort();
   const exposedCardIds = new Set(context.exposures.map((exposure) => exposure.cardId));
+  const priorKnowledgeCardIds = new Set(
+    [...(context.priorKnowledgeLessonIds ?? [])].flatMap((id) =>
+      lessonCardMembership(id, context.cards, context.links).map((card) => card.id)),
+  );
   const eligibleOrUnavailable = resolved.cards.filter((card) => {
-    if (!exposedCardIds.has(card.id)) return false;
+    if (!exposedCardIds.has(card.id) && !priorKnowledgeCardIds.has(card.id)) return false;
     return reachedCoveredLessons.some((lesson) =>
       lessonCardMembership(lesson.id, context.cards, context.links).some(
         (member) => member.id === card.id,

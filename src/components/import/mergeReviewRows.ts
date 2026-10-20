@@ -75,13 +75,24 @@ function payloadText(payload: ItemPayload | undefined): string {
   return [answer, fixtures].filter(Boolean).join('\n\n');
 }
 
-function lessonFields(existing: Lesson | undefined, next: LessonUpdate): ReviewField[] {
+function lessonFields(
+  existing: Lesson | undefined,
+  next: LessonUpdate,
+  lessons: Map<string, Lesson>,
+): ReviewField[] {
   const incoming = { ...existing, ...next };
+  const prerequisites = (ids: string[] = []) =>
+    [...ids].sort().map((id) => lessons.get(id)?.name ?? 'Unavailable lesson').join(', ');
   const date = (value?: number, zone?: string) =>
     value === undefined ? '' : formatDate(value, zone);
   return [
     field('Name', existing?.name, incoming.name),
     field('Description', existing?.description, incoming.description, true),
+    field(
+      'Advisory prerequisites',
+      prerequisites(existing?.prerequisiteLessonIds),
+      prerequisites(incoming.prerequisiteLessonIds),
+    ),
     field(
       'Lesson',
       existing?.isExtension ? 'Extension' : 'Core',
@@ -174,12 +185,12 @@ export function buildMergeReviewRows(
   });
   const fieldsFor = (kind: MergeReviewItemKind, id: string) =>
     kind === 'lesson'
-      ? lessonFields(lessonMap.get(id), { id })
+      ? lessonFields(lessonMap.get(id), { id }, lessonMap)
       : kind === 'note'
         ? noteFields(noteMap.get(id), { id })
         : cardFields(cardMap.get(id), { id });
   for (const next of review.diff.updates.lessons)
-    updates.push(model('u', 'lesson', next.id, lessonFields(lessonMap.get(next.id), next)));
+    updates.push(model('u', 'lesson', next.id, lessonFields(lessonMap.get(next.id), next, lessonMap)));
   for (const next of review.diff.updates.notes)
     updates.push(model('u', 'note', next.id, noteFields(noteMap.get(next.id), next)));
   for (const next of review.diff.updates.cards)
@@ -222,6 +233,7 @@ export function buildMergeReviewRows(
           entityId,
           lessonFields(lessonMap.get(entityId), {
             id: entityId,
+            prerequisiteLessonIds: next.pr ?? [],
             name: next.n.trim() || 'Untitled lesson',
             description: next.d,
             isExtension: next.x === 1,
@@ -230,7 +242,7 @@ export function buildMergeReviewRows(
             timeZone: next.tz,
             sessionFilter: next.sf,
             answerMode: next.am,
-          }),
+          }, lessonMap),
         ),
       );
     } else if (kind === 'note') {

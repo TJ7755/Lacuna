@@ -122,7 +122,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   // Course lessons follow their introduction setting; the global preference remains
   // available for ad-hoc deck/global sessions.
   const isSimpleMode =
-    standaloneSimple || (lessonId ? lessonCourse?.learnFirst !== false : studyMode === 'simple');
+    standaloneSimple ||
+    (lessonId
+      ? lessonCourse?.learnFirst !== false
+      : dueReviewRequest || (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
+        ? false
+        : studyMode === 'simple');
 
   const mode: LearnModeType = useMemo(() => {
     if (isSimpleMode) return 'simple';
@@ -241,6 +246,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     reviewSessionKind,
     isSimpleMode,
     standaloneSimple,
+    examPractice: request?.kind === 'practice' && request.mode === 'exam',
+    catchUpPractice: request?.kind === 'practice' && request.mode === 'catch-up',
     mode,
     navigate,
     onFlowExit,

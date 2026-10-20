@@ -3,6 +3,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
+import { formatClassCode, parseClassCode } from '../../insights/classCode';
 import { useCourseQrScanner } from './useCourseQrScanner';
 import { CourseFileImportButton } from './CourseFileControls';
 import {
@@ -69,6 +70,11 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
 /** A share-link code (or full link) when the text is one, else null. Text share
  *  codes fall through to the ordinary decode path. */
 function tryParseShareCode(raw: string): string | null {
+  try {
+    return formatClassCode(parseClassCode(raw));
+  } catch {
+    /* Try an ordinary share link. */
+  }
   try {
     return parseShareCode(raw);
   } catch {
@@ -326,9 +332,7 @@ export function SharedCourseImport({
           >
             <div className="rounded-2xl bg-paper p-4">
               <div className="mb-2 flex items-center justify-between">
-                <h3 className="font-display text-lg text-ink">
-                  QR scanner
-                </h3>
+                <h3 className="font-display text-lg text-ink">QR scanner</h3>
                 <Button
                   size="sm"
                   variant="ghost"
