@@ -115,7 +115,7 @@ export function CreateGapsClass({
           </p>
           <div
             aria-labelledby="recovery-code-label"
-            className={`mt-2 select-text font-mono text-sm ${inputFrameClassName}`}
+            className={`mt-2 select-text font-mono text-xl leading-relaxed sm:text-2xl ${inputFrameClassName}`}
           >
             <span className="block whitespace-nowrap">
               {formatRecoveryCode(created.code.slice(0, 12))}
