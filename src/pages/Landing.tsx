@@ -46,6 +46,7 @@ export function Landing() {
           <a href="https://github.com/TJ7755/Lacuna" target="_blank" rel="noreferrer">
             GitHub
           </a>
+          <a href="/courses/">Courses</a>
           <Link to="/method">The method</Link>
           {!window.electronAPI?.isElectron && <Link to="/download">Download for desktop</Link>}
           <a

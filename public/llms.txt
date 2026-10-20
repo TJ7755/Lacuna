@@ -1,0 +1,15 @@
+# Lacuna
+
+> Free, local-first revision app for exam students. Flashcards with FSRS-6 spaced repetition planned around the exam date, connected notes and lessons, and automatically marked exam-style questions. No account needed.
+
+## Courses
+
+- [Biology 4BI1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/biology4bi1/)
+- [Chemistry 4CH1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/chemistry4ch1/)
+- [Physics 0972 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/physics0972/)
+- [History 0977 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/history0977/)
+
+## More
+
+- [Lacuna vs Quizlet](https://getlacuna.app/compare/quizlet/)
+- [Source code](https://github.com/TJ7755/Lacuna)

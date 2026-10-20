@@ -18,9 +18,13 @@ export const workbox = {
   // Precache the application shell and the Cards route's shared import spine.
   // Lazy route entries and large optional assets are cached when visited.
   globPatterns: ['**/*.{html,ico,png,svg}', 'fonts/*.ttf', 'assets/dailyBackup.worker-*.js'],
-  navigateFallbackDenylist: [/^\/compare(?:\/|$)/, /^\/(?:sitemap\.xml|robots\.txt)$/],
+  navigateFallbackDenylist: [
+    /^\/(?:compare|courses)(?:\/|$)/,
+    /^\/(?:sitemap\.xml|robots\.txt|llms\.txt)$/,
+  ],
   globIgnores: [
     'compare/**',
+    'courses/**',
     'assets/course-*.png',
     'assets/lesson-*.png',
     'assets/recall-*.png',
@@ -172,7 +176,11 @@ export default defineConfig({
   },
   build: {
     rolldownOptions: {
-      input: { index: 'index.html', quizlet: 'compare/quizlet/index.html' },
+      input: {
+        index: 'index.html',
+        quizlet: 'compare/quizlet/index.html',
+        courses: 'courses/index.html',
+      },
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]',
         // Give the eager application entry a distinct name so Workbox can precache

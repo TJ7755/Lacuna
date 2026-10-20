@@ -1,0 +1,39 @@
+.course-content {
+  display: grid;
+  gap: 64px;
+  max-width: 1100px;
+}
+.course-intro,
+.course-how,
+.course-index-entry {
+  display: grid;
+  gap: 22px;
+}
+.course-intro .qc-button {
+  justify-self: start;
+}
+.course-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: hsl(var(--ink-soft));
+}
+.course-content ol {
+  list-style: decimal;
+  padding-left: 24px;
+  line-height: 1.7;
+}
+.course-content li + li {
+  margin-top: 8px;
+}
+.course-stats li + li {
+  margin-top: 0;
+}
+@media (max-width: 640px) {
+  .course-content {
+    gap: 48px;
+  }
+}

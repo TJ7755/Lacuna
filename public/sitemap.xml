@@ -2,4 +2,9 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://getlacuna.app/</loc></url>
   <url><loc>https://getlacuna.app/compare/quizlet/</loc></url>
+  <url><loc>https://getlacuna.app/courses/</loc></url>
+  <url><loc>https://getlacuna.app/courses/biology4bi1/</loc></url>
+  <url><loc>https://getlacuna.app/courses/chemistry4ch1/</loc></url>
+  <url><loc>https://getlacuna.app/courses/physics0972/</loc></url>
+  <url><loc>https://getlacuna.app/courses/history0977/</loc></url>
 </urlset>

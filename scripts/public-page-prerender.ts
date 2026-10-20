@@ -1,3 +1,4 @@
+import { coursePaths } from '../src/pages/courses/content.ts';
 import { createServer, type Plugin, type ViteDevServer } from 'vite';
 
 interface PublicPage {
@@ -32,7 +33,7 @@ export function publicPagePrerenderPlugin(): Plugin {
       async handler(html, context) {
         const page = pages.find((candidate) =>
           candidate.path === 'index.html'
-            ? context.path === 'index.html' || context.path.endsWith('/index.html')
+            ? context.path === '/index.html' || context.path === 'index.html'
             : context.path.endsWith(candidate.path),
         );
         if (!page) return html;
@@ -58,6 +59,41 @@ export function publicPagePrerenderPlugin(): Plugin {
         } finally {
           await renderer?.close();
           renderer = undefined;
+        }
+      },
+    },
+    generateBundle: {
+      order: 'post',
+      async handler(_options, bundle) {
+        const template = bundle['courses/index.html'];
+        if (!template || template.type !== 'asset') return;
+        const server = await createServer({
+          configFile: false,
+          oxc: { jsx: { runtime: 'automatic', development: false } },
+          server: { middlewareMode: true, watch: null },
+          appType: 'custom',
+        });
+        try {
+          const { render, renderHead } = await server.ssrLoadModule(
+            '/src/pages/courses/entry-server.tsx',
+          );
+          const html = String(template.source);
+          for (const path of coursePaths) {
+            const markup = await render(path);
+            const source = html
+              .replace(/<!--course-head-->[\s\S]*?<!--\/course-head-->/, () => renderHead(path))
+              .replace(/<!--course-body-->[\s\S]*?<!--\/course-body-->/, () => markup);
+
+            if (path === '/courses/') template.source = source;
+            else
+              this.emitFile({
+                type: 'asset',
+                fileName: `${path.slice(1)}index.html`,
+                source,
+              });
+          }
+        } finally {
+          await server.close();
         }
       },
     },
