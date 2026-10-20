@@ -3,18 +3,25 @@ import { expect, test } from '@playwright/test';
 test('serves the comparison and sitemap as public documents', async ({ request, browser }) => {
   const response = await request.get('/compare/quizlet/');
   expect(response.status()).toBe(200);
-  const html = await response.text();
-  expect(html).toContain('Lacuna and Quizlet feature comparison');
-  expect(html).toContain('https://getlacuna.app/compare/quizlet/');
-  expect(html).not.toContain('Prototype variants');
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   expect(await sitemap.text()).toContain('<loc>https://getlacuna.app/compare/quizlet/</loc>');
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
   await page.goto(response.url());
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Remember it on exam day.');
-  await expect(page.getByRole('table')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/\S/);
+  await expect(
+    page.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' }),
+  ).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    'https://getlacuna.app/compare/quizlet/',
+  );
+  await expect(page.getByRole('navigation', { name: 'Prototype variants' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Open Lacuna' }).first()).toHaveAttribute(
+    'href',
+    '/#/',
+  );
   await context.close();
 });
 

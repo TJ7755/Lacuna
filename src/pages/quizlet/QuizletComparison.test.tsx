@@ -9,26 +9,17 @@ import { QuizletComparison } from './QuizletComparison';
 function open() {
   render(<QuizletComparison />);
 }
-it('shows the review history and today’s decision in A’s exam graph', () => {
+it('shows review history and updates the forecast for the selected example card', () => {
   open();
   const graph = screen.getByRole('img', { name: /Predicted recall/ });
   expect(within(graph).getByText('14 days ago')).toBeInTheDocument();
   expect(within(graph).getByText('Review today')).toBeInTheDocument();
   expect(within(graph).getByText('0%')).toBeInTheDocument();
-  expect(graph.querySelector('.qc-recall-history')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Cell structure/ }));
+  expect(graph).toHaveAccessibleName(/Predicted recall for Cell structure/);
 });
-it('keeps decorative labels out of the public page', () => {
+it('renders the public heading and accessible comparison table', () => {
   open();
-  expect(
-    document.querySelector(
-      '.qc-eyebrow, .qc-kicker, .qc-guide-byline, .qc-verdict-pills, .qc-orbit-stamp, .qc-floating-chip, .qc-tour-caption, .qc-lab-meta, .qc-lab-footer, figcaption',
-    ),
-  ).toBeNull();
-  expect(
-    screen.queryByText(
-      /A practical comparison|Independent comparison|real app views|The short version|Actual app|Captured 27 Sep/i,
-    ),
-  ).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
   expect(
     screen.getByRole('table', { name: 'Lacuna and Quizlet feature comparison' }),
@@ -42,8 +33,14 @@ it('previews pasted cards and leaves arrow keys available in the input', () => {
   });
   expect(screen.getByText('2 cards ready to preview')).toBeInTheDocument();
   expect(screen.getByText('Cell division')).toBeInTheDocument();
+  const heading = screen.getByRole('heading', { level: 1 });
+  const title = heading.textContent;
+  input.focus();
   fireEvent.keyDown(input, { key: 'ArrowRight' });
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Remember it on exam day.');
+  expect(input).toHaveFocus();
+  expect(input).toHaveValue('Mitosis\tCell division\nOsmosis\tMovement of water');
+  expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
+  expect(heading.textContent).toBe(title);
   fireEvent.change(input, { target: { value: '' } });
   expect(screen.getByText('Add a term and definition to see the preview.')).toBeInTheDocument();
 });
@@ -51,7 +48,6 @@ it('puts exam scheduling in the opening section', () => {
   open();
   const hero = screen.getByRole('heading', { level: 1 }).closest('section')!;
   expect(within(hero).getByRole('combobox', { name: 'Example exam date' })).toBeInTheDocument();
-  expect(within(hero).getByText('Review where it helps most.')).toBeInTheDocument();
   const before = within(hero)
     .getByRole('img', { name: /Predicted recall/ })
     .getAttribute('aria-label');
@@ -153,6 +149,9 @@ it('links to the app, pauses animation and has no prototype navigation', () => {
   expect(screen.getAllByRole('link', { name: 'Open Lacuna' })[0]).toHaveAttribute('href', '/#/');
   fireEvent.click(screen.getByRole('button', { name: 'Pause animation' }));
   expect(document.querySelector('.qc-page')).toHaveClass('qc-paused');
+  const heading = screen.getByRole('heading', { level: 1 });
+  const title = heading.textContent;
   fireEvent.keyDown(window, { key: 'ArrowRight' });
-  expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Remember it on exam day.');
+  expect(screen.getByRole('heading', { level: 1 })).toBe(heading);
+  expect(heading.textContent).toBe(title);
 });

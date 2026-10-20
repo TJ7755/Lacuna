@@ -1,0 +1,1 @@
+- Replace comparison-page wording and obsolete design checks with rendered-page and interaction regressions. (#632)
