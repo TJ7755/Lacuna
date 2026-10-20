@@ -113,6 +113,13 @@ describe('ordinary imported generated Concept links', () => {
       const conceptId = ordinary.conceptId;
       expect(conceptId).not.toBe(target.conceptId);
       expect((await db.concepts.get(conceptId))?.specificationPointIds).toEqual(links);
+      await db.concepts.update(conceptId, {
+        name: 'Shared imported element',
+        provisional: true,
+        createdAt: 123,
+        updatedAt: 456,
+      });
+      const sharedConcept = await db.concepts.get(conceptId);
       const [question] = await db.questions.where('courseId').equals(courseId).toArray();
       const relationship = (await db.questionConcepts.get(question.id))!;
       expect(relationship.targetConceptIds).toEqual([conceptId]);
@@ -178,6 +185,7 @@ describe('ordinary imported generated Concept links', () => {
         }
       }
       expect(await db.concepts.where('courseId').equals(courseId).count()).toBe(2);
+      expect(await db.concepts.get(conceptId)).toEqual(sharedConcept);
       expect((await db.concepts.get(conceptId))?.specificationPointIds).toEqual(links);
       expect(
         (await db.concepts.get(relationship.prerequisiteConceptIds[0]))?.specificationPointIds,
