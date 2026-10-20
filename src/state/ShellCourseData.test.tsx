@@ -4,7 +4,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createCourse, createCourseCard } from '../db/repository';
 import { db } from '../db/schema';
-import { ShellCourseDataProvider, useCourseDashboardData, useSidebarData } from './ShellCourseData';
+import {
+  ShellCourseDataProvider,
+  useCourseColours,
+  useCourseDashboardData,
+  useSidebarData,
+} from './ShellCourseData';
 import { reviewHistoryEntriesForCard } from '../db/reviewHistory';
 import type { ReviewLog } from '../db/types';
 
@@ -109,4 +114,47 @@ it('batches scheduling performance across courses and retains only derived navig
     'summaries',
   ]);
   for (const query of supplements) expect(query).not.toHaveBeenCalled();
+});
+
+it('assigns colours from all active courses and updates membership without using names or creation order', async () => {
+  const original = await createCourse('Original');
+  const final = (await db.courseAssessments.where('courseId').equals(original.id).toArray())[0];
+  await db.courses.clear();
+  await db.courseAssessments.clear();
+  await db.courseAssessments.bulkPut(
+    ['a', 'b', 'c'].map((courseId) => ({
+      ...final,
+      id: `${courseId}-final`,
+      courseId,
+    })),
+  );
+  await db.courses.bulkPut([
+    { ...original, id: 'c', name: 'First', createdAt: 1 },
+    { ...original, id: 'a', name: 'Last', createdAt: 3 },
+    { ...original, id: 'b', archived: true, createdAt: 2 },
+  ]);
+  const { result } = renderHook(useCourseColours, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <ShellCourseDataProvider>{children}</ShellCourseDataProvider>
+    ),
+  });
+  await waitFor(() =>
+    expect([...result.current]).toEqual([
+      ['a', 'hsl(var(--accent-ink))'],
+      ['c', 'hsl(var(--series-1))'],
+    ]),
+  );
+  const previous = result.current;
+  const colours = new Map(previous);
+  await db.courses.update('a', { name: 'Renamed', createdAt: 0 });
+  await waitFor(() => expect(result.current).not.toBe(previous));
+  expect(result.current).toEqual(colours);
+  await db.courses.update('b', { archived: false });
+  await waitFor(() =>
+    expect([...result.current]).toEqual([
+      ['a', 'hsl(var(--accent-ink))'],
+      ['b', 'hsl(var(--series-1))'],
+      ['c', 'hsl(var(--series-2))'],
+    ]),
+  );
 });

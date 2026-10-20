@@ -42,6 +42,21 @@ describe('colour scheme', () => {
   });
 });
 
+describe('course identity palette', () => {
+  const css = readFileSync('src/index.css', 'utf8');
+  it.each([':root', '.dark'])('keeps course indicators and small glyph text above 4.5:1 in %s', (theme) => {
+    const block = css.slice(css.indexOf(`${theme} {`)).split('}')[0];
+    const token = (name: string) => luminance(block.match(new RegExp(`--${name}: ([^;]+);`))![1]);
+    for (const name of ['accent-ink', 'series-1', 'series-2', 'series-3', 'series-4', 'series-5']) {
+      const foreground = token(name);
+      for (const surface of ['paper', 'surface', 'surface-raised', 'chrome']) {
+        const background = token(surface);
+        expect((Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05), `${name} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+});
+
 describe('flat card surfaces', () => {
   const css = readFileSync('src/index.css', 'utf8');
 

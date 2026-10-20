@@ -1,7 +1,17 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ForecastChart } from './ForecastChart';
 import type { CourseForecast } from '../../fsrs/courseForecast';
+
+import { courseColours } from '../../course/colour';
+
+let courseIds: string[];
+vi.mock('../../state/ShellCourseData', () => ({
+  useCourseColours: () => courseColours(courseIds),
+}));
+beforeEach(() => {
+  courseIds = ['a', 'b', 'c'];
+});
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 9, 8);
@@ -76,7 +86,9 @@ describe('ForecastChart axis', () => {
         multiplier={0}
       />,
     );
-    const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
+    const strokes = [...container.querySelectorAll('path')].map((path) =>
+      path.getAttribute('stroke'),
+    );
     expect(new Set(strokes).size).toBe(3);
     expect(screen.getByRole('button', { name: 'Biology On track' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Physics Behind' })).toBeInTheDocument();
@@ -85,6 +97,7 @@ describe('ForecastChart axis', () => {
   it('spotlights the highest forecasts in stable descending order and keeps the rest quiet until asked', () => {
     const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.1 * k }));
     const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+    courseIds = names;
     const recalls = [0.01, 0.02, 0.03, 0.04, 0.05, 0.8, 0.8, 0.9, 0.8];
     const { container } = render(
       <ForecastChart
@@ -101,25 +114,33 @@ describe('ForecastChart axis', () => {
         multiplier={0}
       />,
     );
-    // Only the spotlit courses carry today's figure and a coloured line.
+    // Only the spotlit courses carry today's figure; identity colours survive ranking.
     const labels = [...container.querySelectorAll('text.font-display')];
     expect(labels.map((label) => label.textContent)).toEqual(['90%', '80%', '80%']);
-    const colours = ['hsl(var(--accent-ink))', 'hsl(var(--series-1))', 'hsl(var(--series-2))'];
+    const colours = ['hsl(var(--series-1))', 'hsl(var(--series-5))', 'hsl(var(--accent-ink))'];
     labels.forEach((label, index) => {
       expect(label).toHaveAttribute('fill', colours[index]);
       expect(label.closest('g')!.querySelector('path')).toHaveAttribute('stroke', colours[index]);
     });
     const legend = screen.getByRole('list', { name: 'Courses' });
-    const courseNames = () => [...legend.querySelectorAll('span[title]')].map((name) => name.textContent);
+    const courseNames = () =>
+      [...legend.querySelectorAll('span[title]')].map((name) => name.textContent);
     expect(courseNames()).toEqual(['H', 'F', 'G']);
-    const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
-    expect(new Set(strokes).size).toBe(4);
+    const strokes = [...container.querySelectorAll('path')].map((path) =>
+      path.getAttribute('stroke'),
+    );
+    expect(new Set(strokes).size).toBe(6);
+    expect(container.querySelector('g[data-course-id="A"]')).toHaveStyle({ opacity: '0.45' });
     expect(screen.queryByRole('button', { name: 'D Behind' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '6 more' }));
     expect(courseNames()).toEqual(['H', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'I']);
     const d = screen.getByRole('button', { name: 'D Behind' });
     fireEvent.focus(d);
+    expect(container.querySelector('g[data-course-id="D"] path')).toHaveAttribute(
+      'stroke',
+      'hsl(var(--series-3))',
+    );
     expect(container.querySelectorAll('text.font-display')).toHaveLength(4);
     expect(screen.getByRole('button', { name: 'Fewer' })).toHaveAttribute('aria-expanded', 'true');
   });
