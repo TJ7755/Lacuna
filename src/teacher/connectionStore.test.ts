@@ -6,6 +6,7 @@ import { MemoryStore } from '../../relay/src/store';
 import { DEFAULT_RELAY_URL } from '../sync/pairingConfig';
 import { sealGapsConnection } from './connectionFile';
 import { createGapsConnectionStore } from './connectionStore';
+import { formatClassCode } from '../insights/classCode';
 
 const phrase = 'several separate words kept for this connection';
 let name: string;
@@ -108,46 +109,52 @@ it('rejects invalid phrases and failed ownership without replacing a saved conne
   expect((await store.list()).map((course) => course.shareId)).toEqual([owner.shareId]);
 });
 
-it('creates an independent class from a public link and exports recoverable encrypted credentials', async () => {
-  const { owner: source, fetchImpl, relay } = await fixture();
-  await relay.put(`shares/${source.shareId}/payload`, new TextEncoder().encode('course'), {
-    exclusive: true,
-  });
-  await relay.put(
-    `shares/${source.shareId}/meta`,
-    new TextEncoder().encode(
-      JSON.stringify({
-        v: 1,
-        lineageId: 'source-lineage',
-        revision: 3,
-        publishedAt: Date.now(),
-        byteSize: 6,
-        courseName: 'Published biology',
-      }),
-    ),
-    { exclusive: true },
-  );
-  const store = openStore();
-  const classId = await store.createFromLink(
-    `https://getlacuna.app/#/s/${source.shareId}`,
-    phrase,
-    { fetchImpl },
-  );
-  expect(classId).not.toBe(source.shareId);
-  const connection = await store.unlock(classId, phrase);
-  expect(connection?.writeToken).not.toBe(source.writeToken);
-  const text = await store.exportConnection(classId);
-  expect(text).not.toContain(connection!.writeToken);
-  expect(text).not.toContain(phrase);
-  await store.forget(classId);
-  await store.connect(text, phrase, { fetchImpl });
-  expect(await store.list()).toEqual([
-    { shareId: classId, courseName: 'Published biology', verifiedAt: expect.any(Number) },
-  ]);
-  expect(
-    (await relay.list(`shares/${classId}/`)).map(({ key }) => key.split('/').pop()).sort(),
-  ).toEqual(['auth', 'source']);
-});
+it.each(['course', 'invitation', 'class-link'] as const)(
+  'creates an independent class from a %s and exports recoverable encrypted credentials',
+  async (kind) => {
+    const { owner: source, fetchImpl, relay } = await fixture();
+    await relay.put(`shares/${source.shareId}/payload`, new TextEncoder().encode('course'), {
+      exclusive: true,
+    });
+    await relay.put(
+      `shares/${source.shareId}/meta`,
+      new TextEncoder().encode(
+        JSON.stringify({
+          v: 1,
+          lineageId: 'source-lineage',
+          revision: 3,
+          publishedAt: Date.now(),
+          byteSize: 6,
+          courseName: 'Published biology',
+        }),
+      ),
+      { exclusive: true },
+    );
+    const store = openStore();
+    const code = formatClassCode({ shareId: source.shareId, keyId: 'c'.repeat(64) });
+    const link =
+      kind === 'course'
+        ? `https://getlacuna.app/#/s/${source.shareId}`
+        : kind === 'invitation'
+          ? code
+          : `https://getlacuna.app/#/s/${code}`;
+    const classId = await store.createFromLink(link, phrase, { fetchImpl });
+    expect(classId).not.toBe(source.shareId);
+    const connection = await store.unlock(classId, phrase);
+    expect(connection?.writeToken).not.toBe(source.writeToken);
+    const text = await store.exportConnection(classId);
+    expect(text).not.toContain(connection!.writeToken);
+    expect(text).not.toContain(phrase);
+    await store.forget(classId);
+    await store.connect(text, phrase, { fetchImpl });
+    expect(await store.list()).toEqual([
+      { shareId: classId, courseName: 'Published biology', verifiedAt: expect.any(Number) },
+    ]);
+    expect(
+      (await relay.list(`shares/${classId}/`)).map(({ key }) => key.split('/').pop()).sort(),
+    ).toEqual(['auth', 'source']);
+  },
+);
 
 it('removes the newly minted class if its local commit fails, preserving the publisher', async () => {
   const { owner: source, fetchImpl, relay } = await fixture();

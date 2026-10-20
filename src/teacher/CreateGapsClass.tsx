@@ -10,6 +10,8 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
   const [repeat, setRepeat] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phraseError, setPhraseError] = useState<string | null>(null);
+  const [repeatError, setRepeatError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
   const linkInput = useRef<HTMLInputElement>(null);
   useEffect(() => linkInput.current?.focus(), []);
@@ -18,9 +20,16 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
   async function create(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    setError(null);
+    setPhraseError(null);
+    setRepeatError(null);
     const invalid = validateRecoveryPassphrase(phrase);
-    if (invalid || phrase !== repeat) {
-      setError(invalid ?? 'The passphrases do not match.');
+    if (invalid) {
+      setPhraseError(invalid);
+      return;
+    }
+    if (phrase !== repeat) {
+      setRepeatError('The passphrases do not match.');
       return;
     }
     setBusy(true);
@@ -64,6 +73,7 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
         </Field>
         <Field
           label="Connection passphrase"
+          error={phraseError}
           hint="At least 16 characters. Save a connection file after creating the class and keep this passphrase separately."
         >
           <Input
@@ -74,7 +84,7 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
             required
           />
         </Field>
-        <Field label="Repeat connection passphrase">
+        <Field label="Repeat connection passphrase" error={repeatError}>
           <Input
             type="password"
             autoComplete="new-password"

@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { parseClassCode } from '../insights/classCode';
 import {
   DEFAULT_RELAY_URL,
   getShareBytes,
@@ -40,7 +41,12 @@ export function createGapsConnectionStore(name = 'lacuna.gaps.connections') {
     ): Promise<string> {
       const invalid = validateRecoveryPassphrase(passphrase);
       if (invalid) throw new Error(invalid);
-      const sourceShareId = parseShareCode(link);
+      let sourceShareId: string;
+      try {
+        sourceShareId = parseShareCode(link);
+      } catch {
+        sourceShareId = parseClassCode(link).shareId;
+      }
       const relayUrl = DEFAULT_RELAY_URL;
       const source = await getShareBytes({
         relayUrl,
