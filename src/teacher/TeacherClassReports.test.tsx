@@ -333,3 +333,67 @@ it('does not publish an unlock completion after the class page unmounts', async 
   await act(async () => finish({ privateKey: {}, recipient: { keyId: 'key' } }));
   expect(onUnlocked).not.toHaveBeenCalled();
 });
+
+it('shows unreadable packets even when none of the reports can be decrypted', async () => {
+  mocks.read.mockResolvedValue({ reports: [], unreadable: 3 });
+  render(<Harness />);
+  await unlock();
+  expect(await screen.findByText('3 reports could not be read and are left out.')).toBeVisible();
+  expect(screen.getByRole('heading', { name: /^No readable reports for/ })).toBeVisible();
+});
+
+it('clears a failed day when returning to a successfully cached day', async () => {
+  render(<Harness />);
+  await unlock();
+  await screen.findByText(/No report does not mean no study/);
+  mocks.read.mockRejectedValue(new Error('Earlier day unavailable'));
+  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Earlier day unavailable');
+  fireEvent.click(screen.getByRole('button', { name: 'Next day' }));
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  expect(screen.getByText(/No report does not mean no study/)).toBeVisible();
+  expect(mocks.read).toHaveBeenCalledTimes(2);
+});
+
+it('keeps grid answer cells keyboard reachable with visible scores and unknown states', async () => {
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [
+      { slotId: 'a', report: report('Ada', [event({ earned: 1, available: 2 })]) },
+      { slotId: 'b', report: report('Ben', [event()]) },
+    ],
+  });
+  render(<Harness />);
+  await unlock();
+  const scored = await screen.findByRole('button', { name: 'Ada, Explain osmosis.: 50%' });
+  expect(scored.tabIndex).toBe(0);
+  expect(scored).toHaveTextContent('50%');
+  const unknown = screen.getByRole('button', { name: 'Ben, Explain osmosis.: unknown' });
+  expect(unknown.tabIndex).toBe(0);
+  expect(unknown).toHaveTextContent('Unknown');
+  scored.focus();
+  fireEvent.click(scored);
+  expect(await screen.findByRole('region', { name: 'Evidence for Ada' })).toBeVisible();
+});
+
+it('labels grouped answers with their marking method, dispute and shortening', async () => {
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [
+      { slotId: 'a', report: report('Ada', [event()]) },
+      {
+        slotId: 'b',
+        report: report('Ben', [event({ marking: 'automatic', disputed: false, shortened: false })]),
+      },
+    ],
+  });
+  render(<Harness />);
+  await unlock();
+  fireEvent.click(await screen.findByRole('button', { name: /^Explain osmosis/ }));
+  const answers = await screen.findByRole('region', { name: 'Answers' });
+  expect(
+    within(answers).getByText(/Self marked · disputed by the pupil · shortened for this report/),
+  ).toBeVisible();
+  expect(within(answers).getByText(/Automatic marking/)).toBeVisible();
+  expect(within(answers).queryByText('Ada, Ben')).not.toBeInTheDocument();
+});

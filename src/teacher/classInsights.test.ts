@@ -89,3 +89,13 @@ it('groups identical answers regardless of case, weakest first', () => {
     ['Ribosome', 1],
   ]);
 });
+
+it('separates identical answers with different evidence provenance', () => {
+  const [item] = summariseItems([
+    report('a', [event({ answer: 'same', marking: 'automatic' })]),
+    report('b', [event({ answer: 'same', marking: 'self' })]),
+    report('c', [event({ answer: 'same', disputed: true })]),
+    report('d', [event({ answer: 'same', shortened: true })]),
+  ]);
+  expect(groupAnswers(item).map((group) => group.answers.length)).toEqual([1, 1, 1, 1]);
+});

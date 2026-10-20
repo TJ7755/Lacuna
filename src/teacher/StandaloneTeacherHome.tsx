@@ -13,6 +13,7 @@ import type * as CoursesExports from './TeacherCourses';
 import type * as ClassExports from './TeacherClassReports';
 import type * as KeysExports from './TeacherKeySetup';
 import './gaps.css';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { createClassSessions } from './classSessions';
 
 export type { ClassSession } from './classSessions';
@@ -46,6 +47,7 @@ export function StandaloneTeacherHome() {
   const [, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const drawer = usePresence(drawerOpen, 220);
+  const drawerRef = useFocusTrap(drawer.rendered);
   const latestDay = completedIsoDayLabel(Date.now());
 
   const reload = useCallback(async () => {
@@ -225,7 +227,9 @@ export function StandaloneTeacherHome() {
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <div className="hidden md:block">{sidebar(false)}</div>
+      <div inert={drawer.rendered} className="hidden md:block">
+        {sidebar(false)}
+      </div>
 
       {drawer.rendered && (
         <div className="fixed inset-0 z-40 md:hidden" data-closing={drawer.closing || undefined}>
@@ -235,6 +239,7 @@ export function StandaloneTeacherHome() {
             className="gaps-backdrop absolute inset-0 bg-black/50 backdrop-blur-sm"
           />
           <div
+            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation"
@@ -246,7 +251,7 @@ export function StandaloneTeacherHome() {
         </div>
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div inert={drawer.rendered} className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 bg-paper px-4 pb-1 pt-2 md:hidden">
           <button
             type="button"

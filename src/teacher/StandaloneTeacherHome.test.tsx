@@ -150,3 +150,23 @@ it('opens recovery and the explanation of Gaps as pages from the sidebar', async
   expect(screen.getByRole('link', { name: 'School data notice' })).toBeVisible();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
+
+it('focuses and traps mobile navigation while the background is inert', async () => {
+  show();
+  await screen.findByRole('button', { name: 'Open class' });
+  const trigger = screen.getByRole('button', { name: 'Open navigation' });
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole('dialog', { name: 'Navigation' });
+  await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+  expect(trigger.closest('[inert]')).not.toBeNull();
+  const buttons = within(dialog).getAllByRole('button');
+  const last = buttons[buttons.length - 1];
+  last.focus();
+  fireEvent.keyDown(last, { key: 'Tab' });
+  expect(buttons[0]).toHaveFocus();
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(trigger).toHaveFocus();
+  expect(trigger.closest('[inert]')).toBeNull();
+});

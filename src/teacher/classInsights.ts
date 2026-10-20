@@ -105,7 +105,14 @@ export function groupAnswers(item: ItemSummary): AnswerGroup[] {
   const groups = new Map<string, AnswerGroup>();
   for (const answer of item.answers) {
     const text = answer.event.answer.trim();
-    const key = `${text.toLocaleLowerCase('en-GB')}\u0000${answer.score ?? 'unknown'}`;
+    const { marking, disputed, shortened } = answer.event;
+    const key = JSON.stringify([
+      text.toLocaleLowerCase('en-GB'),
+      answer.score,
+      marking,
+      disputed,
+      shortened,
+    ]);
     const group = groups.get(key) ?? { answer: text, score: answer.score, answers: [] };
     group.answers.push(answer);
     groups.set(key, group);

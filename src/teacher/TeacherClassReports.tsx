@@ -107,6 +107,7 @@ export function ClassPage({
 
   // Reading a day is the request: unlocking reads the latest day, stepping reads the next.
   useEffect(() => {
+    setError('');
     if (!session || session.days.has(day)) return;
     const controller = new AbortController();
     setLoading(true);
@@ -227,6 +228,17 @@ export function ClassPage({
             )}
           </div>
 
+          {tab !== 'invite' && !error && data && data.unreadable > 0 && (
+            <p
+              role="status"
+              className="mb-4 inline-flex items-center gap-2 rounded-full bg-negative/10 px-4 py-2 text-sm text-negative"
+            >
+              {data.unreadable === 1
+                ? '1 report could not be read and is left out.'
+                : `${data.unreadable} reports could not be read and are left out.`}
+            </p>
+          )}
+
           {tab === 'invite' ? (
             <Invite course={course} session={session} onChanged={onChanged} />
           ) : error ? (
@@ -254,11 +266,13 @@ export function ClassPage({
             >
               <StudyDrawing kind="time" className="mb-6 h-24 w-24" />
               <h2 className="font-display text-2xl font-semibold tracking-tight">
-                No reports for {dayLabel(data.day)}
+                {data.unreadable > 0 ? 'No readable reports' : 'No reports'} for{' '}
+                {dayLabel(data.day)}
               </h2>
               <p role="status" className="mt-3 max-w-sm text-ink-soft">
-                No report does not mean no study. Reports arrive when pupils next open Lacuna
-                online.
+                {data.unreadable > 0
+                  ? 'Reports arrived but could not be decrypted with this key. Check the class recovery key and try again.'
+                  : 'No report does not mean no study. Reports arrive when pupils next open Lacuna online.'}
               </p>
               <button
                 type="button"
@@ -277,16 +291,6 @@ export function ClassPage({
                 stale && 'pointer-events-none opacity-50',
               )}
             >
-              {data.unreadable > 0 && (
-                <p
-                  role="status"
-                  className="mb-4 inline-flex items-center gap-2 rounded-full bg-negative/10 px-4 py-2 text-sm text-negative"
-                >
-                  {data.unreadable === 1
-                    ? '1 report could not be read and is left out.'
-                    : `${data.unreadable} reports could not be read and are left out.`}
-                </p>
-              )}
               {tab === 'results' ? (
                 <Results reports={data.reports} />
               ) : (
@@ -636,7 +640,7 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                           aria-expanded={expanded}
                           aria-controls={`${base}-${row}`}
                           className={cn(
-                            'block w-full truncate rounded-lg py-1.5 text-left transition-colors hover:text-ink group-hover/row:text-ink',
+                            'block w-full truncate rounded-full py-1.5 text-left transition-colors hover:text-ink group-hover/row:text-ink',
                             expanded ? 'font-semibold text-ink' : 'text-ink-soft',
                           )}
                         >
@@ -653,7 +657,6 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                           <td key={item.itemId} className="p-0">
                             <button
                               type="button"
-                              tabIndex={-1}
                               disabled={!attempted}
                               onClick={() => showPupil(report.pupil.id, focus)}
                               aria-label={`${report.pupil.label}, ${item.prompt}: ${attempted ? (score === null ? 'unknown' : percent(score)) : 'not attempted'}`}
@@ -665,10 +668,12 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                                 } as CSSProperties
                               }
                               className={cn(
-                                'gaps-cell block h-9 w-full rounded-[10px] transition-[transform,filter] duration-200 hover:scale-[1.06] hover:brightness-110',
+                                'gaps-cell block h-9 w-full rounded-[10px] text-xs font-semibold text-ink transition-[transform,filter] duration-200 hover:scale-[1.06] hover:brightness-110',
                                 attempted ? 'opacity-85' : 'bg-ink/[0.05]',
                               )}
-                            />
+                            >
+                              {attempted ? (score === null ? 'Unknown' : percent(score)) : '–'}
+                            </button>
                           </td>
                         );
                       })}
@@ -1005,7 +1010,7 @@ function ItemAnswers({ item }: { item: ItemSummary }) {
       <ul className="flex flex-col gap-2.5">
         {groups.map((group, index) => (
           <li
-            key={`${group.answer}-${group.score}`}
+            key={index}
             style={{ '--i': index } as CSSProperties}
             className="gaps-rise rounded-2xl bg-ink/[0.03] p-4 card-surface"
           >
@@ -1017,6 +1022,11 @@ function ItemAnswers({ item }: { item: ItemSummary }) {
                 </p>
                 <p className="mt-1.5 text-xs text-ink-faint">
                   {[...new Set(group.answers.map(({ report }) => report.pupil.label))].join(', ')}
+                </p>
+                <p className="mt-1.5 text-xs text-ink-soft">
+                  {markingLabel(group.answers[0].event)}
+                  {group.answers[0].event.disputed && ' · disputed by the pupil'}
+                  {group.answers[0].event.shortened && ' · shortened for this report'}
                 </p>
               </div>
             </div>
