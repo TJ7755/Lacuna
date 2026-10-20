@@ -1,0 +1,1 @@
+- Update compatible root dependencies and ship the matching SQLite WASM binary for Anki imports; retain Motion 14.1 while the newer animation engine fails the existing interaction regressions.
