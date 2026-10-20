@@ -1,0 +1,46 @@
+.course-provenance {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid hsl(var(--line));
+  padding-top: 20px;
+  font-size: 0.875rem;
+}
+.course-provenance dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 0 0 10px;
+}
+.course-provenance dt,
+.course-provenance p {
+  color: hsl(var(--ink-soft));
+}
+.course-provenance dd {
+  margin: 0;
+}
+.course-provenance input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 28rem;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid hsl(var(--line));
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  font: inherit;
+}
+.course-provenance a {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+.course-provenance input:focus-visible,
+.course-provenance a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}

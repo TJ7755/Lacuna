@@ -8,6 +8,11 @@ export interface LibraryCourse {
   summary: string;
   topics: readonly string[];
   shareUrl: string | null;
+  author?: string;
+  publisher?: string;
+  revision?: number;
+  /** Publication date for this revision, in YYYY-MM-DD format; omit when unknown. */
+  revisionDate?: string;
   stats?: {
     cards: number;
     notes: number;
@@ -20,6 +25,9 @@ export interface LibraryCourse {
 export const libraryCourses: readonly LibraryCourse[] = [
   {
     id: 'biology4bi1',
+    author: 'Lacuna',
+    publisher: 'Lacuna',
+    revision: 17,
     subject: 'Biology',
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
@@ -37,6 +45,9 @@ export const libraryCourses: readonly LibraryCourse[] = [
   },
   {
     id: 'chemistry4ch1',
+    author: 'Lacuna',
+    publisher: 'Lacuna',
+    revision: 12,
     subject: 'Chemistry',
     board: 'Pearson Edexcel',
     qualification: 'Pearson Edexcel International GCSE',
@@ -53,6 +64,9 @@ export const libraryCourses: readonly LibraryCourse[] = [
   },
   {
     id: 'physics0972',
+    author: 'Lacuna',
+    publisher: 'Lacuna',
+    revision: 11,
     subject: 'Physics',
     board: 'Cambridge',
     qualification: 'Cambridge IGCSE (9–1)',
@@ -71,6 +85,9 @@ export const libraryCourses: readonly LibraryCourse[] = [
   },
   {
     id: 'history0977',
+    author: 'Lacuna',
+    publisher: 'Lacuna',
+    revision: 11,
     subject: 'History',
     board: 'Cambridge',
     qualification: 'Cambridge IGCSE (9–1)',

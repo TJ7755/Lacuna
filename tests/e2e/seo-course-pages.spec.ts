@@ -28,6 +28,12 @@ for (const width of [1440, 390]) {
       'href',
       libraryCourses[0].shareUrl!,
     );
+    await page.getByRole('textbox', { name: 'Item reference (optional)' }).fill('card: cells & #3');
+    const report = page.getByRole('link', { name: 'Report a mistake' });
+    expect([...new URL((await report.getAttribute('href'))!).searchParams]).toEqual([
+      ['title', 'Course mistake: biology4bi1'],
+      ['body', 'Course: biology4bi1\nRevision: 17\nItem reference: card: cells & #3'],
+    ]);
     await page.getByRole('link', { name: 'All courses', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Revision courses');
     await page.getByRole('link', { name: 'Chemistry 4CH1', exact: true }).click();
@@ -42,6 +48,19 @@ for (const width of [1440, 390]) {
         `${course.subject} ${course.code}`,
       );
       await expect(crawler.locator('ol li')).toHaveText([...course.topics]);
+      const provenance = crawler.getByRole('region', { name: 'Course provenance' });
+      await expect(provenance.locator('dd')).toHaveText([
+        'Lacuna',
+        'Lacuna',
+        String(course.revision),
+      ]);
+      const url = new URL(
+        (await provenance.getByRole('link', { name: 'Report a mistake' }).getAttribute('href'))!,
+      );
+      expect([...url.searchParams]).toEqual([
+        ['title', `Course mistake: ${course.id}`],
+        ['body', `Course: ${course.id}\nRevision: ${course.revision}`],
+      ]);
     }
     await context.close();
   });

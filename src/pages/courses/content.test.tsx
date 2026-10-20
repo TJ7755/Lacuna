@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { libraryCourses } from '../../library/catalogue';
 import { CoursePage } from './CoursePage';
@@ -50,5 +51,26 @@ describe('public course catalogue', () => {
     expect(html).toContain('<p>Coming soon</p>');
     expect(html).not.toContain('course-stats');
     expect(html).not.toContain('Start revising');
+  });
+
+  it('renders publication provenance and a minimal report for each public course page', () => {
+    for (const course of libraryCourses) {
+      const { unmount } = render(<CoursePage course={course} />);
+      const provenance = screen.getByRole('region', { name: 'Course provenance' });
+      expect(within(provenance).getAllByText('Lacuna')).toHaveLength(2);
+      expect(within(provenance).getByText(String(course.revision))).toBeInTheDocument();
+      expect(within(provenance).queryByText('Revision date')).not.toBeInTheDocument();
+      const report = within(provenance).getByRole('link', { name: 'Report a mistake' });
+      const url = new URL(report.getAttribute('href')!);
+      expect([...url.searchParams]).toEqual([
+        ['title', `Course mistake: ${course.id}`],
+        ['body', `Course: ${course.id}\nRevision: ${course.revision}`],
+      ]);
+      fireEvent.change(within(provenance).getByRole('textbox'), { target: { value: 'card: 123' } });
+      expect(new URL(report.getAttribute('href')!).searchParams.get('body')).toBe(
+        `Course: ${course.id}\nRevision: ${course.revision}\nItem reference: card: 123`,
+      );
+      unmount();
+    }
   });
 });

@@ -20,6 +20,22 @@ of inventing them. Publish a course or revision only after its review is complet
 therefore shows no review or progress status. The current links publish Biology revision 17,
 Chemistry revision 12, Physics revision 11 and History revision 11.
 
+The catalogue also records `author`, `publisher`, `revision` and an optional `revisionDate`
+(YYYY-MM-DD) for the published revision. Use Lacuna for authorship and publishing unless a
+course has a recorded author or publisher. Derive revision numbers and dates from publication
+records; omit unknown fields. The current revision numbers come from the publication record
+above; no publication dates are recorded, so dates remain absent. These fields appear on both
+the library course sheet and the public course page. They do not imply external review or
+awarding-body endorsement.
+
+**Report a mistake** opens a prefilled issue at
+`https://github.com/TJ7755/Lacuna/issues/new`. The title and body contain only the course id,
+known revision and, if entered, an optional card, note or practice set reference. The reference
+is typed by the reporter, not read from their local course. The route never reads or attaches
+learner data, scheduling information or study history. The reporter can describe the mistake
+and review the public issue on GitHub before submitting it. Local **Flag card** remains a
+mark on the learner's own copy and does not contact the publisher.
+
 These links retain the source files' lineage and entity identities. Earlier library links used
 a separate publisher lineage; importing a current link therefore does not migrate an earlier
 subscriber's course or learner evidence. Keep old links available until that migration has
