@@ -53,3 +53,10 @@ it('reports a rejected connection without claiming success and clears its passph
   expect(screen.getByLabelText('Connection passphrase')).toHaveValue('');
   expect(screen.queryByText(/^Class connected\./)).not.toBeInTheDocument();
 });
+
+it('focuses the published course link when the default class workflow opens', async () => {
+  render(<TeacherCourses onPrepareKey={vi.fn()} onOpenClass={vi.fn()} keySetupOpen={false} />);
+  await screen.findByRole('heading', { name: 'Connect your first class' });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect a class' }));
+  expect(screen.getByLabelText('Course link or code')).toHaveFocus();
+});

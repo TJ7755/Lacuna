@@ -11,6 +11,8 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const controller = useRef<AbortController | null>(null);
+  const linkInput = useRef<HTMLInputElement>(null);
+  useEffect(() => linkInput.current?.focus(), []);
   useEffect(() => () => controller.current?.abort(), []);
 
   async function create(event: FormEvent) {
@@ -53,7 +55,12 @@ export function CreateGapsClass({ onConnected }: { onConnected(shareId: string):
       </p>
       <fieldset disabled={busy} className="space-y-4">
         <Field label="Course link or code">
-          <Input value={link} onChange={(event) => setLink(event.target.value)} required />
+          <Input
+            ref={linkInput}
+            value={link}
+            onChange={(event) => setLink(event.target.value)}
+            required
+          />
         </Field>
         <Field
           label="Connection passphrase"
