@@ -13,6 +13,7 @@ const biology = { shareId, courseName: 'GCSE Biology', verifiedAt: 0 };
 const chemistry = { shareId: 'b'.repeat(32), courseName: 'GCSE Chemistry', verifiedAt: 0 };
 
 beforeEach(() => {
+  window.history.replaceState(null, '', '/');
   vi.clearAllMocks();
   store.list.mockResolvedValue([]);
 });
@@ -174,4 +175,56 @@ it('opens the independently created class in the redesigned workspace', async ()
   });
   fireEvent.submit(screen.getByRole('form', { name: 'Create class from a course link' }));
   await waitFor(() => expect(onConnected).toHaveBeenCalledWith(course));
+});
+
+it.each([{ courses: [] }, { courses: [biology] }])(
+  'prefills and reveals class set-up without submitting (%j)',
+  async ({ courses }) => {
+    window.history.replaceState({ preserved: true }, '', `/gaps?source=share#course=${shareId}`);
+    render(
+      <TodayPage
+        courses={courses}
+        sessions={new Map()}
+        day={day}
+        connectRequest={0}
+        onOpen={vi.fn()}
+        onConnected={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(screen.getByLabelText('Course link or code')).toBeVisible());
+    expect(screen.getByLabelText('Course link or code')).toHaveValue(
+      `https://getlacuna.app/#/s/${shareId}`,
+    );
+    await waitFor(() => expect(screen.getByLabelText(/^Connection passphrase/)).toHaveFocus());
+    expect(store.createFromLink).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe('');
+    expect(window.location.pathname + window.location.search).toBe('/gaps?source=share');
+    expect(window.history.state).toEqual({ preserved: true });
+  },
+);
+
+it.each([
+  '#course=abc',
+  `#course=${'A'.repeat(32)}`,
+  `#course=${shareId}&extra=1`,
+  `#course=${shareId}%0A`,
+  '#/teach',
+  '#/share',
+])('ignores other hashes: %s', (hash) => {
+  // Assign through history so the browser applies its normal URL parsing.
+  window.history.replaceState(null, '', `/gaps${hash}`);
+  const expected = window.location.hash;
+  render(
+    <TodayPage
+      courses={[]}
+      sessions={new Map()}
+      day={day}
+      connectRequest={0}
+      onOpen={vi.fn()}
+      onConnected={vi.fn()}
+    />,
+  );
+  expect(screen.getByLabelText('Course link or code')).toHaveValue('');
+  expect(window.location.hash).toBe(expected);
+  expect(store.createFromLink).not.toHaveBeenCalled();
 });
