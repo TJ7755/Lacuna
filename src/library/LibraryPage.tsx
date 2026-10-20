@@ -18,6 +18,7 @@ import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useTheme } from '../state/ThemeContext';
 import { libraryCourses, resolveCourseShareUrl, type LibraryCourse } from './catalogue';
 import { CourseExpansion } from './CourseExpansion';
+import { CourseProvenance } from './CourseProvenance';
 
 const APP_URL = 'https://getlacuna.app/#/';
 const count = new Intl.NumberFormat('en-GB');
@@ -276,6 +277,7 @@ function CourseDetails({ course }: { course: LibraryCourse }) {
           </button>
         )}
       </div>
+      <CourseProvenance course={course} />
       <section aria-labelledby={`${course.id}-topics`} className="flex flex-col gap-3">
         <h3 id={`${course.id}-topics`} className="font-display text-lg">
           What you’ll study

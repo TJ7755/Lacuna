@@ -16,6 +16,10 @@ const courses: readonly LibraryCourse[] = [
     summary: 'Explore living systems from cells to ecosystems.',
     topics: ['Cell biology', 'Ecology'],
     shareUrl: biologyUrl,
+    author: 'Test author',
+    publisher: 'Test publisher',
+    revision: 7,
+    revisionDate: '2026-10-01',
     stats: { cards: 1200, notes: 80, practiceSets: 40, practiceMarks: 100 },
   },
   {
@@ -98,6 +102,38 @@ describe('LibraryPage', () => {
     expect(screen.queryByText(/review|progress/i)).not.toBeInTheDocument();
   });
 
+  it('shows provenance and reports only course identity and a chosen item reference', async () => {
+    localStorage.setItem('learner-progress', 'private study history');
+    renderLibrary();
+    fireEvent.click(cover('Biology'));
+    const sheet = await screen.findByRole('dialog', { name: 'Biology' });
+    const provenance = within(sheet).getByRole('region', { name: 'Course provenance' });
+    expect(within(provenance).getByText('Test author')).toBeInTheDocument();
+    expect(within(provenance).getByText('Test publisher')).toBeInTheDocument();
+    expect(within(provenance).getByText('7')).toBeInTheDocument();
+    expect(within(provenance).getByText('1 October 2026')).toHaveAttribute(
+      'datetime',
+      '2026-10-01',
+    );
+    const report = within(provenance).getByRole('link', { name: 'Report a mistake' });
+    const url = new URL(report.getAttribute('href')!);
+    expect(url.origin + url.pathname).toBe('https://github.com/TJ7755/Lacuna/issues/new');
+    expect([...url.searchParams]).toEqual([
+      ['title', 'Course mistake: biology'],
+      ['body', 'Course: biology\nRevision: 7'],
+    ]);
+    fireEvent.change(
+      within(provenance).getByRole('textbox', { name: 'Item reference (optional)' }),
+      {
+        target: { value: 'note: cells & tissues #3' },
+      },
+    );
+    expect([...new URL(report.getAttribute('href')!).searchParams]).toEqual([
+      ['title', 'Course mistake: biology'],
+      ['body', 'Course: biology\nRevision: 7\nItem reference: note: cells & tissues #3'],
+    ]);
+  });
+
   it('filters the covers by exam board', () => {
     renderLibrary();
     fireEvent.click(screen.getByRole('radio', { name: 'OCR' }));
@@ -105,6 +141,19 @@ describe('LibraryPage', () => {
     expect(cover('Physics')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: 'All' }));
     expect(cover('Biology')).toBeInTheDocument();
+  });
+
+  it('omits unknown provenance without guessing and keeps reporting available', async () => {
+    renderLibrary([{ ...courses[1], author: undefined, publisher: undefined }]);
+    fireEvent.click(cover('Physics'));
+    const sheet = await screen.findByRole('dialog', { name: 'Physics' });
+    const provenance = within(sheet).getByRole('region', { name: 'Course provenance' });
+    expect(provenance.querySelectorAll('dt')).toHaveLength(0);
+    const report = within(provenance).getByRole('link', { name: 'Report a mistake' });
+    expect([...new URL(report.getAttribute('href')!).searchParams]).toEqual([
+      ['title', 'Course mistake: physics'],
+      ['body', 'Course: physics'],
+    ]);
   });
 
   it('offers no board filter when every course shares one board', () => {

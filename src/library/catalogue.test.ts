@@ -5,6 +5,47 @@ describe('libraryCourses', () => {
   it('uses unique course identifiers', () => {
     expect(new Set(libraryCourses.map(({ id }) => id)).size).toBe(libraryCourses.length);
   });
+
+  it('records the documented publication revisions without guessing dates', () => {
+    expect(
+      libraryCourses.map(({ id, author, publisher, revision, revisionDate }) => ({
+        id,
+        author,
+        publisher,
+        revision,
+        revisionDate,
+      })),
+    ).toEqual([
+      {
+        id: 'biology4bi1',
+        author: 'Lacuna',
+        publisher: 'Lacuna',
+        revision: 17,
+        revisionDate: undefined,
+      },
+      {
+        id: 'chemistry4ch1',
+        author: 'Lacuna',
+        publisher: 'Lacuna',
+        revision: 12,
+        revisionDate: undefined,
+      },
+      {
+        id: 'physics0972',
+        author: 'Lacuna',
+        publisher: 'Lacuna',
+        revision: 11,
+        revisionDate: undefined,
+      },
+      {
+        id: 'history0977',
+        author: 'Lacuna',
+        publisher: 'Lacuna',
+        revision: 11,
+        revisionDate: undefined,
+      },
+    ]);
+  });
 });
 
 describe('resolveCourseShareUrl', () => {

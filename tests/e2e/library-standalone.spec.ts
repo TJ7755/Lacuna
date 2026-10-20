@@ -92,6 +92,18 @@ for (const width of [1280, 390, 320]) {
       await page.keyboard.press('Tab');
       await expect(sheet.getByRole('link', { name: 'Open in Lacuna', exact: true })).toBeFocused();
       await page.keyboard.press('Tab');
+      await expect(sheet.getByRole('textbox', { name: 'Item reference (optional)' })).toBeFocused();
+      await page.keyboard.type('note: cells & tissues #3');
+      await page.keyboard.press('Tab');
+      const report = sheet.getByRole('link', { name: 'Report a mistake' });
+      await expect(report).toBeFocused();
+      const reportUrl = new URL((await report.getAttribute('href'))!);
+      expect(reportUrl.origin + reportUrl.pathname).toBe('https://github.com/TJ7755/Lacuna/issues/new');
+      expect([...reportUrl.searchParams.keys()]).toEqual(['title', 'body']);
+      expect(reportUrl.searchParams.get('body')).toMatch(
+        /^Course: [a-z0-9]+\nRevision: \d+\nItem reference: note: cells & tissues #3$/,
+      );
+      await page.keyboard.press('Tab');
       await expect(sheet.getByRole('button', { name: 'Close course' })).toBeFocused();
       await expect(
         sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }),

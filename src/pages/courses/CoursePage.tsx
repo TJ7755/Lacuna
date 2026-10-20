@@ -1,4 +1,5 @@
 import { libraryCourses, type LibraryCourse } from '../../library/catalogue';
+import { CourseProvenance } from '../../library/CourseProvenance';
 import { Header, SectionHeading } from '../quizlet/ComparisonUi';
 import '../quizlet/QuizletComparison.css';
 import '../quizlet/ComparisonResponsive.css';
@@ -42,6 +43,7 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
                 <p>Coming soon</p>
               )}
             </div>
+            <CourseProvenance course={course} />
             <section>
               <SectionHeading title="What it covers" />
               <ol>
