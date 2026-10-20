@@ -144,7 +144,7 @@ for (const width of [1280, 390]) {
         new Request(request.url(), {
           method: request.method(),
           headers: request.headers(),
-          body: request.postDataBuffer() ?? undefined,
+          body: request.postData() ?? undefined,
         }),
       );
       await route.fulfill({

@@ -272,3 +272,55 @@ test('stopping a share removes the link for new visitors', async ({
   await teacherContext.close();
   await studentContext.close();
 });
+
+test('copies an existing link without the publishing device credentials', async ({
+  page,
+  context,
+}, testInfo) => {
+  const handle = createHandler(new MemoryStore());
+  await installShareRelay(page, handle);
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Biology from another device');
+  await openShare(page, 'Biology from another device');
+  const shareId = await createShareLink(page);
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const opening = indexedDB.open('lacuna');
+        opening.onerror = () => reject(opening.error);
+        opening.onsuccess = () => {
+          const database = opening.result;
+          const transaction = database.transaction('appState', 'readwrite');
+          const table = transaction.objectStore('appState');
+          const reading = table.get('syncState');
+          reading.onsuccess = () => {
+            const state = reading.result as { key: string; value: { shareLinks?: unknown } };
+            delete state.value.shareLinks;
+            table.put(state);
+          };
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
+      }),
+  );
+  await page.reload();
+  const panel = page.getByRole('region', { name: 'Share link', exact: true });
+  await expect(panel.getByText(/Copy and pass on this link/)).toBeVisible();
+  await expect(panel.getByRole('button', { name: 'Replace link', exact: true })).toBeHidden();
+  await panel.getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(`${new URL(page.url()).origin}/#/s/${shareId}`);
+  expect((await handle(new Request(`${RELAY_URL}/shares/${shareId}/payload`))).status).toBe(200);
+  await page.screenshot({
+    path: testInfo.outputPath('forward-other-device-link.png'),
+    fullPage: true,
+  });
+});
