@@ -32,11 +32,29 @@ and a request for a reporting day.
 
 ## Connect a published course
 
-On the device that published a course, open its Share page and choose **Connect
-to Gaps**. Export a connection file protected by a passphrase of at least 16
-characters. In Gaps, choose **Connect a class**, select that file and enter its
-passphrase. Only the shared trial relay, `https://relay.getlacuna.app`, is supported.
+In Gaps, choose **Connect a class**, paste any published Lacuna course link and
+set a connection passphrase of at least 16 characters. Gaps creates a separate
+class link which reads the original publisher’s current course and updates. The
+teacher owns only this class’s key and results; they cannot change the source
+course. Links to another teacher’s class resolve to the original publisher, so
+neither their key nor their results are inherited. Give pupils the new class code
+after key setup; the source course link alone does not enrol them in your class.
+Save **Download connection file** under **Class setup and connection**, and keep
+its passphrase separately. The teacher-key recovery file remains separate.
+
+To restore a saved connection, choose **Use a connection file**. Existing
+publisher-owned connections remain supported: on the publishing device, open the
+course’s Share page and choose **Connect to Gaps** to export that connection.
+Only the shared trial relay, `https://relay.getlacuna.app`, is supported.
 The teacher policy permits connections to that relay alone.
+
+Class links forward course bytes and polling metadata without copying or republishing
+content. Publisher updates keep linked classes live under the existing expiry
+policy. Deleting one class preserves the publisher and other classes; deleting or
+expiring the source makes its content unavailable through every class link.
+Existing imported copies remain local. The class’s own key and retained results
+continue to use its separate ownership and retention rules. Course-file imports
+without a recorded source link and previously republished forks are not migrated.
 
 [connectionFile.ts](../src/teacher/connectionFile.ts) defines the bounded,
 versioned file. Its ownership token is encrypted with AES-256-GCM using a fresh
@@ -48,9 +66,12 @@ permits offline passphrase guessing, so keep it and a strong passphrase separate
 and do not share them with pupils. This is a different file from teacher-key recovery.
 
 [connectionStore.ts](../src/teacher/connectionStore.ts) opens only
-`lacuna.gaps.connections`. Import decrypts locally, checks the existing owner
+`lacuna.gaps.connections`. File import decrypts locally, checks the existing owner
 credential with an uncached HEAD, then commits the encrypted file and verification
-time. Failed decryption, failed verification, cancellation before saving or a failed
+time. Link-based creation validates the source manifest, mints a source-linked
+class, checks its forwarded manifest and ownership, then commits only encrypted
+credentials. A failed local commit attempts to delete only the newly minted class;
+if cleanup cannot reach the relay, its unexposed id expires normally. Failed decryption, failed verification, cancellation before saving or a failed
 commit cannot confirm a connection. No course bytes are uploaded or republished.
 The plaintext token exists transiently to make the owner request; it is not saved.
 The course list shows when ownership was checked, not a promise of permanent access.

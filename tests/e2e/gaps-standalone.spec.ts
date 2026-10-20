@@ -169,6 +169,14 @@ test('uses Lacuna’s saved light theme and supports keyboard connection entry a
   await page.goto('/');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   await page.getByRole('button', { name: 'Connect a class' }).click();
+  await expect(page.getByLabel('Course link or code')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(
+    page
+      .getByRole('form', { name: 'Create class from a course link' })
+      .getByLabel(/^Connection passphrase/),
+  ).toBeFocused();
+  await page.getByRole('button', { name: 'Use a connection file' }).click();
   await expect(page.getByLabel(/^Encrypted connection file/)).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
@@ -176,6 +184,7 @@ test('uses Lacuna’s saved light theme and supports keyboard connection entry a
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('form', { name: 'Connect a class' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Connect a class' }).click();
+  await page.getByRole('button', { name: 'Use a connection file' }).click();
   await expect(page.getByLabel('Connection passphrase', { exact: true })).toHaveValue('');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({

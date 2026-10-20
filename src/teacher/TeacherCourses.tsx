@@ -8,6 +8,7 @@ import {
   GapsConnectionFileError,
   parseGapsConnectionFile,
 } from './connectionFile';
+import { CreateGapsClass } from './CreateGapsClass';
 import { TeacherJourney } from './TeacherHomeView';
 import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectionStore';
 
@@ -25,6 +26,7 @@ export function TeacherCourses({
   const [courses, setCourses] = useState<ConnectedGapsCourse[] | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [open, setOpen] = useState(false);
+  const [useFile, setUseFile] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [phrase, setPhrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -61,8 +63,8 @@ export function TeacherCourses({
   }, [attempt]);
 
   useEffect(() => {
-    if (open) fileInput.current?.focus();
-  }, [open]);
+    if (open && useFile) fileInput.current?.focus();
+  }, [open, useFile]);
 
   async function connect(event: FormEvent) {
     event.preventDefault();
@@ -106,6 +108,23 @@ export function TeacherCourses({
     }
   }
 
+  async function downloadConnection(shareId: string) {
+    const store = createGapsConnectionStore();
+    try {
+      const text = await store.exportConnection(shareId);
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `gaps-course-${shareId}.json`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setError('Could not download the saved connection. Try again.');
+    } finally {
+      store.close();
+    }
+  }
+
   async function forget(shareId: string) {
     setBusy(true);
     setError(null);
@@ -139,6 +158,7 @@ export function TeacherCourses({
               type="button"
               onClick={() => {
                 setOpen(true);
+                setUseFile(false);
                 setConnected('');
                 setError(null);
               }}
@@ -167,10 +187,10 @@ export function TeacherCourses({
         ) : courses.length === 0 ? (
           <div className="mt-4 space-y-4 text-sm text-ink-soft">
             <p>
-              Start with a course you have published in Lacuna. Your pupils keep using the same
+              Start with any published Lacuna course link. You do not need to own or republish the
               course.
             </p>
-            {!open && <p>Have your connection file ready? Choose Connect a class above.</p>}
+            {!open && <p>Choose Connect a class to paste a link or restore a saved connection.</p>}
             <details>
               <summary>Where do I get a connection file?</summary>
               <ol className="mt-3 list-decimal space-y-2 pl-5">
@@ -224,6 +244,14 @@ export function TeacherCourses({
                     </button>
                     <button
                       type="button"
+                      className={buttonClassName('secondary')}
+                      disabled={busy || keySetupOpen}
+                      onClick={() => void downloadConnection(course.shareId)}
+                    >
+                      Download connection file
+                    </button>
+                    <button
+                      type="button"
                       className={buttonClassName('ghost')}
                       disabled={busy || keySetupOpen}
                       onClick={() => setRemoving(course.shareId)}
@@ -261,6 +289,39 @@ export function TeacherCourses({
           </ul>
         )}
         {open && (
+          <div className="mt-5">
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={buttonClassName(useFile ? 'secondary' : 'primary')}
+                aria-pressed={!useFile}
+                disabled={busy}
+                onClick={() => setUseFile(false)}
+              >
+                Use a course link
+              </button>
+              <button
+                type="button"
+                className={buttonClassName(useFile ? 'primary' : 'secondary')}
+                aria-pressed={useFile}
+                disabled={busy}
+                onClick={() => setUseFile(true)}
+              >
+                Use a connection file
+              </button>
+            </div>
+            {!useFile && (
+              <CreateGapsClass
+                onConnected={(shareId) => {
+                  setConnected(shareId);
+                  setOpen(false);
+                  setAttempt((value) => value + 1);
+                }}
+              />
+            )}
+          </div>
+        )}
+        {open && useFile && (
           <form
             onSubmit={(event) => void connect(event)}
             className="mt-6 space-y-4 border-t border-ink/10 pt-5"
@@ -315,8 +376,9 @@ export function TeacherCourses({
         )}
         {connected && (
           <p role="status" className="teacher-notice mt-4 text-sm">
-            Class connected. Next, set up a code for your pupils. If you have used this class
-            before, restore its saved recovery file.
+            Class connected. Next, set up a code for your pupils. Save your connection file under
+            Class setup and connection. If you have used this class before, restore its saved
+            recovery file.
           </p>
         )}
         {error && (
