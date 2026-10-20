@@ -33,6 +33,12 @@ bun run build:library
 PLAYWRIGHT_WEB_PORT=4347 bun run verify:browser -- --library --project=chromium library-standalone.spec.ts
 ```
 
+The build check caps all JavaScript together at 125 kB gzipped, including the library entry
+and the shared Motion feature chunk. This replaces the previous single-bundle 80 kB budget
+to support the app's shared cover expansion and filter motion. The feature chunk loads when
+the library mounts; it is included in the cap even though its import is asynchronous. The
+complete module graph must still exclude learner startup, storage, synchronisation and AI.
+
 ## Hosting
 
 Create a separate Vercel project named `lacuna-library`, connected to this repository.

@@ -91,8 +91,9 @@ export function CourseExpansion({
         className="fixed inset-0 z-40"
         inert={!present}
         initial={m > 0 ? { opacity: 0 } : false}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        animate={m > 0 ? { opacity: 1 } : undefined}
+        style={m === 0 ? { opacity: 1 } : undefined}
+        exit={m > 0 ? { opacity: 0 } : undefined}
         transition={fade}
       >
         <ModalBackdrop shade={40} onClick={onClose} />
@@ -111,11 +112,26 @@ export function CourseExpansion({
           }
         }}
         initial={m > 0 ? { ...origin, borderRadius: 24 } : false}
-        animate={{ ...bounds, borderRadius: 24 }}
-        exit={{ ...origin, borderRadius: 24 }}
+        animate={m > 0 ? { ...bounds, borderRadius: 24 } : undefined}
+        style={m === 0 ? { ...bounds, borderRadius: 24 } : undefined}
+        exit={m > 0 ? { ...origin, borderRadius: 24 } : undefined}
         transition={expandingActionSpring(m)}
         className="fixed z-50 overflow-hidden bg-surface-raised text-ink card-surface card-surface-control"
       >
+        <motion.button
+          type="button"
+          onClick={onClose}
+          aria-label="Close course"
+          title="Close (Esc)"
+          data-dialog-close
+          initial={m > 0 ? { opacity: 0 } : false}
+          animate={m > 0 ? { opacity: present ? 1 : 0 } : undefined}
+          style={m === 0 ? { opacity: present ? 1 : 0 } : undefined}
+          transition={{ duration: 0.12 * m }}
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+        >
+          <CloseIcon width={18} height={18} />
+        </motion.button>
         <div
           ref={content}
           style={{ width: bounds.width }}
@@ -124,25 +140,13 @@ export function CourseExpansion({
           {face(headingId)}
           <motion.div
             initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: present ? 1 : 0 }}
+            animate={m > 0 ? { opacity: present ? 1 : 0 } : undefined}
+            style={m === 0 ? { opacity: present ? 1 : 0 } : undefined}
             transition={{ duration: (present ? 0.12 : 0.09) * m }}
           >
             {children}
           </motion.div>
         </div>
-        <motion.button
-          type="button"
-          onClick={onClose}
-          aria-label="Close course"
-          title="Close (Esc)"
-          data-dialog-close
-          initial={m > 0 ? { opacity: 0 } : false}
-          animate={{ opacity: present ? 1 : 0 }}
-          transition={{ duration: 0.12 * m }}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
-        >
-          <CloseIcon width={18} height={18} />
-        </motion.button>
       </motion.div>
     </>,
     document.body,

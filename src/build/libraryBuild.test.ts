@@ -36,14 +36,19 @@ it('builds only the library and its shared presentation, without learner startup
       /src\/(?:db|shareLinks|teacher|insights|sync|ai|fsrs|workers)\/|src\/App\.|node_modules\/(?:dexie|react-router|ts-fsrs|ai)\//,
     );
     const files = await readdir(directory, { recursive: true });
-    const scripts = files.filter((file) => file.endsWith('.js'));
-    expect(scripts).toHaveLength(1);
+    const scripts = files.filter((file) => file.endsWith('.js')).sort();
+    expect(scripts).toEqual([
+      expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/motionFeatures-[\w-]+\.js$/),
+    ]);
     expect(files.filter((file) => /(?:worker|manifest|\.wasm$|\.lacuna$)/i.test(file))).toEqual([]);
     expect(await readFile(join(directory, 'index.html'), 'utf8')).toContain(
       '<title>Library · Lacuna</title>',
     );
-    const script = await readFile(join(directory, scripts[0]));
-    expect(gzipSync(script).byteLength).toBeLessThan(80_000);
+    const scriptBytes = await Promise.all(
+      scripts.map(async (file) => gzipSync(await readFile(join(directory, file))).byteLength),
+    );
+    expect(scriptBytes.reduce((total, bytes) => total + bytes, 0)).toBeLessThan(125_000);
     for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
       expect(files).toContain(`fonts/${name}-Variable.ttf`);
       expect(files).toContain(`fonts/${name}-OFL.txt`);

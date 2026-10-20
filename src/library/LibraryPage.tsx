@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type Ref } from 'react';
 import { AnimatePresence, LayoutGroup, LazyMotion, MotionConfig, m as motion } from 'motion/react';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { cn } from '../components/ui/cn';
@@ -45,7 +45,7 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
   const openCourse = open && courses.find((course) => course.id === open.id);
 
   return (
-    <div className="min-h-screen pb-16 select-text">
+    <div className="min-h-screen pb-16 select-text" inert={open !== null}>
       <a
         href="#library-courses"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-surface focus:px-4 focus:py-2"
@@ -73,7 +73,8 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
         <div className="flex flex-col gap-6 pb-10 pt-8 sm:pt-16">
           <motion.h1
             initial={m > 0 ? { opacity: 0, y: 14 } : false}
-            animate={{ opacity: 1, y: 0 }}
+            animate={m > 0 ? { opacity: 1, y: 0 } : undefined}
+            style={m === 0 ? { opacity: 1, y: 0 } : undefined}
             transition={{ duration: 0.6 * m, ease: MOTION_EASING.emphasised }}
             className="max-w-3xl font-display text-[clamp(2.5rem,6vw,4.25rem)] font-semibold leading-[1.02] tracking-[-0.035em]"
           >
@@ -81,7 +82,8 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
           </motion.h1>
           <motion.div
             initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
+            animate={m > 0 ? { opacity: 1 } : undefined}
+            style={m === 0 ? { opacity: 1 } : undefined}
             transition={{ duration: 0.3 * m, delay: 0.25 * m, ease: MOTION_EASING.emphasised }}
             className="flex flex-wrap items-center justify-between gap-4"
           >
@@ -164,12 +166,14 @@ function ThemeButton() {
 }
 
 function Cover({
+  ref,
   course,
   index,
   expanded,
   multiplier: m,
   onOpen,
 }: {
+  ref?: Ref<HTMLButtonElement>;
   course: LibraryCourse;
   index: number;
   expanded: boolean;
@@ -179,6 +183,7 @@ function Cover({
   const lift = { duration: 0.16 * m, ease: MOTION_EASING.emphasised };
   return (
     <motion.button
+      ref={ref}
       type="button"
       layout={m > 0}
       aria-haspopup="dialog"
@@ -187,15 +192,18 @@ function Cover({
       data-press="none"
       onClick={(event) => onOpen(event.currentTarget)}
       initial={m > 0 ? { opacity: 0, y: 12 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      exit={m > 0 ? { opacity: 0, scale: 0.96 } : undefined}
+      animate={m > 0 ? { opacity: 1, y: 0 } : undefined}
+      exit={m > 0 ? { opacity: 0 } : undefined}
       transition={{
         layout: scaledSpring(m, 380, 36),
         default: { ...scaledSpring(m, 380, 32), delay: (0.3 + index * 0.06) * m },
       }}
       whileHover={m > 0 ? { y: -2, transition: lift } : undefined}
       // The sheet covers the cover exactly, so it hides only while the sheet is open.
-      style={{ visibility: expanded ? 'hidden' : undefined }}
+      style={{
+        visibility: expanded ? 'hidden' : undefined,
+        ...(m === 0 ? { opacity: 1, y: 0 } : {}),
+      }}
       className="group flex h-full rounded-3xl bg-surface text-left card-surface card-surface-control transition-colors hover:bg-surface-raised focus-visible:bg-surface-raised"
     >
       <CoverFace course={course} />
