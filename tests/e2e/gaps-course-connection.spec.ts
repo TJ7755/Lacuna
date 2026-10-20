@@ -350,6 +350,12 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('group', { name: 'Class connection method' })).toHaveCount(0);
     const recovery = page.getByLabel('Recovery code');
     await expect(recovery.locator('span')).toHaveText(['0123-4567-89AB', 'CDEF-GHJK-MNPQ']);
+    expect(
+      await recovery.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize)),
+    ).toBeGreaterThanOrEqual(20);
+    expect(await recovery.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
+      true,
+    );
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
