@@ -240,11 +240,12 @@ export function Dashboard() {
           </p>
         )}
         <SyncStatus />
+        {/* A bordered action beside the statistics keeps Study on a phone's first screen. */}
         <div inert={importing}>
           <AppLink
             to="/?import=1&join=1"
             onClick={() => setCreatingCourse(false)}
-            className={buttonClassName('ghost', 'sm')}
+            className={buttonClassName('secondary', 'sm')}
           >
             Join a class
           </AppLink>

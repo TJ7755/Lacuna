@@ -1,0 +1,1 @@
+- Give Today’s “Join a class” link a bordered button treatment beside, and distinct from, the passive study statistics. (#663)
