@@ -40,6 +40,10 @@ Cards; changing cues or geometry must not reset surviving memory state. Review
 [Sequence writes](../../src/db/sequenceRepository.ts), [Occlusion writes](../../src/db/occlusionRepository.ts)
 and [ordinary share import](../../src/db/share.ts) together when changing generated Concept identity.
 Native generator IDs and imported/remapped IDs must remain coherent.
+Ordinary imports remap generator and item/region IDs before deriving generated Concept IDs, using
+the same mapping for Card and Question relationships. Regeneration reuses a surviving sibling's
+Concept, including legacy non-deterministic IDs, and retains its shared metadata. Missing generated
+faces must not discard specification links or move ordinary Cards and Questions to another Concept.
 
 Sequence entry starts with Name focused and one blank item. The type sets its terminology and
 cue defaults; secondary settings and generated previews remain under Options and Preview. Script

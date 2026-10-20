@@ -9,6 +9,7 @@ import { db, makeId } from './schema';
 import type { Card, LessonCardExposure, LessonCardLink, Sequence, SequenceItem } from './types';
 import type { Concept } from '../questions/types';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
+import { conceptIdForSequenceItem } from '../questions/generatedConceptIds';
 import {
   projectCardsForStorage,
   reviewHistoryEntriesForCard,
@@ -89,15 +90,12 @@ function generatedCardFromPayload(
   );
 }
 
-function conceptIdForSequenceItem(sequenceId: string, sequenceItemId: string): string {
-  return `concept:sequence:${encodeURIComponent(sequenceId)}:${encodeURIComponent(baseItemId(sequenceItemId))}`;
-}
-
 function conceptsForSequencePayloads(
   sequence: Sequence,
   deckId: string,
   payloads: readonly GeneratedCardPayload[],
   now: number,
+  conceptIdsByItem?: ReadonlyMap<string, string>,
 ): Concept[] {
   const byItem = new Map<string, GeneratedCardPayload>();
   for (const payload of payloads) {
@@ -106,7 +104,7 @@ function conceptsForSequencePayloads(
   }
   return [...byItem.entries()].map(([itemId, payload], index) =>
     buildCardConcept({
-      id: conceptIdForSequenceItem(sequence.id, itemId),
+      id: conceptIdsByItem?.get(itemId) ?? conceptIdForSequenceItem(sequence.id, itemId),
       courseId: sequence.courseId,
       schedulingUnitId: deckId,
       name: conceptNameForCard(payload.type, payload.front, payload.back),
@@ -240,18 +238,31 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
             ? await ensureLessonDeck(sequence.courseId, sequence.primaryLessonId)
             : await ensureCourseBankDeck(sequence.courseId);
           const now = Date.now();
-          const concepts = conceptsForSequencePayloads(sequence, deckId, diff.creates, now);
-          // Specification links belong to the Concept, independently of generated Card faces.
+          // Older imports may have random Concept IDs. A surviving positional/label
+          // sibling is the authority for that item's identity, even if a different
+          // Concept happens to occupy the deterministic ID.
+          const conceptIdsByItem = new Map(
+            existingCards
+              .filter((card) => card.courseId === sequence.courseId && card.sequenceItemId)
+              .map((card) => [baseItemId(card.sequenceItemId!), card.conceptId]),
+          );
+          const concepts = conceptsForSequencePayloads(
+            sequence,
+            deckId,
+            diff.creates,
+            now,
+            conceptIdsByItem,
+          );
           const existingConcepts = await db.concepts.bulkGet(concepts.map((concept) => concept.id));
           for (const [index, concept] of concepts.entries()) {
             const existing = existingConcepts[index];
             if (
               concept.scope === 'course' &&
               existing?.scope === 'course' &&
-              existing.courseId === concept.courseId &&
-              existing.specificationPointIds !== undefined
+              existing.courseId === concept.courseId
             ) {
-              concept.specificationPointIds = existing.specificationPointIds;
+              // Concepts can also be shared by ordinary Cards and Questions.
+              concepts[index] = existing;
             }
           }
           const newCards = diff.creates.map((payload, i) =>
@@ -259,7 +270,8 @@ export async function updateSequence(sequence: Sequence): Promise<void> {
               deckId,
               payload,
               now + i,
-              conceptIdForSequenceItem(sequence.id, payload.sequenceItemId),
+              conceptIdsByItem.get(baseItemId(payload.sequenceItemId)) ??
+                conceptIdForSequenceItem(sequence.id, payload.sequenceItemId),
             ),
           );
           if (concepts.length > 0) await db.concepts.bulkPut(concepts);

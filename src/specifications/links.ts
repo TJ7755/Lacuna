@@ -21,7 +21,7 @@ export function isSpecificationReference(value: unknown): value is Specification
     (reference.tier === undefined || isId(reference.tier)) &&
     (reference.routeIds === undefined ||
       (Array.isArray(reference.routeIds) &&
-        reference.routeIds.every(isId) &&
+        [...reference.routeIds].every(isId) &&
         new Set(reference.routeIds).size === reference.routeIds.length))
   );
 }
@@ -33,7 +33,7 @@ export function isQualifiedSpecificationPointId(value: unknown): value is string
 export function isSpecificationPointIds(value: unknown): value is string[] {
   return (
     Array.isArray(value) &&
-    value.every(isQualifiedSpecificationPointId) &&
+    [...value].every(isQualifiedSpecificationPointId) &&
     new Set(value).size === value.length
   );
 }

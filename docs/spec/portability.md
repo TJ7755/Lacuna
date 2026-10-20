@@ -105,7 +105,8 @@ Course `specificationRef` and course-scoped Concept `specificationPointIds` surv
 peer sync, share codes and Course files. Validate before writes: malformed references, duplicate
 route/point IDs and links on legacy-scheduling-unit Concepts are invalid. Unknown valid catalogue
 IDs and additive nested metadata remain portable; a Course selection change never silently drops
-Concept links. Sync uses the existing whole-Concept last-writer rule and deterministic timestamp
+Concept links. Sparse arrays are rejected before JSON conversion can turn holes into null values.
+Sync uses the existing whole-Concept last-writer rule and deterministic timestamp
 tie-break, rather than unioning removed links back into the record.
 
 Ordinary sharing remaps local Concept IDs while preserving qualified catalogue point IDs and the

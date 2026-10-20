@@ -60,6 +60,23 @@ async function fixture() {
   };
 }
 
+it('accepts an empty streamed body when minting an ordinary share', async () => {
+  vi.stubEnv('RELAY_MINT_SECRET', 'test');
+  const handle = createHandler(new MemoryStore());
+  const request = new Request(base, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test' },
+    body: '',
+  });
+  expect(request.body).not.toBeNull();
+  const response = await handle(request);
+  expect(response.status).toBe(201);
+  expect(await response.json()).toMatchObject({
+    shareId: expect.stringMatching(/^[a-f0-9]{32}$/),
+    writeToken: expect.any(String),
+  });
+});
+
 it('follows publisher updates whilst keeping classroom keys, credentials and deletion independent', async () => {
   const ctx = await fixture();
   const first = await ctx.mint(ctx.source.shareId);
