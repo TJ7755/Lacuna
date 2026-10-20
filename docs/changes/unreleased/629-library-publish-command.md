@@ -1,0 +1,1 @@
+- Add an explicit frozen-artefact publication command with dry-run comparisons, exact-hash approval, conditional stable-share uploads, verified publication records and safe retry guidance. (#629)

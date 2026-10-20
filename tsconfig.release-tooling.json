@@ -11,6 +11,7 @@
     "tests/e2e-electron/**/*.ts",
     "tests/config/playwright.*.config.ts",
     "tests/performance/playwright.*.config.ts",
-    "scripts/performance-audit.ts"
+    "scripts/performance-audit.ts",
+    "scripts/library-publish.ts"
   ]
 }

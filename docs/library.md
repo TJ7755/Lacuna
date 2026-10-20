@@ -41,6 +41,78 @@ a separate publisher lineage; importing a current link therefore does not migrat
 subscriber's course or learner evidence. Keep old links available until that migration has
 been designed and verified. Use the same current link for later revisions.
 
+## Publish a frozen artefact
+
+[The publication command](../scripts/library-publish.ts) accepts an existing stable share and an
+explicit `.lacuna` course file. It validates through the existing course/media validators, hashes
+and uploads the original bytes, then downloads both slots to verify the payload SHA-256 and
+manifest before reporting `published`. It never imports, rebuilds, increments revisions, rewrites
+identities, mints links or updates the catalogue. Keep source artefacts in the private content
+repository. This first slice does not authorise publishing any existing official course; prove the
+workflow on a synthetic share in a local/staging relay first.
+
+Supply ownership through `LACUNA_RELAY_URL` and `LACUNA_WRITE_TOKEN` in the process environment,
+or `--credentials "$LACUNA_OWNER_FILE"`. The latter is a JSON file outside the repository,
+including after resolving symbolic links, with this shape:
+
+```json
+{ "relayUrl": "http://127.0.0.1:4999", "writeToken": "<64 lowercase hexadecimal digits>" }
+```
+
+Use the relay that owns the existing share. No relay or token is inferred from its public URL.
+Keep this file outside every checkout, restrict access to its owner and inject environment
+credentials through your secret manager. Never paste tokens into command arguments, commit them,
+include them in review evidence or enable shell tracing. HTTP is accepted only for loopback relays;
+remote relays require HTTPS. The command suppresses private exception/relay response text.
+
+Use the catalogue course id for `--course-id`; it is an operator label, not a rewritten payload
+identity. With the variables below pointing to external files and a synthetic stable link:
+
+```bash
+bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthetic \
+  --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" --dry-run
+```
+
+Dry-run validates, checks ownership, reads both slots and reports `sha256`, `currentSha256` and
+which slots would change. It writes nothing, including local files. Review that exact frozen
+artefact and record its hash in your private approval evidence. For a real run supply that hash;
+a missing or mismatched approval hash fails before writing:
+
+```bash
+bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthetic \
+  --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" \
+  --approved-sha256 "$APPROVED_SHA256" > "$PUBLICATION_RECORD"
+```
+
+The stdout JSON is public-safe: course id, payload format version, frozen revision, SHA-256,
+byte size and derived card/note/lesson/Question/media counts. Question set formats also supply
+`practiceSets` and `practiceMarks` through the existing marking calculation; older formats omit
+those unknown statistics. `operator-approved` records only the operator's assertion for this
+exact hash, not independent review or endorsement. Dry-run without an approval hash says
+`unreviewed`; approval never transfers to changed bytes. Retain successful records outside the
+repository, then manually update catalogue snapshots from the verified publication. A failed
+run returns non-zero, writes its error to stderr and emits no success record.
+
+Repeated identical payload and manifest return `skipped` without a write. Higher revisions must
+already exist in a separately reviewed frozen file. Reusing a revision for different bytes,
+rolling back either slot's revision or changing lineage is refused. The manifest uses the frozen
+payload's exported-at timestamp so retries remain deterministic. Identity migration for old live
+links remains separate, risk-bearing work; this command cannot repair identity mismatches.
+
+Serialise publishers for each share. The existing protocol writes payload then manifest, with
+separate generation/compare-and-swap checks; it is not a two-slot transaction. A failure can leave
+a new payload with an old/missing manifest, or an accepted write whose response was lost. Errors
+identify the failing phase and do not claim rollback. Stop other publishers, run dry-run with the
+same frozen artefact and inspect the plan before retrying. Matching payload bytes are not resent;
+only a missing/outdated manifest is repaired. A 412 conflict is never automatically overwritten.
+If another publisher advanced the revision, investigate that publication rather than forcing an
+older artefact over it. Verification failures may occur after both slots are live: inspect them
+before retrying, and do not treat the failed run as publication evidence.
+
+Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; the official
+link longevity policy in issue #630 remains separate. No production relay was used to validate
+this command.
+
 ## Cambridge alternative codes
 
 The catalogue keeps `0972` and `0977` as the primary codes and retains the existing course
