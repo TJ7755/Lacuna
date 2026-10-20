@@ -1,0 +1,1 @@
+- Preserve generated Concept identity, specification links, shared Concept metadata and relationships when regenerating ordinarily imported Sequences and Occlusions; reject sparse specification arrays before writes or transport conversion.

@@ -9,7 +9,8 @@ export interface HostedModelRoute {
 }
 
 const FREE_GATEWAY_MODEL_IDS = [
-  'inclusionai/ling-3.0-flash-fin',
+  'nvidia/nemotron-3.5-lightning-free',
+  'stealth/cat-jam',
   'poolside/laguna-s-2.1-free',
 ] as const;
 
