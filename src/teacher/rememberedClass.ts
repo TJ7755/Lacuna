@@ -22,7 +22,7 @@ export async function rememberClass(session: ClassSession): Promise<boolean> {
   }
 }
 
-export async function readRememberedClass(shareId: string): Promise<ClassSession | null> {
+export async function readRememberedClass(shareId: string): Promise<ClassSession | undefined> {
   const connections = createGapsConnectionStore();
   const keys = createInsightsOwnerStore();
   try {
@@ -31,9 +31,9 @@ export async function readRememberedClass(shareId: string): Promise<ClassSession
     if (owner && connection) return { owner, connection, remembered: true, days: new Map() };
     await connections.forgetRemembered(shareId);
     await keys.forgetRemembered(shareId);
-    return null;
+    return undefined;
   } catch {
-    return null;
+    return undefined;
   } finally {
     connections.close();
     keys.close();
@@ -44,8 +44,12 @@ export async function forgetRememberedClass(shareId: string): Promise<void> {
   const connections = createGapsConnectionStore();
   const keys = createInsightsOwnerStore();
   try {
-    await connections.forgetRemembered(shareId);
-    await keys.forgetRemembered(shareId);
+    const results = await Promise.allSettled([
+      keys.forgetRemembered(shareId),
+      connections.forgetRemembered(shareId),
+    ]);
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure) throw failure.reason;
   } finally {
     connections.close();
     keys.close();

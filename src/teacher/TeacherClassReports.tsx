@@ -100,6 +100,7 @@ export function ClassPage({
   const earliest = isoDayLabel(isoDayStartMs(latest) - (RETENTION_DAYS - 1) * DAY_MS);
   const [forgetting, setForgetting] = useState(false);
   const [forgetBusy, setForgetBusy] = useState(false);
+  const [forgetError, setForgetError] = useState('');
   const forgetTrigger = useRef<HTMLButtonElement>(null);
   const cancelForget = useRef<HTMLButtonElement>(null);
   const wasForgetting = useRef(false);
@@ -180,7 +181,7 @@ export function ClassPage({
         <h1 tabIndex={-1} data-page-title className={cn(PAGE_TITLE, 'min-w-0 break-words')}>
           {course.courseName}
         </h1>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           {session && (
             <>
               <button
@@ -190,6 +191,16 @@ export function ClassPage({
               >
                 <QrCodeIcon width={18} height={18} /> Class code
               </button>
+              {session.remembered && (
+                <button
+                  ref={forgetTrigger}
+                  type="button"
+                  className={buttonClassName('ghost')}
+                  onClick={() => setForgetting(true)}
+                >
+                  Forget on this device
+                </button>
+              )}
               <button type="button" onClick={onLock} className={buttonClassName('ghost')}>
                 {session.remembered ? 'Close' : 'Lock'}
               </button>
@@ -198,60 +209,62 @@ export function ClassPage({
         </div>
       </header>
 
-      {session?.remembered && (
+      {session?.remembered && forgetting && (
         <div className="mb-4">
-          {forgetting ? (
-            <div
-              role="group"
-              aria-busy={forgetBusy}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape' && !forgetBusy) {
-                  setForgetting(false);
-                }
-              }}
-              className="gaps-fade flex flex-col gap-3 rounded-2xl border border-negative/20 bg-negative/5 p-4 sm:flex-row sm:items-center"
-            >
-              <span className="min-w-0 flex-1 text-sm text-ink-soft">
+          <div
+            role="group"
+            aria-busy={forgetBusy}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !forgetBusy) {
+                setForgetError('');
+                setForgetting(false);
+              }
+            }}
+            className="gaps-fade flex flex-col gap-3 rounded-2xl border border-negative/20 bg-negative/5 p-4 sm:flex-row sm:items-center"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm text-ink-soft">
                 This browser will ask for both passphrases next time. Your class, reports and
                 recovery file are not affected.
-              </span>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={forgetBusy}
-                  className={buttonClassName('danger', 'sm')}
-                  onClick={() => {
-                    setForgetBusy(true);
-                    void forgetRememberedClass(course.shareId)
-                      .then(onLock)
-                      .catch(() => setForgetBusy(false));
-                  }}
-                >
-                  Forget
-                </button>
-                <button
-                  ref={cancelForget}
-                  type="button"
-                  disabled={forgetBusy}
-                  className={buttonClassName('secondary', 'sm')}
-                  onClick={() => {
-                    setForgetting(false);
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
+              </p>
+              {forgetError && (
+                <p role="alert" className="text-negative text-sm">
+                  {forgetError}
+                </p>
+              )}
             </div>
-          ) : (
-            <button
-              ref={forgetTrigger}
-              type="button"
-              className={buttonClassName('secondary')}
-              onClick={() => setForgetting(true)}
-            >
-              Forget on this device
-            </button>
-          )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={forgetBusy}
+                className={buttonClassName('danger', 'sm')}
+                onClick={() => {
+                  setForgetError('');
+                  setForgetBusy(true);
+                  void forgetRememberedClass(course.shareId)
+                    .then(onLock)
+                    .catch(() => {
+                      setForgetError('Could not forget this class. Try again.');
+                      setForgetBusy(false);
+                    });
+                }}
+              >
+                Forget
+              </button>
+              <button
+                ref={cancelForget}
+                type="button"
+                disabled={forgetBusy}
+                className={buttonClassName('secondary', 'sm')}
+                onClick={() => {
+                  setForgetError('');
+                  setForgetting(false);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

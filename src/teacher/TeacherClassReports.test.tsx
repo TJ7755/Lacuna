@@ -523,3 +523,44 @@ it('forgets a pending remember completion if removal revoked its session', async
   expect(mocks.forgetRemembered).toHaveBeenCalledWith(course.shareId);
   expect(mocks.read).not.toHaveBeenCalled();
 });
+
+it('keeps failed Forget visible and retryable until cancelled or retried', async () => {
+  mocks.remember.mockResolvedValue(true);
+  mocks.forgetRemembered.mockRejectedValue(new Error('Deletion failed'));
+  render(<Harness />);
+  await unlock();
+  const trigger = await screen.findByRole('button', { name: 'Forget on this device' });
+  fireEvent.click(trigger);
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: /^Forget$/ }));
+  const alert = await screen.findByRole('alert');
+  expect(trigger.closest('header')).toContainElement(screen.getByRole('button', { name: 'Close' }));
+  expect(alert).toHaveTextContent('Could not forget this class. Try again.');
+  expect(alert).toHaveClass('text-negative', 'text-sm');
+  expect(alert.closest('[role="group"]')).toContainElement(
+    screen.getByRole('button', { name: /^Forget$/ }),
+  );
+  expect(screen.getByRole('button', { name: 'Close' })).toBeVisible();
+  expect(screen.queryByRole('form', { name: 'Unlock class' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Forget$/ })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(trigger).toHaveFocus();
+  fireEvent.click(trigger);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /^Forget$/ }));
+  await screen.findByRole('alert');
+  let finish!: () => void;
+  mocks.forgetRemembered.mockReturnValueOnce(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  fireEvent.click(screen.getByRole('button', { name: /^Forget$/ }));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Forget$/ })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+  await act(async () => finish());
+  expect(await screen.findByRole('form', { name: 'Unlock class' })).toBeVisible();
+});

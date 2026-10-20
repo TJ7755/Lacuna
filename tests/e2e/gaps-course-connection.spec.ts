@@ -184,6 +184,17 @@ for (const width of [1280, 390]) {
     await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Synthetic pupil', exact: true })).toBeVisible();
+    const header = page
+      .locator('header')
+      .filter({ has: page.getByRole('heading', { name: 'GCSE Biology', exact: true }) });
+    const forgetTrigger = header.getByRole('button', { name: 'Forget on this device' });
+    await expect(forgetTrigger).toBeVisible();
+    await expect(header.getByRole('button', { name: 'Close', exact: true })).toHaveClass(
+      (await forgetTrigger.getAttribute('class')) ?? '',
+    );
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
     await page.screenshot({
       animations: 'disabled',
       path: testInfo.outputPath(`remembered-${width}.png`),
@@ -197,6 +208,7 @@ for (const width of [1280, 390]) {
     await expect(unlock).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Synthetic pupil', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Forget on this device' }).click();
+    await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused();
     await expect(
       page.getByText(
         'This browser will ask for both passphrases next time. Your class, reports and recovery file are not affected.',
@@ -208,6 +220,7 @@ for (const width of [1280, 390]) {
       fullPage: true,
     });
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(forgetTrigger).toBeFocused();
     await page.getByRole('button', { name: 'Forget on this device' }).click();
     await page.getByRole('button', { name: 'Forget', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();

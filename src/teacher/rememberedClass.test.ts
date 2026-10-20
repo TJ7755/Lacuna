@@ -1,6 +1,8 @@
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import * as ownerStore from '../insights/ownerStore';
+import * as connectionStore from './connectionStore';
 import { createInsightsOwnerStore } from '../insights/ownerStore';
 import { DEFAULT_RELAY_URL } from '../sync/pairingConfig';
 import { sealGapsConnection } from './connectionFile';
@@ -16,6 +18,7 @@ beforeEach(() => {
   keys = createInsightsOwnerStore();
 });
 afterEach(async () => {
+  vi.restoreAllMocks();
   connections.close();
   keys.close();
   await Dexie.delete('lacuna.gaps.connections');
@@ -44,7 +47,7 @@ it('reopens a complete session and forgets both credentials without removing the
     remembered: true,
   });
   await forgetRememberedClass(shareId);
-  expect(await readRememberedClass(shareId)).toBeNull();
+  expect(await readRememberedClass(shareId)).toBeUndefined();
   expect(await connections.readRemembered(shareId)).toBeNull();
   expect(await keys.readRemembered(shareId)).toBeNull();
   expect(await connections.unlock(shareId, phrase)).toEqual(session.connection);
@@ -62,7 +65,48 @@ it('deletes both device entries if the recovery recipient no longer matches', as
   await inspection.open();
   await inspection.table('remembered').update(shareId, { keyId: 'wrong' });
   inspection.close();
-  expect(await readRememberedClass(shareId)).toBeNull();
+  expect(await readRememberedClass(shareId)).toBeUndefined();
   expect(await connections.readRemembered(shareId)).toBeNull();
   expect(await keys.readRemembered(shareId)).toBeNull();
 });
+
+it.each(['connection', 'key'] as const)(
+  'falls back when only the %s artefact exists',
+  async (remaining) => {
+    const session = await fixture();
+    await rememberClass(session);
+    await (remaining === 'connection' ? keys : connections).forgetRemembered(shareId);
+    expect(await readRememberedClass(shareId)).toBeUndefined();
+    expect(await connections.readRemembered(shareId)).toBeNull();
+    expect(await keys.readRemembered(shareId)).toBeNull();
+  },
+);
+
+it.each(['connection', 'key'] as const)(
+  'still deletes the other artefact when %s deletion fails',
+  async (failing) => {
+    const session = await fixture();
+    await rememberClass(session);
+    const failure = new Error('Deletion failed');
+    if (failing === 'connection') {
+      vi.spyOn(connectionStore, 'createGapsConnectionStore').mockReturnValueOnce({
+        ...connections,
+        forgetRemembered: vi.fn().mockRejectedValue(failure),
+        close: vi.fn(),
+      });
+    } else {
+      vi.spyOn(ownerStore, 'createInsightsOwnerStore').mockReturnValueOnce({
+        ...keys,
+        forgetRemembered: vi.fn().mockRejectedValue(failure),
+        close: vi.fn(),
+      });
+    }
+    await expect(forgetRememberedClass(shareId)).rejects.toThrow(failure);
+    expect(
+      await (failing === 'connection' ? keys : connections).readRemembered(shareId),
+    ).toBeNull();
+    expect(
+      await (failing === 'connection' ? connections : keys).readRemembered(shareId),
+    ).not.toBeNull();
+  },
+);
