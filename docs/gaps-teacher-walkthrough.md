@@ -34,7 +34,7 @@ the synthetic share's owner credential privately for cleanup after the session.
 | 2–6 min | “Open this demonstration class on this device, using the material provided.” | Connection versus recovery file, which passphrase belongs where, how they find restore, and any wrong-file errors. |
 | 6–9 min | “Show me what you would give pupils so they can join.” | Whether they choose the code/link and keep both credential files private. Ask what happens before a pupil chooses to share. |
 | 9–12 min | “Find the prepared report for this day. What would you revisit with this pupil? What can you conclude if there is no report?” | Date selection, reading activity/criterion detail, unknown or self-marked evidence, and whether missing data is mistaken for no study. |
-| 12–15 min | “Finish safely, then tell me how you would open this class tomorrow or on another device.” | Close and lock, recovering access, and the distinction between local removal and deleting relay data. |
+| 12–15 min | “Finish safely, then tell me how you would open this class tomorrow or on another device.” | Close or Lock, forgetting remembered access, recovering access, and the distinction between local removal and deleting relay data. |
 
 Ask the participant to explain their expectation before an uncertain click.
 Record where the interface contradicted it. If stuck for a minute, offer the

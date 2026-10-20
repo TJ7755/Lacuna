@@ -20,7 +20,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   await expect(page.getByRole('heading', { name: 'Recover a class', level: 1 })).toBeVisible();
   await page.getByLabel('What do you need to do?').selectOption('create');
   expect(await page.evaluate(() => indexedDB.databases())).toEqual([
-    { name: 'lacuna.gaps.connections', version: 10 },
+    { name: 'lacuna.gaps.connections', version: 20 },
   ]);
   await page.getByLabel(/Published course link/).fill(`https://getlacuna.app/#/s/${shareId}`);
   await page.getByLabel(/^Recovery passphrase/).fill(passphrase);
@@ -70,7 +70,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
       timeout: 15_000,
     });
     expect(await restored.evaluate(() => indexedDB.databases())).toEqual([
-      { name: 'lacuna.gaps.connections', version: 10 },
+      { name: 'lacuna.gaps.connections', version: 20 },
     ]);
     await restored.getByLabel('Recovery passphrase').fill(passphrase);
     await restored.getByRole('button', { name: 'Restore class access' }).click();

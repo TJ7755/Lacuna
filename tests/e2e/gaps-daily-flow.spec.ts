@@ -128,6 +128,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
     await unlock.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
     await unlock.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
+    await unlock.getByRole('checkbox', { name: 'Remember this class on this device' }).uncheck();
     await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
     // Unlocking reads the latest completed day; an empty day does not claim no study.
     await expect(teacher.getByText(/No report does not mean no study/)).toBeVisible();

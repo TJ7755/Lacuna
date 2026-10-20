@@ -19,6 +19,14 @@ const mocks = vi.hoisted(() => ({
   read: vi.fn(),
   publish: vi.fn(),
   close: vi.fn(),
+  remember: vi.fn(),
+  readRemembered: vi.fn(),
+  forgetRemembered: vi.fn(),
+}));
+vi.mock('./rememberedClass', () => ({
+  rememberClass: mocks.remember,
+  readRememberedClass: mocks.readRemembered,
+  forgetRememberedClass: mocks.forgetRemembered,
 }));
 vi.mock('./connectionStore', () => ({
   createGapsConnectionStore: () => ({
@@ -48,6 +56,9 @@ const unlockRequest: ClassRequest = { kind: 'unlock', id: 1 };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.remember.mockResolvedValue(false);
+  mocks.readRemembered.mockResolvedValue(null);
+  mocks.forgetRemembered.mockResolvedValue(undefined);
   mocks.unlockConnection.mockResolvedValue({
     ...course,
     writeToken: 'b'.repeat(64),
@@ -262,7 +273,7 @@ it('locks the class and removes the connection only after confirmation', async (
   render(<Harness />);
   await unlock();
   fireEvent.click(await screen.findByRole('button', { name: 'Lock' }));
-  expect(screen.getByRole('heading', { name: 'Unlock to see results' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: 'Unlock to see results' })).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: /^Class settings/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'Remove connection' }));
   fireEvent.click(screen.getByRole('button', { name: 'Keep connection' }));
@@ -275,7 +286,7 @@ it('locks the class and removes the connection only after confirmation', async (
 
 it('moves to the requested step when a mounted locked class receives a new request', async () => {
   const page = render(<Harness request={null} />);
-  const field = screen.getByLabelText('Connection passphrase');
+  const field = await screen.findByLabelText('Connection passphrase');
   expect(field).not.toHaveFocus();
   page.rerender(<Harness request={unlockRequest} />);
   await waitFor(() => expect(screen.getByLabelText('Connection passphrase')).toHaveFocus());
@@ -443,4 +454,72 @@ it('shows textual outcomes for written answer groups with known and unknown scor
   const answers = await screen.findByRole('region', { name: 'Answers' });
   expect(within(answers).getByText(/Unknown \/ 2 marks/)).toBeVisible();
   expect(within(answers).getByText(/1 \/ 2 marks/)).toBeVisible();
+});
+
+it('remembers by default and shows Close with an inline, cancellable Forget confirmation', async () => {
+  mocks.remember.mockResolvedValue(true);
+  render(<Harness />);
+  expect(
+    await screen.findByRole('checkbox', { name: 'Remember this class on this device' }),
+  ).toBeChecked();
+  await unlock();
+  expect(await screen.findByRole('button', { name: 'Close' })).toBeVisible();
+  expect(mocks.remember).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole('button', { name: 'Forget on this device' }));
+  expect(
+    screen.getByText(
+      'This browser will ask for both passphrases next time. Your class, reports and recovery file are not affected.',
+    ),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(mocks.forgetRemembered).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Forget on this device' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Forget' }));
+  await waitFor(() => expect(mocks.forgetRemembered).toHaveBeenCalledWith(course.shareId));
+  expect(await screen.findByRole('form', { name: 'Unlock class' })).toBeVisible();
+});
+
+it('does not persist when unchecked and keeps the existing Lock action', async () => {
+  render(<Harness />);
+  fireEvent.click(
+    await screen.findByRole('checkbox', { name: 'Remember this class on this device' }),
+  );
+  await unlock();
+  expect(await screen.findByRole('button', { name: 'Lock' })).toBeVisible();
+  expect(mocks.remember).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Forget on this device' })).not.toBeInTheDocument();
+});
+
+it('opens remembered credentials through the same revocable session path without the unlock form', async () => {
+  mocks.readRemembered.mockResolvedValue({
+    connection: { shareId: course.shareId },
+    owner: {},
+    remembered: true,
+    days: new Map(),
+  });
+  render(<Harness />);
+  expect(screen.queryByRole('form', { name: 'Unlock class' })).not.toBeInTheDocument();
+  expect(await screen.findByRole('button', { name: 'Close' })).toBeVisible();
+  expect(mocks.unlockConnection).not.toHaveBeenCalled();
+  expect(mocks.unlockKey).not.toHaveBeenCalled();
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledOnce());
+});
+
+it('forgets a pending remember completion if removal revoked its session', async () => {
+  let finish!: (value: boolean) => void;
+  mocks.remember.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  render(<Harness />);
+  await unlock();
+  await waitFor(() => expect(mocks.remember).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole('button', { name: /^Class settings/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove connection' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove from this browser' }));
+  await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce());
+  await act(async () => finish(true));
+  expect(mocks.forgetRemembered).toHaveBeenCalledWith(course.shareId);
+  expect(mocks.read).not.toHaveBeenCalled();
 });

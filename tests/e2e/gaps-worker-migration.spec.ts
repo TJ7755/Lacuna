@@ -112,7 +112,7 @@ test('retires a cached Gaps learner shell without touching courses or the main-s
     registrations: 0,
     databases: [
       { name: 'lacuna', version: 1 },
-      { name: 'lacuna.gaps.connections', version: 10 },
+      { name: 'lacuna.gaps.connections', version: 20 },
     ],
     caches: ['legacy-study-cache'],
     course: 'Existing teacher course',

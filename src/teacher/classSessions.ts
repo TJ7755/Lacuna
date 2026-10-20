@@ -7,6 +7,7 @@ export interface ClassSession {
   owner: InsightsOwner;
   days: Map<string, ReadClassReports>;
   code?: string;
+  remembered?: boolean;
 }
 
 /** Tab-local sessions with revocable unlock completions; nothing is persisted. */
