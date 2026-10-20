@@ -39,16 +39,19 @@ export function Jump({
   to,
   children,
   className = '',
+  base = '',
 }: {
   to: string;
+  base?: string;
   children: ReactNode;
   className?: string;
 }) {
   return (
     <a
-      href={`#${to}`}
+      href={`${base}#${to}`}
       className={`qc-jump ${className}`}
       onClick={(event) => {
+        if (base) return;
         event.preventDefault();
         document.getElementById(to)?.scrollIntoView({
           behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -62,7 +65,7 @@ export function Jump({
     </a>
   );
 }
-export function Header() {
+export function Header({ sectionBase = '' }: { sectionBase?: string }) {
   return (
     <header className="qc-nav">
       <a href="/" className="qc-brand">
@@ -70,9 +73,15 @@ export function Header() {
         Lacuna
       </a>
       <nav aria-label="Page sections">
-        <Jump to="compare">Compare</Jump>
-        <Jump to="inside">Inside Lacuna</Jump>
-        <Jump to="teachers">For teachers</Jump>
+        <Jump to="compare" base={sectionBase}>
+          Compare
+        </Jump>
+        <Jump to="inside" base={sectionBase}>
+          Inside Lacuna
+        </Jump>
+        <Jump to="teachers" base={sectionBase}>
+          For teachers
+        </Jump>
       </nav>
       <Cta>Open Lacuna</Cta>
     </header>

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en-GB" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lacuna" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" href="/icons/favicon-96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" sizes="any" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' https://scripts.simpleanalyticscdn.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' blob: data: https://queue.simpleanalyticscdn.com; connect-src 'self' https://queue.simpleanalyticscdn.com https://relay.getlacuna.app https://lacuna-relay.vercel.app https://getlacuna.app; frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;"
+    />
+    <!-- Keep the relay, hosted AI and video origins in step with src/sync/pairingConfig.ts and
+         electron/securityPolicy.ts. -->
+    <!--course-head-->
+    <!--/course-head-->
+    <script>
+      // Apply the stored theme before first paint to avoid a flash of the wrong colour scheme.
+      (function () {
+        try {
+          var stored = localStorage.getItem('lacuna-theme');
+          var theme = stored === 'light' || stored === 'dark' ? stored : null;
+          if (!theme) {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+        } catch (e) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"><!--course-body--><!--/course-body--></div>
+    <script type="module" src="/src/pages/courses/entry-client.tsx"></script>
+  </body>
+</html>

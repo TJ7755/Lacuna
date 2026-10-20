@@ -57,6 +57,7 @@ const allowed = new Set([
   'Start revising',
   'Lacuna',
   'GitHub',
+  'Courses',
   'The method',
   'Lacuna vs Quizlet',
   'Download for desktop',

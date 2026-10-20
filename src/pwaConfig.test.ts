@@ -270,6 +270,10 @@ it('keeps comparison navigation and assets out of the app shell', () => {
     workbox.navigateFallbackDenylist.some((pattern) => pattern.test('/compare/quizlet/')),
   ).toBe(true);
   expect(workbox.globIgnores).toContain('compare/**');
+  for (const path of ['/courses/', '/courses/biology4bi1/', '/llms.txt']) {
+    expect(workbox.navigateFallbackDenylist.some((pattern) => pattern.test(path))).toBe(true);
+  }
+  expect(workbox.globIgnores).toContain('courses/**');
 });
 
 it('precaches CSS from the app entry graph even when it is shared with public pages', () => {

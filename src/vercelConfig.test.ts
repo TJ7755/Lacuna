@@ -5,6 +5,21 @@ import { describe, expect, it } from 'vitest';
 import { landingFilms } from './components/landing/films';
 
 describe('Vercel configuration', () => {
+  it('canonicalises course routes without an app-shell rewrite', async () => {
+    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+    for (const [source, destination] of [
+      ['/courses', '/courses/'],
+      ['/courses/index.html', '/courses/'],
+      ['/courses/:id', '/courses/:id/'],
+      ['/courses/:id/index.html', '/courses/:id/'],
+    ]) {
+      expect(config.redirects).toContainEqual({ source, destination, permanent: true });
+    }
+    expect(
+      config.rewrites.every(({ source }: { source: string }) => source.startsWith('/films/')),
+    ).toBe(true);
+  });
+
   it('uses the same exact film routes for the player, local proxy and deployed rewrites', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8'));
     expect(config.rewrites).toEqual(
@@ -174,7 +189,9 @@ describe('Vercel configuration', () => {
     // never depend on Google Fonts.
     const config = await readFile('vercel.json', 'utf8');
     const pages = await Promise.all(
-      ['index.html', 'compare/quizlet/index.html'].map((path) => readFile(path, 'utf8')),
+      ['index.html', 'compare/quizlet/index.html', 'courses/index.html'].map((path) =>
+        readFile(path, 'utf8'),
+      ),
     );
     for (const source of [config, ...pages]) {
       expect(source).not.toMatch(/fonts\.(?:googleapis|gstatic)\.com/);

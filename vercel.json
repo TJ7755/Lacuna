@@ -67,6 +67,26 @@
       "source": "/compare/quizlet/index.html",
       "destination": "/compare/quizlet/",
       "permanent": true
+    },
+    {
+      "source": "/courses",
+      "destination": "/courses/",
+      "permanent": true
+    },
+    {
+      "source": "/courses/index.html",
+      "destination": "/courses/",
+      "permanent": true
+    },
+    {
+      "source": "/courses/:id/index.html",
+      "destination": "/courses/:id/",
+      "permanent": true
+    },
+    {
+      "source": "/courses/:id",
+      "destination": "/courses/:id/",
+      "permanent": true
     }
   ],
   "rewrites": [
