@@ -191,3 +191,40 @@ it('explains an empty reporting day and offers the class code without claiming n
   fireEvent.click(screen.getAllByRole('button', { name: 'Share class code' })[1]);
   expect(screen.getByRole('button', { name: 'Publish class code' })).toBeVisible();
 });
+
+it('restores an earlier day’s read evidence after navigation without another fetch', async () => {
+  const cache = createClassSessions();
+  const props = { course, onClose: vi.fn(), beginUnlock: () => cache.beginUnlock(course.shareId) };
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [
+      {
+        slotId: 'saved',
+        report: {
+          v: 1,
+          shareId: course.shareId,
+          day: '2026-10-18',
+          pupil: { id: 'pupil', label: 'Retained pupil' },
+          events: [],
+          omitted: 0,
+        },
+      },
+    ],
+  });
+  const panel = render(<TeacherClassReports {...props} />);
+  await unlock();
+  fireEvent.change(screen.getByLabelText('Reporting day (UTC)'), {
+    target: { value: '2026-10-18' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read reports' }));
+  await screen.findByRole('button', { name: /Retained pupil/ });
+  fireEvent.click(screen.getByRole('button', { name: 'Back to classes' }));
+  panel.unmount();
+  mocks.read.mockRejectedValue(new Error('offline'));
+  render(<TeacherClassReports {...props} session={cache.sessions.get(course.shareId)} />);
+  fireEvent.change(screen.getByLabelText('Reporting day (UTC)'), {
+    target: { value: '2026-10-18' },
+  });
+  expect(screen.getByRole('button', { name: /Retained pupil/ })).toBeVisible();
+  expect(mocks.read).toHaveBeenCalledOnce();
+});

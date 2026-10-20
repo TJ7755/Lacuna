@@ -354,7 +354,8 @@ export function TeacherClassReports({
                     min={isoDayLabel(Date.now() - 84 * DAY_MS)}
                     onChange={(event) => {
                       setDay(event.target.value);
-                      setResult(null);
+                      setResult(unlocked.current?.days.get(event.target.value) ?? null);
+                      setError('');
                       setSelected('');
                     }}
                   />
