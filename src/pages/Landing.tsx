@@ -5,6 +5,7 @@ import { LacunaIcon } from '../components/ui/icons';
 import { useSmoothScroll } from '../components/welcome/useSmoothScroll';
 import { LandingFeatures } from '../components/landing/LandingFeatures';
 import { LandingCta } from '../components/welcome/LandingCta';
+import { LandingStudentFilm, LandingTeacherFilm } from '../components/landing/LandingFilms';
 import './Landing.css';
 
 export function Landing() {
@@ -25,7 +26,9 @@ export function Landing() {
       </a>
       <main>
         <LandingHero />
+        <LandingStudentFilm />
         <LandingFeatures />
+        <LandingTeacherFilm />
         <LandingFaq />
         <section className="landing-ending" aria-labelledby="landing-ending-title">
           <h2 id="landing-ending-title">Your exam has a date. Start there.</h2>

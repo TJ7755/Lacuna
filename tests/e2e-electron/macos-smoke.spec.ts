@@ -1,7 +1,7 @@
 import { mkdtemp, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { _electron as electron, expect, test, type Page } from '@playwright/test';
 import { resolvePackagedExecutable } from '../../scripts/electron-performance/executable';
 import {
   closePackagedApp,
@@ -9,6 +9,7 @@ import {
 } from '../../scripts/electron-performance/packaged-app';
 import { waitForSeededDashboard } from '../../scripts/electron-performance/renderer-interactions';
 import type { RunningPackagedApp } from '../../scripts/electron-performance/types';
+import { landingFilms } from '../../src/components/landing/films';
 
 async function courseStored(page: Page, courseName: string): Promise<boolean> {
   return page.evaluate(
@@ -64,7 +65,9 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect.poll(() => courseStored(page, courseName)).toBe(true);
     await expect(
-      page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: courseName, exact: true }),
+      page
+        .getByRole('navigation', { name: 'Courses' })
+        .getByRole('link', { name: courseName, exact: true }),
     ).toBeVisible();
 
     await page
@@ -123,5 +126,45 @@ test('macOS packaged Electron launches, stores a course and completes a study st
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  }
+});
+
+test('macOS packaged landing films hand off to the external browser', async () => {
+  test.skip(process.platform !== 'darwin', 'This smoke gate runs on macOS.');
+  const executablePath = await resolvePackagedExecutable({
+    appDir: process.env.LACUNA_ELECTRON_APP_DIR,
+  });
+  const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-film-handoff-')));
+  const app = await electron.launch({ executablePath, args: [`--user-data-dir=${profile}`] });
+  try {
+    expect(await app.evaluate(({ app }) => app.isPackaged)).toBe(true);
+    await app.evaluate(({ shell }) => {
+      const urls: string[] = [];
+      (globalThis as typeof globalThis & { filmUrls: string[] }).filmUrls = urls;
+      // Capture the operating-system hand-off after the real window security handler.
+      shell.openExternal = async (url) => {
+        urls.push(url);
+      };
+    });
+    const page = await app.firstWindow();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.waitForLoadState('domcontentloaded');
+    expect(new URL(page.url()).protocol).toBe('app:');
+    await page.evaluate(() => {
+      window.location.hash = '/landing';
+    });
+    for (const film of Object.values(landingFilms)) {
+      await page.getByRole('button', { name: `Watch ${film.title}, ${film.duration}` }).click();
+    }
+    await expect
+      .poll(() =>
+        app.evaluate(() => (globalThis as typeof globalThis & { filmUrls: string[] }).filmUrls),
+      )
+      .toEqual(Object.values(landingFilms).map((film) => film.externalSrc));
+    await expect(page.locator('video')).toHaveCount(0);
+    expect(app.windows()).toHaveLength(1);
+  } finally {
+    await app.close();
+    await rm(profile, { recursive: true, force: true });
   }
 });

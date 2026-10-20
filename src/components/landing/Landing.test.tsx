@@ -6,11 +6,13 @@ import { Landing } from '../../pages/Landing';
 vi.mock('../welcome/useSmoothScroll', () => ({ useSmoothScroll: vi.fn() }));
 
 const headings = [
+  'From exam date to everyday revision.',
   'Scheduled for your exam, not for ever.',
   'One number, and it means something.',
   "Did you know it? That's the whole question.",
   'Practise the exam, not just the facts.',
   'Yours, on your device.',
+  'Know what to teach next.',
   'A few questions.',
   'Your exam has a date. Start there.',
 ];
@@ -59,4 +61,74 @@ it('keeps product visuals decorative and outside the tab order', () => {
     expect(visual.querySelector('button, a, input, textarea, [tabindex]')).toBeNull();
   }
   expect(container.querySelectorAll('.landing-faq details')).toHaveLength(3);
+});
+
+it('loads only the film requested by the visitor', () => {
+  const { container } = render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  expect(container.querySelector('video')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Watch Gaps in action, 1 min 4 sec' }));
+  const video = container.querySelector('video')!;
+  expect(video).toHaveAttribute('preload', 'none');
+  expect(video).toHaveAttribute('controls');
+  expect(video).toHaveAttribute('playsinline');
+  expect(video.getAttribute('src')).toContain('gaps');
+  expect(
+    screen.getByRole('button', { name: 'Watch Lacuna in action, 1 min 33 sec' }),
+  ).toBeVisible();
+  expect(screen.getByRole('link', { name: 'Open Gaps' })).toHaveAttribute(
+    'href',
+    'https://gaps.getlacuna.app',
+  );
+});
+
+it('offers a direct hosted film link when playback fails', () => {
+  const { container } = render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Watch Gaps in action, 1 min 4 sec' }));
+  fireEvent.error(container.querySelector('video')!);
+  expect(screen.getByRole('link', { name: 'Open the video directly' })).toHaveAttribute(
+    'href',
+    'https://chpeihgcobr0gvsi.public.blob.vercel-storage.com/films/2026-10/gaps-teachers-tutors-4k.mp4',
+  );
+});
+
+it('moves keyboard focus to the requested film player', () => {
+  const { container } = render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  const play = screen.getByRole('button', { name: 'Watch Gaps in action, 1 min 4 sec' });
+  play.focus();
+  fireEvent.click(play);
+  expect(container.querySelector('video')).toHaveFocus();
+});
+
+it('opens desktop films directly outside the app service worker', () => {
+  vi.stubGlobal('electronAPI', { isElectron: true });
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  try {
+    const { container } = render(
+      <MemoryRouter>
+        <Landing />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Watch Gaps in action, 1 min 4 sec' }));
+    expect(open).toHaveBeenCalledWith(
+      'https://chpeihgcobr0gvsi.public.blob.vercel-storage.com/films/2026-10/gaps-teachers-tutors-4k.mp4',
+      '_blank',
+      'noopener,noreferrer',
+    );
+    expect(container.querySelector('video')).toBeNull();
+  } finally {
+    open.mockRestore();
+    vi.unstubAllGlobals();
+  }
 });
