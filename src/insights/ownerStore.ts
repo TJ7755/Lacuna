@@ -115,6 +115,13 @@ export function createInsightsOwnerStore(databaseName = 'lacuna.gaps.owner-keys'
       await remembered.delete(shareId);
     },
 
+    async forget(shareId: string): Promise<void> {
+      await database.transaction('rw', owners, remembered, async () => {
+        await remembered.delete(shareId);
+        await owners.delete(shareId);
+      });
+    },
+
     close(): void {
       database.close();
     },

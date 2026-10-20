@@ -6,6 +6,7 @@
 @source './gapsUi.tsx';
 @source './TeacherKeySetup.tsx';
 @source './TeacherCourses.tsx';
+@source './CreateGapsClass.tsx';
 @source './TeacherClassReports.tsx';
 @source '../components/ui/Field.tsx';
 @source '../components/course/coursePageLayout.ts';

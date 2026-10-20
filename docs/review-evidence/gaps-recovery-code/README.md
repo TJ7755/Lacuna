@@ -19,8 +19,10 @@ recovery remain covered by the same browser run.
 Validation command:
 
 ```sh
-PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-course-connection.spec.ts gaps-teacher-keys.spec.ts gaps-standalone.spec.ts
+PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-course-connection.spec.ts
 ```
 
-Result: 10 tests passed. Browser automation does not replace a teacher usability
+Result: 4 tests passed. The create form uses the unlock form’s vertical spacing;
+the recovery code has two unbroken lines in the standard input frame, and the
+action buttons wrap with a gap. Neither viewport has horizontal overflow. Browser automation does not replace a teacher usability
 session or independent human review of the storage and recovery changes.

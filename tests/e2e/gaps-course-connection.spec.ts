@@ -348,7 +348,11 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('heading', { name: 'Class created' })).toBeFocused();
     await expect(page.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(0);
     await expect(page.getByRole('group', { name: 'Class connection method' })).toHaveCount(0);
-    await expect(page.getByLabel('Recovery code')).toHaveText('0123-4567-89AB-CDEF-GHJK-MNPQ');
+    const recovery = page.getByLabel('Recovery code');
+    await expect(recovery.locator('span')).toHaveText(['0123-4567-89AB', 'CDEF-GHJK-MNPQ']);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
     await expect(page.getByRole('button', { name: 'Continue to class' })).toHaveCount(0);
     await page.screenshot({
       animations: 'disabled',
