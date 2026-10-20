@@ -1,0 +1,1 @@
+- Load Course creation and restoration operations only when requested, reducing startup JavaScript while preserving existing creation, Undo and legacy view-preference migration behaviour.

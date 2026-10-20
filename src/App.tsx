@@ -10,7 +10,7 @@ import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { seedWorkPending } from './db/seedFlags';
 import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
-import { stampMissingLessonViewModes } from './db/courseRepository';
+import { stampMissingLessonViewModes } from './db/lessonViewModeMigration';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
 import { getMotionMultiplier } from './state/motionSpeed';
