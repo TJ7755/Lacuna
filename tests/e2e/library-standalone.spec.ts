@@ -1,4 +1,25 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/** Waits until the page's layout stops moving, so screenshots show settled motion. */
+async function settle(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        let last = '';
+        let still = 0;
+        const step = () => {
+          const rects = [...document.querySelectorAll('section > *, [role="dialog"]')]
+            .map((element) => JSON.stringify(element.getBoundingClientRect()))
+            .join();
+          still = rects === last ? still + 1 : 0;
+          last = rects;
+          if (still >= 10 && document.getAnimations().length === 0) resolve();
+          else requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }),
+  );
+}
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'library', 'Run verify:browser -- --library');
 
@@ -36,31 +57,71 @@ for (const width of [1280, 390, 320]) {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const homeTarget = await page.getByRole('link', { name: 'Lacuna home' }).boundingBox();
     expect(homeTarget?.height).toBeGreaterThanOrEqual(44);
-    const courseButtons = page.locator('button[aria-controls="library-preview"]');
-    const courseCount = await courseButtons.count();
+    const covers = page
+      .getByRole('region', { name: 'Courses', includeHidden: true })
+      // An open cover hides beneath its sheet, so it stays addressable while hidden.
+      .getByRole('button', { includeHidden: true });
+    const courseCount = await covers.count();
     expect(courseCount).toBeGreaterThan(0);
-    for (let index = 0; index < courseCount; index += 1) {
-      const button = courseButtons.nth(index);
-      const subject = await button.locator('.library-course-subject').innerText();
-      await button.focus();
-      await page.keyboard.press('Enter');
-      await expect(button).toHaveAttribute('aria-pressed', 'true');
-      await expect(
-        page.locator('button[aria-controls="library-preview"][aria-pressed="true"]'),
-      ).toHaveCount(1);
-      await expect(
-        page.getByRole('heading', { level: 2, name: subject, exact: true }),
-      ).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Open in Lacuna', exact: true })).toHaveAttribute(
-        'href',
-        /^https:\/\/getlacuna\.app\/#\/s\/[0-9a-f]{32}$/,
-      );
-    }
-    await courseButtons.first().click();
+    await expect(page.getByText(/review/i)).toHaveCount(0);
+    await settle(page);
+    await page.getByRole('radio', { name: 'Cambridge', exact: true }).click();
+    await expect(covers).toHaveCount(2);
+    await settle(page);
+    await page.getByRole('radio', { name: 'All', exact: true }).click();
+    await expect(covers).toHaveCount(courseCount);
+    await settle(page);
     await page.screenshot({ path: info.outputPath('library-light.png'), fullPage: true });
+    const sheet = page.getByRole('dialog');
+    for (let index = 0; index < courseCount; index += 1) {
+      const cover = covers.nth(index);
+      await cover.focus();
+      await page.keyboard.press('Enter');
+      await expect(cover).toHaveAttribute('aria-expanded', 'true');
+      await expect(sheet).toHaveCount(1);
+      const subject = await sheet.getByRole('heading', { level: 2 }).innerText();
+      await expect(cover).toContainText(subject);
+      await expect(sheet).toHaveAccessibleName(subject);
+      await expect(sheet.getByRole('heading', { level: 2 })).toBeFocused();
+      await page
+        .getByRole('link', { name: 'Lacuna home', includeHidden: true })
+        .evaluate((element) => (element as HTMLElement).focus());
+      await expect(sheet.getByRole('heading', { level: 2 })).toBeFocused();
+      await page.keyboard.press('Shift+Tab');
+      await expect(sheet.getByRole('button', { name: 'Close course' })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(sheet.getByRole('link', { name: 'Open in Lacuna', exact: true })).toBeFocused();
+      await page.keyboard.press('Tab');
+      await expect(sheet.getByRole('button', { name: 'Close course' })).toBeFocused();
+      await expect(
+        sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }),
+      ).toHaveAttribute('href', /^https:\/\/getlacuna\.app\/#\/s\/[0-9a-f]{32}$/);
+      await expect(sheet.getByText(/review/i)).toHaveCount(0);
+      // The sheet settles inside the viewport whatever the width.
+      await expect
+        .poll(async () => {
+          const box = await sheet.boundingBox();
+          return box !== null && box.x >= 0 && box.x + box.width <= width;
+        })
+        .toBe(true);
+      await page.keyboard.press('Escape');
+      await expect(sheet).toHaveCount(0);
+      await expect(cover).toBeFocused();
+    }
+    await covers.first().click();
+    await expect(sheet).toHaveCount(1);
+    await settle(page);
+    await page.screenshot({ path: info.outputPath('library-light-open.png') });
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
     await page.getByRole('button', { name: 'Use dark theme' }).click();
     await expect(page.locator('html')).toHaveClass('dark');
+    await settle(page);
     await page.screenshot({ path: info.outputPath('library-dark.png'), fullPage: true });
+    await covers.first().click();
+    await expect(sheet).toHaveCount(1);
+    await settle(page);
+    await page.screenshot({ path: info.outputPath('library-dark-open.png') });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -74,7 +135,7 @@ for (const width of [1280, 390, 320]) {
     expect(backgroundRequests).toEqual([]);
     expect(errors).toEqual([]);
 
-    const courseLink = page.getByRole('link', { name: 'Open in Lacuna', exact: true });
+    const courseLink = sheet.getByRole('link', { name: 'Open in Lacuna', exact: true });
     const destination = await courseLink.getAttribute('href');
     expect(destination).not.toBeNull();
 
@@ -89,3 +150,24 @@ for (const width of [1280, 390, 320]) {
     await expect(page).toHaveURL(destination!);
   });
 }
+
+test('reduced motion keeps a complete course sheet without animations', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto('/');
+  const cover = page.getByRole('region', { name: 'Courses' }).getByRole('button').first();
+  await cover.click();
+  const sheet = page.getByRole('dialog');
+  await expect(sheet.getByRole('heading', { level: 2 })).toBeFocused();
+  await expect(sheet.getByRole('link', { name: 'Open in Lacuna', exact: true })).toBeInViewport();
+  const box = await sheet.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeGreaterThanOrEqual(16);
+  expect(box!.y).toBeGreaterThanOrEqual(16);
+  expect(box!.x + box!.width).toBeLessThanOrEqual(304);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(624);
+  expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(cover).toBeFocused();
+});

@@ -1,0 +1,4 @@
+- Redesign the course library in the app's own style: each course is a cover that grows into its full course sheet when opened and shrinks back when closed, with an exam board filter and the shared theme control.
+- Remove review and progress status from the library, since only reviewed courses are published.
+- Keep keyboard focus inside an open course sheet, disable background controls while it is open, and preserve a static, complete layout with reduced motion.
+- Increase the complete library JavaScript budget from 80 to 125 kB gzipped to include the shared Motion components and their feature chunk; the build check counts every script and continues to reject learner startup.
