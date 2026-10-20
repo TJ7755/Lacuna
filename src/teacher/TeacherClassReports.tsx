@@ -672,7 +672,9 @@ function Results({ reports }: { reports: DailyEvidence[] }) {
                                 attempted ? 'opacity-85' : 'bg-ink/[0.05]',
                               )}
                             >
-                              {attempted ? (score === null ? 'Unknown' : percent(score)) : '–'}
+                              <span className="rounded-full bg-paper px-2 py-0.5 text-ink">
+                                {attempted ? (score === null ? 'Unknown' : percent(score)) : '–'}
+                              </span>
                             </button>
                           </td>
                         );
