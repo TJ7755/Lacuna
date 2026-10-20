@@ -62,7 +62,7 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
                 flashcards.
               </p>
             </section>
-            <a href="/courses/">All courses</a>
+            <a className="course-back" href="/courses/">All courses</a>
           </>
         ) : (
           <>

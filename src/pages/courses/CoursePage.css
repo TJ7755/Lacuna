@@ -37,3 +37,19 @@
     gap: 48px;
   }
 }
+.course-index-entry h2 a,
+.course-back {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  text-decoration-color: hsl(var(--ink-soft));
+}
+.course-index-entry h2 a:hover,
+.course-index-entry h2 a:focus-visible,
+.course-back:hover,
+.course-back:focus-visible {
+  text-decoration-color: currentColor;
+}
+.course-back {
+  justify-self: start;
+}
