@@ -3,7 +3,8 @@ export type RendererEnvironment = 'development' | 'production';
 export const VITE_RENDERER_ORIGIN = 'http://localhost:5173';
 export const APP_RENDERER_ORIGIN = 'app://.';
 const APP_RENDERER_HOST = '.';
-// Existing saved pairings retain the legacy endpoint. Both names serve the same relay.
+// Remove the legacy origin from this allowlist and the CSP only after the migration has shipped
+// in a released desktop build and older supported builds have had time to update. Refs #677.
 const SYNC_RELAY_ORIGINS = new Set(['https://relay.getlacuna.app', 'https://lacuna-relay.vercel.app']);
 const HOSTED_AI_ORIGIN = 'https://getlacuna.app';
 const ALLOWED_MEDIA_TYPES = new Set(['audio', 'video']);

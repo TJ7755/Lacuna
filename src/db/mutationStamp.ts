@@ -5,6 +5,7 @@
 // could commit a tombstone whose delete later rolls back.
 
 import type { Transaction } from 'dexie';
+import { migrateLegacyRelayUrl } from '../sync/pairingConfig';
 import { db } from './schema';
 import type { SyncState, Tombstone } from './types';
 
@@ -89,16 +90,27 @@ export async function clearTombstones(
 }
 
 export async function readSyncState(): Promise<SyncState | undefined> {
-  const entry = await db.appState.get(SYNC_STATE_KEY);
-  if (
-    !entry ||
-    entry.value === null ||
-    entry.value === undefined ||
-    typeof entry.value !== 'object'
-  ) {
-    return undefined;
-  }
-  return entry.value as SyncState;
+  return db.transaction('rw', db.appState, async () => {
+    const entry = await db.appState.get(SYNC_STATE_KEY);
+    if (
+      !entry ||
+      entry.value === null ||
+      entry.value === undefined ||
+      typeof entry.value !== 'object'
+    ) {
+      return undefined;
+    }
+    const state = entry.value as SyncState;
+    const relayUrl = typeof state.relayUrl === 'string'
+      ? migrateLegacyRelayUrl(state.relayUrl)
+      : state.relayUrl;
+    if (relayUrl !== state.relayUrl) {
+      const migrated = { ...state, relayUrl };
+      await writeSyncState(migrated);
+      return migrated;
+    }
+    return state;
+  });
 }
 
 export async function writeSyncState(state: SyncState): Promise<void> {

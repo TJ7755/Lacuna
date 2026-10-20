@@ -25,6 +25,22 @@ beforeEach(async () => {
 });
 
 describe('sync pairing and share-link credentials', () => {
+  it.each([
+    'HTTPS://LACUNA-RELAY.VERCEL.APP/',
+    'https://lacuna-relay.vercel.app:443',
+  ])('uses the migrated relay consistently when joining from a legacy QR code: %s', async (relayUrl) => {
+    const session = await joinFromPairingCode(
+      { ...PAIRING, relayUrl },
+      'correct horse battery staple',
+    );
+
+    expect(session.credentials.relayUrl).toBe('https://relay.getlacuna.app');
+    expect(session.state.relayUrl).toBe(session.credentials.relayUrl);
+    expect(session.credentials.channelId).toBe(PAIRING.channelId);
+    expect(session.credentials.writeToken).toBe(PAIRING.writeToken);
+    expect(session.credentials.channelKey).toEqual(new Uint8Array(32).fill(0xcc));
+  }, 30_000);
+
   it('keeps share-link credentials when joining a sync channel', async () => {
     await writeShareCredentials(SHARE_ID, SHARE_CREDENTIALS);
     await joinFromPairingCode(PAIRING, 'correct horse battery staple');

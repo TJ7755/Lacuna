@@ -1,0 +1,1 @@
+- Migrate saved sync pairings from the legacy default relay address to `https://relay.getlacuna.app` without re-pairing, preserving private relay addresses and compatibility with older devices. (#677)

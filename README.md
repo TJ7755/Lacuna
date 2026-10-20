@@ -12,7 +12,8 @@ and importing it at the new address. The previous address remains available.
 
 Device sync, published course links and external web AI use
 `https://relay.getlacuna.app`. Desktop share links open `https://getlacuna.app`;
-share codes are unchanged. Existing saved sync pairings keep their relay address.
+share codes are unchanged. Saved sync pairings using `https://lacuna-relay.vercel.app` migrate
+automatically to `https://relay.getlacuna.app` without re-pairing; private relay addresses stay unchanged.
 
 Study data lives in IndexedDB without an account. Optional device sync and external web AI use
 encrypted relay payloads; external desktop AI connects through a local companion. Built-in AI sends
