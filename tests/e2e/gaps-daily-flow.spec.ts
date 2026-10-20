@@ -86,6 +86,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await wire(teacher);
     await wire(pupil);
     // A second production build on its own origin, with no learner bundle or database.
+    await teacher.emulateMedia({ reducedMotion: 'reduce' });
     await teacher.route('https://gaps.getlacuna.app/**', async (route) => {
       const path = decodeURIComponent(new URL(route.request().url()).pathname);
       const file = resolve(teacherBuild, path === '/' ? 'index.html' : `.${path}`);
@@ -114,7 +115,11 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(
       teacher.getByText('Class protected. Download its recovery file.', { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
-    await teacher.screenshot({ path: testInfo.outputPath('class-protected.png'), fullPage: true });
+    await teacher.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('class-protected.png'),
+      fullPage: true,
+    });
     const recoveryDownload = teacher.waitForEvent('download');
     await teacher.getByRole('button', { name: 'Download encrypted recovery file' }).click();
     await recoveryDownload;
@@ -122,7 +127,11 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     const unlock = teacher.getByRole('form', { name: 'Unlock class' });
     await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
     await expect(teacher.getByRole('heading', { name: 'Class biology', level: 1 })).toBeAttached();
-    await teacher.screenshot({ path: testInfo.outputPath('unlock-class.png'), fullPage: true });
+    await teacher.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('unlock-class.png'),
+      fullPage: true,
+    });
     await unlock.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
     await unlock.getByLabel('Recovery passphrase', { exact: true }).fill(phrase);
     await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
@@ -130,6 +139,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(teacher.getByText(/No report does not mean no study/)).toBeVisible();
     await expect(teacher.getByRole('table')).toHaveCount(0);
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('empty-results-desktop.png'),
       fullPage: true,
     });
@@ -138,6 +148,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       true,
     );
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('empty-results-mobile.png'),
       fullPage: true,
     });
@@ -147,7 +158,11 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^GAPS1_[A-Za-z0-9_-]{64}$/);
     expect(await relay.get(`shares/${shareId}/teacher`)).not.toBeNull();
-    await teacher.screenshot({ path: testInfo.outputPath('share-class-code.png'), fullPage: true });
+    await teacher.screenshot({
+      animations: 'disabled',
+      path: testInfo.outputPath('share-class-code.png'),
+      fullPage: true,
+    });
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
     await enterFreshLacuna(pupil);
@@ -186,11 +201,13 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.getByRole('button', { name: 'Read again', exact: true }).click();
     await expect(teacher.getByRole('table')).toBeVisible();
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('class-results-desktop.png'),
       fullPage: true,
     });
     await teacher.getByRole('button', { name: 'Toggle colour theme' }).click();
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('class-results-light-desktop.png'),
       fullPage: true,
     });
@@ -203,6 +220,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       'Recalled',
     );
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('daily-report-desktop.png'),
       fullPage: true,
     });
@@ -211,6 +229,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       true,
     );
     await teacher.screenshot({
+      animations: 'disabled',
       path: testInfo.outputPath('daily-report-mobile.png'),
       fullPage: true,
     });
