@@ -5,10 +5,7 @@ import { cn } from '../components/ui/cn';
 import { LacunaIcon, MenuIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import { completedIsoDayLabel } from '../../relay/src/insightsDay';
-import type { InsightsOwner } from '../insights/envelope';
-import type { GapsCourseConnection } from './connectionFile';
 import type { ConnectedGapsCourse } from './connectionStore';
-import type { ReadClassReports } from './readReports';
 import { GapsSidebar, type GapsPage, type SidebarClass } from './GapsSidebar';
 import { Spinner, usePresence } from './gapsUi';
 import { pupilScore, mean } from './classInsights';
@@ -16,17 +13,9 @@ import type * as CoursesExports from './TeacherCourses';
 import type * as ClassExports from './TeacherClassReports';
 import type * as KeysExports from './TeacherKeySetup';
 import './gaps.css';
+import { createClassSessions } from './classSessions';
 
-/**
- * An unlocked class. It lives only in this tab's memory: locking the class, removing it or
- * closing the tab drops the credentials and every decrypted report with it.
- */
-export interface ClassSession {
-  connection: GapsCourseConnection;
-  owner: InsightsOwner;
-  days: Map<string, ReadClassReports>;
-  code?: string;
-}
+export type { ClassSession } from './classSessions';
 
 /** What a class page should ask for first; `id` changes with every request. */
 export interface ClassRequest {
@@ -51,7 +40,9 @@ export function StandaloneTeacherHome() {
   const [Class, setClassModule] = useState<ClassModule | null>(null);
   const [Keys, setKeysModule] = useState<KeysModule | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const sessions = useRef(new Map<string, ClassSession>());
+  const [sessionCache] = useState(createClassSessions);
+  const sessions = sessionCache.sessions;
+  useEffect(() => () => sessionCache.clear(), [sessionCache]);
   const [, setRevision] = useState(0);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   const drawer = usePresence(drawerOpen, 220);
@@ -117,15 +108,12 @@ export function StandaloneTeacherHome() {
 
   function openClass(course: ConnectedGapsCourse) {
     // A locked class asks for its passphrases straight away: that is the only next step.
-    go(
-      { kind: 'class', shareId: course.shareId },
-      sessions.current.has(course.shareId) ? null : 'unlock',
-    );
+    go({ kind: 'class', shareId: course.shareId }, sessions.has(course.shareId) ? null : 'unlock');
   }
 
   const classes: SidebarClass[] | null =
     courses?.map((course) => {
-      const session = sessions.current.get(course.shareId);
+      const session = sessions.get(course.shareId);
       const latest = session?.days.get(latestDay);
       return {
         course,
@@ -183,21 +171,21 @@ export function StandaloneTeacherHome() {
       <Class.ClassPage
         key={course.shareId}
         course={course}
-        session={sessions.current.get(course.shareId) ?? null}
+        session={sessions.get(course.shareId) ?? null}
         request={request}
-        onUnlocked={(session) => {
-          sessions.current.set(course.shareId, session);
+        beginUnlock={() => sessionCache.beginUnlock(course.shareId)}
+        onUnlocked={() => {
           // The request is answered, so locking again shows the plain unlock card.
           setRequest(null);
           refresh();
         }}
         onChanged={refresh}
         onLock={() => {
-          sessions.current.delete(course.shareId);
+          sessionCache.lock(course.shareId);
           refresh();
         }}
         onRemoved={() => {
-          sessions.current.delete(course.shareId);
+          sessionCache.lock(course.shareId);
           go({ kind: 'today' });
           void reload();
         }}
@@ -223,7 +211,7 @@ export function StandaloneTeacherHome() {
     content = (
       <Courses.TodayPage
         courses={courses}
-        sessions={sessions.current}
+        sessions={sessions}
         day={latestDay}
         connectRequest={connectRequest}
         onOpen={openClass}

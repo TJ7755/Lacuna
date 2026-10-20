@@ -80,6 +80,7 @@ export function ClassPage({
   session,
   request,
   onUnlocked,
+  beginUnlock,
   onChanged,
   onLock,
   onRemoved,
@@ -89,6 +90,7 @@ export function ClassPage({
   /** Each new request opens the locked card at that step, with focus on its first field. */
   request: ClassRequest | null;
   onUnlocked(session: ClassSession): void;
+  beginUnlock?(): (session: ClassSession) => boolean;
   onChanged(): void;
   onLock(): void;
   onRemoved(): void;
@@ -185,7 +187,12 @@ export function ClassPage({
       </header>
 
       {!session ? (
-        <LockedClass course={course} request={request} onUnlocked={onUnlocked} />
+        <LockedClass
+          course={course}
+          request={request}
+          onUnlocked={onUnlocked}
+          beginUnlock={beginUnlock}
+        />
       ) : (
         <>
           <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -329,10 +336,12 @@ function LockedClass({
   course,
   request,
   onUnlocked,
+  beginUnlock,
 }: {
   course: ConnectedGapsCourse;
   request: ClassRequest | null;
   onUnlocked(session: ClassSession): void;
+  beginUnlock?(): (session: ClassSession) => boolean;
 }) {
   const [step, setStep] = useState<ClassRequest['kind']>(request?.kind ?? 'unlock');
   const card = useRef<HTMLDivElement>(null);
@@ -371,7 +380,12 @@ function LockedClass({
         </p>
         <div className="mt-10 w-full max-w-sm text-left">
           {step === 'unlock' ? (
-            <UnlockForm course={course} onUnlocked={onUnlocked} onSetup={() => show('setup')} />
+            <UnlockForm
+              course={course}
+              onUnlocked={onUnlocked}
+              beginUnlock={beginUnlock}
+              onSetup={() => show('setup')}
+            />
           ) : (
             <KeySetupSlot keys={keys}>
               {(Keys) => (
@@ -1016,10 +1030,12 @@ function ItemAnswers({ item }: { item: ItemSummary }) {
 function UnlockForm({
   course,
   onUnlocked,
+  beginUnlock,
   onSetup,
 }: {
   course: ConnectedGapsCourse;
   onUnlocked(session: ClassSession): void;
+  beginUnlock?(): (session: ClassSession) => boolean;
   onSetup(): void;
 }) {
   const [connectionPhrase, setConnectionPhrase] = useState('');
@@ -1027,10 +1043,15 @@ function UnlockForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; setup: boolean } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => () => pending.current?.abort(), []);
 
   async function unlock(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
+    const controller = new AbortController();
+    pending.current = controller;
+    const retain = beginUnlock?.();
     setBusy(true);
     setError(null);
     const connections = createGapsConnectionStore(),
@@ -1039,12 +1060,16 @@ function UnlockForm({
       const connection = await connections.unlock(course.shareId, connectionPhrase);
       if (!connection) throw new Error('This course connection was removed. Connect it again.');
       const owner = await keys.unlock(course.shareId, keyPhrase);
+      controller.signal.throwIfAborted();
       if (!owner) {
         setError({ message: 'This browser has no key for this class yet.', setup: true });
         return;
       }
-      onUnlocked({ connection, owner, days: new Map() });
+      const session = { connection, owner, days: new Map() };
+      if (retain && !retain(session)) return;
+      onUnlocked(session);
     } catch (cause) {
+      if (controller.signal.aborted) return;
       setError({
         message:
           cause instanceof Error ? cause.message : 'Could not unlock. Check both passphrases.',

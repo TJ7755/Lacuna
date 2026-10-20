@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import {
@@ -9,6 +9,7 @@ import {
 } from '../../relay/src/insightsDay';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
+import { createClassSessions } from './classSessions';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 
 const mocks = vi.hoisted(() => ({
@@ -63,6 +64,7 @@ beforeEach(() => {
 
 /** Holds the session as the shell does, so locking and re-rendering behave as in Gaps. */
 function Harness({ request = unlockRequest }: { request?: ClassRequest | null }) {
+  const [cache] = useState(createClassSessions);
   const [session, setSession] = useState<ClassSession | null>(null);
   const [, setRevision] = useState(0);
   const onChanged = useCallback(() => setRevision((value) => value + 1), []);
@@ -71,10 +73,18 @@ function Harness({ request = unlockRequest }: { request?: ClassRequest | null })
       course={course}
       session={session}
       request={request}
-      onUnlocked={setSession}
+      beginUnlock={() => cache.beginUnlock(course.shareId)}
+      onUnlocked={() => setSession(cache.sessions.get(course.shareId) ?? null)}
       onChanged={onChanged}
-      onLock={() => setSession(null)}
-      {...callbacks}
+      onLock={() => {
+        cache.lock(course.shareId);
+        setSession(null);
+      }}
+      onRemoved={() => {
+        cache.lock(course.shareId);
+        setSession(null);
+        callbacks.onRemoved();
+      }}
     />
   );
 }
@@ -277,4 +287,49 @@ it('reads the same day again on request, for reports that arrive later', async (
   expect(await screen.findByRole('table')).toBeVisible();
   expect(mocks.read).toHaveBeenCalledTimes(2);
   expect(mocks.read).toHaveBeenLastCalledWith(expect.objectContaining({ isoDay: latest }));
+});
+
+it('does not restore a class when key recovery finishes after removal', async () => {
+  let finish!: (value: unknown) => void;
+  mocks.unlockKey.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  render(<Harness />);
+  await unlock();
+  await waitFor(() => expect(mocks.unlockKey).toHaveBeenCalledOnce());
+  fireEvent.click(screen.getByRole('button', { name: /^Class settings/ }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove connection' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove from this browser' }));
+  await waitFor(() => expect(callbacks.onRemoved).toHaveBeenCalledOnce());
+  await act(async () => finish({ privateKey: {}, recipient: { keyId: 'key' } }));
+  expect(screen.queryByRole('button', { name: /^Lock$/ })).not.toBeInTheDocument();
+  expect(mocks.read).not.toHaveBeenCalled();
+});
+
+it('does not publish an unlock completion after the class page unmounts', async () => {
+  let finish!: (value: unknown) => void;
+  mocks.unlockKey.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onUnlocked = vi.fn();
+  const page = render(
+    <ClassPage
+      course={course}
+      session={null}
+      request={unlockRequest}
+      onUnlocked={onUnlocked}
+      onChanged={vi.fn()}
+      onLock={vi.fn()}
+      onRemoved={vi.fn()}
+    />,
+  );
+  await unlock();
+  await waitFor(() => expect(mocks.unlockKey).toHaveBeenCalledOnce());
+  page.unmount();
+  await act(async () => finish({ privateKey: {}, recipient: { keyId: 'key' } }));
+  expect(onUnlocked).not.toHaveBeenCalled();
 });

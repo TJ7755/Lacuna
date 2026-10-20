@@ -34,11 +34,13 @@ vi.mock('./TeacherClassReports', () => ({
     session,
     request,
     onUnlocked,
+    beginUnlock,
     onLock,
   }: {
     session: ClassSession | null;
     request: ClassRequest | null;
     onUnlocked(session: ClassSession): void;
+    beginUnlock(): (session: ClassSession) => boolean;
     onLock(): void;
   }) => (
     <section>
@@ -46,7 +48,15 @@ vi.mock('./TeacherClassReports', () => ({
         Biology
       </h1>
       <p>{session ? 'Unlocked' : request ? `Asking to ${request.kind}` : 'Locked'}</p>
-      <button onClick={() => onUnlocked({ days: new Map() } as unknown as ClassSession)}>
+      <button
+        onClick={() => {
+          const session = {
+            connection: { shareId: course.shareId },
+            days: new Map(),
+          } as unknown as ClassSession;
+          if (beginUnlock()(session)) onUnlocked(session);
+        }}
+      >
         Pretend unlock
       </button>
       <button onClick={onLock}>Lock</button>
