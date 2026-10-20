@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Browser, type Page, type Route } from '@playwright/test';
+import { expect, test, type Browser, type Page, type Route, type TestInfo } from '@playwright/test';
 import { openGapsConnection, parseGapsConnectionFile } from '../../src/teacher/connectionFile';
 import { createHandler } from '../../relay/src/relay.js';
 import { MemoryStore } from '../../relay/src/store.js';
@@ -124,11 +124,13 @@ async function readStudentRevision(page: Page): Promise<number | null> {
   );
 }
 
-test('a share link imports a course and republishes update it', async ({
-  browser,
-}: {
-  browser: Browser;
-}) => {
+for (const linkedClass of [false, true]) {
+  test(`a ${linkedClass ? 'class' : 'share'} link imports a course and follows publisher updates`, ({
+    browser,
+  }, testInfo) => followsPublisherUpdates(browser, testInfo, linkedClass));
+}
+
+async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, linkedClass: boolean) {
   test.setTimeout(180_000);
   // One relay store for the whole test: teacher publishes and student reads
   // the same backend, as they would in production.
@@ -142,7 +144,18 @@ test('a share link imports a course and republishes update it', async ({
   expect(teacherCourseId).toBeTruthy();
 
   await openShare(teacher, 'Link biology');
-  const code = await createShareLink(teacher);
+  const sourceCode = await createShareLink(teacher);
+  let code = sourceCode;
+  if (linkedClass) {
+    const response = await handle(
+      new Request(`${RELAY_URL}/shares`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceShareId: sourceCode }),
+      }),
+    );
+    expect(response.status).toBe(201);
+    code = ((await response.json()) as { shareId: string }).shareId;
+  }
 
   await teacher.getByRole('link', { name: 'Class insights', exact: true }).click();
   await expect(teacher.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
@@ -165,6 +178,17 @@ test('a share link imports a course and republishes update it', async ({
       .getByRole('navigation', { name: 'Courses' })
       .getByRole('link', { name: 'Link biology', exact: true }),
   ).toBeVisible();
+
+  await openShare(student, 'Link biology');
+  await expect(student.getByRole('textbox', { name: 'Share link', exact: true })).toHaveValue(
+    `${new URL(student.url()).origin}/#/s/${code}`,
+  );
+  await expect(student.getByRole('button', { name: 'Create share link' })).toHaveCount(0);
+  await student.screenshot({
+    path: testInfo.outputPath('forward-imported-course.png'),
+    fullPage: true,
+  });
+  await student.goto('/#/');
 
   // The teacher adds a card and republishes; the student's next dashboard
   // visit polls the manifest and merges the new revision.
@@ -210,7 +234,7 @@ test('a share link imports a course and republishes update it', async ({
 
   await teacherContext.close();
   await studentContext.close();
-});
+}
 
 test('stopping a share removes the link for new visitors', async ({
   browser,

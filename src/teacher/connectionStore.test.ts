@@ -107,3 +107,108 @@ it('rejects invalid phrases and failed ownership without replacing a saved conne
   }
   expect((await store.list()).map((course) => course.shareId)).toEqual([owner.shareId]);
 });
+
+it('creates an independent class from a public link and exports recoverable encrypted credentials', async () => {
+  const { owner: source, fetchImpl, relay } = await fixture();
+  await relay.put(`shares/${source.shareId}/payload`, new TextEncoder().encode('course'), {
+    exclusive: true,
+  });
+  await relay.put(
+    `shares/${source.shareId}/meta`,
+    new TextEncoder().encode(
+      JSON.stringify({
+        v: 1,
+        lineageId: 'source-lineage',
+        revision: 3,
+        publishedAt: Date.now(),
+        byteSize: 6,
+        courseName: 'Published biology',
+      }),
+    ),
+    { exclusive: true },
+  );
+  const store = openStore();
+  const classId = await store.createFromLink(
+    `https://getlacuna.app/#/s/${source.shareId}`,
+    phrase,
+    { fetchImpl },
+  );
+  expect(classId).not.toBe(source.shareId);
+  const connection = await store.unlock(classId, phrase);
+  expect(connection?.writeToken).not.toBe(source.writeToken);
+  const text = await store.exportConnection(classId);
+  expect(text).not.toContain(connection!.writeToken);
+  expect(text).not.toContain(phrase);
+  await store.forget(classId);
+  await store.connect(text, phrase, { fetchImpl });
+  expect(await store.list()).toEqual([
+    { shareId: classId, courseName: 'Published biology', verifiedAt: expect.any(Number) },
+  ]);
+  expect(
+    (await relay.list(`shares/${classId}/`)).map(({ key }) => key.split('/').pop()).sort(),
+  ).toEqual(['auth', 'source']);
+});
+
+it('removes the newly minted class if its local commit fails, preserving the publisher', async () => {
+  const { owner: source, fetchImpl, relay } = await fixture();
+  await relay.put(`shares/${source.shareId}/payload`, new TextEncoder().encode('course'), {
+    exclusive: true,
+  });
+  await relay.put(
+    `shares/${source.shareId}/meta`,
+    new TextEncoder().encode(
+      JSON.stringify({
+        v: 1,
+        lineageId: 'source-lineage',
+        revision: 3,
+        publishedAt: Date.now(),
+        byteSize: 6,
+        courseName: 'Biology',
+      }),
+    ),
+    { exclusive: true },
+  );
+  const before = await relay.list('shares/');
+  vi.spyOn(Dexie.prototype, 'transaction').mockRejectedValueOnce(new Error('Storage full'));
+  const store = openStore();
+  await expect(store.createFromLink(source.shareId, phrase, { fetchImpl })).rejects.toThrow(
+    'Storage full',
+  );
+  expect(await store.list()).toEqual([]);
+  expect(await relay.list('shares/')).toEqual(before);
+});
+
+it('rejects a weak passphrase before contacting the relay', async () => {
+  const fetchImpl = vi.fn<typeof fetch>();
+  await expect(
+    openStore().createFromLink('a'.repeat(32), 'short', { fetchImpl }),
+  ).rejects.toThrow();
+  expect(fetchImpl).not.toHaveBeenCalled();
+});
+
+it('refuses an older relay that ignores the source link instead of saving a frozen or empty class', async () => {
+  const { owner: source, fetchImpl, relay } = await fixture();
+  await relay.put(
+    `shares/${source.shareId}/meta`,
+    new TextEncoder().encode(
+      JSON.stringify({
+        v: 1,
+        lineageId: 'source-lineage',
+        revision: 1,
+        publishedAt: Date.now(),
+        byteSize: 6,
+        courseName: 'Biology',
+      }),
+    ),
+    { exclusive: true },
+  );
+  const before = await relay.list('shares/');
+  const oldRelay: typeof fetch = (url, init) =>
+    fetchImpl(url, init?.method === 'POST' ? { ...init, body: undefined } : init);
+  const store = openStore();
+  await expect(
+    store.createFromLink(source.shareId, phrase, { fetchImpl: oldRelay }),
+  ).rejects.toThrow('could not connect');
+  expect(await store.list()).toEqual([]);
+  expect(await relay.list('shares/')).toEqual(before);
+});

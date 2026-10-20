@@ -41,6 +41,7 @@ it('reports a rejected connection without claiming success and clears its passph
   render(<TeacherCourses onPrepareKey={vi.fn()} onOpenClass={vi.fn()} keySetupOpen={false} />);
   await screen.findByRole('heading', { name: 'Connect your first class' });
   fireEvent.click(screen.getByRole('button', { name: 'Connect a class' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
   fireEvent.change(screen.getByLabelText(/^Encrypted connection file/), {
     target: { files: [new File(['{}'], 'course.json')] },
   });

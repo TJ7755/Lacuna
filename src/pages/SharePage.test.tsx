@@ -597,14 +597,18 @@ describe('SharePage', () => {
     expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
   });
 
-  it('offers to replace a link created on another device', async () => {
+  it('allows forwarding an other-device link and keeps replacement under management', async () => {
     given(linked('e'.repeat(32), 2));
     mockReadShareCredentials.mockResolvedValue(null);
     const replacementId = 'f'.repeat(32);
     mockPublishShareLink.mockResolvedValue({ shareId: replacementId, revision: 2, byteSize: 128 });
     render(<SharePage />);
-    await screen.findByText(/created on another device/);
-    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+    await screen.findByText(/Copy and pass on this link/);
+    expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
+      `${window.location.origin}/#/s/${'e'.repeat(32)}`,
+    );
+    expect(mockPublishShareLink).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Link management'));
     fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Yes, replace it' }));
     await waitFor(() =>
@@ -616,7 +620,7 @@ describe('SharePage', () => {
     );
   });
 
-  it('switches to replacement when an update finds the link belongs elsewhere', async () => {
+  it('keeps the link available for forwarding when ownership verification fails', async () => {
     given(linked('b'.repeat(32), 2));
     mockPublishShareLink.mockRejectedValue(
       new ShareLinkNeedsReplacementError('This link was created on another device.'),
@@ -624,8 +628,11 @@ describe('SharePage', () => {
     render(<SharePage />);
     await expectShareLinkRevision(2);
     fireEvent.click(screen.getByRole('button', { name: 'Update link' }));
-    await screen.findByText(/created on another device/);
-    expect(screen.queryByRole('textbox', { name: 'Share link' })).not.toBeInTheDocument();
+    await screen.findByText(/Copy and pass on this link/);
+    expect(screen.getByRole('textbox', { name: 'Share link' })).toHaveValue(
+      `${window.location.origin}/#/s/${'b'.repeat(32)}`,
+    );
+    expect(screen.queryByRole('button', { name: 'Update link' })).not.toBeInTheDocument();
     expect(mockNotify).toHaveBeenCalledWith('This link was created on another device.', 'negative');
   });
 

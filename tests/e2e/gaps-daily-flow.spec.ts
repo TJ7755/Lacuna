@@ -101,6 +101,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     });
     await teacher.goto('https://gaps.getlacuna.app/');
     await teacher.getByRole('button', { name: 'Connect a class' }).click();
+    await teacher.getByRole('button', { name: 'Use a connection file' }).click();
     await teacher.getByLabel(/^Encrypted connection file/).setInputFiles({
       name: 'gaps-course.json',
       mimeType: 'application/json',
