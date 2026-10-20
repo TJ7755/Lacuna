@@ -189,7 +189,16 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       path: testInfo.outputPath('class-results-desktop.png'),
       fullPage: true,
     });
-    await teacher.getByRole('button', { name: 'Pupil A', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Toggle colour theme' }).click();
+    await teacher.screenshot({
+      path: testInfo.outputPath('class-results-light-desktop.png'),
+      fullPage: true,
+    });
+    await teacher.getByRole('button', { name: 'Toggle colour theme' }).click();
+    const answerCell = teacher.getByRole('table').locator('tbody td button').first();
+    await answerCell.focus();
+    await expect(answerCell).toBeFocused();
+    await answerCell.press('Enter');
     await expect(teacher.getByRole('region', { name: 'Evidence for Pupil A' })).toContainText(
       'Recalled',
     );
