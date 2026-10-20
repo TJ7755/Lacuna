@@ -485,7 +485,7 @@ describe('Dashboard', () => {
     expect(cards).toHaveTextContent('2');
   });
 
-  it('leads with the forecast, above what to study', async () => {
+  it('puts the study queue before the forecast', async () => {
     setCourseData([mockCourse], {
       summaries: { 'course-1': summary(3) },
       reviewActivity: new Map([['card-1', [Date.now()]]]),
@@ -495,11 +495,11 @@ describe('Dashboard', () => {
 
     const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
     const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
     expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
   });
 
-  it('holds the queue until the forecast can arrive whole above it', async () => {
+  it('keeps the study queue before the forecast when both arrive', async () => {
     setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
     mockForecasts = { 'course-1': forecast(0.9) };
     mockReviewHistory = undefined;
@@ -517,7 +517,7 @@ describe('Dashboard', () => {
     expect(
       within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' }),
     ).toBeInTheDocument();
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
   });
 
   it('shows the queue without waiting indefinitely on a slow forecast', () => {

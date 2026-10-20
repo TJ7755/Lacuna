@@ -36,8 +36,8 @@ import { useToast } from '../components/ui/Toast';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
 /**
- * The forecast leads Today, so the queue waits for it to arrive as one piece. A forecast
- * still pending after this long gives way: the queue appears beneath a placeholder.
+ * Today arrives as one piece when the forecast is quick. A forecast still pending
+ * after this long gives way: the queue appears above a placeholder.
  */
 const FORECAST_WAIT_MS = 600;
 
@@ -267,6 +267,19 @@ export function Dashboard() {
           <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
         ) : (
           <div className="flex flex-col gap-6">
+            {/* Starting study leads; the forecast remains available below the queue. */}
+            <TodayQueue
+              rows={rows}
+              openMenuId={courseMenu?.course.id}
+              multiplier={m}
+              onStudy={(id) => openStudySheet(id)}
+              onMenu={(id, position, trigger) => {
+                const course = activeCourses?.find((entry) => entry.id === id);
+                if (!course) return;
+                setArchiveTarget(null);
+                setCourseMenu({ course, position, trigger });
+              }}
+            />
             {/* The forecast arrives whole, fading in place, and holds its room while late. */}
             {!forecastSettled ? (
               <ForecastPlaceholder />
@@ -295,20 +308,6 @@ export function Dashboard() {
                 </motion.section>
               )
             )}
-            {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
-            <TodayQueue
-              rows={rows}
-              delay={showForecast ? MOTION_DURATION.local * 0.6 : 0}
-              openMenuId={courseMenu?.course.id}
-              multiplier={m}
-              onStudy={(id) => openStudySheet(id)}
-              onMenu={(id, position, trigger) => {
-                const course = activeCourses?.find((entry) => entry.id === id);
-                if (!course) return;
-                setArchiveTarget(null);
-                setCourseMenu({ course, position, trigger });
-              }}
-            />
           </div>
         )}
       </PageLoadingBoundary>
