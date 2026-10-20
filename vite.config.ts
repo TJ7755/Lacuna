@@ -23,6 +23,8 @@ export const workbox = {
     /^\/(?:sitemap\.xml|robots\.txt|llms\.txt)$/,
   ],
   globIgnores: [
+    'films/**',
+    'landing/films/**',
     'compare/**',
     'courses/**',
     'assets/course-*.png',

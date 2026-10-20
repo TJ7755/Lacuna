@@ -1,0 +1,1 @@
+- Keep a local poster and usable navigation when a landing film fails, and centralise its streaming origin ahead of an owner-managed media-domain switch. (#676)

@@ -27,6 +27,7 @@ not the entire documentation tree.
   [repository policy](maintenance/governance.md), [security reporting](../SECURITY.md).
 - [Gaps teacher entry and encryption boundaries](gaps.md).
 - [Course library and hosting](library.md).
+- [Landing films and owner media-domain switch](landing-media.md).
 - [Manual release checks](WEBSITE_TEST_CHECKLIST.md), [performance measurement](PERFORMANCE.md),
   [compatibility boundary](storage-v22-compatibility.md), [scientific limits](scientific-assessment.md).
 

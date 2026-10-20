@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
 import { Landing } from '../../pages/Landing';
 import { LIBRARY_ORIGIN } from '../../config/origins';
+import { landingFilms } from './films';
 
 vi.mock('../welcome/useSmoothScroll', () => ({ useSmoothScroll: vi.fn() }));
 
@@ -106,6 +107,34 @@ it('offers a direct hosted film link when playback fails', () => {
   );
 });
 
+it.each(Object.values(landingFilms))(
+  'replaces a failed $title player with its local poster',
+  (film) => {
+    const { container } = render(
+      <MemoryRouter>
+        <Landing />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: `Watch ${film.title}, ${film.duration}` }));
+    const video = container.querySelector('video')!;
+    video.focus();
+    fireEvent.error(video);
+
+    expect(container.querySelector('video')).toBeNull();
+    const fallback = screen.getByRole('status');
+    expect(fallback).toBeVisible();
+    expect(fallback).toHaveFocus();
+    const poster = screen.getByRole('img', { name: film.title });
+    expect(poster).toBeVisible();
+    expect(poster).toHaveAttribute('src', film.poster);
+    expect(screen.getByRole('link', { name: 'Open the video directly' })).toHaveAttribute(
+      'href',
+      film.externalSrc,
+    );
+    expect(screen.getByRole('link', { name: 'Open Gaps' })).toBeVisible();
+  },
+);
+
 it('moves keyboard focus to the requested film player', () => {
   const { container } = render(
     <MemoryRouter>
@@ -116,6 +145,21 @@ it('moves keyboard focus to the requested film player', () => {
   play.focus();
   fireEvent.click(play);
   expect(container.querySelector('video')).toHaveFocus();
+});
+
+it('does not steal focus when a film fails after the visitor moves on', () => {
+  const { container } = render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  const film = landingFilms.gaps;
+  fireEvent.click(screen.getByRole('button', { name: `Watch ${film.title}, ${film.duration}` }));
+  const link = screen.getByRole('link', { name: 'Open Gaps' });
+  link.focus();
+  fireEvent.error(container.querySelector('video')!);
+  expect(link).toHaveFocus();
+  expect(screen.getByRole('status')).toBeVisible();
 });
 
 it('opens desktop films directly outside the app service worker', () => {
