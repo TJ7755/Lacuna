@@ -1,5 +1,6 @@
 import { libraryCourses, type LibraryCourse } from '../../library/catalogue';
 import { Header, SectionHeading } from '../quizlet/ComparisonUi';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 import '../quizlet/QuizletComparison.css';
 import '../quizlet/ComparisonResponsive.css';
 import './CoursePage.css';
@@ -10,6 +11,9 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
     <div className="qc-page course-page">
       <Header sectionBase="/compare/quizlet/" />
       <main className="qc-section course-content">
+        <a className="course-back" href={LIBRARY_ORIGIN} target="_blank" rel="noopener noreferrer">
+          Browse the course library
+        </a>
         {course ? (
           <>
             <div className="course-intro">
@@ -62,7 +66,9 @@ export function CoursePage({ course }: { course?: LibraryCourse }) {
                 flashcards.
               </p>
             </section>
-            <a className="course-back" href="/courses/">All courses</a>
+            <a className="course-back" href="/courses/">
+              All courses
+            </a>
           </>
         ) : (
           <>

@@ -5,6 +5,7 @@ import type * as CardImport from '../../db/cardImport';
 import { MemoryRouter } from 'react-router-dom';
 import { ImportPanel } from './ImportPanel';
 import { domAnimation, LazyMotion } from 'motion/react';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 const mocks = vi.hoisted(() => ({
   multiplier: 0,
@@ -76,6 +77,16 @@ function open(entry = '/') {
     </MemoryRouter>,
   );
 }
+it('exposes the library alongside course import sources', () => {
+  open();
+  const link = screen
+    .getAllByRole('link')
+    .find((anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN);
+  expect(link).toHaveAccessibleName();
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  expect(mocks.importShare).not.toHaveBeenCalled();
+});
 async function reviewText(reverse = false) {
   fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));
   fireEvent.change(screen.getByLabelText('Paste your cards'), {

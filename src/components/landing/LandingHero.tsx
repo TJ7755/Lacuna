@@ -4,6 +4,7 @@ import { LacunaIcon } from '../ui/icons';
 import { LandingCta } from '../welcome/LandingCta';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { RevisionIllustrations } from './RevisionIllustrations';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 import './LandingHero.css';
 
 export function LandingHero() {
@@ -81,11 +82,21 @@ export function LandingHeader() {
       >
         <LacunaIcon />
       </Link>
-      {!window.electronAPI?.isElectron && (
-        <Link className="motion-header-download" to="/download">
-          Download for desktop <span aria-hidden="true">↗</span>
-        </Link>
-      )}
+      <div className="motion-header-actions">
+        <a
+          className="motion-header-download"
+          href={LIBRARY_ORIGIN}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Library
+        </a>
+        {!window.electronAPI?.isElectron && (
+          <Link className="motion-header-download" to="/download">
+            Download for desktop <span aria-hidden="true">↗</span>
+          </Link>
+        )}
+      </div>
     </nav>
   );
 }

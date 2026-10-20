@@ -76,6 +76,11 @@
   gap: 14px;
   align-items: center;
 }
+.motion-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
 .landing-motion .motion-header {
   position: fixed;
   height: 96px;
@@ -186,6 +191,9 @@
   .motion-header-download {
     font-size: 11px;
     gap: 7px;
+  }
+  .motion-header-actions {
+    gap: 12px;
   }
   .motion-opening-discover {
     bottom: 65px;

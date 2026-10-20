@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
 import { Landing } from '../../pages/Landing';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 vi.mock('../welcome/useSmoothScroll', () => ({ useSmoothScroll: vi.fn() }));
 
@@ -18,6 +19,21 @@ it('keeps branding in the navigation and hero artwork limited to revision illust
     (svg) => !svg.closest('h1, a, button'),
   );
   expect(standaloneArtwork).toHaveLength(0);
+});
+
+it('exposes the course library from navigation without leaving the app window', () => {
+  render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  const link = within(screen.getByRole('navigation', { name: 'Landing navigation' }))
+    .getAllByRole('link')
+    .find((anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN);
+  expect(link).toBeDefined();
+  expect(link).toHaveAccessibleName();
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
 });
 
 it('points discovery and keyboard skip at the first section', () => {

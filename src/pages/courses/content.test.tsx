@@ -4,8 +4,24 @@ import { describe, expect, it } from 'vitest';
 import { libraryCourses } from '../../library/catalogue';
 import { CoursePage } from './CoursePage';
 import { courseMetadata } from './content';
+import { LIBRARY_ORIGIN } from '../../config/origins';
 
 describe('public course catalogue', () => {
+  it.each([undefined, ...libraryCourses])(
+    'links to the library from the index and every course: %s',
+    (course) => {
+      const document = new DOMParser().parseFromString(
+        renderToStaticMarkup(<CoursePage course={course} />),
+        'text/html',
+      );
+      const link = [...document.querySelectorAll('main a')].find(
+        (anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN,
+      );
+      expect(link?.textContent?.trim()).toBeTruthy();
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+    },
+  );
   it('advertises every course in both source crawl files', () => {
     for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
       const source = readFileSync(path, 'utf8');
