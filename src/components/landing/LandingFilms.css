@@ -96,18 +96,8 @@
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 72px;
-  align-items: end;
+  align-items: start;
   margin-bottom: 48px;
-}
-.landing-teacher-audience {
-  margin: 0 0 24px;
-  font-size: 17px;
-  font-weight: 500;
-}
-.landing-teacher-copy .landing-teacher-timing {
-  font-size: 15px;
-  margin-top: 16px;
-  color: #526049;
 }
 .landing-teacher-cta {
   display: inline-block;
@@ -129,13 +119,8 @@
 .landing-teacher-film .landing-film-screen {
   border: 1px solid #d5dfcc;
 }
-.landing-teacher-film figcaption,
-.landing-teacher-note {
+.landing-teacher-film figcaption {
   color: #526049;
-}
-.landing-teacher-note {
-  margin: 32px 0 0;
-  font-size: 13px;
 }
 .landing-film-fallback {
   margin: 16px 0 0;
@@ -163,9 +148,6 @@
     bottom: 12px;
     padding: 10px 14px;
     font-size: 13px;
-  }
-  .landing-teacher-audience {
-    margin-bottom: 18px;
   }
 }
 

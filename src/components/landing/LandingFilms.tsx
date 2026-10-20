@@ -59,7 +59,7 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
         )}
       </div>
       <figcaption>
-        <span>{content.title}</span>
+        <span>{film === 'gaps' ? 'Demo data' : content.title}</span>
         <span>{content.duration}</span>
       </figcaption>
       <p id={`${film}-film-description`} className="landing-film-description">{content.description} Fictional demonstration data. Music, no spoken narration.</p>
@@ -84,18 +84,13 @@ export function LandingTeacherFilm() {
   return (
     <section id="for-teachers" className="landing-teacher-film" aria-labelledby="teacher-film-title">
       <div className="landing-teacher-introduction">
-        <div>
-          <p className="landing-teacher-audience">Gaps for teachers and tutors</p>
-          <h2 id="teacher-film-title">Know what to teach next.</h2>
-        </div>
+        <h2 id="teacher-film-title">Know what to teach next.</h2>
         <div className="landing-teacher-copy">
-          <p>A whole class or one learner. See where understanding breaks down, then read the answers behind the scores.</p>
-          <p className="landing-teacher-timing">Next-day reports from the practice your pupils choose to share.</p>
+          <p>See where your class or an individual learner needs help.</p>
           <a className="landing-teacher-cta" href="https://gaps.getlacuna.app">Open Gaps</a>
         </div>
       </div>
       <FilmPlayer film="gaps" />
-      <p className="landing-teacher-note">Real interfaces, fictional pupils and demonstration data.</p>
     </section>
   );
 }
