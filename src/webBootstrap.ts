@@ -40,8 +40,8 @@ export async function registerProductionServiceWorker(
   }
 }
 
-
 export interface LandingHydrationOptions {
+  hostname?: string;
   hash?: string;
   isElectron?: boolean;
   seedFlagPresent?: boolean;
@@ -61,6 +61,7 @@ function readSeedFlag(): boolean {
 /** First-visit browsers hydrate the prerendered landing page; the packaged app,
  * in-app hash routes and returning browsers boot the study app directly. */
 export function shouldHydrateLanding({
+  hostname = window.location.hostname,
   hash = window.location.hash,
   isElectron = window.electronAPI?.isElectron === true,
   seedFlagPresent = readSeedFlag(),
@@ -69,6 +70,7 @@ export function shouldHydrateLanding({
 }: LandingHydrationOptions = {}): boolean {
   // Honour the head's decision even if storage or the URL changed while modules loaded.
   if (appStartPending) return false;
+  if (hostname === 'gaps.getlacuna.app') return false;
   if (isElectron) return false;
   // In-page anchors (for example #landing-product) stay on the landing page.
   // Anything addressing the study app through its hash routes boots the full app.

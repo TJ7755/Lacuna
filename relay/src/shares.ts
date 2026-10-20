@@ -3,6 +3,7 @@ import { canonicalEtag, type BlobStore } from './store.js';
 import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { relayCorsHeaders } from './cors.js';
+import { insightDayExpiresAt } from './insightsProtocol.js';
 
 /**
  * Teacher-published course snapshots behind a stable link. A share is an
@@ -12,7 +13,7 @@ import { relayCorsHeaders } from './cors.js';
  * downloading the whole course. Knowledge of the share id is the read
  * capability; writes need the bearer token minted with the share.
  */
-export type ShareSlot = 'payload' | 'meta';
+export type ShareSlot = 'payload' | 'meta' | 'teacher';
 
 /**
  * Payloads transit the relay function body, so they must stay well under
@@ -80,6 +81,15 @@ export async function handleShareItem(
   id: string,
   now: () => number,
 ): Promise<Response> {
+  if (request.method === 'HEAD') {
+    const headers = shareCorsHeaders(request);
+    headers.set('Cache-Control', 'no-store');
+    if (!SHARE_ID_RE.test(id)) return new Response(null, { status: 404, headers });
+    const auth = await authorizeShare(store, id, request);
+    const status = auth === 'ok' ? ((await shareLive(store, id, now)) ? 204 : 410) : auth;
+    // Verification must not renew the share or run the expired-share deletion path.
+    return new Response(null, { status, headers });
+  }
   if (!SHARE_ID_RE.test(id)) {
     return shareJson(404, request, { error: 'not found' });
   }
@@ -88,7 +98,7 @@ export async function handleShareItem(
   }
 
   const live = await shareLive(store, id, now);
-  if (!live) {
+  if (!live && !(await hasRetainedInsights(store, id, now()))) {
     await sweepShare(store, id);
     return shareJson(404, request, { error: 'not found' });
   }
@@ -180,7 +190,7 @@ async function putShareSlot(
   }
 
   if (!(await shareLive(store, id, now))) {
-    await sweepShare(store, id);
+    if (!(await hasRetainedInsights(store, id, now()))) await sweepShare(store, id);
     return shareJson(404, request, { error: 'not found' });
   }
 
@@ -238,7 +248,7 @@ async function putShareSlot(
   return new Response(null, { status: 204, headers });
 }
 
-async function authorizeShare(
+export async function authorizeShare(
   store: BlobStore,
   id: string,
   request: Request,
@@ -255,7 +265,7 @@ async function authorizeShare(
 }
 
 const SHARE_CURSOR_KEY = 'maintenance/share-cursor';
-const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta)$/;
+const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher)$/;
 
 /**
  * Reclaim shares untouched for longer than the channel TTL plus grace, so an
@@ -286,7 +296,7 @@ export async function cleanupExpiredShares(
     if (now - latest < CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS) continue;
 
     const fresh = await Promise.all(
-      ['auth', 'payload', 'meta'].map((name) => store.get(`${prefix}${name}`)),
+      ['auth', 'payload', 'meta', 'teacher'].map((name) => store.get(`${prefix}${name}`)),
     );
     if (
       fresh.some(
@@ -295,7 +305,8 @@ export async function cleanupExpiredShares(
     ) {
       continue;
     }
-    await store.del(objects.map((object) => object.key));
+    if (await hasRetainedInsights(store, id, now)) continue;
+    await sweepShare(store, id);
     sharesDeleted += 1;
     shareObjectsDeleted += objects.length;
   }
@@ -317,9 +328,14 @@ function shareSlotKey(id: string, slot: ShareSlot): string {
   return `shares/${id}/${slot}`;
 }
 
-async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
+export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
   const stamps: number[] = [];
-  for (const key of [shareAuthKey(id), shareSlotKey(id, 'payload'), shareSlotKey(id, 'meta')]) {
+  for (const key of [
+    shareAuthKey(id),
+    shareSlotKey(id, 'payload'),
+    shareSlotKey(id, 'meta'),
+    shareSlotKey(id, 'teacher'),
+  ]) {
     const stored = await store.get(key);
     if (stored) stamps.push(stored.uploadedAt);
   }
@@ -328,8 +344,23 @@ async function shareLive(store: BlobStore, id: string, now: () => number): Promi
 }
 
 async function sweepShare(store: BlobStore, id: string): Promise<void> {
-  const objects = await store.list(`shares/${id}/`);
+  const objects = (
+    await Promise.all([store.list(`shares/${id}/`), store.list(`insights/${id}/`)])
+  ).flat();
   if (objects.length > 0) await store.del(objects.map((object) => object.key));
+}
+
+async function hasRetainedInsights(store: BlobStore, id: string, now: number): Promise<boolean> {
+  const prefix = `insights/${id}/`;
+  const objects = await store.list(prefix);
+  return objects.some(({ key }) => {
+    const match = /^(\d{4}-\d{2}-\d{2})\/envelopes\/[0-9a-f]{32}$/.exec(key.slice(prefix.length));
+    try {
+      return match !== null && insightDayExpiresAt(match[1]!) > now;
+    } catch {
+      return false;
+    }
+  });
 }
 
 function configuredShareMintSecret(): string | null {

@@ -59,8 +59,14 @@
         } catch (e) {
           document.documentElement.classList.add('dark');
         }
+        // Choose the teacher entry before hash-router construction and first paint.
+        var teacherHost = window.location.hostname === 'gaps.getlacuna.app';
+        if (teacherHost && window.location.hash.indexOf('#/') !== 0) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search + '#/teach');
+        }
         // Match the study-app startup decision before the prerender can paint.
         var appStart = window.location.hash.indexOf('#/') === 0 ||
+          teacherHost ||
           window.location.protocol === 'app:' ||
           window.electronAPI && window.electronAPI.isElectron === true;
         if (!appStart) {

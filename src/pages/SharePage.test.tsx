@@ -1,8 +1,15 @@
 import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { MemoryRouter as ReactRouterMemory } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { StrictMode } from 'react';
-import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { StrictMode, type ReactNode } from 'react';
+import {
+  act,
+  render as renderUi,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { downloadTextFile } from '../db/export';
 import type * as ReactRouterDom from 'react-router-dom';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
@@ -14,6 +21,10 @@ import type { Card, Course } from '../db/types';
 import type { CourseSummary } from '../state/useCourseData';
 
 const mockNotify = vi.fn();
+
+function render(ui: ReactNode) {
+  return renderUi(ui, { wrapper: ReactRouterMemory });
+}
 
 let mockCourses: Course[] | undefined = undefined;
 let mockSummaries: Record<string, CourseSummary> | undefined = undefined;
@@ -145,6 +156,7 @@ const mockSummary: CourseSummary = {
   mastery: 0,
   unreviewed: 1,
   eligible: 1,
+  examPracticeEligible: 0,
   completedLessonCount: 0,
   reviewedCardCount: 0,
   reviewedTodayCount: 0,
@@ -383,13 +395,15 @@ describe('SharePage', () => {
 
   it('points to Today when there is nothing to share', () => {
     given();
-    render(
-      <ReactRouterMemory>
-        <SharePage />
-      </ReactRouterMemory>,
-    );
+    render(<SharePage />);
     expect(screen.getByRole('heading', { name: 'Nothing to share yet' })).toBeInTheDocument();
     expectAppDestination(screen.getByRole('link', { name: 'Create a course on Today' }), '/');
+  });
+
+  it('links to the teacher entry from sharing', () => {
+    given(mockCourse);
+    render(<SharePage />);
+    expectAppDestination(screen.getByRole('link', { name: 'Class insights' }), '/teach');
   });
 
   it('saves the course as a file', async () => {

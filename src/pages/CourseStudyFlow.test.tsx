@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import type { Course } from '../db/types';
 import type { SessionSummary } from '../components/learn/types';
-import type { StudyFlowStep } from '../course/studyFlowPlanner';
+import { CATCH_UP_STEP, type StudyFlowStep } from '../course/studyFlowPlanner';
 import type { CourseStudyFlowSnapshot, StudyFlowPracticeState } from '../course/studyFlowSnapshot';
 import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
@@ -187,6 +187,8 @@ function snapshot(
     activeManualNodeKeys: new Set(),
     completedManualNodeKeys: new Set(),
     recurringPracticeEligibleCount,
+    examPracticeEligibleCount: 0,
+    cardCount: 0,
     dueReviewCardIds: new Set(),
     assessmentOptions,
   };
@@ -311,6 +313,37 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
   });
 
+  it.each(['Clear step', 'Reach review goal', 'Pause step'])(
+    'keeps catch-up explicit after %s while cards remain eligible', async (stop) => {
+    const after = flow(CATCH_UP_STEP, 1);
+    after.snapshot.catchUpEligibleCount = 1;
+    after.snapshot.cardCount = 1;
+    mockFlows = [flow(CATCH_UP_STEP, 0), after];
+    renderFlow('/course/course-1/study?review=earlier');
+    await screen.findByTestId('learn-request');
+    fireEvent.click(screen.getByRole('button', { name: stop }));
+    const review = await screen.findByRole('button', { name: 'Review earlier material' });
+    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+    expect(learnMounts).toBe(1);
+    expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+    fireEvent.click(review);
+    await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
+    expect(learnMounts).toBe(2);
+  });
+
+  it('offers one way to continue when catch-up is already the next planned step', async () => {
+    const nextCatchUp = flow(CATCH_UP_STEP, 1);
+    nextCatchUp.snapshot.catchUpEligibleCount = 2;
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Current lesson' }, 0), nextCatchUp];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+    fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
+    const next = await screen.findByRole('button', { name: /^Continue$/ });
+    expect(screen.queryByRole('button', { name: 'Review earlier material' })).not.toBeInTheDocument();
+    fireEvent.click(next);
+    await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
+  });
+
   it('starts a fresh Learn session when due review continues into Practice', async () => {
     const practice: StudyFlowStep = {
       kind: 'practice',
@@ -394,6 +427,13 @@ describe('CourseStudyFlow', () => {
       courseId: 'course-1',
       mode: 'recurring',
     });
+  });
+
+  it('starts optional course-wide exam practice from its query', async () => {
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
+    renderFlow('/course/course-1/study?review=exam');
+    await screen.findByTestId('learn-request');
+    expect(request()).toEqual({ kind: 'practice', courseId: 'course-1', mode: 'exam' });
   });
 
   it('runs due review rather than the next step when the sheet asked for it', async () => {

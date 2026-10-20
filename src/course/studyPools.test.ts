@@ -1,3 +1,4 @@
+import { catchUpPracticePool } from './catchUpPractice';
 import { describe, expect, it } from 'vitest';
 import type {
   Card,
@@ -11,6 +12,7 @@ import { makeExamDateContext } from '../fsrs/examDate';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 import {
   eligiblePracticePool,
+  examPracticePool,
   directLessonStudyPool,
   lessonCardMembership,
   lessonStudyPool,
@@ -94,6 +96,45 @@ const exposure = (lessonId: string, cardId: string): LessonCardExposure => ({
   cardId,
   taughtAt: NOW,
   updatedAt: NOW,
+});
+
+it('uses scheduled dates instead of a maintenance mastery target without an exam', () => {
+  const course = { ...makeCourse(), examDate: undefined };
+  const due = makeCard('due', null, { state: 2, due: NOW, stability: 1e8, lastReviewed: NOW });
+  const future = { ...due, id: 'future', due: NOW + MS_PER_DAY, stability: 0.1 };
+  const context = makeExamDateContext(course, [], []);
+  expect(eligiblePracticePool([due, future], course, context, NOW)).toEqual([due]);
+  expect(examPracticePool([due, future], course, context, NOW)).toEqual([]);
+});
+
+it('offers early practice only for an applicable future exam, respecting availability', () => {
+  const course = { ...makeCourse(), examDate: undefined };
+  const lessons = [makeLesson('l1', NOW + MS_PER_DAY), makeLesson('l2', NOW - 1)];
+  const weak = makeCard('weak', 'l1', {
+    state: 2,
+    due: NOW + MS_PER_DAY,
+    stability: 0.1,
+    lastReviewed: NOW,
+  });
+  const cards = [
+    weak,
+    { ...weak, id: 'secure', stability: 1e8 },
+    { ...weak, id: 'past', primaryLessonId: 'l2' },
+    { ...weak, id: 'no-exam', primaryLessonId: null },
+    { ...weak, id: 'suspended', suspended: true },
+    { ...weak, id: 'buried', buriedUntil: NOW + MS_PER_DAY },
+  ];
+  expect(examPracticePool(cards, course, makeExamDateContext(course, lessons, []), NOW)).toEqual([
+    weak,
+  ]);
+  expect(
+    examPracticePool(
+      cards,
+      { ...course, archived: true },
+      makeExamDateContext(course, lessons, []),
+      NOW,
+    ),
+  ).toEqual([]);
 });
 
 describe('lesson pools', () => {
@@ -280,5 +321,64 @@ describe('practice milestone identity', () => {
     const b = makeCard('b', 'l1');
     expect(practiceScopeVersion([a, b])).toBe(practiceScopeVersion([b, a]));
     expect(practiceScopeVersion([a])).not.toBe(practiceScopeVersion([a, b]));
+  });
+});
+
+
+describe('mid-course catch-up', () => {
+  const lessons = [makeLesson('l1'), makeLesson('l2'), makeLesson('l3')];
+  const joined = { ...makeCourse(), studyStartLessonId: 'l2', newCardsPerDay: 1 };
+  const cards = [
+    makeCard('old1', 'l1'),
+    makeCard('old2', 'l1'),
+    makeCard('new', 'l2'),
+    makeCard('future', 'l3'),
+  ];
+  const context = makeExamDateContext(joined, lessons, []);
+
+  it('admits earlier unseen cards without forcing current or future material into catch-up', () => {
+    expect(
+      catchUpPracticePool(cards, joined, lessons, [], context, new Set(['l1', 'l2']), NOW).map(
+        (card) => card.id,
+      ),
+    ).toEqual(['old1']);
+    expect(cards.every((card) => card.state === 0 && card.history.length === 0)).toBe(true);
+    expect(practiceCardScope(cards, [], [], { reachedLessonIds: new Set(['l1', 'l2']) })).toEqual(
+      [],
+    );
+  });
+
+  it('honours availability, the shared daily allowance, and dated access', () => {
+    expect(catchUpPracticePool(cards, joined, lessons, [], context, new Set(), NOW)).toEqual([]);
+    expect(
+      catchUpPracticePool(
+        cards.map((card) => ({ ...card, suspended: true })),
+        joined,
+        lessons,
+        [],
+        context,
+        new Set(['l1']),
+        NOW,
+      ),
+    ).toEqual([]);
+    const reviewed = makeCard('introduced-current', 'l2', {
+      state: 2,
+      history: [
+        {
+          timestamp: NOW - 1000,
+          grade: 3,
+          responseTimeSec: 1,
+          distracted: false,
+          stabilityBefore: null,
+          stabilityAfter: 1,
+          difficultyBefore: null,
+          difficultyAfter: 5,
+          retrievabilityAtReview: null,
+        },
+      ],
+    });
+    expect(
+      catchUpPracticePool([...cards, reviewed], joined, lessons, [], context, new Set(['l1']), NOW),
+    ).toEqual([]);
   });
 });

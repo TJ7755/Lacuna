@@ -20,6 +20,7 @@ import type {
 } from '../db/types';
 import { lessonOrder, resolveAssessmentCoverage } from './assessmentCoverage';
 import { resolveCourseLessonOrder } from './lessonOrder';
+import { earlierLessonIds } from './courseEntry';
 import { MS_PER_DAY } from '../fsrs/params';
 import { shouldInsertPractice } from '../fsrs/practice';
 import { practiceNodeKey } from './studyPools';
@@ -182,12 +183,12 @@ export function lessonEffectiveReleaseDates(
  *    or when `effectiveDate <= now`.
  *  - `semi-linear`: unlocked when `lesson.unlockedAt` is set (the one-way
  *    ratchet stored in Phase 6), OR when the lesson is the first core
- *    (non-extension) lesson by `orderIndex`. All other lessons are locked until
- *    their ratchet is triggered.
+ *    (non-extension) lesson by `orderIndex`, or within the chosen entry prefix.
+ *    Later lessons remain locked until their ratchet is triggered.
  *
  * `effectiveDates` is the map returned by `lessonEffectiveReleaseDates`; it is
  * only consulted under `linear` mode. `lessons` must include all lessons in the
- * course so the first-core-lesson check for `semi-linear` is correct.
+ * course so the entry-prefix check for `semi-linear` is correct.
  */
 export function isLessonUnlocked(
   course: Course,
@@ -196,23 +197,35 @@ export function isLessonUnlocked(
   lessons: Lesson[],
   now: number = Date.now(),
 ): boolean {
-  let firstCoreLesson: Lesson | undefined;
-  for (const candidate of lessons) {
-    if (
-      !candidate.isExtension &&
-      (!firstCoreLesson || lessonOrder(candidate, firstCoreLesson) < 0)
-    ) {
-      firstCoreLesson = candidate;
-    }
-  }
-  return isLessonUnlockedWithFirstCore(course, lesson, effectiveDates, firstCoreLesson?.id, now);
+  return isLessonUnlockedWithInitialLessons(
+    course,
+    lesson,
+    effectiveDates,
+    initiallyUnlockedLessonIds(course, lessons),
+    now,
+  );
 }
 
-function isLessonUnlockedWithFirstCore(
+function initiallyUnlockedLessonIds(course: Course, lessons: Lesson[]): ReadonlySet<string> {
+  const ids = earlierLessonIds(course.studyStartLessonId, lessons);
+  let start = lessons.find(
+    (candidate) => candidate.id === course.studyStartLessonId && !candidate.isExtension,
+  );
+  if (!start) {
+    for (const candidate of lessons) {
+      if (!candidate.isExtension && (!start || lessonOrder(candidate, start) < 0))
+        start = candidate;
+    }
+  }
+  if (start) ids.add(start.id);
+  return ids;
+}
+
+function isLessonUnlockedWithInitialLessons(
   course: Course,
   lesson: Lesson,
   effectiveDates: Map<string, number | undefined>,
-  firstCoreLessonId: string | undefined,
+  initialLessonIds: ReadonlySet<string>,
   now: number,
 ): boolean {
   // Extension lessons are always unlocked (addendum B).
@@ -232,9 +245,8 @@ function isLessonUnlockedWithFirstCore(
     case 'semi-linear': {
       // Stored ratchet: once unlocked, never re-locked (addendum I).
       if (lesson.unlockedAt !== undefined) return true;
-      // The first core lesson by orderIndex is always available so the student
-      // has a starting point even before completing any practice.
-      return firstCoreLessonId === lesson.id;
+      // The chosen entry point and its catch-up prefix need no completion evidence.
+      return initialLessonIds.has(lesson.id);
     }
 
     default:
@@ -242,7 +254,6 @@ function isLessonUnlockedWithFirstCore(
       return false;
   }
 }
-
 // ---------------------------------------------------------------------------
 // 3. lessonStatus
 // ---------------------------------------------------------------------------
@@ -372,7 +383,7 @@ export function buildPath(
   const sorted = resolveCourseLessonOrder(course, lessons, assessments, practiceNodes);
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
 
-  const firstCoreLessonId = [...lessons].sort(lessonOrder).find((lesson) => !lesson.isExtension)?.id;
+  const initialLessonIds = initiallyUnlockedLessonIds(course, lessons);
   const exposedCardIdsByLesson = new Map<string, Set<string>>();
   for (const exposure of progress.exposures) {
     let cardIds = exposedCardIdsByLesson.get(exposure.lessonId);
@@ -387,11 +398,11 @@ export function buildPath(
   );
   // Build lesson nodes in path order.
   const lessonNodes: LessonPathNode[] = sorted.map((lesson) => {
-    const unlocked = isLessonUnlockedWithFirstCore(
+    const unlocked = isLessonUnlockedWithInitialLessons(
       course,
       lesson,
       effectiveDates,
-      firstCoreLessonId,
+      initialLessonIds,
       now,
     );
     const cards = lessonCardsById.get(lesson.id) ?? [];

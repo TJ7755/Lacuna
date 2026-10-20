@@ -42,6 +42,11 @@ export function previewBrowser({ directory = root, env = process.env, execute = 
       'x',
       'vite',
       'preview',
+      ...(env.LACUNA_BROWSER_SITE === 'gaps'
+        ? ['--config', 'vite.gaps.config.ts']
+        : env.LACUNA_BROWSER_SITE === 'library'
+          ? ['--config', 'vite.library.config.ts']
+          : []),
       '--host',
       '127.0.0.1',
       '--port',
@@ -68,12 +73,18 @@ export function verifyBrowser({
       'verify:browser owns its isolated configuration, output and reporters; pass test/project filters instead',
     );
   }
+  if (args.includes('--gaps') && args.includes('--library')) {
+    throw new Error('Choose one browser site: --gaps or --library');
+  }
+  const site = args.includes('--library') ? 'library' : args.includes('--gaps') ? 'gaps' : 'lacuna';
+  args = args.filter((arg) => arg !== '--gaps' && arg !== '--library');
   const parent = join(directory, 'artifacts', 'browser-checks');
   mkdirSync(parent, { recursive: true });
   const runDirectory = mkdtempSync(join(parent, 'run-'));
   const buildDirectory = join(runDirectory, 'dist');
   const browserEnv = {
     ...env,
+    LACUNA_BROWSER_SITE: site,
     LACUNA_BROWSER_RUN_DIR: runDirectory,
     PLAYWRIGHT_HTML_OPEN: 'never',
   };
@@ -89,7 +100,7 @@ export function verifyBrowser({
   ])
     delete browserEnv[key];
   const source = sourceState(directory);
-  const report = { source, args, startedAt: new Date().toISOString(), buildDirectory };
+  const report = { source, site, args, startedAt: new Date().toISOString(), buildDirectory };
   const reportPath = join(runDirectory, 'source.json');
   const save = () => writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   save();
@@ -106,7 +117,17 @@ export function verifyBrowser({
   };
   let status = 1;
   try {
-    status = run(['run', 'build:assets', '--outDir', buildDirectory, '--emptyOutDir']);
+    status = run([
+      'run',
+      site === 'library'
+        ? 'build:library:assets'
+        : site === 'gaps'
+          ? 'build:gaps:assets'
+          : 'build:assets',
+      '--outDir',
+      buildDirectory,
+      '--emptyOutDir',
+    ]);
     if (status === 0) {
       report.indexSha256 = digest(readFileSync(join(buildDirectory, 'index.html')));
       if (JSON.stringify(sourceState(directory)) !== JSON.stringify(source)) {

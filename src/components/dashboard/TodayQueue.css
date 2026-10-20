@@ -1,0 +1,13 @@
+@media (width < 40rem) {
+  .today-course-row {
+    flex-wrap: wrap;
+  }
+
+  .today-course-row > button:first-of-type {
+    flex-basis: 8rem;
+  }
+
+  .today-course-row > [data-study-trigger] {
+    margin-left: auto;
+  }
+}

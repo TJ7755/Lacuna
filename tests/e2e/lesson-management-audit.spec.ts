@@ -39,7 +39,7 @@ for (const width of [390, 1440]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
-    const lessonName = page.locator('main').getByText('Core concepts & rendering', { exact: true });
+    const lessonName = page.locator('main span').getByText('Core concepts & rendering', { exact: true });
     const nameBox = await lessonName.boundingBox();
     expect(
       nameBox!.width,

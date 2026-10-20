@@ -1,5 +1,15 @@
 {
   "rewrites": [
+    {
+      "source": "/insights/:id/:day/:slotId",
+      "destination": "/api?__path=/insights/:id/:day/:slotId"
+    },
+    { "source": "/insights/:id/:day", "destination": "/api?__path=/insights/:id/:day" },
+    {
+      "source": "/api/insights/:id/:day/:slotId",
+      "destination": "/api?__path=/api/insights/:id/:day/:slotId"
+    },
+    { "source": "/api/insights/:id/:day", "destination": "/api?__path=/api/insights/:id/:day" },
     { "source": "/ai/maintenance", "destination": "/api?__path=/ai/maintenance" },
     { "source": "/ai/sessions", "destination": "/api?__path=/ai/sessions" },
     { "source": "/ai/claim", "destination": "/api?__path=/ai/claim" },

@@ -6,6 +6,7 @@ import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { handleShareItem, handleShareMint, handleShareSlot, type ShareSlot } from './shares.js';
 import { relayCorsHeaders } from './cors.js';
+import { handleInsight } from './insights.js';
 
 export { AI_PAIRING_TTL_MS, AI_SESSION_TTL_MS } from './aiRelay.js';
 export { CHANNEL_TTL_MS } from './channelMaintenance.js';
@@ -44,6 +45,8 @@ export function createHandler(store: BlobStore, opts: HandlerOptions = {}) {
 
       const route = parseRoute(request.url);
       switch (route.kind) {
+        case 'insight':
+          return await handleInsight(store, request, route.id, route.day, route.slotId, now);
         case 'ai-maintenance':
           return await handleAiMaintenanceRoute(store, request, now());
         case 'ai-session-collection':
@@ -308,6 +311,7 @@ function authorizeMint(request: Request, secret: string): boolean {
 export type Route =
   | AiRelayRoute
   | { kind: 'ai-maintenance' }
+  | { kind: 'insight'; id: string; day: string; slotId?: string }
   | { kind: 'channel' }
   | { kind: 'item'; id: string }
   | { kind: 'slot'; id: string; slot: Slot }
@@ -351,6 +355,15 @@ function matchPath(pathname: string): Route | null {
   const aiRoute = matchAiRelayPath(parts);
   if (aiRoute) return aiRoute;
 
+  if (parts[0] === 'insights' && (parts.length === 3 || parts.length === 4)) {
+    return {
+      kind: 'insight',
+      id: parts[1]!,
+      day: parts[2]!,
+      ...(parts[3] ? { slotId: parts[3] } : {}),
+    };
+  }
+
   if (parts.length === 1 && parts[0] === 'channel') return { kind: 'channel' };
   if (parts.length === 2 && parts[0] === 'c' && parts[1] !== undefined) {
     return { kind: 'item', id: parts[1] };
@@ -373,7 +386,7 @@ function matchPath(pathname: string): Route | null {
     parts[2] !== undefined
   ) {
     const slot = parts[2];
-    if (slot === 'payload' || slot === 'meta') {
+    if (slot === 'payload' || slot === 'meta' || slot === 'teacher') {
       return { kind: 'share-slot', id: parts[1], slot };
     }
     return { kind: 'share-slot-invalid' };

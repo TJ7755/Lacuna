@@ -1,10 +1,48 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test, type Browser, type Page, type Route } from '@playwright/test';
+import { openGapsConnection, parseGapsConnectionFile } from '../../src/teacher/connectionFile';
 import { createHandler } from '../../relay/src/relay.js';
 import { MemoryStore } from '../../relay/src/store.js';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
+
+test('exports a published course connection without putting ownership secrets in the download', async ({
+  page,
+}, testInfo) => {
+  const handle = createHandler(new MemoryStore());
+  await installShareRelay(page, handle);
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Gaps biology');
+  await openShare(page, 'Gaps biology');
+  const shareId = await createShareLink(page);
+  await page.getByRole('button', { name: 'Connect to Gaps', exact: true }).click();
+  const phrase = 'several separate words for a course connection';
+  await page.getByLabel(/^Connection passphrase/).fill(phrase);
+  await page.getByLabel('Repeat connection passphrase', { exact: true }).fill(phrase);
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download connection file' }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe(`gaps-course-${shareId}.json`);
+  const text = await readFile((await download.path())!, 'utf8');
+  const connection = await openGapsConnection(parseGapsConnectionFile(text), phrase);
+  expect(connection).toMatchObject({ shareId, courseName: 'Gaps biology', relayUrl: RELAY_URL });
+  expect(text).not.toContain(connection.writeToken);
+  expect(text).not.toContain(phrase);
+  expect(
+    (
+      await handle(
+        new Request(`${RELAY_URL}/shares/${shareId}`, {
+          method: 'HEAD',
+          headers: { Authorization: `Bearer ${connection.writeToken}` },
+        }),
+      )
+    ).status,
+  ).toBe(204);
+  await expect(page.getByLabel(/^Connection passphrase/)).toHaveValue('');
+  await page.screenshot({ path: testInfo.outputPath('gaps-export.png'), fullPage: true });
+});
 
 /** Serve the real relay handler from memory, so the spec exercises the wire protocol. */
 async function installShareRelay(
@@ -105,6 +143,12 @@ test('a share link imports a course and republishes update it', async ({
 
   await openShare(teacher, 'Link biology');
   const code = await createShareLink(teacher);
+
+  await teacher.getByRole('link', { name: 'Class insights', exact: true }).click();
+  await expect(teacher.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+  await expect(teacher.getByRole('heading', { name: 'Link biology', exact: true })).toBeVisible();
+  await teacher.getByRole('link', { name: 'Manage sharing for Link biology' }).click();
+  await expect(teacher.getByRole('textbox', { name: 'Share link', exact: true })).toBeVisible();
 
   const studentContext = await browser.newContext();
   const student = await studentContext.newPage();

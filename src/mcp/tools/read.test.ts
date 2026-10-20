@@ -263,19 +263,25 @@ describe('mcp read tools', () => {
   });
 
   describe('lacuna.list_due_cards', () => {
-    it('returns due plus new cards, respecting limit', async () => {
-      const course = await createCourse('Course A');
+    it.each(['steady', 'exam'] as const)('returns only scheduled due cards, respecting limit (%s)', async (schedulingMode) => {
+      const course = await createCourse('Course A', { schedulingMode });
       const lesson = await createLesson(course.id, 'Lesson 1');
       const now = Date.now();
       const dueCard = await createLessonCard(course.id, lesson.id, 'front_back', 'due', 'a');
       await db.cards.update(dueCard.id, { due: now - 1000, state: 2 });
+      const secureCard = await createLessonCard(course.id, lesson.id, 'front_back', 'secure but due', 'a');
+      await db.cards.update(secureCard.id, {
+        due: now - 1000, state: 2, stability: 1e8, lastReviewed: now - 86_400_000,
+      });
       await createLessonCard(course.id, lesson.id, 'front_back', 'new', 'a');
+      const futureCard = await createLessonCard(course.id, lesson.id, 'front_back', 'future', 'a');
+      await db.cards.update(futureCard.id, { due: now + 86_400_000, state: 2 });
 
       const res = await tools.listDueCards.handler({ courseId: course.id }, ctx);
-      expect(res.data.map((c) => c.id).sort()).toHaveLength(2);
+      expect(res.data.map((c) => c.id).sort()).toEqual([dueCard.id, secureCard.id].sort());
 
       const limited = await tools.listDueCards.handler({ courseId: course.id, limit: 1 }, ctx);
-      expect(limited.data).toHaveLength(1);
+      expect(limited.data.map((c) => c.id)).toEqual([res.data[0].id]);
     });
 
     it('rejects a non-positive limit', async () => {

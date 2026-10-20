@@ -224,7 +224,7 @@ describe('SyncSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Set up sync' }));
     await screen.findByRole('alert');
     expect(screen.getByRole('alert')).toHaveTextContent('Network unavailable.');
-    expect(screen.getByRole('button', { name: 'Set up sync' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Set up sync' })).toHaveFocus());
   });
 
   it('starts default setup on the recovery phrase without exposing relay administration', async () => {

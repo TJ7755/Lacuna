@@ -62,7 +62,7 @@ export type LearnSessionRequest =
       scopeLessonIds?: string[];
       /** Fixed lesson prefix the node's milestone is measured and persisted against. */
       milestoneLessonIds?: string[];
-      mode: 'curricular' | 'recurring';
+      mode: 'curricular' | 'recurring' | 'exam' | 'catch-up';
       assessmentId?: never;
     }
   | {

@@ -1,0 +1,1 @@
+- Add read-only course-owner credential verification for the upcoming Gaps course connection, without republishing courses or enabling pupil delivery. (#600)

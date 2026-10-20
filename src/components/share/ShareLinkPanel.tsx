@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
@@ -24,6 +24,11 @@ import { CopyButton } from './CopyButton';
 import { useActionFocus } from '../../hooks/useActionFocus';
 
 type LinkState = { shareId: string; revision: number };
+const GapsConnectionExport = lazy(() =>
+  import('../../teacher/GapsConnectionExport').then((module) => ({
+    default: module.GapsConnectionExport,
+  })),
+);
 
 function ShareLinkSurface(props: HTMLMotionProps<'div'>) {
   const present = useIsPresent();
@@ -327,6 +332,17 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                       Stop sharing
                     </Button>
                   </ConfirmInlineSwap>
+                </div>
+                <div className="mt-4">
+                  <Suspense
+                    fallback={<p className="text-sm text-ink-soft">Opening Gaps connection…</p>}
+                  >
+                    <GapsConnectionExport
+                      key={link.shareId}
+                      shareId={link.shareId}
+                      courseName={course.name}
+                    />
+                  </Suspense>
                 </div>
               </div>
               <motion.div

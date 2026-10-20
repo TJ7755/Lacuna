@@ -97,10 +97,10 @@ describe('computeCourseSummaries', () => {
     const summaries = computeCourseSummaries([course], [lesson], cards);
     expect(summaries['c1'].cardCount).toBe(3);
     expect(summaries['c1'].unreviewed).toBe(3);
-    expect(summaries['c1'].eligible).toBe(3);
+    expect(summaries['c1'].eligible).toBe(0);
   });
 
-  it('excludes extension-lesson cards from all summary counts', () => {
+  it('excludes extension-lesson cards from progress counts', () => {
     const course = makeCourse({ id: 'c1' });
     const coreLesson = makeLesson({ id: 'l1', courseId: 'c1', isExtension: false });
     const extLesson = makeLesson({ id: 'l2', courseId: 'c1', isExtension: true });
@@ -112,7 +112,7 @@ describe('computeCourseSummaries', () => {
     const summaries = computeCourseSummaries([course], [coreLesson, extLesson], cards);
     expect(summaries['c1'].cardCount).toBe(2);
     expect(summaries['c1'].unreviewed).toBe(2);
-    expect(summaries['c1'].eligible).toBe(2);
+    expect(summaries['c1'].eligible).toBe(0);
   });
 
   it('includes cards with null primaryLessonId in summary counts', () => {
@@ -239,7 +239,7 @@ describe('computeCourseSummaries', () => {
     expect(summary.mastery).toBeCloseTo(progressValue([card], course, now), 12);
   });
 
-  it('counts only due reviews and admitted new cards as ready now', () => {
+  it('counts only scheduled reviews as due, excluding new and future cards', () => {
     const now = 20 * MS_PER_DAY;
     const course = makeCourse({ id: 'c1' });
     const lesson = makeLesson({ id: 'l1', courseId: 'c1' });
@@ -269,7 +269,7 @@ describe('computeCourseSummaries', () => {
 
     const summary = computeCourseSummaries([course], [lesson], cards, [], now)['c1'];
 
-    expect(summary.eligible).toBe(2);
+    expect(summary.eligible).toBe(1);
   });
 
   it('derives completed core lessons and card activity from authoritative records', () => {

@@ -1,4 +1,5 @@
 import { stripAssetMedia } from '../db/assets';
+import { remapQuestionBankMetadata } from './bankMetadata';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import type { QuestionAnswer } from './questionSets';
 
@@ -72,6 +73,9 @@ export function importSharedQuestionSets(input: {
   return input.records.map((record, index) =>
     parseQuestionSetRecord({
       ...record,
+      ...(record.bank
+        ? { bank: remapQuestionBankMetadata(record.bank, (id) => mapConceptIds([id])[0], freshId) }
+        : {}),
       id: freshId(record.id),
       courseId: input.courseId,
       lessonIds: record.lessonIds.map((id) => {

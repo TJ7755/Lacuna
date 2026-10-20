@@ -14,6 +14,12 @@ it('keeps announcing known pages', async () => {
   unmount();
 });
 
+it('names and announces the teacher view', async () => {
+  render(<RouteAnnouncement pathname="/teach" />);
+  await waitFor(() => expect(document.title).toBe('Gaps · Lacuna'));
+  expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
+});
+
 it('announces the removed share prototype as a missing page', async () => {
   render(<RouteAnnouncement pathname="/share-prototype" />);
   await waitFor(() => expect(document.title).toBe('Page not found · Lacuna'));

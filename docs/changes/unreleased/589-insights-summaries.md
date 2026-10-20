@@ -1,0 +1,1 @@
+- Added the pure on-device weekly summariser for class insights: one anonymous counted summary per published course per ISO week, keyed by lineage ids, with no attempt records, card text, answers, timings finer than the ISO week or device identifiers (#589).
