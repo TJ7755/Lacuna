@@ -27,8 +27,7 @@ a service worker from its entry. The retirement worker below unregisters only it
 own legacy Gaps registration. Its unconnected state does not claim that a preserved
 learner library is empty. No reports or participation totals are fabricated.
 The connection adapter is independent of learner storage. The entry does not install a pupil transport or collect evidence. Opening a class
-loads its report panel separately; decryption happens only after explicit unlock
-and a request for a reporting day.
+loads its workspace separately; reading and decryption happen only after an explicit unlock.
 
 ## Connect a published course
 
@@ -39,7 +38,7 @@ teacher owns only this class’s key and results; they cannot change the source
 course. Links to another teacher’s class resolve to the original publisher, so
 neither their key nor their results are inherited. Give pupils the new class code
 after key setup; the source course link alone does not enrol them in your class.
-Save **Download connection file** under **Class setup and connection**, and keep
+Save **Download connection file** under **Class settings**, and keep
 its passphrase separately. The teacher-key recovery file remains separate.
 
 To restore a saved connection, choose **Use a connection file**. Existing
@@ -77,12 +76,16 @@ The plaintext token exists transiently to make the owner request; it is not save
 The course list shows when ownership was checked, not a promise of permanent access.
 Reloading lists local connections without sending credentials again.
 
-The class list opens one workspace at a time. A newly connected class offers setup with its
-course already selected; returning classes open the explicit unlock form. Setup keeps recovery
-separate from the connection file and rejects recovery files belonging to another selected class.
-After requesting a recovery download, the teacher can continue to unlock and share a class code.
-Returning unlocked classes start on daily results; sharing is a separate visible task. Closing
-the workspace returns to the class list and clears its transient secrets and plaintext.
+The workspace follows the study app's layout: a collapsible sidebar lists **Today** and each
+class. Connecting a class expands its button into a form; unlock, setup, settings and evidence
+open in place. **Today** shows each class with one default
+next step (the first locked class is the primary action) and, for unlocked classes, the latest
+day's summary. A newly connected class opens setup with its course already selected; opening a
+locked class asks for both passphrases. Setup keeps recovery separate from the connection file
+and rejects recovery files belonging to another selected class. **Recover a class** in the
+sidebar opens restore without a selected class. After requesting a recovery download, the
+teacher can continue to unlock and share a class code. Unlocked classes start on daily results;
+the class code is a separate **Invite** tab. Motion is CSS-only and respects reduced motion.
 **Remove connection** asks for confirmation, then deletes only that browser's connection record: it preserves
 the published share, teacher key, recovery files and pupil copies. A saved connection
 file can be imported again with fresh verification. Clearing browser storage still
@@ -211,25 +214,27 @@ is updated only after the outbox acknowledgement commits.
 
 ## Teacher class workspace
 
-The lazy [class panel](../src/teacher/TeacherClassReports.tsx) explicitly unlocks
-the encrypted connection and teacher key using their respective passphrases. It
+The lazy [class workspace](../src/teacher/TeacherClassReports.tsx) explicitly unlocks
+the encrypted connection and teacher key using their respective passphrases. Unlocking reads
+the latest completed day; stepping to another of the 84 retained days reads that day, after a
+short pause so stepping through several days makes one request. Each day read is kept for the
+session, so returning to it makes no request. It
 publishes only the public recipient to produce the class code/link. Neither teacher
 credential file belongs in a pupil invitation.
 
 [readReports.ts](../src/teacher/readReports.ts) reads bounded mailbox pages and
 decrypts locally. Repeated cursors/slots and excess pages fail. Unreadable encrypted
 packets are reported separately; they never become zero scores. The screen shows
-one day’s device reports and per-activity/criterion detail, preserving unknown,
+one day’s device reports as a pupil-by-item grid, weakest items first (each pupil counts once
+per item), with grouped identical answers and per-activity/criterion detail, preserving unknown,
 self-marked, shortened and disputed evidence. Missing reports do not imply no study
 or absence. A class-code holder can fabricate results; these are study signals,
 not verified attainment or attendance. There are no keyless participation counters.
 
-Unlocked credentials and decrypted reports remain in the teacher tab’s memory,
-with no report export or plaintext database. Back to classes aborts requests while
-retaining that class’s unlocked session. Close and lock, removing the connection,
-or closing the teacher workspace drops its session and invalidates pending unlocks.
-Returning to a class reuses its session; a fresh tab still requires explicit unlock.
-Opening the teacher site still never opens the learner database.
+Unlocked credentials and decrypted reports remain in this tab's memory until the class is
+locked or removed, or the tab is closed, so moving between **Today** and classes does not ask
+for the passphrases again. There is no report export or plaintext database. Locking, removing
+or leaving a class aborts its outstanding requests; locking or removing also drops its memory. Opening the teacher site still never opens the learner database.
 
 ## Isolated teacher-key storage
 
@@ -440,7 +445,7 @@ build/config within the existing isolated runner; each run owns its output, sour
 fingerprint and browser evidence. Without the flag the runner still checks Lacuna.
 The build-graph test fails if learner modules, workers or extra JavaScript entries
 enter Gaps. The initial JavaScript remains bounded to 80 kB compressed; explicit
-key setup and class reports load separate chunks, with a 150 kB combined budget.
+key setup and class reports load separate chunks, with a 160 kB combined budget.
 The graph check keeps key storage and crypto out of the initial import closure.
 Browser checks record storage,
 worker/database calls, requests and desktop/mobile screenshots.

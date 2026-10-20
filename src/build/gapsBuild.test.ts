@@ -80,8 +80,10 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
           ![
             'src/teacher/main.tsx',
             'src/teacher/index.css',
-            'src/teacher/teacherWorkspace.css',
-            'src/teacher/TeacherHomeView.tsx',
+            'src/teacher/gaps.css',
+            'src/teacher/gapsUi.tsx',
+            'src/teacher/GapsSidebar.tsx',
+            'src/teacher/classInsights.ts',
             'src/teacher/StandaloneTeacherHome.tsx',
             'src/teacher/classSessions.ts',
             'src/teacher/TeacherKeySetup.tsx',
@@ -109,6 +111,9 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/components/ui/SectionCard.tsx',
             'src/components/ui/buttonStyles.ts',
             'src/components/ui/cn.ts',
+            'src/components/ui/icons.tsx',
+            'src/components/ui/StudyDrawing.tsx',
+            'src/hooks/useFocusTrap.ts',
           ].includes(id),
       ),
     ).toEqual([]);
@@ -122,13 +127,17 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => /(?:workbox|precache|worker|\.wasm$|compare\/)/i.test(file)),
     ).toEqual([]);
     expect(files.filter((file) => /\.(?:js|html)$/.test(file))).toEqual([
+      expect.stringMatching(/^assets\/Field-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/StudyDrawing-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherClassReports-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherCourses-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/TeacherKeySetup-[\w-]+\.js$/),
-      expect.stringMatching(/^assets\/client-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/connectionStore-[\w-]+\.js$/),
+      // The shared validation and storage vendors; Rolldown names the chunk after one module.
+      expect.stringMatching(/^assets\/import-wrapper-prod-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/index-[\w-]+\.js$/),
       expect.stringMatching(/^assets\/ownerStore-[\w-]+\.js$/),
+      expect.stringMatching(/^assets\/rolldown-runtime-[\w-]+\.js$/),
       'index.html',
       'sw.js',
     ]);
@@ -145,7 +154,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => file.endsWith('.js')).map((file) => readFile(join(directory, file))),
     );
     expect(scripts.reduce((size, script) => size + gzipSync(script).byteLength, 0)).toBeLessThan(
-      150_000,
+      160_000,
     );
     for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
       expect(files).toContain(`fonts/${name}-Variable.ttf`);

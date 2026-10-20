@@ -45,11 +45,16 @@ describe('design rules', () => {
     const allowed = new Set([
       join('components', 'layout', 'Sidebar.tsx'),
       join('components', 'layout', 'AppShell.tsx'),
+      join('teacher', 'GapsSidebar.tsx'),
+      join('teacher', 'StandaloneTeacherHome.tsx'),
       join('components', 'occlusion', 'OcclusionMaskLayer.tsx'),
     ]);
     const offenders = sourceFiles(SRC)
       .filter((path) => path.endsWith('.tsx'))
-      .filter((path) => !/^(pages[\\/]landing|components[\\/](welcome|landing))/.test(relative(SRC, path)))
+      .filter(
+        (path) =>
+          !/^(pages[\\/]landing|components[\\/](welcome|landing))/.test(relative(SRC, path)),
+      )
       .filter((path) => /\bfont-brand\b/.test(readFileSync(path, 'utf8')))
       .map((path) => relative(SRC, path))
       .filter((path) => !allowed.has(path));
@@ -59,7 +64,8 @@ describe('design rules', () => {
   // One rule for labels above a control in Settings (fieldLabelClassName): they were
   // small grey regular in some sections and semibold ink in others.
   it('labels every Settings and course form field with the shared field label style', () => {
-    const local = /<(?:label|legend)\b[^>]*className="[^"]*\btext-(?:sm|xs)\b[^"]*"[^>]*>\s*\n?\s*[A-Z][a-z]/;
+    const local =
+      /<(?:label|legend)\b[^>]*className="[^"]*\btext-(?:sm|xs)\b[^"]*"[^>]*>\s*\n?\s*[A-Z][a-z]/;
     const offenders = sourceFiles(SRC)
       .filter((path) =>
         /^(pages[\\/](settings[\\/]|CourseSettings\.tsx)|components[\\/]course[\\/](AssessmentEditor|NewCourseForm|CourseStudyTarget)\.tsx)/.test(

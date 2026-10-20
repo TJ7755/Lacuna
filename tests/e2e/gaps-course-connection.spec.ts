@@ -42,24 +42,27 @@ for (const width of [1280, 390]) {
       });
     });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Connect a class' }).click();
     await page.getByRole('button', { name: 'Use a connection file' }).click();
-    await page.getByLabel(/^Encrypted connection file/).setInputFiles({
+    const connect = page.getByRole('form', { name: 'Connect a class' });
+    await connect.getByLabel('Connection file').setInputFiles({
       name: 'gaps-course.json',
       mimeType: 'application/json',
       buffer: Buffer.from(file),
     });
-    await page.getByLabel('Connection passphrase', { exact: true }).fill('wrong phrase');
-    await page.getByRole('button', { name: 'Verify and connect' }).click();
-    await expect(page.getByRole('alert')).toContainText('passphrase');
+    await connect.getByLabel('Connection passphrase', { exact: true }).fill('wrong phrase');
+    await connect.getByRole('button', { name: 'Connect', exact: true }).click();
+    await expect(connect.getByRole('alert')).toContainText('passphrase');
     expect(requests).toEqual([]);
-    await expect(page.getByLabel('Connection passphrase', { exact: true })).toHaveValue('');
-    await page.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
-    await page.getByRole('button', { name: 'Verify and connect' }).click();
-    await expect(page.getByRole('heading', { name: 'GCSE Biology' })).toBeVisible();
-    await expect(page.getByRole('status')).toContainText('Class connected. Next, set up a code');
-    await expect(page.getByRole('button', { name: 'Set up class', exact: true })).toBeVisible();
+    await expect(connect.getByLabel('Connection passphrase', { exact: true })).toHaveValue('');
+    await connect.getByLabel('Connection passphrase', { exact: true }).fill(phrase);
+    await connect.getByRole('button', { name: 'Connect', exact: true }).click();
+    // A new class goes straight to protection, with its course already selected.
+    await expect(page.getByRole('heading', { name: 'GCSE Biology', level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Protect this class' })).toBeVisible();
+    await expect(page.getByLabel('What do you need to do?')).toBeFocused();
+    await expect(page.getByLabel(/^Published course link/)).toHaveCount(0);
     expect(requests).toEqual(['HEAD']);
+    await page.screenshot({ path: testInfo.outputPath(`protect-class-${width}.png`) });
     await page.reload();
     await expect(page.getByRole('heading', { name: 'GCSE Biology' })).toBeVisible();
     expect(requests).toEqual(['HEAD']);
@@ -88,23 +91,30 @@ for (const width of [1280, 390]) {
       path: testInfo.outputPath(`connected-course-${width}.png`),
       fullPage: true,
     });
-    await page.getByText('Class setup and connection', { exact: true }).click();
-    await page.getByRole('button', { name: 'Set up or restore this class', exact: true }).click();
-    await expect(page.getByText('GCSE Biology', { exact: true })).toBeVisible();
-    await expect(page.getByLabel(/^Published course link/)).toHaveCount(0);
+
+    // Opening a locked class asks for its passphrases in place; setup swaps in beside them.
+    await page.getByRole('button', { name: 'Unlock GCSE Biology' }).click();
+    const unlock = page.getByRole('form', { name: 'Unlock class' });
+    await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+    await page.getByRole('button', { name: 'First time? Set up' }).click();
+    await expect(page.getByRole('heading', { name: 'Protect this class' })).toBeVisible();
     await page.getByLabel(/^Recovery passphrase/).fill(phrase);
     await page.getByLabel('Repeat recovery passphrase').fill(phrase);
     await page.getByRole('button', { name: 'Protect class reports', exact: true }).click();
     await expect(
       page.getByText('Class protected. Download its recovery file.', { exact: true }),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByRole('button', { name: 'Back to classes' }).click();
-    await page.getByText('Class setup and connection', { exact: true }).click();
-    await page.getByRole('button', { name: 'Remove connection' }).click();
-    await page.getByRole('button', { name: 'Keep connection' }).click();
-    await expect(page.getByRole('heading', { name: 'GCSE Biology' })).toBeVisible();
-    await page.getByRole('button', { name: 'Remove connection' }).click();
-    await page.getByRole('button', { name: 'Remove from this browser' }).click();
+    await page.getByRole('button', { name: 'Back to unlock' }).click();
+    await expect(unlock.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+    await page.getByRole('button', { name: /^Class settings/ }).click();
+    const settings = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: /^Class settings/ }) });
+    await settings.getByRole('button', { name: 'Remove connection' }).click();
+    await settings.getByRole('button', { name: 'Keep connection' }).click();
+    await expect(settings.getByRole('button', { name: 'Remove connection' })).toBeVisible();
+    await settings.getByRole('button', { name: 'Remove connection' }).click();
+    await settings.getByRole('button', { name: 'Remove from this browser' }).click();
     await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
     expect(await store.get(`shares/${owner.shareId}/auth`)).not.toBeNull();
     expect((await page.evaluate(() => indexedDB.databases())).map((db) => db.name).sort()).toEqual([
@@ -163,7 +173,6 @@ for (const width of [1280, 390]) {
     const otherClass = (await classResponse.json()) as { shareId: string; writeToken: string };
     const code = formatClassCode({ shareId: otherClass.shareId, keyId: 'c'.repeat(64) });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Connect a class' }).click();
     await page
       .getByLabel('Course link or code')
       .fill(
@@ -179,7 +188,7 @@ for (const width of [1280, 390]) {
     });
     await page.getByRole('button', { name: 'Create class', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
-    await page.getByText('Class setup and connection', { exact: true }).click();
+    await page.getByRole('button', { name: /^Class settings/ }).click();
     const downloading = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download connection file', exact: true }).click();
     const download = await downloading;
