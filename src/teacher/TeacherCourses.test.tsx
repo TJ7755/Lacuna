@@ -4,7 +4,7 @@ import { ConnectClassForm, TodayPage } from './TeacherCourses';
 import type { ClassSession } from './StandaloneTeacherHome';
 
 const { store } = vi.hoisted(() => ({
-  store: { list: vi.fn(), connect: vi.fn(), close: vi.fn() },
+  store: { list: vi.fn(), connect: vi.fn(), createFromLink: vi.fn(), close: vi.fn() },
 }));
 vi.mock('./connectionStore', () => ({ createGapsConnectionStore: () => store }));
 const shareId = 'a'.repeat(32);
@@ -29,7 +29,7 @@ it('opens the connection form on the page when there are no classes', () => {
     />,
   );
   expect(screen.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
-  expect(screen.getByRole('form', { name: 'Connect a class' })).toBeVisible();
+  expect(screen.getByRole('form', { name: 'Create class from a course link' })).toBeVisible();
   page.rerender(
     <TodayPage
       courses={[]}
@@ -40,6 +40,7 @@ it('opens the connection form on the page when there are no classes', () => {
       onConnected={vi.fn()}
     />,
   );
+  fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
   expect(screen.getByLabelText('Connection file')).toHaveFocus();
 });
 
@@ -57,6 +58,7 @@ it('expands the connection form from its button once classes exist', async () =>
   expect(screen.queryByRole('form', { name: 'Connect a class' })).not.toBeInTheDocument();
   fireEvent.click(trigger);
   expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
   expect(screen.getByLabelText('Connection file')).toHaveFocus();
   fireEvent.keyDown(screen.getByLabelText('Connection file'), { key: 'Escape' });
   expect(trigger).toHaveAttribute('aria-expanded', 'false');
@@ -132,6 +134,7 @@ it('reports a rejected connection without claiming success and clears its passph
   store.connect.mockRejectedValue(new Error('decrypt failed'));
   const onConnected = vi.fn();
   render(<ConnectClassForm onConnected={onConnected} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
   fireEvent.change(screen.getByLabelText('Connection file'), {
     target: { files: [new File(['{}'], 'course.json')] },
   });
@@ -146,6 +149,7 @@ it('reports a rejected connection without claiming success and clears its passph
 
 it('rejects an oversized file before touching the connection store', async () => {
   render(<ConnectClassForm onConnected={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
   fireEvent.change(screen.getByLabelText('Connection file'), {
     target: { files: [new File(['x'.repeat(9000)], 'course.json')] },
   });
@@ -153,4 +157,21 @@ it('rejects an oversized file before touching the connection store', async () =>
   fireEvent.submit(screen.getByRole('form', { name: 'Connect a class' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('smaller than 8 KiB');
   await waitFor(() => expect(store.connect).not.toHaveBeenCalled());
+});
+
+it('opens the independently created class in the redesigned workspace', async () => {
+  const course = { shareId, courseName: 'Biology', verifiedAt: 0 };
+  store.createFromLink.mockResolvedValue(shareId);
+  store.list.mockResolvedValue([course]);
+  const onConnected = vi.fn();
+  render(<ConnectClassForm onConnected={onConnected} />);
+  fireEvent.change(screen.getByLabelText('Course link or code'), { target: { value: shareId } });
+  fireEvent.change(screen.getByLabelText(/^Connection passphrase/), {
+    target: { value: 'several separate teacher words' },
+  });
+  fireEvent.change(screen.getByLabelText('Repeat connection passphrase'), {
+    target: { value: 'several separate teacher words' },
+  });
+  fireEvent.submit(screen.getByRole('form', { name: 'Create class from a course link' }));
+  await waitFor(() => expect(onConnected).toHaveBeenCalledWith(course));
 });

@@ -170,9 +170,12 @@ test('uses Lacuna’s saved light theme and supports keyboard connection entry a
   await page.goto('/');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   // With no classes the form is already on the page; the sidebar's shortcut focuses it.
-  const form = page.getByRole('form', { name: 'Connect a class' });
-  await expect(form).toBeVisible();
+  const link = page.getByLabel('Course link or code');
+  await expect(link).toBeVisible();
   await openSidebarItem(page, 'Connect a class');
+  await expect(link).toBeFocused();
+  await page.getByRole('button', { name: 'Use a connection file' }).click();
+  const form = page.getByRole('form', { name: 'Connect a class' });
   await expect(form.getByLabel('Connection file')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(form.getByLabel('Connection passphrase', { exact: true })).toBeFocused();

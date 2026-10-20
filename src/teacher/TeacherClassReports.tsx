@@ -1284,6 +1284,24 @@ function ClassSettings({
 }) {
   const [open, setOpen] = useState(false);
   const [recovery, setRecovery] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  async function downloadConnection() {
+    setDownloadError('');
+    const store = createGapsConnectionStore();
+    try {
+      const text = await store.exportConnection(course.shareId);
+      const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `gaps-course-${course.shareId}.json`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      setDownloadError('Could not download the saved connection. Try again.');
+    } finally {
+      store.close();
+    }
+  }
   const id = useId();
   const keys = useKeySetup(recovery);
   const checked = new Date(course.verifiedAt).toLocaleDateString('en-GB', {
@@ -1338,6 +1356,20 @@ function ClassSettings({
             </Disclosure>
           </div>
         )}
+        <div>
+          <button
+            type="button"
+            className={buttonClassName('secondary')}
+            onClick={() => void downloadConnection()}
+          >
+            Download connection file
+          </button>
+          {downloadError && (
+            <p role="alert" className="mt-2 text-sm text-negative">
+              {downloadError}
+            </p>
+          )}
+        </div>
         <RemoveClass course={course} onRemoved={onRemoved} />
       </Disclosure>
     </section>

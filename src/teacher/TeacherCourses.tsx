@@ -21,6 +21,7 @@ import {
 } from './connectionFile';
 import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectionStore';
 import { BandDot, ExpandingAction, focusFirstField, ScoreBar, Spinner } from './gapsUi';
+import { CreateGapsClass } from './CreateGapsClass';
 import type { ClassSession } from './StandaloneTeacherHome';
 
 /** The study app's dashboard, for classes: one line of numbers, then the rows to act on. */
@@ -100,7 +101,7 @@ export function TodayPage({
             Connect your first class
           </h2>
           <p className="mt-3 max-w-sm text-ink-soft">
-            Bring the connection file from your course’s Share page in Lacuna.
+            Paste a published course or class link, or restore a saved connection file.
           </p>
           <div ref={first} className="mt-10 w-full max-w-sm text-left">
             <ConnectClassForm onConnected={onConnected} />
@@ -200,12 +201,78 @@ function Stat({ value, label }: { value: number | string; label: string }) {
   );
 }
 
-/** Verifies ownership with the relay before saving; the passphrase never leaves the device. */
 export function ConnectClassForm({
   onConnected,
 }: {
   onConnected(course: ConnectedGapsCourse): void;
 }) {
+  const [useFile, setUseFile] = useState(false);
+  const [error, setError] = useState('');
+  const root = useRef<HTMLDivElement>(null);
+  const active = useRef(true);
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(() => focusFirstField(root.current), [useFile]);
+
+  async function created(shareId: string) {
+    const store = createGapsConnectionStore();
+    try {
+      const course = (await store.list()).find((row) => row.shareId === shareId);
+      if (!course) throw new Error();
+      if (active.current) onConnected(course);
+    } catch {
+      if (active.current) setError('Class saved. Reload Gaps to open its details.');
+    } finally {
+      store.close();
+    }
+  }
+
+  return (
+    <div ref={root} className="space-y-5">
+      <div role="group" aria-label="Class connection method" className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          aria-pressed={!useFile}
+          className={buttonClassName(useFile ? 'secondary' : 'primary')}
+          onClick={() => {
+            setUseFile(false);
+            setError('');
+          }}
+        >
+          Course link
+        </button>
+        <button
+          type="button"
+          aria-pressed={useFile}
+          className={buttonClassName(useFile ? 'primary' : 'secondary')}
+          onClick={() => {
+            setUseFile(true);
+            setError('');
+          }}
+        >
+          Use a connection file
+        </button>
+      </div>
+      {useFile ? (
+        <ConnectionFileForm onConnected={onConnected} />
+      ) : (
+        <CreateGapsClass onConnected={(shareId) => void created(shareId)} />
+      )}
+      {error && (
+        <p role="alert" className="text-sm text-negative">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Verifies ownership with the relay before saving; the passphrase never leaves the device. */
+function ConnectionFileForm({ onConnected }: { onConnected(course: ConnectedGapsCourse): void }) {
   const [file, setFile] = useState<File | null>(null);
   const [phrase, setPhrase] = useState('');
   const [busy, setBusy] = useState(false);

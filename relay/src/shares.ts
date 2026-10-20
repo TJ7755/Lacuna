@@ -62,6 +62,50 @@ export async function handleShareMint(
     }
   }
 
+  let sourceId: string | null = null;
+  if (request.body) {
+    const reader = request.body.getReader();
+    let body = '';
+    let length = 0;
+    const decoder = new TextDecoder();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        length += value.byteLength;
+        if (length > 128) {
+          await reader.cancel();
+          return shareJson(413, request, { error: 'payload too large' });
+        }
+        body += decoder.decode(value, { stream: true });
+      }
+      body += decoder.decode();
+    } finally {
+      reader.releaseLock();
+    }
+    try {
+      const parsed: unknown = JSON.parse(body);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+      const fields = parsed as Record<string, unknown>;
+      if (
+        Object.keys(fields).length !== 1 ||
+        typeof fields.sourceShareId !== 'string' ||
+        !SHARE_ID_RE.test(fields.sourceShareId)
+      )
+        throw new Error();
+      sourceId = await courseSource(store, fields.sourceShareId, () => now);
+      if (
+        !sourceId ||
+        !(await store.get(shareSlotKey(sourceId, 'payload'))) ||
+        !(await store.get(shareSlotKey(sourceId, 'meta')))
+      ) {
+        return shareJson(404, request, { error: 'source course not found' });
+      }
+    } catch {
+      return shareJson(400, request, { error: 'invalid source share' });
+    }
+  }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const shareId = randomBytes(SHARE_ID_BYTES).toString('hex');
     const writeToken = randomBytes(WRITE_TOKEN_BYTES).toString('hex');
@@ -69,6 +113,20 @@ export async function handleShareMint(
       exclusive: true,
     });
     if (created.ok) {
+      if (sourceId) {
+        // The id is not exposed until its immutable content source is committed.
+        const linked = await store.put(
+          shareSourceKey(shareId),
+          new TextEncoder().encode(sourceId),
+          {
+            exclusive: true,
+          },
+        );
+        if (!linked.ok) {
+          await sweepShare(store, shareId);
+          return shareJson(500, request, { error: 'internal error' });
+        }
+      }
       return shareJson(201, request, { shareId, writeToken });
     }
   }
@@ -148,7 +206,8 @@ async function getShareSlot(
     return shareJson(404, request, { error: 'not found' });
   }
 
-  const stored = await store.get(shareSlotKey(id, slot));
+  const contentId = slot === 'teacher' ? id : await courseSource(store, id, now);
+  const stored = contentId ? await store.get(shareSlotKey(contentId, slot)) : null;
   if (!stored) {
     return shareJson(404, request, { error: 'not found' });
   }
@@ -197,6 +256,10 @@ async function putShareSlot(
   const auth = await authorizeShare(store, id, request);
   if (auth !== 'ok')
     return shareJson(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
+
+  if (slot !== 'teacher' && (await store.get(shareSourceKey(id)))) {
+    return shareJson(409, request, { error: 'linked course content is read-only' });
+  }
 
   const ifMatch = request.headers.get('If-Match');
   if (ifMatch === null || ifMatch.trim() === '') {
@@ -265,7 +328,7 @@ export async function authorizeShare(
 }
 
 const SHARE_CURSOR_KEY = 'maintenance/share-cursor';
-const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher)$/;
+const SHARE_KEY_RE = /^shares\/([0-9a-f]{32})\/(?:auth|payload|meta|teacher|source)$/;
 
 /**
  * Reclaim shares untouched for longer than the channel TTL plus grace, so an
@@ -296,7 +359,7 @@ export async function cleanupExpiredShares(
     if (now - latest < CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS) continue;
 
     const fresh = await Promise.all(
-      ['auth', 'payload', 'meta', 'teacher'].map((name) => store.get(`${prefix}${name}`)),
+      ['auth', 'payload', 'meta', 'teacher', 'source'].map((name) => store.get(`${prefix}${name}`)),
     );
     if (
       fresh.some(
@@ -305,6 +368,7 @@ export async function cleanupExpiredShares(
     ) {
       continue;
     }
+    if (await shareLive(store, id, () => now - CHANNEL_CLEANUP_GRACE_MS)) continue;
     if (await hasRetainedInsights(store, id, now)) continue;
     await sweepShare(store, id);
     sharesDeleted += 1;
@@ -320,6 +384,33 @@ export async function cleanupExpiredShares(
   return { sharesDeleted, shareObjectsDeleted };
 }
 
+function shareSourceKey(id: string): string {
+  return `shares/${id}/source`;
+}
+
+/** Flatten classroom links to the publisher, never to another teacher's keys or mailbox. */
+async function courseSource(
+  store: BlobStore,
+  id: string,
+  now: () => number,
+): Promise<string | null> {
+  const visited = new Set<string>();
+  for (let hop = 0; hop < 8; hop += 1) {
+    if (
+      !SHARE_ID_RE.test(id) ||
+      visited.has(id) ||
+      !(await store.get(shareAuthKey(id))) ||
+      !(await shareLive(store, id, now))
+    )
+      return null;
+    visited.add(id);
+    const source = await store.get(shareSourceKey(id));
+    if (!source) return id;
+    id = new TextDecoder().decode(source.body);
+  }
+  return null;
+}
+
 function shareAuthKey(id: string): string {
   return `shares/${id}/auth`;
 }
@@ -329,18 +420,27 @@ function shareSlotKey(id: string, slot: ShareSlot): string {
 }
 
 export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
-  const stamps: number[] = [];
-  for (const key of [
-    shareAuthKey(id),
-    shareSlotKey(id, 'payload'),
-    shareSlotKey(id, 'meta'),
-    shareSlotKey(id, 'teacher'),
-  ]) {
-    const stored = await store.get(key);
-    if (stored) stamps.push(stored.uploadedAt);
-  }
-  if (stamps.length === 0) return false;
-  return now() - Math.max(...stamps) < CHANNEL_TTL_MS;
+  const [latest, source] = await Promise.all([
+    lastShareWrite(store, id),
+    store.get(shareSourceKey(id)),
+  ]);
+  if (latest !== null && now() - latest < CHANNEL_TTL_MS) return true;
+  if (!source || !(await store.get(shareAuthKey(id)))) return false;
+  const sourceId = new TextDecoder().decode(source.body);
+  if (!SHARE_ID_RE.test(sourceId) || !(await store.get(shareAuthKey(sourceId)))) return false;
+  // Mint flattens links to the publisher. Its updates also keep classroom links alive.
+  const sourceLatest = await lastShareWrite(store, sourceId);
+  return sourceLatest !== null && now() - sourceLatest < CHANNEL_TTL_MS;
+}
+
+async function lastShareWrite(store: BlobStore, id: string): Promise<number | null> {
+  const objects = await Promise.all(
+    ['auth', 'payload', 'meta', 'teacher', 'source'].map((name) =>
+      store.get(`shares/${id}/${name}`),
+    ),
+  );
+  const stamps = objects.flatMap((stored) => (stored ? [stored.uploadedAt] : []));
+  return stamps.length ? Math.max(...stamps) : null;
 }
 
 async function sweepShare(store: BlobStore, id: string): Promise<void> {

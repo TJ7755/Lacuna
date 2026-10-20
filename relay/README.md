@@ -221,6 +221,21 @@ share id is the read capability. Shares untouched past the channel TTL plus
 grace are swept by the daily maintenance job, which reports `sharesDeleted` and
 `shareObjectsDeleted` alongside the channel counters.
 
+`POST /shares` also accepts a bounded JSON body `{"sourceShareId":"<32-hex-id>"}`
+(maximum 128 bytes). The source must be live and have both course slots. Minting
+creates independent owner credentials and an internal immutable `source` pointer,
+flattened to the original publisher. Reads of `payload` and `meta` follow that
+source and preserve its bytes and ETags; their PUTs return 409. The public
+`teacher` slot, owner verification, insights mailbox and deletion use the class’s
+own id and token. There is no public source-slot write route, external URL fetch
+or upstream credential transfer. Publisher updates also keep linked classes live;
+maintenance retains their pointers while the source is live or within cleanup grace.
+Deleting a class leaves the publisher and other classes intact. Missing or expired
+sources stop content reads; existing teacher-key and retained-report rules still apply.
+Deploy this relay support before the link-based Gaps UI. Older clients keep using
+the existing slots without a wire-format change; the new UI refuses to save a class
+if an older relay ignores the mint body and returns an empty share.
+
 ## Concurrency
 
 `ETag` is the opaque value Vercel Blob returns. It is not a counter.

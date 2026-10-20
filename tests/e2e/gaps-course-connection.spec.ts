@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
 import { sealGapsConnection } from '../../src/teacher/connectionFile';
+import { formatClassCode } from '../../src/insights/classCode';
 import { DEFAULT_RELAY_URL } from '../../src/sync/pairingConfig';
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'gaps', 'Requires the standalone Gaps build');
@@ -41,6 +42,7 @@ for (const width of [1280, 390]) {
       });
     });
     await page.goto('/');
+    await page.getByRole('button', { name: 'Use a connection file' }).click();
     const connect = page.getByRole('form', { name: 'Connect a class' });
     await connect.getByLabel('Connection file').setInputFiles({
       name: 'gaps-course.json',
@@ -120,5 +122,104 @@ for (const width of [1280, 390]) {
       'lacuna.gaps.owner-keys',
     ]);
     expect(requests).toEqual(['HEAD']);
+  });
+}
+
+for (const width of [1280, 390]) {
+  test(`creates a private class from someone else's course link at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const store = new MemoryStore();
+    const handle = createHandler(store);
+    const minted = await handle(new Request(`${DEFAULT_RELAY_URL}/shares`, { method: 'POST' }));
+    const source = (await minted.json()) as { shareId: string; writeToken: string };
+    for (const [slot, text] of Object.entries({
+      payload: 'publisher course',
+      meta: JSON.stringify({
+        v: 1,
+        lineageId: 'biology',
+        revision: 1,
+        publishedAt: Date.now(),
+        byteSize: 16,
+        courseName: 'Shared biology',
+      }),
+    })) {
+      await store.put(`shares/${source.shareId}/${slot}`, new TextEncoder().encode(text), {
+        exclusive: true,
+      });
+    }
+    await page.route(`${DEFAULT_RELAY_URL}/**`, async (route) => {
+      const request = route.request();
+      const response = await handle(
+        new Request(request.url(), {
+          method: request.method(),
+          headers: request.headers(),
+          body: request.postData() ?? undefined,
+        }),
+      );
+      await route.fulfill({
+        status: response.status,
+        headers: Object.fromEntries(response.headers),
+        body: Buffer.from(await response.arrayBuffer()),
+      });
+    });
+    const classResponse = await handle(
+      new Request(`${DEFAULT_RELAY_URL}/shares`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceShareId: source.shareId }),
+      }),
+    );
+    const otherClass = (await classResponse.json()) as { shareId: string; writeToken: string };
+    const code = formatClassCode({ shareId: otherClass.shareId, keyId: 'c'.repeat(64) });
+    await page.goto('/');
+    await page
+      .getByLabel('Course link or code')
+      .fill(
+        width === 390
+          ? `https://getlacuna.app/#/s/${code}`
+          : `https://getlacuna.app/#/s/${source.shareId}`,
+      );
+    await page.getByLabel(/^Connection passphrase/).fill(phrase);
+    await page.getByLabel('Repeat connection passphrase').fill(phrase);
+    await page.screenshot({
+      path: testInfo.outputPath(`course-link-form-${width}.png`),
+      fullPage: true,
+    });
+    await page.getByRole('button', { name: 'Create class', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
+    await page.getByRole('button', { name: /^Class settings/ }).click();
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download connection file', exact: true }).click();
+    const download = await downloading;
+    const { readFile } = await import('node:fs/promises');
+    const { parseGapsConnectionFile, openGapsConnection } =
+      await import('../../src/teacher/connectionFile');
+    const text = await readFile((await download.path())!, 'utf8');
+    const connection = await openGapsConnection(parseGapsConnectionFile(text), phrase);
+    expect(connection.shareId).not.toBe(source.shareId);
+    expect(connection.shareId).not.toBe(otherClass.shareId);
+    expect(
+      new TextDecoder().decode((await store.get(`shares/${connection.shareId}/source`))!.body),
+    ).toBe(source.shareId);
+    expect(connection.writeToken).not.toBe(source.writeToken);
+    expect(text).not.toContain(connection.writeToken);
+    expect(
+      (await store.list(`shares/${connection.shareId}/`))
+        .map(({ key }) => key.split('/').pop())
+        .sort(),
+    ).toEqual(['auth', 'source']);
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Shared biology' })).toBeVisible();
+    expect((await page.evaluate(() => indexedDB.databases())).map((db) => db.name)).toEqual([
+      'lacuna.gaps.connections',
+    ]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.screenshot({
+      path: testInfo.outputPath(`linked-class-${width}.png`),
+      fullPage: true,
+    });
   });
 }

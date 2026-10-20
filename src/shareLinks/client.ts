@@ -143,16 +143,21 @@ function requireWriteToken(writeToken: string, operation: ShareLinkOperation): s
   return writeToken;
 }
 
-/** Mint a fresh share id and write token on the relay. */
+/** Mint a fresh share id and write token, optionally linked to a published source. */
 export async function mintShare(
   relayUrl: string,
   fetchImpl?: typeof fetch,
+  options: { body?: { sourceShareId: string }; signal?: AbortSignal } = {},
 ): Promise<{ shareId: string; writeToken: string }> {
   const fetcher = requireFetch(fetchImpl);
   const response = await shareFetch(
     fetcher,
     `${relayFor(relayUrl, 'mint')}/shares`,
-    { method: 'POST' },
+    {
+      method: 'POST',
+      signal: options.signal,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    },
     'mint',
   );
   if (!response.ok) throw await shareHttpError('mint', response);
