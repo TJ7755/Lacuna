@@ -1,5 +1,6 @@
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
+import { courseColour } from '../../course/colour';
 
 // The ring opens at the top: an arc of 300 degrees from 2 o'clock round to
 // 10 o'clock, leaving a gap where the four load dots sit.
@@ -50,6 +51,7 @@ export function glyphDaysScale(days: number): number {
  * the ring's gap. Decorative; the caller supplies the accessible description.
  */
 export function CourseGlyph({
+  courseId,
   days,
   recall,
   status,
@@ -57,6 +59,7 @@ export function CourseGlyph({
   size = 40,
   multiplier,
 }: {
+  courseId?: string;
   /** Whole days to the exam, or null for a course without a future exam. */
   days: number | null;
   recall: number;
@@ -68,6 +71,7 @@ export function CourseGlyph({
 }) {
   const fill = glyphFill(recall);
   const scale = days === null ? 0 : glyphDaysScale(days);
+  const colour = courseId === undefined ? undefined : courseColour(courseId);
   return (
     <span
       aria-hidden="true"
@@ -81,6 +85,7 @@ export function CourseGlyph({
             style={
               {
                 fontSize: typeof size === 'number' ? size * scale : `calc(${size} * ${scale})`,
+                color: colour,
                 textBox: 'trim-both cap alphabetic',
               } as React.CSSProperties
             }
@@ -101,7 +106,7 @@ export function CourseGlyph({
           <motion.path
             d={RING}
             fill="none"
-            stroke={RING_COLOUR[status]}
+            stroke={colour ?? RING_COLOUR[status]}
             strokeWidth={3.5}
             strokeLinecap="round"
             initial={multiplier > 0 ? { pathLength: 0 } : false}
@@ -122,7 +127,8 @@ export function CourseGlyph({
           <path
             d={INFINITY}
             fill="none"
-            className="stroke-ink"
+            className={colour ? undefined : 'stroke-ink'}
+            stroke={colour}
             strokeWidth={2}
             strokeLinejoin="round"
           />

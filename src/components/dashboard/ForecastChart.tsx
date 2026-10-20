@@ -5,6 +5,7 @@ import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
 import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
 import { STATUS_LABEL, type ForecastStatus } from './forecastStatus';
+import { courseColour } from '../../course/colour';
 
 export interface ForecastLine {
   id: string;
@@ -13,14 +14,6 @@ export interface ForecastLine {
   forecast: CourseForecast;
   /** The stop-now figure over the chart's past days, ending today at `forecast.ifStopped`. */
   history: ForecastPoint[];
-}
-
-/**
- * Lines are told apart by course, not status: four on-track courses would otherwise draw four
- * identical green lines. The first course takes the readable accent; the rest use the chart series.
- */
-export function courseColour(index: number): string {
-  return index === 0 ? 'hsl(var(--accent-ink))' : `hsl(var(--series-${((index - 1) % 5) + 1}))`;
 }
 
 const WIDE_WIDTH = 640;
@@ -108,12 +101,11 @@ const DAY = 86_400_000;
 const LABEL_GAP = 22;
 /**
  * Beyond this many courses the chart spotlights the highest stop-now forecasts, descending,
- * and keeps the rest as quiet context: nine coloured lines and labels read as noise, and
+ * and keeps the rest as quiet context: nine prominent lines and labels read as noise, and
  * the series palette starts repeating after six.
  */
 const SPOTLIGHT_LIMIT = 4;
 const SPOTLIGHT = 3;
-const CONTEXT_COLOUR = 'hsl(var(--ink-faint))';
 
 /**
  * Spreads label centres at least `gap` apart while keeping each as close to its point as it
@@ -139,7 +131,7 @@ export function spreadLabels(ys: number[], top: number, bottom: number, gap: num
  * `past` days back and `future` days ahead; nothing is projected after today, which only
  * holds the exam markers. Lines draw in, today's points land with a small spring, and
  * choosing a course in the legend brings its line forward. With many courses only the highest
- * stop-now forecasts are coloured and labelled; the rest stay faint until chosen.
+ * stop-now forecasts are prominent and labelled; the rest stay faint until chosen.
  */
 export function ForecastChart({
   lines: inputLines,
@@ -167,7 +159,7 @@ export function ForecastChart({
     return [...ranked, ...inputLines.filter((line) => !ids.has(line.id))];
   }, [inputLines, spotlit]);
   const hidden = lines.length - spotlit;
-  const colour = (index: number) => (index < spotlit ? courseColour(index) : CONTEXT_COLOUR);
+  const colour = (index: number) => courseColour(lines[index].id);
   const target = lines[0]?.forecast.target ?? 0.9;
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 
@@ -361,7 +353,7 @@ export function ForecastChart({
         {drawOrder.map(({ line, index }) => {
           const context = index >= spotlit;
           const focused = focus === line.id;
-          const stroke = context && focused ? 'hsl(var(--ink))' : colour(index);
+          const stroke = colour(index);
           const eased = easeSeries(line.history.map((point) => point.recall));
           const points = line.history.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
           const last = points[points.length - 1];
@@ -370,6 +362,7 @@ export function ForecastChart({
           return (
             <g
               key={line.id}
+              data-course-id={line.id}
               style={{
                 opacity: dimmed ? 0.18 : context && !focused ? 0.45 : 1,
                 transition: `opacity ${200 * multiplier}ms`,

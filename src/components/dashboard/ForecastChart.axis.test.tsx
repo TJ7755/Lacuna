@@ -101,10 +101,10 @@ describe('ForecastChart axis', () => {
         multiplier={0}
       />,
     );
-    // Only the spotlit courses carry today's figure and a coloured line.
+    // Only the spotlit courses carry today's figure; identity colours survive ranking.
     const labels = [...container.querySelectorAll('text.font-display')];
     expect(labels.map((label) => label.textContent)).toEqual(['90%', '80%', '80%']);
-    const colours = ['hsl(var(--accent-ink))', 'hsl(var(--series-1))', 'hsl(var(--series-2))'];
+    const colours = ['hsl(var(--accent-ink))', 'hsl(var(--series-4))', 'hsl(var(--series-5))'];
     labels.forEach((label, index) => {
       expect(label).toHaveAttribute('fill', colours[index]);
       expect(label.closest('g')!.querySelector('path')).toHaveAttribute('stroke', colours[index]);
@@ -113,13 +113,15 @@ describe('ForecastChart axis', () => {
     const courseNames = () => [...legend.querySelectorAll('span[title]')].map((name) => name.textContent);
     expect(courseNames()).toEqual(['H', 'F', 'G']);
     const strokes = [...container.querySelectorAll('path')].map((path) => path.getAttribute('stroke'));
-    expect(new Set(strokes).size).toBe(4);
+    expect(new Set(strokes).size).toBe(6);
+    expect(container.querySelector('g[data-course-id="A"]')).toHaveStyle({ opacity: '0.45' });
     expect(screen.queryByRole('button', { name: 'D Behind' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '6 more' }));
     expect(courseNames()).toEqual(['H', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'I']);
     const d = screen.getByRole('button', { name: 'D Behind' });
     fireEvent.focus(d);
+    expect(container.querySelector('g[data-course-id="D"] path')).toHaveAttribute('stroke', 'hsl(var(--series-2))');
     expect(container.querySelectorAll('text.font-display')).toHaveLength(4);
     expect(screen.getByRole('button', { name: 'Fewer' })).toHaveAttribute('aria-expanded', 'true');
   });

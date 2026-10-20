@@ -1,0 +1,1 @@
+- Keep course colours consistent across the dashboard forecast, course-row markers and sidebar icons, with stable course identity and readable light/dark theme colours. (#662)

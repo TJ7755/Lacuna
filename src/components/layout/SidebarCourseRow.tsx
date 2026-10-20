@@ -115,7 +115,7 @@ export const CourseRow = memo(function CourseRow({
             )
           }
         >
-          <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+          <CourseGlyph {...glyph} courseId={courseId} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
           <SidebarLabel
             className={cn(
               'font-semibold',
@@ -154,7 +154,7 @@ export const CourseRow = memo(function CourseRow({
               !drawer && 'overflow-hidden',
             )}
           >
-            <CourseGlyph {...glyph} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
+            <CourseGlyph {...glyph} courseId={courseId} size={compact ? 28 : GLYPH_SIZE} multiplier={m} />
             <SidebarLabel
               className={cn(
                 'font-semibold',
