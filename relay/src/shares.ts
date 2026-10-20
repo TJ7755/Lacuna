@@ -83,26 +83,28 @@ export async function handleShareMint(
     } finally {
       reader.releaseLock();
     }
-    try {
-      const parsed: unknown = JSON.parse(body);
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
-      const fields = parsed as Record<string, unknown>;
-      if (
-        Object.keys(fields).length !== 1 ||
-        typeof fields.sourceShareId !== 'string' ||
-        !SHARE_ID_RE.test(fields.sourceShareId)
-      )
-        throw new Error();
-      sourceId = await courseSource(store, fields.sourceShareId, () => now);
-      if (
-        !sourceId ||
-        !(await store.get(shareSlotKey(sourceId, 'payload'))) ||
-        !(await store.get(shareSlotKey(sourceId, 'meta')))
-      ) {
-        return shareJson(404, request, { error: 'source course not found' });
+    if (length > 0) {
+      try {
+        const parsed: unknown = JSON.parse(body);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error();
+        const fields = parsed as Record<string, unknown>;
+        if (
+          Object.keys(fields).length !== 1 ||
+          typeof fields.sourceShareId !== 'string' ||
+          !SHARE_ID_RE.test(fields.sourceShareId)
+        )
+          throw new Error();
+        sourceId = await courseSource(store, fields.sourceShareId, () => now);
+        if (
+          !sourceId ||
+          !(await store.get(shareSlotKey(sourceId, 'payload'))) ||
+          !(await store.get(shareSlotKey(sourceId, 'meta')))
+        ) {
+          return shareJson(404, request, { error: 'source course not found' });
+        }
+      } catch {
+        return shareJson(400, request, { error: 'invalid source share' });
       }
-    } catch {
-      return shareJson(400, request, { error: 'invalid source share' });
     }
   }
 
