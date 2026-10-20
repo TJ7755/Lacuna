@@ -60,6 +60,14 @@ connection, not relay reports. Neither expiry nor deletion erases copies a teach
 has already retained or the pupil's local course. Contact the teacher about a
 report or a retained copy; do not post pupil data in a public GitHub issue.
 
+## Devices that clear storage
+
+Before the trial, check with school IT whether pupil and teacher devices clear
+browser storage at logout. This can remove study history, reporting consent and
+saved teacher access even when the browser grants persistent storage. Rehearse
+Lacuna Settings → Backups or Device sync to a retained device, and keep teacher
+recovery files and codes outside any cleared profile.
+
 ## Limits and responsibilities
 
 Anyone with the class code can submit fabricated reports. A missing report does

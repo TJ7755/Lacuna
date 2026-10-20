@@ -5,6 +5,17 @@ Use the [school notice](gaps-school-notice.md) and the
 [teacher walkthrough](gaps-teacher-walkthrough.md). The
 [Gaps guide](gaps.md#disable-the-trial) owns the disable/rollback procedure.
 
+## Check device storage policy before the trial
+
+Ask school IT whether shared PCs or pooled tablets clear browser storage at logout,
+and verify with synthetic data on the devices pupils and teachers will use. A
+persistence grant does not protect against a managed profile wipe. Rehearse pupil
+backup or sync to a retained device through Lacuna Settings, and teacher recovery
+from a file and code kept outside that profile. A wipe can reset local consent and
+queued reports as well as study history; missing reports do not prove no study.
+Record reproducible device-policy failures with the Managed-device failure issue
+template, without pupil records or credentials.
+
 ## Check delivery without reading pupil reports
 
 Use the existing `lacuna`, `lacuna-gaps` and `lacuna-relay` projects in team

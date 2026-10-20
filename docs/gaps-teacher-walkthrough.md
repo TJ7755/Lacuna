@@ -27,6 +27,12 @@ creation separately, including saving the one-time code and file before continui
 If no prepared report exists, postpone the results task rather than inventing one
 or changing a pupil's clock. Daily delivery is checked after a UTC boundary.
 
+Before a class trial, ask school IT whether pupil and teacher browser profiles clear
+storage at logout. Rehearse logout and reopening with synthetic data on the actual
+devices. Browser persistence does not override a managed profile wipe. Check that
+pupils can use Lacuna Settings → Backups or Device sync with a retained device,
+and keep the teacher recovery file and code outside the cleared profile.
+
 Keep the [school notice](gaps-school-notice.md) available. The facilitator retains
 the synthetic share's owner credential privately for cleanup after the session.
 

@@ -1,0 +1,1 @@
+- Show calm guidance beside Backups in Settings when browser storage is supported but not persistent, with links to Backups and Device sync; add school-device storage checks to trial guidance. (#669)
