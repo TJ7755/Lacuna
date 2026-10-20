@@ -51,3 +51,17 @@ allows the entry to reuse Lacuna's fonts, styles and React components
 `dist` output directory. Assign `library.getlacuna.app` to that project's Production
 environment. Keep the main Lacuna and Gaps projects, domains and build settings unchanged.
 The code prepares hosting; it does not create the project or publish a deployment.
+
+## Public course pages
+
+The main site also serves `/courses/` and `/courses/<id>/` from the same catalogue.
+The [public-page prerender plugin](../scripts/public-page-prerender.ts) renders the
+same React tree used for browser hydration, using one [HTML template](../courses/index.html)
+for the index and every course. The built HTML includes course content, canonical metadata
+and Course JSON-LD without requiring JavaScript. Public routes stay outside the PWA app-shell
+fallback and precache. No course payload or learner database is opened by these pages.
+
+Adding a catalogue entry generates its page automatically. Also update
+[sitemap.xml](../public/sitemap.xml) and [llms.txt](../public/llms.txt); catalogue coverage tests
+reject missing course URLs. [Public-page tests](../scripts/public-pages.test.mjs) inspect
+the built HTML after the main-site build.
