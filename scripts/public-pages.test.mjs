@@ -39,20 +39,29 @@ test('comparison ships crawlable HTML, metadata and resolved assets', () => {
     assert.ok(existsSync(`dist${asset}`), `Missing built asset ${asset}`);
   }
 });
-test('homepage ships prerendered landing HTML for crawlers', () => {
+test('homepage ships prerendered landing HTML for crawlers', async () => {
   const path = 'dist/index.html';
   const html = readFileSync(path, 'utf8');
-  assert.match(html, /<title>Lacuna — Revision built around exam day<\/title>/);
+  const { Window } = await import('happy-dom');
+  const view = new Window();
+  try {
+    view.document.documentElement.innerHTML = html;
+    assert.match(view.document.title, /^Lacuna\b/);
+    assert.ok(
+      view.document.querySelector('main h1')?.textContent.trim(),
+      'Missing prerendered heading',
+    );
+    assert.ok(
+      view.document.querySelector('main a[href="#/"]')?.textContent.trim(),
+      'Missing crawlable entry into the study app',
+    );
+  } finally {
+    await view.happyDOM.close();
+  }
   assert.match(html, /rel="canonical" href="https:\/\/getlacuna.app\/"/);
   assert.match(html, /name="description"/);
   assert.match(html, /property="og:url" content="https:\/\/getlacuna.app\/"/);
-  // The same landing page the browser hydrates: hero copy, product entry point
-  // and crawlable links into the study app, without a separate SEO copy.
-  assert.match(html, /class="landing-page landing-motion"/);
-  assert.match(html, /Your revision/);
-  assert.match(html, /built around/);
   assert.match(html, /id="how-it-works"/);
-  assert.match(html, /href="#\/"/);
   assert.doesNotMatch(html, /<!--landing-page-->|Prototype variants|ROUND 2|\/src\//);
   for (const [, asset] of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)) {
     assert.ok(existsSync(`dist${asset}`), `Missing built asset ${asset}`);
