@@ -1,0 +1,1 @@
+- Remove the duplicate landing hero logo and keep navigation docking tied to the headline as it scrolls out of view. (#679)

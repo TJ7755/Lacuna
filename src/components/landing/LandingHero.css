@@ -12,16 +12,6 @@
   width: 100%;
   max-width: 1040px;
 }
-.motion-opening-mark {
-  color: var(--amber);
-  margin: 0 auto 44px;
-  width: 60px;
-}
-.motion-opening-mark svg {
-  width: 60px;
-  height: 60px;
-  stroke-width: 1.2;
-}
 .motion-opening h1 {
   font-size: clamp(40px, 5.3vw, 78px);
   font-weight: 500;
@@ -180,14 +170,6 @@
 @media (max-width: 700px) {
   .motion-opening {
     padding: 145px 32px 165px;
-  }
-  .motion-opening-mark {
-    margin-bottom: 35px;
-    width: 46px;
-  }
-  .motion-opening-mark svg {
-    width: 46px;
-    height: 46px;
   }
   .motion-opening h1 {
     font-size: clamp(32px, 8vw, 52px);
