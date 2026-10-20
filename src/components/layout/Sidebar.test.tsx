@@ -1,7 +1,7 @@
 import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
 import { createRef, type ComponentProps } from 'react';
 import type * as MotionReact from 'motion/react';
-import { act, render, screen, fireEvent, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Sidebar } from './Sidebar';
@@ -296,7 +296,7 @@ describe('Sidebar', () => {
 
 it.each([false, true])(
   'shows joined classes immediately, including collapsed navigation (%s)',
-  (collapsed) => {
+  async (collapsed) => {
     mockCourses = [
       { id: 'joined', name: 'Class biology', distributedCopy: { lineageId: 'biology' } } as Course,
     ];
@@ -311,7 +311,7 @@ it.each([false, true])(
         recipient: { keyId: 'b'.repeat(64), publicKey: 'public' },
       }),
     );
-    const section = screen.getByRole('navigation', { name: 'Gaps' });
+    const section = await screen.findByRole('navigation', { name: 'Gaps' });
     expectAppDestination(
       within(section).getByRole('link', { name: 'Class biology' }),
       '/gaps/joined',
@@ -322,13 +322,13 @@ it.each([false, true])(
       wrapper: MemoryRouter,
     });
     expect(
-      within(screen.getByRole('navigation', { name: 'Gaps' })).getByRole('link', {
+      within(await screen.findByRole('navigation', { name: 'Gaps' })).getByRole('link', {
         name: 'Class biology',
       }),
     ).toBeInTheDocument();
   },
 );
-it('hides archived, deleted and mismatched courses and responds to enrolment removal', () => {
+it('hides archived, deleted and mismatched courses and responds to enrolment removal', async () => {
   for (const id of ['joined', 'archived', 'deleted', 'mismatch']) {
     enrolInClass(id, {
       shareId: 'a'.repeat(32),
@@ -347,8 +347,34 @@ it('hides archived, deleted and mismatched courses and responds to enrolment rem
     { id: 'mismatch', name: 'Other course', distributedCopy: { lineageId: 'other' } },
   ] as Course[];
   render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-  const section = screen.getByRole('navigation', { name: 'Gaps' });
+  const section = await screen.findByRole('navigation', { name: 'Gaps' });
   expect(within(section).getAllByRole('link')).toHaveLength(1);
   act(() => createEnrolmentSetting('joined').write(null));
-  expect(screen.queryByRole('navigation', { name: 'Gaps' })).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(screen.queryByRole('navigation', { name: 'Gaps' })).not.toBeInTheDocument(),
+  );
+});
+
+it('recognises an existing stored enrolment without changing its format', async () => {
+  localStorage.setItem(
+    'lacuna.insights.enrolment.joined',
+    JSON.stringify({
+      v: 1,
+      shareId: 'a'.repeat(32),
+      lineageId: 'biology',
+      recipient: { keyId: 'b'.repeat(64), publicKey: 'public' },
+      pupilId: 'c'.repeat(32),
+      pupilLabel: '',
+      consentedAt: null,
+    }),
+  );
+  mockCourses = [
+    { id: 'joined', name: 'Class biology', distributedCopy: { lineageId: 'biology' } } as Course,
+  ];
+  render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
+  expect(
+    within(await screen.findByRole('navigation', { name: 'Gaps' })).getByRole('link', {
+      name: 'Class biology',
+    }),
+  ).toBeVisible();
 });

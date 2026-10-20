@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { enrolmentStorageOptions } from './enrolmentStorage';
 import { createLocalSetting, parseJson } from '../state/localSetting';
 import { createInsightsOptInSetting } from '../state/insightsOptIn';
 import { insightsRecipientSchema, type InsightsRecipient } from './recipient';
@@ -20,8 +21,7 @@ export const reportingEnabled = () => import.meta.env.VITE_GAPS_REPORTING_ENABLE
 /** Deliberately device-local: importing a backup must never grant reporting consent. */
 export function createEnrolmentSetting(courseId: string) {
   return createLocalSetting<ClassEnrolment | null>({
-    key: `lacuna.insights.enrolment.${courseId}`,
-    event: `lacuna:insights-enrolment-${courseId}`,
+    ...enrolmentStorageOptions(courseId),
     parse: (raw) =>
       parseJson(
         raw,
