@@ -298,3 +298,23 @@ export function summariseSelfMarking(
     unmarkedCount,
   };
 }
+
+function conceptIdsIn(answer: QuestionAnswer | undefined, target: Set<string>): void {
+  if (!answer) return;
+  answer.prerequisiteConceptIds.forEach((id) => target.add(id));
+  answer.allocations.forEach((allocation) =>
+    allocation.targetConceptIds.forEach((id) => target.add(id)),
+  );
+}
+
+export function referencedQuestionSetConceptIds(content: QuestionSet): string[] {
+  const ids = new Set<string>();
+  for (const question of content.questions) {
+    conceptIdsIn(question.answer, ids);
+    for (const part of question.parts) {
+      conceptIdsIn(part.answer, ids);
+      for (const subpart of part.subparts) conceptIdsIn(subpart.answer, ids);
+    }
+  }
+  return [...ids];
+}

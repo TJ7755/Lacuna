@@ -14,7 +14,10 @@ import { recordReview } from './repository';
 import { detachCourse } from './courseRepository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { answerQuestionAttempt, startQuestionAttempt } from '../questions/repository';
-import { deleteQuestionSet } from '../questions/questionSetRepository';
+import { createQuestionSet, deleteQuestionSet, updateQuestionSet } from '../questions/questionSetRepository';
+import { exportDatabase, importBackup } from './portability';
+import { mergeSnapshots } from '../sync/mergeSnapshots';
+import { manualMerge } from '../sync/manualMerge';
 import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 
 // Arc 7 §7.7/§7.9 Task 5: mergeImport.ts. Payloads are built as plain object literals
@@ -643,6 +646,93 @@ describe('mergeImport: v4 Question Set lineage', () => {
   beforeEach(async () => {
     await db.delete();
     await db.open();
+  });
+
+  it.each(['question', 'part', 'subpart'] as const)(
+    'preserves local Question Set targets and prerequisites at %s depth through update and recovery',
+    async (depth) => {
+      const initial = questionPayloadV4({ questions: [], lessons: [], questionSets: [] });
+      initial.concepts.push({ id: 'concept-prerequisite', n: 'Prerequisite' });
+      const { course } = await importLineageFirstTime(initial);
+      await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': true });
+      const template = questionPayloadV4().questionSets[0];
+      const answer = {
+        ...template.questions[0].answer!,
+        prerequisiteConceptIds: ['concept-prerequisite'],
+      };
+      const leaf = { id: 'leaf', prompt: 'Solve.', answer };
+      const questions =
+        depth === 'question'
+          ? [{ ...leaf, parts: [] }]
+          : [
+              {
+                id: 'question',
+                prompt: 'Solve.',
+                parts: [
+                  depth === 'part'
+                    ? { ...leaf, subparts: [] }
+                    : { id: 'part', prompt: 'Solve.', subparts: [leaf] },
+                ],
+              },
+            ];
+      const created = await createQuestionSet(
+        { ...template, id: 'local-set', courseId: course.id, lessonIds: [], questions },
+        1_400,
+      );
+      const set = await updateQuestionSet(
+        created.id,
+        { ...created, title: 'Learner-edited paper' },
+        { expectedContentRevisionId: created.contentRevisionId, now: 1_500 },
+      );
+      const attempt = await startQuestionSetAttempt(set.id, 'paper', 1_600);
+      const before = await exportDatabase();
+      expect(() => mergeSnapshots(before, before)).not.toThrow();
+      await mergeLineageUpdate(
+        course.id,
+        questionPayloadV4({
+          at: 2_000,
+          rv: 2,
+          concepts: [],
+          questions: [],
+          questionSets: [],
+          lessons: [],
+        }),
+      );
+      const after = await exportDatabase();
+      expect(() => mergeSnapshots(after, after)).not.toThrow();
+      expect(after.concepts).toEqual(before.concepts);
+      expect(after.questionSets).toEqual(before.questionSets);
+      expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+      expect(await db.tombstones.get(['concepts', 'concept-quadratic'])).toBeUndefined();
+      await importBackup(after, 'replace');
+      await manualMerge(before, { kind: 'peer' });
+      expect(await db.questionSets.get(set.id)).toEqual(set);
+      expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    },
+  );
+
+  it('repairs an already damaged database by combining an intact backup without losing receipts', async () => {
+    const initial = questionPayloadV4({ questions: [], lessons: [] });
+    initial.questionSets[0].lessonIds = [];
+    const { course } = await importLineageFirstTime(initial);
+    const attempt = await startQuestionSetAttempt('set-quadratics', 'paper', 1_600);
+    const intact = await exportDatabase();
+    await db.concepts.delete('concept-quadratic');
+    await db.tombstones.put({ table: 'concepts', recordId: 'concept-quadratic', deletedAt: 2_000 });
+    const damaged = await exportDatabase();
+    await expect(manualMerge(damaged)).rejects.toThrow('missing or cross-Course Concept');
+    expect(await db.concepts.get('concept-quadratic')).toBeUndefined();
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    await manualMerge(intact);
+    expect(await db.concepts.get('concept-quadratic')).toEqual(intact.concepts![0]);
+    expect(await db.tombstones.get(['concepts', 'concept-quadratic'])).toBeUndefined();
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    const repaired = await exportDatabase();
+    await importBackup(repaired, 'replace');
+    await manualMerge(damaged, { kind: 'peer' });
+    expect(await db.questionSets.get('set-quadratics')).toMatchObject({ courseId: course.id });
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+    expect(() => mergeSnapshots(repaired, damaged)).not.toThrow();
   });
 
   it('adopts a set and applies a later teacher revision', async () => {

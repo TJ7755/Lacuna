@@ -33,7 +33,7 @@ function course(overrides: Partial<CourseRecord> = {}): CourseRecord {
   };
 }
 
-function concept(): Concept {
+function concept(): Extract<Concept, { scope: 'course' }> {
   return {
     id: 'concept-1',
     scope: 'course',
@@ -213,6 +213,82 @@ function setAttempt(overrides: Partial<QuestionSetAttemptRecord> = {}): Question
 }
 
 describe('Question peer merge', () => {
+  it.each(['prior course-update damage', 'concurrent peer deletion'])(
+    'recovers referenced Concepts from an intact peer after %s',
+    (scenario) => {
+      const set = authoredSet();
+      const receipt = setAttempt();
+      const intact = backup({
+        questions: [],
+        questionConcepts: [],
+        questionSets: scenario === 'prior course-update damage' ? [set] : [],
+        questionSetAttempts: [receipt],
+      });
+      const damaged = backup({
+        concepts: [],
+        questions: [],
+        questionConcepts: [],
+        questionSets: [set],
+        questionSetAttempts: [receipt],
+        tombstones: [{ table: 'concepts', recordId: 'concept-1', deletedAt: 50 }],
+      });
+      const merged = mergeSnapshots(damaged, intact);
+      expect(merged.concepts).toEqual([concept()]);
+      expect(merged.questionSets).toEqual([set]);
+      expect(merged.questionSetAttempts).toEqual([receipt]);
+      expect(merged.tombstones).not.toContainEqual(damaged.tombstones![0]);
+      expect(mergeSnapshots(intact, damaged)).toEqual(merged);
+      expect(mergeSnapshots(merged, damaged)).toEqual(merged);
+      expect(mergeSnapshots(merged, merged)).toEqual(merged);
+    },
+  );
+
+  it('does not invent missing Concepts or accept cross-Course replacements', () => {
+    const damaged = backup({
+      concepts: [],
+      questions: [],
+      questionConcepts: [],
+      questionSets: [authoredSet()],
+    });
+    expect(() => mergeSnapshots(damaged, damaged)).toThrow('missing or cross-Course Concept');
+    expect(() =>
+      mergeSnapshots(
+        damaged,
+        backup({
+          questions: [],
+          questionConcepts: [],
+          concepts: [
+            {
+              ...concept(),
+              scope: 'course',
+              provisional: false,
+              courseId: 'another-course',
+              scopeKey: 'course:another-course',
+            },
+          ],
+        }),
+      ),
+    ).toThrow('missing or cross-Course Concept');
+  });
+
+  it('honours Concept deletion when the referencing Question Set was also deleted', () => {
+    const intact = backup({ questions: [], questionConcepts: [], questionSets: [authoredSet()] });
+    const deleted = backup({
+      concepts: [],
+      questions: [],
+      questionConcepts: [],
+      questionSets: [],
+      tombstones: [
+        { table: 'concepts', recordId: 'concept-1', deletedAt: 50 },
+        { table: 'questionSets', recordId: 'set-1', deletedAt: 50 },
+      ],
+    });
+    const merged = mergeSnapshots(intact, deleted);
+    expect(merged.concepts).toEqual([]);
+    expect(merged.questionSets).toEqual([]);
+    expect(merged.tombstones).toEqual(deleted.tombstones);
+  });
+
   it('honours attempt deletion receipts even when a newer Course edit survives', () => {
     const attempt = setAttempt();
     const deletion = { table: 'questionSetAttempts', recordId: attempt.id, deletedAt: 30 };

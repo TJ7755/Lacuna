@@ -1,3 +1,4 @@
+import { referencedQuestionSetConceptIds } from '../questions/questionSets';
 // Pure peer-merge of two BackupFile snapshots. No Dexie, no I/O, no knowledge
 // of which device produced either side. After this, the two-device dance is
 // mergeSnapshots(local, remote) then importBackup(merged, 'replace') — that
@@ -275,10 +276,26 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
   ).filter(
     (memory) => memory.courseId === null || courses.some((course) => course.id === memory.courseId),
   );
-  const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
   const questionSets = mergeQuestionSetRecords(left.questionSets, right.questionSets, [
     ...tombstones.values(),
   ]).filter((set) => courses.some((course) => course.id === set.courseId));
+  const requiredConceptCourses = new Map<string, Set<string>>();
+  for (const set of questionSets) {
+    for (const id of referencedQuestionSetConceptIds(set)) {
+      const owners = requiredConceptCourses.get(id) ?? new Set<string>();
+      owners.add(set.courseId);
+      requiredConceptCourses.set(id, owners);
+    }
+  }
+  // A surviving set wins a concurrent Concept deletion only when an original,
+  // correctly scoped record still exists. Missing records remain validation errors.
+  for (const concept of newestWins(left.concepts, right.concepts, idOf, updatedAtOf)) {
+    const owners = requiredConceptCourses.get(concept.id);
+    if (concept.courseId !== null && owners?.size === 1 && owners.has(concept.courseId)) {
+      tombstones.delete(`concepts:${concept.id}`);
+    }
+  }
+  const questionState = mergeQuestionCollections(left, right, courses, [...tombstones.values()]);
   const questionSetAttempts = mergeQuestionSetAttempts(
     applyTombstones(
       'questionSetAttempts',
