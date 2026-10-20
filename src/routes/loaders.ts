@@ -89,3 +89,6 @@ export const loadQuestionSetEditor = () => import('../pages/QuestionSetEditor').
 export const loadQuestionSetOverview = () => import('../pages/QuestionSetOverview').then(module => ({ default: module.QuestionSetOverview }));
 
 export const loadQuestionSetPractice = () => import('../pages/QuestionSetPractice').then(module => ({ default: module.QuestionSetPractice }));
+
+export const loadPupilClassPage = () =>
+  import('../pages/PupilClassPage').then((module) => ({ default: module.PupilClassPage }));

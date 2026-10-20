@@ -15,6 +15,7 @@ const loaders = vi.hoisted(() => ({
   loadSearchPage: vi.fn(() => Promise.resolve()),
   loadSettings: vi.fn(() => Promise.resolve()),
   loadSharePage: vi.fn(() => Promise.resolve()),
+  loadPupilClassPage: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('./loaders', () => loaders);
@@ -46,8 +47,11 @@ describe('prefetchRoute', () => {
     prefetchRoute('/course/course-1/analytics');
     prefetchRoute('/course/course-1/settings');
     prefetchRoute('/unknown');
+    prefetchRoute('/gaps/biology');
+    prefetchRoute('/gaps/chemistry');
 
     expect(loaders.loadImportPanel).toHaveBeenCalledOnce();
+    expect(loaders.loadPupilClassPage).toHaveBeenCalledOnce();
     expect(loaders.loadAnalytics).toHaveBeenCalledOnce();
     expect(loaders.loadArchivedCourses).toHaveBeenCalledOnce();
     expect(loaders.loadCourseStudyFlow).toHaveBeenCalledOnce();

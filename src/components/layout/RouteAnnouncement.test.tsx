@@ -30,3 +30,9 @@ it('names the question set editor', async () => {
   render(<RouteAnnouncement pathname="/course/biology/question-sets/cells/edit" />);
   expect(await screen.findByText('Edit question set')).toBeInTheDocument();
 });
+
+it('names and announces a joined pupil class', async () => {
+  render(<RouteAnnouncement pathname="/gaps/biology" />);
+  await waitFor(() => expect(document.title).toBe('Gaps · Lacuna'));
+  expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
+});

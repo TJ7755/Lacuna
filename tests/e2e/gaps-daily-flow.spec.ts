@@ -184,6 +184,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
     await enterFreshLacuna(pupil);
+    await expect(pupil.getByRole('navigation', { name: 'Gaps' })).toHaveCount(0);
     await pupil.getByRole('link', { name: 'Join a class', exact: true }).click();
     await pupil
       .getByLabel('Class code', { exact: true })
@@ -197,6 +198,31 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
     );
     expect(uploads).toHaveLength(0);
+    const pupilClasses = pupil.getByRole('navigation', { name: 'Gaps' });
+    await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
+    await expect(pupil.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await expect(consent).toHaveAttribute('aria-checked', 'false');
+    await expect(pupil.locator('[data-route-content^="/gaps/"]')).toHaveCSS('opacity', '1');
+    await pupil.screenshot({ path: testInfo.outputPath('pupil-gaps-desktop.png'), fullPage: true });
+    await pupil.setViewportSize({ width: 390, height: 844 });
+    await pupil.goto('/#/');
+    await pupil.getByRole('button', { name: 'Open navigation' }).click();
+    await expect(
+      pupilClasses.getByRole('link', { name: 'Class biology', exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(async () => (await pupil.getByRole('dialog', { name: 'Navigation' }).boundingBox())?.x)
+      .toBe(0);
+    await pupil.screenshot({ path: testInfo.outputPath('pupil-gaps-drawer.png') });
+    await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
+    await expect(pupil.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    expect(await pupil.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await expect(pupil.getByRole('dialog', { name: 'Navigation' })).toHaveCount(0);
+    await expect(pupil.locator('[data-route-content^="/gaps/"]')).toHaveCSS('opacity', '1');
+    await pupil.screenshot({ path: testInfo.outputPath('pupil-gaps-mobile.png'), fullPage: true });
+    await pupil.setViewportSize({ width: 1280, height: 900 });
     // A returning pupil first imports the original course, then joins using only the board code.
     const returning = await returningContext.newPage();
     await wire(returning);
@@ -242,8 +268,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await reviewOnlyCard(pupil, importedId);
     expect(uploads).toHaveLength(0);
     await pupil.clock.setFixedTime(clock);
-    await pupil.goto(`/#/s/${code}`);
+    await pupil.goto('/#/');
     await pupil.reload();
+    await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
     await expect(pupil.getByText(`Last sent: ${day}.`, { exact: true })).toBeVisible({
       timeout: 15_000,
     });
@@ -310,6 +337,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(consent).toHaveAttribute('aria-checked', 'false');
     await pupil.reload();
     await expect(pupil.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+    await expect(
+      pupilClasses.getByRole('link', { name: 'Class biology', exact: true }),
+    ).toBeVisible();
     expect(uploads).toHaveLength(1);
   } finally {
     await Promise.allSettled([
