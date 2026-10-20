@@ -56,7 +56,10 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
       (current) => {
         const updated = new URLSearchParams(current);
         if (next) updated.set('import', '1');
-        else updated.delete('import');
+        else {
+          updated.delete('import');
+          updated.delete('join');
+        }
         return updated;
       },
       { replace: true },
@@ -114,7 +117,11 @@ export function ImportControl({ onOpen }: { onOpen?: () => void }) {
                 transition={{ duration: 0.12 * multiplier }}
               >
                 <div>
-                  <ImportPanel onClose={() => changeOpen(false)} onBusyChange={setBusy} />
+                  <ImportPanel
+                    key={params.has('join') ? 'class' : 'sources'}
+                    onClose={() => changeOpen(false)}
+                    onBusyChange={setBusy}
+                  />
                 </div>
               </motion.div>
             )}

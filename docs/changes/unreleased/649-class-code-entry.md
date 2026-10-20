@@ -1,0 +1,1 @@
+- Join a Gaps class from Today or Import using the teacher’s short code, with clear entry instructions and a way to correct unavailable codes. Existing courses and explicit reporting consent are preserved. (#649)

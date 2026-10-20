@@ -69,9 +69,9 @@ beforeEach(() => {
     lesson: { id: 'new-lesson' },
   });
 });
-function open() {
+function open(entry = '/') {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <ImportPanel />
     </MemoryRouter>,
   );
@@ -288,4 +288,32 @@ it('keeps All sources in the departing form until its transition finishes', asyn
   expect(back.closest('[aria-hidden="true"]')).not.toBeNull();
   expect(screen.getByRole('button', { name: /Lacuna course/ })).toHaveFocus();
   await waitFor(() => expect(back).not.toBeInTheDocument());
+});
+
+it('offers class joining in the import sources and focuses the code field', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Join a class/ }));
+  expect(screen.getByLabelText('Class code')).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
+  expect(screen.getByRole('button', { name: /Join a class/ })).toHaveFocus();
+});
+it('opens class entry directly from Today and routes a formatted code to the existing invitation', () => {
+  open('/?import=1&join=1');
+  const field = screen.getByLabelText('Class code');
+  expect(field).toHaveFocus();
+  fireEvent.change(field, { target: { value: ' k7qm - 4xtp ' } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Join a class' }));
+  expect(mocks.navigate).toHaveBeenCalledWith('/s/K7QM4XTP');
+});
+it('keeps malformed codes in the form with actionable feedback', () => {
+  open('/?import=1&join=1');
+  fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'short' } });
+  fireEvent.submit(screen.getByRole('form', { name: 'Join a class' }));
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Enter the eight-character class code from your teacher.',
+  );
+  expect(screen.getByRole('textbox', { name: /Class code/ })).toHaveAttribute(
+    'aria-invalid',
+    'true',
+  );
 });

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useEditorKeys } from '../../hooks/dialogKeys';
 import { CardImportDialog } from './CardImportDialog';
@@ -13,13 +13,21 @@ import { expandingActionSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { UploadIcon, CardsIcon, FileTextIcon, ShareIcon, ChevronLeftIcon } from '../ui/icons';
 import './ImportPanel.css';
+import { Field, Input } from '../ui/Field';
+import { normaliseShortClassCode } from '../../insights/classCode';
 import { countOf } from '../../utils/plural';
 
-type Source = 'lacuna' | 'anki' | 'text';
+type Source = 'class' | 'lacuna' | 'anki' | 'text';
 const sources = [
   { id: 'lacuna', title: 'Lacuna course', detail: 'File, link, code or QR', icon: ShareIcon },
   { id: 'anki', title: 'Anki deck', detail: 'Anki package (.apkg)', icon: CardsIcon },
   { id: 'text', title: 'Text or spreadsheet', detail: 'Paste or upload cards', icon: FileTextIcon },
+  {
+    id: 'class',
+    title: 'Join a class',
+    detail: 'Enter your teacher’s class code',
+    icon: ShareIcon,
+  },
 ] as const;
 
 export function ImportPanel({
@@ -35,7 +43,10 @@ export function ImportPanel({
   useEffect(() => {
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
-  const [source, setSource] = useState<Source | null>(null);
+  const [params] = useSearchParams();
+  const [source, setSource] = useState<Source | null>(() => (params.has('join') ? 'class' : null));
+  const [classCode, setClassCode] = useState('');
+  const [classError, setClassError] = useState<string | null>(null);
   const [file, setFile] = useState<File>();
   const [dragging, setDragging] = useState(false);
   const [pastedText, setPastedText] = useState('');
@@ -44,7 +55,7 @@ export function ImportPanel({
   const stepContent = useRef<HTMLDivElement>(null);
   const [stepHeight, setStepHeight] = useState<number>();
   const sourceButtons = useRef<Partial<Record<Source, HTMLButtonElement | null>>>({});
-  const returnSource = useRef<Source | null>(null);
+  const returnSource = useRef<Source | null>(params.has('join') ? 'class' : null);
   const navigate = useNavigate();
   const { notify } = useToast();
   const draft = useImportDestination();
@@ -65,11 +76,13 @@ export function ImportPanel({
       // A fast return can revive an exiting form, so mount-only autofocus is insufficient.
       const focusInput = () => {
         const selector =
-          source === 'lacuna'
-            ? 'textarea[aria-label="Share link or code to import"]'
-            : source === 'anki'
-              ? '.card-import-package button'
-              : '#card-import-text';
+          source === 'class'
+            ? '#join-class-code'
+            : source === 'lacuna'
+              ? 'textarea[aria-label="Share link or code to import"]'
+              : source === 'anki'
+                ? '.card-import-package button'
+                : '#card-import-text';
         const target = [...(pageRoot.current?.querySelectorAll<HTMLElement>(selector) ?? [])].find(
           (element) => !element.closest('[inert]'),
         );
@@ -202,6 +215,44 @@ export function ImportPanel({
                     </Button>
                   </div>
                 </>
+              ) : source === 'class' ? (
+                <form
+                  className="space-y-4 p-5"
+                  aria-label="Join a class"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const code = normaliseShortClassCode(classCode);
+                    if (!code) {
+                      setClassError('Enter the eight-character class code from your teacher.');
+                      return;
+                    }
+                    void navigate(`/s/${code}`);
+                  }}
+                >
+                  <h2 className="font-display text-xl">Join a class</h2>
+                  <Field label="Class code" error={classError ?? undefined}>
+                    <Input
+                      id="join-class-code"
+                      autoFocus
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={classCode}
+                      onChange={(event) => {
+                        setClassCode(event.target.value);
+                        setClassError(null);
+                      }}
+                      placeholder="ABCD-1234"
+                      className="font-mono text-xl"
+                    />
+                  </Field>
+                  <p className="text-sm text-ink-soft">
+                    Your teacher gives you this code. Preview the course, then choose whether to
+                    share insights with your teacher.
+                  </p>
+                  <Button type="submit" variant="primary">
+                    Join class
+                  </Button>
+                </form>
               ) : source === 'lacuna' ? (
                 <SharedCourseImport
                   onBusyChange={setBusy}

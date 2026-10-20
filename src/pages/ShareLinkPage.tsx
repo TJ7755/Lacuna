@@ -197,9 +197,15 @@ export function ShareLinkPage() {
               <Button variant="secondary" onClick={() => setAttempt((count) => count + 1)}>
                 Try again
               </Button>
-              <Link to="/share" className={buttonClassName('ghost', 'sm')}>
-                Back to Share
-              </Link>
+              {normaliseShortClassCode(code ?? '') ? (
+                <Link to="/?import=1&join=1" className={buttonClassName('ghost', 'sm')}>
+                  Enter another class code
+                </Link>
+              ) : (
+                <Link to="/share" className={buttonClassName('ghost', 'sm')}>
+                  Back to Share
+                </Link>
+              )}
             </div>
           </section>
         ) : state.status === 'ready' ? (
@@ -230,9 +236,15 @@ export function ShareLinkPage() {
               <Button variant="secondary" onClick={() => setAttempt((count) => count + 1)}>
                 Try again
               </Button>
-              <Link to="/share" className={buttonClassName('ghost', 'sm')}>
-                Back to Share
-              </Link>
+              {normaliseShortClassCode(code ?? '') ? (
+                <Link to="/?import=1&join=1" className={buttonClassName('ghost', 'sm')}>
+                  Enter another class code
+                </Link>
+              ) : (
+                <Link to="/share" className={buttonClassName('ghost', 'sm')}>
+                  Back to Share
+                </Link>
+              )}
             </div>
           </section>
         )}

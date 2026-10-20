@@ -1377,6 +1377,12 @@ function Invite({
             />
           </Field>
           {shortCode && (
+            <p className="text-sm text-ink-soft">
+              Pupils open getlacuna.app, choose Join a class on Today, and enter this code.
+              They can also choose Import, then Join a class. The pupil join link is an alternative.
+            </p>
+          )}
+          {shortCode && (
             <Field label="Class code">
               <Input
                 readOnly
