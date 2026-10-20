@@ -25,7 +25,12 @@ vi.mock('./ImportPanel', () => ({
 }));
 function Location() {
   const location = useLocation();
-  return <output>{location.pathname}</output>;
+  return (
+    <output>
+      {location.pathname}
+      {location.search}
+    </output>
+  );
 }
 function renderControl(entry = '/') {
   render(
@@ -54,4 +59,12 @@ it('opens linked imports and prevents closing during a write', async () => {
   expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   expect(screen.getByRole('region', { name: 'Import sources' })).toBeVisible();
+});
+
+it('clears the class-entry request when closing so ordinary Import reopens its sources', async () => {
+  renderControl('/?import=1&join=1');
+  fireEvent.click(await screen.findByRole('button', { name: 'Cancel import' }));
+  expect(screen.getByRole('status')).toHaveTextContent(/^\/$/);
+  fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+  expect(screen.getByRole('status')).toHaveTextContent('/?import=1');
 });

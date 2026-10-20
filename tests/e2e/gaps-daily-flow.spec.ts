@@ -8,7 +8,7 @@ import { MemoryStore } from '../../relay/src/store';
 import { DAY_MS, completedIsoDayLabel } from '../../relay/src/insightsDay';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { parseClassCode } from '../../src/insights/classCode';
-import { addLessonCard, reviewOnlyCard } from './fixtures/syncConvergence';
+import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
 
 test.skip(
   process.env.VITE_GAPS_REPORTING_ENABLED !== 'true' || process.env.LACUNA_BROWSER_SITE === 'gaps',
@@ -75,7 +75,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   const sourceShareId = sourceLink.split('/').pop()!;
 
   const teacherContext = await browser.newContext(),
-    pupilContext = await browser.newContext();
+    pupilContext = await browser.newContext(),
+    returningContext = await browser.newContext();
   try {
     const teacher = await teacherContext.newPage(),
       pupil = await pupilContext.newPage();
@@ -108,7 +109,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       fullPage: true,
     });
     const recoveryDownload = teacher.waitForEvent('download');
-    await teacher.getByRole('button', { name: 'Download class recovery file', exact: true }).click();
+    await teacher
+      .getByRole('button', { name: 'Download class recovery file', exact: true })
+      .click();
     await recoveryDownload;
     await teacher.getByRole('button', { name: 'Continue to class' }).click();
     await expect(teacher.getByText(/No report does not mean no study/)).toBeVisible();
@@ -148,6 +151,9 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       /^[0-9A-Z]{4}-[0-9A-Z]{4}$/,
     );
     await expect(teacher.getByRole('button', { name: 'Copy code', exact: true })).toBeVisible();
+    await expect(
+      teacher.getByText(/Pupils open getlacuna.app, choose Join a class on Today/),
+    ).toBeVisible();
     const code = await teacher.getByLabel('Class code', { exact: true }).inputValue();
     expect(code).toMatch(/^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}-[0-9ABCDEFGHJKMNPQRSTVWXYZ]{4}$/);
     const link = await teacher.getByLabel('Pupil join link', { exact: true }).inputValue();
@@ -178,10 +184,11 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
 
     await pupil.clock.setFixedTime(clock - DAY_MS);
     await enterFreshLacuna(pupil);
-    await pupil.goto('/#/import');
-    await pupil.getByRole('button', { name: /Lacuna course/ }).click();
-    await pupil.getByLabel('Share link or code to import').fill(code);
-    await pupil.getByRole('button', { name: 'Read code' }).click();
+    await pupil.getByRole('link', { name: 'Join a class', exact: true }).click();
+    await pupil
+      .getByLabel('Class code', { exact: true })
+      .fill(` ${code.toLowerCase().replace('-', ' - ')} `);
+    await pupil.getByRole('button', { name: 'Join class', exact: true }).click();
     await pupil.getByRole('button', { name: 'Add to my courses' }).click();
     const consent = pupil.getByRole('switch', { name: 'Share insights with your teacher' });
     await expect(consent).toHaveAttribute('aria-checked', 'false');
@@ -190,6 +197,41 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
     );
     expect(uploads).toHaveLength(0);
+    // A returning pupil first imports the original course, then joins using only the board code.
+    const returning = await returningContext.newPage();
+    await wire(returning);
+    await enterFreshLacuna(returning);
+    await returning.goto(`/#/s/${sourceShareId}`);
+    await returning.getByRole('button', { name: 'Add to my courses' }).click();
+    await expect(returning.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
+    const beforeCourses = await readAll<{ id: string; distributedCopy?: unknown }>(
+      returning,
+      'courses',
+    );
+    const existingCourse = beforeCourses.find((course) => course.distributedCopy)!;
+    await reviewOnlyCard(returning, existingCourse.id);
+    const beforeCards = await readAll(returning, 'cards');
+    const beforeHistory = await readAll(returning, 'reviewHistory');
+    await returning.goto('/#/');
+    await returning.getByRole('link', { name: 'Join a class', exact: true }).click();
+    await returning.getByLabel('Class code', { exact: true }).fill(code);
+    await returning.getByRole('button', { name: 'Join class', exact: true }).click();
+    await expect(
+      returning.getByRole('switch', { name: 'Share insights with your teacher' }),
+    ).toHaveAttribute('aria-checked', 'false');
+    expect(
+      (await readAll<{ id: string }>(returning, 'courses')).map((course) => course.id),
+    ).toEqual(beforeCourses.map((course) => course.id));
+    expect(await readAll(returning, 'cards')).toEqual(beforeCards);
+    expect(await readAll(returning, 'reviewHistory')).toEqual(beforeHistory);
+    expect(
+      await returning.evaluate(
+        (id) => JSON.parse(localStorage.getItem('lacuna.shareImports')!)[id],
+        shareId,
+      ),
+    ).toBe(existingCourse.id);
+    expect(uploads).toHaveLength(0);
+
     await pupil.getByLabel(/^Name or class identifier/).fill('Pupil A');
     await consent.click();
     await expect(consent).toHaveAttribute('aria-checked', 'true');
@@ -270,7 +312,11 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(pupil.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
     expect(uploads).toHaveLength(1);
   } finally {
-    await Promise.allSettled([teacherContext.close(), pupilContext.close()]);
+    await Promise.allSettled([
+      teacherContext.close(),
+      pupilContext.close(),
+      returningContext.close(),
+    ]);
     delete process.env.RELAY_INSIGHTS_ENABLED;
   }
 });

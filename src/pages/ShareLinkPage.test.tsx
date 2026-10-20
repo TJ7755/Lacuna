@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { db } from '../db/schema';
 import type { Course } from '../db/types';
 import { getCourseIdForShare } from '../shareLinks/linkStore';
@@ -59,11 +59,15 @@ vi.mock('../insights/classKey', () => ({
   getPublishedClassRecipient: mocks.recipient,
 }));
 
+function JoinEntryProbe() {
+  return <p>Class code entry: {useLocation().search}</p>;
+}
 function open(code: string) {
   render(
     <MemoryRouter initialEntries={[`/s/${code}`]}>
       <Routes>
         <Route path="/s/:code" element={<ShareLinkPage />} />
+        <Route path="/" element={<JoinEntryProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -306,5 +310,7 @@ it.each([
   );
   open('K7QM4XTP');
   expect(await screen.findByText(message)).toBeVisible();
+  fireEvent.click(screen.getByRole('link', { name: 'Enter another class code' }));
+  expect(screen.getByText('Class code entry: ?import=1&join=1')).toBeVisible();
   expect(screen.queryByRole('switch')).not.toBeInTheDocument();
 });

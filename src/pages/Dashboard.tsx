@@ -1,3 +1,5 @@
+import { AppLink } from '../components/ui/AppLink';
+import { buttonClassName } from '../components/ui/buttonStyles';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -238,6 +240,15 @@ export function Dashboard() {
           </p>
         )}
         <SyncStatus />
+        <div inert={importing}>
+          <AppLink
+            to="/?import=1&join=1"
+            onClick={() => setCreatingCourse(false)}
+            className={buttonClassName('ghost', 'sm')}
+          >
+            Join a class
+          </AppLink>
+        </div>
         <div className="ml-auto flex shrink-0 gap-2">
           <div inert={importing}>
             <NewCourseControl

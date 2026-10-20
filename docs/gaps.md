@@ -160,8 +160,12 @@ unused; it is not the encrypted evidence format.
 
 ## Encrypted daily envelopes
 
-Pupils can type an eight-character class code, which the relay looks up to find the
-class share. Lookups are limited to 600 per hour per address. Short-code joins trust
+Pupils choose **Join a class** on Today, or **Import** then **Join a class**, and
+enter the eight-character code shown on the teacher's Invite tab. Case, spaces and
+the displayed hyphen are accepted. The existing invitation flow previews the course
+and connects an already imported copy without replacing local work or enabling
+reporting consent. Invalid entry stays in the form; an unavailable class offers
+**Enter another class code**. The relay looks up the code to find the class share. Lookups are limited to 600 per hour per address. Short-code joins trust
 the relay to return the teacher key; the join link and QR keep the full pinned
 teacher-key fingerprint.
 
