@@ -3,12 +3,14 @@ import { SectionCard } from '../components/ui/SectionCard';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { TeacherHomeView } from './TeacherHomeView';
 import type { ConnectedGapsCourse } from './connectionStore';
+import { createClassSessions, type ClassSession } from './classSessions';
 
 export function StandaloneTeacherHome() {
   const [Courses, setCourses] = useState<ComponentType<{
     onPrepareKey(course: ConnectedGapsCourse): void;
     keySetupOpen: boolean;
     onOpenClass(course: ConnectedGapsCourse): void;
+    onForgotten?(shareId: string): void;
   }> | null>(null);
   const [courseError, setCourseError] = useState(false);
   const [Panel, setPanel] = useState<ComponentType<{
@@ -24,12 +26,17 @@ export function StandaloneTeacherHome() {
     onClose(): void;
     onPrepareKey?(): void;
     initialTask?: 'results' | 'invite';
+    session?: ClassSession | null;
+    beginUnlock?(): (session: ClassSession) => boolean;
+    onLock?(): void;
   }> | null>(null);
   const [initialTask, setInitialTask] = useState<'results' | 'invite'>('results');
   const [reportCourse, setReportCourse] = useState<ConnectedGapsCourse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const focusWorkspace = useRef(false);
+  const [sessionCache] = useState(createClassSessions);
+  useEffect(() => () => sessionCache.clear(), [sessionCache]);
 
   useEffect(() => {
     let active = true;
@@ -103,6 +110,9 @@ export function StandaloneTeacherHome() {
             course={reportCourse}
             initialTask={initialTask}
             onClose={home}
+            session={sessionCache.sessions.get(reportCourse.shareId) ?? null}
+            beginUnlock={() => sessionCache.beginUnlock(reportCourse.shareId)}
+            onLock={() => sessionCache.lock(reportCourse.shareId)}
             onPrepareKey={() => void openKeys(reportCourse)}
           />
         ) : Panel ? (
@@ -120,6 +130,7 @@ export function StandaloneTeacherHome() {
               onPrepareKey={(course) => void openKeys(course)}
               keySetupOpen={loading}
               onOpenClass={(course) => void openClass(course)}
+              onForgotten={(shareId) => sessionCache.lock(shareId)}
             />
             <details className="mt-6 text-sm text-ink-soft">
               <summary>Recover a class or save another recovery file</summary>
