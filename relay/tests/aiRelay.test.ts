@@ -716,6 +716,7 @@ function flakyMailboxStore(inner: MemoryStore): {
   const puts: { key: string; opts: PutOptions }[] = [];
   return {
     store: {
+      stat: (key) => inner.stat(key),
       async get(key) {
         const stored = await inner.get(key);
         if (stored && isMailboxKey(key) && lost) {
@@ -775,6 +776,7 @@ function racingMailboxStore(inner: MemoryStore): {
   let replaceAfterNextMailboxGet: Uint8Array | null = null;
   return {
     store: {
+      stat: (key) => inner.stat(key),
       async get(key) {
         const stored = await inner.get(key);
         if (stored && isMailboxKey(key) && replaceAfterNextMailboxGet) {

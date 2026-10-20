@@ -100,8 +100,8 @@ export async function handleShareMint(
         sourceId = await courseSource(store, fields.sourceShareId, () => now);
         if (
           !sourceId ||
-          !(await store.get(shareSlotKey(sourceId, 'payload'))) ||
-          !(await store.get(shareSlotKey(sourceId, 'meta')))
+          !(await store.stat(shareSlotKey(sourceId, 'payload'))) ||
+          !(await store.stat(shareSlotKey(sourceId, 'meta')))
         ) {
           return shareJson(404, request, { error: 'source course not found' });
         }
@@ -149,7 +149,7 @@ export async function handleClassCodeCreate(
   const auth = await authorizeShare(store, id, request);
   if (auth !== 'ok')
     return shareJson(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
-  if (!(await shareLive(store, id, now)) || !(await store.get(`shares/${id}/teacher`)))
+  if (!(await shareLive(store, id, now)) || !(await store.stat(`shares/${id}/teacher`)))
     return shareJson(409, request, { error: 'teacher key required' });
   const pointer = `shares/${id}/class-code`;
   const existing = await store.get(pointer);
@@ -164,12 +164,12 @@ export async function handleClassCodeCreate(
     if (!linked.ok) {
       await store.del([mapping]);
       const winner = await store.get(pointer);
-      if (winner && (await store.get(shareAuthKey(id))))
+      if (winner && (await store.stat(shareAuthKey(id))))
         return shareJson(200, request, { code: new TextDecoder().decode(winner.body) });
       return shareJson(404, request, { error: 'not found' });
     }
     // Revoke an allocation that raced share deletion, just as slot uploads do.
-    if (!(await store.get(shareAuthKey(id)))) {
+    if (!(await store.stat(shareAuthKey(id)))) {
       await store.del([mapping, pointer]);
       return shareJson(404, request, { error: 'not found' });
     }
@@ -198,7 +198,7 @@ export async function handleClassCodeLookup(
     await store.del([`class-codes/${code}`, ...(matches ? [`shares/${id}/class-code`] : [])]);
     return shareJson(404, request, { error: 'not found' });
   }
-  if (!matches || !(await store.get(`shares/${id}/teacher`)))
+  if (!matches || !(await store.stat(`shares/${id}/teacher`)))
     return shareJson(404, request, { error: 'not found' });
   return shareJson(200, request, { shareId: id });
 }
@@ -272,7 +272,7 @@ async function getShareSlot(
 
   // A slot without its auth object is an orphan left by a delete that raced
   // an upload. Knowledge of the share id alone must never serve it.
-  if (!(await store.get(shareAuthKey(id)))) {
+  if (!(await store.stat(shareAuthKey(id)))) {
     return shareJson(404, request, { error: 'not found' });
   }
 
@@ -327,7 +327,7 @@ async function putShareSlot(
   if (auth !== 'ok')
     return shareJson(auth, request, { error: auth === 401 ? 'unauthorized' : 'not found' });
 
-  if (slot !== 'teacher' && (await store.get(shareSourceKey(id)))) {
+  if (slot !== 'teacher' && (await store.stat(shareSourceKey(id)))) {
     return shareJson(409, request, { error: 'linked course content is read-only' });
   }
 
@@ -357,7 +357,7 @@ async function putShareSlot(
   // A DELETE may have swept the group after this upload passed its checks.
   // Share ids are 128-bit random and never reused, so sweeping the group
   // here cannot harm a legitimate share; it removes the orphan just written.
-  if (!(await store.get(shareAuthKey(id)))) {
+  if (!(await store.stat(shareAuthKey(id)))) {
     await sweepShare(store, id);
     return shareJson(404, request, { error: 'not found' });
   }
@@ -424,13 +424,13 @@ export async function cleanupExpiredShares(
     const prefix = `shares/${id}/`;
     const objects = await store.list(prefix);
     if (objects.length === 0) continue;
-    const current = await Promise.all(objects.map((object) => store.get(object.key)));
+    const current = await Promise.all(objects.map((object) => store.stat(object.key)));
     const latest = Math.max(...current.map((object) => object?.uploadedAt ?? 0));
     if (now - latest < CHANNEL_TTL_MS + CHANNEL_CLEANUP_GRACE_MS) continue;
 
     const fresh = await Promise.all(
       ['auth', 'payload', 'meta', 'teacher', 'source', 'class-code'].map((name) =>
-        store.get(`${prefix}${name}`),
+        store.stat(`${prefix}${name}`),
       ),
     );
     if (
@@ -476,7 +476,7 @@ async function cleanupOrphanClassCodes(store: BlobStore, now: number): Promise<v
     if (
       !pointer ||
       new TextDecoder().decode(pointer.body) !== code ||
-      !(await store.get(shareAuthKey(id)))
+      !(await store.stat(shareAuthKey(id)))
     )
       await store.del([object.key]);
   }
@@ -500,7 +500,7 @@ async function courseSource(
     if (
       !SHARE_ID_RE.test(id) ||
       visited.has(id) ||
-      !(await store.get(shareAuthKey(id))) ||
+      !(await store.stat(shareAuthKey(id))) ||
       !(await shareLive(store, id, now))
     )
       return null;
@@ -526,9 +526,9 @@ export async function shareLive(store: BlobStore, id: string, now: () => number)
     store.get(shareSourceKey(id)),
   ]);
   if (latest !== null && now() - latest < CHANNEL_TTL_MS) return true;
-  if (!source || !(await store.get(shareAuthKey(id)))) return false;
+  if (!source || !(await store.stat(shareAuthKey(id)))) return false;
   const sourceId = new TextDecoder().decode(source.body);
-  if (!SHARE_ID_RE.test(sourceId) || !(await store.get(shareAuthKey(sourceId)))) return false;
+  if (!SHARE_ID_RE.test(sourceId) || !(await store.stat(shareAuthKey(sourceId)))) return false;
   // Mint flattens links to the publisher. Its updates also keep classroom links alive.
   const sourceLatest = await lastShareWrite(store, sourceId);
   return sourceLatest !== null && now() - sourceLatest < CHANNEL_TTL_MS;
@@ -537,7 +537,7 @@ export async function shareLive(store: BlobStore, id: string, now: () => number)
 async function lastShareWrite(store: BlobStore, id: string): Promise<number | null> {
   const objects = await Promise.all(
     ['auth', 'payload', 'meta', 'teacher', 'source', 'class-code'].map((name) =>
-      store.get(`shares/${id}/${name}`),
+      store.stat(`shares/${id}/${name}`),
     ),
   );
   const stamps = objects.flatMap((stored) => (stored ? [stored.uploadedAt] : []));

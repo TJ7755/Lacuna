@@ -22,6 +22,15 @@ it.each(['shares', 'api/shares', 'api?__path=/shares'])(
       shareId: string;
       writeToken: string;
     };
+    await store.put(`shares/${shareId}/payload`, new Uint8Array(1_928_490), { exclusive: true });
+    await store.put(`shares/${shareId}/meta`, new TextEncoder().encode('{}'), { exclusive: true });
+    const get = store.get.bind(store);
+    let bodyBytesRead = 0;
+    vi.spyOn(store, 'get').mockImplementation(async (key) => {
+      const stored = await get(key);
+      bodyBytesRead += stored?.body.byteLength ?? 0;
+      return stored;
+    });
     const put = vi.spyOn(store, 'put');
     const del = vi.spyOn(store, 'del');
     const list = vi.spyOn(store, 'list');
@@ -40,6 +49,7 @@ it.each(['shares', 'api/shares', 'api?__path=/shares'])(
       ['wrong', 401],
       [writeToken, 204],
     ] as const) {
+      bodyBytesRead = 0;
       const response = await check(token);
       expect(response.status).toBe(expected);
       expect(await response.text()).toBe('');
@@ -47,6 +57,7 @@ it.each(['shares', 'api/shares', 'api?__path=/shares'])(
       expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
         'https://gaps.getlacuna.app',
       );
+      expect(bodyBytesRead).toBe(token ? 32 : 0);
     }
     for (const id of ['f'.repeat(32), 'invalid']) {
       const response = await check(writeToken, id);
@@ -56,11 +67,23 @@ it.each(['shares', 'api/shares', 'api?__path=/shares'])(
     }
     now += CHANNEL_TTL_MS;
     expect((await check()).status).toBe(401);
+    bodyBytesRead = 0;
     const expired = await check(writeToken);
     expect(expired.status).toBe(410);
     expect(await expired.text()).toBe('');
     expect(expired.headers.get('Cache-Control')).toBe('no-store');
+    expect(bodyBytesRead).toBe(32);
     expect(await store.get(`shares/${shareId}/auth`)).not.toBeNull();
+    expect(put).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+    expect(list).not.toHaveBeenCalled();
+    await store.del([`shares/${shareId}/auth`]);
+    del.mockClear();
+    bodyBytesRead = 0;
+    const orphaned = await check(writeToken);
+    expect(orphaned.status).toBe(404);
+    expect(await orphaned.text()).toBe('');
+    expect(bodyBytesRead).toBe(0);
     expect(put).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
     expect(list).not.toHaveBeenCalled();

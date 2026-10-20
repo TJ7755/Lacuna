@@ -1,8 +1,19 @@
-import { BlobPreconditionFailedError, del, get, list, put } from '@vercel/blob';
+import {
+  BlobNotFoundError,
+  BlobPreconditionFailedError,
+  del,
+  get,
+  head,
+  list,
+  put,
+} from '@vercel/blob';
 
-export interface StoredObject {
-  body: Uint8Array;
+export interface StoredMetadata {
   uploadedAt: number;
+}
+
+export interface StoredObject extends StoredMetadata {
+  body: Uint8Array;
   etag: string;
 }
 
@@ -31,6 +42,8 @@ export type PutResult = { ok: true; etag: string } | { ok: false; reason: 'preco
  * store is atomic only because the check and set share a turn.
  */
 export interface BlobStore {
+  /** Current existence and upload time, without a body or cached/listed metadata. */
+  stat(key: string): Promise<StoredMetadata | null>;
   get(key: string): Promise<StoredObject | null>;
   put(key: string, body: Uint8Array, opts: PutOptions): Promise<PutResult>;
   del(keys: string[]): Promise<void>;
@@ -52,6 +65,11 @@ export class MemoryStore implements BlobStore {
   private seq = 0;
 
   constructor(private readonly now: () => number = Date.now) {}
+
+  async stat(key: string): Promise<StoredMetadata | null> {
+    const found = this.objects.get(key);
+    return found ? { uploadedAt: found.uploadedAt } : null;
+  }
 
   async get(key: string): Promise<StoredObject | null> {
     const found = this.objects.get(key);
@@ -106,6 +124,7 @@ export const BLOB_GET_OPTIONS = {
 };
 
 export interface BlobClient {
+  head: (pathname: string) => Promise<{ uploadedAt: Date }>;
   get: (
     pathname: string,
     options: { access: 'private'; useCache: boolean },
@@ -154,8 +173,20 @@ const putBase = {
   cacheControlMaxAge: 60,
 };
 
-export function createVercelStore(client: BlobClient = { get, put, del, list }): BlobStore {
+export function createVercelStore(client: BlobClient = { get, head, put, del, list }): BlobStore {
   return {
+    async stat(key) {
+      try {
+        // SDK head() queries the authenticated metadata API, not the download
+        // cache. It has no useCache option; call it afresh for every recheck.
+        const result = await client.head(key);
+        return { uploadedAt: result.uploadedAt.getTime() };
+      } catch (err) {
+        if (err instanceof BlobNotFoundError) return null;
+        throw new Error('blob stat failed', { cause: err });
+      }
+    },
+
     async get(key) {
       try {
         const result = await client.get(key, BLOB_GET_OPTIONS);
