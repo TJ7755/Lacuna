@@ -40,20 +40,122 @@ function render(value, action, changes = {}, cancelled = false) {
   );
 }
 
-test('metadata edits neither cancel CI nor publish any required context', () => {
+test('metadata edits reuse validation without cancelling CI or bypassing required contexts', () => {
   for (const changes of [
     { title: { from: 'Old title' } },
     { body: { from: null } },
     { title: {}, body: {} },
   ]) {
+    assert.equal(render(workflow['run-name'], 'edited', changes), 'CI metadata push-sha');
     assert.equal(render(workflow.concurrency.group, 'edited', changes), 'ci-metadata-9001');
     assert.equal(render(workflow.concurrency['cancel-in-progress'], 'edited', changes), 'false');
-    for (const job of ['changes', 'documentation', 'test', 'browser-smoke']) {
-      assert.equal(render(workflow.jobs[job].if, 'edited', changes), 'false', job);
+    assert.equal(workflow.jobs.changes.if, undefined);
+    assert.equal(render(workflow.jobs.documentation.if, 'edited', changes), 'false');
+    const metadata = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
+    assert.equal(render(metadata.if, 'edited', changes), 'true');
+    assert.equal(metadata.env.VALIDATION_TITLE, 'CI validation ${{ github.sha }}');
+    assert.equal(metadata.env.HEAD_SHA, '${{ github.event.pull_request.head.sha }}');
+    assert.match(metadata.run, /head_sha=\$HEAD_SHA/);
+    for (const step of workflow.jobs.changes.steps.filter((step) => step.id !== 'metadata')) {
+      assert.equal(render(step.if, 'edited', changes), 'false', step.id ?? step.uses);
+    }
+    for (const job of ['test', 'browser-smoke']) {
+      assert.equal(render(workflow.jobs[job].if, 'edited', changes), 'true', job);
+      assert.equal(render(workflow.jobs[job].steps[0].if, 'edited', changes), 'false', job);
     }
     for (const job of required) {
-      assert.equal(render(workflow.jobs[job].name, 'edited', changes), `metadata-${job}`);
+      assert.equal(render(workflow.jobs[job].name, 'edited', changes), job);
     }
+  }
+});
+
+
+test('metadata reuse requires a successful validation run for the exact merge commit', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-'));
+  try {
+    const step = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
+    const gh = join(directory, 'gh');
+    writeFileSync(gh, `#!/bin/bash
+if [ "$1" = api ] && [[ "$2" == *"/runs?"* ]]; then
+  printf '%s' "$RUNS"
+elif [ "$1" = api ]; then
+  printf '%s' "$CONCLUSION"
+else
+  printf '%s\\n' "$*" > "$WATCH_ARGS"
+  exit "$WATCH_STATUS"
+fi
+`, { mode: 0o755 });
+    const run = (runs, status = '0', conclusion = 'success') => {
+      const output = join(directory, 'output');
+      const summary = join(directory, 'summary');
+      writeFileSync(output, '');
+      writeFileSync(summary, '');
+      const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${directory}:${process.env.PATH}`,
+          GH_REPO: 'owner/repo',
+          HEAD_SHA: 'head',
+          VALIDATION_TITLE: 'CI validation current-merge',
+          RUNS: JSON.stringify({ workflow_runs: runs }),
+          WATCH_ARGS: join(directory, 'watch'),
+          WATCH_STATUS: status,
+          CONCLUSION: conclusion,
+          GITHUB_OUTPUT: output,
+          GITHUB_STEP_SUMMARY: summary,
+        },
+      });
+      return { ...result, output: readFileSync(output, 'utf8') };
+    };
+    const valid = { id: 42, display_title: 'CI validation current-merge' };
+    assert.equal(run([valid]).status, 0);
+    assert.equal(run([valid]).output, 'docs_only=true\n');
+    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /run watch 42 --repo owner\/repo --exit-status/);
+    for (const runs of [
+      [],
+      [{ id: 1, display_title: 'CI validation older-merge' }],
+      [{ id: 2, display_title: 'CI metadata current-merge' }],
+    ]) {
+      const result = run(runs);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.output, '');
+    }
+    for (const conclusion of ['skipped', 'neutral', 'cancelled', 'failure', '']) {
+      const result = run([valid], '0', conclusion);
+      assert.notEqual(result.status, 0);
+      assert.equal(result.output, '');
+    }
+    const failed = run([valid], '1');
+    assert.notEqual(failed.status, 0);
+    assert.equal(failed.output, '');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+
+test('metadata aggregate gates reject missing, failed or cancelled reuse', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-gates-'));
+  try {
+    for (const job of ['test', 'browser-smoke']) {
+      const step = workflow.jobs[job].steps.find((step) =>
+        step.name === 'Require successful reused validation',
+      );
+      for (const status of ['success', 'failure', 'cancelled', 'skipped', '']) {
+        const result = spawnSync('bash', ['-e', '-c', step.run], {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            SCOPE_RESULT: status,
+            GITHUB_STEP_SUMMARY: join(directory, 'summary'),
+          },
+        });
+        assert.equal(result.status, status === 'success' ? 0 : 1, `${job}: ${status}`);
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });
 
@@ -69,6 +171,7 @@ test('retargets, code events and unknown edits retain the real gates and concurr
     ['edited', {}],
     [undefined, {}],
   ]) {
+    assert.equal(render(workflow['run-name'], action, changes), 'CI validation push-sha');
     assert.equal(
       render(workflow.concurrency.group, action, changes),
       action ? 'ci-42' : 'ci-push-sha',
@@ -77,7 +180,7 @@ test('retargets, code events and unknown edits retain the real gates and concurr
       render(workflow.concurrency['cancel-in-progress'], action, changes),
       String(Boolean(action)),
     );
-    for (const job of ['changes', 'documentation', 'test', 'browser-smoke']) {
+    for (const job of ['documentation', 'test', 'browser-smoke']) {
       assert.equal(render(workflow.jobs[job].if, action, changes), 'true', job);
     }
     for (const job of required) assert.equal(render(workflow.jobs[job].name, action, changes), job);

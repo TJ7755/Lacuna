@@ -1,0 +1,1 @@
+- Reuse successful CI validation for the exact merge commit after title/body edits, preserving required checks without repeating validation or cancelling code checks. (#652)
