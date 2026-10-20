@@ -28,7 +28,11 @@ import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
+import {
+  dashboardForecastHistories,
+  dashboardKeepUpProjections,
+  urgencyOrder,
+} from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
 import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
@@ -151,16 +155,38 @@ export function Dashboard() {
       now,
     );
   }, [data, forecasts, reviewHistory, chartWindow.past]);
+  const keepUp = useMemo(
+    () =>
+      data && reviewHistory
+        ? dashboardKeepUpProjections(
+            data.courses,
+            data.lessons,
+            data.allCards,
+            reviewHistory,
+            Date.now(),
+          )
+        : undefined,
+    [data, reviewHistory],
+  );
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {
         const forecast = forecasts?.[row.id];
         const history = histories?.[row.id];
         return forecast && histories
-          ? [{ id: row.id, name: row.name, status: row.status, forecast, history: history ?? [] }]
+          ? [
+              {
+                id: row.id,
+                name: row.name,
+                status: row.status,
+                forecast,
+                history: history ?? [],
+                keepUp: keepUp?.[row.id],
+              },
+            ]
           : [];
       }),
-    [rows, forecasts, histories],
+    [rows, forecasts, histories, keepUp],
   );
 
   // The chart waits on review history anyway, so it loads alongside it rather than at start-up.

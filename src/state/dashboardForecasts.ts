@@ -2,6 +2,7 @@ import { availableCards } from '../fsrs/eligibility';
 import {
   courseForecast,
   examDayHistory,
+  keepUpProjection,
   type CourseForecast,
   type ForecastPoint,
 } from '../fsrs/courseForecast';
@@ -14,6 +15,7 @@ const HOUR = 3_600_000;
 // date or target change, or the hour turns over. Navigation and the dashboard both read
 // it, and a review only recomputes the course it touched.
 const cache = new Map<string, { key: string; value: CourseForecast }>();
+const keepUpCache = new Map<string, { key: string; value: ForecastPoint[] }>();
 
 function cacheKey(cards: readonly Card[], course: Course, now: number): string {
   let reviewed = 0;
@@ -35,6 +37,7 @@ function cacheKey(cards: readonly Card[], course: Course, now: number): string {
 /** Clears the forecast cache; for tests. */
 export function clearForecastCache(): void {
   cache.clear();
+  keepUpCache.clear();
 }
 
 /**
@@ -116,6 +119,47 @@ export function dashboardForecastHistories(
     histories[course.id] = examDayHistory(courseCards, history, course, forecast.end, from, now);
   }
   return histories;
+}
+
+/** Future exam-day estimates, cached independently of the chart's past window. */
+export function dashboardKeepUpProjections(
+  courses: readonly Course[],
+  lessons: readonly Lesson[],
+  cards: readonly Card[],
+  history: readonly ReviewHistoryEntry[],
+  now: number,
+): Record<string, ForecastPoint[]> {
+  const projections: Record<string, ForecastPoint[]> = {};
+  const active = new Set(courses.filter((course) => !course.archived).map((course) => course.id));
+  for (const id of keepUpCache.keys()) if (!active.has(id)) keepUpCache.delete(id);
+  for (const [course, courseCards] of forecastCards(courses, lessons, cards, now)) {
+    if (course.examDate === undefined || course.examDate <= now || courseCards.length === 0)
+      continue;
+    const ids = new Set(courseCards.map((card) => card.id));
+    const key = JSON.stringify([
+      Math.floor(now / HOUR),
+      course.examDate,
+      course.fsrsParameters,
+      courseCards.map((card) => [
+        card.id,
+        card.stability,
+        card.difficulty,
+        card.lastReviewed,
+        card.due,
+        card.state,
+        card.reps,
+        card.lapses,
+        card.scheduledDays,
+        card.learningSteps,
+      ]),
+      history.filter((entry) => ids.has(entry.cardId)),
+    ]);
+    const hit = keepUpCache.get(course.id);
+    const value = hit?.key === key ? hit.value : keepUpProjection(courseCards, course, now);
+    keepUpCache.set(course.id, { key, value });
+    projections[course.id] = value;
+  }
+  return projections;
 }
 
 /**

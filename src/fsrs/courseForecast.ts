@@ -2,8 +2,8 @@
 //
 // Answers "if I stopped studying now, how much would I recall on exam day?" for the
 // dashboard, and how that answer has moved over recent days. No future reviews are
-// assumed: a forecast that presumes every card is reviewed on time, and answered
-// Good, flatters a course that has barely been started.
+// assumed in the stop-now estimate. The separate keep-up scenario estimates due
+// reviews with retrievability-weighted outcomes rather than assuming every answer is Good.
 //
 //  - an unreviewed card contributes 0 recall;
 //  - a course without a future exam is measured `steadyDays` ahead instead.
@@ -12,6 +12,7 @@ import type { Card, SchedulerConfig } from '../db/types';
 import type { ReviewHistoryEntry } from '../db/reviewHistory';
 import { forgettingCurve, rAtExam } from './forwardSim';
 import { MS_PER_DAY, clampRequestRetention } from './params';
+import { applyReview, makeEngine, toTsCard } from './fsrs';
 
 export interface ForecastPoint {
   /** Epoch ms. */
@@ -50,6 +51,77 @@ export function courseForecast(
 }
 
 /**
+ * At each future date, estimate recall on the fixed exam date using reviews up to
+ * that date. This is an expected-state approximation: Good/Again memory and due
+ * intervals are weighted by recall probability, then merged before the next review.
+ * Discrete learning state follows the more probable outcome. It is not a trajectory
+ * of recall on each plotted date, nor an exact enumeration of all possible histories.
+ *
+ * Large courses use 256 deterministic, equally weighted strata ordered by due date;
+ * their sampled gains are added to the exact stop-now baseline. Each representative
+ * gets at most 64 reviews, after which its last estimate is held. These bounds keep
+ * distant exams and minute-long learning steps from monopolising the main thread.
+ */
+export function keepUpProjection(
+  cards: readonly Card[],
+  course: ForecastCourse,
+  now: number,
+): ForecastPoint[] {
+  if (course.examDate === undefined || course.examDate <= now || cards.length === 0) return [];
+  const end = course.examDate;
+  const decay = -course.fsrsParameters.w[20];
+  const baseline = courseForecast(cards, course, now).ifStopped;
+  const engine = makeEngine({ ...course.fsrsParameters, enable_fuzz: false });
+  const ordered = [...cards].sort(
+    (a, b) => (a.due ?? now) - (b.due ?? now) || a.id.localeCompare(b.id),
+  );
+  const count = Math.min(256, ordered.length);
+  const representatives = Array.from({ length: count }, (_, i) => {
+    const start = Math.floor((i * ordered.length) / count);
+    const stop = Math.floor(((i + 1) * ordered.length) / count);
+    const card = { ...ordered[Math.floor((start + stop) / 2)] };
+    const recall = rAtExam(card, end, now, decay);
+    return { card, baseline: recall, recall, weight: stop - start, reviews: 0 };
+  });
+  const points: ForecastPoint[] = [{ at: now, recall: baseline }];
+  for (let sample = 1; sample <= 32; sample++) {
+    const at = now + ((end - now) * sample) / 32;
+    let gain = 0;
+    for (const state of representatives) {
+      let due = Math.max(now, state.card.due ?? now);
+      while (due <= at && state.reviews < 64) {
+        const probability =
+          state.card.lastReviewed === null
+            ? 0
+            : engine.get_retrievability(toTsCard(state.card, due), due, false);
+        const good = applyReview(engine, state.card, 3, due).memory;
+        const again = applyReview(engine, state.card, 1, due).memory;
+        const mean = (success: number, failure: number) =>
+          probability * success + (1 - probability) * failure;
+        state.recall = mean(
+          rAtExam({ ...state.card, ...good }, end, due, decay),
+          rAtExam({ ...state.card, ...again }, end, due, decay),
+        );
+        state.card = {
+          ...state.card,
+          ...(probability >= 0.5 ? good : again),
+          stability: mean(good.stability, again.stability),
+          difficulty: mean(good.difficulty, again.difficulty),
+          due: Math.max(due + 60_000, mean(good.due, again.due)),
+          scheduledDays: mean(good.scheduledDays, again.scheduledDays),
+        };
+        state.reviews++;
+        due = state.card.due as number;
+      }
+      gain += (state.recall - state.baseline) * state.weight;
+    }
+    // Expected-state compression and sampling must not suggest a loss from keeping up.
+    points.push({ at, recall: Math.min(1, Math.max(baseline, baseline + gain / cards.length)) });
+  }
+  return points;
+}
+
+/**
  * The stop-now figure as it stood at each of `samples` instants from `from` to `now`.
  * A card's memory on a past day is the stability its latest review by then recorded;
  * from its latest stored review onwards the card's own state is used, so the last
@@ -80,10 +152,14 @@ export function examDayHistory(
     const stored = card.stability !== null && card.lastReviewed !== null;
     // Memory states in time order: each is the review instant and the stability after it.
     const states = (byCard.get(card.id) ?? [])
-      .filter((entry) => entry.timestamp <= now && (!stored || entry.timestamp < (card.lastReviewed as number)))
+      .filter(
+        (entry) =>
+          entry.timestamp <= now && (!stored || entry.timestamp < (card.lastReviewed as number)),
+      )
       .sort((a, b) => a.timestamp - b.timestamp)
       .map((entry) => ({ at: entry.timestamp, stability: entry.stabilityAfter }));
-    if (stored) states.push({ at: card.lastReviewed as number, stability: card.stability as number });
+    if (stored)
+      states.push({ at: card.lastReviewed as number, stability: card.stability as number });
     if (states.length === 0) continue;
 
     let index = -1;
