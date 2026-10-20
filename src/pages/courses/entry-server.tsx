@@ -1,4 +1,5 @@
 import { renderToReadableStream, renderToStaticMarkup } from 'react-dom/server';
+import { courseCodes } from '../../library/catalogue';
 import { CoursePage } from './CoursePage';
 import { courseForPath, courseMetadata } from './content';
 
@@ -27,7 +28,7 @@ export function renderHead(path: string) {
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Course',
-              name: `${course.subject} ${course.code}`,
+              name: `${course.subject} ${courseCodes(course)}`,
               description: course.summary,
               url: canonical,
               inLanguage: 'en-GB',

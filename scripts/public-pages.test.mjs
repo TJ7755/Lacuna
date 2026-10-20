@@ -117,7 +117,8 @@ test('course pages ship the complete catalogue content and metadata without Java
     );
     const indexText = view.document.body.textContent;
     for (const course of libraryCourses) {
-      const name = `${course.subject} ${course.code}`;
+      const codes = [course.code, ...(course.alternativeCodes ?? [])].join(' / ');
+      const name = `${course.subject} ${codes}`;
       assert.ok(indexText.includes(name));
       assert.ok(index.includes(course.qualification));
       assert.ok(index.includes(course.summary));
@@ -150,8 +151,8 @@ test('course pages ship the complete catalogue content and metadata without Java
       }
       const stats = course.stats;
       const description = stats
-        ? `Free ${course.qualification} ${course.subject} (${course.code}) revision course: ${stats.cards.toLocaleString('en-GB')} flashcards, ${stats.notes.toLocaleString('en-GB')} notes and ${stats.practiceSets.toLocaleString('en-GB')} exam-style practice sets, planned to your exam date.`
-        : `Free ${course.qualification} ${course.subject} (${course.code}) revision course with flashcards, notes and exam-style practice, planned to your exam date.`;
+        ? `Free ${course.qualification} ${course.subject} (${codes}) revision course: ${stats.cards.toLocaleString('en-GB')} flashcards, ${stats.notes.toLocaleString('en-GB')} notes and ${stats.practiceSets.toLocaleString('en-GB')} exam-style practice sets, planned to your exam date.`
+        : `Free ${course.qualification} ${course.subject} (${codes}) revision course with flashcards, notes and exam-style practice, planned to your exam date.`;
       assert.equal(
         doc.querySelector('meta[name="description"]')?.getAttribute('content'),
         description,

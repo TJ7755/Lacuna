@@ -5,6 +5,7 @@ export interface LibraryCourse {
   board: string;
   qualification: string;
   code: string;
+  alternativeCodes?: readonly string[];
   summary: string;
   topics: readonly string[];
   shareUrl: string | null;
@@ -69,8 +70,9 @@ export const libraryCourses: readonly LibraryCourse[] = [
     revision: 11,
     subject: 'Physics',
     board: 'Cambridge',
-    qualification: 'Cambridge IGCSE (9–1)',
+    qualification: 'Cambridge IGCSE',
     code: '0972',
+    alternativeCodes: ['0625'],
     summary: 'Forces, energy, waves and electricity.',
     topics: [
       'Motion, forces and energy',
@@ -90,8 +92,9 @@ export const libraryCourses: readonly LibraryCourse[] = [
     revision: 11,
     subject: 'History',
     board: 'Cambridge',
-    qualification: 'Cambridge IGCSE (9–1)',
+    qualification: 'Cambridge IGCSE',
     code: '0977',
+    alternativeCodes: ['0470'],
     summary: 'The twentieth-century world and Germany, 1918–45.',
     topics: [
       'Option B: Was the Treaty of Versailles fair?',
@@ -137,4 +140,8 @@ export function resolveCourseShareUrl(value: string | null): string | null {
   }
 
   return `${SHARE_ORIGIN}${url.hash}`;
+}
+
+export function courseCodes(course: LibraryCourse): string {
+  return [course.code, ...(course.alternativeCodes ?? [])].join(' / ');
 }

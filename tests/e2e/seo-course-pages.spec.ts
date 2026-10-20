@@ -12,6 +12,8 @@ for (const width of [1440, 390]) {
     for (const [name, path, heading] of [
       ['index', '/courses/', 'Revision courses'],
       ['biology', '/courses/biology4bi1/', 'Biology 4BI1'],
+      ['physics', '/courses/physics0972/', 'Physics 0972 / 0625'],
+      ['history', '/courses/history0977/', 'History 0977 / 0470'],
     ]) {
       await page.goto(path);
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(heading);
@@ -24,6 +26,7 @@ for (const width of [1440, 390]) {
         fullPage: true,
       });
     }
+    await page.goto('/courses/biology4bi1/');
     await expect(page.getByRole('link', { name: 'Start revising', exact: true })).toHaveAttribute(
       'href',
       libraryCourses[0].shareUrl!,
@@ -45,8 +48,15 @@ for (const width of [1440, 390]) {
     for (const course of libraryCourses) {
       await crawler.goto(`/courses/${course.id}/`);
       await expect(crawler.getByRole('heading', { level: 1 })).toHaveText(
-        `${course.subject} ${course.code}`,
+        `${course.subject} ${[course.code, ...(course.alternativeCodes ?? [])].join(' / ')}`,
       );
+      for (const code of [course.code, ...(course.alternativeCodes ?? [])]) {
+        await expect(crawler).toHaveTitle(new RegExp(code));
+        await expect(crawler.locator('meta[name="description"]')).toHaveAttribute(
+          'content',
+          new RegExp(code),
+        );
+      }
       await expect(crawler.locator('ol li')).toHaveText([...course.topics]);
       const provenance = crawler.getByRole('region', { name: 'Course provenance' });
       await expect(provenance.locator('dd')).toHaveText([

@@ -16,7 +16,12 @@ import {
 } from '../components/ui/icons';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
 import { useTheme } from '../state/ThemeContext';
-import { libraryCourses, resolveCourseShareUrl, type LibraryCourse } from './catalogue';
+import {
+  courseCodes,
+  libraryCourses,
+  resolveCourseShareUrl,
+  type LibraryCourse,
+} from './catalogue';
 import { CourseExpansion } from './CourseExpansion';
 import { CourseProvenance } from './CourseProvenance';
 
@@ -39,10 +44,23 @@ export function LibraryPage({ courses = libraryCourses }: { courses?: readonly L
 function Library({ courses }: { courses: readonly LibraryCourse[] }) {
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
+  const [query, setQuery] = useState('');
   const [board, setBoard] = useState(ALL);
   const [open, setOpen] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const boards = [...new Set(courses.map((course) => course.board))];
-  const shown = courses.filter((course) => board === ALL || course.board === board);
+  const terms = query.trim().toLocaleLowerCase('en-GB').split(/\s+/).filter(Boolean);
+  const shown = courses.filter((course) => {
+    const text = [
+      course.subject,
+      course.board,
+      course.qualification,
+      courseCodes(course),
+      ...course.topics,
+    ]
+      .join(' ')
+      .toLocaleLowerCase('en-GB');
+    return (board === ALL || course.board === board) && terms.every((term) => text.includes(term));
+  });
   const openCourse = open && courses.find((course) => course.id === open.id);
 
   return (
@@ -104,6 +122,24 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
             )}
           </motion.div>
         </div>
+
+        {courses.length > 0 && (
+          <label className="mb-6 block max-w-lg text-sm text-ink-soft">
+            Search courses
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Subject, exam board or syllabus code"
+              className="mt-2 block min-h-11 w-full rounded-xl border border-line bg-surface px-4 py-2 text-base text-ink"
+            />
+          </label>
+        )}
+        {courses.length > 0 && shown.length === 0 && (
+          <p role="status" className="py-8 text-ink-soft">
+            No courses match your search and exam board.
+          </p>
+        )}
 
         {courses.length === 0 ? (
           <div className="flex flex-col items-center px-4 py-16 text-center">
@@ -220,7 +256,7 @@ function CoverFace({ course, headingId }: { course: LibraryCourse; headingId?: s
   return (
     <Root className="flex h-full w-full flex-col p-6 md:p-7">
       <span className="block pr-12 text-sm text-ink-soft">
-        {course.qualification} · {course.code}
+        {course.qualification} · {courseCodes(course)}
       </span>
       <Title
         id={headingId}
