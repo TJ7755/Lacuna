@@ -19,6 +19,11 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
+  useHref: (to: string) => to,
+  useLinkClickHandler: (to: string) => (event: React.MouseEvent) => {
+    event.preventDefault();
+    mockNavigate(to);
+  },
   useLocation: () => ({ state: null, search: '' }),
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
@@ -198,6 +203,12 @@ function queueTitles() {
 }
 
 describe('Dashboard', () => {
+  it('opens class-code entry from Today', () => {
+    setCourseData();
+    render(<Dashboard />);
+    fireEvent.click(screen.getByRole('link', { name: 'Join a class' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/?import=1&join=1');
+  });
   it('keeps new lessons available without marking their cards as due', () => {
     setCourseData([course('poems', 'Poems', { examDate: undefined })], {
       summaries: { poems: summary(0, { completedLessonCount: 0 }) },
