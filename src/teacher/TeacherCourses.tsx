@@ -1,74 +1,227 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Field, Input } from '../components/ui/Field';
-import { SectionCard } from '../components/ui/SectionCard';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { buttonClassName } from '../components/ui/buttonStyles';
+import { Field, Input } from '../components/ui/Field';
+import { ArrowRightIcon, ClockIcon, UnlockIcon } from '../components/ui/icons';
+import { SectionCard } from '../components/ui/SectionCard';
+import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { ShareLinkError } from '../shareLinks/client';
+import {
+  dayLabel,
+  itemsToRevisit,
+  mean,
+  percent,
+  pupilScore,
+  summariseItems,
+} from './classInsights';
 import {
   GAPS_CONNECTION_FILE_MAX_BYTES,
   GapsConnectionFileError,
   parseGapsConnectionFile,
 } from './connectionFile';
-import { TeacherJourney } from './TeacherHomeView';
 import { createGapsConnectionStore, type ConnectedGapsCourse } from './connectionStore';
+import { BandDot, ExpandingAction, focusFirstField, ScoreBar, Spinner } from './gapsUi';
+import type { ClassSession } from './StandaloneTeacherHome';
 
-export function TeacherCourses({
-  onPrepareKey,
-  keySetupOpen,
-  onOpenClass,
+/** The study app's dashboard, for classes: one line of numbers, then the rows to act on. */
+export function TodayPage({
+  courses,
+  sessions,
+  day,
+  connectRequest,
+  onOpen,
+  onConnected,
 }: {
-  onPrepareKey(course: ConnectedGapsCourse): void;
-  keySetupOpen: boolean;
-  onOpenClass(course: ConnectedGapsCourse): void;
+  courses: ConnectedGapsCourse[];
+  sessions: ReadonlyMap<string, ClassSession>;
+  day: string;
+  /** Each new non-zero value opens the connection form, as the sidebar's shortcut asks. */
+  connectRequest: number;
+  onOpen(course: ConnectedGapsCourse): void;
+  onConnected(course: ConnectedGapsCourse): void;
 }) {
-  const [courses, setCourses] = useState<ConnectedGapsCourse[] | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const [open, setOpen] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const first = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!connectRequest) return;
+    // With no classes the form is already open on the page.
+    if (first.current) focusFirstField(first.current);
+    else setConnecting(true);
+  }, [connectRequest]);
+
+  const open = courses.flatMap((course) => {
+    const latest = sessions.get(course.shareId)?.days.get(day);
+    if (!latest) return [];
+    const reports = latest.reports.map(({ report }) => report);
+    return [
+      {
+        course,
+        reports: reports.length,
+        revisit: itemsToRevisit(summariseItems(reports), Infinity).length,
+        score: mean(reports.map(pupilScore)),
+      },
+    ];
+  });
+  // The first locked class is the default next step; an open class needs no nudge.
+  const lead = courses.find((course) => !sessions.has(course.shareId));
+
+  return (
+    <div className={`${PAGE_FRAME} pb-24 pt-8 md:pt-12`}>
+      <h1 tabIndex={-1} data-page-title className="sr-only">
+        Today
+      </h1>
+      <div className="mb-8 flex flex-wrap items-center gap-x-8 gap-y-3 text-ink-soft">
+        <span className="inline-flex items-baseline gap-2">
+          <strong className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
+            {courses.length}
+          </strong>
+          {courses.length === 1 ? 'class' : 'classes'}
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <ClockIcon width={20} height={20} className="max-sm:hidden" />
+          {dayLabel(day)}
+        </span>
+        {courses.length > 0 && (
+          <ExpandingAction
+            label="Connect a class"
+            open={connecting}
+            onOpenChange={setConnecting}
+            className="ml-auto"
+          >
+            <ConnectClassForm onConnected={onConnected} />
+          </ExpandingAction>
+        )}
+      </div>
+
+      {courses.length === 0 ? (
+        <SectionCard className="gaps-rise flex flex-col items-center px-6 py-16 text-center md:py-20">
+          <StudyDrawing kind="course" className="mb-6 h-24 w-24" />
+          <h2 className="font-display text-3xl font-semibold tracking-tight">
+            Connect your first class
+          </h2>
+          <p className="mt-3 max-w-sm text-ink-soft">
+            Bring the connection file from your course’s Share page in Lacuna.
+          </p>
+          <div ref={first} className="mt-10 w-full max-w-sm text-left">
+            <ConnectClassForm onConnected={onConnected} />
+          </div>
+          <a href="https://getlacuna.app/#/share" className={`${buttonClassName('ghost')} mt-4`}>
+            Open Share in Lacuna
+          </a>
+        </SectionCard>
+      ) : (
+        <>
+          {open.length > 0 && (
+            <SectionCard className="gaps-rise mb-8 p-6 md:p-8">
+              <h2 className="font-display text-2xl font-semibold tracking-tight">Yesterday</h2>
+              <ul className="mt-6 flex flex-col gap-5">
+                {open.map((row, index) => (
+                  <li key={row.course.shareId}>
+                    <div className="mb-2.5 flex items-baseline justify-between gap-4 text-sm">
+                      <span className="truncate font-semibold">{row.course.courseName}</span>
+                      <span className="shrink-0 tabular-nums text-ink-soft">
+                        {percent(row.score)} secure
+                      </span>
+                    </div>
+                    <ScoreBar score={row.score} index={index} className="h-2" />
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8 grid grid-cols-3 gap-6 border-t border-line pt-6">
+                <Stat value={open.reduce((sum, row) => sum + row.reports, 0)} label="reports" />
+                <Stat value={open.reduce((sum, row) => sum + row.revisit, 0)} label="to revisit" />
+                <Stat value={percent(mean(open.map((row) => row.score)))} label="secure" />
+              </div>
+            </SectionCard>
+          )}
+          <ul aria-label="Your classes" className="flex flex-col gap-3">
+            {courses.map((course, index) => {
+              const session = sessions.get(course.shareId);
+              const summary = open.find((row) => row.course === course);
+              const action = session ? 'Open' : 'Unlock';
+              return (
+                <li
+                  key={course.shareId}
+                  style={{ '--i': index } as CSSProperties}
+                  className="gaps-rise gaps-lift flex items-center gap-4 rounded-[20px] bg-surface py-3.5 pl-5 pr-3.5 card-surface card-surface-control hover:bg-surface-raised sm:gap-5 sm:pl-6"
+                >
+                  {summary ? (
+                    <BandDot score={summary.score} />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${session ? 'bg-accent' : 'bg-ink-faint/60'}`}
+                    />
+                  )}
+                  <h2 className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={() => onOpen(course)}
+                      className="flex min-h-11 w-full items-center text-left font-display text-lg font-semibold leading-tight tracking-tight hover:underline hover:decoration-2 hover:underline-offset-4 sm:text-xl"
+                    >
+                      <span className="line-clamp-2 break-words">{course.courseName}</span>
+                    </button>
+                  </h2>
+                  <span className="text-sm text-ink-faint max-sm:hidden">
+                    {summary
+                      ? `${summary.reports} reports · ${summary.revisit} to revisit`
+                      : session
+                        ? 'Unlocked'
+                        : 'Locked'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(course)}
+                    aria-label={`${action} ${course.courseName}`}
+                    className={`${buttonClassName(course === lead ? 'primary' : 'secondary')} gaps-press`}
+                  >
+                    {!session && <UnlockIcon width={18} height={18} />}
+                    {action}
+                    {session && <ArrowRightIcon width={18} height={18} />}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div>
+      <strong className="block font-display text-3xl font-semibold tracking-tight tabular-nums">
+        {value}
+      </strong>
+      <span className="text-sm text-ink-soft">{label}</span>
+    </div>
+  );
+}
+
+/** Verifies ownership with the relay before saving; the passphrase never leaves the device. */
+export function ConnectClassForm({
+  onConnected,
+}: {
+  onConnected(course: ConnectedGapsCourse): void;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [phrase, setPhrase] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState('');
-  const [removing, setRemoving] = useState('');
-  const fileInput = useRef<HTMLInputElement>(null);
+  const [attempt, setAttempt] = useState(0);
   const controller = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    const store = createGapsConnectionStore();
-    void store
-      .list()
-      .then(
-        (saved) => {
-          if (active) {
-            setCourses(saved);
-            setError(null);
-          }
-        },
-        () => {
-          if (active)
-            setError(
-              'Could not read saved courses. Check that browser storage is available and try again.',
-            );
-        },
-      )
-      .finally(() => store.close());
-    return () => {
-      active = false;
-      controller.current?.abort();
-    };
-  }, [attempt]);
-
-  useEffect(() => {
-    if (open) fileInput.current?.focus();
-  }, [open]);
+  useEffect(() => () => controller.current?.abort(), []);
 
   async function connect(event: FormEvent) {
     event.preventDefault();
     if (busy) return;
     setError(null);
-    setConnected('');
     if (!file || file.size > GAPS_CONNECTION_FILE_MAX_BYTES) {
       setError('Choose a Gaps connection file smaller than 8 KiB.');
+      setAttempt((value) => value + 1);
       return;
     }
     setBusy(true);
@@ -78,11 +231,11 @@ export function TeacherCourses({
     try {
       const text = await file.text();
       await store.connect(text, phrase, { signal: request.signal });
-      setCourses(await store.list());
-      setConnected(parseGapsConnectionFile(text).shareId);
-      setOpen(false);
-      setFile(null);
+      const shareId = parseGapsConnectionFile(text).shareId;
+      const connected = (await store.list()).find((course) => course.shareId === shareId);
+      if (connected) onConnected(connected);
     } catch (cause) {
+      setAttempt((value) => value + 1);
       setError(
         request.signal.aborted
           ? 'Connection cancelled.'
@@ -94,7 +247,7 @@ export function TeacherCourses({
                 : 'Could not verify course ownership with the relay. Try again later.'
             : cause instanceof GapsConnectionFileError
               ? cause.message
-              : 'Could not open or save the connection. Check the file, passphrase and browser storage, then try again.',
+              : 'Could not open the connection. Check the file and passphrase.',
       );
     } finally {
       store.close();
@@ -104,240 +257,55 @@ export function TeacherCourses({
     }
   }
 
-  async function forget(shareId: string) {
-    setBusy(true);
-    setError(null);
-    setConnected('');
-    const store = createGapsConnectionStore();
-    try {
-      await store.forget(shareId);
-      setCourses((current) => current?.filter((course) => course.shareId !== shareId) ?? null);
-    } catch {
-      setError('Could not remove this connection from Gaps. Try again.');
-    } finally {
-      store.close();
-      setBusy(false);
-    }
-  }
-
   return (
-    <div className="teacher-home-grid">
-      <SectionCard aria-labelledby="courses-heading">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h2 tabIndex={-1} id="courses-heading" className="font-display text-2xl">
-            {courses?.length
-              ? 'Your classes'
-              : courses
-                ? 'Connect your first class'
-                : 'Your classes'}
-          </h2>
-          {!open && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(true);
-                setConnected('');
-                setError(null);
-              }}
-              disabled={busy || courses === null}
-              className={buttonClassName(courses?.length ? 'secondary' : 'primary')}
-            >
-              Connect a class
-            </button>
-          )}
-        </div>
-        {courses === null ? (
-          <div className="mt-4">
-            <p role="status" className="text-sm text-ink-soft">
-              Loading saved courses…
-            </p>
-            {error && (
-              <button
-                type="button"
-                className={`${buttonClassName('secondary')} mt-3`}
-                onClick={() => setAttempt((value) => value + 1)}
-              >
-                Try again
-              </button>
-            )}
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="mt-4 space-y-4 text-sm text-ink-soft">
-            <p>
-              Start with a course you have published in Lacuna. Your pupils keep using the same
-              course.
-            </p>
-            {!open && <p>Have your connection file ready? Choose Connect a class above.</p>}
-            <details>
-              <summary>Where do I get a connection file?</summary>
-              <ol className="mt-3 list-decimal space-y-2 pl-5">
-                <li>Open the course’s Share page on the device where you published it.</li>
-                <li>
-                  Choose <strong>Connect to Gaps</strong>. Set a strong connection passphrase and
-                  download the file.
-                </li>
-                <li>Return here, choose the file and enter that passphrase.</li>
-              </ol>
-              <a
-                href="https://getlacuna.app/#/share"
-                className={`${buttonClassName('secondary')} mt-4`}
-              >
-                Open sharing on the main site
-              </a>
-            </details>
-          </div>
-        ) : (
-          <ul className="mt-5">
-            {courses.map((course) => (
-              <li key={course.shareId} className="teacher-class-row">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="break-words font-display text-xl">{course.courseName}</h3>
-                    <p className="mt-2 text-xs text-ink-soft">
-                      Connection checked {new Date(course.verifiedAt).toLocaleDateString('en-GB')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={buttonClassName('primary')}
-                    disabled={busy || keySetupOpen}
-                    onClick={() =>
-                      connected === course.shareId ? onPrepareKey(course) : onOpenClass(course)
-                    }
-                  >
-                    {connected === course.shareId ? 'Set up class' : 'Open class'}
-                  </button>
-                </div>
-                <details className="mt-4 text-sm text-ink-soft">
-                  <summary>Class setup and connection</summary>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={buttonClassName('secondary')}
-                      disabled={busy || keySetupOpen}
-                      onClick={() => onPrepareKey(course)}
-                    >
-                      Set up or restore this class
-                    </button>
-                    <button
-                      type="button"
-                      className={buttonClassName('ghost')}
-                      disabled={busy || keySetupOpen}
-                      onClick={() => setRemoving(course.shareId)}
-                    >
-                      Remove connection
-                    </button>
-                  </div>
-                  {removing === course.shareId && (
-                    <div className="mt-3 space-y-3" role="group" aria-label="Confirm removal">
-                      <p>
-                        Remove {course.courseName} from this browser? Your published course, teacher
-                        key and pupil copies are kept. You can reconnect with your connection file.
-                      </p>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={buttonClassName('danger')}
-                        onClick={() => void forget(course.shareId)}
-                      >
-                        Remove from this browser
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        className={`${buttonClassName('ghost')} ml-2`}
-                        onClick={() => setRemoving('')}
-                      >
-                        Keep connection
-                      </button>
-                    </div>
-                  )}
-                </details>
-              </li>
-            ))}
-          </ul>
-        )}
-        {open && (
-          <form
-            onSubmit={(event) => void connect(event)}
-            className="mt-6 space-y-4 border-t border-ink/10 pt-5"
-            aria-label="Connect a class"
-          >
-            <p className="text-sm text-ink-soft">
-              Gaps checks ownership with the shared Lacuna relay before saving the encrypted
-              connection. Your passphrase stays on this device.
-            </p>
-            <fieldset disabled={busy} className="space-y-4">
-              <Field
-                label="Encrypted connection file"
-                hint="Select the gaps-course JSON file exported from Lacuna, not a teacher-key recovery file."
-              >
-                <Input
-                  type="file"
-                  ref={fileInput}
-                  accept=".json,application/json"
-                  required
-                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                />
-              </Field>
-              <Field label="Connection passphrase">
-                <Input
-                  type="password"
-                  autoComplete="off"
-                  required
-                  value={phrase}
-                  onChange={(event) => setPhrase(event.target.value)}
-                />
-              </Field>
-              <button type="submit" className={buttonClassName('primary')}>
-                {busy ? 'Verifying ownership…' : 'Verify and connect'}
-              </button>
-            </fieldset>
-            <button
-              type="button"
-              className={buttonClassName('ghost')}
-              onClick={() => {
-                if (busy) controller.current?.abort();
-                else {
-                  setOpen(false);
-                  setPhrase('');
-                  setFile(null);
-                  setError(null);
-                }
-              }}
-            >
-              {busy ? 'Cancel connection' : 'Cancel'}
-            </button>
-          </form>
-        )}
-        {connected && (
-          <p role="status" className="teacher-notice mt-4 text-sm">
-            Class connected. Next, set up a code for your pupils. If you have used this class
-            before, restore its saved recovery file.
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="mt-4 text-sm text-negative">
-            {error}
-          </p>
-        )}
-      </SectionCard>
-      <aside className="teacher-guide" aria-label="How a class works">
-        <h2 className="font-display text-xl">A class, step by step</h2>
-        <TeacherJourney current={courses?.length ? undefined : 1} />
-        <p className="text-sm text-ink-soft">
-          Pupils decide whether to share their results. You see the recorded work they send, so you
-          can decide what to revisit in class.
+    <form
+      onSubmit={(event) => void connect(event)}
+      aria-label="Connect a class"
+      className="space-y-5"
+    >
+      <fieldset disabled={busy} className="space-y-5">
+        <Field label="Connection file">
+          <Input
+            type="file"
+            accept=".json,application/json"
+            required
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+          />
+        </Field>
+        <Field label="Connection passphrase">
+          <Input
+            type="password"
+            autoComplete="off"
+            required
+            value={phrase}
+            onChange={(event) => setPhrase(event.target.value)}
+          />
+        </Field>
+      </fieldset>
+      {error && (
+        <p key={attempt} role="alert" className="gaps-shake text-sm text-negative">
+          {error}
         </p>
-        <details className="mt-5 text-sm text-ink-soft">
-          <summary>Using a different device?</summary>
-          <p className="mt-3">
-            Connections are saved in this browser. To move devices, bring your connection file and
-            the separate teacher recovery file, with their passphrases. Existing Lacuna courses are
-            kept; Gaps does not open your learner library.
-          </p>
-        </details>
-      </aside>
-    </div>
+      )}
+      <div className="flex gap-3">
+        <button
+          type="submit"
+          disabled={busy}
+          className={`${buttonClassName('primary', 'lg')} gaps-press flex-1`}
+        >
+          {busy && <Spinner />}
+          {busy ? 'Checking ownership…' : 'Connect'}
+        </button>
+        {busy && (
+          <button
+            type="button"
+            className={buttonClassName('ghost', 'lg')}
+            onClick={() => controller.current?.abort()}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </form>
   );
 }

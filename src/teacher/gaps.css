@@ -1,0 +1,277 @@
+/*
+ * Gaps motion and layout. CSS only: the teacher bundle stays free of the animation runtime,
+ * with size transitions for expanding controls and disclosures. The shared reduced-motion rule in
+ * index.css collapses durations; the rule at the end also removes entrance delays.
+ */
+:root {
+  --gaps-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* A light overshoot, close to the study app's springs. */
+  --gaps-spring: cubic-bezier(0.32, 1.28, 0.6, 1);
+  --gaps-sidebar: 264px;
+}
+
+@keyframes gaps-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes gaps-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes gaps-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes gaps-unclip {
+  to {
+    overflow: visible;
+  }
+}
+@keyframes gaps-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes gaps-drawer-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@keyframes gaps-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+}
+@keyframes gaps-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes gaps-ring {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes gaps-shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+@keyframes gaps-shake {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+@keyframes gaps-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Entrances. `--i` staggers siblings; the cap keeps long lists from trailing in. */
+.gaps-page {
+  animation: gaps-rise 460ms var(--gaps-ease) both;
+}
+.gaps-rise {
+  animation: gaps-rise 520ms var(--gaps-ease) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 55ms + 60ms);
+}
+.gaps-fade {
+  animation: gaps-fade 300ms ease-out both;
+}
+.gaps-cell {
+  animation: gaps-pop 460ms var(--gaps-spring) both;
+  animation-delay: calc(min(var(--col, 0), 14) * 32ms + min(var(--row, 0), 30) * 9ms);
+}
+.gaps-bar {
+  transform-origin: left center;
+  animation: gaps-grow 820ms var(--gaps-ease) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 55ms + 120ms);
+}
+.gaps-ring {
+  animation: gaps-ring 1s var(--gaps-ease) both;
+  transition: stroke-dashoffset 700ms var(--gaps-ease);
+}
+.gaps-shake {
+  animation: gaps-shake 380ms ease-in-out;
+}
+.gaps-spinner {
+  animation: gaps-spin 800ms linear infinite;
+}
+.gaps-skeleton {
+  background: linear-gradient(100deg, transparent 30%, hsl(var(--ink) / 0.07) 50%, transparent 70%)
+    hsl(var(--ink) / 0.05);
+  background-size: 200% 100%;
+  animation: gaps-shimmer 1.6s linear infinite;
+}
+
+/* Rows lift a touch under the pointer, as the study app's Today rows do. */
+.gaps-lift {
+  transition:
+    transform 260ms var(--gaps-ease),
+    background-color 160ms ease,
+    border-color 160ms ease;
+}
+@media (hover: hover) {
+  .gaps-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+.gaps-press {
+  transition: transform 160ms var(--gaps-ease);
+}
+.gaps-press:active {
+  transform: scale(0.97);
+}
+
+/* The sliding pill behind the selected tab or navigation row. */
+.gaps-indicator {
+  transition:
+    transform 440ms var(--gaps-spring),
+    width 440ms var(--gaps-spring),
+    height 440ms var(--gaps-spring),
+    opacity 200ms ease;
+}
+.gaps-indicator[data-instant] {
+  transition: none;
+}
+
+/*
+ * In-place expansion, as the study app's controls and disclosures open. A disclosure's row grows
+ * from 0fr to its content; once open it stops clipping, so focus rings show.
+ */
+.gaps-disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 460ms var(--gaps-ease),
+    opacity 140ms ease;
+}
+.gaps-disclosure[data-open] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 460ms var(--gaps-ease),
+    opacity 240ms ease 90ms;
+}
+@starting-style {
+  .gaps-disclosure[data-open] {
+    grid-template-rows: 0fr;
+    opacity: 0;
+  }
+}
+.gaps-disclosure > * {
+  min-height: 0;
+  overflow: hidden;
+}
+.gaps-disclosure[data-open] > * {
+  animation: gaps-unclip 0s 460ms forwards;
+}
+/* The expanding control: its surface widens and moves while the trigger stays put. */
+.gaps-expand,
+.gaps-expand-trigger {
+  transition:
+    width 460ms var(--gaps-spring),
+    transform 460ms var(--gaps-spring),
+    border-radius 460ms var(--gaps-ease),
+    box-shadow 240ms ease;
+}
+.gaps-turn {
+  transition: transform 460ms var(--gaps-spring);
+}
+.gaps-expand[data-open] > button .gaps-turn {
+  transform: rotate(45deg);
+}
+svg.gaps-turn[data-open] {
+  transform: rotate(180deg);
+}
+
+/* The mobile drawer. `data-closing` plays the exit before unmounting. */
+.gaps-backdrop {
+  animation: gaps-fade 240ms ease-out both;
+}
+.gaps-drawer {
+  animation: gaps-drawer-in 380ms var(--gaps-ease) both;
+}
+[data-closing] .gaps-backdrop {
+  animation: gaps-fade-out 180ms ease-in forwards;
+}
+[data-closing] .gaps-drawer {
+  animation: gaps-drawer-out 220ms ease-in forwards;
+}
+
+/* The sidebar narrows to its icons; labels fade rather than squash. */
+.gaps-sidebar {
+  width: var(--gaps-sidebar);
+  transition: width 340ms var(--gaps-ease);
+}
+.gaps-sidebar[data-collapsed] {
+  width: 72px;
+}
+.gaps-sidebar-label {
+  transition: opacity 220ms ease;
+}
+.gaps-sidebar[data-collapsed] .gaps-sidebar-label {
+  opacity: 0;
+  pointer-events: none;
+}
+.gaps-sidebar-theme,
+.gaps-sidebar-collapse {
+  transition: transform 340ms var(--gaps-ease);
+}
+.gaps-sidebar:not([data-collapsed]) .gaps-sidebar-theme {
+  transform: translateY(52px);
+}
+.gaps-sidebar:not([data-collapsed]) .gaps-sidebar-collapse {
+  transform: translateX(194px);
+}
+
+/* The grid's pupil column stays put while the items scroll sideways. */
+.gaps-grid th[scope='row'] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: hsl(var(--surface));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gaps-page,
+  .gaps-rise,
+  .gaps-fade,
+  .gaps-cell,
+  .gaps-bar,
+  .gaps-ring,
+  .gaps-backdrop,
+  .gaps-drawer,
+  .gaps-skeleton {
+    animation: none;
+  }
+  .gaps-lift:hover,
+  .gaps-press:active {
+    transform: none;
+  }
+  .gaps-disclosure,
+  .gaps-expand,
+  .gaps-expand-trigger,
+  .gaps-turn {
+    transition: none;
+  }
+  .gaps-disclosure[data-open] > * {
+    animation: none;
+    overflow: visible;
+  }
+}

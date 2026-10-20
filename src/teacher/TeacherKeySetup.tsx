@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Field, Input, inputClassName } from '../components/ui/Field';
-import { SectionCard } from '../components/ui/SectionCard';
+import { CheckIcon } from '../components/ui/icons';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { createInsightsOwnerStore, InsightsOwnerConflictError } from '../insights/ownerStore';
 import {
@@ -11,7 +11,6 @@ import {
 } from '../insights/recoveryFile';
 import type { InsightsRecovery } from '../insights/envelope';
 import { parseShareCode, ShareLinkError } from '../shareLinks/client';
-import { TeacherJourney } from './TeacherHomeView';
 import { validateRecoveryPassphrase } from '../sync/pairingConfig';
 
 type Mode = 'create' | 'restore' | 'download';
@@ -27,7 +26,7 @@ export function TeacherKeySetup({
   onContinue,
   courseName,
 }: {
-  onClose(): void;
+  onClose?(): void;
   initialCourse?: string;
   courseName?: string;
   initialMode?: Mode;
@@ -73,7 +72,7 @@ export function TeacherKeySetup({
         const saved = parseInsightsRecoveryFile(await file.text());
         if (initialCourse && saved.shareId !== initialCourse) {
           setError(
-            'This recovery file belongs to another class. Choose the recovery file for this class, or go back to classes.',
+            'This recovery file belongs to another class. Choose the recovery file for this class.',
           );
           return;
         }
@@ -132,63 +131,57 @@ export function TeacherKeySetup({
   }
 
   return (
-    <SectionCard aria-labelledby="key-setup-heading">
-      <h2 tabIndex={-1} id="key-setup-heading" className="font-display text-2xl">
-        {initialCourse ? 'Protect your class reports' : 'Class recovery'}
-      </h2>
-      {initialCourse && (
-        <div className="mt-5">
-          <TeacherJourney current={2} />
-        </div>
-      )}
-      {courseName && <p className="mt-2 font-semibold">{courseName}</p>}
-      <p className="mt-3 max-w-2xl text-sm text-ink-soft">
-        {mode === 'create'
-          ? 'Choose a recovery passphrase to protect pupil results. Next, download the recovery file. Keep the file and passphrase separately; you need both if this browser loses its saved key.'
-          : 'Use the recovery passphrase you chose for this class. To restore access on a new device, you also need its saved recovery file. Keep that file and passphrase separately.'}{' '}
-        This is separate from your course connection file.
-      </p>
+    <div className="space-y-5">
+      {courseName && <p className="font-semibold">{courseName}</p>}
       {prepared ? (
-        <div className="mt-5 space-y-3">
-          <p role="status" className="text-sm text-ink">
-            Class protected. Download its recovery file.
-          </p>
-          <details className="text-sm text-ink-soft">
-            <summary>Technical details</summary>
-            <p className="mt-3">
-              Course code: <code className="break-all">{prepared.shareId}</code>
+        <div className="gaps-fade space-y-5">
+          <div className="flex items-center gap-4 rounded-2xl bg-positive/10 p-4">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-positive text-paper">
+              <CheckIcon width={20} height={20} />
+            </span>
+            <p role="status" className="font-semibold">
+              Class protected. Download its recovery file.
             </p>
-            <p className="text-sm text-ink-soft">
-              Key fingerprint:{' '}
-              <code className="break-all">{prepared.recovery.recipient.keyId}</code>
-            </p>
-          </details>
+          </div>
           <p className="text-sm text-ink-soft">
-            Protecting this class does not start reporting. Pupils must join the class and choose to
-            share results.
+            Keep the file and passphrase apart. Protecting this class does not start reporting:
+            pupils join and choose to share.
           </p>
           <button
             type="button"
             onClick={download}
-            className={buttonClassName(downloaded && onContinue ? 'secondary' : 'primary')}
+            className={`${buttonClassName(downloaded && onContinue ? 'secondary' : 'primary', 'lg')} w-full`}
           >
             Download encrypted recovery file
           </button>
           {downloaded && (
-            <p className="text-sm text-ink-soft">
-              Download requested. Check your Downloads folder and keep the file somewhere safe
-              before continuing.
+            <p className="gaps-fade text-sm text-ink-soft">
+              Download requested. Keep it somewhere safe.
             </p>
           )}
           {onContinue && downloaded && (
-            <button type="button" className={buttonClassName('primary')} onClick={onContinue}>
+            <button
+              type="button"
+              className={`${buttonClassName('primary', 'lg')} gaps-fade w-full`}
+              onClick={onContinue}
+            >
               Continue to class
             </button>
           )}
+          <details className="text-xs text-ink-faint">
+            <summary className="cursor-pointer">Technical details</summary>
+            <p className="mt-2">
+              Course code: <code className="break-all">{prepared.shareId}</code>
+            </p>
+            <p>
+              Key fingerprint:{' '}
+              <code className="break-all">{prepared.recovery.recipient.keyId}</code>
+            </p>
+          </details>
         </div>
       ) : (
-        <form onSubmit={(event) => void submit(event)} className="teacher-task mt-5 space-y-4">
-          <fieldset disabled={busy} className="space-y-4">
+        <form onSubmit={(event) => void submit(event)} className="space-y-5">
+          <fieldset disabled={busy} className="space-y-5">
             <Field label="What do you need to do?">
               <select
                 value={mode}
@@ -207,40 +200,33 @@ export function TeacherKeySetup({
               </select>
             </Field>
             {mode === 'restore' ? (
-              <Field
-                label="Encrypted recovery file"
-                hint="Select the Gaps JSON recovery file you saved earlier."
-              >
+              <Field label="Encrypted recovery file">
                 <Input
                   type="file"
                   accept=".json,application/json"
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}
                 />
               </Field>
-            ) : initialCourse ? (
-              <p className="text-sm text-ink-soft">
-                Setting up the selected class. No course link is needed.
-              </p>
             ) : (
-              <Field
-                label="Published course link"
-                hint="Paste the course’s Lacuna share link or its 32-character code."
-              >
-                <Input
-                  value={course}
-                  onChange={(event) => setCourse(event.target.value)}
-                  autoComplete="off"
-                  spellCheck={false}
-                  required
-                />
-              </Field>
+              !initialCourse && (
+                <Field
+                  label="Published course link"
+                  hint="The share link or its 32-character code."
+                >
+                  <Input
+                    value={course}
+                    onChange={(event) => setCourse(event.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                    required
+                  />
+                </Field>
+              )
             )}
             <Field
               label="Recovery passphrase"
               hint={
-                mode === 'create'
-                  ? 'Use several unrelated words, at least 16 characters. A short PIN is not enough.'
-                  : undefined
+                mode === 'create' ? 'Several unrelated words, at least 16 characters.' : undefined
               }
             >
               <Input
@@ -262,7 +248,10 @@ export function TeacherKeySetup({
                 />
               </Field>
             )}
-            <button type="submit" className={buttonClassName('primary')}>
+            <button
+              type="submit"
+              className={`${buttonClassName('primary', 'lg')} gaps-press w-full`}
+            >
               {busy
                 ? 'Preparing key…'
                 : mode === 'create'
@@ -275,18 +264,20 @@ export function TeacherKeySetup({
         </form>
       )}
       {error && (
-        <p role="alert" className="mt-3 text-sm text-negative">
+        <p role="alert" className="gaps-shake text-sm text-negative">
           {error}
         </p>
       )}
-      <button
-        type="button"
-        disabled={busy}
-        onClick={onClose}
-        className={`${buttonClassName('ghost')} mt-4`}
-      >
-        Back to classes
-      </button>
-    </SectionCard>
+      {onClose && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onClose}
+          className={buttonClassName('ghost')}
+        >
+          Back to classes
+        </button>
+      )}
+    </div>
   );
 }

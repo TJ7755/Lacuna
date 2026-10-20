@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openSidebarItem } from './fixtures/gaps';
 
 test.skip(
   process.env.LACUNA_BROWSER_SITE !== 'gaps',
@@ -52,30 +53,31 @@ for (const width of [1280, 390]) {
     });
 
     await page.goto('/?source=trial');
-    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeAttached();
     await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
-    await expect(page.getByText('Daily class reports', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Teacher keys' })).toHaveCount(0);
-    await page.getByText('About daily reports and pupil privacy', { exact: true }).click();
-    await expect(page.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
-      'href',
-      'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
-    );
-    await page.screenshot({ path: testInfo.outputPath('gaps-home.png'), fullPage: true });
-    await page.getByText('Where do I get a connection file?', { exact: true }).click();
     await expect(page).toHaveTitle('Gaps · Lacuna');
-    await expect(page.getByRole('link', { name: 'Open sharing on the main site' })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: 'Open Share in Lacuna' })).toHaveAttribute(
       'href',
       'https://getlacuna.app/#/share',
     );
     await expect(page.getByRole('table')).toHaveCount(0);
-    await page.screenshot({ path: testInfo.outputPath('gaps-standalone.png'), fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('gaps-home.png'), fullPage: true });
+    await openSidebarItem(page, 'About Gaps');
+    await expect(page.getByRole('heading', { name: 'About Gaps', level: 1 })).toBeFocused();
+    const about = page.getByRole('main');
+    await expect(about.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
+      'href',
+      'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
+    );
+    await expect(about).toContainText('no report does not mean no study');
+    await page.screenshot({ path: testInfo.outputPath('gaps-about.png'), fullPage: true });
 
     // Legacy learner links must remain teacher-only on this build, including reloads.
     await page.goto('/#/share');
-    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
     await page.reload();
-    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
     const state = await page.evaluate(async () => ({
       calls: (window as unknown as { __teacherStartupCalls: string[] }).__teacherStartupCalls,
       databases: await indexedDB.databases(),
@@ -142,7 +144,6 @@ test('standalone Gaps leaves existing learner storage intact', async ({ page }) 
     localStorage.setItem('lacuna-seeded', '1');
   });
   await page.goto('/#/teach');
-  await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
   expect(
     await page.evaluate(async () => ({
@@ -168,18 +169,17 @@ test('uses Lacuna’s saved light theme and supports keyboard connection entry a
   await page.addInitScript(() => localStorage.setItem('lacuna-theme', 'light'));
   await page.goto('/');
   await expect(page.locator('html')).not.toHaveClass(/dark/);
-  await page.getByRole('button', { name: 'Connect a class' }).click();
-  await expect(page.getByLabel(/^Encrypted connection file/)).toBeFocused();
+  // With no classes the form is already on the page; the sidebar's shortcut focuses it.
+  const form = page.getByRole('form', { name: 'Connect a class' });
+  await expect(form).toBeVisible();
+  await openSidebarItem(page, 'Connect a class');
+  await expect(form.getByLabel('Connection file')).toBeFocused();
   await page.keyboard.press('Tab');
-  await expect(page.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
-  await page.getByLabel('Connection passphrase', { exact: true }).fill('temporary phrase');
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(page.getByRole('form', { name: 'Connect a class' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Connect a class' }).click();
-  await expect(page.getByLabel('Connection passphrase', { exact: true })).toHaveValue('');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(form.getByLabel('Connection passphrase', { exact: true })).toBeFocused();
+  await form.getByLabel('Connection passphrase', { exact: true }).fill('temporary phrase');
   await page.screenshot({
     path: testInfo.outputPath('gaps-connect-light-mobile.png'),
     fullPage: true,
   });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

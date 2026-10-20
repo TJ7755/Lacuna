@@ -205,6 +205,12 @@ export const RestoreIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const RefreshIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" />
+  </Icon>
+);
+
 export const ClockIcon = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="9" />

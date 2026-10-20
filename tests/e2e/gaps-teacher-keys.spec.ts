@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
+import { openSidebarItem } from './fixtures/gaps';
 
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'gaps', 'Requires the standalone Gaps build');
 
@@ -15,11 +16,9 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     if (['xhr', 'fetch'].includes(request.resourceType())) requests.push(request.url());
   });
   await page.goto('/');
-  await page.getByText('Recover a class or save another recovery file', { exact: true }).click();
-  await page.getByRole('button', { name: 'Open recovery options' }).click();
-  await expect(page.getByRole('heading', { name: 'Class recovery' })).toBeVisible();
+  await openSidebarItem(page, 'Recover a class');
+  await expect(page.getByRole('heading', { name: 'Recover a class', level: 1 })).toBeVisible();
   await page.getByLabel('What do you need to do?').selectOption('create');
-  await expect(page.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(0);
   expect(await page.evaluate(() => indexedDB.databases())).toEqual([
     { name: 'lacuna.gaps.connections', version: 10 },
   ]);
@@ -42,8 +41,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
   ).toEqual(['lacuna.gaps.connections', 'lacuna.gaps.owner-keys']);
   await page.screenshot({ path: testInfo.outputPath('teacher-key-saved.png'), fullPage: true });
   await page.reload();
-  await page.getByText('Recover a class or save another recovery file', { exact: true }).click();
-  await page.getByRole('button', { name: 'Open recovery options' }).click();
+  await openSidebarItem(page, 'Recover a class');
   await page.getByLabel('What do you need to do?').selectOption('download');
   await page.getByLabel(/Published course link/).fill(shareId);
   await page.getByLabel('Recovery passphrase').fill(passphrase);
@@ -59,10 +57,7 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
       if (['xhr', 'fetch'].includes(request.resourceType())) freshRequests.push(request.url());
     });
     await restored.goto(new URL('/', page.url()).href);
-    await restored
-      .getByText('Recover a class or save another recovery file', { exact: true })
-      .click();
-    await restored.getByRole('button', { name: 'Open recovery options' }).click();
+    await openSidebarItem(restored, 'Recover a class');
     await restored.getByLabel('What do you need to do?').selectOption('restore');
     await restored.getByLabel(/Encrypted recovery file/).setInputFiles({
       name: 'teacher.json',
@@ -74,9 +69,6 @@ test('creates an encrypted file, restores it in a fresh browser and keeps learne
     await expect(restored.getByRole('alert')).toContainText('Could not open class recovery', {
       timeout: 15_000,
     });
-    await expect(restored.getByRole('heading', { name: 'Connect your first class' })).toHaveCount(
-      0,
-    );
     expect(await restored.evaluate(() => indexedDB.databases())).toEqual([
       { name: 'lacuna.gaps.connections', version: 10 },
     ]);

@@ -1,69 +1,142 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
-import { StandaloneTeacherHome } from './StandaloneTeacherHome';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, expect, it, vi } from 'vitest';
+import {
+  StandaloneTeacherHome,
+  type ClassRequest,
+  type ClassSession,
+} from './StandaloneTeacherHome';
+import { ThemeProvider } from '../state/ThemeContext';
 
 const course = { shareId: 'a'.repeat(32), courseName: 'Biology', verifiedAt: 0 };
+const { store } = vi.hoisted(() => ({ store: { list: vi.fn(), close: vi.fn() } }));
+vi.mock('./connectionStore', () => ({ createGapsConnectionStore: () => store }));
 vi.mock('./TeacherCourses', () => ({
-  TeacherCourses: ({
-    onOpenClass,
-    onPrepareKey,
+  TodayPage: ({
+    connectRequest,
+    onOpen,
+    onConnected,
   }: {
-    onOpenClass(selected: typeof course): void;
-    onPrepareKey(selected: typeof course): void;
+    connectRequest: number;
+    onOpen(selected: typeof course): void;
+    onConnected(selected: typeof course): void;
   }) => (
     <section>
-      <h2 tabIndex={-1}>Your classes</h2>
-      <button onClick={() => onOpenClass(course)}>Open class</button>
-      <button onClick={() => onPrepareKey(course)}>Set up class</button>
+      <h1 tabIndex={-1} data-page-title>
+        Today
+      </h1>
+      <button onClick={() => onOpen(course)}>Open class</button>
+      {connectRequest > 0 && <button onClick={() => onConnected(course)}>Finish connecting</button>}
     </section>
   ),
 }));
 vi.mock('./TeacherClassReports', () => ({
-  TeacherClassReports: ({ onClose }: { onClose(): void }) => (
+  ClassPage: ({
+    session,
+    request,
+    onUnlocked,
+    onLock,
+  }: {
+    session: ClassSession | null;
+    request: ClassRequest | null;
+    onUnlocked(session: ClassSession): void;
+    onLock(): void;
+  }) => (
     <section>
-      <h2 tabIndex={-1}>Biology reports</h2>
-      <button onClick={onClose}>Close and lock</button>
+      <h1 tabIndex={-1} data-page-title>
+        Biology
+      </h1>
+      <p>{session ? 'Unlocked' : request ? `Asking to ${request.kind}` : 'Locked'}</p>
+      <button onClick={() => onUnlocked({ days: new Map() } as unknown as ClassSession)}>
+        Pretend unlock
+      </button>
+      <button onClick={onLock}>Lock</button>
     </section>
   ),
 }));
 vi.mock('./TeacherKeySetup', () => ({
   TeacherKeySetup: ({
     initialCourse,
-    onContinue,
+    initialMode,
   }: {
     initialCourse?: string;
-    onContinue?(): void;
+    initialMode?: string;
   }) => (
-    <section>
-      <h2 tabIndex={-1}>Protect {initialCourse}</h2>
-      <button onClick={onContinue}>Continue to class</button>
-    </section>
+    <p>
+      {initialMode} {initialCourse ?? 'any class'}
+    </p>
   ),
 }));
 
-it('shows only the selected workspace and returns focus to the class list after close', async () => {
-  render(<StandaloneTeacherHome />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Open class' }));
-  const heading = await screen.findByRole('heading', { name: 'Biology reports' });
-  await waitFor(() => expect(heading).toHaveFocus());
-  expect(screen.queryByRole('heading', { name: 'Your classes' })).not.toBeInTheDocument();
-  expect(
-    screen.queryByText('Recover a class or save another recovery file'),
-  ).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Close and lock' }));
-  await waitFor(() => expect(screen.getByRole('heading', { name: 'Your classes' })).toHaveFocus());
-  expect(screen.queryByRole('heading', { name: 'Biology reports' })).not.toBeInTheDocument();
+beforeEach(() => {
+  vi.clearAllMocks();
+  store.list.mockResolvedValue([course]);
 });
 
-it('carries the selected class through setup and into its locked report workspace', async () => {
-  render(<StandaloneTeacherHome />);
-  fireEvent.click(await screen.findByRole('button', { name: 'Set up class' }));
-  await waitFor(() =>
-    expect(screen.getByRole('heading', { name: `Protect ${course.shareId}` })).toHaveFocus(),
+function show() {
+  render(
+    <ThemeProvider>
+      <StandaloneTeacherHome />
+    </ThemeProvider>,
   );
-  expect(screen.queryByRole('button', { name: 'Open class' })).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Continue to class' }));
-  await waitFor(() =>
-    expect(screen.getByRole('heading', { name: 'Biology reports' })).toHaveFocus(),
+}
+
+it('asks to unlock a locked class on open, leaving focus for its passphrase', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Open class' }));
+  const heading = await screen.findByRole('heading', { name: 'Biology' });
+  expect(screen.getByText('Asking to unlock')).toBeVisible();
+  expect(heading).not.toHaveFocus();
+  const nav = screen.getAllByRole('navigation', { name: 'Classes' })[0];
+  expect(within(nav).getByRole('button', { name: 'Biology' })).toHaveAttribute(
+    'aria-current',
+    'page',
   );
+});
+
+it('keeps an unlocked class open across pages until it is locked', async () => {
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Open class' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Pretend unlock' }));
+  expect(screen.getByText('Unlocked')).toBeVisible();
+  const nav = screen.getAllByRole('navigation', { name: 'Classes' })[0];
+  fireEvent.click(within(nav).getByRole('button', { name: 'Today' }));
+  // A plain page change moves focus to the new title, as a route change would.
+  const today = await screen.findByRole('heading', { name: 'Today' });
+  await waitFor(() => expect(today).toHaveFocus());
+  fireEvent.click(within(nav).getByRole('button', { name: 'Biology' }));
+  expect(await screen.findByText('Unlocked')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+  expect(screen.getByText('Locked')).toBeVisible();
+});
+
+it('carries a new connection from the sidebar to protecting its class', async () => {
+  show();
+  const nav = (await screen.findAllByRole('navigation', { name: 'Classes' }))[0];
+  fireEvent.click(within(nav).getByRole('button', { name: 'Connect a class' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Finish connecting' }));
+  expect(await screen.findByText('Asking to setup')).toBeVisible();
+  expect(store.list).toHaveBeenCalledTimes(2);
+  // Once unlocked, the set-up request is spent: locking shows the plain card.
+  fireEvent.click(screen.getByRole('button', { name: 'Pretend unlock' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+  expect(screen.getByText('Locked')).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+});
+
+it('opens recovery and the explanation of Gaps as pages from the sidebar', async () => {
+  show();
+  const more = (await screen.findAllByRole('navigation', { name: 'More' }))[0];
+  fireEvent.click(within(more).getByRole('button', { name: 'Recover a class' }));
+  const title = await screen.findByRole('heading', { name: 'Recover a class' });
+  expect(await screen.findByText('restore any class')).toBeInTheDocument();
+  await waitFor(() => expect(title).toHaveFocus());
+  expect(within(more).getByRole('button', { name: 'Recover a class' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+  fireEvent.click(within(more).getByRole('button', { name: 'About Gaps' }));
+  await screen.findByRole('heading', { name: 'About Gaps' });
+  expect(screen.getByText(/no report does not mean no study/)).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'School data notice' })).toBeVisible();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
