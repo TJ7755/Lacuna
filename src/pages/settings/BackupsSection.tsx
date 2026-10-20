@@ -222,18 +222,40 @@ export function BackupsSection() {
     <>
       <BackupHero ref={backupNowButton} lastAt={lastAt} onBackUp={handleBackupNow}>
         {supportsPersistenceRequest && persistence && (
-          <div className={cn(subtleRow, !persistence.persisted && 'bg-negative/10')}>
+          <div className={subtleRow}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-ink">
                   {persistence.persisted ? 'Storage is persisted' : 'Storage is not persisted'}
                 </div>
-                <p className="text-xs text-ink-soft">
+                <p
+                  className="text-xs text-ink-soft"
+                  role={persistence.supported && !persistence.persisted ? 'note' : undefined}
+                  aria-label={
+                    persistence.supported && !persistence.persisted ? 'Browser storage' : undefined
+                  }
+                >
                   {persistence.supported ? (
                     <>
-                      {persistence.persisted
-                        ? 'The browser will not delete this data under storage pressure.'
-                        : 'The browser may delete this data under storage pressure. Regular exports or folder mirroring are the safeguard.'}
+                      {persistence.persisted ? (
+                        'The browser will not delete this data under storage pressure.'
+                      ) : (
+                        <>
+                          This browser may clear Lacuna’s data, for example on shared or
+                          school-managed devices. Keep a copy with{' '}
+                          <a
+                            className="text-accent-ink underline"
+                            href="#/settings#settings-backups"
+                          >
+                            Backups
+                          </a>{' '}
+                          or{' '}
+                          <a className="text-accent-ink underline" href="#/settings#settings-sync">
+                            Device sync
+                          </a>
+                          .
+                        </>
+                      )}
                       {persistence.usage !== null &&
                         persistence.usage !== undefined &&
                         persistence.quota !== null &&

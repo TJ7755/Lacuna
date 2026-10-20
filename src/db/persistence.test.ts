@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  requestPersistentStorage,
-  checkPersistentStorage,
-} from './persistence';
+import { requestPersistentStorage, checkPersistentStorage } from './persistence';
 
 describe('persistent storage', () => {
   let storageMock: {
@@ -29,7 +26,11 @@ describe('persistent storage', () => {
   });
 
   it('returns unsupported when the Storage API is absent', async () => {
-    Object.defineProperty(navigator, 'storage', { value: undefined, configurable: true, writable: true });
+    Object.defineProperty(navigator, 'storage', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
     const state = await checkPersistentStorage();
     expect(state.supported).toBe(false);
     expect(state.persisted).toBe(false);
@@ -60,7 +61,7 @@ describe('persistent storage', () => {
   });
 
   it('requests persistence and returns granted when the browser accepts', async () => {
-    storageMock.persisted.mockResolvedValue(false);
+    storageMock.persisted.mockResolvedValueOnce(false).mockResolvedValue(true);
     storageMock.persist.mockResolvedValue(true);
     storageMock.estimate.mockResolvedValue({ usage: 0, quota: 0 });
 
@@ -68,6 +69,18 @@ describe('persistent storage', () => {
     expect(state.supported).toBe(true);
     expect(state.persisted).toBe(true);
     expect(state.granted).toBe(true);
+  });
+
+  it('reports the actual persistence state after the request, separately from its result', async () => {
+    storageMock.persisted.mockResolvedValue(false);
+    storageMock.persist.mockResolvedValue(true);
+    storageMock.estimate.mockResolvedValue({});
+
+    expect(await requestPersistentStorage()).toMatchObject({
+      supported: true,
+      persisted: false,
+      granted: true,
+    });
   });
 
   it('does not ask again when persistence is already granted', async () => {

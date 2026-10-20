@@ -52,8 +52,9 @@ export async function requestPersistentStorage(): Promise<StoragePersistenceStat
   }
 
   const granted = await navigator.storage.persist();
+  const persistedAfterRequest = await navigator.storage.persisted();
   const est = await runEstimate();
-  return { supported: true, persisted: granted, granted, ...est };
+  return { supported: true, persisted: persistedAfterRequest, granted, ...est };
 }
 
 /** Read the current persistence state without requesting it. */
