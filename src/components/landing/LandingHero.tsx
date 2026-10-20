@@ -18,9 +18,6 @@ export function LandingHero() {
       style={{ '--reel-duration': `${24 * (multiplier || 1)}s` } as CSSProperties}
     >
       <div className="motion-opening-content">
-        <div className="motion-opening-mark" aria-hidden="true">
-          <LacunaIcon />
-        </div>
         <h1 aria-label="Your revision, built around your exam.">
           <span className="motion-opening-line">
             Your revision
@@ -60,13 +57,13 @@ export function LandingHero() {
 export function LandingHeader() {
   const [docked, setDocked] = useState(false);
   useEffect(() => {
-    const heroMark = document.querySelector('.motion-opening-mark');
-    if (!heroMark) return;
+    const heroHeadline = document.querySelector('.motion-opening h1');
+    if (!heroHeadline) return;
     const observer = new IntersectionObserver(
       ([entry]) => setDocked(entry.boundingClientRect.bottom <= 96),
       { rootMargin: '-96px 0px 0px 0px' },
     );
-    observer.observe(heroMark);
+    observer.observe(heroHeadline);
     return () => observer.disconnect();
   }, []);
   return (

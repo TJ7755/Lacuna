@@ -5,6 +5,21 @@ import { Landing } from '../../pages/Landing';
 
 vi.mock('../welcome/useSmoothScroll', () => ({ useSmoothScroll: vi.fn() }));
 
+it('keeps branding in the navigation and hero artwork limited to revision illustrations', () => {
+  render(
+    <MemoryRouter>
+      <Landing />
+    </MemoryRouter>,
+  );
+  const nav = screen.getByRole('navigation', { name: 'Landing navigation' });
+  expect(nav.querySelector('.landing-brand svg')).not.toBeNull();
+  const hero = screen.getByRole('heading', { level: 1 }).closest('section')!;
+  const standaloneArtwork = [...hero.querySelectorAll('svg')].filter(
+    (svg) => !svg.closest('h1, a, button'),
+  );
+  expect(standaloneArtwork).toHaveLength(0);
+});
+
 it('points discovery and keyboard skip at the first section', () => {
   render(
     <MemoryRouter>
