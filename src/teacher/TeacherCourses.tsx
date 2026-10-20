@@ -104,7 +104,7 @@ export function TodayPage({
         </span>
         <span className="inline-flex items-center gap-2">
           <ClockIcon width={20} height={20} className="max-sm:hidden" />
-          {dayLabel(day)}
+          Reports for {dayLabel(day)} (UTC)
         </span>
         {courses.length > 0 && (
           <ExpandingAction

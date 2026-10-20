@@ -1,0 +1,1 @@
+- Label the Gaps home date as the reporting day in UTC so the latest completed day is not mistaken for today. (#667)

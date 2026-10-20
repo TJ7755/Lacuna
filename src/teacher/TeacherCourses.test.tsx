@@ -18,6 +18,12 @@ beforeEach(() => {
   store.list.mockResolvedValue([]);
 });
 
+it.each([{ courses: [] }, { courses: [biology] }])('labels the completed reporting day explicitly for %j', ({ courses }) => {
+  render(<TodayPage courses={courses} sessions={new Map()} day={day} connectRequest={0}
+    onOpen={vi.fn()} onConnected={vi.fn()} />);
+  expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
+});
+
 it('opens the connection form on the page when there are no classes', () => {
   const page = render(
     <TodayPage
