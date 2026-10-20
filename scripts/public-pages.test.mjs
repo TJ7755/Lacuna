@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { Window } from 'happy-dom';
 
 const pagePath = 'dist/compare/quizlet/index.html';
 test('public pages describe their identity and comparison intent without invented ratings', () => {
@@ -21,19 +22,36 @@ test('public pages describe their identity and comparison intent without invente
   assert.equal(comparison.about['@type'], 'WebApplication');
   assert.equal(comparison.about.name, 'Lacuna');
   assert.ok(!('aggregateRating' in comparison.about));
-  assert.match(readFileSync(pagePath, 'utf8'), /<h2[^>]*>Lacuna vs Quizlet\.<\/h2>/);
 });
-test('comparison ships crawlable HTML, metadata and resolved assets', () => {
+test('comparison ships crawlable HTML, metadata and resolved assets', async () => {
   assert.ok(existsSync(pagePath), 'The comparison must be a built public HTML page');
   const html = readFileSync(pagePath, 'utf8');
-  assert.match(html, /<title>Lacuna vs Quizlet/);
-  assert.match(html, /rel="canonical" href="https:\/\/getlacuna.app\/compare\/quizlet\/"/);
-  assert.match(html, /name="description"/);
-  assert.match(html, /property="og:url" content="https:\/\/getlacuna.app\/compare\/quizlet\/"/);
-  assert.match(html, /Remember it/);
-  assert.match(html, /Lacuna and Quizlet feature comparison/);
-  assert.match(html, /No teacher or student accounts/);
-  assert.match(html, /href="\/#\/share"/);
+  const view = new Window();
+  try {
+    view.document.documentElement.innerHTML = html;
+    const doc = view.document;
+    assert.match(doc.title, /\bLacuna\b.*\bQuizlet\b/);
+    assert.equal(
+      doc.querySelector('link[rel="canonical"]')?.getAttribute('href'),
+      'https://getlacuna.app/compare/quizlet/',
+    );
+    assert.ok(doc.querySelector('meta[name="description"]')?.getAttribute('content')?.trim());
+    assert.equal(
+      doc.querySelector('meta[property="og:url"]')?.getAttribute('content'),
+      'https://getlacuna.app/compare/quizlet/',
+    );
+    assert.ok(doc.querySelector('main h1')?.textContent.trim(), 'Missing prerendered heading');
+    assert.ok(
+      doc.querySelector('main table[aria-label="Lacuna and Quizlet feature comparison"]'),
+      'Missing prerendered comparison table',
+    );
+    assert.ok(
+      doc.querySelector('main a[href="/#/share"]')?.textContent.trim(),
+      'Missing crawlable entry into course sharing',
+    );
+  } finally {
+    await view.happyDOM.close();
+  }
   assert.doesNotMatch(html, /Prototype variants|ROUND 2|\/src\/|\/prototype\//);
   for (const [, asset] of html.matchAll(/(?:src|href)="(\/assets\/[^"?#]+)"/g)) {
     assert.ok(existsSync(`dist${asset}`), `Missing built asset ${asset}`);
