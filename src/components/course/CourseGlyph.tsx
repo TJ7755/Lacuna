@@ -1,6 +1,6 @@
 import { m as motion } from 'motion/react';
 import { MOTION_EASING } from '../ui/motion';
-import { courseColour } from '../../course/colour';
+import { useCourseColours } from '../../state/ShellCourseData';
 
 // The ring opens at the top: an arc of 300 degrees from 2 o'clock round to
 // 10 o'clock, leaving a gap where the four load dots sit.
@@ -69,9 +69,10 @@ export function CourseGlyph({
   size?: number | string;
   multiplier: number;
 }) {
+  const colours = useCourseColours();
   const fill = glyphFill(recall);
   const scale = days === null ? 0 : glyphDaysScale(days);
-  const colour = courseId === undefined ? undefined : courseColour(courseId);
+  const colour = courseId === undefined ? undefined : colours.get(courseId);
   return (
     <span
       aria-hidden="true"
@@ -106,7 +107,7 @@ export function CourseGlyph({
           <motion.path
             d={RING}
             fill="none"
-            stroke={colour ?? RING_COLOUR[status]}
+            stroke={RING_COLOUR[status]}
             strokeWidth={3.5}
             strokeLinecap="round"
             initial={multiplier > 0 ? { pathLength: 0 } : false}

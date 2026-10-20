@@ -5,7 +5,7 @@ import { MOTION_EASING } from '../ui/motion';
 import { formatDate, formatShortDate } from '../../utils/datetime';
 import type { CourseForecast, ForecastPoint } from '../../fsrs/courseForecast';
 import { STATUS_LABEL, type ForecastStatus } from './forecastStatus';
-import { courseColour } from '../../course/colour';
+import { useCourseColours } from '../../state/ShellCourseData';
 
 export interface ForecastLine {
   id: string;
@@ -146,6 +146,7 @@ export function ForecastChart({
   future: number;
   multiplier: number;
 }) {
+  const colours = useCourseColours();
   const titleId = useId();
   const { ref, W, H, narrow } = useChartSize();
   const [focus, setFocus] = useState<string | null>(null);
@@ -159,7 +160,7 @@ export function ForecastChart({
     return [...ranked, ...inputLines.filter((line) => !ids.has(line.id))];
   }, [inputLines, spotlit]);
   const hidden = lines.length - spotlit;
-  const colour = (index: number) => courseColour(lines[index].id);
+  const colour = (index: number) => colours.get(lines[index].id);
   const target = lines[0]?.forecast.target ?? 0.9;
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 

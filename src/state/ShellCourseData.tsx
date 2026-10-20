@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { finalAssessmentForCourse, hydrateCourse } from '../db/assessmentMigration';
 import { performanceForCards } from '../db/backingDecks';
@@ -10,6 +10,7 @@ import { buildDeckSecondsMap, computeStudyStats, type StudyStats } from '../fsrs
 import { computeCourseSummaries, type CourseSummary } from './courseSummaries';
 import { dashboardForecasts } from './dashboardForecasts';
 import type { CourseForecast } from '../fsrs/courseForecast';
+import { courseColours } from '../course/colour';
 import { lessonOrder } from '../course/assessmentCoverage';
 
 interface SidebarData {
@@ -186,4 +187,14 @@ export function useCourseForecast(courseId: string | undefined): CourseForecast 
 
 export function useCourseDashboardData(): CourseDashboardData | undefined {
   return useShellCourseData()?.dashboard;
+}
+
+/** Course identity uses the same complete course list as navigation and the dashboard. */
+export function useCourseColours(): ReadonlyMap<string, string> {
+  const courses = useContext(ShellCourseDataContext)?.sidebar.courses;
+  return useMemo(
+    () =>
+      courseColours(courses?.filter((course) => !course.archived).map((course) => course.id) ?? []),
+    [courses],
+  );
 }

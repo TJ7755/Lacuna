@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { MOTION_DURATION, MOTION_EASING } from '../ui/motion';
 import { prefetchRoute } from '../../routes/prefetch';
 import type { ForecastStatus } from './forecastStatus';
-import { courseColour } from '../../course/colour';
+import { useCourseColours } from '../../state/ShellCourseData';
 import { contextMenuHandlers } from '../ui/contextMenu';
 import type { CourseSummary } from '../../state/courseSummaries';
 import './TodayQueue.css';
@@ -79,6 +79,7 @@ export function TodayQueue({
   onMenu: (id: string, position: { x: number; y: number }, trigger: HTMLButtonElement) => void;
   openMenuId?: string;
 }) {
+  const colours = useCourseColours();
   const navigate = useNavigate();
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const menuButtons = useRef(new Map<string, HTMLButtonElement>());
@@ -130,7 +131,7 @@ export function TodayQueue({
             <span
               aria-hidden="true"
               className="h-2.5 w-2.5 shrink-0 rounded-full"
-              style={{ background: courseColour(row.id) }}
+              style={{ background: colours.get(row.id) }}
             />
             <button
               type="button"

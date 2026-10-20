@@ -1,25 +1,32 @@
-import { describe, expect, it, vi } from 'vitest';
-import { courseColour } from './colour';
+import { describe, expect, it } from 'vitest';
+import { courseColours } from './colour';
 
-describe('courseColour', () => {
-  it('keeps identity stable across reordered, filtered and newly loaded consumers', async () => {
-    const ids = ['biology', 'history', 'physics'];
-    const initial = new Map(ids.map((id) => [id, courseColour(id)]));
-    for (const id of [...ids].reverse().slice(1)) {
-      expect(courseColour(id)).toBe(initial.get(id));
-    }
-    courseColour('unrelated-new-course');
-    vi.resetModules();
-    const reloaded = await import('./colour');
-    for (const id of ids) expect(reloaded.courseColour(id)).toBe(initial.get(id));
-    expect(initial.get('biology')).not.toBe(initial.get('history'));
-  });
+const ids = ['biology', 'history', 'physics', 'chemistry', '生物学', 'c'.repeat(200)];
 
-  it('uses theme tokens for every palette slot, including long and non-ASCII IDs', () => {
-    const ids = ['a', 'b', 'c', 'd', 'e', 'f', '生物学', 'c'.repeat(200)];
-    const tokens = ['accent-ink', 'series-1', 'series-2', 'series-3', 'series-4', 'series-5'];
-    for (const id of ids)
-      expect(tokens.map((token) => `hsl(var(--${token}))`)).toContain(courseColour(id));
-    expect(new Set(ids.slice(0, 6).map(courseColour)).size).toBe(6);
+describe('courseColours', () => {
+  it.each([1, 2, 3, 4, 5, 6])(
+    'assigns %i courses distinct palette slots regardless of input order',
+    (count) => {
+      const courses = ids.slice(0, count);
+      const colours = courseColours(courses);
+      expect(new Set(colours.values()).size).toBe(count);
+      expect(courseColours([...courses].reverse())).toEqual(colours);
+      expect(courseColours([...courses.slice(1), courses[0]])).toEqual(colours);
+      expect(courses).toEqual(ids.slice(0, count));
+    },
+  );
+
+  it('uses the existing palette in ID order and cycles only beyond six courses', () => {
+    const colours = courseColours(['g', 'f', 'e', 'd', 'c', 'b', 'a', 'a']);
+    expect([...colours]).toEqual([
+      ['a', 'hsl(var(--accent-ink))'],
+      ['b', 'hsl(var(--series-1))'],
+      ['c', 'hsl(var(--series-2))'],
+      ['d', 'hsl(var(--series-3))'],
+      ['e', 'hsl(var(--series-4))'],
+      ['f', 'hsl(var(--series-5))'],
+      ['g', 'hsl(var(--accent-ink))'],
+    ]);
+    expect(courseColours([]).size).toBe(0);
   });
 });

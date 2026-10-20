@@ -1,22 +1,29 @@
 import { render, screen, within } from '@testing-library/react';
 import { domAnimation, LazyMotion } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ForecastChart, type ForecastLine } from '../dashboard/ForecastChart';
 import { TodayQueue, type QueueRow } from '../dashboard/TodayQueue';
 import { CourseRow } from '../layout/SidebarCourseRow';
 import { SidebarFrame } from '../layout/SidebarMotion';
+import { courseColours } from '../../course/colour';
+
+vi.mock('../../state/ShellCourseData', () => ({
+  useCourseColours: () => courseColours(courses.map((course) => course.id)),
+}));
 
 const courses = [
   { id: 'biology', name: 'Biology' },
   { id: 'history', name: 'History' },
+  { id: 'physics', name: 'Physics' },
 ];
 const now = Date.UTC(2026, 9, 20);
 
 describe('course identity colours', () => {
   it('keeps the same course colour in the queue, sidebar, legend and series after ranking changes', () => {
-    const view = (reverse: boolean) => {
-      const ordered = reverse ? [...courses].reverse() : courses;
+    const view = (reverse: boolean, filtered = false) => {
+      const visible = filtered ? courses.slice(1) : courses;
+      const ordered = reverse ? [...visible].reverse() : visible;
       const lines: ForecastLine[] = ordered.map((course, index) => ({
         ...course,
         status: 'steady',
@@ -50,7 +57,12 @@ describe('course identity colours', () => {
                     key={course.id}
                     courseId={course.id}
                     courseName={course.name}
-                    glyph={{ days: null, recall: 0.8, status: 'steady', load: 0 }}
+                    glyph={{
+                      days: course.id === 'physics' ? 12 : null,
+                      recall: 0.8,
+                      status: 'behind',
+                      load: 0,
+                    }}
                     lessons={[]}
                     expanded={new Set()}
                     onToggle={() => {}}
@@ -69,11 +81,11 @@ describe('course identity colours', () => {
     };
     const { container, rerender } = render(view(false));
     const colours = new Map<string, string>();
-    const assertColours = () => {
+    const assertColours = (visible = courses) => {
       const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
       const legend = screen.getByRole('list', { name: 'Courses' });
       const sidebar = screen.getByRole('navigation', { name: 'Courses' });
-      for (const course of courses) {
+      for (const course of visible) {
         const marker = within(queue)
           .getByRole('button', { name: course.name })
           .parentElement!.querySelector('span[aria-hidden]') as HTMLElement;
@@ -83,17 +95,25 @@ describe('course identity colours', () => {
         const colour = swatch.style.background;
         expect(marker.style.background).toBe(colour);
         const icon = within(sidebar).getByRole('link', { name: course.name }).querySelector('svg')!;
-        expect(icon.querySelector('path:last-child')).toHaveAttribute('stroke', colour);
+        const link = icon.closest('a')!;
+        if (course.id === 'physics') {
+          expect((link.querySelector('.tabular-nums') as HTMLElement).style.color).toBe(colour);
+        } else {
+          expect(icon.querySelector('path:last-child')).toHaveAttribute('stroke', colour);
+        }
+        expect(icon.querySelectorAll('path')[1]).toHaveAttribute('stroke', 'hsl(var(--warning))');
         expect(
           container.querySelector(`svg[role="img"] g[data-course-id="${course.id}"] path`),
         ).toHaveAttribute('stroke', colour);
         if (colours.has(course.id)) expect(colour).toBe(colours.get(course.id));
         colours.set(course.id, colour);
       }
-      expect(new Set(colours.values()).size).toBe(2);
+      expect(new Set(colours.values()).size).toBe(3);
     };
     assertColours();
     rerender(view(true));
     assertColours();
+    rerender(view(true, true));
+    assertColours(courses.slice(1));
   });
 });
