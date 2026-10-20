@@ -1,7 +1,59 @@
-import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { landingFilms } from './components/landing/films';
 
 describe('Vercel configuration', () => {
+  it('uses the same exact film routes for the player, local proxy and deployed rewrites', async () => {
+    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+    expect(config.rewrites).toEqual(
+      Object.values(landingFilms).map(({ src, externalSrc }) => ({
+        source: src,
+        destination: externalSrc,
+      })),
+    );
+  });
+
+  it('typechecks the Vite configuration when Vercel supplies the library deployment configuration', async () => {
+    await mkdir('artifacts', { recursive: true });
+    const directory = await mkdtemp(resolve('artifacts/vercel-library-config-'));
+    try {
+      const source = (await readFile('vite.config.ts', 'utf8')).replace(
+        /from '\.\/([^']+)'/g,
+        (_match, path: string) =>
+          `from '${resolve(path === 'vercel.json' ? 'library/vercel.json' : path)}'`,
+      );
+      const path = join(directory, 'vite.config.ts');
+      await writeFile(path, source);
+      const check = spawnSync(
+        'bun',
+        [
+          'check',
+          '--noEmit',
+          '--strict',
+          '--skipLibCheck',
+          '--target',
+          'es2022',
+          '--module',
+          'esnext',
+          '--moduleResolution',
+          'bundler',
+          '--allowImportingTsExtensions',
+          '--resolveJsonModule',
+          '--lib',
+          'es2023,dom',
+          path,
+        ],
+        { encoding: 'utf8' },
+      );
+      expect(check.error).toBeUndefined();
+      expect(check.status, check.stdout + check.stderr).toBe(0);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  }, 30_000);
+
   it('pins installation and builds to the Bun release required by web typechecking', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       installCommand?: string;
@@ -69,8 +121,9 @@ describe('Vercel configuration', () => {
       .find((entry) => entry.source === '/(.*)')!
       .headers.find((header) => header.key === 'Content-Security-Policy')!.value;
     const document = await readFile('index.html', 'utf8');
-    const metaPolicy =
-      /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(document)![1];
+    const metaPolicy = /http-equiv="Content-Security-Policy"[^>]*content="([^"]*)"/.exec(
+      document,
+    )![1];
 
     for (const policy of [headerPolicy, metaPolicy]) {
       const sources = /(?:^|;\s*)script-src\s+([^;]*)/.exec(policy)![1].trim().split(/\s+/);

@@ -1,4 +1,4 @@
-import vercelConfig from './vercel.json' with { type: 'json' };
+import { landingFilms } from './src/components/landing/films.ts';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
@@ -101,7 +101,12 @@ export default defineConfig({
     }),
   ],
   server: {
-    proxy: Object.fromEntries(vercelConfig.rewrites.map(({ source, destination }) => [source, { target: destination, changeOrigin: true, rewrite: () => '' }])),
+    proxy: Object.fromEntries(
+      Object.values(landingFilms).map(({ src, externalSrc }) => [
+        src,
+        { target: externalSrc, changeOrigin: true, rewrite: () => '' },
+      ]),
+    ),
     port: 5173,
     headers: crossOriginIsolationHeaders,
     watch: {
@@ -114,7 +119,12 @@ export default defineConfig({
     },
   },
   preview: {
-    proxy: Object.fromEntries(vercelConfig.rewrites.map(({ source, destination }) => [source, { target: destination, changeOrigin: true, rewrite: () => '' }])),
+    proxy: Object.fromEntries(
+      Object.values(landingFilms).map(({ src, externalSrc }) => [
+        src,
+        { target: externalSrc, changeOrigin: true, rewrite: () => '' },
+      ]),
+    ),
     headers: crossOriginIsolationHeaders,
   },
   // Surface the package version to the app (used by the diagnostic bundle).

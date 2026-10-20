@@ -1,32 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { landingFilms as films } from './films';
 import './LandingFilms.css';
-
-const films = {
-  student: {
-    title: 'Lacuna in action',
-    duration: '1 min 33 sec',
-    poster: '/landing/films/student.webp',
-    src: '/films/lacuna-student-4k.mp4',
-    description: 'An exam-aware revision dashboard, lesson-by-lesson courses, recall and exam questions, keyboard-first card creation, sharing, syncing, Anki import and the Lacuna library.',
-  },
-  gaps: {
-    title: 'Gaps in action',
-    duration: '1 min 4 sec',
-    poster: '/landing/films/gaps.webp',
-    src: '/films/gaps-teachers-tutors-4k.mp4',
-    description: 'A teacher opens a class report, finds a question pupils struggle with and reads the answers behind the scores. A tutor opens one learner’s report. A class code invites pupils to share.',
-  },
-};
 
 function FilmPlayer({ film }: { film: keyof typeof films }) {
   const [playing, setPlaying] = useState(false);
   const [failed, setFailed] = useState(false);
   const content = films[film];
+  const player = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    if (playing) player.current?.focus();
+  }, [playing]);
   return (
     <figure className="landing-film">
       <div className="landing-film-screen">
         {playing ? (
           <video
+            ref={player}
+            tabIndex={0}
             src={content.src}
             poster={content.poster}
             controls
@@ -44,7 +34,7 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
             aria-label={`Watch ${content.title}, ${content.duration}`}
             onClick={() => {
               if (window.electronAPI?.isElectron) {
-                window.open(`https://getlacuna.app${content.src}`, '_blank', 'noopener,noreferrer');
+                window.open(content.externalSrc, '_blank', 'noopener,noreferrer');
               } else {
                 setPlaying(true);
               }
@@ -52,7 +42,15 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
           >
             <img src={content.poster} width={1920} height={1080} loading="lazy" alt="" />
             <span className="landing-film-play-label">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
               Watch the film
             </span>
           </button>
@@ -62,8 +60,18 @@ function FilmPlayer({ film }: { film: keyof typeof films }) {
         <span>{film === 'gaps' ? 'Demo data' : content.title}</span>
         <span>{content.duration}</span>
       </figcaption>
-      <p id={`${film}-film-description`} className="landing-film-description">{content.description} Fictional demonstration data. Music, no spoken narration.</p>
-      {failed && <p className="landing-film-fallback">The film couldn’t load. <a href={`https://chpeihgcobr0gvsi.public.blob.vercel-storage.com/films/2026-10/${content.src.split('/').pop()}`} target="_blank" rel="noreferrer">Open the video directly</a>.</p>}
+      <p id={`${film}-film-description`} className="landing-film-description">
+        {content.description} Fictional demonstration data. Music, no spoken narration.
+      </p>
+      {failed && (
+        <p className="landing-film-fallback">
+          The film couldn’t load.{' '}
+          <a href={content.externalSrc} target="_blank" rel="noreferrer">
+            Open the video directly
+          </a>
+          .
+        </p>
+      )}
     </figure>
   );
 }
@@ -82,12 +90,18 @@ export function LandingStudentFilm() {
 
 export function LandingTeacherFilm() {
   return (
-    <section id="for-teachers" className="landing-teacher-film" aria-labelledby="teacher-film-title">
+    <section
+      id="for-teachers"
+      className="landing-teacher-film"
+      aria-labelledby="teacher-film-title"
+    >
       <div className="landing-teacher-introduction">
         <h2 id="teacher-film-title">Know what to teach next.</h2>
         <div className="landing-teacher-copy">
           <p>See where your class or an individual learner needs help.</p>
-          <a className="landing-teacher-cta" href="https://gaps.getlacuna.app">Open Gaps</a>
+          <a className="landing-teacher-cta" href="https://gaps.getlacuna.app">
+            Open Gaps
+          </a>
         </div>
       </div>
       <FilmPlayer film="gaps" />

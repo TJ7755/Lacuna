@@ -127,8 +127,13 @@ test('below-hero visible text matches the allowlist, including expanded FAQ answ
   await expect(page.locator('main h2')).toHaveText(headings);
   for (const summary of await page.locator('.landing-faq summary').all()) await summary.click();
   const lines = await page.evaluate(() => {
-    const descriptions = [...document.querySelectorAll('.landing-film-description')].map((node) => node.textContent);
-    const bodyText = descriptions.reduce((text, description) => text.replace(description ?? '', ''), document.body.innerText);
+    const descriptions = [...document.querySelectorAll('.landing-film-description')].map(
+      (node) => node.textContent,
+    );
+    const bodyText = descriptions.reduce(
+      (text, description) => text.replace(description ?? '', ''),
+      document.body.innerText,
+    );
     const firstHeading = document.querySelector('#student-film-title')!.textContent!;
     return [
       ...new Set(
@@ -198,12 +203,21 @@ for (const film of ['Lacuna', 'Gaps']) {
     await page.goto('/#/landing');
     await expect(page.locator('main h2')).toHaveText(headings);
     expect(requests).toEqual([]);
-    await page.getByRole('button', { name: new RegExp(`Watch ${film} in action`) }).click();
+    const play = page.getByRole('button', { name: new RegExp(`Watch ${film} in action`) });
+    await play.focus();
+    await play.press('Enter');
     const video = page.getByLabel(`${film} in action`, { exact: true });
     await expect(video).toBeVisible();
-    await expect.poll(() => video.evaluate((node) => (node as HTMLVideoElement).currentTime), { timeout: 30000 }).toBeGreaterThan(0);
+    await expect(video).toBeFocused();
+    await expect
+      .poll(() => video.evaluate((node) => (node as HTMLVideoElement).currentTime), {
+        timeout: 30000,
+      })
+      .toBeGreaterThan(0);
     expect(await video.evaluate((node) => (node as HTMLVideoElement).videoWidth)).toBe(3840);
     expect(requests.length).toBeGreaterThan(0);
+    await video.press('Space');
+    await expect.poll(() => video.evaluate((node) => (node as HTMLVideoElement).paused)).toBe(true);
     await page.screenshot({ path: `artifacts/landing-rework/${film.toLowerCase()}-playback.png` });
   });
 }

@@ -1,1 +1,2 @@
 - Add on-demand student and Gaps films to the landing page, with a dedicated section for teachers and tutors.
+- Keep keyboard focus on the film player when playback starts, open desktop films beyond the app service worker, and keep library builds independent of the main site's deployment configuration.
