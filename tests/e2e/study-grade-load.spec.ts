@@ -31,7 +31,6 @@ for (const firstLesson of [false, true]) {
         ).StudyLoadFixture.seed(),
       );
       const cdp = await page.context().newCDPSession(page);
-      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       await page.addInitScript(() => {
         localStorage.setItem('lacuna.gradingMode', 'manual');
       });
@@ -49,6 +48,7 @@ for (const firstLesson of [false, true]) {
         .click();
       await expect(page.locator('[data-study-face="back"]')).toBeVisible();
       await page.waitForTimeout(800);
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       await cdp.send('Profiler.enable');
       await cdp.send('Profiler.start');
       await page.evaluate(() => {
