@@ -72,7 +72,7 @@ for (const width of [1440, 390]) {
     const courseUrl = page.url();
     await page.goto(`${courseUrl}/settings`);
     await page.getByRole('button', { name: /^Lessons/ }).click();
-    const picker = page.getByRole('combobox', { name: 'Start Study from' });
+    const picker = page.getByRole('combobox', { name: 'Start study from' });
     await picker.selectOption({ label: 'Year two' });
     await expect(picker).toBeEnabled();
     await expect(picker).toHaveValue('year-2');
@@ -83,7 +83,7 @@ for (const width of [1440, 390]) {
     });
     await page.reload();
     await page.getByRole('button', { name: /^Lessons/ }).click();
-    await expect(page.getByRole('combobox', { name: 'Start Study from' })).toHaveValue('year-2');
+    await expect(page.getByRole('combobox', { name: 'Start study from' })).toHaveValue('year-2');
     await page.goto(courseUrl);
     await expect(page.getByRole('button', { name: 'Year one', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Year two', exact: true })).toBeEnabled();

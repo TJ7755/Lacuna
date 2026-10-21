@@ -26,7 +26,7 @@ describe('DetachCourseSection', () => {
     render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
     expect(
       screen.getByText(
-        'This course is managed by its author. Detach it to edit freely — future updates from them will arrive as a separate course instead of merging.',
+        'Managed by its author. Detach it to edit freely; later updates will then arrive as a separate course.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Detach course' })).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe('DetachCourseSection', () => {
     expect(screen.getByText('Apply updates automatically')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'New changes from the course author are applied without review. Changes that clash with your own edits still wait for you.',
+        'The author’s changes apply without review. Any that clash with your edits still wait for you.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Apply updates automatically' })).toHaveAttribute(

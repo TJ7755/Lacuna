@@ -33,7 +33,7 @@ beforeEach(() => {
 
 it('lets a locked copy choose or reset a core entry point', async () => {
   render(<CourseEntrySection courseId="course" />);
-  const picker = screen.getByRole('combobox', { name: 'Start Study from' });
+  const picker = screen.getByRole('combobox', { name: 'Start study from' });
   expect(picker).toBeEnabled();
   expect(screen.queryByRole('option', { name: 'Extension' })).not.toBeInTheDocument();
   fireEvent.change(picker, { target: { value: 'second' } });

@@ -215,7 +215,7 @@ export function CourseSettings() {
                   : 'Semi-linear progression'
             }
           >
-            <div className="flex flex-col gap-8">
+            <div className="flex flex-col divide-y divide-line [&>*]:py-6 [&>*:first-child]:pt-0 [&>*:last-child]:pb-0">
               <CourseEntrySection courseId={course.id} />
               <UnlockModeSection
                 unlockMode={unlockMode}
@@ -238,7 +238,7 @@ export function CourseSettings() {
               />
               <LessonManagementSection courseId={course.id} />
               <div>
-                <h3 className="mb-3 font-semibold text-ink">Practice nodes</h3>
+                <h3 className="mb-1 font-semibold text-ink">Practice nodes</h3>
                 <PracticeNodesSection courseId={course.id} />
               </div>
             </div>
@@ -322,7 +322,6 @@ export function CourseSettings() {
           </CourseSettingsDisclosure>
         </div>
         <div className="mt-8">
-          {!course.archived && <CourseSettingsArchive course={course} />}
           {course.distributedCopy?.locked === true && (
             <DetachCourseSection
               courseId={course.id}
@@ -332,6 +331,7 @@ export function CourseSettings() {
           {!course.archived && course.distributedCopy !== undefined && (
             <CourseInsightsSection courseId={course.id} />
           )}
+          {!course.archived && <CourseSettingsArchive course={course} />}
 
           <div id="course-settings-danger" className="scroll-mt-24">
             <DangerZoneSection

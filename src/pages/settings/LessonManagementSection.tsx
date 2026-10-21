@@ -115,134 +115,133 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
 
   return (
     <div className="flex flex-col gap-3">
-      {locked && (
-        <div className="flex flex-col items-start gap-2">
-          <h3 className="font-semibold text-ink">Lesson order</h3>
-          <p className="text-sm text-ink-soft">
-            Order lessons for this copy. Publisher corrections and learner progress are retained.
-            New lessons appear at the end. Content remains locked.
-          </p>
-          {data?.unavailableReason && (
-            <p role="status" className="text-sm text-ink-soft">
-              {data.course.localLessonOrder ? 'Saved lesson order is suspended. ' : ''}
-              {data.unavailableReason} Using publisher order.
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-[1_1_20rem]">
+          <h3 className="font-semibold text-ink">{locked ? 'Lesson order' : 'Manage lessons'}</h3>
+          {locked && (
+            <p className="mt-1 text-sm text-ink-soft">
+              Reorder lessons for your copy. Updates from the author and your progress are kept, and
+              new lessons appear at the end.
             </p>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={saving || !data?.course.localLessonOrder}
-            onClick={() => void reset()}
-          >
+        </div>
+        {locked && data?.course.localLessonOrder && (
+          <Button variant="secondary" size="sm" disabled={saving} onClick={() => void reset()}>
             Use publisher order
           </Button>
-        </div>
+        )}
+      </div>
+      {locked && data?.unavailableReason && (
+        <p role="status" className="text-sm text-ink-soft">
+          {data.course.localLessonOrder ? 'Saved lesson order is suspended. ' : ''}
+          {data.unavailableReason} Using publisher order.
+        </p>
       )}
       {lessons?.length === 0 && (
-        <p className="text-xs text-ink-faint">This course has no lessons yet.</p>
+        <p className="text-sm text-ink-faint">This course has no lessons yet.</p>
       )}
-      {lessons?.map((lesson, index) => (
-        <motion.div
-          key={lesson.id}
-          layout={multiplier > 0 ? 'position' : undefined}
-          transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
-          className="overflow-hidden rounded-2xl bg-ink/[0.03]"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-2">
-              <div className="flex shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => void move(index, -1)}
-                  disabled={!canMove || saving || index === 0}
-                  aria-label={`Move ${lesson.name} up`}
-                  className="min-w-11 px-0"
-                >
-                  <ChevronDownIcon width={14} height={14} className="rotate-180" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  type="button"
-                  onClick={() => void move(index, 1)}
-                  disabled={!canMove || saving || index === lessons.length - 1}
-                  aria-label={`Move ${lesson.name} down`}
-                  className="min-w-11 px-0"
-                >
-                  <ChevronDownIcon width={14} height={14} />
-                </Button>
-              </div>
-              {canAuthor && editingId === lesson.id ? (
-                <input
-                  autoFocus
-                  aria-label="Lesson name"
-                  value={nameDraft}
-                  onFocus={(e) => e.currentTarget.select()}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  onBlur={() => void commitRename()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') void commitRename();
-                    if (e.key === 'Escape') setEditingId(null);
-                  }}
-                  className={`min-h-11 min-w-0 flex-[1_1_8rem] ${inputFrameClassName} text-sm`}
-                />
-              ) : (
-                <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">
-                  {lesson.name}
-                  {lesson.isExtension && (
-                    <span className="ml-2 text-xs text-ink-faint">(extension)</span>
-                  )}
-                </span>
-              )}
-            </div>
-            {canAuthor && (
-              <div className="ml-auto flex shrink-0 items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEdit(lesson.id, lesson.name)}
-                  aria-label={`Rename ${lesson.name}`}
-                >
-                  <EditIcon width={16} height={16} />
-                </Button>
-                <Button
-                  ref={(button) => {
-                    if (button) deleteButtons.current.set(lesson.id, button);
-                    else deleteButtons.current.delete(lesson.id);
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDeleteId(lesson.id)}
-                  aria-label={`Delete ${lesson.name}`}
-                >
-                  <TrashIcon width={16} height={16} />
-                </Button>
-              </div>
-            )}
-          </div>
-          {canAuthor && confirmDeleteId === lesson.id && (
-            <div
-              data-lesson-delete-confirmation
-              className="border-t border-line bg-paper/50 px-4 py-3"
+      {!!lessons?.length && (
+        <div className="divide-y divide-line rounded-2xl border border-line">
+          {lessons?.map((lesson, index) => (
+            <motion.div
+              key={lesson.id}
+              layout={multiplier > 0 ? 'position' : undefined}
+              transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
             >
-              <ConfirmInline
-                message={`Delete ${lesson.name}? Notes will be removed and cards unassigned.`}
-                confirmLabel="Delete lesson"
-                onConfirm={() => void remove(lesson.id)}
-                onCancel={() => {
-                  setConfirmDeleteId(null);
-                  deleteButtons.current.get(lesson.id)?.focus();
-                }}
-                announce
-                focusOnMount="cancel"
-                className="w-full flex-wrap gap-x-3 gap-y-2"
-              />
-            </div>
-          )}
-        </motion.div>
-      ))}
+              <div className="flex flex-wrap items-center justify-between gap-2 py-0.5 pl-1 pr-2">
+                <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-2">
+                  <div className="flex shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => void move(index, -1)}
+                      disabled={!canMove || saving || index === 0}
+                      aria-label={`Move ${lesson.name} up`}
+                      className="min-w-11 px-0"
+                    >
+                      <ChevronDownIcon width={14} height={14} className="rotate-180" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => void move(index, 1)}
+                      disabled={!canMove || saving || index === lessons.length - 1}
+                      aria-label={`Move ${lesson.name} down`}
+                      className="min-w-11 px-0"
+                    >
+                      <ChevronDownIcon width={14} height={14} />
+                    </Button>
+                  </div>
+                  {canAuthor && editingId === lesson.id ? (
+                    <input
+                      autoFocus
+                      aria-label="Lesson name"
+                      value={nameDraft}
+                      onFocus={(e) => e.currentTarget.select()}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      onBlur={() => void commitRename()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') void commitRename();
+                        if (e.key === 'Escape') setEditingId(null);
+                      }}
+                      className={`min-h-11 min-w-0 flex-[1_1_8rem] ${inputFrameClassName} text-sm`}
+                    />
+                  ) : (
+                    <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">
+                      {lesson.name}
+                      {lesson.isExtension && (
+                        <span className="ml-2 text-xs text-ink-faint">(extension)</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                {canAuthor && (
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => startEdit(lesson.id, lesson.name)}
+                      aria-label={`Rename ${lesson.name}`}
+                    >
+                      <EditIcon width={16} height={16} />
+                    </Button>
+                    <Button
+                      ref={(button) => {
+                        if (button) deleteButtons.current.set(lesson.id, button);
+                        else deleteButtons.current.delete(lesson.id);
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmDeleteId(lesson.id)}
+                      aria-label={`Delete ${lesson.name}`}
+                    >
+                      <TrashIcon width={16} height={16} />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              {canAuthor && confirmDeleteId === lesson.id && (
+                <div data-lesson-delete-confirmation className="border-t border-line px-4 py-3">
+                  <ConfirmInline
+                    message={`Delete ${lesson.name}? Notes will be removed and cards unassigned.`}
+                    confirmLabel="Delete lesson"
+                    onConfirm={() => void remove(lesson.id)}
+                    onCancel={() => {
+                      setConfirmDeleteId(null);
+                      deleteButtons.current.get(lesson.id)?.focus();
+                    }}
+                    announce
+                    focusOnMount="cancel"
+                    className="w-full flex-wrap gap-x-3 gap-y-2"
+                  />
+                </div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      )}
       {canAuthor && <AddLessonControl courseId={courseId} lessonCount={lessons?.length ?? 0} />}
     </div>
   );
