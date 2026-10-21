@@ -6,10 +6,12 @@ work. Keep changes narrow, prove behaviour, and make the risk legible to a human
 
 ## Before you start
 
-Use Bun 1.4.3, matching CI. Check it before installing anything:
+Use the exact Bun revision in `.bun-version`, matching CI. The temporary canary contains the
+eMudhra certificate fix; do not substitute the vulnerable stable release or a moving canary.
+Use Node 22.23.4, 24.22.1 or 26.12.1 or a newer supported patch release. Check before installing:
 
 ```bash
-bun --version
+bun --revision
 ```
 
 The repository's `bun.lock` files are authoritative. Do not use npm or Yarn, and do not regenerate a
@@ -176,6 +178,9 @@ protection, required checks and CODEOWNERS are repository controls; a green loca
 them.
 
 ## Security maintenance
+
+[TLS trust maintenance](docs/maintenance/tls-trust.md) covers the temporary Bun security pin,
+certificate checks and the separate machine, deployment and desktop rollout steps.
 
 [Security automation](.github/workflows/security.yml) owns audit workspaces and configuration.
 High/critical findings fail the gate; moderate findings remain visible rather than being hidden

@@ -1,0 +1,1 @@
+- Update Electron and Python certificate bundles to reject the compromised eMudhra certificate authorities, require patched Node releases, and temporarily pin the fixed Bun canary in development and CI.

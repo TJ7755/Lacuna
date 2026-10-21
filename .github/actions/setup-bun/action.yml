@@ -1,0 +1,8 @@
+name: Set up the patched Bun runtime
+description: Install the temporary security canary and reject any other revision.
+runs:
+  using: composite
+  steps:
+    - name: Install the checksum-verified security revision
+      shell: bash
+      run: node relay/scripts/security-bun.mjs --install

@@ -83,7 +83,9 @@ describe('web typechecking', () => {
   }, 60_000);
 
   it('pins the same supported Bun release for development and every workflow', () => {
-    expect(manifest.packageManager).toBe('bun@1.4.3');
+    expect(manifest.packageManager).toBe(
+      `bun@${readFileSync(join(root, '.bun-version'), 'utf8').trim()}`,
+    );
     const handwriting = JSON.parse(
       readFileSync(join(root, 'tooling/handwriting-maths/package.json'), 'utf8'),
     ) as { packageManager: string };

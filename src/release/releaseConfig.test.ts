@@ -408,6 +408,13 @@ describe('release configuration', () => {
       const references = [...workflow.matchAll(/^\s+- uses: (\S+)(?: # (\S+))?$/gm)];
       expect(references.length).toBeGreaterThan(0);
       for (const [, reference, version] of references) {
+        if (reference === './.github/actions/setup-bun') {
+          // This action is versioned with the checkout, rather than fetched from another repository.
+          expect(
+            readFileSync(resolve(root, '.github/actions/setup-bun/action.yml'), 'utf8'),
+          ).not.toMatch(/\buses:/);
+          continue;
+        }
         expect(reference).toMatch(/^[\w.-]+\/[\w.-]+(?:\/[\w.-]+)?@[a-f0-9]{40}$/);
         expect(version).toMatch(/^v\d+\.\d+\.\d+$/);
       }
@@ -445,9 +452,7 @@ describe('release configuration', () => {
     expect(mobile).toContain('if: always()');
     expect(mobile).toContain('playwright-report/');
     const gate = workflowJob(ciWorkflow, 'browser-smoke');
-    expect(gate).toContain(
-      'needs: [changes, browser-tests, browser-timing, browser-mobile]',
-    );
+    expect(gate).toContain('needs: [changes, browser-tests, browser-timing, browser-mobile]');
     expect(gate).toContain('SCOPE_RESULT: ${{ needs.changes.result }}');
     expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
     expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
@@ -502,7 +507,7 @@ describe('release configuration', () => {
     expect(python).toContain('astral-sh/setup-uv@');
     expect(python).toContain("python-version: '3.12'");
     expect(python).toContain("if: matrix.workspace == 'semantic-answer-match'");
-    expect(python).toMatch(/uses: oven-sh\/setup-bun@[a-f0-9]{40} # v2\.\d+\.\d+/);
+    expect(python).toContain('uses: ./.github/actions/setup-bun');
     expect(python).toContain('uv run --locked pytest');
     expect(python).toContain('working-directory: tooling/${{ matrix.workspace }}');
 
