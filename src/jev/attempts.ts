@@ -78,7 +78,7 @@ function candidates(attempt: QuestionSetAttemptRecord) {
 
 /** Safe to call repeatedly. Reloads resume undecided submitted lines; failures leave them manual. */
 export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<void> {
-  if (!engine.eligible()) {
+  if (engine.status().state === 'off') {
     publish(id, idle);
     return Promise.resolve();
   }
@@ -104,6 +104,16 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       seen = new Map();
       tried.set(engine, seen);
     }
+    const fresh = lines.filter(
+      (line) => seen.get(`${id}:${line.allocationId}`) !== JSON.stringify(line.request),
+    );
+    // Abandon every line in this run, including batches never sent after a failure or pause.
+    for (const line of fresh) seen.set(`${id}:${line.allocationId}`, JSON.stringify(line.request));
+    while (seen.size > 2048) seen.delete(seen.keys().next().value!);
+    if (!engine.eligible()) {
+      publish(id, idle);
+      return;
+    }
     const batches: Array<typeof lines> = [];
     let batch: typeof lines = [];
     const bodySize = (rows: typeof lines) =>
@@ -113,13 +123,8 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
           allocations: rows.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
         }),
       ).byteLength;
-    for (const line of lines) {
-      if (
-        seen.get(`${id}:${line.allocationId}`) === JSON.stringify(line.request) ||
-        line.request.maxMarks > 9 ||
-        bodySize([line]) > JEV_BATCH_REQUEST_BYTE_LIMIT
-      )
-        continue;
+    for (const line of fresh) {
+      if (line.request.maxMarks > 9 || bodySize([line]) > JEV_BATCH_REQUEST_BYTE_LIMIT) continue;
       if (
         batch.length &&
         (batch.length >= JEV_BATCH_MAX_ALLOCATIONS ||
@@ -141,9 +146,6 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       );
       if (!pending.length) continue;
       publish(id, { state: 'marking', remaining: pending.length });
-      for (const line of pending)
-        seen.set(`${id}:${line.allocationId}`, JSON.stringify(line.request));
-      while (seen.size > 2048) seen.delete(seen.keys().next().value!);
       const results = await engine.decideAllocations(
         pending.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
       );

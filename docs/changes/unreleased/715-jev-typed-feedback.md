@@ -1,0 +1,1 @@
+- Return answer-kind and expected-part coverage feedback alongside optional typed-answer marking, including uncertain results left for manual marking. (#715)

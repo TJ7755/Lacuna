@@ -5,6 +5,7 @@ import {
 } from '../ai/session/hostedTransport';
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
+import { splitJevExpectedAnswer } from './answerParts';
 import {
   jevDecisionRequestSchema,
   jevDecisionResultSchema,
@@ -29,6 +30,13 @@ import {
 
 export const JEV_SETTINGS_STORAGE_KEY = 'lacuna.jevSettings';
 const off: JevSettings = { enabled: false, acceptedConsentVersion: null };
+const connectionMessages: Record<HostedTransportError['kind'], string> = {
+  access: 'That access code was not recognised.',
+  unavailable: 'Automatic marking is unavailable right now. Try again later.',
+  invalid: 'Automatic marking is unavailable right now. Try again later.',
+  quota: 'Too many attempts. Try again later.',
+  network: 'Could not reach Lacuna. Check your connection.',
+};
 class Pause extends Error {
   constructor(readonly reason: JevPauseReason) {
     super(reason);
@@ -75,10 +83,14 @@ export function createJevEngine(
   let status: JevStatus = { state: 'off' };
   let lastUsedAt: number | null = null;
   let pause: JevPauseReason | null = null;
+  let consecutiveFailures = 0;
+  let retryAt: number | null = null;
+  let backoffStep = 0;
   let generation = new AbortController();
   let session: { code: string; token: string; expiresAt: number } | null = null;
   let exchange: { code: string; promise: Promise<{ token: string; expiresAt: number }> } | null =
     null;
+  let warmedSession: { code: string; expiresAt: number | null } | null = null;
   const publish = (notify = true) => {
     const next: JevStatus = !settings.enabled
       ? { state: 'off' }
@@ -96,6 +108,7 @@ export function createJevEngine(
     generation.abort();
     generation = new AbortController();
     exchange = null;
+    warmedSession = null;
   };
   const save = () => {
     try {
@@ -111,7 +124,7 @@ export function createJevEngine(
     settings.acceptedConsentVersion === JEV_CONSENT_VERSION &&
     !!readCode() &&
     globalThis.navigator?.onLine !== false &&
-    !pause;
+    (!pause || (retryAt !== null && Date.now() >= retryAt));
   const reason = (error: unknown): JevPauseReason =>
     error instanceof Pause
       ? error.reason
@@ -128,6 +141,27 @@ export function createJevEngine(
         : globalThis.navigator?.onLine === false
           ? 'offline'
           : 'error';
+  const failed = (failure: JevPauseReason) => {
+    if (pause === 'access-code-rejected') return;
+    consecutiveFailures++;
+    if (failure === 'error' && consecutiveFailures < 3) {
+      if (pause !== 'service-disabled') {
+        publish();
+        return;
+      }
+      failure = 'service-disabled';
+    }
+    pause = failure;
+    if (failure === 'error' || failure === 'service-disabled') {
+      retryAt = Date.now() + [60_000, 300_000, 900_000][Math.min(backoffStep, 2)];
+      backoffStep++;
+    } else if (failure === 'limit-reached') {
+      const now = new Date();
+      retryAt = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+    } else retryAt = null;
+    if (failure === 'access-code-rejected') session = null;
+    publish();
+  };
   async function token(signal: AbortSignal) {
     const code = readCode();
     if (session?.code === code && session.expiresAt > Date.now() + 5000) return session.token;
@@ -149,10 +183,15 @@ export function createJevEngine(
     externalSignal: AbortSignal | undefined,
     timeout: number,
     work: (signal: AbortSignal) => Promise<T>,
+    countTimeoutAsFailure = true,
   ): Promise<T | null> {
     if (!eligible() || externalSignal?.aborted) {
       publish();
       return null;
+    }
+    if (pause === 'limit-reached') {
+      pause = null;
+      retryAt = null;
     }
     const lifetime = generation.signal;
     const controller = new AbortController();
@@ -169,18 +208,23 @@ export function createJevEngine(
     try {
       const result = await Promise.race([work(signal), aborted]);
       if (signal.aborted) {
+        if (!lifetime.aborted) exchange = null;
         if (!externalSignal?.aborted && !lifetime.aborted) {
-          pause = 'error';
-          publish();
+          if (countTimeoutAsFailure) failed('error');
         }
         return null;
       }
+      consecutiveFailures = 0;
+      backoffStep = 0;
+      if (pause === 'error' || pause === 'service-disabled') {
+        pause = null;
+        retryAt = null;
+      }
+      publish();
       return result;
     } catch (error) {
       if (!signal.aborted && !lifetime.aborted) {
-        pause = reason(error);
-        if (pause === 'access-code-rejected') session = null;
-        publish();
+        failed(reason(error));
       }
       return null;
     } finally {
@@ -190,6 +234,19 @@ export function createJevEngine(
     }
   }
   function checked(request: JevDecisionRequest, result: JevDecisionResult): JevDecisionResult {
+    if (request.purpose === 'typed-equivalence' && result.feedback) {
+      const split = splitJevExpectedAnswer(request.expected);
+      const parts = split.length >= 2 && split.length <= 8 ? split : [];
+      if (
+        parts.length !== result.feedback.parts.length ||
+        parts.some(
+          (part, index) =>
+            part.start !== result.feedback!.parts[index].start ||
+            part.end !== result.feedback!.parts[index].end,
+        )
+      )
+        throw new Pause('error');
+    }
     const maximum = request.purpose === 'typed-equivalence' ? 1 : request.maxMarks;
     const threshold =
       request.purpose === 'mark-allocation'
@@ -235,21 +292,26 @@ export function createJevEngine(
     externalSignal?: AbortSignal,
     timeout = 30_000,
   ): Promise<JevDecisionResult | null> {
-    return guarded(externalSignal, timeout, async (signal) => {
-      const parsed = jevDecisionRequestSchema.parse(request);
-      const hash = await decisionHash(parsed);
-      signal.throwIfAborted();
-      const hit = await cache.get(hash);
-      signal.throwIfAborted();
-      if (hit) return checked(parsed, hit);
-      const result = checked(parsed, jevDecisionResultSchema.parse(await post(parsed, signal)));
-      signal.throwIfAborted();
-      await cache.put(hash, result);
-      signal.throwIfAborted();
-      lastUsedAt = Date.now();
-      publish();
-      return result;
-    });
+    return guarded(
+      externalSignal,
+      timeout,
+      async (signal) => {
+        const parsed = jevDecisionRequestSchema.parse(request);
+        const hash = await decisionHash(parsed);
+        signal.throwIfAborted();
+        const hit = await cache.get(hash);
+        signal.throwIfAborted();
+        if (hit) return checked(parsed, hit);
+        const result = checked(parsed, jevDecisionResultSchema.parse(await post(parsed, signal)));
+        signal.throwIfAborted();
+        await cache.put(hash, result);
+        signal.throwIfAborted();
+        lastUsedAt = Date.now();
+        publish();
+        return result;
+      },
+      request.purpose !== 'typed-equivalence',
+    );
   }
   async function decideAllocations(
     allocations: JevAllocationInput[],
@@ -312,27 +374,29 @@ export function createJevEngine(
             confidence: result.confidence,
             markedAt: Date.now(),
           },
-          feedback: { kind: null, parts: [] },
+          feedback: result.feedback ?? { kind: null, parts: [] },
         }
-      : { outcome: 'unsure', feedback: null };
+      : {
+          outcome: 'unsure',
+          feedback:
+            result && eligible() && !request.signal?.aborted ? (result.feedback ?? null) : null,
+        };
   }
   const controller = {
     enable(version: number) {
       if (version !== JEV_CONSENT_VERSION) return;
-      pause = null;
       settings = { enabled: true, acceptedConsentVersion: version };
       save();
     },
     disable() {
       stop();
-      pause = null;
       settings = { ...settings, enabled: false };
       save();
     },
     hasAccessCode: () => !!readCode(),
     async connectAccessCode(code: string): Promise<{ ok: true } | { ok: false; message: string }> {
       if (!settings.enabled || settings.acceptedConsentVersion !== JEV_CONSENT_VERSION)
-        return { ok: false, message: new HostedTransportError('invalid').message };
+        return { ok: false, message: connectionMessages.invalid };
       const signal = generation.signal;
       try {
         const result = await transport.exchange(code.trim(), signal);
@@ -341,28 +405,33 @@ export function createJevEngine(
         storage.setItem(HOSTED_ACCESS_STORAGE_KEY, code.trim());
         session = { ...result, code: code.trim() };
         pause = null;
+        retryAt = null;
+        backoffStep = 0;
+        consecutiveFailures = 0;
         publish();
         return { ok: true };
       } catch (error) {
         if (!signal.aborted) {
-          pause = reason(error);
-          publish();
+          failed(reason(error));
         }
         return {
           ok: false,
           message:
-            error instanceof HostedTransportError
-              ? error.message
-              : new HostedTransportError('network').message,
+            connectionMessages[error instanceof HostedTransportError ? error.kind : 'network'],
         };
       }
     },
   };
-  const changed = () => {
+  const changed = (event: StorageEvent) => {
+    if (
+      event.key !== null &&
+      event.key !== JEV_SETTINGS_STORAGE_KEY &&
+      event.key !== HOSTED_ACCESS_STORAGE_KEY
+    )
+      return;
     settings = readSettings();
     stop();
     session = null;
-    pause = null;
     publish();
   };
   const online = () => {
@@ -381,7 +450,19 @@ export function createJevEngine(
       publish(false);
       return status;
     },
-    marker: () => (eligible() ? markTyped : null),
+    marker: () => {
+      if (!eligible()) return null;
+      const code = readCode();
+      const expiresAt = session?.code === code ? session.expiresAt : null;
+      if (
+        (expiresAt === null || expiresAt <= Date.now() + 5000) &&
+        (warmedSession?.code !== code || warmedSession.expiresAt !== expiresAt)
+      ) {
+        warmedSession = { code, expiresAt };
+        void token(generation.signal).catch(() => {});
+      }
+      return markTyped;
+    },
     subscribe(listener: () => void) {
       if (!listeners.size) {
         globalThis.addEventListener?.('storage', changed);

@@ -4,6 +4,33 @@ export const JEV_MODEL = 'jev-1.14.0';
 export const JEV_TYPED_CORRECT_THRESHOLD = 0.85;
 export const JEV_TYPED_INCORRECT_THRESHOLD = 0.85;
 export const JEV_ALLOCATION_CONFIDENCE_THRESHOLD = 0.85;
+export const JEV_TYPED_KIND_CONFIDENCE_THRESHOLD = 0.7;
+export const JEV_TYPED_PART_COVERED_THRESHOLD = 0.8;
+export const JEV_TYPED_PART_NOT_COVERED_THRESHOLD = 0.2;
+// Bump when feedback instructions or the shared splitter change.
+export const JEV_TYPED_FEEDBACK_VERSION = 1;
+export const JEV_ANSWER_KINDS = [
+  'same',
+  'spelling',
+  'imprecise',
+  'partial',
+  'wrong',
+  'blank',
+] as const;
+export const jevTypedFeedbackSchema = z.strictObject({
+  kind: z.enum(JEV_ANSWER_KINDS).nullable(),
+  parts: z
+    .array(
+      z
+        .strictObject({
+          start: z.number().int().nonnegative(),
+          end: z.number().int().positive(),
+          covered: z.boolean().nullable(),
+        })
+        .refine((part) => part.end > part.start),
+    )
+    .max(8),
+});
 const text = z.string().max(12_000);
 // Only these purposes are executable; future purposes require a new validated branch.
 export const jevDecisionRequestSchema = z.discriminatedUnion('purpose', [
@@ -28,6 +55,7 @@ export const jevDecisionResultSchema = z.strictObject({
   confidence: z.number().min(0).max(1),
   inputTokens: z.number().int().nonnegative(),
   model: z.literal(JEV_MODEL),
+  feedback: jevTypedFeedbackSchema.optional(),
 });
 export type JevDecisionResult = z.infer<typeof jevDecisionResultSchema>;
 export type JevDecisionClient = (

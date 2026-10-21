@@ -129,19 +129,48 @@ send structured marking fields and cannot select a model or supply instructions.
 Jev also requires the hosted access/session configuration and existing Upstash Redis variables
 above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
 new shared session exchanges as well as chat; already-issued sessions can still access Jev
-unless its own kill switch is set. There are no per-learner Jev quotas. Redis counts calls and
-input tokens per UTC day and month. Admission reserves the full 65,536-token context before
-calling TypeSafe, then settles to reported usage. Concurrent reservations count against the
-fuse; near the limit a request may be refused early. Transport failures retain their reservation
-because the provider may already have charged. Counters and reservations have month-specific keys.
+unless its own kill switch is set. There are no per-learner Jev quotas. Session verification
+uses a local signature check. The marking request never waits for Redis: each function instance
+checks its in-memory monthly total, refreshed in the background at most once per minute.
+It refuses only when that cached total exceeds the configured ceiling; `0` disables the fuse.
+A cold instance initially admits requests while its first refresh runs. About a minute of
+traffic may overshoot the ceiling across warm instances; cold starts and Redis outages can
+extend cross-instance staleness. This is an eventually consistent bug fuse, not a spending cap.
+
+Usage is recorded after the response with Vercel's `waitUntil`, in the existing per-UTC-day and
+month token/call counters. Known usage updates the local total even if Redis fails. Failed
+provider calls increment calls with zero known input tokens; unreported usage is unknown.
+There are no reservations. Old reservation keys are ignored; no Redis migration is required.
+`Server-Timing` reports TypeSafe and total handler durations in milliseconds. It does not wait for
+background Redis work; platform startup is outside these measurements. It contains no prompts
+or credentials.
 
 Consent and the Jev switch live only in device localStorage. The shared access code uses the
 existing device key. None enters backups, course exports or sync. Stale consent means off;
 connecting a code requires the current consent and switch first. Disabling aborts requests.
+Requesting an eligible typed marker warms the shared session ahead of the first answer.
+Repeated renders share the exchange; failed warming is silent and is not retried on renders.
 Failures and timeouts leave manual marking available and appear only through Jev status.
+Typed-answer timeouts always return unsure and never contribute to the failure streak.
+Three consecutive other failures (including allocation timeouts) pause it. A disabled service
+pauses it immediately. Error and service-disabled
+pauses admit the next natural request after one minute, then five, then fifteen (capped at
+fifteen). A successful decision, including abstention, resets the failure streak and backoff.
+The input-token fuse admits requests again at the next UTC month boundary. Recovery uses no
+background timers or polling, and sends nothing during backoff. Access-code pauses require a
+successful code connection; offline recovery still follows the browser's online event.
+Submitted allocation lines encountered while paused or abandoned after a failure stay for
+self-marking in that page session; they are never queued for recovery.
 
 For typed equivalence, only the plain-text prompt, expected answer and normalised typed answer
-are sent. For written allocations, only the part prompt (including its ancestor prompts),
+are sent. One TypeSafe request asks the equivalence noul (the sole grading decision), a
+six-way answer-kind choice, and independent coverage nouls for 2–8 expected-answer parts.
+Kind is unknown below 0.7 confidence; coverage is true at 0.8 or above, false at 0.2 or below,
+and otherwise unknown. Successful uncertain verdicts still return feedback for manual marking.
+The shared splitter returns offsets into the original expected answer, preserving grouped
+maths and splitting list punctuation, bullets and the final item's conjunction. Feedback and
+its thresholds/version enter device cache keys; feedback never enters review provenance.
+For written allocations, only the part prompt (including its ancestor prompts),
 criterion, optional explanation, maximum marks and submitted written answer are sent.
 Uncached independent allocations are submitted together: TypeSafe receives one shared state
 with each distinct part prompt and answer once, and parallel noul/score questions whose

@@ -1,7 +1,15 @@
 import { createHash } from 'node:crypto';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { exchangeCredential, loadAccessConfiguration } from '../ai/access';
-import route from '../../api/ai/jev';
+import type routeHandler from '../../api/ai/jev';
+let route: typeof routeHandler;
+
+const background = vi.hoisted(() => ({ tasks: [] as Promise<unknown>[] }));
+vi.mock('@vercel/functions', () => ({
+  waitUntil: (task: Promise<unknown>) => {
+    background.tasks.push(task);
+  },
+}));
 
 const credential = 'a'.repeat(40);
 function configured() {
@@ -35,10 +43,42 @@ function request(
     body: JSON.stringify(body),
   });
 }
-afterEach(() => {
+beforeEach(async () => {
+  vi.resetModules();
+  route = (await import('../../api/ai/jev')).default;
+});
+afterEach(async () => {
+  await Promise.all(background.tasks.splice(0));
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
+function providerResponse(init: RequestInit) {
+  const questions = JSON.parse(init.body as string).questions;
+  return Response.json({
+    model: 'jev-1.14.0',
+    answers: Object.fromEntries(
+      Object.entries(questions).map(([id, question]) => [
+        id,
+        (question as { type: string }).type === 'choice'
+          ? {
+              type: 'choice',
+              choice: 'same',
+              confidence: 0.98,
+              probabilities: {
+                same: 0.98,
+                spelling: 0.02,
+                imprecise: 0,
+                partial: 0,
+                wrong: 0,
+                blank: 0,
+              },
+            }
+          : { type: 'noul', noul: 0.98 },
+      ]),
+    ),
+    usage: { input_tokens: 123, output_tokens: 12 },
+  });
+}
 it('fails closed on missing configuration, a kill switch and absent access sessions', async () => {
   configured();
   const fetcher = vi.fn();
@@ -51,51 +91,6 @@ it('fails closed on missing configuration, a kill switch and absent access sessi
   vi.stubEnv('JEV_SERVICE_DISABLED', '0');
   expect((await route.fetch(request(undefined, false))).status).toBe(401);
   expect(fetcher).not.toHaveBeenCalled();
-});
-it('rejects a client-selected model and refuses at the fuse before calling TypeSafe', async () => {
-  configured();
-  const fetcher = vi.fn().mockResolvedValue(Response.json({ result: 0 }));
-  vi.stubGlobal('fetch', fetcher);
-  expect(
-    (
-      await route.fetch(
-        request({
-          state: 'x',
-          instructions: 'Choose',
-          options: { a: 'A', b: 'B' },
-          model: 'jev-latest',
-        }),
-      )
-    ).status,
-  ).toBe(400);
-  expect(fetcher).not.toHaveBeenCalled();
-  expect((await route.fetch(request())).status).toBe(429);
-  expect(fetcher).toHaveBeenCalledTimes(1);
-  expect(fetcher.mock.calls[0][0]).toBe('https://redis.example');
-});
-it('records calls and actual usage in daily and monthly UTC counters independently of free chat', async () => {
-  configured();
-  vi.stubEnv('AI_SERVICE_DISABLED', '1');
-  const fetcher = vi.fn().mockImplementation(async (url) =>
-    url === 'https://redis.example'
-      ? Response.json({ result: 1 })
-      : Response.json({
-          model: 'jev-1.14.0',
-          answers: { decision: { type: 'noul', noul: 0.98 } },
-          usage: { input_tokens: 123, output_tokens: 12 },
-        }),
-  );
-  vi.stubGlobal('fetch', fetcher);
-  const response = await route.fetch(request());
-  expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ inputTokens: 123, value: 1 });
-  const commands = fetcher.mock.calls
-    .filter(([url]) => url === 'https://redis.example')
-    .map(([, init]) => JSON.parse(init.body));
-  expect(commands).toHaveLength(2);
-  expect(commands[0].join(' ')).toContain('lacuna:jev:month:');
-  expect(commands[1].join(' ')).toContain('lacuna:jev:day:');
-  expect(commands[1]).toContain(123);
 });
 it('caps structured fields and rejects free-form instructions, future purposes and model selection', async () => {
   configured();
@@ -120,24 +115,128 @@ it('caps structured fields and rejects free-form instructions, future purposes a
   }
   expect(fetcher).not.toHaveBeenCalled();
 });
-it('reserves and settles usage once for a batch of parallel marking questions', async () => {
+
+it('refuses only once its background-refreshed monthly total exceeds the fuse', async () => {
   configured();
-  const fetcher = vi
-    .fn()
-    .mockImplementation(async (url, init) =>
-      url === 'https://redis.example'
-        ? Response.json({ result: 1 })
-        : Response.json({
-            model: 'jev-1.14.0',
-            answers: Object.fromEntries(
-              Object.keys(JSON.parse(init.body).questions).map((key) => [
-                key,
-                { type: 'noul', noul: 0.99 },
-              ]),
-            ),
-            usage: { input_tokens: 150, output_tokens: 12 },
-          }),
+  const fetcher = vi.fn(async (url, init) =>
+    url === 'https://redis.example'
+      ? Response.json({ result: JSON.parse(init.body)[0] === 'GET' ? '50000001' : 1 })
+      : providerResponse(init),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  expect(
+    (
+      await route.fetch(
+        request({
+          purpose: 'typed-equivalence',
+          prompt: 'Q',
+          expected: 'A',
+          answer: 'A',
+          model: 'jev-latest',
+        }),
+      )
+    ).status,
+  ).toBe(400);
+  expect(fetcher).not.toHaveBeenCalled();
+  expect((await route.fetch(request())).status).toBe(200);
+  await Promise.all(background.tasks);
+  const calls = fetcher.mock.calls.length;
+  expect((await route.fetch(request())).status).toBe(429);
+  expect(fetcher).toHaveBeenCalledTimes(calls);
+});
+it('records calls and actual usage after the response, independently of free chat', async () => {
+  configured();
+  vi.stubEnv('AI_SERVICE_DISABLED', '1');
+  const fetcher = vi.fn(async (url, init) =>
+    url === 'https://redis.example'
+      ? Response.json({ result: JSON.parse(init.body)[0] === 'GET' ? null : 1 })
+      : providerResponse(init),
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const response = await route.fetch(request());
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ inputTokens: 123, value: 1 });
+  await Promise.all(background.tasks);
+  const commands = fetcher.mock.calls
+    .filter(([url]) => url === 'https://redis.example')
+    .map(([, init]) => JSON.parse(init.body));
+  expect(commands).toHaveLength(2);
+  expect(commands[0][0]).toBe('GET');
+  expect(commands[1][0]).toBe('EVAL');
+  expect(commands[1].join(' ')).toContain('lacuna:jev:month:');
+  expect(commands[1].join(' ')).toContain('lacuna:jev:day:');
+  expect(commands[1]).toContain(123);
+});
+it('returns a validated verdict while every Redis request is still pending', async () => {
+  configured();
+  let released = false;
+  const releases: Array<(response: Response) => void> = [];
+  const fetcher = vi.fn(async (url, init) => {
+    if (url !== 'https://redis.example') return providerResponse(init);
+    if (released) return Response.json({ result: 0 });
+    return new Promise<Response>((resolve) => {
+      releases.push(resolve);
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const pending = route.fetch(request());
+  try {
+    await vi.waitFor(() =>
+      expect(fetcher.mock.calls.some(([url]) => url !== 'https://redis.example')).toBe(true),
     );
+    const response = await Promise.race([
+      pending,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 0)),
+    ]);
+    expect(response?.status).toBe(200);
+    expect(await response!.json()).toMatchObject({ value: 1 });
+    expect(background.tasks).toHaveLength(2);
+  } finally {
+    released = true;
+    releases.forEach((resolve) => resolve(Response.json({ result: 0 })));
+    await pending;
+  }
+});
+it('keeps marking available when Redis background work fails', async () => {
+  configured();
+  const fetcher = vi.fn(async (url, init) => {
+    if (url === 'https://redis.example') throw new Error('Redis offline');
+    return providerResponse(init);
+  });
+  vi.stubGlobal('fetch', fetcher);
+  expect((await route.fetch(request())).status).toBe(200);
+  await Promise.all(background.tasks);
+  expect((await route.fetch(request())).status).toBe(200);
+  expect(fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'GET')).toHaveLength(
+    1,
+  );
+});
+it('reports TypeSafe and total handler timings without settlement or secrets', async () => {
+  configured();
+  let clock = 100;
+  const timing = vi.spyOn(performance, 'now').mockImplementation(() => clock);
+  const fetcher = vi.fn(async (url, init) => {
+    if (url === 'https://redis.example') {
+      if (JSON.parse(init.body)[0] === 'EVAL') clock += 20;
+      return Response.json({ result: 0 });
+    }
+    clock += 190;
+    return providerResponse(init);
+  });
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    const response = await route.fetch(request());
+    expect(response.headers.get('Server-Timing')).toBe('typesafe;dur=190.0, total;dur=190.0');
+    expect(response.headers.get('Timing-Allow-Origin')).toBeNull();
+  } finally {
+    timing.mockRestore();
+  }
+});
+it('batches all allocation questions into one TypeSafe call and one counter write', async () => {
+  configured();
+  const fetcher = vi.fn(async (url, init) =>
+    url === 'https://redis.example' ? Response.json({ result: 0 }) : providerResponse(init),
+  );
   vi.stubGlobal('fetch', fetcher);
   const allocation = {
     prompt: 'Q',
@@ -154,13 +253,12 @@ it('reserves and settles usage once for a batch of parallel marking questions', 
   );
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({
-    inputTokens: 150,
+    inputTokens: 123,
     decisions: [{ value: 1 }, { value: 1 }],
   });
-  expect(fetcher).toHaveBeenCalledTimes(3);
-  const commands = fetcher.mock.calls
-    .filter(([url]) => url === 'https://redis.example')
-    .map(([, init]) => JSON.parse(init.body));
-  expect(commands).toHaveLength(2);
-  expect(commands[1]).toContain(150);
+  await Promise.all(background.tasks);
+  expect(fetcher.mock.calls.filter(([url]) => url !== 'https://redis.example')).toHaveLength(1);
+  expect(fetcher.mock.calls.filter(([, init]) => JSON.parse(init.body)[0] === 'EVAL')).toHaveLength(
+    1,
+  );
 });

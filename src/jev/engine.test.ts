@@ -20,7 +20,7 @@ it.each([
   const fetcher = vi.fn();
   const engine = createJevEngine({ fetcher, cache: emptyCache() });
   expect(engine.marker()).toBeNull();
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure' });
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(fetcher).not.toHaveBeenCalled();
 });
 it('requires a code, refuses stale enable and aborts marking when disabled', async () => {
@@ -40,7 +40,7 @@ it('requires a code, refuses stale enable and aborts marking when disabled', asy
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
   const pending = engine.markTyped(request);
   engine.disable();
-  expect(await pending).toEqual({ outcome: 'unsure' });
+  expect(await pending).toEqual({ outcome: 'unsure', feedback: null });
 });
 it('reuses session tokens and cached decisions, mapping confident yes and no with provenance', async () => {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -78,18 +78,18 @@ it.each([
   const fetcher = vi.fn().mockResolvedValue(new Response('', { status }));
   const engine = createJevEngine({ fetcher, cache: emptyCache() });
   engine.enable(1);
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure' });
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status()).toMatchObject({ state: 'paused', reason });
 });
-it('resolves a hung transport within the typed timeout', async () => {
+it('resolves one hung request within the typed timeout without pausing', async () => {
   vi.useFakeTimers();
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
   const engine = createJevEngine({ fetcher: vi.fn(() => new Promise<Response>(() => {})) });
   engine.enable(1);
   const result = engine.markTyped(request);
   await vi.advanceTimersByTimeAsync(2500);
-  expect(await result).toEqual({ outcome: 'unsure' });
-  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+  expect(await result).toEqual({ outcome: 'unsure', feedback: null });
+  expect(engine.status()).toMatchObject({ state: 'ready' });
 });
 it('abstains on low confidence and offline transport failures', async () => {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -101,10 +101,10 @@ it('abstains on low confidence and offline transport failures', async () => {
     );
   const engine = createJevEngine({ fetcher, cache: emptyCache() });
   engine.enable(1);
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure' });
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status().state).toBe('ready');
   fetcher.mockRejectedValue(new Error('network failed'));
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure' });
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status()).toMatchObject({ state: 'paused', reason: 'offline' });
 });
 it('honours an external abort even if the transport ignores it', async () => {
@@ -117,7 +117,7 @@ it('honours an external abort even if the transport ignores it', async () => {
   const controller = new AbortController();
   const pending = engine.markTyped({ ...request, signal: controller.signal });
   controller.abort();
-  expect(await pending).toEqual({ outcome: 'unsure' });
+  expect(await pending).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status().state).toBe('ready');
 });
 it('connects through the existing session exchange and refreshes an expired token', async () => {
@@ -152,7 +152,7 @@ it('rechecks current thresholds for a cached verdict before applying it', async 
     },
   });
   engine.enable(1);
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure' });
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(fetcher).not.toHaveBeenCalled();
 });
 it('stays off if the browser refuses access to localStorage', () => {
@@ -211,4 +211,322 @@ it('batches only uncached allocation content and reuses cached lines without a s
   await engine.decideAllocations([allocations[0], { ...allocations[1], criterion: 'Changed' }]);
   expect(fetcher).toHaveBeenCalledTimes(3);
   expect(JSON.parse(fetcher.mock.calls[2][1].body).allocations).toHaveLength(1);
+});
+
+it('pauses only after three consecutive failures', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : new Response('', { status: 500 }),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  for (let count = 0; count < 2; count++) {
+    expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+    expect(engine.status().state).toBe('ready');
+  }
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+  expect(fetcher).toHaveBeenCalledTimes(4);
+});
+
+it.each([500, 503])(
+  'admits only natural requests after growing backoff for status %s and resets on success',
+  async (status) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-21T10:00:00Z'));
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    let failing = true;
+    const fetcher = vi.fn(async (url: string | URL | Request) =>
+      String(url).endsWith('/session')
+        ? Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 })
+        : failing
+          ? new Response('', { status })
+          : Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+    );
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(1);
+    for (let count = 0; count < (status === 500 ? 3 : 1); count++) await engine.markTyped(request);
+    for (const delay of [60_000, 300_000, 900_000, 900_000]) {
+      const calls = fetcher.mock.calls.length;
+      expect(engine.marker()).toBeNull();
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      expect(engine.status().state).toBe('paused');
+      expect(engine.marker()).not.toBeNull();
+      await engine.marker()!(request);
+      expect(fetcher).toHaveBeenCalledTimes(calls + 1);
+      expect(engine.status().state).toBe('paused');
+    }
+    await vi.advanceTimersByTimeAsync(900_000);
+    failing = false;
+    expect(await engine.markTyped(request)).toMatchObject({ outcome: 'correct' });
+    expect(engine.status().state).toBe('ready');
+    failing = true;
+    await engine.markTyped(request);
+    if (status === 500) expect(engine.status().state).toBe('ready');
+    else {
+      const calls = fetcher.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(60_000);
+      await engine.markTyped(request);
+      expect(fetcher).toHaveBeenCalledTimes(calls + 1);
+    }
+  },
+);
+
+it('reopens the monthly fuse only on the first natural request in the next UTC month', async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-12-31T23:59:00Z'));
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 })
+      : new Response('', { status: 429 }),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  await engine.markTyped(request);
+  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'limit-reached' });
+  await vi.advanceTimersByTimeAsync(59_999);
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'limit-reached' });
+  fetcher.mockResolvedValue(
+    Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+  );
+  expect(await engine.marker()!(request)).toMatchObject({ outcome: 'correct' });
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(engine.status().state).toBe('ready');
+});
+
+it.each([false, true])(
+  'recovers an abandoned session exchange when the caller aborts: %s',
+  async (callerAborts) => {
+    vi.useFakeTimers();
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(() => new Promise<Response>(() => {}));
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(1);
+    const controller = new AbortController();
+    const pending = engine.markTyped({ ...request, signal: controller.signal });
+    await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+    if (callerAborts) controller.abort();
+    else await vi.advanceTimersByTimeAsync(2500);
+    expect(await pending).toEqual({ outcome: 'unsure', feedback: null });
+    fetcher.mockImplementation(async (url) =>
+      String(url).endsWith('/session')
+        ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+        : Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+    );
+    expect(await engine.markTyped(request)).toMatchObject({ outcome: 'correct' });
+    expect(engine.status().state).toBe('ready');
+  },
+);
+
+it('never counts typed timeouts as failures, even after repeated slow answers', async () => {
+  vi.useFakeTimers();
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : new Promise<Response>(() => {}),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  for (let count = 1; count <= 5; count++) {
+    const pending = engine.markTyped(request);
+    await vi.advanceTimersByTimeAsync(2500);
+    expect(await pending).toEqual({ outcome: 'unsure', feedback: null });
+    expect(engine.status().state).toBe('ready');
+  }
+  expect(engine.marker()).not.toBeNull();
+});
+it('resets the failure streak on a successful abstention', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  let failing = true;
+  const fetcher = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : failing
+        ? new Response('', { status: 500 })
+        : Response.json({ model: 'jev-1.14.0', value: null, confidence: 0.5, inputTokens: 12 }),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  await engine.markTyped(request);
+  await engine.markTyped(request);
+  failing = false;
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+  failing = true;
+  await engine.markTyped(request);
+  await engine.markTyped(request);
+  expect(engine.status().state).toBe('ready');
+});
+it('keeps rejected access codes paused until a successful connection', async () => {
+  vi.useFakeTimers();
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 401 }));
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  await engine.markTyped(request);
+  await vi.advanceTimersByTimeAsync(32 * 24 * 60 * 60_000);
+  engine.disable();
+  engine.enable(1);
+  expect(engine.marker()).toBeNull();
+  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  fetcher.mockResolvedValue(Response.json({ token: 's', expiresAt: Date.now() + 60_000 }));
+  expect(await engine.connectAccessCode('new-code')).toEqual({ ok: true });
+  expect(engine.status().state).toBe('ready');
+});
+
+it('keeps a failed service recovery paused with backoff before three generic failures', async () => {
+  vi.useFakeTimers();
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  let status = 503;
+  const fetcher = vi.fn(async (url: string | URL | Request) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 })
+      : new Response('', { status }),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  await engine.markTyped(request);
+  await vi.advanceTimersByTimeAsync(60_000);
+  status = 500;
+  await engine.markTyped(request);
+  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'service-disabled' });
+  const calls = fetcher.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(300_000 - 1);
+  await engine.markTyped(request);
+  expect(fetcher).toHaveBeenCalledTimes(calls);
+});
+
+it('warms one session when the eligible marker is requested and shares it with the first answer', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  let resolveSession!: (response: Response) => void;
+  const fetcher = vi
+    .fn<typeof fetch>()
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveSession = resolve;
+        }),
+    )
+    .mockResolvedValue(
+      Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+    );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  const marker = engine.marker()!;
+  engine.marker();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(fetcher.mock.calls[0][0]).toBe('/api/ai/session');
+  const pending = marker(request);
+  resolveSession(Response.json({ token: 's', expiresAt: Date.now() + 60_000 }));
+  expect(await pending).toMatchObject({ outcome: 'correct' });
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  engine.marker();
+  expect(fetcher).toHaveBeenCalledTimes(2);
+});
+it('does not retry failed session warming on renders or pause marking', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('', { status: 503 }));
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  engine.marker();
+  await vi.waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1));
+  engine.marker();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  expect(engine.status().state).toBe('ready');
+  fetcher.mockImplementation(async (url) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 }),
+  );
+  expect(await engine.markTyped(request)).toMatchObject({ outcome: 'correct' });
+});
+
+it.each([
+  [401, 'That access code was not recognised.'],
+  [503, 'Automatic marking is unavailable right now. Try again later.'],
+  [400, 'Automatic marking is unavailable right now. Try again later.'],
+  [429, 'Too many attempts. Try again later.'],
+  [0, 'Could not reach Lacuna. Check your connection.'],
+])('uses marking-specific connection errors for status %s', async (status, message) => {
+  const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => {
+    if (!status) throw new Error('offline');
+    return new Response('', { status });
+  });
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  expect(await engine.connectAccessCode('code')).toEqual({ ok: false, message });
+});
+
+it.each([
+  [1, 'correct'],
+  [0, 'incorrect'],
+  [null, 'unsure'],
+] as const)('preserves successful typed feedback for value %s', async (value, outcome) => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const feedback = {
+    kind: 'partial',
+    parts: [
+      { start: 0, end: 5, covered: true },
+      { start: 10, end: 17, covered: false },
+    ],
+  };
+  const fetcher = vi.fn(async (url) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : Response.json({
+          model: 'jev-1.14.0',
+          value,
+          confidence: value === null ? 0.5 : 0.97,
+          inputTokens: 12,
+          feedback,
+        }),
+  );
+  const engine = createJevEngine({ fetcher, cache: emptyCache() });
+  engine.enable(1);
+  expect(await engine.markTyped({ ...request, expected: 'Water and glucose' })).toMatchObject({
+    outcome,
+    feedback,
+  });
+});
+it('reuses a successful unsure verdict and its feedback without another request', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const feedback = {
+    kind: 'partial',
+    parts: [
+      { start: 0, end: 5, covered: true },
+      { start: 10, end: 17, covered: null },
+    ],
+  };
+  const fetcher = vi.fn(async (url) =>
+    String(url).endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : Response.json({
+          model: 'jev-1.14.0',
+          value: null,
+          confidence: 0.5,
+          inputTokens: 12,
+          feedback,
+        }),
+  );
+  const engine = createJevEngine({ fetcher });
+  engine.enable(1);
+  const answer = { ...request, prompt: 'Feedback reuse fixture', expected: 'Water and glucose' };
+  expect(await engine.markTyped(answer)).toEqual({ outcome: 'unsure', feedback });
+  expect(await engine.markTyped(answer)).toEqual({ outcome: 'unsure', feedback });
+  expect(fetcher).toHaveBeenCalledTimes(2);
 });

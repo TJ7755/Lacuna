@@ -20,3 +20,4 @@ export function useJevTypedMarker() {
   return jevEngine.marker();
 }
 export { useJevAttemptMarking, markJevAttempt } from './attempts';
+export { splitJevExpectedAnswer, type JevExpectedAnswerPart } from './answerParts';

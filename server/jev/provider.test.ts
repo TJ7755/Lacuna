@@ -1,11 +1,17 @@
 import { expect, it, vi } from 'vitest';
 import { callJevDecision } from './provider';
+const unknownKind = {
+  type: 'choice',
+  choice: 'same',
+  confidence: 0.6,
+  probabilities: { same: 0.6, spelling: 0.4, imprecise: 0, partial: 0, wrong: 0, blank: 0 },
+};
 
 it('builds a fixed noul question from structured content and reads billable usage', async () => {
   const fetcher = vi.fn().mockResolvedValue(
     Response.json({
       model: 'jev-1.14.0',
-      answers: { decision: { type: 'noul', noul: 0.97 } },
+      answers: { decision: { type: 'noul', noul: 0.97 }, kind: unknownKind },
       usage: { input_tokens: 120, output_tokens: 12 },
     }),
   );
@@ -21,7 +27,13 @@ it('builds a fixed noul question from structured content and reads billable usag
       new AbortController().signal,
       fetcher,
     ),
-  ).toEqual({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 120 });
+  ).toEqual({
+    model: 'jev-1.14.0',
+    value: 1,
+    confidence: 0.97,
+    inputTokens: 120,
+    feedback: { kind: null, parts: [] },
+  });
   const [url, init] = fetcher.mock.calls[0];
   expect(url).toBe('https://api.typesafe.ai/v1/systemone');
   expect(JSON.parse(init.body)).toMatchObject({
@@ -84,7 +96,7 @@ it.each([
   const fetcher = vi.fn().mockResolvedValue(
     Response.json({
       model: 'jev-1.14.0',
-      answers: { decision: { type: 'noul', noul } },
+      answers: { decision: { type: 'noul', noul }, kind: unknownKind },
       usage: { input_tokens: 12, output_tokens: 1 },
     }),
   );
@@ -99,23 +111,21 @@ it.each([
 });
 it('batches independent allocation questions over one shared answer with self-contained rubrics', async () => {
   const { callJevAllocationBatch } = await import('./provider');
-  const fetcher = vi
-    .fn()
-    .mockResolvedValue(
-      Response.json({
-        model: 'jev-1.14.0',
-        answers: {
-          allocation_0: { type: 'noul', noul: 0.98 },
-          allocation_1: {
-            type: 'score',
-            score: 2,
-            confidence: 1,
-            probabilities: { '0': 0, '1': 0, '2': 1 },
-          },
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      model: 'jev-1.14.0',
+      answers: {
+        allocation_0: { type: 'noul', noul: 0.98 },
+        allocation_1: {
+          type: 'score',
+          score: 2,
+          confidence: 1,
+          probabilities: { '0': 0, '1': 0, '2': 1 },
         },
-        usage: { input_tokens: 150, output_tokens: 12 },
-      }),
-    );
+      },
+      usage: { input_tokens: 150, output_tokens: 12 },
+    }),
+  );
   const allocations = [
     {
       prompt: 'Describe osmosis.',
@@ -157,4 +167,118 @@ it('batches independent allocation questions over one shared answer with self-co
       criterion: 'Membrane and gradient',
       explanation: allocations[1].explanation,
     });
+});
+
+it('asks equivalence, answer kind and part coverage together while leaving grading to equivalence', async () => {
+  const fetcher = vi.fn().mockResolvedValue(
+    Response.json({
+      model: 'jev-1.14.0',
+      answers: {
+        decision: { type: 'noul', noul: 0.5 },
+        kind: {
+          type: 'choice',
+          choice: 'spelling',
+          confidence: 0.9,
+          probabilities: { same: 0, spelling: 0.9, imprecise: 0.1, partial: 0, wrong: 0, blank: 0 },
+        },
+        part_0: { type: 'noul', noul: 0.8 },
+        part_1: { type: 'noul', noul: 0.2 },
+        part_2: { type: 'noul', noul: 0.5 },
+      },
+      usage: { input_tokens: 609, output_tokens: 12 },
+    }),
+  );
+  const result = await callJevDecision(
+    {
+      purpose: 'typed-equivalence',
+      prompt: 'List the colours',
+      expected: ' red, blue and green. ',
+      answer: 'rad and green',
+    },
+    'key',
+    new AbortController().signal,
+    fetcher,
+  );
+  expect(result).toMatchObject({
+    value: null,
+    confidence: 0.5,
+    feedback: {
+      kind: 'spelling',
+      parts: [
+        { start: 1, end: 4, covered: true },
+        { start: 6, end: 10, covered: false },
+        { start: 15, end: 20, covered: null },
+      ],
+    },
+  });
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  const wire = JSON.parse(fetcher.mock.calls[0][1].body);
+  expect(Object.keys(wire.questions)).toEqual(['decision', 'kind', 'part_0', 'part_1', 'part_2']);
+  expect(wire.questions.kind).toMatchObject({
+    type: 'choice',
+    criteria: {
+      same: 'Same meaning',
+      spelling: 'Same meaning apart from a spelling slip',
+      imprecise: 'Right idea but imprecise',
+      partial: 'Partly right, with something missing or wrong',
+      wrong: 'Wrong idea',
+      blank: 'Blank or says they do not know',
+    },
+  });
+  expect(wire.questions.part_0.criteria.true.expectedPart).toBe('red');
+  expect(wire.questions.part_0.instructions).toContain('answer');
+});
+
+it.each([
+  [0.6999, null],
+  [0.7, 'same'],
+] as const)(
+  'uses kind confidence %s without changing the equivalence verdict',
+  async (confidence, kind) => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        model: 'jev-1.14.0',
+        answers: { decision: { type: 'noul', noul: 0.1 }, kind: { ...unknownKind, confidence } },
+        usage: { input_tokens: 12, output_tokens: 1 },
+      }),
+    );
+    expect(
+      await callJevDecision(
+        { purpose: 'typed-equivalence', prompt: 'Q', expected: 'A', answer: 'B' },
+        'key',
+        new AbortController().signal,
+        fetcher,
+      ),
+    ).toMatchObject({ value: 0, feedback: { kind, parts: [] } });
+  },
+);
+it.each([1, 8, 9])('asks coverage only for two to eight parts: %s', async (count) => {
+  const fetcher = vi.fn(async (_url, init) => {
+    const questions = JSON.parse(init.body).questions;
+    return Response.json({
+      model: 'jev-1.14.0',
+      answers: Object.fromEntries(
+        Object.keys(questions).map((key) => [
+          key,
+          key === 'kind' ? unknownKind : { type: 'noul', noul: 0.99 },
+        ]),
+      ),
+      usage: { input_tokens: 12, output_tokens: 1 },
+    });
+  });
+  const result = await callJevDecision(
+    {
+      purpose: 'typed-equivalence',
+      prompt: 'Q',
+      expected: Array.from({ length: count }, (_, index) => `Part ${index}`).join(', '),
+      answer: 'A',
+    },
+    'key',
+    new AbortController().signal,
+    fetcher,
+  );
+  expect(result.feedback?.parts).toHaveLength(count === 8 ? 8 : 0);
+  expect(Object.keys(JSON.parse(fetcher.mock.calls[0][1].body).questions)).toHaveLength(
+    count === 8 ? 10 : 2,
+  );
 });
