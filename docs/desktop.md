@@ -107,12 +107,70 @@ monthly cap also bounds successful quota-store traffic; see the
 Responses are limited to
 768 output tokens per step, eight continuations and a 30-second request timeout. The server
 never accepts a client-selected model. Review actual provider pricing and free-tier conditions
-before enabling a key. No paid route is configured by this implementation.
+before enabling a chat provider key. Chat has no paid fallback.
 
 The hosted flow has browser and unpacked Windows Electron fixture tests. The preview deployment
 has completed live read, approved-write, rejected-write and Stop checks using zero-priced
 OpenRouter routes. The packaged app still needs a check on the target managed network. Keep the
 existing external client mode available if the hosted endpoint is unreachable.
+
+### Optional Jev marking
+
+Jev is the first paid route. It calls TypeSafe directly, independently of Built-in AI chat's
+switch, provider selection, quotas and provider keys. The server pins `jev-1.14.0`; clients
+send structured marking fields and cannot select a model or supply instructions.
+
+| Server-only variable | Purpose |
+| --- | --- |
+| `TYPESAFE_API_KEY` | TypeSafe API key, separate from every free chat provider key. Missing configuration fails closed. |
+| `JEV_SERVICE_DISABLED=1` | Refuse Jev decisions immediately. |
+| `JEV_MONTHLY_INPUT_TOKEN_LIMIT` | Global input-token bug fuse per UTC month; defaults to 50,000,000. Set `0` to disable the ceiling. Invalid values fail closed. |
+
+Jev also requires the hosted access/session configuration and existing Upstash Redis variables
+above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
+new shared session exchanges as well as chat; already-issued sessions can still access Jev
+unless its own kill switch is set. There are no per-learner Jev quotas. Redis counts calls and
+input tokens per UTC day and month. Admission reserves the full 65,536-token context before
+calling TypeSafe, then settles to reported usage. Concurrent reservations count against the
+fuse; near the limit a request may be refused early. Transport failures retain their reservation
+because the provider may already have charged. Counters and reservations have month-specific keys.
+
+Consent and the Jev switch live only in device localStorage. The shared access code uses the
+existing device key. None enters backups, course exports or sync. Stale consent means off;
+connecting a code requires the current consent and switch first. Disabling aborts requests.
+Failures and timeouts leave manual marking available and appear only through Jev status.
+
+For typed equivalence, only the plain-text prompt, expected answer and normalised typed answer
+are sent. For written allocations, only the part prompt (including its ancestor prompts),
+criterion, optional explanation, maximum marks and submitted written answer are sent. No card,
+course, learner or attempt identifiers are sent to TypeSafe. Multiple-choice and calculation
+responses stay on their existing paths. Images and attachments are not transmitted.
+
+TypeSafe is US-hosted. Its [privacy policy](https://typesafe.ai/legal/privacy-policy) states
+that inputs are not used for training or fine-tuning and are disclosed only to service providers.
+Retention is open-ended: there is no fixed deletion period. Treat submitted text as retained.
+See the official [API reference](https://docs.typesafe.ai/api/system-one),
+[score contract](https://docs.typesafe.ai/primitives/score) and
+[model versions](https://docs.typesafe.ai/models).
+
+Noul marks use a 0.85 probability threshold in either direction. Multi-mark allocations require
+both provider confidence and probability at the rounded expected score of at least 0.85.
+TypeSafe accepts at most ten score levels, so allocations above nine marks remain manual.
+Low-confidence lines remain undecided; learner decisions, including explicit unsure decisions,
+are never overwritten. Reloading can resume submitted undecided lines when the marking hook is
+mounted; abandoning the page leaves those lines available for self-marking. Confident verdicts
+have a bounded device-only cache in a separate IndexedDB database, storing hashes and results,
+without the submitted text. Repeated uncertain lines are attempted once per mounted runtime.
+
+Mark provenance is additive on review events and self-mark decisions, including frozen first
+marking snapshots. No application schema/index or backup version changes: old records need no
+migration. Updated backup validators retain the optional field through import and sync; older
+clients with strict attempt validators may reject these newer backups. Update both devices
+before exchanging them. Existing undo removes the whole review event and its provenance.
+
+For a manual paid smoke check, run `bun scripts/jev-smoke.ts` with `TYPESAFE_API_KEY` supplied
+privately in the environment. It makes one noul call and one score call. Automated tests use
+fixtures and never require the key.
 
 ### External AI client
 
