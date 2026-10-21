@@ -239,3 +239,49 @@ it('retries a stale model write through the repository without touching learner 
     saveQuestionSetMarking(attempt.id, attempt.revisionId, { ...attempt, decisions: [] }),
   ).rejects.toBeInstanceOf(QuestionSetAttemptRevisionConflictError);
 });
+it('keeps a peer learner line when a later model revision adds a different allocation', async () => {
+  const { attempt } = await fixture();
+  const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
+  const learner = {
+    ...structuredClone(attempt),
+    revisionId: 'learner',
+    decisions: [{ allocationId: 'a1', status: 'awarded' as const, marks: 0 }],
+  };
+  const model = {
+    ...structuredClone(attempt),
+    revisionId: 'model',
+    updatedAt: attempt.updatedAt + 1,
+    decisions: [
+      {
+        allocationId: 'a2',
+        status: 'awarded' as const,
+        marks: 2,
+        markedBy: {
+          by: 'jev' as const,
+          model: 'jev-1.14.0',
+          confidence: 0.98,
+          markedAt: Date.now(),
+        },
+      },
+    ],
+  };
+  const merged = mergeQuestionSetAttemptPair(learner, model);
+  expect(merged.decisions).toEqual(
+    expect.arrayContaining([...learner.decisions, ...model.decisions]),
+  );
+  expect(mergeQuestionSetAttemptPair(model, learner)).toEqual(merged);
+});
+it('does not dispute equal first-marking outcomes solely because their model provenance differs', async () => {
+  const { attempt } = await fixture();
+  const { engine } = engineWith(async (request) => result(request.maxMarks!));
+  await markJevAttempt(attempt.id, engine);
+  const marked = (await getQuestionSetAttempt(attempt.id))!;
+  const complete = await completeQuestionSetAttempt(marked.id, marked.revisionId);
+  const peer = structuredClone(complete);
+  peer.revisionId = 'peer';
+  peer.updatedAt++;
+  peer.firstMarking![0].recordedAt++;
+  for (const decision of peer.firstMarking![0].decisions) decision.markedBy!.markedAt++;
+  const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
+  expect(mergeQuestionSetAttemptPair(complete, peer).disputedQuestionIds).toBeUndefined();
+});
