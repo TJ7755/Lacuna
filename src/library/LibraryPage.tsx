@@ -22,7 +22,7 @@ import {
   resolveCourseShareUrl,
   type LibraryCourse,
 } from './catalogue';
-import { CourseExpansion } from './CourseExpansion';
+import { ExpandingSheet } from '../components/ui/ExpandingSheet';
 import { CourseProvenance } from './CourseProvenance';
 
 const APP_URL = 'https://getlacuna.app/#/';
@@ -173,14 +173,15 @@ function Library({ courses }: { courses: readonly LibraryCourse[] }) {
 
       <AnimatePresence>
         {open && openCourse && (
-          <CourseExpansion
+          <ExpandingSheet
             key={open.id}
+            closeLabel="Close course"
             anchor={open.anchor}
             onClose={() => setOpen(null)}
             face={(headingId) => <CoverFace course={openCourse} headingId={headingId} />}
           >
             <CourseDetails course={openCourse} />
-          </CourseExpansion>
+          </ExpandingSheet>
         )}
       </AnimatePresence>
     </div>

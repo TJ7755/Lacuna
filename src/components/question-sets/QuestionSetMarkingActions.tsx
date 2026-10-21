@@ -1,8 +1,10 @@
-import { modifierShortcutLabel } from '../../electron/runtime';
 import { AppLink as Link } from '../ui/AppLink';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { summariseSelfMarking } from '../../questions/questionSets';
-import { Button } from '../ui/Button';
+import { m as motion } from 'motion/react';
+import { Button, buttonClassName } from '../ui/Button';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { scaledSpring } from '../ui/motion';
 
 /** Progression never supplies a mark: the learner must award the active criterion. */
 export function QuestionSetMarkingActions({
@@ -30,33 +32,47 @@ export function QuestionSetMarkingActions({
   returnTo: string;
   returnLabel: string;
 }) {
+  const [motionSpeed] = useMotionSpeed();
+  const multiplier = speedMultiplier(motionSpeed);
   const summary = summariseSelfMarking(attempt.receipt, attempt.decisions);
   const remaining = summary.unmarkedCount + summary.unsureCount;
   const continuing = Boolean(nextCriterion && criterionCount > 1);
   const label = continuing
     ? criterionIndex < criterionCount - 1
-      ? 'Continue marking'
-      : 'Review remaining criteria'
+      ? 'Next'
+      : 'Next unmarked'
     : attempt.status === 'answering'
       ? 'Next question'
       : 'Finish attempt';
+  const awarded = attempt.decisions.some((row) => row.status === 'awarded')
+    ? String(summary.total.awarded)
+    : '—';
   return (
     <div className="qs-marking-actions">
       <div>
-        <p className="qs-result">
-          {attempt.decisions.some((row) => row.status === 'awarded') ? summary.total.awarded : '—'}{' '}
-          / {summary.total.available}{' '}
-          <span>self-marked{summary.status === 'provisional' ? ' · provisional' : ''}</span>
+        <p className="qs-result" title="Self-marked">
+          {/* The awarded total rises into place so a changed mark visibly lands in the score. */}
+          <motion.strong
+            key={awarded}
+            initial={multiplier > 0 ? { opacity: 0, y: 8 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={scaledSpring(multiplier, 420, 32)}
+          >
+            {awarded}
+          </motion.strong>{' '}
+          <span className="qs-result-total">/ {summary.total.available}</span>
+          <span className="sr-only">
+            {' '}
+            self-marked
+            {summary.status === 'provisional' &&
+              `, provisional, ${remaining} ${remaining === 1 ? 'criterion' : 'criteria'} remaining`}
+          </span>
         </p>
-        {summary.status === 'provisional' && (
-          <p className="qs-muted">
-            {remaining} {remaining === 1 ? 'criterion' : 'criteria'} remaining
-          </p>
-        )}
       </div>
       {attempt.status === 'complete' ? (
-        <Link className="qs-back" data-attempt-complete to={returnTo}>
-          {returnLabel} →
+        <Link className={buttonClassName('primary')} data-attempt-complete to={returnTo}>
+          {returnLabel}
+          <span aria-hidden="true">→</span>
         </Link>
       ) : (
         <div className="qs-primary-actions">
@@ -77,9 +93,6 @@ export function QuestionSetMarkingActions({
             }
           >
             {label}
-            <kbd className="qs-shortcut" aria-hidden="true">
-              {modifierShortcutLabel('↵')}
-            </kbd>
           </Button>
           {continuing && attempt.status === 'marking' && (
             <Button

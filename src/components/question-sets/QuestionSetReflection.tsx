@@ -5,6 +5,7 @@ import type {
   QuestionSetReflectionReason,
 } from '../../questions/questionSetAttempts';
 import { Button } from '../ui/Button';
+import { CompassIcon } from '../ui/icons';
 
 const reasons: Record<QuestionSetReflectionReason, string> = {
   'forgotten-knowledge': 'Forgotten knowledge',
@@ -31,8 +32,8 @@ export function QuestionSetReflection({
   return (
     <QuestionSetPanel
       title="Reflection"
+      icon={<CompassIcon width={18} height={18} />}
       panelClassName="qs-practice-panel"
-      className="qs-reflection"
       canClose={note === value.note}
     >
       <fieldset>
@@ -59,7 +60,7 @@ export function QuestionSetReflection({
         )}
       </fieldset>
       <label className="qs-field">
-        Reflection
+        <span className="sr-only">Reflection</span>
         <textarea
           ref={input}
           value={note}

@@ -1,0 +1,2 @@
+- Question-set marking is quieter: marks flow along a single track, mark pips fill beside the question, progress shows as session segments that expand into clickable parts, and notes, corrections, the question and reflection open as sheets that grow from their buttons.
+- Clearing a marking note to whitespace and dismissing it no longer leaves progression blocked. (#731)

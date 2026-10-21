@@ -2,7 +2,7 @@
 
 /* The library root sits outside src, so scan only the page and its shared primitives. */
 @source './LibraryPage.tsx';
-@source './CourseExpansion.tsx';
+@source '../components/ui/ExpandingSheet.tsx';
 @source '../components/ui/buttonStyles.ts';
 @source '../components/ui/SegmentedPills.tsx';
 @source '../components/ui/ModalBackdrop.tsx';

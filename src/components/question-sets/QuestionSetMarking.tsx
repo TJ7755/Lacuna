@@ -1,6 +1,7 @@
 import { QuestionSetPanel } from './QuestionSetPanel';
 import { QuestionSetChoices } from './QuestionSetChoices';
 import { useRef, useState } from 'react';
+import { AnimatePresence, m as motion } from 'motion/react';
 import type {
   QuestionSetAttemptRecord,
   QuestionSetAttemptAnnotation,
@@ -10,7 +11,9 @@ import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import { sourceAnchorFromSelection } from '../notes/noteAnchors';
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
-import { dimensionNames } from './presentation';
+import { EditIcon, PlusIcon } from '../ui/icons';
+import { collapse } from '../ui/motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
 export function QuestionSetMarking({
   attempt,
@@ -37,12 +40,12 @@ export function QuestionSetMarking({
   const text = response.kind === 'multiple-choice' ? '' : response.text;
   const format = flattenQuestionSet(attempt.receipt).find((node) => node.id === nodeId)!.node
     .answer!.response;
+  const [motionSpeed] = useMotionSpeed();
+  const disclosure = collapse(speedMultiplier(motionSpeed));
   const root = useRef<HTMLDivElement>(null);
-  const noteTrigger = useRef<HTMLButtonElement | null>(null);
   const correctionInput = useRef<HTMLTextAreaElement>(null);
   const [note, setNote] = useState<string | null>(null);
   const [anchor, setAnchor] = useState<{ start: number; end: number } | null>(null);
-  const [selectionError, setSelectionError] = useState('');
   const savedCorrection = attempt.corrections.find((row) => row.nodeId === nodeId)?.content ?? '';
   const [correction, setCorrection] = useState(savedCorrection);
   const decision = attempt.decisions.find((row) => row.allocationId === allocation.id);
@@ -54,23 +57,24 @@ export function QuestionSetMarking({
       ...annotations.flatMap((row) => (row.start === undefined ? [] : [row.start, row.end!])),
     ]),
   ].sort((a, b) => a - b);
-  function addNote(highlight: boolean) {
-    noteTrigger.current = document.activeElement as HTMLButtonElement;
-    setSelectionError('');
-    if (highlight) {
-      const result = sourceAnchorFromSelection(root.current!, text, window.getSelection());
-      if (!result.anchor) {
-        setSelectionError(result.error);
-        return;
-      }
-      setAnchor({ start: result.anchor.startOffset, end: result.anchor.endOffset });
-    } else setAnchor(null);
+  /** Text selected in the answer when the note opens becomes the note's highlight. */
+  function startNote() {
+    const selection = window.getSelection();
+    const result =
+      text && selection && !selection.isCollapsed && root.current?.contains(selection.anchorNode)
+        ? sourceAnchorFromSelection(root.current, text, selection).anchor
+        : undefined;
+    setAnchor(result ? { start: result.startOffset, end: result.endOffset } : null);
     setNote('');
+  }
+  function endNote(close: () => void) {
+    setNote(null);
+    onDraftChange(correction !== savedCorrection);
+    close();
   }
   return (
     <div className="qs-marking-grid">
       <section className="qs-marking-criterion" aria-describedby={`qs-question-${nodeId}`}>
-        <p className="qs-kicker">Mark scheme · {dimensionNames[allocation.dimension]}</p>
         <MarkdownView enlargeImages source={allocation.criterion} />
         {allocation.explanation && (
           <QuestionSetPanel
@@ -83,6 +87,8 @@ export function QuestionSetMarking({
         )}
         <QuestionSetChoices
           label="Marks awarded"
+          flow
+          accentValues={(value) => value !== '' && value !== 'unsure'}
           describedBy={`qs-question-${nodeId}`}
           value={
             decision?.status === 'awarded'
@@ -118,162 +124,156 @@ export function QuestionSetMarking({
         )}
       </section>
       <section className="qs-marking-answer">
-        <p className="qs-kicker">Original answer</p>
-        {response.kind === 'multiple-choice' && format.kind === 'multiple-choice' && (
-          <div className="qs-original select-text">
-            {response.selectedOptionIds.length ? (
-              format.options
-                .filter((option) => response.selectedOptionIds.includes(option.id))
-                .map((option) => (
-                  <MarkdownView enlargeImages key={option.id} source={option.content} />
-                ))
-            ) : (
-              <p>Unanswered</p>
-            )}
-          </div>
-        )}
-        {response.kind !== 'multiple-choice' && (
-          <div
-            ref={root}
-            className="qs-original select-text"
-            tabIndex={0}
-            aria-label="Original answer"
-          >
-            <p>
-              {text
-                ? boundaries.slice(0, -1).map((start, index) => {
-                    const end = boundaries[index + 1];
-                    const highlighted = annotations.some(
-                      (row) => row.start !== undefined && row.start <= start && row.end! >= end,
-                    );
-                    return highlighted ? (
-                      <mark key={start}>{text.slice(start, end)}</mark>
-                    ) : (
-                      <span key={start}>{text.slice(start, end)}</span>
-                    );
-                  })
-                : 'Unanswered'}
-            </p>
-          </div>
-        )}
-        <div className="qs-actions">
-          {text && (
-            <Button variant="ghost" onClick={() => addNote(true)}>
-              Highlight and comment
-            </Button>
-          )}
-          <Button variant="ghost" onClick={() => addNote(false)}>
-            Add note
-          </Button>
-        </div>
-        {selectionError && (
-          <p role="status" className="qs-muted">
-            {selectionError}
-          </p>
-        )}
-        {note !== null && (
-          <div>
-            {anchor && (
-              <blockquote className="qs-muted">{text.slice(anchor.start, anchor.end)}</blockquote>
-            )}
-            <label className="qs-field">
-              Note
-              <textarea
-                autoFocus
-                value={note}
-                onChange={(event) => {
-                  setNote(event.target.value);
-                  onDraftChange(true);
-                }}
-              />
-            </label>
-            <div className="qs-actions">
-              <Button
-                disabled={!note.trim() || busy}
-                onClick={() => {
-                  onAnnotation({
-                    id: crypto.randomUUID(),
-                    nodeId,
-                    ...anchor,
-                    comment: note.trim(),
-                    createdAt: Date.now(),
-                  });
-                  setNote(null);
-                  onDraftChange(correction !== savedCorrection);
-                  noteTrigger.current?.focus();
-                }}
-              >
-                Save note
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setNote(null);
-                  onDraftChange(correction !== savedCorrection);
-                  noteTrigger.current?.focus();
-                }}
-              >
-                Cancel
-              </Button>
+        <div className="qs-answer-frame">
+          {response.kind === 'multiple-choice' && format.kind === 'multiple-choice' && (
+            <div className="qs-original select-text">
+              {response.selectedOptionIds.length ? (
+                format.options
+                  .filter((option) => response.selectedOptionIds.includes(option.id))
+                  .map((option) => (
+                    <MarkdownView enlargeImages key={option.id} source={option.content} />
+                  ))
+              ) : (
+                <p>Unanswered</p>
+              )}
             </div>
-          </div>
-        )}
-        {annotations.map((row) => (
-          <div className="qs-answer-note" key={row.id}>
-            {row.start !== undefined && <blockquote>{text.slice(row.start, row.end)}</blockquote>}
-            <p>{row.comment}</p>
-            <button
-              className="qs-back"
-              disabled={busy}
-              onClick={() => onRemoveAnnotation(row.id)}
-              aria-label={`Remove note: ${row.comment}`}
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <QuestionSetPanel
-          title="Correction"
-          panelClassName="qs-practice-panel"
-          className="qs-correction"
-          canClose={correction === savedCorrection}
-        >
-          <label className="qs-field">
-            Correction
-            <textarea
-              ref={correctionInput}
-              rows={5}
-              value={correction}
-              onChange={(event) => {
-                setCorrection(event.target.value);
-                onDraftChange(event.target.value !== savedCorrection || Boolean(note?.trim()));
-              }}
-            />
-          </label>
-          <Button
-            variant="secondary"
-            disabled={busy || correction === savedCorrection}
-            onClick={() => {
-              onCorrection(correction);
-              onDraftChange(Boolean(note?.trim()));
-              correctionInput.current?.focus();
-            }}
-          >
-            Save correction
-          </Button>
-          {correction !== savedCorrection && (
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setCorrection(savedCorrection);
-                onDraftChange(Boolean(note?.trim()));
-                correctionInput.current?.focus();
-              }}
-            >
-              Cancel correction
-            </Button>
           )}
-        </QuestionSetPanel>
+          {response.kind !== 'multiple-choice' && (
+            <div
+              ref={root}
+              className="qs-original select-text"
+              tabIndex={0}
+              aria-label="Original answer"
+            >
+              <p>
+                {text
+                  ? boundaries.slice(0, -1).map((start, index) => {
+                      const end = boundaries[index + 1];
+                      const highlighted = annotations.some(
+                        (row) => row.start !== undefined && row.start <= start && row.end! >= end,
+                      );
+                      return highlighted ? (
+                        <mark key={start}>{text.slice(start, end)}</mark>
+                      ) : (
+                        <span key={start}>{text.slice(start, end)}</span>
+                      );
+                    })
+                  : 'Unanswered'}
+              </p>
+            </div>
+          )}
+          <div className="qs-answer-tools">
+            <QuestionSetPanel
+              title="Add note"
+              icon={<PlusIcon width={18} height={18} />}
+              panelClassName="qs-practice-panel"
+              canClose={!note?.trim()}
+              onOpen={startNote}
+            >
+              {(close) => (
+                <>
+                  {anchor && (
+                    <blockquote className="qs-note-quote">
+                      {text.slice(anchor.start, anchor.end)}
+                    </blockquote>
+                  )}
+                  <label className="qs-field">
+                    <span className="sr-only">Note</span>
+                    <textarea
+                      rows={4}
+                      value={note ?? ''}
+                      onChange={(event) => {
+                        setNote(event.target.value);
+                        onDraftChange(Boolean(event.target.value.trim()) || correction !== savedCorrection);
+                      }}
+                    />
+                  </label>
+                  <Button
+                    variant="secondary"
+                    disabled={!note?.trim() || busy}
+                    onClick={() => {
+                      onAnnotation({
+                        id: crypto.randomUUID(),
+                        nodeId,
+                        ...anchor,
+                        comment: note!.trim(),
+                        createdAt: Date.now(),
+                      });
+                      endNote(close);
+                    }}
+                  >
+                    Save note
+                  </Button>
+                  <Button variant="ghost" onClick={() => endNote(close)}>
+                    Cancel
+                  </Button>
+                </>
+              )}
+            </QuestionSetPanel>
+            <QuestionSetPanel
+              title="Correction"
+              icon={<EditIcon width={18} height={18} />}
+              panelClassName="qs-practice-panel"
+              canClose={correction === savedCorrection}
+            >
+              <label className="qs-field">
+                <span className="sr-only">Correction</span>
+                <textarea
+                  ref={correctionInput}
+                  rows={5}
+                  value={correction}
+                  onChange={(event) => {
+                    setCorrection(event.target.value);
+                    onDraftChange(event.target.value !== savedCorrection || Boolean(note?.trim()));
+                  }}
+                />
+              </label>
+              <Button
+                variant="secondary"
+                disabled={busy || correction === savedCorrection}
+                onClick={() => {
+                  onCorrection(correction);
+                  onDraftChange(Boolean(note?.trim()));
+                  correctionInput.current?.focus();
+                }}
+              >
+                Save correction
+              </Button>
+              {correction !== savedCorrection && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setCorrection(savedCorrection);
+                    onDraftChange(Boolean(note?.trim()));
+                    correctionInput.current?.focus();
+                  }}
+                >
+                  Cancel correction
+                </Button>
+              )}
+            </QuestionSetPanel>
+          </div>
+        </div>
+        <AnimatePresence initial={false}>
+          {annotations.map((row) => (
+            <motion.div className="qs-answer-note-row" key={row.id} {...disclosure}>
+              <div className="qs-answer-note">
+                {row.start !== undefined && (
+                  <blockquote>{text.slice(row.start, row.end)}</blockquote>
+                )}
+                <p>{row.comment}</p>
+                <button
+                  className="qs-back"
+                  disabled={busy}
+                  onClick={() => onRemoveAnnotation(row.id)}
+                  aria-label={`Remove note: ${row.comment}`}
+                >
+                  Remove
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </section>
     </div>
   );
