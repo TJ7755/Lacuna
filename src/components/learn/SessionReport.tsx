@@ -16,11 +16,17 @@ export function SessionReport({
   summary,
   onReturn,
   onContinue,
+  onUndo,
+  returnLabel = 'Done',
+  actionsDisabled = false,
 }: {
   summary: SessionSummary;
   onReturn: () => void;
   /** Repeats Simple Learn or continues a session when the caller allows it. */
   onContinue?: () => void;
+  onUndo?: () => void;
+  returnLabel?: string;
+  actionsDisabled?: boolean;
 }) {
   const c = useChartColours();
   const [motionSpeed] = useMotionSpeed();
@@ -215,9 +221,10 @@ export function SessionReport({
           size="lg"
           hoverScale={false}
           onClick={onReturn}
+          disabled={actionsDisabled}
           className="session-report-done"
         >
-          Done
+          {returnLabel}
           <svg
             className="session-report-arrow"
             width="22"
@@ -236,8 +243,25 @@ export function SessionReport({
           </svg>
         </Button>
         {onContinue && (
-          <Button variant="ghost" size="lg" hoverScale={false} onClick={onContinue}>
+          <Button
+            variant="ghost"
+            size="lg"
+            hoverScale={false}
+            onClick={onContinue}
+            disabled={actionsDisabled}
+          >
             {summary.limitReached || summary.timeLimitReached ? 'Continue anyway' : 'Keep studying'}
+          </Button>
+        )}
+        {onUndo && (
+          <Button
+            variant="ghost"
+            size="lg"
+            hoverScale={false}
+            onClick={onUndo}
+            disabled={actionsDisabled}
+          >
+            Undo last answer
           </Button>
         )}
       </div>
