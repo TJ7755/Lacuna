@@ -303,3 +303,35 @@ it('sends all undecided allocations together rather than paying for one request 
   expect(fetcher).toHaveBeenCalledTimes(2);
   expect(JSON.parse(fetcher.mock.calls[1][1].body).allocations).toHaveLength(2);
 });
+it('drains a new practice submission made while an earlier batch is in flight', async () => {
+  const { attempt: template } = await fixture();
+  const first = template.receipt.questions[0];
+  const second = {
+    ...structuredClone(first),
+    id: 'q-next',
+    answer: {
+      ...first.answer!,
+      allocations: first.answer!.allocations.map((row) => ({ ...row, id: `${row.id}-next` })),
+    },
+  };
+  const set = await createQuestionSet({
+    ...template.receipt,
+    id: 'queued-set',
+    questions: [first, second],
+  });
+  const repository = await import('../questions/questionSetAttemptRepository');
+  let attempt = await startQuestionSetAttempt(set.id, 'practice');
+  attempt = await repository.submitPracticeQuestion(attempt.id, attempt.revisionId, first.id);
+  let submittedAgain = false;
+  const { engine } = engineWith(async (request) => {
+    if (!submittedAgain) {
+      submittedAgain = true;
+      const current = (await getQuestionSetAttempt(attempt.id))!;
+      await repository.submitPracticeQuestion(current.id, current.revisionId, second.id);
+      void markJevAttempt(attempt.id, engine);
+    }
+    return result(request.maxMarks!);
+  });
+  await markJevAttempt(attempt.id, engine);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(4);
+});

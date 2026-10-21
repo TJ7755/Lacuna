@@ -19,7 +19,11 @@ const idle: JevAttemptMarking = { state: 'idle' };
 const progress = new Map<string, JevAttemptMarking>();
 const listeners = new Set<() => void>();
 type Engine = ReturnType<typeof createJevEngine>;
-const jobs = new WeakMap<Engine, Map<string, Promise<void>>>();
+interface MarkingJob {
+  promise: Promise<void>;
+  again: boolean;
+}
+const jobs = new WeakMap<Engine, Map<string, MarkingJob>>();
 const tried = new WeakMap<Engine, Map<string, string>>();
 function publish(id: string, state: JevAttemptMarking) {
   if (JSON.stringify(progress.get(id)) === JSON.stringify(state)) return;
@@ -84,7 +88,10 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
     jobs.set(engine, active);
   }
   const existing = active.get(id);
-  if (existing) return existing;
+  if (existing) {
+    existing.again = true;
+    return existing.promise;
+  }
   const run = async () => {
     const attempt = await getQuestionSetAttempt(id);
     if (!attempt || attempt.status === 'complete' || attempt.undoneAt !== undefined) {
@@ -174,15 +181,22 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       leftForYou: candidates(current).length,
     });
   };
-  const promise = run()
+  const job: MarkingJob = { promise: Promise.resolve(), again: false };
+  const drain = async () => {
+    do {
+      job.again = false;
+      await run();
+    } while (job.again && engine.eligible());
+  };
+  job.promise = drain()
     .catch(() => {
       publish(id, idle);
     })
     .finally(() => {
       active!.delete(id);
     });
-  active.set(id, promise);
-  return promise;
+  active.set(id, job);
+  return job.promise;
 }
 
 export function useJevAttemptMarking(attemptId: string): JevAttemptMarking {
