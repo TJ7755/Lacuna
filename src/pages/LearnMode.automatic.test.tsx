@@ -67,12 +67,12 @@ describe('automatic final-answer Undo', () => {
       );
       const input = await screen.findByRole('textbox', { name: 'Your answer' });
       fireEvent.change(input, { target: { value: 'Red' } });
-      fireEvent.click(screen.getByRole('button', { name: 'Check answer', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
       await screen.findByRole('main', { name: 'Session report' });
       expect(onStepFinished).not.toHaveBeenCalled();
       const report = screen.getByRole('main', { name: 'Session report' });
       if (!undoAnswer) {
-        fireEvent.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+        fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
         await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
         return;
       }
@@ -83,14 +83,14 @@ describe('automatic final-answer Undo', () => {
       await act(async () => {
         fireEvent.click(undo!);
       });
-      await screen.findByRole('button', { name: 'Yes', exact: true });
+      await screen.findByRole('button', { name: 'Yes' });
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
       expect(onStepFinished).not.toHaveBeenCalled();
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 400));
       });
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
-      fireEvent.click(screen.getByRole('button', { name: 'Yes', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
       await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
       expect(marker).not.toHaveBeenCalled();
     },
