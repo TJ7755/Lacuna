@@ -28,13 +28,7 @@ import { MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
 import { NewCourseControl } from '../components/course/NewCourseControl';
 import { ImportControl } from '../components/import/ImportControl';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import {
-  dashboardForecastHistories,
-  forecastCards,
-  urgencyOrder,
-} from '../state/dashboardForecasts';
-import type { ForecastPoint } from '../fsrs/courseForecast';
-import type { KeepUpRequest, KeepUpResponse } from '../state/dashboardKeepUp';
+import { dashboardForecastHistories, urgencyOrder } from '../state/dashboardForecasts';
 import { forecastWindow, useForecastRange } from '../state/forecastRange';
 import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
@@ -58,11 +52,6 @@ const ArchiveCourseDialog = lazy(() =>
     default: module.ArchiveCourseDialog,
   })),
 );
-
-// Shared by every Today visit; the keep-up simulation needs the FSRS engine, which a
-// worker keeps out of the initial bundle and off the main thread.
-let keepUpWorker: Worker | undefined;
-let keepUpRequest = 0;
 
 export function Dashboard() {
   const frame = useRef<HTMLDivElement>(null);
@@ -162,46 +151,16 @@ export function Dashboard() {
       now,
     );
   }, [data, forecasts, reviewHistory, chartWindow.past]);
-  const [keepUp, setKeepUp] = useState<Record<string, ForecastPoint[]>>();
-  useEffect(() => {
-    if (!data || !reviewHistory || typeof Worker === 'undefined') return;
-    keepUpWorker ??= new Worker(new URL('../workers/keepUp.worker.ts', import.meta.url), {
-      type: 'module',
-    });
-    const worker = keepUpWorker;
-    const id = ++keepUpRequest;
-    const receive = (event: MessageEvent<KeepUpResponse>) => {
-      if (event.data.id === id) setKeepUp(event.data.projections);
-    };
-    worker.addEventListener('message', receive);
-    const now = Date.now();
-    worker.postMessage({
-      id,
-      entries: forecastCards(data.courses, data.lessons, data.allCards, now),
-      history: reviewHistory,
-      now,
-    } satisfies KeepUpRequest);
-    return () => worker.removeEventListener('message', receive);
-  }, [data, reviewHistory]);
   const lines = useMemo<ForecastLine[]>(
     () =>
       (rows ?? []).flatMap((row) => {
         const forecast = forecasts?.[row.id];
         const history = histories?.[row.id];
-        return forecast && histories
-          ? [
-              {
-                id: row.id,
-                name: row.name,
-                status: row.status,
-                forecast,
-                history: history ?? [],
-                keepUp: keepUp?.[row.id],
-              },
-            ]
+        return forecast && history
+          ? [{ id: row.id, name: row.name, status: row.status, forecast, history }]
           : [];
       }),
-    [rows, forecasts, histories, keepUp],
+    [rows, forecasts, histories],
   );
 
   // The chart waits on review history anyway, so it loads alongside it rather than at start-up.

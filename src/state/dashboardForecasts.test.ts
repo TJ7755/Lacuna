@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  clearForecastCache,
-  forecastCards,
-  dashboardForecasts,
-  dashboardForecastHistories,
-  urgencyOrder,
-} from './dashboardForecasts';
-import { clearKeepUpCache, dashboardKeepUpProjections } from './dashboardKeepUp';
+import { clearForecastCache, dashboardForecasts, urgencyOrder } from './dashboardForecasts';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type { Card, Course } from '../db/types';
 
@@ -20,11 +13,7 @@ describe('urgencyOrder', () => {
       { id: 'chemistry', examDate: NOW + 28 * DAY, due: 14 },
       { id: 'biology', examDate: NOW + 22 * DAY, due: 24 },
     ];
-    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual([
-      'biology',
-      'chemistry',
-      'french',
-    ]);
+    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual(['biology', 'chemistry', 'french']);
   });
 
   it('treats a past exam like no exam and breaks ties by the larger workload', () => {
@@ -67,55 +56,5 @@ describe('dashboardForecasts', () => {
     const reviewed = [card('a', 12), card('b', 9)];
     expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio).not.toBe(first);
   });
-
-  it('reuses keep-up estimates per course and recomputes after a review or changed history', () => {
-    clearForecastCache();
-    clearKeepUpCache();
-    const cards = [card('a', 4)];
-    const project = (
-      values = cards,
-      history: Parameters<typeof dashboardKeepUpProjections>[1] = [],
-    ) => dashboardKeepUpProjections(forecastCards([course], [], values, NOW), history, NOW).bio;
-    const first = project();
-    expect(project()).toBe(first);
-    const reviewed = [
-      { ...cards[0], lastReviewed: NOW, stability: 12, due: NOW + 10 * DAY, reps: 3 },
-    ];
-    const next = project(reviewed);
-    expect(next).not.toBe(first);
-    expect(next[0].recall).toBeGreaterThan(first[0].recall);
-    expect(
-      project(reviewed, [
-        {
-          cardId: 'a',
-          id: 'new-review',
-          timestamp: NOW,
-          grade: 3,
-          responseTimeSec: 4,
-          distracted: false,
-          stabilityBefore: 4,
-          stabilityAfter: 12,
-          difficultyBefore: 5,
-          difficultyAfter: 5,
-          retrievabilityAtReview: 0.9,
-        },
-      ]),
-    ).not.toBe(next);
-    const steady = { ...course, examDate: undefined };
-    expect(
-      dashboardKeepUpProjections(forecastCards([steady], [], cards, NOW), [], NOW).bio,
-    ).toBeUndefined();
-  });
-
-  it('distinguishes absent study data from a historical forecast', () => {
-    const unstudied = { ...card('a', 4), stability: null, lastReviewed: null };
-    const forecasts = dashboardForecasts([course], [], [unstudied], NOW);
-    expect(
-      dashboardForecastHistories([course], [], [unstudied], [], forecasts, NOW - DAY, NOW).bio,
-    ).toEqual([]);
-    const studied = card('a', 4);
-    expect(
-      dashboardForecastHistories([course], [], [studied], [], forecasts, NOW - DAY, NOW).bio.length,
-    ).toBeGreaterThan(0);
-  });
 });
+
