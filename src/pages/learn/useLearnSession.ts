@@ -1,3 +1,4 @@
+import type { JevMarkProvenance } from '../../jev/types';
 import { catchUpPracticePool } from '../../course/catchUpPractice';
 import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
@@ -129,6 +130,7 @@ import {
 
 /** One submitted answer, as the grading paths need it. */
 interface AnswerResponse {
+  markedBy?: JevMarkProvenance;
   correct: boolean;
   manualGrade: Grade | null;
   machineMarked: MachineMarkedAnswer | null;
@@ -1599,7 +1601,7 @@ export function useLearnSession({
   const answerSimple = useCallback(
     async (
       cardNow: Card,
-      { correct, machineMarked, t, distracted }: AnswerResponse,
+      { correct, machineMarked, t, distracted, markedBy }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const deck = answerUnit(cardNow);
       if (!deck) return { undoAvailable: false };
@@ -1636,6 +1638,7 @@ export function useLearnSession({
           marksAvailable: machineMarked?.marksAvailable,
           lineVerdicts: machineMarked?.lineVerdicts,
           checkerDisputes: machineMarked?.checkerDisputes,
+          markedBy,
         },
         deck.id,
         perf,
@@ -1818,7 +1821,7 @@ export function useLearnSession({
   const answerScheduled = useCallback(
     async (
       cardNow: Card,
-      { correct, manualGrade, machineMarked, t, distracted }: AnswerResponse,
+      { correct, manualGrade, machineMarked, t, distracted, markedBy }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const ctx = ctxRef.current;
       const deck = answerUnit(cardNow);
@@ -1874,6 +1877,7 @@ export function useLearnSession({
           marksAvailable: machineMarked?.marksAvailable,
           lineVerdicts: machineMarked?.lineVerdicts,
           checkerDisputes: machineMarked?.checkerDisputes,
+          markedBy,
         },
         deck.id,
         perf,
@@ -2040,7 +2044,10 @@ export function useLearnSession({
   );
 
   const answer = useCallback(
-    async (input: AnswerInput): Promise<AnswerResult> => {
+    async (
+      input: AnswerInput,
+      options?: { markedBy?: JevMarkProvenance },
+    ): Promise<AnswerResult> => {
       if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
@@ -2058,6 +2065,7 @@ export function useLearnSession({
 
       try {
         const response: AnswerResponse = {
+          markedBy: options?.markedBy,
           correct: answerCorrect(input),
           manualGrade: typeof input === 'number' ? input : null,
           machineMarked,

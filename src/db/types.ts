@@ -1,6 +1,7 @@
 // Shared domain types for Lacuna's local data model.
 // All persistence is via IndexedDB (see schema.ts). British English throughout.
 
+import type { JevMarkProvenance } from '../jev/types';
 import type { CardFilter } from './search';
 import type { CardUpdate, LessonUpdate, LineageConflict, NoteUpdate } from './lineageDiff';
 import type { ReviewHistoryEntry } from './reviewHistory';
@@ -72,6 +73,7 @@ export type ReviewSessionKind =
 
 /** A single review event appended to a card's history. */
 export interface ReviewLog {
+  markedBy?: JevMarkProvenance;
   /** Stable identity for this attempt. Optional only for history written before schema v16. */
   eventId?: string;
   /** Stable identity shared by attempts in the same study session. */

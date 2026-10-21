@@ -37,6 +37,7 @@ import type {
 type ReviewUnitKind = 'scheduling-unit' | 'course';
 
 export interface RecordReviewArgs {
+  markedBy?: ReviewLog['markedBy'];
   card: Card;
   /** Stable caller-owned identity reused if the same submission is retried. */
   eventId: string;
@@ -289,6 +290,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
       marksAvailable,
       lineVerdicts,
       checkerDisputes,
+      markedBy,
     } = args;
     const kind: ReviewUnitKind = args.kind ?? 'scheduling-unit';
     const now = args.now ?? Date.now();
@@ -340,6 +342,7 @@ export async function recordReview(args: RecordReviewArgs): Promise<RecordReview
         const engine = makeEngine(deck.fsrsParameters);
         const { memory, retrievabilityAtReview } = applyReview(engine, cardBefore, grade, now);
         const log: ReviewLog = {
+          ...(markedBy ? { markedBy } : {}),
           eventId,
           sessionId,
           sessionKind,
