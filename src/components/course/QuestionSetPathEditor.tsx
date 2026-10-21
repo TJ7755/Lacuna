@@ -73,6 +73,7 @@ export function QuestionSetPathEditor({
       label={node ? 'Edit practice questions' : 'Add practice questions'}
       onSave={save}
       onClosed={onClose}
+      cancellable
       onDelete={node ? remove : undefined}
       deleteNoun="question-set activity"
     >

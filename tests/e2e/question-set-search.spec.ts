@@ -33,6 +33,34 @@ for (const width of [1280, 390]) {
     await page.goto(`/#${coursePath}`);
     await page.setViewportSize({ width, height: 844 });
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
+    for (const action of ['Cancel', 'Escape', 'backdrop']) {
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Practice questions', exact: true }).click();
+      const editor = page.getByRole('dialog', { name: 'Add practice questions', exact: true });
+      await editor.getByRole('button', { name: 'Choose a question set', exact: true }).click();
+      const child = page.getByRole('dialog', { name: 'Choose a question set', exact: true });
+      await expect(child.getByRole('radio', { name: /Cell practice/ })).toBeVisible();
+      await child.getByRole('searchbox').press('Escape');
+      await expect(child).toBeHidden();
+      await expect(editor).toBeVisible();
+      await editor.getByRole('button', { name: 'Done', exact: true }).click();
+      await expect(editor.getByRole('alert')).toHaveText('Choose a question set.');
+      if (action === 'Cancel') {
+        await page.screenshot({ path: test.info().outputPath(`editor-cancel-${width}.png`) });
+        await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+      } else if (action === 'Escape') {
+        await editor
+          .getByRole('button', { name: 'Choose a question set', exact: true })
+          .press('Escape');
+      } else {
+        await page.locator('[data-path-editor-backdrop]').click({ position: { x: 2, y: 2 } });
+      }
+      await expect(editor).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeFocused();
+      await expect(
+        page.getByRole('button', { name: 'Practice questions: Cell practice', exact: true }),
+      ).toHaveCount(0);
+    }
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: 'Practice questions', exact: true }).click();
     await page.getByRole('button', { name: 'Choose a question set', exact: true }).click();

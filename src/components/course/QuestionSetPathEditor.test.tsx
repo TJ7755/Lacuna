@@ -1,5 +1,12 @@
 import 'fake-indexeddb/auto';
-import { cleanup, fireEvent, render as renderView, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render as renderView,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../../db/repository';
 import { createLesson } from '../../db/lessonRepository';
@@ -14,7 +21,7 @@ import {
 } from '../../db/practiceNodeRepository';
 import { QuestionSetPathEditor } from './QuestionSetPathEditor';
 import { domAnimation, LazyMotion } from 'motion/react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
@@ -110,17 +117,94 @@ describe('QuestionSetPathEditor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
     const search = await screen.findByRole('searchbox', { name: 'Search question sets' });
-    expect(search).toHaveFocus();
+    await waitFor(() => expect(search).toHaveFocus());
     fireEvent.change(search, { target: { value: 'describe a cell' } });
     const choice = await screen.findByRole('radio', { name: /Cell structure/ });
     expect(screen.getByText(/Question 1: Describe a cell/)).toBeInTheDocument();
     expect(screen.getByText(/1 question · 1 answerable part · 1 mark/)).toBeInTheDocument();
     fireEvent.click(choice);
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Choose a question set' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
     expect(screen.getByRole('button', { name: 'Choose a question set' })).toHaveFocus();
     expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(await screen.findByText('Choose a question set.')).toBeInTheDocument();
+  });
+
+  it.each(['Cancel', 'Escape', 'backdrop'] as const)(
+    'abandons an empty activity with %s before and after validation fails',
+    async (action) => {
+      const { course, firstLesson } = await fixture();
+      function Harness() {
+        const [open, setOpen] = useState(false);
+        return (
+          <>
+            <button onClick={() => setOpen(true)}>Add practice</button>
+            {open && (
+              <QuestionSetPathEditor
+                courseId={course.id}
+                afterLessonId={firstLesson.id}
+                onClose={() => setOpen(false)}
+              />
+            )}
+          </>
+        );
+      }
+      render(<Harness />);
+      const opener = screen.getByRole('button', { name: 'Add practice' });
+      for (const validate of [false, true]) {
+        opener.focus();
+        fireEvent.click(opener);
+        fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
+        const search = await screen.findByRole('searchbox');
+        await screen.findByRole('radio', { name: /Cell structure/ });
+        fireEvent.keyDown(search, { key: 'Escape' });
+        expect(screen.getByRole('dialog', { name: 'Add practice questions' })).toBeVisible();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        if (validate) {
+          fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+          await screen.findByText('Choose a question set.');
+        }
+        if (action === 'Cancel') {
+          fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+        } else if (action === 'Escape') {
+          fireEvent.keyDown(screen.getByRole('button', { name: 'Choose a question set' }), {
+            key: 'Escape',
+          });
+        } else {
+          fireEvent.click(document.querySelector('[data-path-editor-backdrop]')!);
+        }
+        await waitFor(() =>
+          expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0),
+        );
+        expect(opener).toHaveFocus();
+        expect(opener.closest('[inert]')).toBeNull();
+        expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+        expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
+        expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
+      }
+    },
+  );
+
+  it('discards a confirmed set choice when the parent editor is cancelled', async () => {
+    const { course, firstLesson } = await fixture();
+    const onClose = vi.fn();
+    render(
+      <QuestionSetPathEditor
+        courseId={course.id}
+        afterLessonId={firstLesson.id}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Cell structure/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
   });
 
   it('creates an activity from a saved set at the selected lesson anchor', async () => {
