@@ -1,9 +1,9 @@
-import type {
-  DBCore,
-  DBCoreMutateRequest,
-  DBCoreMutateResponse,
-  DBCoreTransaction,
-  Middleware,
+import Dexie, {
+  type DBCore,
+  type DBCoreMutateRequest,
+  type DBCoreMutateResponse,
+  type DBCoreTransaction,
+  type Middleware,
 } from 'dexie';
 import type { ReviewHistoryEntry } from './reviewHistory';
 
@@ -170,7 +170,11 @@ export const reviewActivityProjectionMiddleware: Middleware<DBCore> = {
             };
 
             const previous = queues.get(request.trans);
-            const pending = previous ? previous.then(execute) : execute();
+            // Collection operations reuse the transaction across batches. Dexie's
+            // promise preserves its ambient context when a queued mutation starts.
+            const pending = previous
+              ? Dexie.Promise.resolve(previous).then(execute)
+              : Dexie.Promise.resolve(execute());
             const guarded = pending.catch((error) => {
               try {
                 request.trans.abort();

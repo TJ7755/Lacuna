@@ -1,0 +1,1 @@
+- Fix course deletion failing with a database transaction error when review history spans multiple deletion batches, while preserving Undo.
