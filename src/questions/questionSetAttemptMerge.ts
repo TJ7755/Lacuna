@@ -85,6 +85,11 @@ export function mergeQuestionSetAttemptPair(
   const selected = incomingWins ? incoming : existing;
   const winner = structuredClone(selected);
   const loser = incomingWins ? existing : incoming;
+  // A model result is subordinate to a learner decision, including across peers.
+  winner.decisions = winner.decisions.map((decision) => {
+    const other = loser.decisions.find((row) => row.allocationId === decision.allocationId);
+    return decision.markedBy && other && !other.markedBy ? structuredClone(other) : decision;
+  });
   for (const original of submitted(loser)) {
     const target = winner.responses.find((row) => row.nodeId === original.nodeId)!;
     if (!target.submitted) {

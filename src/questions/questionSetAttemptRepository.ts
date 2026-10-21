@@ -200,6 +200,11 @@ export function submitPracticeQuestion(
     if (!attempt.revealedQuestionIds.includes(questionId))
       attempt.revealedQuestionIds.push(questionId);
     if (attempt.responses.every((response) => response.submitted)) attempt.status = 'marking';
+  }).then((attempt) => {
+    void import('../jev/attempts')
+      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
+      .catch(() => {});
+    return attempt;
   });
 }
 
@@ -218,6 +223,11 @@ export function submitQuestionSetPaper(
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';
+  }).then((attempt) => {
+    void import('../jev/attempts')
+      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
+      .catch(() => {});
+    return attempt;
   });
 }
 
@@ -259,7 +269,22 @@ export function saveQuestionSetMarking(
     ) {
       throw new Error('Submit a response before annotating or correcting it.');
     }
-    Object.assign(attempt, clone(input));
+    const next = clone(input);
+    next.decisions = next.decisions.map((decision) => {
+      const previous = attempt.decisions.find((row) => row.allocationId === decision.allocationId);
+      if (
+        previous?.markedBy &&
+        (previous.status !== decision.status ||
+          (previous.status === 'awarded' &&
+            decision.status === 'awarded' &&
+            previous.marks !== decision.marks))
+      ) {
+        const { markedBy: _markedBy, ...learnerDecision } = decision;
+        return learnerDecision;
+      }
+      return decision;
+    });
+    Object.assign(attempt, next);
   });
 }
 
@@ -334,5 +359,34 @@ export function undoConceptPracticeAttempt(
   return mutate(id, expectedRevisionId, now, (attempt) => {
     if (!attempt.conceptPractice) throw new Error('This is not a Concept practice attempt.');
     attempt.undoneAt ??= now;
+  });
+}
+
+/** Apply a model result only while the original response is submitted and still undecided. */
+export async function applyJevAllocationDecision(
+  id: string,
+  nodeId: string,
+  decision: Extract<SelfMarkDecision, { status: 'awarded' }>,
+  stillEnabled: () => boolean,
+): Promise<boolean> {
+  return db.transaction('rw', db.questionSetAttempts, async () => {
+    const raw = await db.questionSetAttempts.get(id);
+    if (!raw || !stillEnabled()) return false;
+    const attempt = parseQuestionSetAttemptRecord(raw);
+    if (
+      attempt.status === 'complete' ||
+      attempt.undoneAt !== undefined ||
+      attempt.decisions.some((row) => row.allocationId === decision.allocationId) ||
+      attempt.responses.find((row) => row.nodeId === nodeId)?.submitted?.kind !== 'written' ||
+      !answerableNodes(attempt.receipt).some(
+        (node) => node.nodeId === nodeId && node.allocationIds.includes(decision.allocationId),
+      )
+    )
+      return false;
+    attempt.decisions.push(clone(decision));
+    attempt.revisionId = makeId();
+    attempt.updatedAt = Math.max(Date.now(), attempt.updatedAt + 1);
+    await db.questionSetAttempts.put(parseQuestionSetAttemptRecord(attempt));
+    return true;
   });
 }
