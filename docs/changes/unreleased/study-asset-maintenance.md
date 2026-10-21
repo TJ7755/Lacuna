@@ -1,0 +1,1 @@
+- Defer scheduled media cleanup during Study so large-course reviews do not wait behind its database scan, and skip empty-media sweeps.

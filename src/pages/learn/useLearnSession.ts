@@ -5,6 +5,7 @@ import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
+import { pauseAssetGc } from '../../db/assets';
 import {
   getSchedulingUnit,
   performanceForCourseBackingDecks,
@@ -307,6 +308,8 @@ export function useLearnSession({
   onCardServedRef.current = onCardServed;
   const onSessionResetRef = useRef(onSessionReset);
   onSessionResetRef.current = onSessionReset;
+
+  useEffect(() => (enabled ? pauseAssetGc() : undefined), [enabled]);
 
   const [phase, setPhase] = useState<Phase>('loading');
   // The unit a single-unit session is studying (null for the global session).
