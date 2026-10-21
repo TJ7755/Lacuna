@@ -39,9 +39,10 @@ export function selectNextCard(
   oc: ObjectiveContext,
   cooldowns: CooldownMap,
   now: number = Date.now(),
+  tieBreak?: (a: Card, b: Card) => number,
 ): Card | null {
   if (cards.length === 0) return null;
-  const scored = sortByObjective(cards, oc, now);
+  const scored = sortByObjective(cards, oc, now, tieBreak);
 
   const eligible = scored.find(({ card }) => (cooldowns.get(card.id) ?? 0) <= 0);
   if (eligible) return eligible.card;

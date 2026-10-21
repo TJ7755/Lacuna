@@ -1,0 +1,1 @@
+- Randomise equally prioritised study cards once per session, preventing import order from grouping tied cards while preserving scheduler priorities, eligibility and cooldowns.

@@ -39,6 +39,8 @@ test('measures image-heavy study startup', async ({ page }, testInfo) => {
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   const fixture = await page.evaluate(async () => (window as unknown as { StudyLoadFixture: { seed(): Promise<unknown> } }).StudyLoadFixture.seed());
   await page.addInitScript(() => {
+    // Keep the measured image sequence fixed while the production scheduler shuffles ties.
+    Math.random = () => 1 - Number.EPSILON;
     const create = URL.createObjectURL;
     URL.createObjectURL = function (blob) {
       performance.mark('study-probe:object-url');
