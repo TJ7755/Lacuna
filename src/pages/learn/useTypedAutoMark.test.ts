@@ -101,6 +101,68 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).not.toHaveBeenCalled();
   });
 
+  it('uses Space as a brake and moves immediately on release after the usual hold', () => {
+    jev.marker = vi.fn();
+    const { onMarked } = setup('Paris');
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(onMarked).not.toHaveBeenCalled();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(onMarked).toHaveBeenCalledExactlyOnceWith(true, null);
+  });
+
+  it('keeps the original deadline when Space is released early', () => {
+    jev.marker = vi.fn();
+    const { onMarked } = setup('Paris');
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ' }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(299);
+    });
+    expect(onMarked).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(onMarked).toHaveBeenCalledOnce();
+  });
+
+  it('releases the brake when the window loses focus', () => {
+    jev.marker = vi.fn();
+    const { onMarked } = setup('Paris');
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }));
+    });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    act(() => {
+      window.dispatchEvent(new Event('blur'));
+    });
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(onMarked).toHaveBeenCalledOnce();
+  });
+
   it('leaves an answer restored by Undo for manual grading without another verdict', () => {
     jev.marker = vi.fn();
     const { result, onMarked } = setup('Paris', { manual: true });

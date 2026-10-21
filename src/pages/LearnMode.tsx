@@ -69,6 +69,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const completionInFlightRef = useRef(false);
   const lastTypedAnswerRef = useRef<{ cardId: string; answer: string } | null>(null);
   const [manualRestoredCardId, setManualRestoredCardId] = useState<string | null>(null);
+  const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -291,8 +292,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       const typed = lastTypedAnswerRef.current;
       if (typed) setManualRestoredCardId(typed.cardId);
       const restored = await undoLast({ reveal: typed !== null });
-      if (restored && typed?.cardId === restored.id) setTypedAnswer(typed.answer);
-      else setManualRestoredCardId(null);
+      if (restored && typed?.cardId === restored.id) {
+        setTypedAnswer(typed.answer);
+        lastTypedAnswerRef.current = null;
+      }
     } finally {
       undoInFlightRef.current = false;
     }
@@ -362,8 +365,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     typedAnswer,
     answerStrictness,
     occlusionAnswerText,
-    paused: editing || menuOpen || hintsOpen,
+    paused: editing || menuOpen || hintsOpen || leaveConfirmationOpen,
     manual: manualRestoredCardId === current?.id,
+    onHold: () => cardTransitionRef.current?.cancel(),
     m,
     onMarked: (correct, provenance) =>
       answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined, true),
@@ -372,8 +376,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
 
   useEffect(() => {
-    if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
-  }, [editing, menuOpen, hintsOpen]);
+    if (editing || menuOpen || hintsOpen || leaveConfirmationOpen)
+      cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, hintsOpen, leaveConfirmationOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -445,6 +450,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
+        onOpenChange={setLeaveConfirmationOpen}
         active={() =>
           !leavingSessionRef.current &&
           ((current !== null && (phase === 'question' || phase === 'answer')) ||

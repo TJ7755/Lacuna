@@ -24,6 +24,7 @@ export interface NavigationGuardProps {
   onAttempt?: () => void;
   onConfirm?: () => unknown | Promise<unknown>;
   onExplicitLeave?: () => unknown | Promise<unknown>;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export interface NavigationGuardHandle {
@@ -83,6 +84,7 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
       onAttempt,
       onConfirm,
       onExplicitLeave,
+      onOpenChange,
       blocker,
     },
     ref,
@@ -100,6 +102,9 @@ const NavigationGuardCore = forwardRef<NavigationGuardHandle, NavigationGuardCor
     const [confirming, setConfirming] = useState(false);
     const [explicitAttempt, setExplicitAttempt] = useState(false);
     const blocked = blocker?.state === 'blocked' || explicitAttempt;
+    useEffect(() => {
+      onOpenChange?.(blocked);
+    }, [blocked, onOpenChange]);
     const trapRef = useFocusTrap(blocked, { autoFocusSelector: '[data-guard-stay]' });
     const messageId = useId();
 

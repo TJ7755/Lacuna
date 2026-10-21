@@ -203,3 +203,60 @@ test('keeps a final Simple answer undoable and restores manual marking', async (
   await expect(report).toBeVisible();
   await expect(report.getByRole('button', { name: 'Undo last answer' })).toHaveCount(0);
 });
+
+test('holds an automatic answer with Space and resumes as soon as it is released', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const response = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/ai/jev', async (route) => {
+    await response;
+    await route.fulfill({
+      json: { value: 0, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0', feedback },
+    });
+  });
+  await start(page);
+  const card = page.locator('[data-study-card-id]').first();
+  const id = await card.getAttribute('data-study-card-id');
+  await submit(page);
+  await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+  await page.keyboard.down('Space');
+  release();
+  await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toContainText(
+    'Partly right',
+  );
+  // Exceed the normal 700 ms deadline while physically holding the brake.
+  await page.waitForTimeout(1000);
+  await expect(card).toHaveAttribute('data-study-card-id', id!);
+  await page.evaluate((id) => {
+    const card = document.querySelector(`[data-study-card-id="${id}"]`)!;
+    const origin = card.getBoundingClientRect().left;
+    (window as unknown as { jevReleaseMotion: Promise<number> }).jevReleaseMotion = new Promise(
+      (resolve, reject) => {
+        window.addEventListener(
+          'keyup',
+          () => {
+            const started = performance.now();
+            const sample = () => {
+              if (!card.isConnected || Math.abs(card.getBoundingClientRect().left - origin) > 1)
+                resolve(performance.now() - started);
+              else if (performance.now() - started > 1500)
+                reject(new Error('The released answer did not start moving.'));
+              else requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+          },
+          { once: true },
+        );
+      },
+    );
+  }, id);
+  await page.keyboard.up('Space');
+  const elapsed = await page.evaluate(
+    () => (window as unknown as { jevReleaseMotion: Promise<number> }).jevReleaseMotion,
+  );
+  expect(elapsed).toBeLessThan(200);
+  await expect(card).not.toHaveAttribute('data-study-card-id', id!);
+});

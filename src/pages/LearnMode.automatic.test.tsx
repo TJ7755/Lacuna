@@ -86,6 +86,7 @@ describe('automatic final-answer Undo', () => {
       await screen.findByRole('button', { name: 'Yes' });
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
       expect(onStepFinished).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
       await act(async () => {
         await new Promise((resolve) => setTimeout(resolve, 400));
       });

@@ -65,6 +65,7 @@ export function useTypedAutoMark({
   manual = false,
   m,
   onMarked,
+  onHold,
 }: {
   card: Card | null;
   phase: Phase;
@@ -78,19 +79,68 @@ export function useTypedAutoMark({
   manual?: boolean;
   m: number;
   onMarked: (correct: boolean, provenance: JevMarkProvenance | null) => void;
+  onHold?: () => void;
 }): TypedAutoMark {
   const marker = useJevTypedMarker();
   const [mark, setMark] = useState<TypedAutoMark>({ state: 'idle' });
+  const [holding, setHolding] = useState(false);
+  const dismissAt = useRef<number | null>(null);
   const onMarkedRef = useRef(onMarked);
+  const onHoldRef = useRef(onHold);
   useEffect(() => {
     onMarkedRef.current = onMarked;
-  }, [onMarked]);
+    onHoldRef.current = onHold;
+  }, [onMarked, onHold]);
 
   const active = !manual && marker !== null && isTypingCard && phase === 'answer' && card !== null;
   const cardId = card?.id;
+  const canHold = active && (mark.state === 'checking' || mark.state === 'marked');
+
+  useEffect(() => {
+    if (!canHold || paused) {
+      setHolding(false);
+      return;
+    }
+    const down = (event: KeyboardEvent) => {
+      if (
+        event.code !== 'Space' ||
+        event.isComposing ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey
+      )
+        return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]',
+        )
+      )
+        return;
+      event.preventDefault();
+      if (!event.repeat) onHoldRef.current?.();
+      setHolding(true);
+    };
+    const up = (event: KeyboardEvent) => {
+      if (event.code === 'Space') setHolding(false);
+    };
+    const release = () => setHolding(false);
+    window.addEventListener('keydown', down, true);
+    window.addEventListener('keyup', up, true);
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', release);
+    return () => {
+      window.removeEventListener('keydown', down, true);
+      window.removeEventListener('keyup', up, true);
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', release);
+    };
+  }, [canHold, paused]);
 
   // Decide the mark once per revealed answer.
   useEffect(() => {
+    dismissAt.current = null;
     setMark({ state: 'idle' });
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
@@ -137,19 +187,34 @@ export function useTypedAutoMark({
       window.clearTimeout(timeout);
       controller.abort();
     };
-    // The answer and card are fixed while revealed; re-run only for a new reveal.
+    // Content edits invalidate an in-flight request or a verdict held behind the editor.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, cardId]);
+  }, [
+    active,
+    cardId,
+    card?.front,
+    card?.back,
+    card?.type,
+    typedAnswer,
+    answerStrictness,
+    occlusionAnswerText,
+    marker,
+  ]);
 
   // A visible mark dismisses the card after a short hold, unless something interrupts.
   useEffect(() => {
-    if (mark.state !== 'marked' || paused || !active) return;
+    if (mark.state !== 'marked' || paused || !active) {
+      dismissAt.current = null;
+      return;
+    }
+    dismissAt.current ??= performance.now() + TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3);
+    if (holding) return;
     const timer = window.setTimeout(
       () => onMarkedRef.current(mark.correct, mark.provenance),
-      TYPED_AUTO_MARK_HOLD_MS * Math.max(m, 0.3),
+      Math.max(0, dismissAt.current - performance.now()),
     );
     return () => window.clearTimeout(timer);
-  }, [mark, paused, active, m]);
+  }, [mark, paused, active, m, holding]);
 
   if (marker === null) return OFF;
   return active ? mark : IDLE;

@@ -1,0 +1,1 @@
+- Hold automatic marking while confirming a study exit, and discard obsolete judgements when a card is edited before grading. (#715)
