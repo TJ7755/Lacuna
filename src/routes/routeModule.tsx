@@ -33,66 +33,31 @@ export function loadRouteModule(loader: RouteLoader): Promise<RouteModule> {
   return request;
 }
 
-const RELOAD_KEY = 'lacuna:route-import-reload';
-let reloadRequested = false;
-
-function clearRouteRecovery() {
-  try {
-    if (sessionStorage.getItem(RELOAD_KEY) === window.location.href) {
-      sessionStorage.removeItem(RELOAD_KEY);
-    }
-  } catch {
-    // Storage restrictions must not prevent a successfully loaded route rendering.
-  }
-}
-
 function recoverRouteImport(error: unknown): Promise<never> {
   const isImportFailure =
     error instanceof Error &&
     /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i.test(
       error.message,
     );
-  if (!isImportFailure || reloadRequested) throw error;
-  try {
-    // Persist before reloading. If storage is unavailable, keep the boundary rather
-    // than risk a reload loop. Only a successful load of this URL clears the guard.
-    if (sessionStorage.getItem(RELOAD_KEY)) {
-      // A reload already ran for this URL and the chunk still failed to fetch:
-      // plain reloads keep receiving whatever the service worker and its caches
-      // hold, so the guard is the signal to clear that state for the current
-      // deployment instead. The shared claim throttles repeats; a denial keeps
-      // the boundary from turning the failure into a reload loop.
-      return recoverFromChunkFailure().then((recovered) => {
-        if (recovered) return new Promise<never>(() => {});
-        throw error;
-      });
-    }
-    sessionStorage.setItem(RELOAD_KEY, window.location.href);
-  } catch {
-    throw error;
-  }
-  reloadRequested = true;
-  window.location.reload();
-  // Keep Suspense visible while the replacement document loads.
-  return new Promise<never>(() => {});
+  if (!isImportFailure) throw error;
+  return recoverFromChunkFailure().then((recovered) => {
+    if (!recovered) throw error;
+    // React.lazy retains rejected promises. Keep Suspense visible until the
+    // replacement document arrives, after stale worker/cache cleanup finishes.
+    return new Promise<never>(() => {});
+  });
 }
 
 export function lazyRouteModule(loader: RouteLoader): ComponentType {
   // Recover on navigation, never on speculative hover/focus prefetches. Catching
   // here covers Vite's production preload rejection as well as dev imports.
-  const LazyComponent = lazy(() =>
-    loadRouteModule(loader).then((module) => {
-      clearRouteRecovery();
-      return module;
-    }, recoverRouteImport),
-  );
+  const LazyComponent = lazy(() => loadRouteModule(loader).catch(recoverRouteImport));
   return function RouteModuleComponent() {
     // A fulfilled import alone still suspends React.lazy on its first render.
     // Render an already-prefetched module directly, avoiding React 19's fallback
     // delay. Keep the choice stable for this mount so cold loads retain state.
     const [Component] = useState(() => {
       const loaded = loadedModules.get(loader);
-      if (loaded) clearRouteRecovery();
       return loaded?.default ?? LazyComponent;
     });
     return <Component />;

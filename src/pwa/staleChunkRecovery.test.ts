@@ -152,7 +152,7 @@ describe('awaited stale chunk recovery', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it('collapses a second caller while one recovery is already running', async () => {
+  it('shares the recovery result with callers while cleanup is already running', async () => {
     let resolveProbe!: (confirmed: boolean) => void;
     const clearPwaState = vi.fn().mockResolvedValue(undefined);
     const reload = vi.fn();
@@ -170,8 +170,10 @@ describe('awaited stale chunk recovery', () => {
     };
 
     const first = recoverFromChunkFailure(environment);
-    await expect(recoverFromChunkFailure(environment)).resolves.toBe(false);
+    const second = recoverFromChunkFailure(environment);
+    expect(second).toBe(first);
     resolveProbe(true);
+    await expect(second).resolves.toBe(true);
     await expect(first).resolves.toBe(true);
     expect(environment.clearPwaState).toHaveBeenCalledOnce();
     expect(environment.reload).toHaveBeenCalledOnce();
