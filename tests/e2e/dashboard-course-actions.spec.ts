@@ -5,7 +5,9 @@ test('course actions work on first use after going offline', async ({ page, cont
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
-  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
+    .toBe(true);
   await context.setOffline(true);
   try {
     await page.getByRole('button', { name: 'More for Welcome to Lacuna' }).click();
@@ -50,6 +52,14 @@ for (const width of [390, 1440]) {
     await expect(course).toBeHidden();
     await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeFocused();
     await expect(page.getByRole('heading', { name: 'No active courses' })).toBeVisible();
+    const notifications = page.getByLabel('Notifications', { exact: true });
+    const undo = notifications.getByRole('button', { name: 'Undo', exact: true });
+    await expect(undo).toBeVisible();
+    expect((await notifications.boundingBox())!.height).toBeLessThanOrEqual(56);
+    expect((await undo.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: test.info().outputPath('compact-notification.png') });
+    await undo.click();
+    await expect(course).toBeVisible();
   });
 
   test(`Sidebar ordering targets fit enlarged text at ${width}px`, async ({ page }) => {

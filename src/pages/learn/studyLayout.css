@@ -115,9 +115,22 @@
 /* Keep notification surfaces clear of study actions, including touch and typed recall. */
 body:has(.study-session) .toast-stack {
   pointer-events: none;
-  max-width: calc(100vw - 3rem);
+  max-width: calc(100vw - 2rem);
   top: calc(env(safe-area-inset-top) + 6rem);
   bottom: auto;
+}
+
+/* Wide keyboard layouts have room beside even the four-button grade row. */
+@media (min-width: 1280px) {
+  body:has(.study-session):not(:has(.study-touch-controls)) .toast-stack {
+    top: auto;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    max-width: min(24rem, calc((100vw - 42rem) / 2 - 2rem));
+  }
+
+  body:has(.study-session):not(:has(.study-touch-controls)) .toast-stack > div {
+    max-width: 100%;
+  }
 }
 
 body:has(.study-session) .toast-stack button {

@@ -178,11 +178,11 @@ export function GapsSidebar({
 
       <div
         className={cn(
-          'flex w-[264px] px-3 py-3',
-          drawer ? 'justify-start' : 'flex-col items-start pl-[14px]',
+          'w-[264px] px-3 py-3',
+          drawer ? 'flex justify-start' : 'grid grid-cols-[44px] items-start gap-y-2 pl-[14px]',
         )}
       >
-        <div className={cn(!drawer && 'gaps-sidebar-theme pb-2')}>
+        <div className={cn(!drawer && 'col-start-1 row-start-1')}>
           <button
             type="button"
             onClick={toggleTheme}
@@ -194,7 +194,7 @@ export function GapsSidebar({
           </button>
         </div>
         {!drawer && (
-          <div className="gaps-sidebar-collapse">
+          <div className={cn('gaps-sidebar-collapse col-start-1', !collapsed && 'row-start-1')}>
             <button
               type="button"
               onClick={onToggleCollapsed}
