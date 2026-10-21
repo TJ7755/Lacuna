@@ -110,6 +110,12 @@ export function QuestionSetMarking({
             { value: 'unsure', label: 'Unsure' },
           ]}
         />
+        {decision?.status === 'awarded' && decision.markedBy && (
+          <p className="qs-muted">
+            Marked automatically ({Math.round(decision.markedBy.confidence * 100)}% sure). Change
+            the mark to override it.
+          </p>
+        )}
       </section>
       <section className="qs-marking-answer">
         <p className="qs-kicker">Original answer</p>

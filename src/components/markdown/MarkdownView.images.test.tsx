@@ -13,8 +13,14 @@ describe('MarkdownView image enlargement', () => {
     const hash = 'd'.repeat(64);
     const createUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:warmed-large-photo');
     try {
-      await db.assets.put({ hash, blob: new Uint8Array([1, 2, 3]), mimeType: 'image/jpeg',
-        width: 4000, height: 3000, createdAt: 0 });
+      await db.assets.put({
+        hash,
+        blob: new Uint8Array([1, 2, 3]),
+        mimeType: 'image/jpeg',
+        width: 4000,
+        height: 3000,
+        createdAt: 0,
+      });
       await resolveAssetUrl(hash);
       const view = render(<MarkdownView source={`![Large photo](${assetUrl(hash)})`} />);
       const image = view.container.querySelector('img');
@@ -23,7 +29,12 @@ describe('MarkdownView image enlargement', () => {
       expect(image).toHaveAttribute('height', '3000');
       expect(createUrl).toHaveBeenCalledOnce();
       view.unmount();
-      const authored = render(<MarkdownView source={`<img src="${assetUrl(hash)}" width="120" height="80">`} enlargeImages />);
+      const authored = render(
+        <MarkdownView
+          source={`<img src="${assetUrl(hash)}" width="120" height="80">`}
+          enlargeImages
+        />,
+      );
       expect(authored.container.querySelector('img')).toHaveAttribute('width', '120');
       expect(authored.container.querySelector('img')).toHaveAttribute('height', '80');
     } finally {

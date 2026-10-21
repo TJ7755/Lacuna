@@ -1,16 +1,52 @@
+import { QuestionSetAttemptRevisionConflictError } from '../../questions/questionSetAttemptRepository';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 
 type Command = (record: QuestionSetAttemptRecord) => Promise<QuestionSetAttemptRecord>;
 
-/** One revision owner per open attempt. Failed writes stop the queue instead of guessing a revision. */
+type Loader = (id: string) => Promise<QuestionSetAttemptRecord | null>;
+
+/**
+ * One revision owner per open attempt. Failed writes stop the queue instead of guessing a revision.
+ * Background marking may also write the attempt: the session adopts those revisions while idle, and
+ * a command that meets one re-runs once against the latest record, since commands derive their
+ * write from the record they are given.
+ */
 export class QuestionSetAttemptSession {
   snapshot: { record: QuestionSetAttemptRecord; pending: number; error: Error | null };
   private tail: Promise<unknown> = Promise.resolve();
   private failed: Command[] = [];
   private listeners = new Set<() => void>();
 
-  constructor(record: QuestionSetAttemptRecord) {
+  constructor(
+    record: QuestionSetAttemptRecord,
+    private load?: Loader,
+  ) {
     this.snapshot = { record, pending: 0, error: null };
+  }
+  /** Take a newer stored revision written elsewhere, unless this session is mid-write or stopped. */
+  adopt(record: QuestionSetAttemptRecord) {
+    const current = this.snapshot.record;
+    if (
+      record.id !== current.id ||
+      record.revisionId === current.revisionId ||
+      record.updatedAt < current.updatedAt ||
+      this.snapshot.pending > 0 ||
+      this.snapshot.error
+    ) {
+      return;
+    }
+    this.update({ record });
+  }
+  private async execute(command: Command): Promise<QuestionSetAttemptRecord> {
+    try {
+      return await command(this.snapshot.record);
+    } catch (cause) {
+      if (!(cause instanceof QuestionSetAttemptRevisionConflictError) || !this.load) throw cause;
+      const latest = await this.load(this.snapshot.record.id);
+      if (!latest) throw cause;
+      this.update({ record: latest });
+      return command(latest);
+    }
   }
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -33,7 +69,7 @@ export class QuestionSetAttemptSession {
           throw this.snapshot.error;
         }
         try {
-          const record = await command(this.snapshot.record);
+          const record = await this.execute(command);
           this.update({ record });
           return record;
         } catch (cause) {

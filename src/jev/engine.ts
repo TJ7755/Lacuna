@@ -360,8 +360,9 @@ export function createJevEngine(
             confidence: result.confidence,
             markedAt: Date.now(),
           },
+          feedback: { kind: null, parts: [] },
         }
-      : { outcome: 'unsure' };
+      : { outcome: 'unsure', feedback: null };
   }
   const controller = {
     enable(version: number) {
