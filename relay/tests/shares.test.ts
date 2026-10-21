@@ -71,7 +71,7 @@ describe('course share links', () => {
       expect(response.headers.get('ETag')).toBe(expectedEtag);
       expect(response.headers.get('Content-Type')).toBe('application/octet-stream');
       expect(response.headers.get('Cache-Control')).toBe('no-store');
-      expect(new Uint8Array(await response.arrayBuffer())).toEqual(bodies[slot]);
+      expect(Buffer.from(await response.arrayBuffer()).equals(bodies[slot])).toBe(true);
       expect(bodyBytesRead).toBe(bodies[slot].byteLength);
     },
   );
