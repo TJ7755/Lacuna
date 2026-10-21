@@ -14,8 +14,6 @@ export interface ForecastLine {
   forecast: CourseForecast;
   /** The stop-now figure over the chart's past days, ending today at `forecast.ifStopped`. */
   history: ForecastPoint[];
-  /** Exam-day estimates assuming due reviews up to each future date. */
-  keepUp?: ForecastPoint[];
 }
 
 const WIDE_WIDTH = 640;
@@ -314,8 +312,8 @@ export function ForecastChart({
         </h2>
         <p id={`${titleId}-measure`} className="sr-only">
           Predicted exam-day recall (%). Each past point uses study up to that date to estimate
-          recall on the exam date. The dashed line assumes no further reviews; the dash-dot line,
-          every due review. These are estimates, not exam marks or guarantees.
+          recall on the exam date. The dashed line assumes no further reviews. An estimate, not an
+          exam mark or a guarantee.
         </p>
         <ul
           className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4"
@@ -350,22 +348,6 @@ export function ForecastChart({
               If you stop now
             </li>
           )}
-          {!allMissing && lines.some((line) => line.keepUp?.length) && (
-            <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
-              <svg aria-hidden="true" width="24" height="4">
-                <line
-                  x1="0"
-                  x2="24"
-                  y1="2"
-                  y2="2"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeDasharray="8 3 1 3"
-                />
-              </svg>
-              If you keep up
-            </li>
-          )}
         </ul>
       </div>
       <svg
@@ -382,7 +364,7 @@ export function ForecastChart({
               const projection = projections.get(line.id)!;
               return projection.explanation
                 ? `${line.name}: ${projection.explanation}`
-                : `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)}. Dashed: If you stop now, from today to the exam with no further reviews.${line.keepUp?.length ? ` Dash-dot: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up with due reviews.` : ''}`;
+                : `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)}. Dashed: If you stop now, from today to the exam with no further reviews`;
             })
             .join('. ')}
         </desc>
@@ -514,21 +496,6 @@ export function ForecastChart({
                   <title>{`${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)} if you stop now; no further reviews`}</title>
                 </path>
               )}
-              {projection.points.length > 0 && line.keepUp && line.keepUp.length > 0 && (
-                <path
-                  d={smoothPath(
-                    line.keepUp.map((point) => ({ x: x(point.at), y: y(point.recall) })),
-                  )}
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth={context ? 2 : 2.5}
-                  strokeDasharray="8 3 1 3"
-                  strokeLinecap="round"
-                  aria-label={`${line.name}: If you keep up`}
-                >
-                  <title>{`${line.name}: ${Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up`}</title>
-                </path>
-              )}
               {(!context || focused) && projection.points.length > 0 && (
                 <>
                   <motion.circle
@@ -595,13 +562,6 @@ export function ForecastChart({
               {line.forecast.hasExam && <>Exam {formatDate(line.forecast.end)}. </>}
               {explanation ??
                 `${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall if you stop now.`}
-              {!explanation && line.keepUp && line.keepUp.length > 0 && (
-                <>
-                  {' '}
-                  {Math.round(line.keepUp.at(-1)!.recall * 100)}% if you keep up with due reviews
-                  (dash-dot line).
-                </>
-              )}
               {!line.forecast.hasExam && line.history.length > 0 && (
                 <>
                   {' '}

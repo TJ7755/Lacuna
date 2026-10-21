@@ -24,19 +24,7 @@ function renderChart(days: number) {
   const history = [0, 1, 2].map((k) => ({ at: NOW - (2 - k) * 9 * DAY, recall: 0.4 + k * 0.11 }));
   return render(
     <ForecastChart
-      lines={[
-        {
-          id: 'c',
-          name: 'Course',
-          status: 'behind',
-          forecast: forecast(days),
-          history,
-          keepUp: [
-            { at: NOW, recall: 0.62 },
-            { at: NOW + days * DAY, recall: 0.9 },
-          ],
-        },
-      ]}
+      lines={[{ id: 'c', name: 'Course', status: 'behind', forecast: forecast(days), history }]}
       now={NOW}
       past={18}
       future={12}
@@ -46,22 +34,9 @@ function renderChart(days: number) {
 }
 
 describe('ForecastChart axis', () => {
-  it('distinguishes the keep-up scenario by dash pattern and accessible details', () => {
-    renderChart(7);
-    const stop = screen.getByLabelText('Course: If you stop now');
-    const keep = screen.getByLabelText('Course: If you keep up');
-    expect(keep.getAttribute('stroke-dasharray')).not.toBe(stop.getAttribute('stroke-dasharray'));
-    expect(screen.getByText('If you keep up', { exact: true })).toBeInTheDocument();
-    expect(screen.getByRole('img')).toHaveAccessibleDescription(/90%.*if you keep up/i);
-    expect(screen.getByRole('list', { name: 'Forecast details' })).toHaveTextContent(
-      /90%.*if you keep up/i,
-    );
-  });
   it('places today 60% across the plot and labels its stop-now figure once', () => {
     const { container } = renderChart(7);
-    const width = Number(
-      container.querySelector('svg[role="img"]')!.getAttribute('viewBox')!.split(' ')[2],
-    );
+    const width = Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2]);
     const dot = container.querySelector('circle')!;
     // The plot runs from 40px in to 16px short of the right edge.
     expect(Number(dot.getAttribute('cx'))).toBeCloseTo(40 + 0.6 * (width - 56));
@@ -91,9 +66,7 @@ describe('ForecastChart axis', () => {
 
   it('extends the plot and the flat projection to an exam beyond the selected window', () => {
     const { container } = renderChart(40);
-    const width = Number(
-      container.querySelector('svg[role="img"]')!.getAttribute('viewBox')!.split(' ')[2],
-    );
+    const width = Number(container.querySelector('svg')!.getAttribute('viewBox')!.split(' ')[2]);
     const projection = container.querySelector('path[aria-label]')!;
     const coordinates = projection
       .getAttribute('d')!

@@ -121,10 +121,8 @@ for (const width of [1440, 390]) {
     await expect(chart).toBeVisible();
     await panel.screenshot({ path: testInfo.outputPath(`forecast-${width}.png`) });
     await expect(chart).toHaveAccessibleDescription(/predicted exam-day recall/i);
-    const projections = chart.locator('path[aria-label$=": If you stop now"]');
-    const keepUp = chart.locator('path[aria-label$=": If you keep up"]');
-    await expect(chart.locator('path[aria-label]')).toHaveCount(4);
-    await expect(keepUp).toHaveCount(2);
+    const projections = chart.locator('path[aria-label]');
+    await expect(projections).toHaveCount(2);
     for (const path of await projections.all()) {
       await expect(path).toHaveAccessibleName(/If you stop now/);
       await expect(path).toHaveAttribute('stroke-dasharray', /\d/);
@@ -137,18 +135,6 @@ for (const width of [1440, 390]) {
       });
       expect(geometry.end.x).toBeGreaterThan(geometry.start.x);
       expect(geometry.end.y).toBeCloseTo(geometry.start.y);
-      const course = (await path.getAttribute('aria-label'))!.split(':')[0];
-      const maintained = chart.getByLabel(`${course}: If you keep up`, { exact: true });
-      expect(await maintained.getAttribute('stroke-dasharray')).not.toBe(
-        await path.getAttribute('stroke-dasharray'),
-      );
-      const end = await maintained.evaluate((element) => {
-        const path = element as SVGPathElement;
-        const point = path.getPointAtLength(path.getTotalLength());
-        return { x: point.x, y: point.y };
-      });
-      expect(end.x).toBeCloseTo(geometry.end.x);
-      expect(end.y).toBeLessThanOrEqual(geometry.end.y);
     }
     const details = panel.getByRole('list', { name: 'Forecast details' });
     await expect(details.getByText(/French:.*no future exam date/i)).toBeVisible();
@@ -157,7 +143,6 @@ for (const width of [1440, 390]) {
     const plotted = details.getByText(/Biology:.*predicted exam-day recall/);
     await expect(plotted).toBeAttached();
     expect((await plotted.boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
-    await expect(plotted).toContainText(/if you keep up/i);
     await expect(chart.getByText('Today', { exact: true })).toBeVisible();
     await expect(chart.getByText(/Exam/)).toHaveCount(2);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(

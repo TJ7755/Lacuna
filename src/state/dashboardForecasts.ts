@@ -41,7 +41,7 @@ export function clearForecastCache(): void {
  * Each active course's forecast cards, the same core cards the course summaries use:
  * extension-lesson cards are left out and only available cards count.
  */
-export function forecastCards(
+function forecastCards(
   courses: readonly Course[],
   lessons: readonly Lesson[],
   cards: readonly Card[],
