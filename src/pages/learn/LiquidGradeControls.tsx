@@ -78,6 +78,7 @@ function LiquidLayer({
   const bridge =
     !pending &&
     neighbour &&
+    neighbourGap !== undefined &&
     neighbour.top === primary.top &&
     primary.top === reveal.top &&
     neighbourGap - BRIDGE_WIDTH / 2 >= reveal.left &&
@@ -233,7 +234,9 @@ export function LiquidGradeControls({
         slots: slotRefs.current
           .slice(0, grades.length)
           .map((slot) =>
-            slot ? rectOf(slot, row.offsetLeft, row.offsetTop) : rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
+            slot
+              ? rectOf(slot, row.offsetLeft, row.offsetTop)
+              : rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
           ),
       });
     };

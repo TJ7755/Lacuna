@@ -1,0 +1,1 @@
+- Restore manual typed-answer grading after a slow automatic check, and honour reduced motion for verdicts and missed-part feedback. (#715)

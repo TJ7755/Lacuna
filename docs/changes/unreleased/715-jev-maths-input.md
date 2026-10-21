@@ -1,0 +1,1 @@
+- Preserve authored formulae when checking typed answers and sending marking context, and keep mathematical signs and letter case significant in local exact matches. (#715)

@@ -97,7 +97,10 @@ export function useTypedAutoMark({
       return;
     }
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), JEV_TYPED_TIMEOUT_MS);
+    const timeout = window.setTimeout(() => {
+      setMark(IDLE);
+      controller.abort();
+    }, JEV_TYPED_TIMEOUT_MS);
     setMark({ state: 'checking' });
     const expectedText = markdownPlainText(expected);
     marker({

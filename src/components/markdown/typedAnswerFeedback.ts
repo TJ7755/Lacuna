@@ -24,8 +24,12 @@ export interface TypedAnswerFeedback {
 
 /** Whether a typed answer matches already-sanitised Markdown, as the feedback marks it. */
 export function typedAnswerCorrect(html: string, feedback: TypedAnswerFeedback): boolean {
-  const { expected } = expectedText(new DOMParser().parseFromString(html, 'text/html').body, false);
-  return compareAnswer(feedback.answer, expected, feedback.options).correct;
+  const root = new DOMParser().parseFromString(html, 'text/html').body;
+  const { expected } = expectedText(root, false);
+  const options = root.querySelector('.katex')
+    ? { ignoreCase: false, ignorePunctuation: false }
+    : feedback.options;
+  return compareAnswer(feedback.answer, expected, options).correct;
 }
 
 /** The plain text of already-sanitised Markdown, as typed answers are compared with it. */
@@ -46,8 +50,12 @@ function expectedText(root: HTMLElement, cloze: boolean) {
       return;
     }
     if (!(node instanceof Element)) return;
-    // KaTeX contains duplicate visual/accessibility text. Keep maths and media intact.
-    if (node.matches('audio, img, svg, .katex, annotation')) return;
+    // Use the authored formula once; never decorate KaTeX's duplicate visual/accessibility nodes.
+    if (node.matches('.katex')) {
+      expected += ` ${node.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? ''} `;
+      return;
+    }
+    if (node.matches('audio, img, svg, annotation')) return;
     const block = node.matches('p, div, li, pre, h1, h2, h3, h4, h5, h6, tr, td, th, br');
     if (block) expected += '\n';
     node.childNodes.forEach(collect);
@@ -107,7 +115,12 @@ export function typedAnswerFeedbackHtml(
 type TextNodeRange = { node: Text; start: number; end: number };
 type Range = { start: number; end: number };
 
-function markRanges(document: Document, nodes: TextNodeRange[], ranges: Range[], className?: string) {
+function markRanges(
+  document: Document,
+  nodes: TextNodeRange[],
+  ranges: Range[],
+  className?: string,
+) {
   for (const { node, start, end } of nodes) {
     const overlaps = ranges.filter((range) => range.start < end && range.end > start);
     if (!overlaps.length) continue;
@@ -242,7 +255,8 @@ function judgedFeedback(
     }
     header.append(line);
   }
-  if (judgement.outcome !== 'correct' && answer.trim()) header.append(submittedAnswer(document, answer));
+  if (judgement.outcome !== 'correct' && answer.trim())
+    header.append(submittedAnswer(document, answer));
   if (header.childNodes.length) root.prepend(header);
 }
 

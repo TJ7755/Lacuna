@@ -137,22 +137,36 @@ body:has(.study-session) .toast-stack button {
   animation: typed-checking 1.6s ease-in-out infinite;
 }
 @keyframes typed-checking {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.85; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 mark.typed-missed {
   animation: typed-missed-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes typed-missed-in {
-  from { background-color: transparent; }
+  from {
+    background-color: transparent;
+  }
 }
 .typed-verdict {
   animation: typed-verdict-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes typed-verdict-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
+  .typed-verdict,
+  mark.typed-missed {
+    animation: none;
+  }
   [data-typed-checking] {
     animation: none;
     opacity: 0.7;
