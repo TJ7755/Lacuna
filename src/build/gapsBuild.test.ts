@@ -173,8 +173,10 @@ it('keeps the teacher hosting policy separate and makes retirement updates uncac
     rewrites?: unknown;
     headers: { source: string; headers: { key: string; value: string }[] }[];
   };
-  expect(config.installCommand).toBe('cd .. && bunx bun@1.4.3 install --frozen-lockfile');
-  expect(config.buildCommand).toBe('cd .. && bunx bun@1.4.3 run build:gaps');
+  expect(config.installCommand).toBe(
+    'cd .. && node relay/scripts/security-bun.mjs install --frozen-lockfile',
+  );
+  expect(config.buildCommand).toBe('cd .. && node relay/scripts/security-bun.mjs run build:gaps');
   expect(config.outputDirectory).toBe('dist');
   expect(config.rewrites).toBeUndefined();
   expect(config.headers.find((entry) => entry.source === '/sw.js')?.headers).toContainEqual({

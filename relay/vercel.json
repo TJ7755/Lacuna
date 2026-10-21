@@ -1,4 +1,5 @@
 {
+  "installCommand": "node scripts/security-bun.mjs install --frozen-lockfile",
   "rewrites": [
     {
       "source": "/insights/:id/:day/:slotId",

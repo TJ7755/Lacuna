@@ -27,7 +27,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
       - name: Validate release tag
         shell: bash
@@ -86,11 +86,9 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
       - run: bun run test:e2e:electron-ai
@@ -170,11 +168,9 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
 
       - run: bun install --frozen-lockfile
       - run: bun run electron:build:linux
@@ -303,12 +299,10 @@ jobs:
       - if: steps.notes.outputs.file
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
       - if: steps.notes.outputs.file
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+        uses: ./.github/actions/setup-bun
       - if: steps.notes.outputs.file
         run: bun install --frozen-lockfile
 

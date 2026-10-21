@@ -1,0 +1,30 @@
+{
+  "revision": "1.4.4-canary.1+963452075",
+  "commit": "963452075e9d7e2a47a482f297143af5ed4f76c0",
+  "assets": {
+    "bun-darwin-aarch64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-darwin-aarch64.zip",
+      "sha256": "179654d25e6494c5f7900d2c2caf6185a857ee5e4c9706a14b959e2c36a8e997"
+    },
+    "bun-darwin-x64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-darwin-x64.zip",
+      "sha256": "ad7f3653498a25adfa5d9775555c5f6a9bc5ce7bf643a978f44ab38dca5533c2"
+    },
+    "bun-linux-aarch64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-linux-aarch64.zip",
+      "sha256": "7341c3b1572c4c1c7f372360b5a17313180cac11dd670e0a2f6a3aec1ce40d05"
+    },
+    "bun-linux-x64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-linux-x64.zip",
+      "sha256": "aacef5036f5551631006d20deb11338452064dc32ab25f8ceba8f378d7faf45b"
+    },
+    "bun-windows-aarch64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-windows-aarch64.zip",
+      "sha256": "649c0c65ad07a7c238b95d952507147d0a816d45af120e489b28037efcbfb5d1"
+    },
+    "bun-windows-x64.zip": {
+      "url": "https://github.com/oven-sh/bun/releases/download/canary/bun-windows-x64.zip",
+      "sha256": "f5bc840279f30a263bc41cc0400c6288088911a150d3a9e1cc74e899af98a4b2"
+    }
+  }
+}

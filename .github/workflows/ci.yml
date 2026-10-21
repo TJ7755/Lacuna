@@ -33,7 +33,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
       - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs
       - run: node scripts/check-docs.mjs
@@ -102,12 +102,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
       - run: bun install --frozen-lockfile
@@ -133,12 +131,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
       - run: bun run lint
@@ -158,16 +154,14 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
 
       - name: Verify CI predicates and browser diagnostics without browsers
         if: matrix.shard == 1
-        run: node --test scripts/ci-workflow.test.mjs scripts/browser-ci-summary.test.mjs
+        run: node --test scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/browser-ci-summary.test.mjs
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/4
 
   test-coverage:
@@ -180,11 +174,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run test:coverage
       - run: bun run test:coverage:recovery
@@ -202,16 +194,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24.22.1'
+          package-manager-cache: false
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
-          version: 0.12.19
+          version: 0.13.4
           python-version: '3.12'
           working-directory: tooling/${{ matrix.workspace }}
           enable-cache: true
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: matrix.workspace == 'semantic-answer-match'
-        with:
-          bun-version: 1.4.3
       - run: uv run --locked pytest
         working-directory: tooling/${{ matrix.workspace }}
 
@@ -272,11 +266,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run test
@@ -298,12 +290,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
         working-directory: relay
@@ -334,12 +324,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
       - run: bun install --frozen-lockfile
@@ -375,12 +363,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
       - run: bun run build:assets
@@ -406,11 +392,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -447,11 +431,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
@@ -477,11 +459,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bunx playwright install --with-deps webkit
       - run: bun run test:e2e:web -- --project=webkit-mobile --workers=1
@@ -552,12 +532,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: needs.changes.outputs.docs_only != 'true'
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - uses: ./.github/actions/setup-bun
         if: needs.changes.outputs.docs_only != 'true'
-        with:
-          bun-version: 1.4.3
       - run: bun install --frozen-lockfile
         if: needs.changes.outputs.docs_only != 'true'
       - run: bun run test:e2e:electron-ai
@@ -573,11 +551,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run electron:prepare
       - run: bun run build:assets
@@ -603,11 +579,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '24.22.1'
           package-manager-cache: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: 1.4.3
+      - uses: ./.github/actions/setup-bun
       - run: bun install --frozen-lockfile
       - run: bun run electron:build:win
       # The release build enforces the same budget; checking here catches growth before a tag.

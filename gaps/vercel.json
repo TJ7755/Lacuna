@@ -1,7 +1,7 @@
 {
   "framework": "vite",
-  "installCommand": "cd .. && bunx bun@1.4.3 install --frozen-lockfile",
-  "buildCommand": "cd .. && bunx bun@1.4.3 run build:gaps",
+  "installCommand": "cd .. && node relay/scripts/security-bun.mjs install --frozen-lockfile",
+  "buildCommand": "cd .. && node relay/scripts/security-bun.mjs run build:gaps",
   "outputDirectory": "dist",
   "headers": [
     {

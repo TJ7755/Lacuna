@@ -82,7 +82,7 @@ describe('Vercel configuration', () => {
     }
   }, 30_000);
 
-  it('pins installation and builds to the Bun release required by web typechecking', async () => {
+  it('uses the verified bootstrap pinned to the Bun revision required by web typechecking', async () => {
     const config = JSON.parse(await readFile('vercel.json', 'utf8')) as {
       installCommand?: string;
       buildCommand?: string;
@@ -90,9 +90,15 @@ describe('Vercel configuration', () => {
     const manifest = JSON.parse(await readFile('package.json', 'utf8')) as {
       packageManager: string;
     };
+    const runtime = JSON.parse(await readFile('relay/scripts/security-bun.json', 'utf8')) as {
+      revision: string;
+    };
 
-    expect(config.installCommand).toBe(`bunx ${manifest.packageManager} install --frozen-lockfile`);
-    expect(config.buildCommand).toBe(`bunx ${manifest.packageManager} run build`);
+    expect(manifest.packageManager).toBe(`bun@${runtime.revision}`);
+    expect(config.installCommand).toBe(
+      'node relay/scripts/security-bun.mjs install --frozen-lockfile',
+    );
+    expect(config.buildCommand).toBe('node relay/scripts/security-bun.mjs run build');
   });
 
   it('does not rewrite missing hashed assets to the HTML app shell', async () => {
