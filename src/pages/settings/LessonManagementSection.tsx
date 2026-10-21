@@ -141,16 +141,16 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
         <p className="text-sm text-ink-faint">This course has no lessons yet.</p>
       )}
       {!!lessons?.length && (
-        <div className="divide-y divide-line rounded-2xl border border-line">
+        <div className="@container divide-y divide-line rounded-2xl border border-line">
           {lessons?.map((lesson, index) => (
             <motion.div
               key={lesson.id}
               layout={multiplier > 0 ? 'position' : undefined}
               transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
             >
-              {/* One line at every width: a long name wraps in its own column between the controls. */}
-              <div className="flex items-center gap-2 px-1 py-0.5">
-                <div className="flex shrink-0">
+              {/* Let enlarged text use the full row before placing actions beneath it. */}
+              <div className="grid grid-cols-2 items-center gap-2 px-1 py-0.5 @min-[18rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
+                <div className="row-start-2 flex @min-[18rem]:row-start-1">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -186,11 +186,11 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                       if (e.key === 'Enter') void commitRename();
                       if (e.key === 'Escape') setEditingId(null);
                     }}
-                    className={`min-h-11 min-w-0 flex-1 ${inputFrameClassName} text-sm`}
+                    className={`col-span-2 col-start-1 row-start-1 min-h-11 min-w-0 w-full @min-[18rem]:col-span-1 @min-[18rem]:col-start-2 ${inputFrameClassName} text-sm`}
                   />
                 ) : (
                   // Inset by the rename field's border and padding so the name does not shift when editing.
-                  <span className="min-w-0 flex-1 py-2 pl-[15.5px] text-sm text-ink [overflow-wrap:anywhere]">
+                  <span className="col-span-2 col-start-1 row-start-1 min-w-0 py-2 pl-[15.5px] text-sm text-ink [overflow-wrap:anywhere] @min-[18rem]:col-span-1 @min-[18rem]:col-start-2">
                     {lesson.name}
                     {lesson.isExtension && (
                       <span className="ml-2 text-xs text-ink-faint">(extension)</span>
@@ -198,7 +198,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                   </span>
                 )}
                 {canAuthor && (
-                  <div className="flex shrink-0">
+                  <div className="col-start-2 row-start-2 flex justify-self-end @min-[18rem]:col-start-3 @min-[18rem]:row-start-1">
                     <Button
                       variant="ghost"
                       size="sm"
