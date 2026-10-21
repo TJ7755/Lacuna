@@ -169,3 +169,46 @@ it('stays off if the browser refuses access to localStorage', () => {
     Object.defineProperty(globalThis, 'localStorage', descriptor);
   }
 });
+it('batches only uncached allocation content and reuses cached lines without a session exchange', async () => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const values = new Map();
+  const fetcher = vi.fn(async (url, init) =>
+    url.endsWith('/session')
+      ? Response.json({ token: 's', expiresAt: Date.now() + 60_000 })
+      : Response.json({
+          model: 'jev-1.14.0',
+          inputTokens: 20,
+          decisions: JSON.parse(init.body).allocations.map(() => ({
+            model: 'jev-1.14.0',
+            value: 1,
+            confidence: 0.97,
+          })),
+        }),
+  );
+  const engine = createJevEngine({
+    fetcher,
+    cache: {
+      get: async (hash) => values.get(hash),
+      put: async (hash, result) => {
+        values.set(hash, result);
+      },
+    },
+  });
+  const allocations = [1, 2].map((number) => ({
+    prompt: 'Q',
+    criterion: `Criterion ${number}`,
+    explanation: '',
+    maxMarks: 1,
+    answer: 'A',
+  }));
+  expect(await engine.decideAllocations(allocations)).toBeNull();
+  expect(fetcher).not.toHaveBeenCalled();
+  engine.enable(1);
+  expect(await engine.decideAllocations(allocations)).toHaveLength(2);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  await engine.decideAllocations(allocations);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  await engine.decideAllocations([allocations[0], { ...allocations[1], criterion: 'Changed' }]);
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  expect(JSON.parse(fetcher.mock.calls[2][1].body).allocations).toHaveLength(1);
+});

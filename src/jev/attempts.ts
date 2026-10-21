@@ -9,7 +9,11 @@ import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts'
 import type { QuestionAnswer } from '../questions/questionSets';
 import { jevEngine, type createJevEngine } from './engine';
 import type { JevAttemptMarking } from './types';
-import type { JevDecisionRequest } from './protocol';
+import {
+  JEV_BATCH_MAX_ALLOCATIONS,
+  JEV_BATCH_REQUEST_BYTE_LIMIT,
+  type JevDecisionRequest,
+} from './protocol';
 
 const idle: JevAttemptMarking = { state: 'idle' };
 const progress = new Map<string, JevAttemptMarking>();
@@ -93,25 +97,53 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       seen = new Map();
       tried.set(engine, seen);
     }
-    for (let index = 0; index < lines.length; index++) {
-      if (!engine.eligible()) break;
-      const line = lines[index];
-      const key = `${id}:${line.allocationId}`;
-      const content = JSON.stringify(line.request);
-      if (seen.get(key) === content || line.request.maxMarks > 9) continue;
-      // Re-read immediately before sending too: already-decided lines need no paid call.
-      const current = await getQuestionSetAttempt(id);
+    const batches: Array<typeof lines> = [];
+    let batch: typeof lines = [];
+    const bodySize = (rows: typeof lines) =>
+      new TextEncoder().encode(
+        JSON.stringify({
+          purpose: 'mark-allocation',
+          allocations: rows.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
+        }),
+      ).byteLength;
+    for (const line of lines) {
       if (
-        !current ||
-        current.status === 'complete' ||
-        current.decisions.some((row) => row.allocationId === line.allocationId)
+        seen.get(`${id}:${line.allocationId}`) === JSON.stringify(line.request) ||
+        line.request.maxMarks > 9 ||
+        bodySize([line]) > JEV_BATCH_REQUEST_BYTE_LIMIT
       )
         continue;
-      publish(id, { state: 'marking', remaining: lines.length - index });
-      seen.set(key, content);
-      if (seen.size > 2048) seen.delete(seen.keys().next().value!);
-      const result = await engine.decide(line.request);
-      if (result?.value !== null && result !== null && engine.eligible()) {
+      if (
+        batch.length &&
+        (batch.length >= JEV_BATCH_MAX_ALLOCATIONS ||
+          bodySize([...batch, line]) > JEV_BATCH_REQUEST_BYTE_LIMIT)
+      ) {
+        batches.push(batch);
+        batch = [];
+      }
+      batch.push(line);
+    }
+    if (batch.length) batches.push(batch);
+    for (const queued of batches) {
+      if (!engine.eligible()) break;
+      // One read immediately before the batch, plus guarded re-checks before every write.
+      const current = await getQuestionSetAttempt(id);
+      if (!current || current.status === 'complete' || current.undoneAt !== undefined) break;
+      const pending = queued.filter(
+        (line) => !current.decisions.some((row) => row.allocationId === line.allocationId),
+      );
+      if (!pending.length) continue;
+      publish(id, { state: 'marking', remaining: pending.length });
+      for (const line of pending)
+        seen.set(`${id}:${line.allocationId}`, JSON.stringify(line.request));
+      while (seen.size > 2048) seen.delete(seen.keys().next().value!);
+      const results = await engine.decideAllocations(
+        pending.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
+      );
+      if (!results || !engine.eligible()) break;
+      for (const [index, line] of pending.entries()) {
+        const result = results[index];
+        if (result.value === null) continue;
         await applyJevAllocationDecision(
           id,
           current.revisionId,

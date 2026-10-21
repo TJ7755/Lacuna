@@ -76,17 +76,15 @@ it('rejects a client-selected model and refuses at the fuse before calling TypeS
 it('records calls and actual usage in daily and monthly UTC counters independently of free chat', async () => {
   configured();
   vi.stubEnv('AI_SERVICE_DISABLED', '1');
-  const fetcher = vi
-    .fn()
-    .mockImplementation(async (url) =>
-      url === 'https://redis.example'
-        ? Response.json({ result: 1 })
-        : Response.json({
-            model: 'jev-1.14.0',
-            answers: { decision: { type: 'noul', noul: 0.98 } },
-            usage: { input_tokens: 123, output_tokens: 12 },
-          }),
-    );
+  const fetcher = vi.fn().mockImplementation(async (url) =>
+    url === 'https://redis.example'
+      ? Response.json({ result: 1 })
+      : Response.json({
+          model: 'jev-1.14.0',
+          answers: { decision: { type: 'noul', noul: 0.98 } },
+          usage: { input_tokens: 123, output_tokens: 12 },
+        }),
+  );
   vi.stubGlobal('fetch', fetcher);
   const response = await route.fetch(request());
   expect(response.status).toBe(200);
@@ -121,4 +119,48 @@ it('caps structured fields and rejects free-form instructions, future purposes a
     expect((await route.fetch(request(invalid))).status).toBe(400);
   }
   expect(fetcher).not.toHaveBeenCalled();
+});
+it('reserves and settles usage once for a batch of parallel marking questions', async () => {
+  configured();
+  const fetcher = vi
+    .fn()
+    .mockImplementation(async (url, init) =>
+      url === 'https://redis.example'
+        ? Response.json({ result: 1 })
+        : Response.json({
+            model: 'jev-1.14.0',
+            answers: Object.fromEntries(
+              Object.keys(JSON.parse(init.body).questions).map((key) => [
+                key,
+                { type: 'noul', noul: 0.99 },
+              ]),
+            ),
+            usage: { input_tokens: 150, output_tokens: 12 },
+          }),
+    );
+  vi.stubGlobal('fetch', fetcher);
+  const allocation = {
+    prompt: 'Q',
+    criterion: 'Water',
+    explanation: '',
+    maxMarks: 1,
+    answer: 'Water',
+  };
+  const response = await route.fetch(
+    request({
+      purpose: 'mark-allocation',
+      allocations: [allocation, { ...allocation, criterion: 'Membrane' }],
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    inputTokens: 150,
+    decisions: [{ value: 1 }, { value: 1 }],
+  });
+  expect(fetcher).toHaveBeenCalledTimes(3);
+  const commands = fetcher.mock.calls
+    .filter(([url]) => url === 'https://redis.example')
+    .map(([, init]) => JSON.parse(init.body));
+  expect(commands).toHaveLength(2);
+  expect(commands[1]).toContain(150);
 });

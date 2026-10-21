@@ -8,6 +8,9 @@ import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
 import {
   jevDecisionRequestSchema,
   jevDecisionResultSchema,
+  jevAllocationBatchResultSchema,
+  jevAllocationBatchRequestSchema,
+  type JevAllocationInput,
   type JevDecisionRequest,
   type JevDecisionResult,
   JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
@@ -142,11 +145,11 @@ export function createJevEngine(
     session = { ...result, code };
     return result.token;
   }
-  async function decide(
-    request: JevDecisionRequest,
-    externalSignal?: AbortSignal,
-    timeout = 30_000,
-  ): Promise<JevDecisionResult | null> {
+  async function guarded<T>(
+    externalSignal: AbortSignal | undefined,
+    timeout: number,
+    work: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T | null> {
     if (!eligible() || externalSignal?.aborted) {
       publish();
       return null;
@@ -155,7 +158,7 @@ export function createJevEngine(
     const controller = new AbortController();
     const signals = [lifetime, ...(externalSignal ? [externalSignal] : [])];
     const abort = () => controller.abort();
-    signals.forEach((signal) => signal.addEventListener('abort', abort, { once: true }));
+    signals.forEach((source) => source.addEventListener('abort', abort, { once: true }));
     const timer = setTimeout(abort, timeout);
     const signal = controller.signal;
     let onAbort: () => void = () => {};
@@ -164,72 +167,7 @@ export function createJevEngine(
       signal.addEventListener('abort', onAbort, { once: true });
     });
     try {
-      const work = (async () => {
-        const parsed = jevDecisionRequestSchema.parse(request);
-        const hash = await decisionHash(parsed);
-        signal.throwIfAborted();
-        const hit = await cache.get(hash);
-        signal.throwIfAborted();
-        if (hit) {
-          const maximum = parsed.purpose === 'typed-equivalence' ? 1 : parsed.maxMarks;
-          const threshold =
-            parsed.purpose === 'mark-allocation'
-              ? JEV_ALLOCATION_CONFIDENCE_THRESHOLD
-              : hit.value === 1
-                ? JEV_TYPED_CORRECT_THRESHOLD
-                : JEV_TYPED_INCORRECT_THRESHOLD;
-          return hit.value !== null && hit.value <= maximum && hit.confidence >= threshold
-            ? hit
-            : { ...hit, value: null };
-        }
-        const accessToken = await token(signal);
-        signal.throwIfAborted();
-        if (!eligible()) return null;
-        const origin =
-          globalThis.window?.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : '';
-        let response: Response;
-        try {
-          response = await fetcher(`${origin}/api/ai/jev`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(parsed),
-            signal,
-          });
-        } catch (error) {
-          if (!signal.aborted) throw new Pause('offline');
-          throw error;
-        }
-        if (!response.ok)
-          throw new Pause(
-            response.status === 401
-              ? 'access-code-rejected'
-              : response.status === 429
-                ? 'limit-reached'
-                : response.status === 503
-                  ? 'service-disabled'
-                  : 'error',
-          );
-        const result = jevDecisionResultSchema.parse(await response.json());
-        const maximum = parsed.purpose === 'typed-equivalence' ? 1 : parsed.maxMarks;
-        if (
-          result.value !== null &&
-          (result.value > maximum ||
-            result.confidence <
-              (parsed.purpose === 'mark-allocation'
-                ? JEV_ALLOCATION_CONFIDENCE_THRESHOLD
-                : result.value === 1
-                  ? JEV_TYPED_CORRECT_THRESHOLD
-                  : JEV_TYPED_INCORRECT_THRESHOLD))
-        )
-          throw new Pause('error');
-        signal.throwIfAborted();
-        await cache.put(hash, result);
-        signal.throwIfAborted();
-        lastUsedAt = Date.now();
-        publish();
-        return result;
-      })();
-      const result = await Promise.race([work, aborted]);
+      const result = await Promise.race([work(signal), aborted]);
       if (signal.aborted) {
         if (!externalSignal?.aborted && !lifetime.aborted) {
           pause = 'error';
@@ -250,6 +188,109 @@ export function createJevEngine(
       signal.removeEventListener('abort', onAbort);
       signals.forEach((source) => source.removeEventListener('abort', abort));
     }
+  }
+  function checked(request: JevDecisionRequest, result: JevDecisionResult): JevDecisionResult {
+    const maximum = request.purpose === 'typed-equivalence' ? 1 : request.maxMarks;
+    const threshold =
+      request.purpose === 'mark-allocation'
+        ? JEV_ALLOCATION_CONFIDENCE_THRESHOLD
+        : result.value === 1
+          ? JEV_TYPED_CORRECT_THRESHOLD
+          : JEV_TYPED_INCORRECT_THRESHOLD;
+    return result.value !== null && (result.value > maximum || result.confidence < threshold)
+      ? { ...result, value: null }
+      : result;
+  }
+  async function post(body: unknown, signal: AbortSignal): Promise<unknown> {
+    const accessToken = await token(signal);
+    signal.throwIfAborted();
+    if (!eligible()) return null;
+    const origin = globalThis.window?.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : '';
+    let response: Response;
+    try {
+      response = await fetcher(`${origin}/api/ai/jev`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (error) {
+      if (!signal.aborted) throw new Pause('offline');
+      throw error;
+    }
+    if (!response.ok)
+      throw new Pause(
+        response.status === 401
+          ? 'access-code-rejected'
+          : response.status === 429
+            ? 'limit-reached'
+            : response.status === 503
+              ? 'service-disabled'
+              : 'error',
+      );
+    return response.json();
+  }
+  async function decide(
+    request: JevDecisionRequest,
+    externalSignal?: AbortSignal,
+    timeout = 30_000,
+  ): Promise<JevDecisionResult | null> {
+    return guarded(externalSignal, timeout, async (signal) => {
+      const parsed = jevDecisionRequestSchema.parse(request);
+      const hash = await decisionHash(parsed);
+      signal.throwIfAborted();
+      const hit = await cache.get(hash);
+      signal.throwIfAborted();
+      if (hit) return checked(parsed, hit);
+      const result = checked(parsed, jevDecisionResultSchema.parse(await post(parsed, signal)));
+      signal.throwIfAborted();
+      await cache.put(hash, result);
+      signal.throwIfAborted();
+      lastUsedAt = Date.now();
+      publish();
+      return result;
+    });
+  }
+  async function decideAllocations(
+    allocations: JevAllocationInput[],
+    externalSignal?: AbortSignal,
+  ): Promise<JevDecisionResult[] | null> {
+    return guarded(externalSignal, 30_000, async (signal) => {
+      const parsed = jevAllocationBatchRequestSchema.parse({
+        purpose: 'mark-allocation',
+        allocations,
+      });
+      const requests = parsed.allocations.map((allocation) => ({
+        purpose: 'mark-allocation' as const,
+        ...allocation,
+      }));
+      const hashes = await Promise.all(requests.map(decisionHash));
+      const hits = await Promise.all(hashes.map((hash) => cache.get(hash)));
+      signal.throwIfAborted();
+      const missing = hits.flatMap((hit, index) => (hit ? [] : [index]));
+      if (missing.length) {
+        const result = jevAllocationBatchResultSchema.parse(
+          await post(
+            {
+              purpose: 'mark-allocation',
+              allocations: missing.map((index) => parsed.allocations[index]),
+            },
+            signal,
+          ),
+        );
+        if (result.decisions.length !== missing.length) throw new Pause('error');
+        signal.throwIfAborted();
+        for (const [offset, index] of missing.entries()) {
+          // TypeSafe reports usage once for the batch, never per question. Cache entries do not bill.
+          hits[index] = checked(requests[index], { ...result.decisions[offset], inputTokens: 0 });
+          await cache.put(hashes[index], hits[index]!);
+          signal.throwIfAborted();
+        }
+        lastUsedAt = Date.now();
+        publish();
+      }
+      return hits.map((hit, index) => checked(requests[index], hit!));
+    });
   }
   async function markTyped(request: JevTypedAnswerRequest): Promise<JevTypedVerdict> {
     const result = await decide(
@@ -331,6 +372,7 @@ export function createJevEngine(
   return {
     ...controller,
     decide,
+    decideAllocations,
     markTyped,
     eligible,
     settings: () => settings,

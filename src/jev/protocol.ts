@@ -34,3 +34,25 @@ export type JevDecisionClient = (
   request: JevDecisionRequest,
   signal: AbortSignal,
 ) => Promise<JevDecisionResult>;
+
+export const jevAllocationInputSchema = jevDecisionRequestSchema.options[1].omit({ purpose: true });
+export type JevAllocationInput = z.infer<typeof jevAllocationInputSchema>;
+export const JEV_BATCH_MAX_ALLOCATIONS = 128;
+export const JEV_BATCH_REQUEST_BYTE_LIMIT = 90_000;
+export const jevAllocationBatchRequestSchema = z.strictObject({
+  purpose: z.literal('mark-allocation'),
+  allocations: z.array(jevAllocationInputSchema).min(1).max(JEV_BATCH_MAX_ALLOCATIONS),
+});
+export type JevAllocationBatchRequest = z.infer<typeof jevAllocationBatchRequestSchema>;
+export const jevMarkRequestSchema = z.union([
+  jevDecisionRequestSchema,
+  jevAllocationBatchRequestSchema,
+]);
+export const jevAllocationBatchResultSchema = z.strictObject({
+  model: z.literal(JEV_MODEL),
+  inputTokens: z.number().int().nonnegative(),
+  decisions: z
+    .array(jevDecisionResultSchema.omit({ inputTokens: true }))
+    .max(JEV_BATCH_MAX_ALLOCATIONS),
+});
+export type JevAllocationBatchResult = z.infer<typeof jevAllocationBatchResultSchema>;

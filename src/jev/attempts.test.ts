@@ -67,11 +67,22 @@ async function fixture(kind: 'written' | 'calculation' | 'multiple-choice' = 'wr
 }
 function engineWith(decide: (request: { maxMarks?: number }) => Promise<Response>) {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
-  const fetcher = vi.fn(async (url, init) =>
-    url.endsWith('/session')
-      ? Response.json({ token: 'session', expiresAt: Date.now() + 60_000 })
-      : decide(JSON.parse(init.body)),
-  );
+  const fetcher = vi.fn(async (url, init) => {
+    if (url.endsWith('/session'))
+      return Response.json({ token: 'session', expiresAt: Date.now() + 60_000 });
+    const request = JSON.parse(init.body);
+    if (!request.allocations) return decide(request);
+    const responses = await Promise.all(
+      request.allocations.map(async (allocation: { maxMarks?: number }) =>
+        (await decide(allocation)).json(),
+      ),
+    );
+    return Response.json({
+      model: 'jev-1.14.0',
+      inputTokens: 20,
+      decisions: responses.map(({ inputTokens: _inputTokens, ...decision }) => decision),
+    });
+  });
   const engine = createJevEngine({
     fetcher,
     cache: { get: async () => undefined, put: async () => {} },
@@ -284,4 +295,11 @@ it('does not dispute equal first-marking outcomes solely because their model pro
   for (const decision of peer.firstMarking![0].decisions) decision.markedBy!.markedAt++;
   const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
   expect(mergeQuestionSetAttemptPair(complete, peer).disputedQuestionIds).toBeUndefined();
+});
+it('sends all undecided allocations together rather than paying for one request per line', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async (request) => result(request.maxMarks!));
+  await markJevAttempt(attempt.id, engine);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).allocations).toHaveLength(2);
 });

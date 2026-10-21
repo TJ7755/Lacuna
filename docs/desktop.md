@@ -142,7 +142,12 @@ Failures and timeouts leave manual marking available and appear only through Jev
 
 For typed equivalence, only the plain-text prompt, expected answer and normalised typed answer
 are sent. For written allocations, only the part prompt (including its ancestor prompts),
-criterion, optional explanation, maximum marks and submitted written answer are sent. No card,
+criterion, optional explanation, maximum marks and submitted written answer are sent.
+Uncached independent allocations are submitted together: TypeSafe receives one shared state
+with each distinct part prompt and answer once, and parallel noul/score questions whose
+instructions identify the submission and whose criteria contain the authored rubric.
+Batches split only at the hosted request bounds (128 allocations or 90,000 encoded bytes).
+Provider context-limit failures leave the affected lines for self-marking. No card,
 course, learner or attempt identifiers are sent to TypeSafe. Multiple-choice and calculation
 responses stay on their existing paths. Images and attachments are not transmitted.
 
@@ -153,8 +158,9 @@ See the official [API reference](https://docs.typesafe.ai/api/system-one),
 [score contract](https://docs.typesafe.ai/primitives/score) and
 [model versions](https://docs.typesafe.ai/models).
 
-Noul marks use a 0.85 probability threshold in either direction. Multi-mark allocations require
-both provider confidence and probability at the rounded expected score of at least 0.85.
+Noul marks use a 0.85 probability threshold in either direction; their provenance confidence
+is the chosen outcome probability, since TypeSafe returns no separate noul confidence.
+Multi-mark allocations require both provider confidence and probability at the rounded expected score of at least 0.85.
 TypeSafe accepts at most ten score levels, so allocations above nine marks remain manual.
 Low-confidence lines remain undecided; learner decisions, including explicit unsure decisions,
 are never overwritten. Reloading can resume submitted undecided lines when the marking hook is
