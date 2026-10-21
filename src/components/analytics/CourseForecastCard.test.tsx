@@ -59,7 +59,7 @@ describe('CourseForecastCard', () => {
     expect(screen.getByRole('button', { name: /Mathematics/ })).toBeInTheDocument();
   });
 
-  it('explains why an unstudied course has no stop-now projection instead of plotting 0%', () => {
+  it('shows exam-day recall if study stopped now, so an unstudied course reads 0%', () => {
     const unstudied = {
       ...reviewedCard(),
       stability: null,
@@ -79,8 +79,7 @@ describe('CourseForecastCard', () => {
       />,
     );
 
-    expect(screen.getAllByText(/No projection: no study data yet\./).length).toBeGreaterThan(0);
-    expect(screen.queryByText('0%')).not.toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
   it('renders nothing for a course with no cards to forecast', () => {
