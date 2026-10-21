@@ -144,6 +144,7 @@ interface AnswerResponse {
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
+  responseTimeSec: number;
   retainOnCompletion: boolean;
   undo: ReviewUndo;
   cooldowns: CooldownMap;
@@ -727,9 +728,21 @@ export function useLearnSession({
       try {
         const { deliveredSummary, completedPlan } = await db.transaction(
           'rw',
-          [db.revisionPlans, db.courseAssessments, db.courses, db.lessons, db.cards,
-            db.lessonCards, db.lessonCardExposures, db.lessonCompletions, db.reviewHistory,
-            db.practiceNodes, db.practiceMilestones, db.schedulingPerformance, db.coursePerformance],
+          [
+            db.revisionPlans,
+            db.courseAssessments,
+            db.courses,
+            db.lessons,
+            db.cards,
+            db.lessonCards,
+            db.lessonCardExposures,
+            db.lessonCompletions,
+            db.reviewHistory,
+            db.practiceNodes,
+            db.practiceMilestones,
+            db.schedulingPerformance,
+            db.coursePerformance,
+          ],
           async () => {
             let deliveredSummary = nextSummary;
             let completedPlan = revisionPlanRef.current;
@@ -809,7 +822,9 @@ export function useLearnSession({
                         readinessUncertainty: readiness.standardDeviation,
                       }),
                   ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
-                  ...(latestReplan?.explanation ? { replanExplanation: latestReplan.explanation } : {}),
+                  ...(latestReplan?.explanation
+                    ? { replanExplanation: latestReplan.explanation }
+                    : {}),
                 },
               };
             }
@@ -847,8 +862,15 @@ export function useLearnSession({
     };
     completionPromise.current = commit();
     return completionPromise.current;
-  }, [isSimpleMode, notify, onStepFinished, persistPracticeMilestone, ratchetUnlocks,
-    requestWindowId, simpleSessionScope]);
+  }, [
+    isSimpleMode,
+    notify,
+    onStepFinished,
+    persistPracticeMilestone,
+    ratchetUnlocks,
+    requestWindowId,
+    simpleSessionScope,
+  ]);
 
   const finaliseSummary = useCallback(
     (nextSummary: SessionSummary) => {
@@ -905,14 +927,7 @@ export function useLearnSession({
         mode,
       });
     },
-    [
-      objectiveLabel,
-      distraction,
-      cachedSessionProgress,
-      isSimpleMode,
-      mode,
-      finaliseSummary,
-    ],
+    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
   );
 
   useEffect(() => {
@@ -1046,7 +1061,10 @@ export function useLearnSession({
           ? simpleQueue.current.filter((card) => !simpleMastered.current.has(card.id))
           : cardsRef.current;
         const upcoming = sessionPreloadCards(
-          pool, current.id, isSimpleMode ? null : ctxRef.current, cooldowns.current,
+          pool,
+          current.id,
+          isSimpleMode ? null : ctxRef.current,
+          cooldowns.current,
         );
         stopPreloading = preloadSessionImages(upcoming, occlusionMapRef.current);
       }, 0);
@@ -1128,7 +1146,8 @@ export function useLearnSession({
     setLessonNotesScreen(null);
     if (!enabled) return;
     void (async () => {
-      const measureStartup = performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
+      const measureStartup =
+        performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
       const markLoad = (stage: string) => {
         if (measureStartup) performance.mark(`lacuna:study-load:${stage}`);
       };
@@ -1298,40 +1317,48 @@ export function useLearnSession({
           : makeExamDateContext(course, courseLessons, examDates);
         cards = catchUpPractice
           ? catchUpPracticePool(
-              allCards, course, courseLessons, courseLinks, examDateContext, reachedLessonIds,
-              Date.now(), earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
+              allCards,
+              course,
+              courseLessons,
+              courseLinks,
+              examDateContext,
+              reachedLessonIds,
+              Date.now(),
+              earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
             )
           : standaloneSimple
-          ? course.archived
-            ? []
-            : allCards
-          : selectedAssessment
-            ? activeRevisionPlan
-              ? allCards.filter((card) =>
-                  activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
-                )
-              : assessmentPracticePool(selectedAssessment, {
-                  course,
-                  assessments: examDates,
-                  practiceNodes: manualNodes,
-                  lessons: courseLessons,
-                  cards: allCards,
-                  links: courseLinks,
-                  exposures: courseExposures,
-                  reachedLessonIds,
-                })
-            : dueReview
-              ? dueReviewPool(fullScope, course)
-              : examPractice
-                ? examPracticePool(fullScope, course, examDateContext)
-                : eligiblePracticePool(fullScope, course, examDateContext);
+            ? course.archived
+              ? []
+              : allCards
+            : selectedAssessment
+              ? activeRevisionPlan
+                ? allCards.filter((card) =>
+                    activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
+                  )
+                : assessmentPracticePool(selectedAssessment, {
+                    course,
+                    assessments: examDates,
+                    practiceNodes: manualNodes,
+                    lessons: courseLessons,
+                    cards: allCards,
+                    links: courseLinks,
+                    exposures: courseExposures,
+                    reachedLessonIds,
+                  })
+              : dueReview
+                ? dueReviewPool(fullScope, course)
+                : examPractice
+                  ? examPracticePool(fullScope, course, examDateContext)
+                  : eligiblePracticePool(fullScope, course, examDateContext);
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
           // Introductions have already rationed new cards for traditional courses.
           // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
           newCardsPerDay:
-            course.learnFirst === false || catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
+            course.learnFirst === false || catchUpPractice
+              ? schedulingUnit.newCardsPerDay
+              : undefined,
         };
         if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
           cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
@@ -1690,10 +1717,19 @@ export function useLearnSession({
       pendingReviewEventId.current = eventId;
       const { result, nextPerf, perfBefore } = await db.transaction(
         'rw',
-        [db.cards, db.courses, db.schedulingUnits, db.sessionHistory,
-          db.coursePerformance, db.schedulingPerformance, db.reviewHistory, db.lessonCardExposures],
+        [
+          db.cards,
+          db.courses,
+          db.schedulingUnits,
+          db.sessionHistory,
+          db.coursePerformance,
+          db.schedulingPerformance,
+          db.reviewHistory,
+          db.lessonCardExposures,
+        ],
         async () => {
-          const perfBefore = (await performanceForReviewUnit(deck.id, reviewKindRef.current)) ?? null;
+          const perfBefore =
+            (await performanceForReviewUnit(deck.id, reviewKindRef.current)) ?? null;
           const lessonId = correct ? lessonExposureIdRef.current : null;
           const exposureBefore = lessonId
             ? await db.lessonCardExposures.get([lessonId, cardNow.id])
@@ -1727,33 +1763,37 @@ export function useLearnSession({
         },
       );
       if (nextPerf) perfRef.current.set(deck.id, nextPerf);
-      lastAnswer.current = result.recorded && retainUndo ? {
-        retainOnCompletion: true,
-        undo: {
-          eventId,
-          cardBefore: result.cardBefore,
-          perfBefore,
-          sessionHistoryId: result.sessionHistoryId,
-          deckId: deck.id,
-          kind: result.kind,
-          lastInteractedAtBefore: result.lastInteractedAtBefore,
-          updatedAtBefore: result.updatedAtBefore,
-          undoStateAfter: result.undoStateAfter,
-        },
-        cooldowns: new Map(cooldowns.current),
-        eventsLen,
-        deckId: deck.id,
-        deckReviews: reviewsByDeck.current.get(deck.id) ?? 0,
-        outcomeBefore,
-        revisionCovered: new Set(revisionCovered.current),
-        revisionImproved: new Set(revisionImproved.current),
-        revisionParked: new Set(revisionParked.current),
-        revisionCompleted: new Set(revisionCompleted.current),
-        revisionRetryAt: new Map(revisionRetryAt.current),
-        revisionFailures: new Map(revisionFailures.current),
-        revisionReviewEventIds: [...revisionReviewEventIds.current],
-        simple: simpleSnapshot,
-      } : null;
+      lastAnswer.current =
+        result.recorded && retainUndo
+          ? {
+              responseTimeSec: t,
+              retainOnCompletion: true,
+              undo: {
+                eventId,
+                cardBefore: result.cardBefore,
+                perfBefore,
+                sessionHistoryId: result.sessionHistoryId,
+                deckId: deck.id,
+                kind: result.kind,
+                lastInteractedAtBefore: result.lastInteractedAtBefore,
+                updatedAtBefore: result.updatedAtBefore,
+                undoStateAfter: result.undoStateAfter,
+              },
+              cooldowns: new Map(cooldowns.current),
+              eventsLen,
+              deckId: deck.id,
+              deckReviews: reviewsByDeck.current.get(deck.id) ?? 0,
+              outcomeBefore,
+              revisionCovered: new Set(revisionCovered.current),
+              revisionImproved: new Set(revisionImproved.current),
+              revisionParked: new Set(revisionParked.current),
+              revisionCompleted: new Set(revisionCompleted.current),
+              revisionRetryAt: new Map(revisionRetryAt.current),
+              revisionFailures: new Map(revisionFailures.current),
+              revisionReviewEventIds: [...revisionReviewEventIds.current],
+              simple: simpleSnapshot,
+            }
+          : null;
       setCanUndo(result.recorded && retainUndo);
       const updated = result.card;
       cardsRef.current = cardsRef.current.map((card) => (card.id === updated.id ? updated : card));
@@ -2066,6 +2106,7 @@ export function useLearnSession({
 
       lastAnswer.current = recorded
         ? {
+            responseTimeSec: t,
             retainOnCompletion: retainUndo,
             undo: {
               eventId,
@@ -2193,81 +2234,96 @@ export function useLearnSession({
     [distraction, isSimpleMode, answerSimple, answerScheduled],
   );
 
-  const undoLast = useCallback(async () => {
-    const snap = lastAnswer.current;
-    const ctx = ctxRef.current;
-    if (!snap || !ctx || submitting.current || completionPromise.current) return;
-    submitting.current = true;
-    try {
-      await db.transaction(
-        'rw',
-        [db.cards, db.courses, db.schedulingUnits, db.sessionHistory,
-          db.coursePerformance, db.schedulingPerformance, db.reviewHistory, db.lessonCardExposures],
-        async () => {
-          const exposure = snap.simple?.exposureAdded;
-          if (exposure) {
-            const key: [string, string] = [exposure.lessonId, exposure.cardId];
-            const currentExposure = await db.lessonCardExposures.get(key);
-            if (JSON.stringify(currentExposure) !== JSON.stringify(exposure)) {
-              throw new Error('The lesson exposure changed after this answer, so undo is no longer available.');
+  const undoLast = useCallback(
+    async (options?: { reveal?: boolean }) => {
+      const snap = lastAnswer.current;
+      const ctx = ctxRef.current;
+      if (!snap || !ctx || submitting.current || completionPromise.current) return;
+      submitting.current = true;
+      try {
+        await db.transaction(
+          'rw',
+          [
+            db.cards,
+            db.courses,
+            db.schedulingUnits,
+            db.sessionHistory,
+            db.coursePerformance,
+            db.schedulingPerformance,
+            db.reviewHistory,
+            db.lessonCardExposures,
+          ],
+          async () => {
+            const exposure = snap.simple?.exposureAdded;
+            if (exposure) {
+              const key: [string, string] = [exposure.lessonId, exposure.cardId];
+              const currentExposure = await db.lessonCardExposures.get(key);
+              if (JSON.stringify(currentExposure) !== JSON.stringify(exposure)) {
+                throw new Error(
+                  'The lesson exposure changed after this answer, so undo is no longer available.',
+                );
+              }
+              await db.lessonCardExposures.delete(key);
             }
-            await db.lessonCardExposures.delete(key);
-          }
-          await undoReview(snap.undo);
-        },
-      );
-      if (!mountedRef.current) return;
-      cardsRef.current = cardsRef.current.map((c) =>
-        c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
-      );
-      const restoredOutcomes = new Map(sessionCardOutcomesRef.current);
-      if (snap.outcomeBefore) restoredOutcomes.set(snap.undo.cardBefore.id, snap.outcomeBefore);
-      else restoredOutcomes.delete(snap.undo.cardBefore.id);
-      sessionCardOutcomesRef.current = restoredOutcomes;
-      setSessionCardOutcomes(restoredOutcomes);
-      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
-      cooldowns.current = snap.cooldowns;
-      revisionCovered.current = snap.revisionCovered;
-      revisionImproved.current = snap.revisionImproved;
-      revisionParked.current = snap.revisionParked;
-      revisionCompleted.current = snap.revisionCompleted;
-      revisionRetryAt.current = snap.revisionRetryAt;
-      revisionFailures.current = snap.revisionFailures;
-      revisionReviewEventIds.current = snap.revisionReviewEventIds;
-      perfRef.current.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
-      events.current = events.current.slice(0, snap.eventsLen);
-      if (snap.simple) {
-        simpleQueue.current = snap.simple.queue;
-        simpleMastered.current = snap.simple.mastered;
-        simpleWrong.current = snap.simple.wrong;
-        setSessionCardIds(snap.simple.cardIds);
-        persistSimpleResume(restoredOutcomes);
+            await undoReview(snap.undo);
+          },
+        );
+        if (!mountedRef.current) return;
+        cardsRef.current = cardsRef.current.map((c) =>
+          c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
+        );
+        const restoredOutcomes = new Map(sessionCardOutcomesRef.current);
+        if (snap.outcomeBefore) restoredOutcomes.set(snap.undo.cardBefore.id, snap.outcomeBefore);
+        else restoredOutcomes.delete(snap.undo.cardBefore.id);
+        sessionCardOutcomesRef.current = restoredOutcomes;
+        setSessionCardOutcomes(restoredOutcomes);
+        setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
+        cooldowns.current = snap.cooldowns;
+        revisionCovered.current = snap.revisionCovered;
+        revisionImproved.current = snap.revisionImproved;
+        revisionParked.current = snap.revisionParked;
+        revisionCompleted.current = snap.revisionCompleted;
+        revisionRetryAt.current = snap.revisionRetryAt;
+        revisionFailures.current = snap.revisionFailures;
+        revisionReviewEventIds.current = snap.revisionReviewEventIds;
+        perfRef.current.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
+        events.current = events.current.slice(0, snap.eventsLen);
+        if (snap.simple) {
+          simpleQueue.current = snap.simple.queue;
+          simpleMastered.current = snap.simple.mastered;
+          simpleWrong.current = snap.simple.wrong;
+          setSessionCardIds(snap.simple.cardIds);
+          persistSimpleResume(restoredOutcomes);
+        }
+        // Simple passes do not increment the scheduled daily review counter.
+        const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
+        if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
+        else reviewsByDeck.current.delete(snap.deckId);
+        pendingCompletion.current = null;
+        completionConfirmed.current = false;
+        finalising.current = false;
+        setSummary(null);
+        lastAnswer.current = null;
+        setCanUndo(false);
+        progressCacheRef.current.dirty = true;
+        setCurrent(snap.undo.cardBefore);
+        setPhase(options?.reveal ? 'answer' : 'question');
+        onCardServedRef.current?.();
+        setHintStep(0);
+        pendingReviewEventId.current = null;
+        timerStart.current = performance.now();
+        distraction.beginCard();
+        responseTime.current = snap.responseTimeSec;
+        distraction.setAnswerVisible(options?.reveal === true);
+        return snap.undo.cardBefore;
+      } catch (err) {
+        notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
+      } finally {
+        submitting.current = false;
       }
-      // Simple passes do not increment the scheduled daily review counter.
-      const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
-      if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
-      else reviewsByDeck.current.delete(snap.deckId);
-      pendingCompletion.current = null;
-      completionConfirmed.current = false;
-      finalising.current = false;
-      setSummary(null);
-      lastAnswer.current = null;
-      setCanUndo(false);
-      progressCacheRef.current.dirty = true;
-      setCurrent(snap.undo.cardBefore);
-      setPhase('question');
-      onCardServedRef.current?.();
-      setHintStep(0);
-      pendingReviewEventId.current = null;
-      timerStart.current = performance.now();
-      distraction.beginCard();
-      distraction.setAnswerVisible(false);
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
-    } finally {
-      submitting.current = false;
-    }
-  }, [distraction, notify, persistSimpleResume]);
+    },
+    [distraction, notify, persistSimpleResume],
+  );
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
   const afterRemoval = useCallback(() => {

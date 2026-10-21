@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
+import { AccentProvider } from '../state/AccentContext';
 import { createCourse, createLesson, createLessonCard } from '../db/repository';
 import { db } from '../db/schema';
 import type * as JevModule from '../jev';
@@ -27,9 +28,14 @@ beforeEach(async () => {
 });
 
 describe('automatic final-answer Undo', () => {
-  it.each([false, true])(
-    'keeps completion reversible until confirmed (Simple: %s)',
-    async (simple) => {
+  it.each([
+    [false, true],
+    [true, true],
+    [false, false],
+    [true, false],
+  ])(
+    'keeps completion reversible until confirmed (Simple: %s, Undo: %s)',
+    async (simple, undoAnswer) => {
       const course = await createCourse('Automatic final answer', { learnFirst: simple });
       const lesson = await createLesson(course.id, 'Colours');
       const card = await createLessonCard(
@@ -45,16 +51,18 @@ describe('automatic final-answer Undo', () => {
       const onStepFinished = vi.fn();
       render(
         <ThemeProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-              <Routes>
-                <Route
-                  path="/lesson/:lessonId/learn"
-                  element={<LearnMode onStepFinished={onStepFinished} />}
-                />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
+          <AccentProvider>
+            <ToastProvider>
+              <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+                <Routes>
+                  <Route
+                    path="/lesson/:lessonId/learn"
+                    element={<LearnMode onStepFinished={onStepFinished} />}
+                  />
+                </Routes>
+              </MemoryRouter>
+            </ToastProvider>
+          </AccentProvider>
         </ThemeProvider>,
       );
       const input = await screen.findByRole('textbox', { name: 'Your answer' });
@@ -63,6 +71,11 @@ describe('automatic final-answer Undo', () => {
       await screen.findByRole('main', { name: 'Session report' });
       expect(onStepFinished).not.toHaveBeenCalled();
       const report = screen.getByRole('main', { name: 'Session report' });
+      if (!undoAnswer) {
+        fireEvent.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+        await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
+        return;
+      }
       const undo = [...report.querySelectorAll('button')].find(
         (button) => button.textContent === 'Undo last answer',
       );
@@ -70,15 +83,14 @@ describe('automatic final-answer Undo', () => {
       await act(async () => {
         fireEvent.click(undo!);
       });
-      await screen.findByRole('textbox', { name: 'Your answer' });
+      await screen.findByRole('button', { name: 'Yes', exact: true });
       expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
       expect(onStepFinished).not.toHaveBeenCalled();
-      fireEvent.change(screen.getByRole('textbox', { name: 'Your answer' }), {
-        target: { value: 'Red' },
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
       });
-      fireEvent.click(screen.getByRole('button', { name: 'Check answer', exact: true }));
-      await screen.findByRole('main', { name: 'Session report' });
-      fireEvent.click(screen.getByRole('button', { name: 'Continue', exact: true }));
+      expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+      fireEvent.click(screen.getByRole('button', { name: 'Yes', exact: true }));
       await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
       expect(marker).not.toHaveBeenCalled();
     },

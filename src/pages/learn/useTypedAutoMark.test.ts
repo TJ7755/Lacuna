@@ -18,7 +18,10 @@ vi.mock('../../jev', async (importOriginal) => ({
 const card = { id: 'c1', type: 'front_back', front: 'Capital of France?', back: 'Paris' } as Card;
 const provenance = { by: 'jev', model: 'jev-test', confidence: 0.97, markedAt: 1 } as const;
 
-function setup(typedAnswer: string, overrides: { paused?: boolean; card?: Card } = {}) {
+function setup(
+  typedAnswer: string,
+  overrides: { paused?: boolean; card?: Card; manual?: boolean } = {},
+) {
   const onMarked = vi.fn();
   const hook = renderHook(() =>
     useTypedAutoMark({
@@ -28,6 +31,7 @@ function setup(typedAnswer: string, overrides: { paused?: boolean; card?: Card }
       typedAnswer,
       answerStrictness: 'standard',
       paused: overrides.paused ?? false,
+      manual: overrides.manual,
       m: 1,
       onMarked,
     }),
@@ -94,6 +98,17 @@ describe('useTypedAutoMark', () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
+    expect(onMarked).not.toHaveBeenCalled();
+  });
+
+  it('leaves an answer restored by Undo for manual grading without another verdict', () => {
+    jev.marker = vi.fn();
+    const { result, onMarked } = setup('Paris', { manual: true });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(result.current.state).toBe('idle');
+    expect(jev.marker).not.toHaveBeenCalled();
     expect(onMarked).not.toHaveBeenCalled();
   });
 

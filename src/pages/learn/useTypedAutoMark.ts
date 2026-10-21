@@ -62,6 +62,7 @@ export function useTypedAutoMark({
   answerStrictness,
   occlusionAnswerText,
   paused,
+  manual = false,
   m,
   onMarked,
 }: {
@@ -73,6 +74,8 @@ export function useTypedAutoMark({
   occlusionAnswerText?: string;
   /** Menus, editing and hints suspend automatic dismissal. */
   paused: boolean;
+  /** Undo leaves the restored answer with the learner instead of grading it again. */
+  manual?: boolean;
   m: number;
   onMarked: (correct: boolean, provenance: JevMarkProvenance | null) => void;
 }): TypedAutoMark {
@@ -83,7 +86,7 @@ export function useTypedAutoMark({
     onMarkedRef.current = onMarked;
   }, [onMarked]);
 
-  const active = marker !== null && isTypingCard && phase === 'answer' && card !== null;
+  const active = !manual && marker !== null && isTypingCard && phase === 'answer' && card !== null;
   const cardId = card?.id;
 
   // Decide the mark once per revealed answer.

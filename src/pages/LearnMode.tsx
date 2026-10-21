@@ -67,6 +67,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
   const completionInFlightRef = useRef(false);
+  const lastTypedAnswerRef = useRef<{ cardId: string; answer: string } | null>(null);
+  const [manualRestoredCardId, setManualRestoredCardId] = useState<string | null>(null);
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -286,11 +288,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       cardTransitionRef.current?.cancel();
       runRef.current = 0;
       setStreakMoment(null);
-      await undoLast();
+      const typed = lastTypedAnswerRef.current;
+      if (typed) setManualRestoredCardId(typed.cardId);
+      const restored = await undoLast({ reveal: typed !== null });
+      if (restored && typed?.cardId === restored.id) setTypedAnswer(typed.answer);
+      else setManualRestoredCardId(null);
     } finally {
       undoInFlightRef.current = false;
     }
-  }, [undoLast, setMenuOpen]);
+  }, [undoLast, setMenuOpen, setTypedAnswer]);
 
   const confirmReport = async (then: () => void, leaving = false) => {
     if (completionInFlightRef.current || undoInFlightRef.current) return;
@@ -321,6 +327,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             input,
             automatic ? { markedBy, retainUndo: true } : undefined,
           );
+          lastTypedAnswerRef.current =
+            result.undoAvailable && isTypingCard && current
+              ? { cardId: current.id, answer: typedAnswer }
+              : null;
           if (result.undoAvailable) {
             notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
               actionLabel: 'Undo',
@@ -342,7 +352,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         setStreakMoment({ run: runRef.current, key: Date.now() });
       }
     },
-    [answer, notify, undoWithTransitionCancel],
+    [answer, notify, undoWithTransitionCancel, isTypingCard, current, typedAnswer],
   );
 
   const typedAutoMark = useTypedAutoMark({
@@ -353,6 +363,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     answerStrictness,
     occlusionAnswerText,
     paused: editing || menuOpen || hintsOpen,
+    manual: manualRestoredCardId === current?.id,
     m,
     onMarked: (correct, provenance) =>
       answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined, true),

@@ -16,7 +16,7 @@ test.beforeAll(async () => {
   fixture = bundle.outputFiles[0].text;
 });
 
-async function start(page: Page, enabled = true) {
+async function start(page: Page, enabled = true, simple = false) {
   await page.route('**/api/ai/session', (route) =>
     route.fulfill({
       json: { token: 'browser-test-session', expiresAt: Date.now() + 600_000 },
@@ -34,7 +34,7 @@ async function start(page: Page, enabled = true) {
     ).JevStudyFixture;
     return fixture.seed(enabled);
   }, enabled);
-  await page.goto(`/#/lesson/${seeded.lessonId}/learn?filter=new`);
+  await page.goto(`/#/lesson/${seeded.lessonId}/learn?${simple ? 'mode=simple' : 'filter=new'}`);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
 }
 
@@ -89,7 +89,9 @@ test('pours the verdict into its grade, advances and can undo it', async ({ page
     'data-study-card-id',
     id!,
   );
-  await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'No', exact: true })).toBeVisible();
+  await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('jev-undo-manual.png') });
 });
 
 test('restores pointer grading after a timeout and ignores a late verdict', async ({ page }) => {
@@ -185,4 +187,19 @@ test('marks an exact match locally without calling Jev', async ({ page }) => {
   );
   expect(calls).toBe(0);
   await expect(page.getByRole('button', { name: 'Undo last answer' })).toBeEnabled();
+});
+
+test('keeps a final Simple answer undoable and restores manual marking', async ({ page }) => {
+  await start(page, true, true);
+  await submit(page, 'Red, green and blue.');
+  await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+  await submit(page, 'Red, green and blue.');
+  const report = page.getByRole('main', { name: 'Session report' });
+  await expect(report).toBeVisible();
+  await report.getByRole('button', { name: 'Undo last answer' }).click();
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
+  await expect(report).toHaveCount(0);
+  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await expect(report).toBeVisible();
+  await expect(report.getByRole('button', { name: 'Undo last answer' })).toHaveCount(0);
 });
