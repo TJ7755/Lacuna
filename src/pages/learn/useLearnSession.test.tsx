@@ -11,6 +11,7 @@ import {
   upsertLessonCardExposure,
 } from '../../db/repository';
 import { db } from '../../db/schema';
+import { ASSET_GC_GRACE_MS, scheduleAssetGc, storeImageBlob } from '../../db/assets';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '../../db/search';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
@@ -91,6 +92,33 @@ beforeEach(async () => {
 });
 
 describe('useLearnSession answer boundary', () => {
+  it('defers a pending media sweep until the study session is disabled', async () => {
+    const course = await createCourse('Media maintenance', { learnFirst: false });
+    const card = await createCard(course.id, 'front_back', 'Question', 'Answer');
+    const orphan = await storeImageBlob(new Blob(['orphan']), 'image/png', 1, 1);
+    await db.assets.update(orphan.hash, { createdAt: Date.now() - ASSET_GC_GRACE_MS });
+    const params = sessionParams({
+      courseId: course.id,
+      isSimpleMode: true,
+      standaloneSimple: true,
+      mode: 'simple',
+    });
+    const session = renderHook(({ enabled }) => useLearnSession({ ...params, enabled }), {
+      initialProps: { enabled: true },
+    });
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+      scheduleAssetGc(0);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(await db.assets.get(orphan.hash)).toBeDefined();
+      session.rerender({ enabled: false });
+      await waitFor(async () => expect(await db.assets.get(orphan.hash)).toBeUndefined());
+    } finally {
+      session.unmount();
+      await db.assets.delete(orphan.hash);
+    }
+  });
+
   it.each(['lesson', 'course'] as const)('uses authored typing in a %s session', async (scope) => {
     const course = await createCourse('Typing', { learnFirst: false });
     const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });

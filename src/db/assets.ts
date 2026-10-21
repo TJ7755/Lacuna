@@ -306,6 +306,9 @@ export function backupAssetToMediaAsset(asset: BackupAsset): MediaAsset {
 
 let gcTimeout: ReturnType<typeof setTimeout> | null = null;
 let gcRunning = false;
+let gcPauseCount = 0;
+let gcPending = false;
+let gcDelayMs = 3000;
 
 /**
  * How long a stored asset is exempt from collection. Editors store an upload before the
@@ -336,6 +339,7 @@ export async function collectOrphanedAssets(now: number = Date.now()): Promise<n
         db.assets,
       ],
       async () => {
+        if ((await db.assets.count()) === 0) return 0;
         // Build the set of referenced hashes by streaming every persisted Markdown
         // owner in batches so note-only images are not mistaken for orphans.
         const referenced = new Set<string>();
@@ -443,8 +447,30 @@ export async function collectOrphanedAssets(now: number = Date.now()): Promise<n
  * Never runs during an active Learn session.
  */
 export function scheduleAssetGc(delayMs = 3000): void {
-  if (gcTimeout) clearTimeout(gcTimeout);
+  gcPending = true;
+  gcDelayMs = delayMs;
+  if (gcTimeout !== null) clearTimeout(gcTimeout);
+  gcTimeout = null;
+  if (gcPauseCount > 0) return;
   gcTimeout = setTimeout(() => {
+    gcTimeout = null;
+    gcPending = false;
     void collectOrphanedAssets();
   }, delayMs);
+}
+
+/** Defer scheduled sweeps until every active study session has left. */
+export function pauseAssetGc(): () => void {
+  gcPauseCount += 1;
+  if (gcTimeout !== null) {
+    clearTimeout(gcTimeout);
+    gcTimeout = null;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    gcPauseCount -= 1;
+    if (gcPauseCount === 0 && gcPending) scheduleAssetGc(gcDelayMs);
+  };
 }
