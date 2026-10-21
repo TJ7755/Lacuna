@@ -129,14 +129,20 @@ send structured marking fields and cannot select a model or supply instructions.
 Jev also requires the hosted access/session configuration and existing Upstash Redis variables
 above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
 new shared session exchanges as well as chat; already-issued sessions can still access Jev
-unless its own kill switch is set. There are no per-learner Jev quotas. Redis counts calls and
-input tokens per UTC day and month. Admission reserves the full 65,536-token context before
-calling TypeSafe, then settles to reported usage. Concurrent reservations count against the
-fuse; near the limit a request may be refused early. Transport failures retain their reservation
-because the provider may already have charged. Counters and reservations have month-specific keys.
-Settlement runs after the response through Vercel's `waitUntil`; a failed settlement leaves the
-reservation counted. `Server-Timing` reports reservation, TypeSafe and total handler durations
-in milliseconds, excluding settlement and platform startup. It contains no prompts or credentials.
+unless its own kill switch is set. There are no per-learner Jev quotas. Session verification
+uses a local signature check. The marking request never waits for Redis: each function instance
+checks its in-memory monthly total, refreshed in the background at most once per minute.
+It refuses only when that cached total exceeds the configured ceiling; `0` disables the fuse.
+A cold instance initially admits requests while its first refresh runs. About a minute of
+traffic may overshoot the ceiling across warm instances; cold starts and Redis outages can
+extend cross-instance staleness. This is an eventually consistent bug fuse, not a spending cap.
+
+Usage is recorded after the response with Vercel's `waitUntil`, in the existing per-UTC-day and
+month token/call counters. Known usage updates the local total even if Redis fails. Failed
+provider calls increment calls with zero known input tokens; unreported usage is unknown.
+There are no reservations. Old reservation keys are ignored; no Redis migration is required.
+`Server-Timing` reports TypeSafe and total handler durations in milliseconds. It excludes
+background Redis work and platform startup and contains no prompts or credentials.
 
 Consent and the Jev switch live only in device localStorage. The shared access code uses the
 existing device key. None enters backups, course exports or sync. Stale consent means off;

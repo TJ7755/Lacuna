@@ -1,21 +1,10 @@
 import { quotaCommand } from '../ai/quota.js';
 
 export const DEFAULT_JEV_MONTHLY_INPUT_TOKEN_LIMIT = 50_000_000;
-// The pinned model's documented per-request context is 64k. No long-context header is sent.
-// Reserve the whole context, then settle to usage.input_tokens, to avoid concurrent overspend.
-export const JEV_INPUT_TOKEN_RESERVATION = 65_536;
-const RESERVE = `
-local used = tonumber(redis.call('GET', KEYS[1]) or '0')
-local pending = tonumber(redis.call('GET', KEYS[2]) or '0')
-if tonumber(ARGV[1]) > 0 and used + pending + tonumber(ARGV[2]) > tonumber(ARGV[1]) then return 0 end
-redis.call('INCRBY', KEYS[2], ARGV[2])
+export const JEV_USAGE_REFRESH_MS = 60_000;
+const RECORD = `
+for i = 1, 2 do redis.call('INCRBY', KEYS[i], ARGV[1]) end
 for i = 3, 4 do redis.call('INCR', KEYS[i]) end
-return 1
-`;
-const SETTLE = `
-redis.call('DECRBY', KEYS[2], ARGV[1])
-redis.call('INCRBY', KEYS[1], ARGV[2])
-redis.call('INCRBY', KEYS[3], ARGV[2])
 return 1
 `;
 
@@ -33,45 +22,63 @@ export function createJevUsageStore(
   now = Date.now,
 ) {
   const command = quotaCommand(url, token, fetcher);
+  let cached: {
+    month: string;
+    total: number;
+    refreshedAt: number;
+    pending: Promise<void> | null;
+  } | null = null;
+  const current = () => {
+    const month = new Date(now()).toISOString().slice(0, 7);
+    if (cached?.month !== month)
+      cached = { month, total: 0, refreshedAt: -Infinity, pending: null };
+    return cached;
+  };
   return {
-    async reserve(limit: number): Promise<null | ((inputTokens: number) => Promise<void>)> {
-      const day = new Date(now()).toISOString().slice(0, 10);
+    allowed(limit: number): boolean {
+      return limit === 0 || current().total <= limit;
+    },
+    refresh(): Promise<void> | null {
+      const state = current();
+      if (state.pending || now() - state.refreshedAt < JEV_USAGE_REFRESH_MS) return null;
+      state.refreshedAt = now();
+      state.pending = command(['GET', `lacuna:jev:month:${state.month}:input-tokens`])
+        .then((result) => {
+          const total = result === null ? 0 : Number(result);
+          if (!Number.isSafeInteger(total) || total < 0) throw new Error('Invalid Jev usage.');
+          // Do not discard this instance's usage when a concurrent refresh returns an older total.
+          state.total = Math.max(state.total, total);
+        })
+        .finally(() => {
+          state.pending = null;
+        });
+      return state.pending;
+    },
+    async record(inputTokens: number, at = now()): Promise<void> {
+      if (!Number.isSafeInteger(inputTokens) || inputTokens < 0)
+        throw new Error('Invalid Jev usage.');
+      const day = new Date(at).toISOString().slice(0, 10);
       const month = day.slice(0, 7);
-      const monthTokens = `lacuna:jev:month:${month}:input-tokens`;
-      const pending = `lacuna:jev:month:${month}:reserved-input-tokens`;
-      const granted = await command([
+      const state = current();
+      if (state.month === month) state.total += inputTokens;
+      await command([
         'EVAL',
-        RESERVE,
+        RECORD,
         4,
-        monthTokens,
-        pending,
-        `lacuna:jev:day:${day}:calls`,
+        `lacuna:jev:month:${month}:input-tokens`,
+        `lacuna:jev:day:${day}:input-tokens`,
         `lacuna:jev:month:${month}:calls`,
-        limit,
-        JEV_INPUT_TOKEN_RESERVATION,
+        `lacuna:jev:day:${day}:calls`,
+        inputTokens,
       ]);
-      if (granted !== 1) return null;
-      let settled = false;
-      return async (inputTokens) => {
-        if (settled) return;
-        if (
-          !Number.isSafeInteger(inputTokens) ||
-          inputTokens < 0 ||
-          inputTokens > JEV_INPUT_TOKEN_RESERVATION
-        )
-          throw new Error('Invalid Jev usage.');
-        await command([
-          'EVAL',
-          SETTLE,
-          3,
-          monthTokens,
-          pending,
-          `lacuna:jev:day:${day}:input-tokens`,
-          JEV_INPUT_TOKEN_RESERVATION,
-          inputTokens,
-        ]);
-        settled = true;
-      };
     },
   };
+}
+
+let shared: { url: string; token: string; store: ReturnType<typeof createJevUsageStore> } | null =
+  null;
+export function getJevUsageStore(url: string, token: string) {
+  if (!shared || shared.url !== url || shared.token !== token)
+    shared = { url, token, store: createJevUsageStore(url, token) };
+  return shared.store;
 }
