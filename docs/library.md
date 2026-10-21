@@ -17,8 +17,8 @@ Do not add private teaching files or owner credentials to this public catalogue.
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
-therefore shows no review or progress status. The current links publish Biology revision 17,
-Chemistry revision 12, Physics revision 11 and History revision 11.
+therefore shows no review or progress status. The current links publish Biology revision 20,
+Chemistry revision 14, Physics revision 13 and History revision 11.
 
 The catalogue also records `author`, `publisher`, `revision` and an optional `revisionDate`
 (YYYY-MM-DD) for the published revision. Use Lacuna for authorship and publishing unless a

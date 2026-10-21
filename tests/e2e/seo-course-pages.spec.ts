@@ -35,7 +35,7 @@ for (const width of [1440, 390]) {
     const report = page.getByRole('link', { name: 'Report a mistake' });
     expect([...new URL((await report.getAttribute('href'))!).searchParams]).toEqual([
       ['title', 'Course mistake: biology4bi1'],
-      ['body', 'Course: biology4bi1\nRevision: 17\nItem reference: card: cells & #3'],
+      ['body', 'Course: biology4bi1\nRevision: 20\nItem reference: card: cells & #3'],
     ]);
     await page.getByRole('link', { name: 'All courses', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Revision courses');
