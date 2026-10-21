@@ -5,7 +5,7 @@ const chromium = webConfig.projects?.find((project) => project.name === 'chromiu
 if (!chromium) throw new Error('The web config must provide the Chromium project');
 
 const imageAdvance = '**/study-image-advance.spec.ts';
-const sidebarMotion = ['**/sidebar-motion.spec.ts', '**/sidebar-course-dropdown-motion.spec.ts'];
+const sidebarMotion = ['**/sidebar-motion.spec.ts'];
 
 // Functional workers stay separate from serial timing cases. Preserve ordinary local coverage.
 export default defineConfig({

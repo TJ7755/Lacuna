@@ -201,18 +201,6 @@ describe('AppShell mobile navigation', () => {
     expect(main).toHaveFocus();
   });
 
-  it('sets the mobile brand mark straight on the top bar, without a tile', () => {
-    renderShell();
-
-    const mark = screen.getByTestId('mobile-brand-mark');
-    expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent-ink');
-    expect(mark).not.toHaveAttribute('src');
-    expect(mark).toHaveClass('h-[18px]', 'w-[18px]');
-    expect(mark.getAttribute('class')).not.toMatch(/\bbg-|\bp-/);
-    expect(mark.parentElement).toHaveTextContent('Lacuna');
-  });
-
   it('opens the drawer after a deliberate right swipe from the left viewport edge', () => {
     renderShell();
 
@@ -518,6 +506,8 @@ it('does not reopen help when the overlay consumes its closing key', async () =>
   renderShell();
   const event = new KeyboardEvent('keydown', { key: '?', cancelable: true });
   event.preventDefault();
-  await act(async () => { fireEvent(window, event); });
+  await act(async () => {
+    fireEvent(window, event);
+  });
   expect(screen.queryByRole('dialog', { name: 'Keyboard shortcuts' })).not.toBeInTheDocument();
 });

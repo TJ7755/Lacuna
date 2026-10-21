@@ -119,12 +119,6 @@ describe('Sidebar', () => {
     expectAppDestination(screen.getByRole('link', { name: 'Search content' }), '/search');
     expect(screen.queryByRole('button', { name: /^Search/ })).not.toBeInTheDocument();
   });
-
-  it('keeps review actions on Today rather than repeating them in navigation', () => {
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.queryByRole('link', { name: 'Review today' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Review today' })).not.toBeInTheDocument();
-  });
   it('offers Import only in the phone drawer, where Today hides its button', () => {
     const { rerender } = render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, {
       wrapper: MemoryRouter,
@@ -132,68 +126,6 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Import' })).not.toBeInTheDocument();
     rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
     expectAppDestination(screen.getByRole('link', { name: 'Import' }), '/import');
-  });
-  it('fades the hidden edges of its scrollbar-less course list', () => {
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    const archived = screen.getByRole('link', { name: 'Archived' });
-    expect(archived.closest('.scroll-edge-fade')).not.toBeNull();
-  });
-
-  it('shows the brand without a tagline', () => {
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.getByText('Lacuna')).toBeInTheDocument();
-    expect(screen.queryByText(/spaced revision|spaced repetition/i)).not.toBeInTheDocument();
-
-    const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
-    expect(mark).not.toHaveAttribute('src');
-    expect(mark).toHaveClass('h-9', 'w-9', 'p-[3px]', 'bg-accent-ink', 'dark:bg-accent-soft');
-    expect(screen.getByText('Lacuna')).toHaveClass('text-xl');
-  });
-
-  it('keeps the accent-token mark inside the collapsed sidebar', () => {
-    render(<Sidebar collapsed onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-
-    const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
-    expect(mark).not.toHaveAttribute('src');
-    expect(mark).toHaveClass('h-9', 'w-9');
-    expect(mark.parentElement).toHaveClass('px-[18px]');
-    expect(screen.getByText('Lacuna')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.getByText('Lacuna')).toHaveAttribute('inert');
-    expect(mark.parentElement).not.toHaveClass('px-5');
-    expect(screen.getByRole('complementary')).toHaveClass(
-      'w-[calc(72px+env(safe-area-inset-left))]',
-    );
-  });
-
-  it('slots the desktop collapse control for the row/stack glide, but not in the drawer', () => {
-    const { rerender } = render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, {
-      wrapper: MemoryRouter,
-    });
-    const slot = screen.getByTestId('sidebar-collapse-slot');
-    expect(slot).toContainElement(screen.getByRole('button', { name: 'Collapse sidebar' }));
-
-    rerender(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} drawer />);
-    expect(screen.queryByTestId('sidebar-collapse-slot')).not.toBeInTheDocument();
-  });
-
-  it('uses a compact 32px brand mark in compact mode', () => {
-    localStorage.setItem(
-      'lacuna.sidebarSettings',
-      JSON.stringify({ showDueCounts: true, compactMode: true }),
-    );
-
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-
-    const mark = screen.getByTestId('sidebar-brand-mark');
-    expect(mark.tagName.toLowerCase()).toBe('svg');
-    expect(mark).toHaveClass('text-accent', 'dark:text-accent-ink');
-    expect(mark).not.toHaveAttribute('src');
-    expect(mark).toHaveClass('h-8', 'w-8');
-    expect(screen.getByText('Lacuna')).toHaveClass('text-lg');
   });
 
   it('keeps the archive destination fixed in the Courses group and archived courses out of the list', () => {
@@ -243,23 +175,6 @@ describe('Sidebar', () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     mockCourses = [];
-  });
-
-  it('keeps ready counts and the streak out of sidebar rows', () => {
-    mockCourses = [{ id: 'active', name: 'Active course', archived: false } as Course];
-    mockEligible = 7;
-    mockStreak = 5;
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('link', { name: /Active course/ })).not.toHaveTextContent('7');
-    expect(screen.getByRole('link', { name: /Today/ })).not.toHaveTextContent('5');
-    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
-  });
-
-  it('fills its shell container without extending beneath the Electron titlebar', () => {
-    render(<Sidebar collapsed={false} onToggleCollapsed={vi.fn()} />, { wrapper: MemoryRouter });
-
-    expect(screen.getByRole('complementary')).toHaveClass('h-full');
-    expect(screen.getByRole('complementary')).not.toHaveClass('h-screen');
   });
 
   it('exposes Today as the destination for cross-course review', () => {

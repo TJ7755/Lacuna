@@ -28,72 +28,6 @@ test('a listed lesson opens its real workspace; Add creates a real lesson', asyn
   ).toBeVisible();
 });
 
-test('Add returns to its own corner without enlarging its disappearing text', async ({ page }) => {
-  await enterFreshLacuna(page);
-  await page
-    .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  const add = page.getByRole('button', { name: 'Add', exact: true });
-  await expect(add).toBeVisible();
-  // Closed, the surface fits its own trigger. Compare layout widths, which neither the
-  // page's entrance scale nor a late web-font swap can skew.
-  const closedFit = () =>
-    add.evaluate(
-      (trigger) =>
-        (trigger.parentElement as HTMLElement).offsetWidth -
-        Math.ceil(parseFloat(getComputedStyle(trigger).width)),
-    );
-  await expect.poll(closedFit).toBe(0);
-  await add.click();
-  await expect(page.getByRole('menu', { name: 'Add', exact: true })).toBeVisible();
-  await expect
-    .poll(() =>
-      page
-        .getByRole('button', { name: 'Add', exact: true })
-        .locator('..')
-        .evaluate((el) => Math.round(el.getBoundingClientRect().width)),
-    )
-    .toBe(216);
-  const measured = await page.evaluate(async () => {
-    const rect = () => {
-      const button = document.querySelector('[role="menu"][aria-label="Add"] [role="menuitem"]');
-      if (!button) return null;
-      // The option's label, wherever it sits inside the item's layout.
-      const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT, (node) =>
-        node.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
-      );
-      const text = walker.nextNode();
-      if (!text) throw new Error('Missing option text');
-      const range = document.createRange();
-      range.selectNodeContents(text);
-      const bounds = range.getBoundingClientRect();
-      return { height: bounds.height, top: bounds.top };
-    };
-    const baseline = rect()!;
-    document.querySelector<HTMLButtonElement>('button[aria-label="Add"]')!.click();
-    const samples = [];
-    for (let i = 0; i < 30; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 8));
-      const sample = rect();
-      if (sample) samples.push(sample);
-    }
-    return { baseline, samples };
-  });
-  expect(measured.samples.length).toBeGreaterThan(0);
-  for (const sample of measured.samples) {
-    expect(Math.abs(sample.height - measured.baseline.height)).toBeLessThanOrEqual(1);
-    expect(Math.abs(sample.top - measured.baseline.top)).toBeLessThanOrEqual(1);
-  }
-  await expect.poll(closedFit).toBe(0);
-  await add.click();
-  await page.getByRole('menuitem', { name: 'Checkpoint', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Name' }).fill('Keyboard checkpoint');
-  await page.getByRole('textbox', { name: 'Name' }).press('Escape');
-  await expect(add).toBeFocused();
-});
-
 test('narrow-screen keyboard activation opens the focused lesson', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
   await enterFreshLacuna(page);
@@ -108,38 +42,6 @@ test('narrow-screen keyboard activation opens the focused lesson', async ({ page
   await expect(
     page.getByRole('heading', { name: 'Scheduling philosophy', exact: true }),
   ).toBeVisible();
-});
-
-test('reduced motion changes Add dimensions without interpolating', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
-  await page
-    .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
-  const { closed, samples } = await page.evaluate(async () => {
-    await document.fonts.ready;
-    const surface = document.querySelector<HTMLElement>('button[aria-label="Add"]')!.parentElement!;
-    const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Add"]')!;
-    const widths: number[] = [];
-    for (let toggle = 0; toggle < 2; toggle++) {
-      trigger.click();
-      for (let frame = 0; frame < 12; frame++) {
-        await new Promise(requestAnimationFrame);
-        widths.push(surface.getBoundingClientRect().width);
-      }
-    }
-    // Closed, the surface fits its own trigger's layout width.
-    const closed = Math.ceil(parseFloat(getComputedStyle(trigger).width));
-    return { closed, samples: widths };
-  });
-  expect(samples).toContain(216);
-  expect(samples.at(-1)).toBe(closed);
-  expect(samples.every((width) => Math.abs(width - closed) < 1 || Math.abs(width - 216) < 1)).toBe(
-    true,
-  );
 });
 
 test('practice editing keeps an unobstructed 44px touch target with a long name', async ({

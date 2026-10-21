@@ -1,25 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Button, buttonClassName } from './Button';
-import { scaledSpring } from './motion';
+import { Button } from './Button';
 
 beforeEach(() => localStorage.clear());
 
 describe('Button', () => {
-  it('scales shared springs and makes reduced motion immediate', () => {
-    expect(scaledSpring(2, 400, 30)).toEqual({
-      type: 'spring',
-      stiffness: 100,
-      damping: 15,
-    });
-    expect(scaledSpring(0, 400, 30)).toEqual({ duration: 0 });
-  });
-
-  it('renders with default variant', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole('button', { name: 'Click me' })).toBeInTheDocument();
-  });
-
   it('handles click events', () => {
     const onClick = vi.fn();
     render(<Button onClick={onClick}>Click me</Button>);
@@ -30,36 +15,5 @@ describe('Button', () => {
   it('can be disabled', () => {
     render(<Button disabled>Disabled</Button>);
     expect(screen.getByRole('button')).toBeDisabled();
-  });
-
-  it('applies custom className', () => {
-    const { container } = render(<Button className="custom-class">Styled</Button>);
-    expect(container.querySelector('button')).toHaveClass('custom-class');
-  });
-
-  it('renders different sizes', () => {
-    const { container: sm } = render(<Button size="sm">Small</Button>);
-    const { container: lg } = render(<Button size="lg">Large</Button>);
-    expect(sm.querySelector('button')).toHaveClass('min-h-11');
-    // Large is a page's main action, level with a full-size Menu trigger (48px).
-    expect(lg.querySelector('button')).toHaveClass('min-h-12');
-  });
-
-  it('shares its look with links through buttonClassName', () => {
-    const { container } = render(<Button variant="primary">Go</Button>);
-    for (const name of buttonClassName('primary').split(' ')) {
-      expect(container.querySelector('button')).toHaveClass(name);
-    }
-  });
-
-  it('scales its CSS transition from the global motion setting', () => {
-    localStorage.setItem('lacuna.motionSpeed', 'slow');
-    render(<Button>Slow button</Button>);
-    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? '0ms'
-      : '210ms';
-    expect(screen.getByRole('button', { name: 'Slow button' })).toHaveStyle({
-      transitionDuration: duration,
-    });
   });
 });

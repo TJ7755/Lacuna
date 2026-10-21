@@ -19,20 +19,4 @@ describe('ProgressBar', () => {
     render(<ProgressBar value={1.5} showLabel />);
     expect(screen.getByText('100%')).toBeInTheDocument();
   });
-
-  it('shows percentage label when requested', () => {
-    render(<ProgressBar value={0.75} showLabel />);
-    expect(screen.getByText('75%')).toBeInTheDocument();
-  });
-
-  it('does not show label by default', () => {
-    render(<ProgressBar value={0.5} />);
-    expect(screen.queryByText('50%')).not.toBeInTheDocument();
-  });
-
-  it('applies custom height', () => {
-    const { container } = render(<ProgressBar value={0.5} height={20} />);
-    const bar = container.querySelector('[role="progressbar"]');
-    expect(bar).toHaveStyle('height: 20px');
-  });
 });

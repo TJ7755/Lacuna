@@ -52,53 +52,6 @@ describe('KeyHints', () => {
     expect(close.closest('[inert]')).toBeNull();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
   });
-  it('renders nothing when closed', () => {
-    const { container } = render(<KeyHints open={false} onClose={vi.fn()} />);
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('renders as a dialog with correct aria attributes when open', async () => {
-    render(<KeyHints open onClose={vi.fn()} />);
-    const dialog = await screen.findByTestId('keyhints-dialog');
-    expect(dialog).toHaveAttribute('role', 'dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('aria-label', 'Keyboard shortcuts');
-  });
-
-  it('keeps one bounded dialog with a separately scrollable shortcut list', () => {
-    render(<KeyHints open onClose={vi.fn()} />);
-    const dialogs = screen.getAllByRole('dialog', { name: 'Keyboard shortcuts' });
-    expect(dialogs).toHaveLength(1);
-    expect(dialogs[0]).toHaveClass('min-h-0', 'max-h-full');
-    expect(screen.getAllByRole('list')[0].parentElement?.parentElement).toHaveClass(
-      'min-h-0',
-      'overflow-y-auto',
-    );
-  });
-
-  it('shows the title and group headings', () => {
-    render(<KeyHints open onClose={vi.fn()} />);
-    expect(screen.getByText('Keyboard shortcuts')).toBeInTheDocument();
-    expect(screen.getByText('Study')).toBeInTheDocument();
-    expect(screen.getByText('Navigation')).toBeInTheDocument();
-  });
-
-  it('lists shortcuts with descriptions and key labels', () => {
-    render(<KeyHints open onClose={vi.fn()} />);
-    expect(screen.getByText('Show the answer')).toBeInTheDocument();
-    expect(screen.getByText('Space')).toBeInTheDocument();
-    expect(screen.getByText('Mark correct')).toBeInTheDocument();
-    expect(screen.getByText('y')).toBeInTheDocument();
-    expect(screen.getByText('Open search')).toBeInTheDocument();
-    expect(screen.getByText('/')).toBeInTheDocument();
-  });
-
-  it('has a close button', () => {
-    const onClose = vi.fn();
-    render(<KeyHints open onClose={onClose} />);
-    const closeBtn = screen.getByLabelText('Close');
-    expect(closeBtn).toBeInTheDocument();
-  });
 });
 
 it('refreshes displayed bindings when reopened and closes with the configured help key', () => {

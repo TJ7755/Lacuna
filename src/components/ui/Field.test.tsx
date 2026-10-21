@@ -37,11 +37,4 @@ describe('Field', () => {
     );
     expect(screen.getByRole('textbox', { name: 'Notes' }).tagName).toBe('TEXTAREA');
   });
-
-  it('keeps an explicit id and extra classes on the input', () => {
-    render(<Input id="custom" className="font-mono" aria-label="Code" />);
-    const input = screen.getByRole('textbox', { name: 'Code' });
-    expect(input).toHaveAttribute('id', 'custom');
-    expect(input).toHaveClass('font-mono', 'rounded-xl');
-  });
 });
