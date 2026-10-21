@@ -22,6 +22,7 @@ const buildOnlyDependencies = [
   '@napi-rs/wasm-runtime',
   '@open-spaced-repetition/binding',
   '@vercel/analytics',
+  '@vercel/functions',
   'ai',
   'dexie',
   'dexie-react-hooks',
