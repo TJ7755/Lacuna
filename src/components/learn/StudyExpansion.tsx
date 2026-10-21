@@ -38,6 +38,11 @@ export function StudyExpansion({
     const style = getComputedStyle(anchor);
     return { backgroundColor: style.backgroundColor, color: style.color };
   });
+  const [originTextScale] = useState(() => {
+    const triggerSize = parseFloat(getComputedStyle(anchor).fontSize);
+    const previewSize = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.875;
+    return Number.isFinite(triggerSize / previewSize) ? triggerSize / previewSize : 1;
+  });
   const [headerInk, setHeaderInk] = useState(originColours.color);
   const [bounds, setBounds] = useState(() => ({
     left: origin.left,
@@ -102,6 +107,7 @@ export function StudyExpansion({
     const escape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !event.defaultPrevented) {
         event.preventDefault();
+        returnFocus.current = true;
         onClose();
       }
     };
@@ -175,6 +181,9 @@ export function StudyExpansion({
         type="button"
         aria-label="Close session preview"
         onClick={onClose}
+        onPointerDown={() => {
+          returnFocus.current = false;
+        }}
         data-press="none"
         initial={multiplier > 0 ? originColours : false}
         animate={{
@@ -189,15 +198,23 @@ export function StudyExpansion({
           backgroundColor: { duration: 0.18 * multiplier, ease: 'linear' },
           color: { duration: 0.18 * multiplier, ease: 'linear' },
         }}
-        className="absolute right-0 top-0 z-10 flex min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold focus-visible:outline-offset-[-3px]"
+        className="absolute right-0 top-0 z-10 flex select-none min-h-11 items-center justify-center gap-2 px-3 text-sm font-semibold focus-visible:outline-offset-[-3px]"
         style={{
           width: origin.width,
           height: origin.height,
           borderRadius: origin.height / 2,
         }}
       >
-        <span>Study</span>
-        <StudyActionIcon open={present} multiplier={multiplier} />
+        <motion.span
+          className="inline-flex items-center gap-2"
+          initial={multiplier > 0 ? { scale: originTextScale } : false}
+          animate={{ scale: 1 }}
+          exit={{ scale: originTextScale }}
+          transition={expandingActionSpring(multiplier)}
+        >
+          <span>Study</span>
+          <StudyActionIcon open={present} multiplier={multiplier} />
+        </motion.span>
       </motion.button>
       {/* Keep the final-width body still while the shell reveals it towards the left. */}
       <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
