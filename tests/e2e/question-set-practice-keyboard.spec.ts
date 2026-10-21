@@ -163,9 +163,9 @@ for (const mode of ['practice', 'paper'] as const) {
         await expect(page.getByRole('button', { name: /criterion 2 of 3/ })).toBeVisible();
         await markAndContinue(page, '0 / 1');
       }
-      await expect(page.getByText('1 criterion remaining', { exact: true })).toBeVisible();
+      await expect(page.locator('.qs-result')).toContainText('1 criterion remaining');
       await markAndContinue(page, '1 / 1');
-      await expect(page.getByRole('link', { name: 'Back to set →', exact: true })).toBeFocused();
+      await expect(page.getByRole('link', { name: 'Back to set', exact: true })).toBeFocused();
       await expect(page.getByRole('button', { name: 'Back to set', exact: true })).toHaveCount(0);
     });
   }

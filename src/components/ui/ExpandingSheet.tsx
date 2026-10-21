@@ -1,13 +1,12 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { m as motion, useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
-import { useFocusTrap } from '../hooks/useFocusTrap';
-import { CloseIcon } from '../components/ui/icons';
-import { ModalBackdrop } from '../components/ui/ModalBackdrop';
-import { expandingActionSpring, MOTION_DURATION, MOTION_EASING } from '../components/ui/motion';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { CloseIcon } from './icons';
+import { ModalBackdrop } from './ModalBackdrop';
+import { expandingActionSpring, MOTION_DURATION, MOTION_EASING } from './motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
-const MAX_WIDTH = 768;
 const MARGIN = 16;
 
 type Bounds = { left: number; top: number; width: number; height: number };
@@ -17,26 +16,37 @@ function boundsOf(element: Element): Bounds {
   return { left, top, width, height };
 }
 
-function panelWidth() {
-  return Math.min(MAX_WIDTH, window.innerWidth - MARGIN * 2);
+function panelWidth(maxWidth: number) {
+  return Math.min(maxWidth, window.innerWidth - MARGIN * 2);
 }
 
 /**
- * A course cover grows into its full sheet, as Study grows from its button: the surface
- * animates its real bounds from the cover's, so nothing is scaled, and shrinks back onto
- * the cover when closed. The content is laid out at the final width from the first frame,
- * with the cover's face at the top, so the cover appears to open rather than be replaced.
+ * A trigger grows into its full sheet, as Study grows from its button: the surface
+ * animates its real bounds from the trigger's, so nothing is scaled, and shrinks back onto
+ * the trigger when closed. The content is laid out at the final width from the first frame,
+ * with the face at the top, so the trigger appears to open rather than be replaced.
+ * Hide the trigger while the sheet is open; render inside AnimatePresence.
  */
-export function CourseExpansion({
+export function ExpandingSheet({
   anchor,
   face,
   onClose,
+  closeLabel,
+  closeDisabled = false,
+  maxWidth = 768,
+  autoFocusSelector = 'h2',
   children,
 }: {
   anchor: HTMLElement;
-  /** The cover's own face, repeated at the top of the sheet; its heading names the sheet. */
+  /** The trigger's own face, repeated at the top of the sheet; its heading names the sheet. */
   face: (headingId: string) => ReactNode;
   onClose: () => void;
+  closeLabel: string;
+  /** Unsaved work keeps the sheet open; the close control stays visible but disabled. */
+  closeDisabled?: boolean;
+  maxWidth?: number;
+  /** Initial focus; falls back to the first control when nothing matches. */
+  autoFocusSelector?: string;
   children: ReactNode;
 }) {
   const [speed] = useMotionSpeed();
@@ -47,10 +57,10 @@ export function CourseExpansion({
   const content = useRef<HTMLDivElement>(null);
   const [origin, setOrigin] = useState(() => boundsOf(anchor));
   const [bounds, setBounds] = useState<Bounds>(() => {
-    const width = panelWidth();
+    const width = panelWidth(maxWidth);
     return { left: (window.innerWidth - width) / 2, top: origin.top, width, height: origin.height };
   });
-  useFocusTrap(present, { autoFocusSelector: 'h2', returnFocus: false }, surface);
+  useFocusTrap(present, { autoFocusSelector, returnFocus: false }, surface);
   // The cover is hidden while open, so focus returns to it explicitly as it reappears.
   useLayoutEffect(() => {
     if (!present && anchor.isConnected) anchor.focus({ preventScroll: true });
@@ -62,7 +72,7 @@ export function CourseExpansion({
     const measure = () => {
       // The exit returns to wherever the cover now sits.
       setOrigin(boundsOf(anchor));
-      const width = panelWidth();
+      const width = panelWidth(maxWidth);
       const height = Math.min(element.scrollHeight, window.innerHeight - MARGIN * 2);
       setBounds({
         left: (window.innerWidth - width) / 2,
@@ -81,7 +91,7 @@ export function CourseExpansion({
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [anchor]);
+  }, [anchor, maxWidth]);
 
   const fade = { duration: MOTION_DURATION.feedback * m, ease: MOTION_EASING.standard };
 
@@ -96,7 +106,7 @@ export function CourseExpansion({
         exit={m > 0 ? { opacity: 0 } : undefined}
         transition={fade}
       >
-        <ModalBackdrop shade={40} onClick={onClose} />
+        <ModalBackdrop shade={40} onClick={() => !closeDisabled && onClose()} />
       </motion.div>
       <motion.div
         ref={surface}
@@ -108,7 +118,8 @@ export function CourseExpansion({
         onKeyDown={(event) => {
           if (event.key === 'Escape' && !event.defaultPrevented) {
             event.preventDefault();
-            onClose();
+            event.stopPropagation();
+            if (!closeDisabled) onClose();
           }
         }}
         initial={m > 0 ? { ...origin, borderRadius: 24 } : false}
@@ -121,14 +132,15 @@ export function CourseExpansion({
         <motion.button
           type="button"
           onClick={onClose}
-          aria-label="Close course"
+          disabled={closeDisabled}
+          aria-label={closeLabel}
           title="Close (Esc)"
           data-dialog-close
           initial={m > 0 ? { opacity: 0 } : false}
           animate={m > 0 ? { opacity: present ? 1 : 0 } : undefined}
           style={m === 0 ? { opacity: present ? 1 : 0 } : undefined}
           transition={{ duration: 0.12 * m }}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-40"
         >
           <CloseIcon width={18} height={18} />
         </motion.button>

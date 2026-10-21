@@ -42,6 +42,8 @@ import {
   QuestionSetLoading,
   QuestionSetUnavailable,
 } from '../components/question-sets/QuestionSetRouteState';
+import { dimensionNames } from '../components/question-sets/presentation';
+import { FileTextIcon } from '../components/ui/icons';
 import '../components/question-sets/question-sets.css';
 import '../components/question-sets/question-set-practice.css';
 
@@ -252,6 +254,29 @@ function PracticeWorkspace({
           <span className="qs-status" role="status">
             {progress.error ? 'Not saved' : progress.dirty || progress.saving ? 'Saving…' : ''}
           </span>
+          {marking && (
+            <div className="qs-header-tools">
+              <QuestionSetPanel
+                title="Question and source"
+                icon={<FileTextIcon width={18} height={18} />}
+                panelClassName="qs-practice-panel"
+              >
+                <QuestionSetAnswer
+                  content={attempt.receipt}
+                  nodeId={active.id}
+                  value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
+                  onChange={() => {}}
+                  readOnly
+                />
+              </QuestionSetPanel>
+              <QuestionSetReflection
+                value={attempt.reflection}
+                busy={busy || Boolean(progress.error)}
+                onDirty={setReflectionDirty}
+                onChange={(reflection) => updateMarking(() => ({ reflection }))}
+              />
+            </div>
+          )}
           {attempt.status !== 'complete' && (
             <Button
               variant="ghost"
@@ -321,9 +346,16 @@ function PracticeWorkspace({
                     active.label,
                   ].join(' ')}
                 </h2>
-                <span className="qs-muted">
-                  {answer.maxMarks} {answer.maxMarks === 1 ? 'mark' : 'marks'}
-                </span>
+                <MarkPips
+                  max={answer.maxMarks}
+                  awarded={attempt.decisions
+                    .filter((row) => answer.allocations.some((a) => a.id === row.allocationId))
+                    .reduce((sum, row) => sum + (row.status === 'awarded' ? row.marks : 0), 0)}
+                  label={[
+                    ...(criterion ? [dimensionNames[criterion.allocation.dimension]] : []),
+                    `${answer.maxMarks} ${answer.maxMarks === 1 ? 'mark' : 'marks'}`,
+                  ].join(' · ')}
+                />
               </header>
 
               {criterion && (
@@ -498,28 +530,27 @@ function PracticeWorkspace({
               )
             }
           />
-          {marking && (
-            <QuestionSetPanel title="Question and source" panelClassName="qs-practice-panel">
-              <QuestionSetAnswer
-                content={attempt.receipt}
-                nodeId={active.id}
-                value={value.kind === 'multiple-choice' ? value.selectedOptionIds : value.text}
-                onChange={() => {}}
-                readOnly
-              />
-            </QuestionSetPanel>
-          )}
-          {marking && (
-            <QuestionSetReflection
-              value={attempt.reflection}
-              busy={busy || Boolean(progress.error)}
-              onDirty={setReflectionDirty}
-              onChange={(reflection) => updateMarking(() => ({ reflection }))}
-            />
-          )}
         </div>
       </article>
     </div>
+  );
+}
+
+/** One pip per available mark, filling as marks are awarded; details sit in the tooltip. */
+function MarkPips({ max, awarded, label }: { max: number; awarded: number; label: string }) {
+  return (
+    <span className="qs-mark-pips" title={label}>
+      <span className="sr-only">{label}</span>
+      {max <= 10 ? (
+        Array.from({ length: max }, (_, index) => (
+          <span key={index} aria-hidden="true" data-awarded={index < awarded || undefined} />
+        ))
+      ) : (
+        <span aria-hidden="true">
+          {awarded} / {max}
+        </span>
+      )}
+    </span>
   );
 }
 

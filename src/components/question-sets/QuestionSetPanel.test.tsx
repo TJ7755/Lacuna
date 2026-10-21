@@ -17,7 +17,7 @@ it('opens a focused task and returns focus to its trigger on Escape', () => {
   trigger.focus();
   fireEvent.click(trigger);
   expect(screen.getByRole('dialog', { name: 'All parts' })).toBeVisible();
-  expect(screen.getByRole('button', { name: 'Close' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'Q1' })).toHaveFocus();
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(trigger).toHaveFocus();

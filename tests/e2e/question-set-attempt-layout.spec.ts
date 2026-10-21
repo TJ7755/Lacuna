@@ -151,7 +151,7 @@ for (const viewport of [
       const finishAttempt = card.getByRole('button', { name: 'Finish attempt', exact: true });
       await expect(finishAttempt).toBeEnabled();
       await finishAttempt.click();
-      await expect(page.getByRole('link', { name: 'Back to set →', exact: true })).toBeFocused();
+      await expect(page.getByRole('link', { name: 'Back to set', exact: true })).toBeFocused();
       await capture('complete');
       await page.getByRole('button', { name: 'Reflection', exact: true }).click();
       const reflection = page.getByRole('dialog', { name: 'Reflection', exact: true });

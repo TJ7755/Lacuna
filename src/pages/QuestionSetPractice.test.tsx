@@ -236,9 +236,9 @@ describe('QuestionSetPractice', () => {
     expect(screen.queryByText('Your answer')).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
     const stepper = screen.getByRole('button', { name: 'Practice, part 1 of 3' });
-    expect(stepper).toHaveAttribute('aria-haspopup', 'menu');
+    expect(stepper).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(stepper);
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Q1 (b)' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Q1 (b)' }));
     await screen.findByRole('heading', { name: 'Q1 (b)' });
     const submit = screen.getByRole('button', { name: 'Submit question' });
     expect(submit).toHaveAttribute('data-attempt-primary');
@@ -312,7 +312,7 @@ describe('QuestionSetPractice', () => {
         expect(award).toBeInTheDocument();
         expect(award).toBeChecked();
         expect(
-          screen.getByRole('button', { name: count < 3 ? /^Continue marking/ : /^Finish attempt/ }),
+          screen.getByRole('button', { name: count < 3 ? /^Next$/ : /^Finish attempt/ }),
         ).not.toBeDisabled();
       });
       fireEvent.keyDown(award, { key: 'Enter', ctrlKey: true });
@@ -326,7 +326,7 @@ describe('QuestionSetPractice', () => {
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.status).toBe('complete'),
     );
-    await waitFor(() => expect(screen.getByRole('link', { name: 'Back to set →' })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Back to set' })).toHaveFocus());
   });
 
   it('ignores composing and consumed chords and keeps blank submission explicit', async () => {
@@ -362,7 +362,7 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(answer, { target: { value: 'Original answer.' } });
     fireEvent.keyDown(answer, { key: 'Enter', ctrlKey: true });
     const award = await screen.findByRole('radio', { name: '1 / 1' });
-    expect(screen.getByText('1 criterion remaining')).toBeInTheDocument();
+    expect(screen.getByText(/1 criterion remaining/)).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Marking criteria' })).not.toBeInTheDocument();
     fireEvent.click(award);
     await waitFor(() =>
