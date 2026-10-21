@@ -64,11 +64,20 @@ describe('useLearnSession Undo presentation', () => {
     try {
       await waitFor(() => expect(hook.result.current.session.current).not.toBeNull());
       const answeredId = hook.result.current.session.current!.id;
+      const clock = vi.spyOn(performance, 'now');
+      clock.mockReturnValue(1000);
       act(() => hook.result.current.session.reveal());
+      clock.mockReturnValue(6000);
+      const markedBy = { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.98, markedAt: Date.now() };
+      const revealedAt = performance.now();
       await act(async () => {
-        await hook.result.current.session.answer(true);
+        await hook.result.current.session.answer(true, { markedBy });
       });
       await waitFor(() => expect(hook.result.current.session.current?.id).not.toBe(answeredId));
+      const review = await db.reviewHistory.where('cardId').equals(answeredId).first();
+      expect(review?.markedBy).toEqual(markedBy);
+      expect(review!.responseTimeSec).toBeLessThan((revealedAt - 1000) / 1000);
+      clock.mockRestore();
       expect(hook.result.current.session.isTypingCard).toBe(true);
       act(() => {
         hook.result.current.view.setTypedAnswer('Answer for the next card');

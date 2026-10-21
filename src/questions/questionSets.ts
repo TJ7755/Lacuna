@@ -1,3 +1,4 @@
+import type { JevMarkProvenance } from '../jev/types';
 import type { QuestionBankMetadata } from './bankMetadata';
 
 /** Ordered, shareable question content. Markdown source includes images and maths. */
@@ -212,8 +213,8 @@ export function validateQuestionSet(set: QuestionSet): QuestionSetIssue[] {
 }
 
 export type SelfMarkDecision =
-  | { allocationId: string; status: 'awarded'; marks: number }
-  | { allocationId: string; status: 'unsure' };
+  | { allocationId: string; status: 'awarded'; marks: number; markedBy?: JevMarkProvenance }
+  | { allocationId: string; status: 'unsure'; markedBy?: JevMarkProvenance };
 
 export interface MarkTotal {
   awarded: number;

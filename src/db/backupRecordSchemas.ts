@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jevMarkProvenanceSchema } from '../jev/provenance';
 import { itemPayloadIsValid } from '../items/payloadValidation';
 import { parseQuestionSetRecord } from '../questions/questionSetCodec';
 import { parseQuestionSetAttemptRecord } from '../questions/questionSetAttemptCodec';
@@ -66,6 +67,7 @@ export const schedule = {
   learningSteps: number,
 };
 export const review = object({
+  markedBy: jevMarkProvenanceSchema.optional(),
   eventId: id.optional(),
   sessionId: id.optional(),
   sessionKind: z
