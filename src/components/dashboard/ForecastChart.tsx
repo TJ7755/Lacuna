@@ -19,8 +19,8 @@ export interface ForecastLine {
 const WIDE_WIDTH = 640;
 const LEFT = 40;
 const RIGHT = 16;
-const TOP = 30;
-const BOTTOM = 50;
+const TOP = 14;
+const BOTTOM = 34;
 
 /**
  * The chart is drawn at its rendered width so text keeps its real pixel size on a phone
@@ -66,8 +66,7 @@ export function easeSeries(values: number[], radius = 3): number[] {
 /** Five tidy ticks from 100% down, stepping by a round amount that reaches every value. */
 export function recallTicks(values: number[]): number[] {
   const lowest = Math.min(0.9, ...values.filter(Number.isFinite));
-  const step =
-    [0.05, 0.1, 0.2, 0.25].find((candidate) => 1 - 4 * candidate <= lowest - 0.02) ?? 0.25;
+  const step = [0.05, 0.1, 0.2, 0.25].find((candidate) => 1 - 4 * candidate <= lowest - 0.02) ?? 0.25;
   return [0, 1, 2, 3, 4].map((i) => Math.round((1 - step * i) * 100) / 100);
 }
 
@@ -98,28 +97,6 @@ export function smoothPath(points: { x: number; y: number }[]): string {
 }
 
 const DAY = 86_400_000;
-
-/** Holding the exam date and memory state fixed leaves the stop-now estimate unchanged. */
-export function stopNowProjection(
-  forecast: CourseForecast,
-  history: readonly ForecastPoint[],
-  now: number,
-): { points: ForecastPoint[]; explanation: string | null } {
-  if (!forecast.hasExam || forecast.end <= now)
-    return { points: [], explanation: 'No projection: no future exam date.' };
-  if (history.length === 0 || !Number.isFinite(forecast.ifStopped))
-    return {
-      points: [],
-      explanation: 'No projection: no study data yet.',
-    };
-  return {
-    points: [
-      { at: now, recall: forecast.ifStopped },
-      { at: forecast.end, recall: forecast.ifStopped },
-    ],
-    explanation: null,
-  };
-}
 /** Smallest vertical gap between today's percentage labels. */
 const LABEL_GAP = 22;
 /**
@@ -151,9 +128,8 @@ export function spreadLabels(ys: number[], top: number, bottom: number, gap: num
 /**
  * Exam-day forecast: how much of each course would be recalled on exam day if study
  * stopped now, traced over recent days up to today against the target. The window runs
- * `past` days back and at least `future` days ahead, extending to every exam. A dashed
- * line holds today's estimate to each exam without assuming further reviews.
- * Lines draw in, today's points land with a small spring, and
+ * `past` days back and `future` days ahead; nothing is projected after today, which only
+ * holds the exam markers. Lines draw in, today's points land with a small spring, and
  * choosing a course in the legend brings its line forward. With many courses only the highest
  * stop-now forecasts are prominent and labelled; the rest stay faint until chosen.
  */
@@ -184,37 +160,16 @@ export function ForecastChart({
     return [...ranked, ...inputLines.filter((line) => !ids.has(line.id))];
   }, [inputLines, spotlit]);
   const hidden = lines.length - spotlit;
-  const projections = new Map(
-    lines.map((line) => [line.id, stopNowProjection(line.forecast, line.history, now)]),
-  );
-  // With nothing to project, the empty plot itself carries the reason instead of a list.
-  const missing = [...projections.values()].map((projection) => projection.explanation);
-  const allMissing = missing.every((explanation) => explanation !== null);
-  const plotNote = allMissing
-    ? new Set(missing).size === 1
-      ? missing[0]
-      : 'No projection yet.'
-    : null;
   const colour = (index: number) => colours.get(lines[index].id);
   const target = lines[0]?.forecast.target ?? 0.9;
   const sharedTarget = lines.every((line) => Math.abs(line.forecast.target - target) < 0.005);
 
   const geometry = useMemo(() => {
     const start = now - past * DAY;
-    const exams = [
-      ...new Set(
-        lines
-          .filter((line) => line.forecast.hasExam && line.forecast.end > now)
-          .map((line) => line.forecast.end),
-      ),
-    ].sort((a, b) => a - b);
-    const stop = exams.length > 0 ? Math.max(now + future * DAY, ...exams) : now;
+    const stop = now + future * DAY;
     const ticks = recallTicks([
       target,
-      ...lines.filter((line) => line.forecast.hasExam).map((line) => line.forecast.ifStopped),
-      ...lines
-        .filter((line) => line.forecast.hasExam)
-        .flatMap((line) => line.history.map((point) => point.recall)),
+      ...lines.flatMap((line) => line.history.map((point) => point.recall)),
     ]);
     const top = ticks[0];
     const bottom = ticks[ticks.length - 1];
@@ -222,35 +177,35 @@ export function ForecastChart({
     const y = (recall: number) =>
       TOP + ((top - Math.max(bottom, Math.min(top, recall))) / (top - bottom)) * (H - TOP - BOTTOM);
 
-    // Nearby exams use a second row so their labels do not disappear beside Today.
-    const marks: {
-      at: number;
-      label: string;
-      strong: boolean;
-      anchor: 'start' | 'middle' | 'end';
-      lower?: boolean;
-    }[] = [
+    // Date labels: the window's start and today, then each exam inside the window,
+    // dropping any that would collide.
+    const marks: { at: number; label: string; strong: boolean; anchor: 'start' | 'middle' | 'end' }[] = [
       { at: start, label: formatShortDate(start), strong: false, anchor: 'start' },
       { at: now, label: 'Today', strong: true, anchor: 'middle' },
     ];
+    const exams = [
+      ...new Set(lines.filter((line) => line.forecast.hasExam).map((line) => line.forecast.end)),
+    ].sort((a, b) => a - b);
     const inside = exams.filter((at) => at <= stop);
     // A phone has room for the word alone: the date would collide with Today. The label
     // centres on its marker unless half of it would run past the chart's edge.
     const halfLabel = narrow ? 18 : 44;
     for (const at of inside) {
       const tooClose = marks.some((mark) => Math.abs(x(mark.at) - x(at)) < (narrow ? 44 : 72));
-      marks.push({
-        at,
-        label: narrow ? 'Exam' : `${formatShortDate(at)} · Exam`,
-        strong: true,
-        anchor: x(at) + halfLabel > W ? 'end' : 'middle',
-        lower: tooClose,
-      });
+      if (!tooClose)
+        marks.push({
+          at,
+          label: narrow ? 'Exam' : `${formatShortDate(at)} · Exam`,
+          strong: true,
+          anchor: x(at) + halfLabel > W ? 'end' : 'middle',
+        });
     }
-    return { x, y, ticks, marks, inside };
+    const beyond = exams.find((at) => at > stop);
+
+    return { x, y, ticks, marks, inside, beyond };
   }, [lines, now, past, future, target, W, H, narrow]);
 
-  const { x, y, ticks, marks, inside } = geometry;
+  const { x, y, ticks, marks, inside, beyond } = geometry;
   const draw = multiplier > 0;
   const plotTop = y(ticks[0]);
   const plotBottom = y(ticks[ticks.length - 1]);
@@ -258,10 +213,7 @@ export function ForecastChart({
   // Only spotlit courses, and whichever course is chosen in the legend, carry today's
   // figure. The figures sit beside their points, nudged apart where courses agree and
   // kept off the axis.
-  const labelled = lines.filter(
-    (line, index) =>
-      projections.get(line.id)!.points.length > 0 && (index < spotlit || line.id === focus),
-  );
+  const labelled = lines.filter((line, index) => index < spotlit || line.id === focus);
   const spread = spreadLabels(
     labelled.map((line) => y(line.forecast.ifStopped)),
     plotTop + LABEL_GAP / 2,
@@ -278,7 +230,6 @@ export function ForecastChart({
     <li key={line.id}>
       <button
         type="button"
-        aria-describedby={`${titleId}-${line.id}`}
         onPointerEnter={() => setFocus(line.id)}
         onPointerLeave={() => setFocus(null)}
         onFocus={() => setFocus(line.id)}
@@ -310,15 +261,7 @@ export function ForecastChart({
         <h2 id={titleId} className="shrink-0 font-display text-2xl sm:py-1.5">
           Exam-day forecast
         </h2>
-        <p id={`${titleId}-measure`} className="sr-only">
-          Predicted exam-day recall (%). Each past point uses study up to that date to estimate
-          recall on the exam date. The dashed line assumes no further reviews. An estimate, not an
-          exam mark or a guarantee.
-        </p>
-        <ul
-          className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4"
-          aria-label="Courses"
-        >
+        <ul className="-mx-2 flex flex-wrap gap-x-3 gap-y-0 text-sm text-ink-soft sm:justify-end sm:gap-x-4" aria-label="Courses">
           {lines.slice(0, spotlit).map((line, index) => legendItem(line, index))}
           {expanded && lines.slice(spotlit).map((line, index) => legendItem(line, spotlit + index))}
           {hidden > 0 && (
@@ -335,17 +278,8 @@ export function ForecastChart({
           )}
           {sharedTarget && (
             <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
-              <span
-                aria-hidden="true"
-                className="w-[18px] border-t-[1.5px] border-dashed border-ink"
-              />
+              <span aria-hidden="true" className="w-[18px] border-t-[1.5px] border-dashed border-ink" />
               Target <strong className="font-bold tabular-nums">{Math.round(target * 100)}%</strong>
-            </li>
-          )}
-          {!allMissing && (
-            <li className="inline-flex min-h-11 items-center gap-2 px-2 text-ink">
-              <span aria-hidden="true" className="w-5 border-t-2 border-dashed border-ink-soft" />
-              If you stop now
             </li>
           )}
         </ul>
@@ -356,22 +290,19 @@ export function ForecastChart({
         className="h-auto w-full overflow-visible"
         role="img"
         aria-labelledby={titleId}
-        aria-describedby={`${titleId}-measure ${titleId}-desc`}
+        aria-describedby={`${titleId}-desc`}
       >
         <desc id={`${titleId}-desc`}>
           {lines
-            .map((line) => {
-              const projection = projections.get(line.id)!;
-              return projection.explanation
-                ? `${line.name}: ${projection.explanation}`
-                : `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)}. Dashed: If you stop now, from today to the exam with no further reviews`;
-            })
+            .map(
+              (line) =>
+                `${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% recalled ${
+                  line.forecast.hasExam ? `on ${formatDate(line.forecast.end)}` : 'in four weeks'
+                } if you stop now`,
+            )
             .join('. ')}
         </desc>
-        <g
-          className="fill-ink-faint text-[12px] tabular-nums"
-          style={{ fontFamily: 'var(--font-body)' }}
-        >
+        <g className="fill-ink-faint text-[12px] tabular-nums" style={{ fontFamily: 'var(--font-body)' }}>
           {ticks.map((tick) => {
             const isTarget = sharedTarget && Math.abs(tick - target) < 0.005;
             return (
@@ -391,45 +322,22 @@ export function ForecastChart({
             <text
               key={mark.at}
               x={x(mark.at)}
-              y={H - (mark.lower ? 10 : 28)}
+              y={H - 10}
               textAnchor={mark.anchor}
               className={mark.strong ? 'fill-ink' : undefined}
             >
               {mark.label}
             </text>
           ))}
+          {beyond !== undefined && (
+            <text x={W - RIGHT} y={H - 10} textAnchor="end" className="fill-ink">
+              Exam {formatShortDate(beyond)} →
+            </text>
+          )}
         </g>
-        <text
-          x={0}
-          y={12}
-          aria-hidden="true"
-          className="fill-ink-soft text-[12px]"
-          style={{ fontFamily: 'var(--font-body)' }}
-        >
-          Predicted exam-day recall (%)
-        </text>
         <line x1={LEFT} x2={W - RIGHT} y1={plotBottom} y2={plotBottom} className="stroke-line" />
-        {plotNote && (
-          <text
-            x={(LEFT + W - RIGHT) / 2}
-            y={(plotTop + plotBottom) / 2}
-            textAnchor="middle"
-            dominantBaseline="central"
-            className="fill-ink-soft text-[13px]"
-            style={{ fontFamily: 'var(--font-body)' }}
-          >
-            {plotNote}
-          </text>
-        )}
         {[now, ...inside].map((at) => (
-          <line
-            key={at}
-            x1={x(at)}
-            x2={x(at)}
-            y1={plotTop}
-            y2={plotBottom}
-            className="stroke-line"
-          />
+          <line key={at} x1={x(at)} x2={x(at)} y1={plotTop} y2={plotBottom} className="stroke-line" />
         ))}
         {sharedTarget && (
           <line
@@ -444,16 +352,12 @@ export function ForecastChart({
           />
         )}
         {drawOrder.map(({ line, index }) => {
-          if (!line.forecast.hasExam) return null;
           const context = index >= spotlit;
           const focused = focus === line.id;
           const stroke = colour(index);
           const eased = easeSeries(line.history.map((point) => point.recall));
           const points = line.history.map((point, i) => ({ x: x(point.at), y: y(eased[i]) }));
-          const last = { x: x(now), y: y(line.forecast.ifStopped) };
-          const projection = projections.get(line.id)!;
-          const labelLeft =
-            W - RIGHT - last.x < 55 || (x(line.forecast.end) - last.x < 55 && last.x > LEFT + 55);
+          const last = points[points.length - 1];
           const dimmed = focus !== null && !focused;
           const delay = 0.15 + Math.min(index, spotlit) * 0.12;
           return (
@@ -473,30 +377,9 @@ export function ForecastChart({
                 strokeLinecap="round"
                 initial={draw ? { pathLength: 0 } : false}
                 animate={{ pathLength: 1 }}
-                transition={{
-                  duration: 1.1 * multiplier,
-                  delay: delay * multiplier,
-                  ease: MOTION_EASING.emphasised,
-                }}
-              >
-                <title>{`${line.name}: predicted exam-day recall using study up to each past date; no further reviews assumed`}</title>
-              </motion.path>
-              {projection.points.length > 0 && (
-                <path
-                  d={smoothPath(
-                    projection.points.map((point) => ({ x: x(point.at), y: y(point.recall) })),
-                  )}
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth={context ? 2 : 2.5}
-                  strokeDasharray="7 5"
-                  strokeLinecap="round"
-                  aria-label={`${line.name}: If you stop now`}
-                >
-                  <title>{`${line.name}: ${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall on ${formatDate(line.forecast.end)} if you stop now; no further reviews`}</title>
-                </path>
-              )}
-              {(!context || focused) && projection.points.length > 0 && (
+                transition={{ duration: 1.1 * multiplier, delay: delay * multiplier, ease: MOTION_EASING.emphasised }}
+              />
+              {last && (!context || focused) && (
                 <>
                   <motion.circle
                     cx={last.x}
@@ -523,16 +406,11 @@ export function ForecastChart({
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                       initial={{ scale: 1, opacity: 0 }}
                       animate={{ scale: [1, 3.2], opacity: [0.6, 0] }}
-                      transition={{
-                        duration: 0.9 * multiplier,
-                        delay: (delay + 1.05) * multiplier,
-                        ease: 'easeOut',
-                      }}
+                      transition={{ duration: 0.9 * multiplier, delay: (delay + 1.05) * multiplier, ease: 'easeOut' }}
                     />
                   )}
                   <text
-                    x={last.x + (labelLeft ? -12 : 12)}
-                    textAnchor={labelLeft ? 'end' : 'start'}
+                    x={last.x + 12}
                     y={labelY.get(line.id) ?? last.y}
                     dominantBaseline="central"
                     fill={stroke}
@@ -548,31 +426,6 @@ export function ForecastChart({
           );
         })}
       </svg>
-      <ul className="space-y-1 text-sm text-ink-soft" aria-label="Forecast details">
-        {lines.map((line) => {
-          const explanation = projections.get(line.id)!.explanation;
-          // Plotted courses already show their figure; only a missing projection needs words.
-          return (
-            <li
-              key={line.id}
-              id={`${titleId}-${line.id}`}
-              className={explanation && !allMissing ? undefined : 'sr-only'}
-            >
-              <strong className="font-medium text-ink">{line.name}:</strong>{' '}
-              {line.forecast.hasExam && <>Exam {formatDate(line.forecast.end)}. </>}
-              {explanation ??
-                `${Math.round(line.forecast.ifStopped * 100)}% predicted exam-day recall if you stop now.`}
-              {!line.forecast.hasExam && line.history.length > 0 && (
-                <>
-                  {' '}
-                  Four-week recall estimate if you stop now:{' '}
-                  {Math.round(line.forecast.ifStopped * 100)}%.
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ul>
     </div>
   );
 }

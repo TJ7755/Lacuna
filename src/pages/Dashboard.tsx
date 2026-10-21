@@ -156,8 +156,8 @@ export function Dashboard() {
       (rows ?? []).flatMap((row) => {
         const forecast = forecasts?.[row.id];
         const history = histories?.[row.id];
-        return forecast && histories
-          ? [{ id: row.id, name: row.name, status: row.status, forecast, history: history ?? [] }]
+        return forecast && history
+          ? [{ id: row.id, name: row.name, status: row.status, forecast, history }]
           : [];
       }),
     [rows, forecasts, histories],

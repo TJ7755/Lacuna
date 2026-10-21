@@ -135,12 +135,9 @@ for (const theme of ['light', 'dark']) {
         return result;
       }, statusToken);
       await expect(ring).toHaveCSS('stroke', statusColour);
-      // Only a course with a future exam has an exam-day line to colour.
-      if (name === 'Physics') {
-        await expect(
-          chart.locator(`g[data-course-id="${name.toLowerCase()}"] > path`).first(),
-        ).toHaveCSS('stroke', colour);
-      }
+      await expect(
+        chart.locator(`g[data-course-id="${name.toLowerCase()}"] > path`).first(),
+      ).toHaveCSS('stroke', colour);
       colours.push(colour);
     }
     expect(new Set(colours).size).toBe(3);
