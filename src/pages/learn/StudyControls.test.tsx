@@ -76,7 +76,7 @@ it.each([false, true])(
   },
 );
 
-describe('StudyControls liquid fill', () => {
+describe('StudyControls Flow fill', () => {
   const props = {
     isTypingCard: false,
     isTouchMode: false,
@@ -90,14 +90,14 @@ describe('StudyControls liquid fill', () => {
     m: 0,
   };
 
-  it('keeps the reveal and primary grade fills until the liquid is measured', () => {
+  it('keeps the reveal and primary grade fills until the Flow fill is measured', () => {
     const container = document.createElement('div');
     container.innerHTML = renderToString(
       <LazyMotion features={domAnimation}>
         <StudyControls {...props} phase="question" />
       </LazyMotion>,
     );
-    expect(container.querySelector('[data-liquid-layer]')).toBeNull();
+    expect(container.querySelector('[data-flow-layer]')).toBeNull();
     for (const name of ['Show answer', 'Yes']) {
       const button = [...container.querySelectorAll('button')].find(
         (element) => element.textContent === name,
@@ -106,19 +106,21 @@ describe('StudyControls liquid fill', () => {
     }
   });
 
-  it('draws the reveal and primary grade fills as liquid once measured', () => {
+  it('connects measured controls without removing their readable button fills', () => {
     const view = render(
       <LazyMotion features={domAnimation}>
         <StudyControls {...props} phase="answer" />
       </LazyMotion>,
     );
-    const layer = view.container.querySelector('[data-liquid-layer]');
-    expect(layer?.querySelector('[data-liquid-drop="primary"]')).not.toBeNull();
-    expect(view.getByText('Show answer', { selector: 'button' })).toHaveClass('bg-transparent!');
-    expect(view.getByRole('button', { name: 'Yes' }).closest('[data-liquid-primary]')).toHaveClass(
-      '[&_button]:bg-transparent!',
+    const layer = view.container.querySelector('[data-flow-layer]');
+    expect(layer?.querySelector('[data-flow-drop="primary"]')).not.toBeNull();
+    expect(view.getByText('Show answer', { selector: 'button' })).not.toHaveClass(
+      'bg-transparent!',
     );
-    expect(view.getByRole('button', { name: 'No' }).closest('[data-liquid-primary]')).toBeNull();
+    expect(
+      view.getByRole('button', { name: 'Yes' }).closest('[data-flow-primary]'),
+    ).not.toHaveClass('[&_button]:bg-transparent!');
+    expect(view.getByRole('button', { name: 'No' }).closest('[data-flow-primary]')).toBeNull();
     view.unmount();
   });
 });

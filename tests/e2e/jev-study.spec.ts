@@ -81,7 +81,7 @@ test('pours the verdict into its grade, advances and can undo it', async ({ page
     'Partly right',
   );
   await expect(page.locator('[data-study-face="back"] mark')).toHaveText('green');
-  await expect(page.locator('[data-liquid-primary] button')).toHaveText('No');
+  await expect(page.locator('[data-flow-primary] button')).toHaveText('No');
   await page.screenshot({ path: test.info().outputPath('jev-verdict.png') });
   await expect(card).not.toHaveAttribute('data-study-card-id', id!);
   await page.getByRole('button', { name: 'Undo last answer' }).click();
@@ -260,3 +260,51 @@ test('holds an automatic answer with Space and resumes as soon as it is released
   expect(elapsed).toBeLessThan(200);
   await expect(card).not.toHaveAttribute('data-study-card-id', id!);
 });
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  test(`shows manual grade labels promptly when they become actionable (${reducedMotion})`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion });
+    await start(page, false);
+    await page.evaluate(() => {
+      const grade = [...document.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === 'No',
+      )!;
+      const row = grade.closest('[aria-hidden]')!;
+      const labels = [...row.children];
+      (window as unknown as { gradeLabelLatency: Promise<number> }).gradeLabelLatency = new Promise(
+        (resolve, reject) => {
+          const observer = new MutationObserver(() => {
+            if (row.getAttribute('aria-hidden') !== 'false') return;
+            observer.disconnect();
+            const started = performance.now();
+            const sample = () => {
+              if (labels.every((label) => Number(getComputedStyle(label).opacity) >= 0.5))
+                resolve(performance.now() - started);
+              else if (performance.now() - started > 1000)
+                reject(new Error('Actionable grade labels remained invisible.'));
+              else requestAnimationFrame(sample);
+            };
+            requestAnimationFrame(sample);
+          });
+          observer.observe(row, { attributes: true, attributeFilter: ['aria-hidden'] });
+        },
+      );
+    });
+    await submit(page, 'Yellow');
+    const elapsed = await page.evaluate(
+      () => (window as unknown as { gradeLabelLatency: Promise<number> }).gradeLabelLatency,
+    );
+    expect(elapsed).toBeLessThan(150);
+    // The primary label must have its own contrast surface while the connecting fill moves.
+    await expect(page.getByRole('button', { name: 'Yes', exact: true })).not.toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+    await page.getByRole('button', { name: 'No', exact: true }).focus();
+    await page.keyboard.press('Space');
+    await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`flow-next-${reducedMotion}.png`) });
+  });
+}

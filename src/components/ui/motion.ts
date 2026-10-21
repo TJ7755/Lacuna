@@ -1,3 +1,4 @@
+/** Shared Lacuna Flow timing and springs. Intent: docs/spec/visual-design.md. */
 export const MOTION_DURATION = {
   /** Immediate controls, disclosures and acknowledgement. */
   feedback: 0.16,
