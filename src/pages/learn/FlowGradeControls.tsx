@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { m as motion } from 'motion/react';
 import { Button } from '../../components/ui/Button';
+import { motionTransition } from '../../components/ui/motion';
 
 interface Rect {
   left: number;
@@ -9,7 +10,7 @@ interface Rect {
   height: number;
 }
 
-/** Width of the liquid held between the primary drop and its neighbour as they part. */
+/** Width of the fill held between the primary drop and its neighbour as they part. */
 const BRIDGE_WIDTH = 96;
 
 function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
@@ -22,12 +23,11 @@ function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
 }
 
 /**
- * The accent fill of the reveal and primary grade buttons, drawn as liquid. A blur and
- * alpha-threshold filter fuses drops wherever they touch, which draws the necks. Before
- * the controls are measured (including server rendering) nothing is drawn and the
- * buttons keep their own fill.
+ * A connecting accent fill behind the reveal and grade buttons. A blur and alpha-threshold
+ * filter fuses drops wherever they touch, which draws the necks. Buttons keep their own
+ * fill so their labels stay readable before measurement and throughout movement.
  */
-function LiquidLayer({
+function FlowGradeFill({
   question,
   pending,
   chosen,
@@ -44,7 +44,7 @@ function LiquidLayer({
   slots: Rect[];
   m: number;
 }) {
-  const filterId = `study-liquid-${useId().replace(/[^\w-]/g, '')}`;
+  const filterId = `study-flow-${useId().replace(/[^\w-]/g, '')}`;
   const primaryIndex = chosen ?? slots.length - 1;
   const primary = slots[primaryIndex];
   // While an answer is being judged, the pill gathers into one bead at its centre.
@@ -62,7 +62,7 @@ function LiquidLayer({
         : { type: 'spring' as const, visualDuration: 0.44 * m, bounce: 0.36 };
   const drain =
     m === 0 ? { duration: 0 } : { type: 'spring' as const, visualDuration: 0.26 * m, bounce: 0 };
-  // Outlined grades never hold liquid: their share drains into the primary drop as the
+  // Outlined grades never hold fill: their share drains into the primary drop as the
   // pill splits, ending as a bead at its near end that it absorbs.
   const sink = {
     left: primary.left,
@@ -71,7 +71,7 @@ function LiquidLayer({
     height: primary.height,
   };
 
-  // The drained liquid only passes between the primary drop and its neighbour, so that is
+  // The drained fill only passes between the primary drop and its neighbour, so that is
   // the one neck. It rests inside the reveal pill, so it needs both on the pill's line.
   const neighbour = primaryIndex === slots.length - 1 ? slots[slots.length - 2] : undefined;
   const neighbourGap = neighbour && (neighbour.left + neighbour.width + primary.left) / 2;
@@ -95,14 +95,14 @@ function LiquidLayer({
             in="blur"
             mode="matrix"
             values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -10"
-            result="liquid"
+            result="fused-fill"
           />
-          <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
+          <feComposite in="SourceGraphic" in2="fused-fill" operator="atop" />
         </filter>
       </svg>
       <div
         aria-hidden
-        data-liquid-layer
+        data-flow-layer
         className="pointer-events-none absolute inset-0"
         style={{ filter: `url(#${filterId})` }}
       >
@@ -120,7 +120,7 @@ function LiquidLayer({
                 top: target.top,
                 width: target.width,
                 height: target.height,
-                // A pull thins the liquid mid-move; a draining tail thins as it is drawn in.
+                // A pull thins the fill mid-move; a draining tail thins as it is drawn in.
                 scaleY: question || pending ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
               }}
               transition={{
@@ -129,7 +129,7 @@ function LiquidLayer({
               }}
             >
               <motion.div
-                data-liquid-drop={keeps ? 'primary' : 'drain'}
+                data-flow-drop={keeps ? 'primary' : 'drain'}
                 className={
                   'absolute inset-0 rounded-full transition-[filter,background-color] duration-300 ' +
                   (negative ? 'bg-negative' : 'bg-accent')
@@ -153,7 +153,7 @@ function LiquidLayer({
           );
         })}
         {bridge !== undefined && (
-          // Holds the neck between the primary drop and the liquid draining into it, thins,
+          // Holds the neck between the primary drop and the fill draining into it, thins,
           // then snaps; on the way back it fills in so the drops fuse.
           <motion.div
             className="absolute rounded-full bg-accent"
@@ -182,13 +182,13 @@ function LiquidLayer({
 }
 
 /**
- * Show answer, then the grade buttons, as one body of liquid. On reveal the pill pinches
+ * Show answer, then the grade buttons, as one continuous fill. On reveal the pill pinches
  * into the primary (last) grade, which springs into its slot and wobbles as it settles,
- * while outlined grades appear as empty shells where the liquid has drained away. On the
- * next card the liquid flows back out and merges into the pill. `grades` are rendered
+ * while outlined grades appear as empty shells where the fill has drained away. On the
+ * next card the fill flows back out and merges into the pill. `grades` are rendered
  * with their primary grade last.
  */
-export function LiquidGradeControls({
+export function FlowGradeControls({
   question,
   pending = false,
   chosen,
@@ -201,11 +201,11 @@ export function LiquidGradeControls({
   m,
 }: {
   question: boolean;
-  /** An answer is being judged: the liquid waits as a bead and no grade is offered yet. */
+  /** An answer is being judged: the fill waits as a bead and no grade is offered yet. */
   pending?: boolean;
-  /** The grade a judgement chose: all the liquid flows into it instead of the primary. */
+  /** The grade a judgement chose: all the fill flows into it instead of the primary. */
   chosen?: number;
-  /** Whether the chosen grade is a negative one, which the liquid takes the colour of. */
+  /** Whether the chosen grade is a negative one, which the fill takes the colour of. */
   chosenNegative?: boolean;
   grades: ReactNode[];
   rowClassName: string;
@@ -251,15 +251,15 @@ export function LiquidGradeControls({
   return (
     <div
       ref={box}
-      // The liquid draws the reveal and primary fills, so it also carries their hover.
+      // Keep the connecting fill in step with button hover feedback.
       className={
         'relative mx-auto grid w-full ' +
-        '[&:has([data-liquid-reveal]_button:hover)_[data-liquid-drop]]:brightness-105 ' +
-        '[&:has([data-liquid-primary]_button:hover)_[data-liquid-drop=primary]]:brightness-105'
+        '[&:has([data-flow-reveal]_button:hover)_[data-flow-drop]]:brightness-105 ' +
+        '[&:has([data-flow-primary]_button:hover)_[data-flow-drop=primary]]:brightness-105'
       }
     >
       {rects && (
-        <LiquidLayer
+        <FlowGradeFill
           question={question}
           pending={pending && !question}
           chosen={question ? undefined : chosen}
@@ -271,26 +271,17 @@ export function LiquidGradeControls({
       )}
       <motion.div
         ref={revealRef}
-        data-liquid-reveal
+        data-flow-reveal
         className="relative col-start-1 row-start-1 mx-auto w-full max-w-md self-start"
         initial={false}
         animate={{ opacity: question ? 1 : 0 }}
-        transition={
-          question
-            ? { duration: 0.18 * m, delay: 0.2 * m, ease: 'easeOut' }
-            : { duration: 0.08 * m }
-        }
+        transition={question ? motionTransition('feedback', m) : { duration: 0.08 * m }}
         inert={!question}
         aria-hidden={!question}
       >
         {revealLead}
         <div ref={pillRef}>
-          <Button
-            variant="primary"
-            size="lg"
-            className={'w-full' + (measured ? ' bg-transparent!' : '')}
-            onClick={onReveal}
-          >
+          <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
             {revealLabel}
           </Button>
         </div>
@@ -310,23 +301,22 @@ export function LiquidGradeControls({
               ref={(el) => {
                 slotRefs.current[index] = el;
               }}
-              data-liquid-primary={holder || undefined}
+              data-flow-primary={holder || undefined}
               className={
                 'flex min-w-0 flex-1' +
-                (measured && (holder || primary) ? ' [&_button]:bg-transparent!' : '') +
-                // A judged negative grade holds the liquid, so its label sits on the fill.
+                // A judged negative grade holds the fill, so its label sits on the fill.
                 (measured && holder && !primary
-                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:text-paper!' : '[&_button]:text-accent-fg!'}`
+                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:bg-negative! [&_button]:text-paper!' : '[&_button]:bg-accent! [&_button]:text-accent-fg!'}`
                   : '') +
                 // The primary drained elsewhere: it stays as an empty shell.
                 (measured && primary && !holder
-                  ? ' [&_button]:text-ink! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong'
+                  ? ' [&_button]:bg-transparent! [&_button]:text-ink! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong'
                   : '')
               }
               initial={false}
               animate={{
                 opacity: question || pending ? 0 : 1,
-                // Outlined grades split away from the centre as the liquid leaves them.
+                // Outlined grades split away from the centre as the fill leaves them.
                 x: question && !primary ? `${(centre - index) * 6}%` : '0%',
               }}
               transition={
@@ -337,12 +327,8 @@ export function LiquidGradeControls({
                         m === 0
                           ? { duration: 0 }
                           : { type: 'spring', visualDuration: 0.44 * m, bounce: 0.36 },
-                      opacity: {
-                        duration: 0.2 * m,
-                        // Outlined grades wait until their liquid has drained past them.
-                        delay: (holder ? 0.14 : 0.24) * m,
-                        ease: 'easeOut',
-                      },
+                      // Labels respond immediately; the fill can settle around them.
+                      opacity: motionTransition('feedback', m),
                     }
               }
             >

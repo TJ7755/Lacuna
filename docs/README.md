@@ -20,6 +20,8 @@ not the entire documentation tree.
 
 ## References
 
+- [Visual intent and Lacuna Flow principles](spec/visual-design.md).
+
 - [Concept application practice decision](adr/0001-concept-application-practice.md) and
   [portable bank authoring](question-bank/contract.md).
 - [Domain language](domain-language.md) and [engineering pitfalls](maintenance/engineering-notes.md).

@@ -725,7 +725,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
 
               {isTypingCard && (
-                // The liquid and the card carry the verdict visually; this says it aloud.
+                // The Flow fill and the card carry the verdict visually; this says it aloud.
                 <div aria-live="polite" className="sr-only">
                   {typedAutoMark.state === 'checking'
                     ? 'Checking your answer.'

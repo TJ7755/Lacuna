@@ -36,6 +36,18 @@ same real FSRS transition. Hint penalties apply at the answer boundary, without 
 correct-response timing calibration. The actual thresholds live in
 [grading](../../src/fsrs/grading.ts), not a copied table here.
 
+### Flow study controls
+
+[Flow](visual-design.md#lacuna-flow) connects revealing an answer to the available grades without
+holding their labels behind the fill animation. Motion never decides whether an answer is correct.
+Exact typed matches are checked locally without Jev. Other provider verdicts require opt-in;
+unsure, failed and timed-out checks leave manual grading available.
+
+Holding Space is a brake on automatic movement, including while a verdict is pending. Releasing
+resumes against the original deadline without another delay. Focused native buttons and links keep
+their Space activation. Automatic answers remain undoable, including the final answer; Undo restores
+the revealed answer for manual grading without another automatic swipe. Completion remains explicit.
+
 ### Recording a review
 
 Persist scheduling, canonical review evidence and the associated state atomically. Submission

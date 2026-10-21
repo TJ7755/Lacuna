@@ -7,11 +7,11 @@ import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { TouchBottomSheet } from './TouchBottomSheet';
 import type { Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
-import { LiquidGradeControls } from './LiquidGradeControls';
+import { FlowGradeControls } from './FlowGradeControls';
 
 /**
- * Both phases share a grid cell, reserving the larger height before a flip. Typed answers
- * fade between their input and the grades; other cards use the liquid controls.
+ * Both phases share a grid cell, reserving the larger height before a flip. Desktop
+ * cards use Flow controls; touch cards retain their bottom sheet and typed input.
  */
 export function StudyControls({
   phase,
@@ -68,7 +68,7 @@ export function StudyControls({
       {label}
     </StudyGradeButton>
   );
-  // The primary grade comes last: the liquid controls draw its fill.
+  // The primary grade comes last: the Flow controls draw its fill.
   const grades =
     gradingMode === 'manual'
       ? [
@@ -135,7 +135,7 @@ export function StudyControls({
       />
     </>
   );
-  // A verdict pours the liquid into the grade it chose: Yes or Good, else No or Again.
+  // A verdict pours the fill into the grade it chose: Yes or Good, else No or Again.
   const chosen =
     autoMark && !autoMark.pending
       ? autoMark.correct
@@ -146,7 +146,7 @@ export function StudyControls({
     <>
       {!isTypingCard && !isTouchMode && (
         <div className="study-controls mt-8 w-full shrink-0">
-          <LiquidGradeControls
+          <FlowGradeControls
             question={question}
             grades={grades}
             rowClassName={gradeRowClassName}
@@ -157,7 +157,7 @@ export function StudyControls({
       )}
       {isTypingCard && !isTouchMode && (
         <div className="study-controls mt-6 w-full shrink-0">
-          <LiquidGradeControls
+          <FlowGradeControls
             question={question}
             pending={autoMark?.pending === true}
             chosen={chosen}
