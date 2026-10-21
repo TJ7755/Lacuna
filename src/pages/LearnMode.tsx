@@ -1,6 +1,8 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
+import { TypedAutoMarkCue } from './learn/TypedAutoMarkCue';
+import { useTypedAutoMark } from './learn/useTypedAutoMark';
 import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -125,7 +127,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     standaloneSimple ||
     (lessonId
       ? lessonCourse?.learnFirst !== false
-      : dueReviewRequest || (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
+      : dueReviewRequest ||
+          (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
         ? false
         : studyMode === 'simple');
 
@@ -313,6 +316,18 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     },
     [answer, notify, undoWithTransitionCancel],
   );
+
+  const typedAutoMark = useTypedAutoMark({
+    card: current,
+    phase,
+    isTypingCard,
+    typedAnswer,
+    answerStrictness,
+    occlusionAnswerText,
+    paused: editing || menuOpen || hintsOpen,
+    m,
+    onMarked: (correct) => answerWithUndo(correct),
+  });
 
   useEffect(() => {
     if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
@@ -646,6 +661,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 )
               )}
 
+              {!suppressClassicGrading && isTypingCard && (
+                <TypedAutoMarkCue mark={typedAutoMark} m={m} />
+              )}
               {!suppressClassicGrading && (
                 <StudyControls
                   // Typed answers start each card afresh; other controls persist so their

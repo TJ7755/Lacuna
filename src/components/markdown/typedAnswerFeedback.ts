@@ -11,6 +11,12 @@ export function typedAnswerCorrect(html: string, feedback: TypedAnswerFeedback):
   return compareAnswer(feedback.answer, expected, feedback.options).correct;
 }
 
+/** The plain text of already-sanitised Markdown, as typed answers are compared with it. */
+export function plainTextFromHtml(html: string): string {
+  const body = new DOMParser().parseFromString(html, 'text/html').body;
+  return expectedText(body, false).expected.replace(/\s+/g, ' ').trim();
+}
+
 /** The answer text a typed response is compared with, and the text nodes holding it. */
 function expectedText(root: HTMLElement, cloze: boolean) {
   const nodes: { node: Text; start: number; end: number }[] = [];
