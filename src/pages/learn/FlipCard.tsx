@@ -9,6 +9,7 @@ import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import type { LearnModeType, Phase } from './types';
 import { isAudioCardFront } from '../../media/audio';
 import { StudyCardFace } from './StudyCardFace';
+import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 import { CardSizeMeasurements, useStableCardHeight } from './useStableCardHeight';
 import { scaledSpring } from '../../components/ui/motion';
 import { StudyCardMotionContext } from './studyCardMotion';
@@ -37,6 +38,7 @@ export function FlipCard({
   onHide,
   onAnswer,
   typedAnswer,
+  typedJudgement,
   isTypingCard,
   mode: _mode,
   isLinesModeCard,
@@ -60,6 +62,7 @@ export function FlipCard({
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard', velocity?: number) => void;
   typedAnswer?: string;
+  typedJudgement?: TypedAnswerJudgement;
   isTypingCard?: boolean;
   mode: LearnModeType;
   isLinesModeCard?: boolean;
@@ -271,6 +274,7 @@ export function FlipCard({
       hintAffectsScheduling={hintAffectsScheduling}
       isTyping={isTyping}
       typedAnswer={typedAnswer}
+      typedJudgement={typedJudgement}
       answerStrictness={answerStrictness}
       occlusion={occlusion}
       occlusionAnswerText={occlusionAnswerText}

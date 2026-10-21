@@ -1,8 +1,7 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
-import { TypedAutoMarkCue } from './learn/TypedAutoMarkCue';
-import { useTypedAutoMark } from './learn/useTypedAutoMark';
+import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
 import type { JevMarkProvenance } from '../jev';
 import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -332,6 +331,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined),
   });
 
+  const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
+
   useEffect(() => {
     if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
   }, [editing, menuOpen, hintsOpen]);
@@ -648,6 +649,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                             answerWithUndo(input, source, velocity)
                           }
                           typedAnswer={typedAnswer}
+                          typedJudgement={typedJudgement}
                           isTypingCard={isTypingCard}
                           mode={mode}
                           isLinesModeCard={isLinesModeCard}
@@ -664,8 +666,17 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 )
               )}
 
-              {!suppressClassicGrading && isTypingCard && (
-                <TypedAutoMarkCue mark={typedAutoMark} m={m} />
+              {isTypingCard && (
+                // The liquid and the card carry the verdict visually; this says it aloud.
+                <div aria-live="polite" className="sr-only">
+                  {typedAutoMark.state === 'checking'
+                    ? 'Checking your answer.'
+                    : typedAutoMark.state === 'marked'
+                      ? typedAutoMark.correct
+                        ? 'Marked correct.'
+                        : 'Marked incorrect.'
+                      : ''}
+                </div>
               )}
               {!suppressClassicGrading && (
                 <StudyControls
@@ -676,6 +687,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   feedback={gradeFeedback}
                   isTypingCard={isTypingCard}
                   isTouchMode={isTouchMode}
+                  autoMark={
+                    typedAutoMark.state === 'checking'
+                      ? { pending: true }
+                      : typedAutoMark.state === 'marked'
+                        ? { pending: false, correct: typedAutoMark.correct }
+                        : undefined
+                  }
                   gradingMode={gradingMode}
                   typedAnswer={typedAnswer}
                   typingInputRef={typingInputRef}

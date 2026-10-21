@@ -25,6 +25,7 @@ export function StudyControls({
   onReveal,
   onHide,
   onAnswer,
+  autoMark,
   m,
 }: {
   phase: Phase;
@@ -38,6 +39,8 @@ export function StudyControls({
   onReveal: () => void;
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
+  /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
+  autoMark?: { pending: true } | { pending: false; correct: boolean };
   m: number;
 }) {
   const question = phase === 'question';
@@ -110,6 +113,35 @@ export function StudyControls({
     gradingMode === 'manual'
       ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
       : 'flex w-full max-w-md gap-3';
+  const typedField = (
+    <>
+      <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
+        Your answer
+      </label>
+      <input
+        id="study-typed-answer"
+        ref={typingInputRef}
+        type="text"
+        value={typedAnswer}
+        onChange={(event) => onTypedAnswer(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+            event.preventDefault();
+            onReveal();
+          }
+        }}
+        placeholder="Type your answer…"
+        className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
+      />
+    </>
+  );
+  // A verdict pours the liquid into the grade it chose: Yes or Good, else No or Again.
+  const chosen =
+    autoMark && !autoMark.pending
+      ? autoMark.correct
+        ? grades.length - (gradingMode === 'manual' ? 2 : 1)
+        : 0
+      : undefined;
   return (
     <>
       {!isTypingCard && !isTouchMode && (
@@ -123,54 +155,39 @@ export function StudyControls({
           />
         </div>
       )}
-      {isTypingCard && (
-        <div className="study-controls mt-6 grid w-full shrink-0">
+      {isTypingCard && !isTouchMode && (
+        <div className="study-controls mt-6 w-full shrink-0">
+          <LiquidGradeControls
+            question={question}
+            pending={autoMark?.pending === true}
+            chosen={chosen}
+            chosenNegative={chosen === 0}
+            grades={grades}
+            rowClassName={gradeRowClassName}
+            revealLabel="Check answer"
+            revealLead={<div className="mb-3">{typedField}</div>}
+            onReveal={onReveal}
+            m={m}
+          />
+        </div>
+      )}
+      {isTypingCard && isTouchMode && (
+        <div className="study-controls mt-6 w-full shrink-0">
           <motion.div
-            className="col-start-1 row-start-1 flex w-full flex-col items-center self-start gap-3"
+            className="mx-auto w-full max-w-md"
             initial={false}
             animate={{ opacity: question ? 1 : 0 }}
             transition={fadeLiftTiming(question, m)}
             inert={!question}
             aria-hidden={!question}
           >
-            <div className="mx-auto w-full max-w-md">
-              <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
-                Your answer
-              </label>
-              <input
-                id="study-typed-answer"
-                ref={typingInputRef}
-                type="text"
-                value={typedAnswer}
-                onChange={(event) => onTypedAnswer(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    onReveal();
-                  }
-                }}
-                placeholder="Type your answer…"
-                className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
-              />
-              <div className="mt-3 flex justify-center">
-                <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
-                  Check answer
-                </Button>
-              </div>
+            {typedField}
+            <div className="mt-3 flex justify-center">
+              <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
+                Check answer
+              </Button>
             </div>
           </motion.div>
-          {!isTouchMode && (
-            <motion.div
-              className="col-start-1 row-start-1 flex w-full flex-col items-center self-start"
-              initial={false}
-              animate={{ opacity: question ? 0 : 1, y: question && m > 0 ? 14 : 0 }}
-              transition={fadeLiftTiming(!question, m)}
-              inert={question}
-              aria-hidden={question}
-            >
-              <div className={gradeRowClassName}>{grades}</div>
-            </motion.div>
-          )}
         </div>
       )}
       {isTouchMode && (

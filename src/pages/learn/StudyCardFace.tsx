@@ -6,6 +6,7 @@ import { LineHintButton, LineHintDisplay } from '../../components/learn/LineHint
 import { HINT_TIME_PENALTY_SEC } from '../../fsrs/grading';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
+import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 
 export function StudyCardFace({
   card,
@@ -17,6 +18,7 @@ export function StudyCardFace({
   hintAffectsScheduling,
   isTyping,
   typedAnswer,
+  typedJudgement,
   answerStrictness,
   occlusion,
   occlusionAnswerText,
@@ -34,6 +36,8 @@ export function StudyCardFace({
   hintAffectsScheduling?: boolean;
   isTyping: boolean;
   typedAnswer?: string;
+  /** Automatic marking's reading of the typed answer, replacing the word comparison. */
+  typedJudgement?: TypedAnswerJudgement;
   answerStrictness: AnswerStrictness;
   occlusion?: Occlusion;
   occlusionAnswerText?: string;
@@ -45,9 +49,13 @@ export function StudyCardFace({
   const typedAnswerFeedback = useMemo(
     () =>
       side === 'back' && isTyping && typedAnswer !== undefined
-        ? { answer: typedAnswer, options: answerComparisonOptions(answerStrictness) }
+        ? {
+            answer: typedAnswer,
+            options: answerComparisonOptions(answerStrictness),
+            judgement: typedJudgement,
+          }
         : undefined,
-    [side, isTyping, typedAnswer, answerStrictness],
+    [side, isTyping, typedAnswer, typedJudgement, answerStrictness],
   );
 
   return (

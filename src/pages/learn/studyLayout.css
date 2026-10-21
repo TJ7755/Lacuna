@@ -130,3 +130,31 @@ body:has(.study-session) .toast-stack button {
     bottom: calc(anchor(--study-typing-actions top, anchor(--study-actions top, 1.5rem)) + 0.75rem);
   }
 }
+
+/* Automatic marking. The expected answer breathes while it is read, then the parts that were
+   missed are inked in one after another and the verdict rises into place. */
+[data-typed-checking] {
+  animation: typed-checking 1.6s ease-in-out infinite;
+}
+@keyframes typed-checking {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+mark.typed-missed {
+  animation: typed-missed-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes typed-missed-in {
+  from { background-color: transparent; }
+}
+.typed-verdict {
+  animation: typed-verdict-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes typed-verdict-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-typed-checking] {
+    animation: none;
+    opacity: 0.7;
+  }
+}

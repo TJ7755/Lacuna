@@ -3,7 +3,13 @@ import type { Card } from '../../db/types';
 import { markdownAnswerCorrect, markdownPlainText } from '../../components/markdown/MarkdownView';
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';
-import { JEV_TYPED_TIMEOUT_MS, useJevTypedMarker, type JevMarkProvenance } from '../../jev';
+import {
+  JEV_TYPED_TIMEOUT_MS,
+  useJevTypedMarker,
+  type JevMarkProvenance,
+  type JevTypedFeedback,
+} from '../../jev';
+import type { TypedAnswerJudgement } from '../../components/markdown/typedAnswerFeedback';
 import { typingExpectedAnswer } from './sessionCardCapabilities';
 import type { Phase } from './types';
 
@@ -11,7 +17,34 @@ export type TypedAutoMark =
   | { state: 'off' }
   | { state: 'idle' }
   | { state: 'checking' }
-  | { state: 'marked'; correct: boolean; provenance: JevMarkProvenance | null };
+  /** The marker could not decide, but may still say which parts were missed. */
+  | { state: 'unsure'; feedback: JevTypedFeedback; expected: string }
+  | {
+      state: 'marked';
+      correct: boolean;
+      provenance: JevMarkProvenance | null;
+      feedback?: JevTypedFeedback;
+      expected?: string;
+    };
+
+/** What the revealed card shows about a typed answer while automatic marking is on. */
+export function typedAnswerJudgement(mark: TypedAutoMark): TypedAnswerJudgement | undefined {
+  if (mark.state === 'checking') return { state: 'checking' };
+  if (mark.state === 'unsure')
+    return { state: 'judged', outcome: 'unsure', expected: mark.expected, feedback: mark.feedback };
+  if (mark.state === 'marked' && mark.feedback && mark.expected !== undefined)
+    return {
+      state: 'judged',
+      outcome: mark.correct ? 'correct' : 'incorrect',
+      expected: mark.expected,
+      feedback: mark.feedback,
+      confidence: mark.provenance?.confidence,
+    };
+  return undefined;
+}
+
+const OFF: TypedAutoMark = { state: 'off' };
+const IDLE: TypedAutoMark = { state: 'idle' };
 
 /** How long a mark stays visible before the card is dismissed with it, before motion scaling. */
 export const TYPED_AUTO_MARK_HOLD_MS = 700;
@@ -66,10 +99,11 @@ export function useTypedAutoMark({
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), JEV_TYPED_TIMEOUT_MS);
     setMark({ state: 'checking' });
+    const expectedText = markdownPlainText(expected);
     marker({
       cardId: card.id,
       prompt: markdownPlainText(card.type === 'cloze' ? renderClozeFront(card.front) : card.front),
-      expected: markdownPlainText(expected),
+      expected: expectedText,
       answer: typedAnswer,
       signal: controller.signal,
     })
@@ -77,11 +111,15 @@ export function useTypedAutoMark({
         if (controller.signal.aborted) return;
         setMark(
           verdict.outcome === 'unsure'
-            ? { state: 'idle' }
+            ? verdict.feedback
+              ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
+              : { state: 'idle' }
             : {
                 state: 'marked',
                 correct: verdict.outcome === 'correct',
                 provenance: verdict.provenance,
+                feedback: verdict.feedback,
+                expected: expectedText,
               },
         );
       })
@@ -107,6 +145,6 @@ export function useTypedAutoMark({
     return () => window.clearTimeout(timer);
   }, [mark, paused, active, m]);
 
-  if (marker === null) return { state: 'off' };
-  return active ? mark : { state: 'idle' };
+  if (marker === null) return OFF;
+  return active ? mark : IDLE;
 }
