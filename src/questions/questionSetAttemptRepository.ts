@@ -135,6 +135,7 @@ async function mutate(
   expectedRevisionId: string,
   now: number,
   change: (record: QuestionSetAttemptRecord) => void | Promise<void>,
+  options: { recordExposure?: boolean } = {},
 ): Promise<QuestionSetAttemptRecord> {
   return db.transaction('rw', [db.questionSetAttempts, db.courses], async () => {
     const raw = await db.questionSetAttempts.get(id);
@@ -147,7 +148,12 @@ async function mutate(
     const activeQuestion = answerableNodes(next.receipt).find(
       (node) => node.nodeId === next.activeNodeId,
     )?.questionId;
-    if (next.shownQuestionIds && activeQuestion && !next.shownQuestionIds.includes(activeQuestion))
+    if (
+      options.recordExposure !== false &&
+      next.shownQuestionIds &&
+      activeQuestion &&
+      !next.shownQuestionIds.includes(activeQuestion)
+    )
       next.shownQuestionIds.push(activeQuestion);
     next.revisionId = makeId();
     next.updatedAt = Math.max(now, current.updatedAt + 1);
@@ -362,31 +368,55 @@ export function undoConceptPracticeAttempt(
   });
 }
 
-/** Apply a model result only while the original response is submitted and still undecided. */
+class JevDecisionSkipped extends Error {}
+
+/** Model writes use the same revision guard as learner writes, then retry from current evidence. */
 export async function applyJevAllocationDecision(
   id: string,
+  expectedRevisionId: string,
   nodeId: string,
   decision: Extract<SelfMarkDecision, { status: 'awarded' }>,
   stillEnabled: () => boolean,
 ): Promise<boolean> {
-  return db.transaction('rw', db.questionSetAttempts, async () => {
-    const raw = await db.questionSetAttempts.get(id);
-    if (!raw || !stillEnabled()) return false;
-    const attempt = parseQuestionSetAttemptRecord(raw);
-    if (
-      attempt.status === 'complete' ||
-      attempt.undoneAt !== undefined ||
-      attempt.decisions.some((row) => row.allocationId === decision.allocationId) ||
-      attempt.responses.find((row) => row.nodeId === nodeId)?.submitted?.kind !== 'written' ||
-      !answerableNodes(attempt.receipt).some(
-        (node) => node.nodeId === nodeId && node.allocationIds.includes(decision.allocationId),
+  let revision = expectedRevisionId;
+  for (let retry = 0; retry < 3; retry++) {
+    try {
+      await mutate(
+        id,
+        revision,
+        Date.now(),
+        (attempt) => {
+          if (
+            !stillEnabled() ||
+            !decision.markedBy ||
+            attempt.status === 'complete' ||
+            attempt.undoneAt !== undefined ||
+            attempt.decisions.some((row) => row.allocationId === decision.allocationId) ||
+            attempt.responses.find((row) => row.nodeId === nodeId)?.submitted?.kind !== 'written' ||
+            !answerableNodes(attempt.receipt).some(
+              (node) =>
+                node.nodeId === nodeId && node.allocationIds.includes(decision.allocationId),
+            )
+          )
+            throw new JevDecisionSkipped();
+          attempt.decisions.push(clone(decision));
+        },
+        { recordExposure: false },
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof JevDecisionSkipped) return false;
+      if (!(error instanceof QuestionSetAttemptRevisionConflictError)) throw error;
+      const current = await getQuestionSetAttempt(id);
+      if (
+        !current ||
+        !stillEnabled() ||
+        current.decisions.some((row) => row.allocationId === decision.allocationId)
       )
-    )
-      return false;
-    attempt.decisions.push(clone(decision));
-    attempt.revisionId = makeId();
-    attempt.updatedAt = Math.max(Date.now(), attempt.updatedAt + 1);
-    await db.questionSetAttempts.put(parseQuestionSetAttemptRecord(attempt));
-    return true;
-  });
+        return false;
+      revision = current.revisionId;
+    }
+  }
+  // Sustained concurrent edits are safely abandoned for the learner to mark.
+  return false;
 }

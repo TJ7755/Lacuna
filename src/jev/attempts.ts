@@ -114,6 +114,7 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       if (result?.value !== null && result !== null && engine.eligible()) {
         await applyJevAllocationDecision(
           id,
+          current.revisionId,
           line.nodeId,
           {
             allocationId: line.allocationId,

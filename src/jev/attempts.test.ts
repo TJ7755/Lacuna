@@ -205,3 +205,37 @@ it('resumes safely after abandoning a low-confidence run with no persisted work 
   await markJevAttempt(attempt.id, resumed.engine);
   expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(2);
 });
+it('retries a stale model write through the repository without touching learner state', async () => {
+  const { attempt } = await fixture();
+  const { applyJevAllocationDecision, QuestionSetAttemptRevisionConflictError } =
+    await import('../questions/questionSetAttemptRepository');
+  const learner = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+    ...attempt,
+    decisions: [{ allocationId: 'a1', status: 'awarded', marks: 0 }],
+  });
+  learner.shownQuestionIds = [];
+  await db.questionSetAttempts.put(learner);
+  const decision = {
+    allocationId: 'a2',
+    status: 'awarded' as const,
+    marks: 2,
+    markedBy: { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.97, markedAt: Date.now() },
+  };
+  expect(
+    await applyJevAllocationDecision(attempt.id, attempt.revisionId, 'q', decision, () => true),
+  ).toBe(true);
+  const current = (await getQuestionSetAttempt(attempt.id))!;
+  expect(current.decisions).toEqual([...learner.decisions, decision]);
+  expect(current.responses).toEqual(learner.responses);
+  expect(current.activeNodeId).toBe(learner.activeNodeId);
+  expect(current.activeAllocationId).toBe(learner.activeAllocationId);
+  expect({ ...current, decisions: [], revisionId: '', updatedAt: 0 }).toEqual({
+    ...learner,
+    decisions: [],
+    revisionId: '',
+    updatedAt: 0,
+  });
+  await expect(
+    saveQuestionSetMarking(attempt.id, attempt.revisionId, { ...attempt, decisions: [] }),
+  ).rejects.toBeInstanceOf(QuestionSetAttemptRevisionConflictError);
+});
