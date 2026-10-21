@@ -1,0 +1,1 @@
+- Show answer now splits into the grade buttons with a springy, liquid motion instead of fading out and back in, and the grades flow back into the next card's Show answer rather than snapping.
