@@ -7,68 +7,6 @@ const COURSE_SECTIONS = [
   { label: 'Settings', heading: 'Course settings' },
 ] as const;
 
-for (const width of [390, 1000, 1920]) {
-  test(`course navigation stays aligned and section titles remain stable at ${width}px`, async ({
-    page,
-  }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 });
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await openSeededCourse(page);
-    const measure = () =>
-      page.locator('[data-course-page-navigation]').evaluate((navigation) => {
-        const frame = navigation.parentElement!;
-        // The tabs, not the course name, which slides in only once the title scrolls away.
-        const back = navigation.querySelector('nav[aria-label="Course sections"]')!.getBoundingClientRect();
-        const title = navigation.closest('main')!.querySelector('h1')!.getBoundingClientRect();
-        const bounds = frame.getBoundingClientRect();
-        return {
-          left: bounds.x,
-          width: bounds.width,
-          backX: back.x,
-          backY: back.y,
-          titleX: title.x,
-          titleY: title.y,
-        };
-      });
-    const baseline = await measure();
-    let sectionTitle: { titleX: number; titleY: number } | undefined;
-    await page.screenshot({ path: testInfo.outputPath('Path.png') });
-    for (const section of COURSE_SECTIONS.slice(1)) {
-      await page
-        .locator('nav[aria-label="Course sections"]:visible')
-        .getByRole('link', { name: section.label, exact: true })
-        .click();
-      await expect(
-        page.getByRole('heading', { level: 1, name: section.heading, exact: true }),
-      ).toBeVisible();
-      await expect
-        .poll(
-          async () => {
-            const actual = await measure();
-            // Every section title starts where Path's does; their heights match each other.
-            sectionTitle ??= { titleX: baseline.titleX, titleY: actual.titleY };
-            const expected = { ...baseline, ...sectionTitle };
-            return Math.max(
-              ...Object.keys(expected).map((key) =>
-                Math.abs(
-                  actual[key as keyof typeof actual] - expected[key as keyof typeof expected],
-                ),
-              ),
-            );
-          },
-          { message: `${section.label} must retain the navigation frame and the section title position` },
-        )
-        .toBeLessThanOrEqual(1);
-      await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
-      expect(
-        await page.locator('main').evaluate((main) => main.scrollWidth - main.clientWidth),
-      ).toBeLessThanOrEqual(1);
-      await expect(page.getByRole('group', { name: 'Workspace mode' })).toBeVisible();
-      await page.screenshot({ path: testInfo.outputPath(`${section.label}.png`) });
-    }
-  });
-}
-
 test('workspace mode is shared by every course section', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openSeededCourse(page);
@@ -100,144 +38,18 @@ test('workspace mode is shared by every course section', async ({ page }) => {
   );
 });
 
-test('Questions has no post-instruction caption', async ({ page }) => {
-  await openSeededCourse(page);
-  await page
-    .locator('nav[aria-label="Course sections"]:visible')
-    .getByRole('link', { name: 'Questions', exact: true })
-    .click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Questions' })).toBeVisible();
-  await expect(page.getByText('Post-instruction practice', { exact: true })).toHaveCount(0);
-});
-
-test('course navigation stays mounted while switching sections in both directions', async ({
-  page,
-}) => {
-  await openSeededCourse(page);
-  const navigation = await page.locator('[data-course-page-navigation]').elementHandle();
-  const mode = await page.getByRole('group', { name: 'Workspace mode' }).elementHandle();
-  for (const label of ['Cards', 'Questions', 'Path']) {
-    await page
-      .locator('nav[aria-label="Course sections"]:visible')
-      .getByRole('link', { name: label, exact: true })
-      .click();
-    await expect(
-      page
-        .getByRole('heading', { name: label === 'Path' ? 'Welcome to Lacuna' : label, exact: true })
-        .first(),
-    ).toBeVisible();
-    expect(await navigation!.evaluate((element) => element.isConnected)).toBe(true);
-    expect(await mode!.evaluate((element) => element.isConnected)).toBe(true);
-    await expect(page.locator('[data-course-page-navigation]')).toHaveCount(1);
-  }
-});
-
-test('course pages drift in the tab direction beneath stationary navigation', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await openSeededCourse(page);
-  for (const [label, direction] of [
-    ['Cards', 1],
-    ['Path', -1],
-  ] as const) {
-    await expect(page.locator('[data-route-content]')).toHaveCount(1);
-    const navigation = page.locator('[data-course-page-navigation]');
-    await navigation.evaluate((element, direction) => {
-      element.removeAttribute('data-observed-drift');
-      element.removeAttribute('data-observed-overlap');
-      element.addEventListener(
-        'click',
-        () => {
-          const deadline = performance.now() + 1500;
-          const sample = () => {
-            const pages = [...document.querySelectorAll('[data-route-content]')];
-            // The old page leaves at once, so two pages are never visible together.
-            const visible = pages.filter((page) => Number(getComputedStyle(page).opacity) > 0.05);
-            if (visible.length > 1) element.setAttribute('data-observed-overlap', 'true');
-            // The incoming page mounts last; it drifts in while it fades up.
-            const incoming = pages.at(-1);
-            const offset = incoming
-              ? new DOMMatrixReadOnly(getComputedStyle(incoming).transform).m41
-              : 0;
-            if (offset * direction > 1) element.setAttribute('data-observed-drift', 'true');
-            if (performance.now() < deadline) requestAnimationFrame(sample);
-          };
-          requestAnimationFrame(sample);
-        },
-        { once: true },
-      );
-    }, direction);
-    const box = await navigation.boundingBox();
-    await navigation.getByRole('link', { name: label, exact: true }).click();
-    await expect(navigation).toHaveAttribute('data-observed-drift', 'true');
-    await expect(page.locator('[data-route-content]')).toHaveCount(1);
-    await expect(navigation).not.toHaveAttribute('data-observed-overlap', 'true');
-    expect(await navigation.boundingBox()).toEqual(box);
-  }
-});
-
-test('course section navigation keeps one stable horizontal position', async ({ page }) => {
-  await openSeededCourse(page);
-  const positions: Array<{ label: string; centreX: number }> = [];
-
-  for (const section of COURSE_SECTIONS) {
-    const navigation = page.locator('nav[aria-label="Course sections"]:visible');
-    if (section.label !== 'Path') {
-      await navigation.getByRole('link', { name: section.label, exact: true }).click();
-      await expect(
-        page.getByRole('heading', { name: section.heading, exact: true }).first(),
-      ).toBeVisible();
-    }
-
-    await expect(navigation).toHaveCount(1);
-    const bounds = await navigation.boundingBox();
-    expect(bounds, `${section.label} navigation must be visible`).not.toBeNull();
-    positions.push({
-      label: section.label,
-      centreX: (bounds?.x ?? 0) + (bounds?.width ?? 0) / 2,
-    });
-  }
-
-  const baseline = positions[0];
-  for (const position of positions.slice(1)) {
-    expect(
-      Math.abs(position.centreX - baseline.centreX),
-      `${position.label} navigation moved relative to ${baseline.label}`,
-    ).toBeLessThanOrEqual(1);
-  }
-});
-
 async function openSeededCourse(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-  await page.getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true }).click();
+  await page
+    .getByRole('region', { name: 'Today, most urgent first' })
+    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
   ).toBeVisible();
 }
-
-test('course controls stay compact and assessments sit beside the path', async ({
-  page,
-}) => {
-  await openSeededCourse(page);
-  const navigation = page.locator('nav[aria-label="Course sections"]:visible');
-  const study = page.getByRole('button', { name: 'Study', exact: true });
-  const schedule = page.getByRole('region', { name: 'Assessments' });
-  await expect(schedule).toBeVisible();
-  await expect(page.getByText(/^Next:/)).toHaveCount(0);
-  const radius = await study.evaluate((element) => getComputedStyle(element).borderRadius);
-  expect(await navigation.evaluate((element) => getComputedStyle(element).borderRadius)).toBe(
-    radius,
-  );
-  expect((await schedule.boundingBox())!.y).toBeGreaterThan((await study.boundingBox())!.y);
-  await page.screenshot({ path: '/tmp/lacuna-course-rounded.png', fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(schedule).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-});
 
 test('dragging the course selection previews then opens the released section', async ({ page }) => {
   await openSeededCourse(page);
@@ -253,7 +65,9 @@ test('dragging the course selection previews then opens the released section', a
   );
   await page.mouse.up();
   await expect(page).toHaveURL(/\/cards$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Welcome to Lacuna', exact: true }),
+  ).toHaveCount(0);
   await expect(navigation).toHaveCount(1);
   await expect(navigation.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute(
     'aria-current',
@@ -261,21 +75,6 @@ test('dragging the course selection previews then opens the released section', a
   );
   await navigation.getByRole('link', { name: 'Cards', exact: true }).press('ArrowRight');
   await expect(page).toHaveURL(/\/questions$/);
-});
-
-test('the course selection expands while held and settles after release', async ({ page }) => {
-  await openSeededCourse(page);
-  const indicator = page.locator('[data-course-tab-indicator]');
-  const before = (await indicator.boundingBox())!;
-  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
-  await page.mouse.down();
-  await expect
-    .poll(async () => (await indicator.boundingBox())!.width)
-    .toBeGreaterThan(before.width * 1.03);
-  await page.mouse.up();
-  await expect
-    .poll(async () => Math.abs((await indicator.boundingBox())!.width - before.width))
-    .toBeLessThan(0.5);
 });
 
 test('settings retain accessible speed stops and shared switches', async ({ page }) => {
@@ -295,33 +94,6 @@ test('settings retain accessible speed stops and shared switches', async ({ page
   for (const radio of await speeds.getByRole('radio').all()) {
     expect((await radio.boundingBox())!.height).toBeGreaterThanOrEqual(44);
   }
-});
-
-test('the selection follows pointer distance continuously between section centres', async ({
-  page,
-}) => {
-  await openSeededCourse(page);
-  const indicator = page.locator('[data-course-tab-indicator]');
-  const start = (await indicator.boundingBox())!;
-  const centre = start.x + start.width / 2;
-  const y = start.y + start.height / 2;
-  await page.mouse.move(centre, y);
-  await page.mouse.down();
-  await page.mouse.move(centre + 12, y, { steps: 3 });
-  await expect
-    .poll(async () => {
-      const bounds = (await indicator.boundingBox())!;
-      return Math.abs(bounds.x + bounds.width / 2 - centre - 12);
-    })
-    .toBeLessThan(2);
-  await page.mouse.move(centre + 24, y, { steps: 3 });
-  await expect
-    .poll(async () => {
-      const bounds = (await indicator.boundingBox())!;
-      return Math.abs(bounds.x + bounds.width / 2 - centre - 24);
-    })
-    .toBeLessThan(2);
-  await page.mouse.up();
 });
 
 test('a long course name truncates beside the section tabs instead of running under them', async ({

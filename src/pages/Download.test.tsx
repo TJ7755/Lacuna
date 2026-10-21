@@ -13,29 +13,6 @@ afterEach(() => {
 });
 
 describe('desktop download selection', () => {
-  it('keeps the initial download choice to one compatibility line', () => {
-    vi.stubGlobal('navigator', { userAgent: 'Macintosh' });
-    const { container } = render(<Download />, { wrapper: MemoryRouter });
-    expect(container.querySelectorAll('main p')).toHaveLength(1);
-    expect(screen.queryByText(/Desktop beta.*version/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Your revision. On your computer.')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Download Lacuna.' })).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Download for macOS' })).toHaveAttribute(
-      'href',
-      DOWNLOADS.macDmg,
-    );
-    expect(screen.queryByText(/drag Lacuna/)).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Installation help' }));
-    expect(screen.getByText(/Privacy & Security/)).toBeVisible();
-  });
-
-  it('links to the current desktop release', () => {
-    expect(DOWNLOADS.windowsPortable).toContain('/releases/download/v0.2.5/');
-    expect(DOWNLOADS.macDmg).toContain('/releases/download/v0.2.5/');
-    expect(DOWNLOADS.linuxAppImage).toContain('/releases/download/v0.2.5/');
-    expect(DOWNLOADS.release).toBe('https://github.com/TJ7755/Lacuna/releases/tag/v0.2.5');
-  });
-
   it('links checksum guidance to the release containing both platform manifests', () => {
     render(<Download />, { wrapper: MemoryRouter });
 

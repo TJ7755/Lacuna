@@ -1,7 +1,7 @@
 # Visual and motion intent
 
-[src/index.css](../../src/index.css), [shared UI primitives](../../src/components/ui/) and
-[design-rule tests](../../src/designRules.test.ts) own tokens and mechanical conventions.
+[Theme tokens and utilities](../../src/index.css) and
+[shared UI primitives](../../src/components/ui/) own the visual conventions.
 Extend these sources instead of copying palettes, fonts or component measurements into docs.
 
 The intended character is quiet paper-and-ink study: one clear task, readable content, restrained

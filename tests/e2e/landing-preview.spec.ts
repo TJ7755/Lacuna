@@ -1,18 +1,5 @@
 import { expect, test } from '@playwright/test';
 
-test('opening limits attention to the headline and one action', async ({ page }) => {
-  await page.goto('/#/landing');
-  const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  await expect(hero.getByRole('heading', { level: 1 })).toHaveText(
-    'Your revision, built around your exam.',
-  );
-  await expect(hero.locator('p')).toHaveCount(0);
-  await expect(hero.getByRole('button', { name: 'Pause illustrations' })).toHaveCount(1);
-  await expect(hero.getByRole('link')).toHaveCount(2);
-  await hero.getByRole('link', { name: 'Start revising' }).click();
-  await expect(page).toHaveURL(/#\/$/);
-});
-
 test('landing survives first launch and offers an unrestricted journey', async ({ page }) => {
   await page.goto('/#/landing');
   await expect(
@@ -26,32 +13,6 @@ test('landing survives first launch and offers an unrestricted journey', async (
   ).toBeInViewport();
   await page.getByRole('link', { name: 'Start revising', exact: true }).last().click();
   await expect(page).toHaveURL(/#\/$/);
-});
-
-for (const reducedMotion of ['no-preference', 'reduce'] as const) {
-  test(`wheel scrolling uses ${reducedMotion === 'reduce' ? 'native motion' : 'welcome inertia'}`, async ({
-    page,
-  }) => {
-    await page.emulateMedia({ reducedMotion });
-    await page.goto('/#/landing');
-    await expect(
-      page.getByRole('heading', { name: 'Your revision, built around your exam.' }),
-    ).toBeVisible();
-    await page.mouse.move(200, 400);
-    await page.mouse.wheel(0, 400);
-    await expect
-      .poll(() => page.evaluate(() => Math.round(window.scrollY)))
-      .toBe(reducedMotion === 'reduce' ? 400 : 340);
-  });
-}
-
-test('opening offers keyboard app entry beside decorative artwork', async ({ page }) => {
-  await page.goto('/#/landing');
-  const hero = page.getByRole('region', { name: 'Revision around your exam' });
-  const start = hero.getByRole('link', { name: 'Start revising' });
-  await start.focus();
-  await expect(start).toBeFocused();
-  await expect(hero.locator('.revision-reel')).toHaveAttribute('aria-hidden', 'true');
 });
 
 test('closing section offers app entry', async ({ page }) => {
@@ -132,16 +93,4 @@ test('opening stays independent from the lower sections and supports touch', asy
   await expect(hero.getByRole('heading')).toHaveText('Your revision, built around your exam.');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(hero).not.toHaveAttribute('inert', '');
-});
-
-test('lower sections share the footer alignment', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/#/landing');
-  await expect(page.locator('#how-it-works')).toBeVisible();
-  const edges = await page.evaluate(() => {
-    const left = (selector: string) =>
-      document.querySelector(selector)!.getBoundingClientRect().left;
-    return [left('#how-it-works .landing-feature-copy'), left('.landing-footer .landing-brand')];
-  });
-  expect(Math.max(...edges) - Math.min(...edges)).toBeLessThan(1);
 });

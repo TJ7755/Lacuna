@@ -4,7 +4,7 @@ Every interactive element has a 44px minimum target, including compact controls 
 extends beyond their visible shape. Controls have accessible names and visible keyboard focus;
 state and status do not rely on colour alone. Secondary text and action labels remain readable
 across supported accents and themes. Mechanical checks live in
-[touchTargets](../../src/build/touchTargets.test.ts) and [browser tests](../../tests/e2e/).
+[browser tests](../../tests/e2e/direction-c-audit.spec.ts), which check rendered hit areas.
 
 All workflows remain usable by keyboard and touch. The shell exposes Skip to content. Dialogs
 trap focus only while active; closing/departing controls are immediately inert and hidden from

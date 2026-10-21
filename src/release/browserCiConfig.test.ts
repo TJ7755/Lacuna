@@ -128,7 +128,7 @@ it('partitions the complete local Chromium suite across functional shards and is
     const functionalCases = shards.flatMap((shard) => cases(shard.suites));
     const imageCases = cases(image.suites);
     const motionCases = cases(motion.suites);
-    const isSidebarMotion = (name: string) => /^sidebar(?:-course-dropdown)?-motion.spec.ts:/.test(name);
+    const isSidebarMotion = (name: string) => /^sidebar-motion.spec.ts:/.test(name);
     const allCiCases = [...functionalCases, ...imageCases, ...motionCases];
 
     expect(cases(local.suites).length).toBeGreaterThan(0);
@@ -139,10 +139,12 @@ it('partitions the complete local Chromium suite across functional shards and is
     expect(motionCases.length).toBeGreaterThan(0);
     expect(motionCases.sort()).toEqual(cases(local.suites).filter(isSidebarMotion).sort());
     expect(new Set(motionCases.map((name) => name.split(':')[0]))).toEqual(
-      new Set(['sidebar-motion.spec.ts', 'sidebar-course-dropdown-motion.spec.ts']),
+      new Set(['sidebar-motion.spec.ts']),
     );
     expect(
-      functionalCases.every((name) => !name.startsWith('study-image-advance.spec.ts:') && !isSidebarMotion(name)),
+      functionalCases.every(
+        (name) => !name.startsWith('study-image-advance.spec.ts:') && !isSidebarMotion(name),
+      ),
     ).toBe(true);
     expect(cases(timing.suites).sort()).toEqual([...imageCases, ...motionCases].sort());
     expect(timing.config.workers).toBe(1);

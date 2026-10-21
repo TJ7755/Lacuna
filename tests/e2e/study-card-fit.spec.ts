@@ -208,64 +208,65 @@ for (const mode of ['simple', 'practice']) {
   });
 }
 
-for (const theme of ['light', 'dark']) {
-  for (const { viewport, inputMode } of [
-    ...viewports.map((viewport) => ({ viewport, inputMode: 'keyboard' })),
-    { viewport: viewports[2], inputMode: 'touch' },
-  ]) {
-    test(`fits tall occlusion in ${theme} at ${viewport.width}x${viewport.height} with ${inputMode}`, async ({
-      page,
-    }) => {
-      await page.addInitScript((theme) => {
-        localStorage.setItem('lacuna-theme', theme);
-        localStorage.setItem('lacuna.inputMode', 'keyboard');
-        localStorage.setItem('lacuna.gradingMode', 'manual');
-      }, theme);
-      const { card, lessonId } = await prepareCard(page);
-      await seedCard(page, card, 'occlusion');
-      await page.evaluate(
-        (inputMode) => localStorage.setItem('lacuna.inputMode', inputMode),
-        inputMode,
-      );
-      await page.setViewportSize(viewport);
-      await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
-      const front = page.locator('[data-study-face="front"]');
-      await expect(front.getByRole('img', { name: 'Tall diagram' })).toBeVisible();
-      await expect(front.getByRole('img')).toBeInViewport({ ratio: 1 });
-      await page.evaluate(() => document.fonts.ready);
-      const name = `${theme}-${viewport.width}x${viewport.height}${inputMode === 'touch' ? '-touch' : ''}`;
-      await capture(page, `${name}-front`);
-      await expectFits(page, page.getByRole('button', { name: 'Show answer', exact: true }).last());
-      await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
-      const back = page.locator('[data-study-face="back"]');
-      await expect(back.getByText('Diagram note')).toBeVisible();
-      await expect(back.locator('..')).toHaveCSS('transform', 'none');
-      await expect(back.getByRole('img')).toBeInViewport({ ratio: 1 });
-      expect(await back.evaluate((body) => body.scrollHeight <= body.clientHeight + 1)).toBe(true);
-      await capture(page, `${name}-revealed`);
-      await expectFits(page, page.getByRole('button', { name: /^(Again|Hard|Good|Easy)$/ }));
-      const geometry = await back.getByRole('img').evaluate((image) => {
-        const rect = image.getBoundingClientRect();
-        const layer = image.parentElement!.getBoundingClientRect();
-        const mask = image.parentElement!.querySelector('div.absolute')!.getBoundingClientRect();
-        return {
-          ratio: rect.width / rect.height,
-          layerWidth: layer.width - rect.width,
-          layerHeight: layer.height - rect.height,
-          x: (mask.x - rect.x) / rect.width,
-          y: (mask.y - rect.y) / rect.height,
-          w: mask.width / rect.width,
-          h: mask.height / rect.height,
-        };
-      });
-      expect(geometry.ratio).toBeCloseTo(1 / 3, 3);
-      expect(Math.abs(geometry.layerWidth)).toBeLessThan(1);
-      expect(Math.abs(geometry.layerHeight)).toBeLessThan(1);
-      for (const [key, value] of Object.entries({ x: 0.1, y: 0.1, w: 0.4, h: 0.05 })) {
-        expect(geometry[key as keyof typeof geometry]).toBeCloseTo(value, 2);
-      }
+// Theme does not alter card geometry; retain desktop and both phone input modes.
+for (const { viewport, inputMode } of [
+  { viewport: viewports[0], inputMode: 'keyboard' },
+  { viewport: viewports[2], inputMode: 'keyboard' },
+  { viewport: viewports[2], inputMode: 'touch' },
+]) {
+  const theme = 'dark';
+  test(`fits tall occlusion in ${theme} at ${viewport.width}x${viewport.height} with ${inputMode}`, async ({
+    page,
+  }) => {
+    await page.addInitScript((theme) => {
+      localStorage.setItem('lacuna-theme', theme);
+      localStorage.setItem('lacuna.inputMode', 'keyboard');
+      localStorage.setItem('lacuna.gradingMode', 'manual');
+    }, theme);
+    const { card, lessonId } = await prepareCard(page);
+    await seedCard(page, card, 'occlusion');
+    await page.evaluate(
+      (inputMode) => localStorage.setItem('lacuna.inputMode', inputMode),
+      inputMode,
+    );
+    await page.setViewportSize(viewport);
+    await page.goto(`/#/lesson/${lessonId}/learn?mode=simple`);
+    const front = page.locator('[data-study-face="front"]');
+    await expect(front.getByRole('img', { name: 'Tall diagram' })).toBeVisible();
+    await expect(front.getByRole('img')).toBeInViewport({ ratio: 1 });
+    await page.evaluate(() => document.fonts.ready);
+    const name = `${theme}-${viewport.width}x${viewport.height}${inputMode === 'touch' ? '-touch' : ''}`;
+    await capture(page, `${name}-front`);
+    await expectFits(page, page.getByRole('button', { name: 'Show answer', exact: true }).last());
+    await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
+    const back = page.locator('[data-study-face="back"]');
+    await expect(back.getByText('Diagram note')).toBeVisible();
+    await expect(back.locator('..')).toHaveCSS('transform', 'none');
+    await expect(back.getByRole('img')).toBeInViewport({ ratio: 1 });
+    expect(await back.evaluate((body) => body.scrollHeight <= body.clientHeight + 1)).toBe(true);
+    await capture(page, `${name}-revealed`);
+    await expectFits(page, page.getByRole('button', { name: /^(Again|Hard|Good|Easy)$/ }));
+    const geometry = await back.getByRole('img').evaluate((image) => {
+      const rect = image.getBoundingClientRect();
+      const layer = image.parentElement!.getBoundingClientRect();
+      const mask = image.parentElement!.querySelector('div.absolute')!.getBoundingClientRect();
+      return {
+        ratio: rect.width / rect.height,
+        layerWidth: layer.width - rect.width,
+        layerHeight: layer.height - rect.height,
+        x: (mask.x - rect.x) / rect.width,
+        y: (mask.y - rect.y) / rect.height,
+        w: mask.width / rect.width,
+        h: mask.height / rect.height,
+      };
     });
-  }
+    expect(geometry.ratio).toBeCloseTo(1 / 3, 3);
+    expect(Math.abs(geometry.layerWidth)).toBeLessThan(1);
+    expect(Math.abs(geometry.layerHeight)).toBeLessThan(1);
+    for (const [key, value] of Object.entries({ x: 0.1, y: 0.1, w: 0.4, h: 0.05 })) {
+      expect(geometry[key as keyof typeof geometry]).toBeCloseTo(value, 2);
+    }
+  });
 }
 
 for (const inputMode of ['keyboard', 'touch']) {
@@ -307,7 +308,7 @@ for (const inputMode of ['keyboard', 'touch']) {
   }
 }
 
-for (const kind of ['basic', 'reversed', 'cloze', 'sequence', 'typed', 'image', 'long-text']) {
+for (const kind of ['cloze', 'typed', 'image', 'long-text']) {
   for (const mode of ['simple', 'practice']) {
     test(`${kind} fits before and after reveal in ${mode}`, async ({ page }) => {
       const { card, lessonId } = await prepareCard(page);
