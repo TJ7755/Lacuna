@@ -29,6 +29,13 @@ import {
 
 export const JEV_SETTINGS_STORAGE_KEY = 'lacuna.jevSettings';
 const off: JevSettings = { enabled: false, acceptedConsentVersion: null };
+const connectionMessages: Record<HostedTransportError['kind'], string> = {
+  access: 'That access code was not recognised.',
+  unavailable: 'Automatic marking is unavailable right now. Try again later.',
+  invalid: 'Automatic marking is unavailable right now. Try again later.',
+  quota: 'Too many attempts. Try again later.',
+  network: 'Could not reach Lacuna. Check your connection.',
+};
 class Pause extends Error {
   constructor(readonly reason: JevPauseReason) {
     super(reason);
@@ -82,6 +89,7 @@ export function createJevEngine(
   let session: { code: string; token: string; expiresAt: number } | null = null;
   let exchange: { code: string; promise: Promise<{ token: string; expiresAt: number }> } | null =
     null;
+  let warmedSession: { code: string; expiresAt: number | null } | null = null;
   const publish = (notify = true) => {
     const next: JevStatus = !settings.enabled
       ? { state: 'off' }
@@ -99,6 +107,7 @@ export function createJevEngine(
     generation.abort();
     generation = new AbortController();
     exchange = null;
+    warmedSession = null;
   };
   const save = () => {
     try {
@@ -173,6 +182,7 @@ export function createJevEngine(
     externalSignal: AbortSignal | undefined,
     timeout: number,
     work: (signal: AbortSignal) => Promise<T>,
+    countTimeoutAsFailure = true,
   ): Promise<T | null> {
     if (!eligible() || externalSignal?.aborted) {
       publish();
@@ -197,9 +207,9 @@ export function createJevEngine(
     try {
       const result = await Promise.race([work(signal), aborted]);
       if (signal.aborted) {
+        if (!lifetime.aborted) exchange = null;
         if (!externalSignal?.aborted && !lifetime.aborted) {
-          exchange = null;
-          failed('error');
+          if (countTimeoutAsFailure) failed('error');
         }
         return null;
       }
@@ -268,21 +278,26 @@ export function createJevEngine(
     externalSignal?: AbortSignal,
     timeout = 30_000,
   ): Promise<JevDecisionResult | null> {
-    return guarded(externalSignal, timeout, async (signal) => {
-      const parsed = jevDecisionRequestSchema.parse(request);
-      const hash = await decisionHash(parsed);
-      signal.throwIfAborted();
-      const hit = await cache.get(hash);
-      signal.throwIfAborted();
-      if (hit) return checked(parsed, hit);
-      const result = checked(parsed, jevDecisionResultSchema.parse(await post(parsed, signal)));
-      signal.throwIfAborted();
-      await cache.put(hash, result);
-      signal.throwIfAborted();
-      lastUsedAt = Date.now();
-      publish();
-      return result;
-    });
+    return guarded(
+      externalSignal,
+      timeout,
+      async (signal) => {
+        const parsed = jevDecisionRequestSchema.parse(request);
+        const hash = await decisionHash(parsed);
+        signal.throwIfAborted();
+        const hit = await cache.get(hash);
+        signal.throwIfAborted();
+        if (hit) return checked(parsed, hit);
+        const result = checked(parsed, jevDecisionResultSchema.parse(await post(parsed, signal)));
+        signal.throwIfAborted();
+        await cache.put(hash, result);
+        signal.throwIfAborted();
+        lastUsedAt = Date.now();
+        publish();
+        return result;
+      },
+      request.purpose !== 'typed-equivalence',
+    );
   }
   async function decideAllocations(
     allocations: JevAllocationInput[],
@@ -362,7 +377,7 @@ export function createJevEngine(
     hasAccessCode: () => !!readCode(),
     async connectAccessCode(code: string): Promise<{ ok: true } | { ok: false; message: string }> {
       if (!settings.enabled || settings.acceptedConsentVersion !== JEV_CONSENT_VERSION)
-        return { ok: false, message: new HostedTransportError('invalid').message };
+        return { ok: false, message: connectionMessages.invalid };
       const signal = generation.signal;
       try {
         const result = await transport.exchange(code.trim(), signal);
@@ -383,9 +398,7 @@ export function createJevEngine(
         return {
           ok: false,
           message:
-            error instanceof HostedTransportError
-              ? error.message
-              : new HostedTransportError('network').message,
+            connectionMessages[error instanceof HostedTransportError ? error.kind : 'network'],
         };
       }
     },
@@ -418,7 +431,19 @@ export function createJevEngine(
       publish(false);
       return status;
     },
-    marker: () => (eligible() ? markTyped : null),
+    marker: () => {
+      if (!eligible()) return null;
+      const code = readCode();
+      const expiresAt = session?.code === code ? session.expiresAt : null;
+      if (
+        (expiresAt === null || expiresAt <= Date.now() + 5000) &&
+        (warmedSession?.code !== code || warmedSession.expiresAt !== expiresAt)
+      ) {
+        warmedSession = { code, expiresAt };
+        void token(generation.signal).catch(() => {});
+      }
+      return markTyped;
+    },
     subscribe(listener: () => void) {
       if (!listeners.size) {
         globalThis.addEventListener?.('storage', changed);

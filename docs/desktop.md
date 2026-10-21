@@ -138,9 +138,12 @@ because the provider may already have charged. Counters and reservations have mo
 Consent and the Jev switch live only in device localStorage. The shared access code uses the
 existing device key. None enters backups, course exports or sync. Stale consent means off;
 connecting a code requires the current consent and switch first. Disabling aborts requests.
+Requesting an eligible typed marker warms the shared session ahead of the first answer.
+Repeated renders share the exchange; failed warming is silent and is not retried on renders.
 Failures and timeouts leave manual marking available and appear only through Jev status.
-One timeout leaves Jev ready; three consecutive timeouts or other request errors pause it.
-A disabled service pauses it immediately. Error and service-disabled
+Typed-answer timeouts always return unsure and never contribute to the failure streak.
+Three consecutive other failures (including allocation timeouts) pause it. A disabled service
+pauses it immediately. Error and service-disabled
 pauses admit the next natural request after one minute, then five, then fifteen (capped at
 fifteen). A successful decision, including abstention, resets the failure streak and backoff.
 The input-token fuse admits requests again at the next UTC month boundary. Recovery uses no
