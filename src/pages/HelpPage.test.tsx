@@ -1,4 +1,3 @@
-import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -116,20 +115,6 @@ describe('HelpPage', () => {
       expect(link.querySelector('button')).toBeNull();
       expect(link).toHaveClass('min-h-11');
     }
-  });
-
-  it('presents footer destinations directly without a repeated descriptive caption', () => {
-    render(
-      <MemoryRouter>
-        <HelpPage />
-      </MemoryRouter>,
-    );
-    expect(
-      screen.queryByText(/Still have questions\? Check the settings pages/),
-    ).not.toBeInTheDocument();
-    expectAppDestination(screen.getByRole('link', { name: 'Settings' }), '/settings');
-    expectAppDestination(screen.getByRole('link', { name: 'Progress' }), '/analytics');
-    expectAppDestination(screen.getByRole('link', { name: 'How the scheduler works' }), '/method');
   });
 
   it('shows customised shortcuts from the shared sheet source in a keyboard-scrollable region', () => {

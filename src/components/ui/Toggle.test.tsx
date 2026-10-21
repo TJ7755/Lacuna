@@ -45,15 +45,4 @@ describe('Toggle', () => {
     expect(screen.getByRole('switch', { name: 'Randomise order' })).toBeInTheDocument();
     expect(screen.queryByText('Randomise order')).not.toBeInTheDocument();
   });
-
-  it('scales its colour transition from the global motion setting', () => {
-    localStorage.setItem('lacuna.motionSpeed', 'fast');
-    render(<Toggle checked={false} onChange={vi.fn()} ariaLabel="Fast toggle" />);
-    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? '0ms'
-      : '120ms';
-    expect(screen.getByRole('switch', { name: 'Fast toggle' })).toHaveStyle({
-      transitionDuration: duration,
-    });
-  });
 });

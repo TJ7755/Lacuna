@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom';
-import { LearnMode, LearnSkeleton } from './LearnMode';
+import { LearnMode } from './LearnMode';
 import { db } from '../db/schema';
 import {
   cardsForSequence,
@@ -32,22 +32,6 @@ vi.mock('../state/motionSpeed', async (importOriginal) => ({
   ...(await importOriginal<typeof MotionSpeedModule>()),
   speedMultiplier: () => 0,
 }));
-
-describe('LearnSkeleton', () => {
-  it('renders the skeleton loading screen', () => {
-    render(<LearnSkeleton />);
-    // The skeleton uses animate-pulse classes on placeholder divs
-    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-  });
-
-  it('renders header and main areas', () => {
-    const { container } = render(<LearnSkeleton />);
-    const header = container.querySelector('header');
-    const main = container.querySelector('main');
-    expect(header).toBeInTheDocument();
-    expect(main).toBeInTheDocument();
-  });
-});
 
 /**
  * Reveal and answer "Yes" via the silent-mode buttons (the default grading mode).

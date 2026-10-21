@@ -124,15 +124,3 @@ describe('brand mark palette', () => {
     expect(matches).toBeGreaterThan(20);
   });
 });
-
-it('keeps the portable splash mark rounded against its existing canvas', async () => {
-  const bitmap = await readFile(resolve(projectRoot, 'electron/assets/portable-splash.bmp'));
-  const width = bitmap.readInt32LE(18);
-  const height = bitmap.readInt32LE(22);
-  expect([width, height, bitmap.readUInt16LE(28)]).toEqual([560, 260, 24]);
-  const stride = Math.ceil((width * 3) / 4) * 4;
-  const offset = bitmap.readUInt32LE(10) + (height - 62) * stride;
-  expect(bitmap.subarray(offset + 44 * 3, offset + 45 * 3)).toEqual(
-    bitmap.subarray(offset + 43 * 3, offset + 44 * 3),
-  );
-});

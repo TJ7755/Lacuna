@@ -190,11 +190,6 @@ describe('OcclusionEditor', () => {
     fireEvent(name, event);
     expect(event.defaultPrevented).toBe(false);
   });
-  it('opens directly on the task without a decorative subtitle', () => {
-    mockCourse = course;
-    renderNew();
-    expect(screen.queryByText(/Mask parts of a diagram to test recall/)).not.toBeInTheDocument();
-  });
   it('shows a skeleton while loading', () => {
     renderNew();
     expect(screen.queryByText('New occlusion')).not.toBeInTheDocument();

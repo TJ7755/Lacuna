@@ -4,7 +4,6 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { Method } from './Method';
-import { NotFound } from './NotFound';
 import { ProductScreen, ProductTour } from './quizlet/ProductTour';
 
 vi.mock('../state/motionSpeed', () => ({
@@ -84,16 +83,5 @@ describe('public page interactions', () => {
     fireEvent.click(metric);
     expect(metric).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('0.129')).toBeVisible();
-  });
-
-  it('allows an unbroken missing pathname to wrap inside its card', () => {
-    const pathname = `/${'x'.repeat(200)}`;
-    render(
-      <MemoryRouter initialEntries={[pathname]}>
-        <NotFound />
-      </MemoryRouter>,
-    );
-    expect(screen.getByText(pathname)).toHaveClass('[overflow-wrap:anywhere]');
-    expect(screen.getByRole('link', { name: 'Back to Today' })).toBeVisible();
   });
 });

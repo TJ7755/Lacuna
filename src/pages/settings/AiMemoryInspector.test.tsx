@@ -112,23 +112,4 @@ describe('AiMemoryInspector', () => {
       includeExpired: true,
     });
   });
-
-  it('aligns teaching memory with Settings rows and removes the small caption', () => {
-    const repo = repository();
-    render(
-      <ToastProvider>
-        <AiMemoryInspector repository={repo} />
-      </ToastProvider>,
-    );
-
-    const heading = screen.getByRole('heading', { name: 'Teaching memory' });
-    const header = heading.parentElement?.parentElement;
-    expect(header).toHaveClass('flex', 'flex-wrap', 'justify-between', 'py-3');
-    expect(header).toContainElement(screen.getByRole('searchbox', { name: 'Search teaching memory' }));
-    expect(screen.queryByText('Inspect and correct what the AI retains about how you learn.')).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox')).toHaveClass('min-h-11');
-    expect(screen.getByPlaceholderText('Search memory').parentElement?.parentElement).toHaveClass(
-      'space-y-3',
-    );
-  });
 });

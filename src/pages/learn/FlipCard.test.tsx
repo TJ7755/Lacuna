@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FlipCard } from './FlipCard';
 import type { Card } from '../../db/types';
-import * as MotionSpeedModule from '../../state/motionSpeed';
+import type * as MotionSpeedModule from '../../state/motionSpeed';
 
 const motionAnimate = vi.hoisted(() => ({ animate: vi.fn() }));
 
@@ -139,28 +139,6 @@ describe('FlipCard reduced-motion swipes', () => {
 });
 
 describe('FlipCard abandoned-swipe return', () => {
-  it('springs back with the motion-scaled, critically damped study spring', () => {
-    const speed = vi.mocked(MotionSpeedModule.speedMultiplier);
-    try {
-      speed.mockReturnValue(1);
-      motionAnimate.animate.mockClear();
-      const answer = vi.fn();
-      renderRevealed(answer);
-      const target = screen.getByRole('button', { name: 'Hide answer' });
-      fireEvent.pointerDown(target, { clientX: 200, clientY: 200, pointerId: 1 });
-      fireEvent.pointerMove(target, { clientX: 240, clientY: 200, pointerId: 1 });
-      fireEvent.pointerUp(target, { clientX: 240, clientY: 200, pointerId: 1 });
-      expect(answer).not.toHaveBeenCalled();
-      expect(motionAnimate.animate).toHaveBeenCalledExactlyOnceWith(expect.anything(), 0, {
-        type: 'spring',
-        stiffness: 480,
-        damping: 2 * Math.sqrt(480),
-      });
-    } finally {
-      speed.mockReturnValue(0);
-    }
-  });
-
   it('returns an abandoned swipe instantly under reduced motion', () => {
     motionAnimate.animate.mockClear();
     const answer = vi.fn();

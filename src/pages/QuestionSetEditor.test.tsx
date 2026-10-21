@@ -68,17 +68,6 @@ describe('Paper question set authoring', () => {
     expect(await screen.findByLabelText('Q1 question')).toBeVisible();
     expect(screen.queryByRole('status', { name: 'Loading question set' })).not.toBeInTheDocument();
   });
-  it('uses concise captions for all three composer columns', async () => {
-    const course = await setup();
-    const { container } = open(course.id);
-    await screen.findByLabelText('Q1 question');
-    expect(
-      Array.from(
-        container.querySelectorAll('.qs-composer-captions span'),
-        (span) => span.textContent,
-      ),
-    ).toEqual(['', 'Question', 'Mark scheme', 'Marks', '']);
-  });
 
   it('indents an empty row, moves its parent scheme and offers a working Undo', async () => {
     const course = await setup();

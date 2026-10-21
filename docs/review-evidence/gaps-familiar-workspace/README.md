@@ -1,1 +1,0 @@
-Results and inline evidence use synthetic data from the real pupil-to-relay-to-teacher production browser flow at source head 2cd78211. Reduced motion and disabled screenshot animations record settled views; the flow verifies keyboard activation of a reported answer. The retained expanding-connection image is from the original redesign candidate.

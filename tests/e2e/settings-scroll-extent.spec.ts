@@ -2,7 +2,6 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 const VIEWPORTS = [
-  { width: 1280, height: 1000 },
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
 ];

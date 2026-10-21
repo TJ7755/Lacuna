@@ -1,0 +1,2 @@
+- Remove redundant rendering, animation-implementation and browser progress audits, and retire dated performance dumps and completed review captures to Git history.
+- Keep exact relay payload checks while using native byte comparison to avoid multi-second deep-matcher timeouts.

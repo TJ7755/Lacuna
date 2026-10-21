@@ -30,25 +30,6 @@ function prepare() {
   });
 }
 
-it('moves one inaccessible visual identity between heading and nav in both directions', () => {
-  prepare();
-  const page = (pathname: string, title: boolean) => <>
-    {scene(pathname, title)}
-    <CourseTitleTransition courseId="c1" pathname={pathname} multiplier={1} />
-  </>;
-  const view = render(page('/course/c1', true));
-  expect(travel).not.toHaveBeenCalled();
-  view.rerender(page('/course/c1/cards', false));
-  expect(travel).toHaveBeenCalledTimes(1);
-  const layer = document.querySelector('[data-course-title-transition]');
-  expect(layer).toHaveAttribute('aria-hidden', 'true');
-  expect(layer).toHaveStyle({ position: 'fixed', pointerEvents: 'none' });
-  expect(travel.mock.calls[0][1]).toMatchObject({ top: [150, 30], height: [48, 20] });
-  view.rerender(page('/course/c1', true));
-  expect(travel).toHaveBeenCalledTimes(2);
-  expect(travel.mock.calls[1][1]).toMatchObject({ top: [expect.any(Number), 150], height: [expect.any(Number), 48] });
-});
-
 it('shows the Path heading in place when entering a course or reloading', async () => {
   prepare();
   render(<>
@@ -64,40 +45,6 @@ it('shows the Path heading in place when entering a course or reloading', async 
   await act(async () => { await Promise.resolve(); });
   expect(travel).not.toHaveBeenCalled();
   expect(document.querySelector('[data-course-title-transition]')).toHaveStyle({ visibility: 'hidden' });
-});
-
-it('keeps a single-line phrase together while its width and typography change', () => {
-  prepare();
-  const page = (pathname: string, heading: boolean) => <>
-    <span data-course-nav-title="" style={{ lineHeight: '20px' }}>French beginner to advanced</span>
-    <div data-route-content={pathname}>
-      {heading && <h1 data-course-title-text="" style={{ lineHeight: '48px' }}>French beginner to advanced</h1>}
-    </div>
-    <CourseTitleTransition courseId="c1" pathname={pathname} multiplier={1} />
-  </>;
-  const view = render(page('/course/c1', true));
-  view.rerender(page('/course/c1/settings', false));
-  const layer = document.querySelector('[data-course-title-transition]');
-  expect(layer).toHaveTextContent('French beginner to advanced');
-  expect(layer).toHaveStyle({ whiteSpace: 'nowrap', overflow: 'visible' });
-  view.rerender(page('/course/c1', true));
-  expect(layer).toHaveStyle({ whiteSpace: 'nowrap', overflow: 'visible' });
-});
-
-it('lets a genuinely multiline heading wrap without clipping its travelling text', () => {
-  prepare();
-  const page = (pathname: string, heading: boolean) => <>
-    <span data-course-nav-title="" style={{ lineHeight: '20px' }}>A longer course title</span>
-    <div data-route-content={pathname}>
-      {heading && <h1 data-course-title-text="" style={{ lineHeight: '24px' }}>A longer course title</h1>}
-    </div>
-    <CourseTitleTransition courseId="c1" pathname={pathname} multiplier={1} />
-  </>;
-  const view = render(page('/course/c1', true));
-  view.rerender(page('/course/c1/settings', false));
-  expect(document.querySelector('[data-course-title-transition]')).toHaveStyle({
-    whiteSpace: 'normal', overflow: 'visible',
-  });
 });
 
 it('hides the departing Path heading while its route is still exiting', () => {

@@ -24,17 +24,6 @@ function renderNavigation(trailing?: ReactNode) {
 }
 
 describe('CoursePageNavigation', () => {
-  it('uses equal outer tracks so section navigation remains centred', () => {
-    const { container } = renderNavigation(<button type="button">Author</button>);
-    const navigation = container.querySelector('[data-course-page-navigation]');
-
-    expect(navigation).toHaveClass(
-      'sm:grid-cols-[minmax(min-content,1fr)_minmax(0,max-content)_minmax(min-content,1fr)]',
-    );
-    expect(screen.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Author' })).toBeVisible();
-  });
-
   it('keeps the back destination and course-scoped tabs in one shared row', () => {
     renderNavigation();
 

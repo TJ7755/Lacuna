@@ -147,7 +147,7 @@ review found a UTC-midnight reporting defect; the fix passed a follow-up review
 and the complete CI gate before activation. This is not a formal security audit.
 Production `lacuna` sets `VITE_GAPS_REPORTING_ENABLED=true`; production
 `lacuna-relay` sets `RELAY_INSIGHTS_ENABLED=1`. Desktop builds were not activated.
-The [activation record](review-evidence/gaps-trial-activation/README.md) identifies
+The [activation record](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/review-evidence/gaps-trial-activation/README.md) identifies
 the released source, deployments and live verification. Relay expiry cannot erase
 results already retained by a teacher.
 
