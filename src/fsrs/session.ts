@@ -6,6 +6,7 @@
 // and predicted recall stay derived from each unit's exam objective (see
 // objective.ts) and from the eligibility rules (see eligibility.ts).
 //
+// Equal scores use session-scoped random ranks when initial cards are captured.
 // Single unit: ordering is exactly the per-unit objective order (delegated to
 // cooldown.selectNextCard) so behaviour is unchanged. Multiple units: each card is
 // scored by its own unit's objective, those scores are normalised within the unit,
@@ -84,6 +85,8 @@ export interface SessionContext {
   decks: Map<string, SessionDeckContext>;
   /** Ordering mode for the session. Defaults to the unit objective. */
   mode: SessionMode;
+  /** Random ranks captured once; lookahead and repeated selection must not reshuffle ties. */
+  tieBreakRanks?: ReadonlyMap<string, number>;
   /** Captured work and review counts, used to respect intervals after an answer. */
   initialReviewCounts?: ReadonlyMap<string, number>;
 }
@@ -128,6 +131,12 @@ export function makeSessionContext(
   }
   const context: SessionContext = { decks: map, mode };
   if (initialCards) {
+    const ids = initialCards.map((card) => card.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    context.tieBreakRanks = new Map(ids.map((id, rank) => [id, rank]));
     context.initialReviewCounts = new Map(
       sessionServePool(initialCards, context).map((card) => [card.id, card.reps]),
     );
@@ -309,6 +318,8 @@ export function selectNext(
     ? unitServePool(cardsForUnit(cards, singleUnit), singleUnit.deck, ctx, now)
     : sessionServePoolFromIndex(index!, ctx, now);
   if (pool.length === 0) return null;
+  const tieBreak = (a: Card, b: Card) =>
+    (ctx.tieBreakRanks?.get(a.id) ?? 0) - (ctx.tieBreakRanks?.get(b.id) ?? 0);
 
   if (ctx.mode === 'cram') {
     // Exam-eve cram: weakest predicted exam-day card first, across every unit in
@@ -324,7 +335,9 @@ export function selectNext(
     }
     const ordered = pool
       .slice()
-      .sort((a, b) => (cramPriority.get(b.id) ?? 0) - (cramPriority.get(a.id) ?? 0));
+      .sort((a, b) =>
+        (cramPriority.get(b.id) ?? 0) - (cramPriority.get(a.id) ?? 0) || tieBreak(a, b),
+      );
     const ready = ordered.find((c) => (cooldowns.get(c.id) ?? 0) <= 0);
     if (ready) return ready;
     return ordered.reduce((best, c) =>
@@ -334,7 +347,7 @@ export function selectNext(
 
   if (ctx.decks.size === 1) {
     const only = singleUnit ?? (ctx.decks.values().next().value as SessionDeckContext);
-    return selectNextCard(pool, only.oc, cooldowns, now);
+    return selectNextCard(pool, only.oc, cooldowns, now, tieBreak);
   }
 
   // Multi-unit: normalise each unit's scores to 0..1 and weight by urgency so the
@@ -379,7 +392,9 @@ export function selectNext(
     priority.set(card.id, perUnitPriority.get(unitKey(dc.scope))?.get(card.id) ?? 0);
   }
 
-  const scored = pool.slice().sort((a, b) => (priority.get(b.id) ?? 0) - (priority.get(a.id) ?? 0));
+  const scored = pool.slice().sort((a, b) =>
+    (priority.get(b.id) ?? 0) - (priority.get(a.id) ?? 0) || tieBreak(a, b),
+  );
 
   const eligible = scored.find((c) => (cooldowns.get(c.id) ?? 0) <= 0);
   if (eligible) return eligible;

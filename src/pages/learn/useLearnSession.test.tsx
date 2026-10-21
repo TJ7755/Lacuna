@@ -811,3 +811,27 @@ it.each([true, false])(
     }
   },
 );
+
+
+it('breaks equal scheduler scores randomly when reviewing earlier material', async () => {
+  const course = await createCourse('Biology', { learnFirst: false });
+  const earlier = await createLesson(course.id, 'Earlier');
+  const current = await createLesson(course.id, 'Current');
+  await updateCourse(course.id, { studyStartLessonId: current.id });
+  await createLessonCard(course.id, earlier.id, 'front_back', 'One', 'Answer');
+  await createLessonCard(course.id, earlier.id, 'front_back', 'Two', 'Answer');
+  const stored = await db.cards.where('courseId').equals(course.id).toArray();
+  const params = sessionParams({ courseId: course.id, catchUpPractice: true });
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+  const { result, unmount } = renderHook(() => useLearnSession(params));
+  try {
+    await waitFor(() => expect(result.current.current).not.toBeNull());
+    expect(result.current.current?.id).toBe(stored[1].id);
+    const ctx = result.current.ctxRef.current!;
+    expect(selectNext(result.current.cardsRef.current, ctx, new Map())?.id).toBe(stored[1].id);
+    expect(await db.reviewHistory.count()).toBe(0);
+  } finally {
+    unmount();
+    random.mockRestore();
+  }
+});

@@ -22,13 +22,15 @@ function card(id: string, stability = 2): Card {
   };
 }
 
-it('keeps the complete scheduled order and scheduler state unchanged by lookahead', () => {
-  const cards = [card('a', 8), card('b', 1), card('c', 4), card('d', 2)];
+it.each([false, true])('keeps the complete order and scheduler state unchanged by lookahead (tied scores: %s)', (tied) => {
+  const cards = [card('a', tied ? 2 : 8), card('b', tied ? 2 : 1), card('c', tied ? 2 : 4), card('d', 2)];
   const unit = { config: { id: 'biology', examObjective: 'expectedMarks' as const,
     fsrsParameters: defaultFsrsParameters(), examDate: now + 30 * 86_400_000 },
     scope: { kind: 'course' as const, courseId: 'biology' } };
   function order(preload: boolean) {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
     const context = makeSessionContext([unit], 'due', cards);
+    random.mockRestore();
     const cooldowns = new Map([['a', 2]]);
     let pool = [...cards];
     const ids: string[] = [];
@@ -36,7 +38,7 @@ it('keeps the complete scheduled order and scheduler state unchanged by lookahea
     while ((current = selectNext(pool, context, cooldowns, now))) {
       ids.push(current.id);
       if (preload) {
-        const snapshot = () => JSON.stringify({ cards, decks: [...context.decks], counts: [...(context.initialReviewCounts ?? [])], cooldowns: [...cooldowns] });
+        const snapshot = () => JSON.stringify({ cards, decks: [...context.decks], counts: [...(context.initialReviewCounts ?? [])], ranks: [...(context.tieBreakRanks ?? [])], cooldowns: [...cooldowns] });
         const before = snapshot();
         const upcoming = sessionPreloadCards(pool, current.id, context, cooldowns, now);
         expect(upcoming).toHaveLength(Math.min(2, pool.length - 1));
