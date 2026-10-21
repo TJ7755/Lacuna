@@ -139,6 +139,15 @@ Consent and the Jev switch live only in device localStorage. The shared access c
 existing device key. None enters backups, course exports or sync. Stale consent means off;
 connecting a code requires the current consent and switch first. Disabling aborts requests.
 Failures and timeouts leave manual marking available and appear only through Jev status.
+One timeout leaves Jev ready; three consecutive timeouts or other request errors pause it.
+A disabled service pauses it immediately. Error and service-disabled
+pauses admit the next natural request after one minute, then five, then fifteen (capped at
+fifteen). A successful decision, including abstention, resets the failure streak and backoff.
+The input-token fuse admits requests again at the next UTC month boundary. Recovery uses no
+background timers or polling, and sends nothing during backoff. Access-code pauses require a
+successful code connection; offline recovery still follows the browser's online event.
+Submitted allocation lines encountered while paused or abandoned after a failure stay for
+self-marking in that page session; they are never queued for recovery.
 
 For typed equivalence, only the plain-text prompt, expected answer and normalised typed answer
 are sent. For written allocations, only the part prompt (including its ancestor prompts),

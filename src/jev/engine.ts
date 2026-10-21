@@ -75,6 +75,9 @@ export function createJevEngine(
   let status: JevStatus = { state: 'off' };
   let lastUsedAt: number | null = null;
   let pause: JevPauseReason | null = null;
+  let consecutiveFailures = 0;
+  let retryAt: number | null = null;
+  let backoffStep = 0;
   let generation = new AbortController();
   let session: { code: string; token: string; expiresAt: number } | null = null;
   let exchange: { code: string; promise: Promise<{ token: string; expiresAt: number }> } | null =
@@ -111,7 +114,7 @@ export function createJevEngine(
     settings.acceptedConsentVersion === JEV_CONSENT_VERSION &&
     !!readCode() &&
     globalThis.navigator?.onLine !== false &&
-    !pause;
+    (!pause || (retryAt !== null && Date.now() >= retryAt));
   const reason = (error: unknown): JevPauseReason =>
     error instanceof Pause
       ? error.reason
@@ -128,6 +131,27 @@ export function createJevEngine(
         : globalThis.navigator?.onLine === false
           ? 'offline'
           : 'error';
+  const failed = (failure: JevPauseReason) => {
+    if (pause === 'access-code-rejected') return;
+    consecutiveFailures++;
+    if (failure === 'error' && consecutiveFailures < 3) {
+      if (pause !== 'service-disabled') {
+        publish();
+        return;
+      }
+      failure = 'service-disabled';
+    }
+    pause = failure;
+    if (failure === 'error' || failure === 'service-disabled') {
+      retryAt = Date.now() + [60_000, 300_000, 900_000][Math.min(backoffStep, 2)];
+      backoffStep++;
+    } else if (failure === 'limit-reached') {
+      const now = new Date();
+      retryAt = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+    } else retryAt = null;
+    if (failure === 'access-code-rejected') session = null;
+    publish();
+  };
   async function token(signal: AbortSignal) {
     const code = readCode();
     if (session?.code === code && session.expiresAt > Date.now() + 5000) return session.token;
@@ -154,6 +178,10 @@ export function createJevEngine(
       publish();
       return null;
     }
+    if (pause === 'limit-reached') {
+      pause = null;
+      retryAt = null;
+    }
     const lifetime = generation.signal;
     const controller = new AbortController();
     const signals = [lifetime, ...(externalSignal ? [externalSignal] : [])];
@@ -170,17 +198,22 @@ export function createJevEngine(
       const result = await Promise.race([work(signal), aborted]);
       if (signal.aborted) {
         if (!externalSignal?.aborted && !lifetime.aborted) {
-          pause = 'error';
-          publish();
+          exchange = null;
+          failed('error');
         }
         return null;
       }
+      consecutiveFailures = 0;
+      backoffStep = 0;
+      if (pause === 'error' || pause === 'service-disabled') {
+        pause = null;
+        retryAt = null;
+      }
+      publish();
       return result;
     } catch (error) {
       if (!signal.aborted && !lifetime.aborted) {
-        pause = reason(error);
-        if (pause === 'access-code-rejected') session = null;
-        publish();
+        failed(reason(error));
       }
       return null;
     } finally {
@@ -318,13 +351,11 @@ export function createJevEngine(
   const controller = {
     enable(version: number) {
       if (version !== JEV_CONSENT_VERSION) return;
-      pause = null;
       settings = { enabled: true, acceptedConsentVersion: version };
       save();
     },
     disable() {
       stop();
-      pause = null;
       settings = { ...settings, enabled: false };
       save();
     },
@@ -340,12 +371,14 @@ export function createJevEngine(
         storage.setItem(HOSTED_ACCESS_STORAGE_KEY, code.trim());
         session = { ...result, code: code.trim() };
         pause = null;
+        retryAt = null;
+        backoffStep = 0;
+        consecutiveFailures = 0;
         publish();
         return { ok: true };
       } catch (error) {
         if (!signal.aborted) {
-          pause = reason(error);
-          publish();
+          failed(reason(error));
         }
         return {
           ok: false,
@@ -357,11 +390,16 @@ export function createJevEngine(
       }
     },
   };
-  const changed = () => {
+  const changed = (event: StorageEvent) => {
+    if (
+      event.key !== null &&
+      event.key !== JEV_SETTINGS_STORAGE_KEY &&
+      event.key !== HOSTED_ACCESS_STORAGE_KEY
+    )
+      return;
     settings = readSettings();
     stop();
     session = null;
-    pause = null;
     publish();
   };
   const online = () => {

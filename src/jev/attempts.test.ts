@@ -335,3 +335,70 @@ it('drains a new practice submission made while an earlier batch is in flight', 
   await markJevAttempt(attempt.id, engine);
   expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(4);
 });
+
+it('abandons submitted lines encountered during backoff instead of queueing them for recovery', async () => {
+  const { attempt } = await fixture();
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-10-21T10:00:00Z'));
+  try {
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    let failing = true;
+    const fetcher = vi.fn(async (url, init) =>
+      url.endsWith('/session')
+        ? Response.json({ token: 'session', expiresAt: Date.now() + 3_600_000 })
+        : failing
+          ? new Response('', { status: 503 })
+          : Response.json({
+              model: 'jev-1.14.0',
+              inputTokens: 20,
+              decisions: JSON.parse(init.body).allocations.map(() => ({
+                model: 'jev-1.14.0',
+                value: 1,
+                confidence: 0.98,
+              })),
+            }),
+    );
+    const engine = createJevEngine({
+      fetcher,
+      cache: { get: async () => undefined, put: async () => {} },
+    });
+    engine.enable(1);
+    await engine.markTyped({ cardId: 'c', prompt: 'Q', expected: 'A', answer: 'B' });
+    expect(engine.status()).toMatchObject({ state: 'paused', reason: 'service-disabled' });
+    const calls = fetcher.mock.calls.length;
+    await markJevAttempt(attempt.id, engine);
+    expect(fetcher).toHaveBeenCalledTimes(calls);
+    clock.mockReturnValue(Date.parse('2026-10-21T10:01:00Z'));
+    failing = false;
+    await engine.decideAllocations([
+      { prompt: 'Q', criterion: 'C', explanation: '', maxMarks: 1, answer: 'A' },
+    ]);
+    expect(engine.status().state).toBe('ready');
+    const recoveredCalls = fetcher.mock.calls.length;
+    await markJevAttempt(attempt.id, engine);
+    expect(fetcher).toHaveBeenCalledTimes(recoveredCalls);
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+it('leaves a timed-out attempt manual without pausing or queueing its lines', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(() => new Promise<Response>(() => {}));
+  const schedule = globalThis.setTimeout;
+  const timer = vi
+    .spyOn(globalThis, 'setTimeout')
+    .mockImplementation((callback, delay, ...args) =>
+      schedule(callback, delay === 30_000 ? 0 : delay, ...args),
+    );
+  try {
+    await markJevAttempt(attempt.id, engine);
+    expect(engine.status().state).toBe('ready');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+    const calls = fetcher.mock.calls.length;
+    await markJevAttempt(attempt.id, engine);
+    expect(fetcher).toHaveBeenCalledTimes(calls);
+  } finally {
+    timer.mockRestore();
+  }
+});
