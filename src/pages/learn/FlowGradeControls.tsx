@@ -1,5 +1,5 @@
-import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { m as motion } from 'motion/react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { motionTransition } from '../../components/ui/motion';
 
@@ -20,6 +20,77 @@ function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
     width: el.offsetWidth,
     height: el.offsetHeight,
   };
+}
+
+/** Keep the pill's round ends circular while its compositor layer changes width. */
+function FlowDrop({
+  target,
+  base,
+  question,
+  pending,
+  keeps,
+  negative,
+  spring,
+  scaleTransition,
+  m,
+}: {
+  target: Rect;
+  base: Rect;
+  question: boolean;
+  pending: boolean;
+  keeps: boolean;
+  negative: boolean;
+  spring: Transition;
+  scaleTransition: Transition;
+  m: number;
+}) {
+  const width = useMotionValue(target.width);
+  const height = useMotionValue(target.height);
+  const scaleX = useTransform(width, (value) => value / base.width);
+  const scaleY = useTransform(height, (value) => value / base.height);
+  const borderRadius = useTransform(
+    () => `${(height.get() * base.width) / (2 * width.get())}px / ${base.height / 2}px`,
+  );
+  useLayoutEffect(() => {
+    const horizontal = animate(width, target.width, spring);
+    const vertical = animate(height, target.height, spring);
+    return () => {
+      horizontal.stop();
+      vertical.stop();
+    };
+  }, [width, height, target.width, target.height, spring]);
+  return (
+    <motion.div
+      className="absolute"
+      style={{ width: base.width, height: base.height, scaleX, scaleY, originX: 0, originY: 0 }}
+      initial={false}
+      animate={{ x: target.left, y: target.top }}
+      transition={spring}
+    >
+      <motion.div
+        className="absolute inset-0"
+        initial={false}
+        animate={{
+          scaleY: question || pending ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
+        }}
+        transition={{ duration: 0.42 * m, times: [0, 0.35, 1], ease: 'easeOut' }}
+      >
+        <motion.div
+          data-flow-drop={keeps ? 'primary' : 'drain'}
+          className={
+            'absolute inset-0 transition-[filter,background-color] duration-300 ' +
+            (negative ? 'bg-negative' : 'bg-accent')
+          }
+          style={{ borderRadius }}
+          initial={false}
+          animate={{
+            scale: pending && m > 0 ? [1, 1.14, 1] : question || pending || keeps ? 1 : 0,
+          }}
+          transition={scaleTransition}
+        />
+      </motion.div>
+    </motion.div>
+  );
 }
 
 /**
@@ -54,14 +125,19 @@ function FlowGradeFill({
     width: reveal.height,
     height: reveal.height,
   };
-  const spring =
-    m === 0
-      ? { duration: 0 }
-      : question
-        ? { type: 'spring' as const, visualDuration: 0.42 * m, bounce: 0.32 }
-        : { type: 'spring' as const, visualDuration: 0.44 * m, bounce: 0.36 };
-  const drain =
-    m === 0 ? { duration: 0 } : { type: 'spring' as const, visualDuration: 0.26 * m, bounce: 0 };
+  const spring = useMemo<Transition>(
+    () =>
+      m === 0
+        ? { duration: 0 }
+        : question
+          ? { type: 'spring', visualDuration: 0.42 * m, bounce: 0.32 }
+          : { type: 'spring', visualDuration: 0.44 * m, bounce: 0.36 },
+    [m, question],
+  );
+  const drain = useMemo<Transition>(
+    () => (m === 0 ? { duration: 0 } : { type: 'spring', visualDuration: 0.26 * m, bounce: 0 }),
+    [m],
+  );
   // Outlined grades never hold fill: their share drains into the primary drop as the
   // pill splits, ending as a bead at its near end that it absorbs.
   const sink = {
@@ -111,45 +187,26 @@ function FlowGradeFill({
           const target = question ? reveal : pending ? bead : keeps ? slot : sink;
           const whole = question || pending || keeps;
           return (
-            <motion.div
+            <FlowDrop
               key={index}
-              className="absolute"
-              initial={false}
-              animate={{
-                left: target.left,
-                top: target.top,
-                width: target.width,
-                height: target.height,
-                // A pull thins the fill mid-move; a draining tail thins as it is drawn in.
-                scaleY: question || pending ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
-              }}
-              transition={{
-                default: whole ? spring : drain,
-                scaleY: { duration: 0.42 * m, times: [0, 0.35, 1], ease: 'easeOut' },
-              }}
-            >
-              <motion.div
-                data-flow-drop={keeps ? 'primary' : 'drain'}
-                className={
-                  'absolute inset-0 rounded-full transition-[filter,background-color] duration-300 ' +
-                  (negative ? 'bg-negative' : 'bg-accent')
-                }
-                initial={false}
-                animate={{
-                  // The bead breathes while it waits, so the wait reads as thought.
-                  scale: pending && m > 0 ? [1, 1.14, 1] : whole ? 1 : 0,
-                }}
-                transition={
-                  pending && m > 0
-                    ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
-                    : question || pending
-                      ? { duration: 0.08 * m }
-                      : keeps
-                        ? { duration: 0.18 * m }
-                        : { duration: 0.12 * m, delay: 0.2 * m, ease: 'easeIn' }
-                }
-              />
-            </motion.div>
+              target={target}
+              base={reveal}
+              question={question}
+              pending={pending}
+              keeps={keeps}
+              negative={negative}
+              spring={whole ? spring : drain}
+              m={m}
+              scaleTransition={
+                pending && m > 0
+                  ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
+                  : question || pending
+                    ? { duration: 0.08 * m }
+                    : keeps
+                      ? { duration: 0.18 * m }
+                      : { duration: 0.12 * m, delay: 0.2 * m, ease: 'easeIn' }
+              }
+            />
           );
         })}
         {bridge !== undefined && (

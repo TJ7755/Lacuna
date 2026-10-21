@@ -8,8 +8,8 @@ import { StudyCardTransition, type StudyCardTransitionHandle } from './StudyCard
 const flights = vi.hoisted(
   () =>
     [] as {
-      x: MotionValue<number>;
-      target: number;
+      node: HTMLElement;
+      target: string;
       finish: () => void;
       stop: ReturnType<typeof vi.fn>;
     }[],
@@ -33,13 +33,29 @@ vi.mock('motion/react', async (importOriginal) => {
   const motion = await importOriginal<typeof MotionReact>();
   return {
     ...motion,
-    animate: (x: MotionValue<number>, target: number | number[]) => {
+    animate: (
+      node: HTMLElement | MotionValue<number>,
+      target: number[] | { transform: string[] },
+    ) => {
       let finish!: () => void;
       const finished = new Promise<void>((resolve) => {
         finish = resolve;
       });
       const stop = vi.fn();
-      if (typeof target === 'number') flights.push({ x, target, finish, stop });
+      if (node instanceof HTMLElement && 'transform' in target) {
+        const endpoint = target.transform[1];
+        flights.push({
+          node,
+          target: endpoint,
+          finish: () => {
+            motion.frame.render(() => {
+              node.style.transform = endpoint;
+            });
+            finish();
+          },
+          stop,
+        });
+      }
       return Object.assign(finished, { stop });
     },
   };
@@ -78,10 +94,9 @@ describe('StudyCardTransition rendered departure', () => {
     'renders the final position before removal (late hand-off: %s)',
     async (late) => {
       const { view, card, flight } = setup();
-      const outgoing = view.getByText('one');
+      const outgoing = view.getByText('one').closest<HTMLElement>('[data-study-card-id]')!;
       if (!late) view.rerender(card('two'));
       await act(async () => {
-        flight.x.set(flight.target);
         flight.finish();
       });
       expect(outgoing).toBeInTheDocument();
@@ -97,7 +112,7 @@ describe('StudyCardTransition rendered departure', () => {
       renderFrame();
       expect(rendered).toBeDefined();
       expect(rendered!.connected).toBe(true);
-      expect(rendered!.transform).toContain(`translateX(${flight.target}px)`);
+      expect(rendered!.transform).toBe(flight.target);
       expect(outgoing).not.toBeInTheDocument();
       expect(view.getByText('two')).toBeInTheDocument();
       expect(flights).toHaveLength(1);
@@ -115,7 +130,6 @@ describe('StudyCardTransition rendered departure', () => {
     view.rerender(card('two'));
     if (completed)
       await act(async () => {
-        flight.x.set(flight.target);
         flight.finish();
       });
     act(() => {
