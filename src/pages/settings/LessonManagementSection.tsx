@@ -150,7 +150,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
             >
               {/* Let enlarged text use the full row before placing actions beneath it. */}
               <div className="grid grid-cols-2 items-center gap-2 px-1 py-0.5 @min-[18rem]:grid-cols-[auto_minmax(0,1fr)_auto]">
-                <div className="row-start-2 flex @min-[18rem]:row-start-1">
+                <div className="row-start-2 flex flex-col @min-[18rem]:row-start-1 @min-[18rem]:flex-row">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -198,7 +198,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                   </span>
                 )}
                 {canAuthor && (
-                  <div className="col-start-2 row-start-2 flex justify-self-end @min-[18rem]:col-start-3 @min-[18rem]:row-start-1">
+                  <div className="col-start-2 row-start-2 flex flex-col justify-self-end @min-[18rem]:col-start-3 @min-[18rem]:row-start-1 @min-[18rem]:flex-row">
                     <Button
                       variant="ghost"
                       size="sm"

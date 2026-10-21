@@ -73,7 +73,8 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
           </label>
           <p className="mt-1 text-sm text-ink-soft">
             Your prompts, answers, marks, criterion results and card recall are encrypted so only
-            your teacher can read them. They may be able to recognise you from this detail.
+            your teacher can read them. They may be able to recognise you from this detail. Reports
+            can include activity already recorded yesterday.
           </p>
           <p className="mt-1 text-sm text-ink-faint">
             {lastSent === null ? 'Nothing has been sent yet.' : `Last sent: ${lastSent}.`}
@@ -110,7 +111,7 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
       )}
       <InlineSettingsDisclosure
         className="mt-5 border-t border-line pt-4"
-        headerClassName="flex cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+        headerClassName="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
         header={<span className="text-sm font-medium text-ink">How sharing works</span>}
       >
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-soft">
