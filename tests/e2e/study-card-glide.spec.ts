@@ -214,3 +214,91 @@ test('first grade starts departing while write completion is delayed', async ({ 
   );
   expect(count).toBe(1);
 });
+
+test('profiles the Yes transition without changing its visuals', async ({ page }, testInfo) => {
+  await startStudy(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  const events: { name: string; dur?: number; ts: number; args?: unknown }[] = [];
+  cdp.on('Tracing.dataCollected', ({ value }) =>
+    events.push(...(value as unknown as typeof events)),
+  );
+  await cdp.send('Tracing.start', {
+    categories: 'devtools.timeline',
+    transferMode: 'ReportEvents',
+  });
+  const frames = await page.getByRole('button', { name: 'Yes', exact: true }).evaluate(
+    (button) =>
+      new Promise<{ times: number[]; nativeFlight: boolean }>((resolve) => {
+        const started = performance.now();
+        const times: number[] = [];
+        let nativeFlight = false;
+        (button as HTMLButtonElement).click();
+        const sample = () => {
+          times.push(performance.now() - started);
+          nativeFlight ||= document.getAnimations().some((animation) => {
+            const effect = animation.effect;
+            return (
+              effect instanceof KeyframeEffect &&
+              effect.target instanceof Element &&
+              effect.target.matches('[data-study-card-id]') &&
+              effect
+                .getKeyframes()
+                .some((keyframe) => String(keyframe.transform).includes('translateX'))
+            );
+          });
+          if (performance.now() - started < 900) requestAnimationFrame(sample);
+          else resolve({ times, nativeFlight });
+        };
+        requestAnimationFrame(sample);
+      }),
+  );
+  const complete = new Promise<void>((resolve) =>
+    cdp.once('Tracing.tracingComplete', () => resolve()),
+  );
+  await cdp.send('Tracing.end');
+  await complete;
+  const summary = Object.fromEntries(
+    ['Layout', 'Paint', 'UpdateLayoutTree', 'FireAnimationFrame'].map((name) => {
+      const matching = events.filter((event) => event.name === name);
+      return [
+        name,
+        {
+          count: matching.length,
+          ms: matching.reduce((sum, event) => sum + (event.dur ?? 0), 0) / 1000,
+        },
+      ];
+    }),
+  );
+  const gaps = frames.times.slice(1).map((time, i) => time - frames.times[i]);
+  await testInfo.attach('grade-timeline.json', {
+    body: JSON.stringify({ summary, frames, worstGap: Math.max(...gaps), events }),
+    contentType: 'application/json',
+  });
+  await page.screenshot({ path: testInfo.outputPath('after-yes.png') });
+  await cdp.detach();
+  expect(summary.Layout.count).toBeLessThan(20);
+  expect(frames.nativeFlight).toBe(true);
+});
+
+test('captures the liquid silhouette through a complete return', async ({ page }, testInfo) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await startStudy(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
+  const clip = (await page.locator('.study-controls').boundingBox())!;
+  await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
+  await page.locator('[data-study-face="back"]').evaluate((face) => {
+    face
+      .closest('[role="button"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+  let previous = 0;
+  for (const time of [0, 80, 160, 320, 640, 1000]) {
+    await page.clock.runFor(time - previous);
+    previous = time;
+    await page.screenshot({ clip, path: testInfo.outputPath(`liquid-${time}.png`) });
+  }
+});

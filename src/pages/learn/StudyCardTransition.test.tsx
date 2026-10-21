@@ -1,8 +1,18 @@
 import { createRef, StrictMode } from 'react';
 import { LazyMotion, domAnimation } from 'motion/react';
 import { act, render, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudyCardTransition, type StudyCardTransitionHandle } from './StudyCardTransition';
+
+beforeEach(() => {
+  const nativeAnimate = Element.prototype.animate;
+  vi.spyOn(Element.prototype, 'animate').mockImplementation(function (this: Element, ...args) {
+    const animation = nativeAnimate.apply(this, args);
+    void animation.finished.catch(() => {});
+    return animation;
+  });
+});
+afterEach(() => vi.restoreAllMocks());
 
 describe('StudyCardTransition', () => {
   it('makes the card readable after StrictMode replays its entrance effects', async () => {
@@ -15,7 +25,11 @@ describe('StudyCardTransition', () => {
         </LazyMotion>
       </StrictMode>,
     );
-    await waitFor(() => expect(view.getByText('Readable question')).toHaveStyle({ opacity: '1' }));
+    await waitFor(() =>
+      expect(view.getByText('Readable question').closest('[data-study-card-id]')).toHaveStyle({
+        opacity: '1',
+      }),
+    );
     view.unmount();
   });
 

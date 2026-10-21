@@ -137,6 +137,7 @@ const StudyCardPresentation = forwardRef<
   HTMLDivElement,
   { 'data-study-card-id': string; departure: Departure | null; m: number; children: ReactNode }
 >(function StudyCardPresentation({ departure, m, children, ...attributes }, ref) {
+  const node = useRef<HTMLDivElement>(null);
   const x = useMotionValue(0);
   const rotate = useTransform(x, (offset) => offset / 160);
   const opacity = useTransform(x, (offset) =>
@@ -149,10 +150,39 @@ const StudyCardPresentation = forwardRef<
     if (!departure) return;
     // Start on acceptance, not after the database has supplied the next card.
     // The same value already contains the drag offset, so release never changes owners.
-    const animation = animate(
-      x,
+    if (!node.current) return;
+    const from = x.get();
+    const transition = studyCardExitTransition(
+      m,
+      from,
       departure.x,
-      studyCardExitTransition(m, x.get(), departure.x, departure.velocity, departure.source),
+      departure.velocity,
+      departure.source,
+    );
+    const startOpacity = Math.max(0, 1 - (from / departure.x) ** 4);
+    const progress = transition.ease ?? ((value: number) => value);
+    // Animate the complete transform so the browser can composite the flight even
+    // while mounting the next card occupies the main thread.
+    const animation = animate(
+      node.current,
+      {
+        transform: [
+          `translateX(${from}px) rotate(${from / 160}deg)`,
+          `translateX(${departure.x}px) rotate(${departure.x / 160}deg)`,
+        ],
+        opacity: [startOpacity, 0],
+      },
+      {
+        transform: transition,
+        opacity: {
+          duration: transition.duration,
+          ease: (time: number) => {
+            const offset = from + (departure.x - from) * progress(time);
+            const remaining = Math.max(0, 1 - (offset / departure.x) ** 4);
+            return startOpacity === 0 ? 1 : 1 - remaining / startOpacity;
+          },
+        },
+      },
     );
     flight.current = animation;
     return () => animation.stop();
@@ -181,11 +211,12 @@ const StudyCardPresentation = forwardRef<
     <StudyCardMotionContext.Provider value={x}>
       <motion.div
         {...attributes}
-        ref={ref}
+        ref={(element) => {
+          node.current = element;
+          if (typeof ref === 'function') ref(element);
+          else if (ref) ref.current = element;
+        }}
         className="relative col-start-1 row-start-1 w-full self-center"
-        initial={{ y: 12, scale: 0.96 }}
-        animate={{ y: 0, scale: 1 }}
-        transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
         inert={departure !== null || !present}
         aria-hidden={departure !== null || !present || undefined}
         style={{
@@ -196,8 +227,14 @@ const StudyCardPresentation = forwardRef<
           pointerEvents: departure ? 'none' : undefined,
         }}
       >
-        {children}
-        {departure && <StudyGradeRim correct={departure.correct} m={m} />}
+        <motion.div
+          initial={{ y: 12, scale: 0.96 }}
+          animate={{ y: 0, scale: 1 }}
+          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+        >
+          {children}
+          {departure && <StudyGradeRim correct={departure.correct} m={m} />}
+        </motion.div>
       </motion.div>
     </StudyCardMotionContext.Provider>
   );
