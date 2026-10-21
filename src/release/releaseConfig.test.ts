@@ -421,7 +421,7 @@ describe('release configuration', () => {
     }
   });
 
-  it('requires Chromium shards, serial image and sidebar timing, and focused mobile WebKit smoke', () => {
+  it('requires Chromium shards, serial image, sidebar and study timing, and focused mobile WebKit smoke', () => {
     const tests = workflowJob(ciWorkflow, 'browser-tests');
     expect(tests).toContain('shard: [1, 2, 3, 4]');
     expect(tests).toContain('fail-fast: false');
@@ -438,7 +438,7 @@ describe('release configuration', () => {
     expect(timing).toContain("if: needs.changes.outputs.docs_only != 'true'");
     expect(timing).toContain('playwright install --with-deps chromium');
     expect(timing).toContain(
-      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --project=chromium-sidebar-motion --workers=1',
+      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --project=chromium-sidebar-motion --project=chromium-study-performance --workers=1',
     );
     expect(timing.match(/- run: .*playwright test /g)).toHaveLength(1);
     expect(timing).not.toContain('continue-on-error');
