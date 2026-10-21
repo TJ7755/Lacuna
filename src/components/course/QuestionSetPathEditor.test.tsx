@@ -117,7 +117,7 @@ describe('QuestionSetPathEditor', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Choose a question set' }));
     const search = await screen.findByRole('searchbox', { name: 'Search question sets' });
-    expect(search).toHaveFocus();
+    await waitFor(() => expect(search).toHaveFocus());
     fireEvent.change(search, { target: { value: 'describe a cell' } });
     const choice = await screen.findByRole('radio', { name: /Cell structure/ });
     expect(screen.getByText(/Question 1: Describe a cell/)).toBeInTheDocument();
