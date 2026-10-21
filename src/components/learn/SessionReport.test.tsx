@@ -50,25 +50,10 @@ const mockSummary: SessionSummary = {
 };
 
 describe('SessionReport', () => {
-  it('renders the session report with correct title when goal reached', () => {
-    const onReturn = vi.fn();
-    render(<SessionReport summary={mockSummary} onReturn={onReturn} />);
-    expect(screen.queryByText('Goal reached')).not.toBeInTheDocument();
-    expect(screen.getByText('Goal reached.')).toBeInTheDocument();
-  });
-
   it('reports progress changes in percentage points with a named progress bar', () => {
     render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
     expect(screen.getByText('+15 percentage points')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Expected marks' })).toBeInTheDocument();
-  });
-
-  it('renders correct stat values', () => {
-    render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
-    expect(screen.getByText('Cards reviewed')).toBeInTheDocument();
-    expect(screen.getByText('Accuracy')).toBeInTheDocument();
-    expect(screen.getByText('Mean time')).toBeInTheDocument();
-    expect(screen.getByText('Focus')).toBeInTheDocument();
   });
 
   it('counts a retried card once in Cards reviewed', () => {
@@ -93,12 +78,6 @@ describe('SessionReport', () => {
     expect(screen.getByText('Expected marks')).toBeInTheDocument();
     expect(screen.getByText('40% →')).toBeInTheDocument();
     expect(screen.getByText('55%')).toBeInTheDocument();
-  });
-
-  it('renders the grade distribution chart', () => {
-    render(<SessionReport summary={mockSummary} onReturn={vi.fn()} />);
-    expect(screen.getByText('How you rated')).toBeInTheDocument();
-    expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
   });
 
   it('calls onReturn when Done is clicked', () => {

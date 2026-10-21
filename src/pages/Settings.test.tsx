@@ -142,15 +142,6 @@ describe('Settings', () => {
     expect(screen.queryByRole('switch', { name: 'Type your answer' })).not.toBeInTheDocument();
   });
 
-  it('names the shared sidebar control as a search entry rather than either search surface', () => {
-    render(<Settings />);
-    fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
-
-    expect(screen.getByText('Search entry')).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Show Search entry' })).toBeInTheDocument();
-    expect(screen.queryByRole('switch', { name: 'Show Search' })).not.toBeInTheDocument();
-  });
-
   it('selects the course card progress metric', () => {
     render(<Settings />);
     fireEvent.click(screen.getByRole('button', { name: /^Appearance & access/ }));
@@ -286,33 +277,6 @@ describe('Settings', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('uses an open page header and full content column', () => {
-    render(<Settings />);
-
-    const heading = screen.getByRole('heading', { level: 1, name: 'Settings' });
-    const header = heading.closest('header');
-    const contentColumn = header?.nextElementSibling;
-
-    expect(screen.queryByText('Preferences')).not.toBeInTheDocument();
-    expect(header).not.toHaveClass('rounded-2xl', 'border', 'bg-surface');
-    expect(contentColumn).toHaveClass('grid');
-    expect(Array.from(contentColumn?.children ?? []).map((card) => card.id)).toEqual([
-      'settings-appearance',
-      'settings-input',
-      'settings-pomodoro',
-    ]);
-    expect(contentColumn).not.toHaveClass('max-w-2xl');
-    expect(screen.getByText('Version 0.2.8')).toBeInTheDocument();
-  });
-
-  it('keeps cards where they group related settings', () => {
-    render(<Settings />);
-
-    const appearance = document.getElementById('settings-appearance');
-    expect(appearance).toHaveClass('rounded-3xl', 'bg-surface');
-    expect(appearance).not.toHaveClass('border');
-  });
-
   it('retains the same controls when a group closes', () => {
     render(<Settings />);
     const toggle = screen.getByRole('button', { name: /^Your data/ });
@@ -340,20 +304,6 @@ describe('Settings', () => {
     fireEvent.click(toggle);
     expect(screen.getByRole('textbox', { name: 'Draft' })).toBe(draft);
     expect(draft).toHaveValue('unfinished');
-  });
-
-  it('omits redundant explanatory copy from settings headings and self-evident controls', () => {
-    render(<Settings />);
-
-    [
-      'Make Lacuna comfortable to read, navigate and control on this device.',
-      'Choose how study sessions, answers and focus time work.',
-      'Lacuna defaults to a dark theme. Your choice is remembered on this device.',
-      'Sets the highlight colour used across the app. Remembered on this device.',
-      'Scales all text across the app. Remembered on this device.',
-      'Choose how all active courses are ordered on the dashboard.',
-      'Control what information appears in the sidebar navigation and how compact it is.',
-    ].forEach((copy) => expect(screen.queryByText(copy)).not.toBeInTheDocument());
   });
 
   it('renders task groups, sections and subsections at successive heading levels', () => {

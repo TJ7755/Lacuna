@@ -1158,7 +1158,7 @@ removed during sanitisation and covers rendering, fallback source and theme upda
   step-completion actions are immediately available. Study overlays suppress underlying
   shortcuts, cancel pending grades and recover focus. The deliberate graded-card pause
   and existing flip/departure timing are preserved. See the
-  [desktop validation report](performance/2026-09-26/README.md) for evidence and hardware gaps.
+  [desktop validation report](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance/2026-09-26/README.md) for evidence and hardware gaps.
 
 - Study controls now fade out before the grading buttons lift in together, on desktop
   and touch layouts. This separates Show answer from Yes instead of overlapping them.
@@ -1380,7 +1380,7 @@ removed during sanitisation and covers rendering, fallback source and theme upda
 - Corrected Cards virtualisation for lesson lists below the viewport, retaining only
   boundary overscan rows instead of rendering a full viewport in every lesson.
   Study motion and pause timings are unchanged. See the
-  [Windows investigation](performance/2026-09-21/optimisation.md).
+  [Windows investigation](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance/2026-09-21/optimisation.md).
 
 - Extended the existing performance harness with optional per-operation traces,
   frame/input and transaction diagnostics; ignored stale frame timestamps after a
@@ -1391,7 +1391,7 @@ removed during sanitisation and covers rendering, fallback source and theme upda
 
 - Recorded a managed Windows laptop performance baseline, including installed desktop
   interaction timings, populated-app process samples and the existing heavy-data workload.
-  See [measurement methods and limits](performance/2026-09-21/README.md).
+  See [measurement methods and limits](https://github.com/TJ7755/Lacuna/blob/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance/2026-09-21/README.md).
 
 - Kept desktop AI connected when navigating between courses, Dashboard and Settings.
   Only navigation that replaces the main document invalidates its AI listener; hash

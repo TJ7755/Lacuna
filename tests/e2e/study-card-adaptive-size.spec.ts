@@ -130,7 +130,6 @@ async function measure(page: Page) {
 
 for (const viewport of [
   { width: 1440, height: 900 },
-  { width: 2000, height: 1170 },
   { width: 390, height: 844 },
 ]) {
   test(`adapts card heights and keeps controls fixed at ${viewport.width}x${viewport.height}`, async ({

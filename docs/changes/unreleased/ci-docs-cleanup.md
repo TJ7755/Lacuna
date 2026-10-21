@@ -1,0 +1,1 @@
+- Remove redundant rendering, animation-implementation and browser progress audits, and retire dated performance dumps and completed review captures to Git history.

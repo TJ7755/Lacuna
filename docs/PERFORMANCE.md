@@ -2,7 +2,7 @@
 
 The [audit script](../scripts/performance-audit.ts) owns asset budgets and measurement definitions;
 [package auditing](../scripts/electron-package-audit.ts) owns archive/payload limits. Read those
-sources rather than copying thresholds here. Historical results live under [performance/](performance/).
+sources rather than copying thresholds here. Historical results remain in [Git history](https://github.com/TJ7755/Lacuna/tree/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance).
 They describe their named candidate and environment, not a current capacity guarantee. The previous
 [historical audit narrative](https://github.com/TJ7755/Lacuna/blob/88561dc89556ebeb75de0e68075ad20afb830019/docs/PERFORMANCE.md)
 remains in Git; it is not a current priority list.

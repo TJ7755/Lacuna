@@ -57,9 +57,7 @@ earlier items, backward Tab and unavailable save targets retain native traversal
 saves the whole sequence and never inserts an item. Composition, including legacy key-code 229,
 must not trigger row shortcuts. Empty items are scaffolding omitted from preview/save; an all-empty
 outline still fails validation. Missing Name or script part focuses the relevant control. Multiline
-paste inserts at the selection, preserving surrounding items and parsing speakers. For #442 these
-contracts supersede historical empty-row invalidation and whole-outline replacement warnings;
-see the retained [acceptance evidence](../evidence/442-sequence-acceptance.md). The action bar keeps
+paste inserts at the selection, preserving surrounding items and parsing speakers. The action bar keeps
 shared page bounds at 320px with Larger text.
 
 ## Specification links

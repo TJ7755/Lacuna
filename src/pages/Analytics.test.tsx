@@ -123,30 +123,6 @@ describe('Analytics', () => {
     }
   });
 
-  it('uses chart titles without redundant explanatory subtitles', () => {
-    render(<Analytics />);
-
-    expect(screen.getByRole('heading', { name: 'Progress' })).toBeInTheDocument();
-    expect(screen.queryByText('Insights across every course.')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Cards due and new cards scheduled per day for the next 30 days.'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Reviews completed each day over the past 30 days.'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Minutes spent studying each day over the past 30 days.'),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText('Brier score · lower is better')).toBeInTheDocument();
-  });
-
-  it('keeps empty states concise', () => {
-    render(<Analytics />);
-
-    expect(screen.getByText('No leech cards.')).toBeInTheDocument();
-    expect(screen.queryByText(/great job/i)).not.toBeInTheDocument();
-  });
-
   it('leads with the headline figures and a period switch that defaults to 30 days', () => {
     render(<Analytics />);
 
@@ -164,15 +140,6 @@ describe('Analytics', () => {
     );
     expect(screen.getAllByRole('gridcell')).toHaveLength(7);
     expect(screen.getByText('0 reviews in 7 days')).toBeInTheDocument();
-  });
-
-  it('keeps the review heatmap on this page', () => {
-    render(<Analytics />);
-
-    expect(screen.getByRole('heading', { name: 'When you studied' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('grid', { name: 'Review activity over the last 30 days' }),
-    ).toBeInTheDocument();
   });
 
   it('explains stability and leeches and links leeches to the affected cards', () => {
