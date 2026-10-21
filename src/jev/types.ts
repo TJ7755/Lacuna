@@ -81,4 +81,3 @@ export interface JevController {
 
 /** Longest the study screen waits for a typed verdict before falling back to manual grading. */
 export const JEV_TYPED_TIMEOUT_MS = 2500;
-

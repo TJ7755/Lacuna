@@ -17,14 +17,30 @@ export default {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
     const limit = loadJevLimit(process.env.JEV_MONTHLY_INPUT_TOKEN_LIMIT);
-    if (process.env.JEV_SERVICE_DISABLED === '1' || !access || !key || !url || !token || limit === null)
+    if (
+      process.env.JEV_SERVICE_DISABLED === '1' ||
+      !access ||
+      !key ||
+      !url ||
+      !token ||
+      limit === null
+    )
       return error(503, 'Jev is unavailable.');
-    if (!verifySessionToken(request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '', access))
+    if (
+      !verifySessionToken(
+        request.headers.get('authorization')?.replace(/^Bearer /, '') ?? '',
+        access,
+      )
+    )
       return error(401, 'Access code is invalid or revoked.');
     const body = await readBoundedBody(request);
     if (body === null) return error(413, 'Jev request is too large.');
     let value: unknown;
-    try { value = JSON.parse(body); } catch { return error(400, 'Invalid request.'); }
+    try {
+      value = JSON.parse(body);
+    } catch {
+      return error(400, 'Invalid request.');
+    }
     const parsed = jevDecisionRequestSchema.safeParse(value);
     if (!parsed.success) return error(400, 'Invalid request.');
     try {
@@ -32,7 +48,11 @@ export default {
       if (!settle) return error(429, 'Jev input-token ceiling reached.');
       // Do not release on transport failure: the provider may already have charged for it.
       // Unsettled reservations remain charged against this month's fuse, never expiring mid-call.
-      const result = await callJevDecision(parsed.data, key, AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]));
+      const result = await callJevDecision(
+        parsed.data,
+        key,
+        AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
+      );
       await settle(result.inputTokens);
       return Response.json(result, { headers });
     } catch {

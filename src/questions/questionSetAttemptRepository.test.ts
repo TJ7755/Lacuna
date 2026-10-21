@@ -460,8 +460,16 @@ it('round-trips Jev provenance through the attempt codec, backup, import and syn
   const set = await setFixture();
   let attempt = await startQuestionSetAttempt(set.id, 'paper');
   attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
-  const markedBy = { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.96, markedAt: Date.now() };
-  attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, { ...attempt, decisions: [{ allocationId: 'a1', status: 'awarded', marks: 1, markedBy }] });
+  const markedBy = {
+    by: 'jev' as const,
+    model: 'jev-1.14.0',
+    confidence: 0.96,
+    markedAt: Date.now(),
+  };
+  attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+    ...attempt,
+    decisions: [{ allocationId: 'a1', status: 'awarded', marks: 1, markedBy }],
+  });
   expect(parseQuestionSetAttemptRecord(attempt).decisions[0]).toMatchObject({ markedBy });
   const backup = await exportDatabase();
   const { mergeSnapshots } = await import('../sync/mergeSnapshots');

@@ -26,7 +26,13 @@ const decision = z.discriminatedUnion('status', [
       markedBy: jevMarkProvenanceSchema.optional(),
     })
     .strict(),
-  z.object({ allocationId: z.string().min(1), status: z.literal('unsure'), markedBy: jevMarkProvenanceSchema.optional() }).strict(),
+  z
+    .object({
+      allocationId: z.string().min(1),
+      status: z.literal('unsure'),
+      markedBy: jevMarkProvenanceSchema.optional(),
+    })
+    .strict(),
 ]);
 const annotation = z
   .object({

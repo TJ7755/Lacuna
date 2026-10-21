@@ -56,6 +56,7 @@ describe('useLearnSession Undo presentation', () => {
       notify: vi.fn(),
       distraction,
     };
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const hook = renderHook(() => {
       const view = useLearnView(false, params.notify);
       const session = useLearnSession({ ...params, onCardServed: view.resetForCard });
@@ -64,20 +65,22 @@ describe('useLearnSession Undo presentation', () => {
     try {
       await waitFor(() => expect(hook.result.current.session.current).not.toBeNull());
       const answeredId = hook.result.current.session.current!.id;
-      const clock = vi.spyOn(performance, 'now');
-      clock.mockReturnValue(1000);
+      clock.mockReturnValue(3000);
       act(() => hook.result.current.session.reveal());
-      clock.mockReturnValue(6000);
-      const markedBy = { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.98, markedAt: Date.now() };
-      const revealedAt = performance.now();
+      clock.mockReturnValue(8000);
+      const markedBy = {
+        by: 'jev' as const,
+        model: 'jev-1.14.0',
+        confidence: 0.98,
+        markedAt: Date.now(),
+      };
       await act(async () => {
         await hook.result.current.session.answer(true, { markedBy });
       });
       await waitFor(() => expect(hook.result.current.session.current?.id).not.toBe(answeredId));
       const review = await db.reviewHistory.where('cardId').equals(answeredId).first();
       expect(review?.markedBy).toEqual(markedBy);
-      expect(review!.responseTimeSec).toBeLessThan((revealedAt - 1000) / 1000);
-      clock.mockRestore();
+      expect(review!.responseTimeSec).toBe(2);
       expect(hook.result.current.session.isTypingCard).toBe(true);
       act(() => {
         hook.result.current.view.setTypedAnswer('Answer for the next card');
@@ -94,6 +97,7 @@ describe('useLearnSession Undo presentation', () => {
       expect(hook.result.current.session.hintStep).toBe(0);
       expect(await db.reviewHistory.where('cardId').equals(answeredId).count()).toBe(0);
     } finally {
+      clock.mockRestore();
       hook.unmount();
     }
   });

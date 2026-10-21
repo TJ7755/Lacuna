@@ -2044,7 +2044,10 @@ export function useLearnSession({
   );
 
   const answer = useCallback(
-    async (input: AnswerInput, options?: { markedBy?: JevMarkProvenance }): Promise<AnswerResult> => {
+    async (
+      input: AnswerInput,
+      options?: { markedBy?: JevMarkProvenance },
+    ): Promise<AnswerResult> => {
       if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
