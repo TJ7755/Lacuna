@@ -5,7 +5,7 @@ import { enrolInClass } from '../../insights/enrolment';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
+  speedMultiplier: () => 0,
 }));
 
 const COURSE_ID = 'course-1';
@@ -79,6 +79,17 @@ describe('CourseInsightsSection', () => {
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
     );
     expect(screen.queryByText(/anonymous|nothing.*identifies you/i)).not.toBeInTheDocument();
+  });
+
+  it('warns about previously recorded activity before consent', () => {
+    joinClass();
+    renderSection();
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText(/activity already recorded yesterday/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'How sharing works' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 
   it('shows the recorded day once a completed send exists', () => {

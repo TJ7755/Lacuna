@@ -71,8 +71,13 @@ for (const width of [1440, 390]) {
     await expect(page).toHaveURL(/#\/course\/[^/]+$/);
     const courseUrl = page.url();
     await page.goto(`${courseUrl}/settings`);
+    const sharing = page.getByRole('button', { name: 'How sharing works' });
+    await expect(sharing).toBeVisible();
+    expect((await sharing.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await expect(page.getByText(/activity already recorded yesterday/)).toBeVisible();
+    await expect(sharing).toHaveAttribute('aria-expanded', 'false');
     await page.getByRole('button', { name: /^Lessons/ }).click();
-    const picker = page.getByRole('combobox', { name: 'Start Study from' });
+    const picker = page.getByRole('combobox', { name: 'Start study from' });
     await picker.selectOption({ label: 'Year two' });
     await expect(picker).toBeEnabled();
     await expect(picker).toHaveValue('year-2');
@@ -83,7 +88,7 @@ for (const width of [1440, 390]) {
     });
     await page.reload();
     await page.getByRole('button', { name: /^Lessons/ }).click();
-    await expect(page.getByRole('combobox', { name: 'Start Study from' })).toHaveValue('year-2');
+    await expect(page.getByRole('combobox', { name: 'Start study from' })).toHaveValue('year-2');
     await page.goto(courseUrl);
     await expect(page.getByRole('button', { name: 'Year one', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Year two', exact: true })).toBeEnabled();

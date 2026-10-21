@@ -30,24 +30,25 @@ export function CourseSettingsDisclosure({
           aria-expanded={open}
           aria-controls={id}
           onClick={() => setOpen(!open)}
-          className="flex min-h-11 w-full scale-100! items-center gap-4 rounded-2xl px-2 py-5 text-left transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]"
+          className="flex min-h-11 w-full scale-100! items-center gap-4 rounded-2xl px-[25px] py-5 text-left md:px-[29px] transition-colors hover:bg-ink/[0.03] active:bg-ink/[0.06]"
         >
           <span className="min-w-0 flex-1 font-semibold text-ink">{title}</span>
           <span className="hidden max-w-[55%] text-right text-sm font-normal text-ink-faint sm:block">
             {summary}
           </span>
+          {/* The chevron path has 4.5px of air each side; the margin puts its tip on the content edge. */}
           <motion.span
             aria-hidden="true"
             animate={{ rotate: open ? 180 : 0 }}
             transition={motionTransition('feedback', multiplier)}
-            className="shrink-0 text-ink-faint"
+            className="-mr-[4.5px] shrink-0 text-ink-faint"
           >
             <ChevronDownIcon width={18} height={18} />
           </motion.span>
         </button>
       </h2>
       <div id={id}>
-        <AnimatedDisclosure open={open} innerClassName="pb-6 pl-5 pr-2 pt-2 sm:pl-6">
+        <AnimatedDisclosure open={open} innerClassName="px-[25px] pb-6 pt-2 md:px-[29px]">
           {children}
         </AnimatedDisclosure>
       </div>

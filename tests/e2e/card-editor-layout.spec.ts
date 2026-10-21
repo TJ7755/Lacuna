@@ -134,7 +134,8 @@ for (const { width, scale, mode } of scenarios) {
       return {
         width: canvas.measureText((element as HTMLSelectElement).selectedOptions[0].text).width,
         available:
-          element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 24,
+          // Select padding already reserves the custom chevron.
+          element.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
       };
     });
     expect(selectedText.width).toBeLessThanOrEqual(selectedText.available);

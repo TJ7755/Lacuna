@@ -35,11 +35,12 @@ export function InlineSettingsDisclosure({
         className={`w-full scale-100! text-left ${headerClassName}`}
       >
         {header}
+        {/* The chevron path has 4.5px of air each side; the margin puts its tip on the content edge. */}
         <motion.span
           aria-hidden="true"
           animate={{ rotate: open ? 180 : 0 }}
           transition={motionTransition('feedback', multiplier)}
-          className="mt-0.5 shrink-0 text-ink-faint"
+          className="mt-0.5 -mr-[4.5px] shrink-0 text-ink-faint"
         >
           <ChevronDownIcon width={18} height={18} />
         </motion.span>

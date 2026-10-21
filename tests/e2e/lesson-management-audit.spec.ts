@@ -39,12 +39,32 @@ for (const width of [390, 1440]) {
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - innerWidth),
     ).toBeLessThanOrEqual(1);
-    const lessonName = page.locator('main span').getByText('Core concepts & rendering', { exact: true });
+    const lessonName = page
+      .locator('main span')
+      .getByText('Core concepts & rendering', { exact: true });
     const nameBox = await lessonName.boundingBox();
     expect(
       nameBox!.width,
       'The lesson name must retain visible space beside its actions',
     ).toBeGreaterThanOrEqual(44);
+
+    const rowActions = page.getByRole('button', {
+      name: /^(Move Core concepts & rendering (up|down)|Rename Core concepts & rendering|Delete Core concepts & rendering)$/,
+    });
+    const boxes = await rowActions.evaluateAll((buttons) =>
+      buttons.map((button) => button.getBoundingClientRect().toJSON()),
+    );
+    expect(boxes).toHaveLength(4);
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i],
+          b = boxes[j];
+        expect(
+          a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top,
+          'Lesson action targets must not overlap',
+        ).toBe(true);
+      }
+    }
 
     const rename = page.getByRole('button', {
       name: 'Rename Core concepts & rendering',

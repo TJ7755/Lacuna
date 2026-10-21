@@ -1,13 +1,14 @@
-import { fieldLabelClassName } from '../../components/ui/Field';
+import { useId } from 'react';
 import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import type { UnlockMode } from '../../db/types';
+import { SegmentedPills } from '../../components/ui/SegmentedPills';
 import { NumberField } from './NumberField';
 
-const MODES: { value: UnlockMode; label: string; description: string }[] = [
+const MODES: readonly { value: UnlockMode; label: string; description: string }[] = [
   {
     value: 'open',
     label: 'Open',
-    description: 'Every lesson is unlocked from the start; students can work ahead freely.',
+    description: 'Every lesson is unlocked from the start, so you can work ahead freely.',
   },
   {
     value: 'semi-linear',
@@ -18,10 +19,12 @@ const MODES: { value: UnlockMode; label: string; description: string }[] = [
     value: 'linear',
     label: 'Linear',
     description:
-      'Lessons unlock on a cadence of dates. Enforced by the student’s own device clock, ' +
-      'not a server, so treat it as an honour system rather than a hard lock.',
+      'Lessons unlock on a schedule of dates. This uses your device clock, so treat it as an ' +
+      'honour system rather than a hard lock.',
   },
 ];
+
+const OPTIONS = MODES.map(({ value, label }) => ({ value, label }));
 
 export interface UnlockModeSectionProps {
   unlockMode: UnlockMode;
@@ -35,8 +38,8 @@ export interface UnlockModeSectionProps {
 }
 
 /**
- * Course-only unlock-mode picker: `open` | `semi-linear` | `linear`, with the
- * anchor-date/interval cadence inputs shown only under `linear`. Pure controlled
+ * Course-only unlock-mode picker: `open` | `semi-linear` | `linear`. Only the selected mode is
+ * described, and the anchor-date/interval cadence inputs appear only under `linear`. Pure controlled
  * component — all state lives with the caller, which also owns the instant-commit
  * mechanics (see the prop docs above).
  */
@@ -48,31 +51,26 @@ export function UnlockModeSection({
   onIntervalDaysCommit,
   timeZone,
 }: UnlockModeSectionProps) {
+  const descriptionId = useId();
+  const selected = MODES.find((mode) => mode.value === unlockMode) ?? MODES[0];
   return (
-    <fieldset className="block text-sm text-ink-soft">
-      <legend className={`mb-2 ${fieldLabelClassName}`}>Lesson unlocking</legend>
-      <div className="flex flex-col">
-        {MODES.map((mode) => (
-          <label key={mode.value} className="flex min-h-11 cursor-pointer items-start gap-2 py-1.5">
-            {/* A plain input: the text-field primitive made each radio a full-width box. */}
-            <input
-              type="radio"
-              name="unlockMode"
-              value={mode.value}
-              checked={unlockMode === mode.value}
-              onChange={() => onUnlockModeChange(mode.value)}
-              className="mt-0.5 h-4 w-4 shrink-0 accent-accent"
-            />
-            <span>
-              <span className="block text-sm text-ink">{mode.label}</span>
-              <span className="block text-xs text-ink-faint">{mode.description}</span>
-            </span>
-          </label>
-        ))}
-      </div>
+    <div>
+      <h3 className="font-semibold text-ink">Lesson unlocking</h3>
+      <SegmentedPills
+        label="Lesson unlocking"
+        size="sm"
+        value={unlockMode}
+        options={OPTIONS}
+        onChange={onUnlockModeChange}
+        describedBy={descriptionId}
+        className="mt-3 w-fit max-w-full"
+      />
+      <p id={descriptionId} className="mt-2 text-sm text-ink-soft">
+        {selected.description}
+      </p>
 
       {unlockMode === 'linear' && (
-        <div className="mt-4 flex flex-col gap-3 border-t border-line pt-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <DateTimePicker
             value={linearCadence.anchorDate}
             onChange={onAnchorDateChange}
@@ -85,14 +83,11 @@ export function UnlockModeSection({
             min={1}
             onCommit={onIntervalDaysCommit}
             hint={
-              <>
-                Each lesson unlocks this many days after the previous one, starting from the date
-                above. Overriding one lesson&apos;s date on its own page cascades to the rest.
-              </>
+              <>Overriding one lesson&apos;s date on its own page moves the later lessons too.</>
             }
           />
         </div>
       )}
-    </fieldset>
+    </div>
   );
 }
