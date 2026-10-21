@@ -35,6 +35,23 @@
    sidebar fits without scrolling. Touch screens keep full-size targets. */
 @custom-variant short (@media (max-height: 760px) and (pointer: fine));
 
+/* Every Select draws the app's line chevron (ChevronDownIcon) inset by the same padding as
+   its text, instead of the platform arrow pressed against the border. The native intrinsic
+   width (the widest option) is kept, so an unsized select does not resize with its value. */
+.lacuna-select {
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b4833' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  /* 11px, not the 14px text padding: the chevron path has 4px of air on each side. */
+  background-position: right 11px center;
+  background-size: 1rem;
+}
+
+.dark .lacuna-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cfd6c4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* Native keyboard handling and top-layer placement, with Lacuna's colours.
    Browsers without customisable selects retain their platform picker. */
 @supports (appearance: base-select) {
@@ -76,8 +93,25 @@
     outline-offset: -2px;
   }
 
+  .simple-learn-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-inline-end: 11px;
+    background-image: none;
+  }
+
+  .dark .simple-learn-select {
+    background-image: none;
+  }
+
   .simple-learn-select::picker-icon {
-    color: hsl(var(--ink-soft));
+    content: '';
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin-inline-start: auto;
+    background-color: hsl(var(--ink-soft));
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
   }
 }
 

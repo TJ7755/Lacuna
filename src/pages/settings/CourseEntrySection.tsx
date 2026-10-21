@@ -29,7 +29,7 @@ export function CourseEntrySection({ courseId }: { courseId: string }) {
   }
 
   return (
-    <div className="grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-start">
+    <div className="grid gap-x-8 gap-y-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,18rem)] sm:items-center">
       <div className="min-w-0">
         <h3>
           <label htmlFor={pickerId} className="font-semibold text-ink">

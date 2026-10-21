@@ -148,62 +148,63 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
               layout={multiplier > 0 ? 'position' : undefined}
               transition={{ duration: 0.2 * multiplier, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 py-0.5 pl-1 pr-2">
-                <div className="flex min-w-0 flex-[1_1_12rem] flex-wrap items-center gap-2">
-                  <div className="flex shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      onClick={() => void move(index, -1)}
-                      disabled={!canMove || saving || index === 0}
-                      aria-label={`Move ${lesson.name} up`}
-                      className="min-w-11 px-0"
-                    >
-                      <ChevronDownIcon width={14} height={14} className="rotate-180" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      type="button"
-                      onClick={() => void move(index, 1)}
-                      disabled={!canMove || saving || index === lessons.length - 1}
-                      aria-label={`Move ${lesson.name} down`}
-                      className="min-w-11 px-0"
-                    >
-                      <ChevronDownIcon width={14} height={14} />
-                    </Button>
-                  </div>
-                  {canAuthor && editingId === lesson.id ? (
-                    <input
-                      autoFocus
-                      aria-label="Lesson name"
-                      value={nameDraft}
-                      onFocus={(e) => e.currentTarget.select()}
-                      onChange={(e) => setNameDraft(e.target.value)}
-                      onBlur={() => void commitRename()}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void commitRename();
-                        if (e.key === 'Escape') setEditingId(null);
-                      }}
-                      className={`min-h-11 min-w-0 flex-[1_1_8rem] ${inputFrameClassName} text-sm`}
-                    />
-                  ) : (
-                    <span className="min-w-0 flex-[1_1_8rem] truncate text-sm text-ink">
-                      {lesson.name}
-                      {lesson.isExtension && (
-                        <span className="ml-2 text-xs text-ink-faint">(extension)</span>
-                      )}
-                    </span>
-                  )}
+              {/* One line at every width: a long name wraps in its own column between the controls. */}
+              <div className="flex items-center gap-2 px-1 py-0.5">
+                <div className="flex shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => void move(index, -1)}
+                    disabled={!canMove || saving || index === 0}
+                    aria-label={`Move ${lesson.name} up`}
+                    className="min-w-11 px-0"
+                  >
+                    <ChevronDownIcon width={16} height={16} className="rotate-180" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => void move(index, 1)}
+                    disabled={!canMove || saving || index === lessons.length - 1}
+                    aria-label={`Move ${lesson.name} down`}
+                    className="min-w-11 px-0"
+                  >
+                    <ChevronDownIcon width={16} height={16} />
+                  </Button>
                 </div>
+                {canAuthor && editingId === lesson.id ? (
+                  <input
+                    autoFocus
+                    aria-label="Lesson name"
+                    value={nameDraft}
+                    onFocus={(e) => e.currentTarget.select()}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    onBlur={() => void commitRename()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void commitRename();
+                      if (e.key === 'Escape') setEditingId(null);
+                    }}
+                    className={`min-h-11 min-w-0 flex-1 ${inputFrameClassName} text-sm`}
+                  />
+                ) : (
+                  // Inset by the rename field's border and padding so the name does not shift when editing.
+                  <span className="min-w-0 flex-1 py-2 pl-[15.5px] text-sm text-ink [overflow-wrap:anywhere]">
+                    {lesson.name}
+                    {lesson.isExtension && (
+                      <span className="ml-2 text-xs text-ink-faint">(extension)</span>
+                    )}
+                  </span>
+                )}
                 {canAuthor && (
-                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => startEdit(lesson.id, lesson.name)}
                       aria-label={`Rename ${lesson.name}`}
+                      className="min-w-11 px-0"
                     >
                       <EditIcon width={16} height={16} />
                     </Button>
@@ -216,6 +217,7 @@ export function LessonManagementSection({ courseId }: LessonManagementSectionPro
                       size="sm"
                       onClick={() => setConfirmDeleteId(lesson.id)}
                       aria-label={`Delete ${lesson.name}`}
+                      className="min-w-11 px-0"
                     >
                       <TrashIcon width={16} height={16} />
                     </Button>

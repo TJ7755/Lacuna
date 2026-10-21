@@ -16,7 +16,7 @@ export function CourseSettingsArchive({ course }: { course: Course }) {
 
   return (
     <>
-      <SectionCard className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <SectionCard className="mb-5 flex md:p-7 flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="font-semibold text-ink">Archive course</h2>
           <p className="mt-1 text-sm text-ink-soft">
