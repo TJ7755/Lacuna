@@ -1,5 +1,5 @@
 import { useId, type ReactNode } from 'react';
-import { LayoutGroup, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { scaledSpring } from '../ui/motion';
 
@@ -38,46 +38,44 @@ export function QuestionSetChoices({
       aria-describedby={describedBy}
     >
       <legend className={flow ? 'sr-only' : undefined}>{label}</legend>
-      <LayoutGroup id={name}>
-        <div>
-          {options.map((option) => {
-            const checked = value === option.value;
-            const accent = Boolean(accentValues?.(option.value));
-            return (
-              <label key={option.value} data-accent={(checked && accent) || undefined}>
-                <input
-                  type="radio"
-                  name={name}
-                  value={option.value}
-                  checked={checked}
-                  onChange={() => onChange(option.value)}
-                />
-                {flow && checked && (
+      <div>
+        {options.map((option) => {
+          const checked = value === option.value;
+          const accent = Boolean(accentValues?.(option.value));
+          return (
+            <label key={option.value} data-accent={(checked && accent) || undefined}>
+              <input
+                type="radio"
+                name={name}
+                value={option.value}
+                checked={checked}
+                onChange={() => onChange(option.value)}
+              />
+              {flow && checked && (
+                <motion.span
+                  aria-hidden="true"
+                  data-choice-drop={accent ? 'accent' : 'neutral'}
+                  layoutId={multiplier > 0 ? `${name}-drop` : undefined}
+                  layoutDependency={value}
+                  transition={scaledSpring(multiplier, 380, 30)}
+                  style={{ borderRadius: 9999 }}
+                >
                   <motion.span
-                    aria-hidden="true"
-                    data-choice-drop={accent ? 'accent' : 'neutral'}
-                    layoutId={multiplier > 0 ? 'drop' : undefined}
-                    layoutDependency={value}
-                    transition={scaledSpring(multiplier, 380, 30)}
+                    initial={multiplier > 0 ? { scaleX: 1.08, scaleY: 0.86 } : false}
+                    animate={{ scaleX: 1, scaleY: 1 }}
+                    transition={scaledSpring(multiplier, 320, 14)}
                     style={{ borderRadius: 9999 }}
-                  >
-                    <motion.span
-                      initial={multiplier > 0 ? { scaleX: 1.08, scaleY: 0.86 } : false}
-                      animate={{ scaleX: 1, scaleY: 1 }}
-                      transition={scaledSpring(multiplier, 320, 14)}
-                      style={{ borderRadius: 9999 }}
-                    />
-                  </motion.span>
-                )}
-                <span>
-                  {option.label}
-                  {option.description}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </LayoutGroup>
+                  />
+                </motion.span>
+              )}
+              <span>
+                {option.label}
+                {option.description}
+              </span>
+            </label>
+          );
+        })}
+      </div>
     </fieldset>
   );
 }

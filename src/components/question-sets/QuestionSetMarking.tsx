@@ -184,7 +184,7 @@ export function QuestionSetMarking({
                       value={note ?? ''}
                       onChange={(event) => {
                         setNote(event.target.value);
-                        onDraftChange(true);
+                        onDraftChange(Boolean(event.target.value.trim()) || correction !== savedCorrection);
                       }}
                     />
                   </label>

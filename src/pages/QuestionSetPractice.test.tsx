@@ -371,6 +371,13 @@ describe('QuestionSetPractice', () => {
     const addNote = screen.getByRole('button', { name: 'Add note' });
     addNote.focus();
     fireEvent.click(addNote);
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: 'Temporary note' } });
+    expect(screen.getByRole('button', { name: 'Finish attempt' })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Note'), { target: { value: '   ' } });
+    fireEvent.keyDown(screen.getByLabelText('Note'), { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Add note' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Finish attempt' })).not.toBeDisabled();
+    fireEvent.click(addNote);
     const note = screen.getByLabelText('Note');
     fireEvent.change(note, { target: { value: 'Unfinished note' } });
     fireEvent.keyDown(note, { key: 'Enter', ctrlKey: true });
