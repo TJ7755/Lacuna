@@ -114,7 +114,7 @@ export function useTypedAutoMark({
       if (
         target instanceof Element &&
         target.closest(
-          'input, textarea, select, [contenteditable="true"], [role="dialog"], [role="menu"]',
+          'input, textarea, select, button, a, [role="button"], [contenteditable]:not([contenteditable="false"]), [role="dialog"], [role="menu"]',
         )
       )
         return;

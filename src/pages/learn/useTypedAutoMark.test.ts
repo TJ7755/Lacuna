@@ -163,6 +163,22 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).toHaveBeenCalledOnce();
   });
 
+  it.each(['button', 'a'])('keeps Space available to activate a focused %s', (tag) => {
+    jev.marker = vi.fn();
+    setup('Paris');
+    const control = document.createElement(tag);
+    document.body.append(control);
+    const event = new KeyboardEvent('keydown', {
+      code: 'Space',
+      key: ' ',
+      bubbles: true,
+      cancelable: true,
+    });
+    control.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+    control.remove();
+  });
+
   it('leaves an answer restored by Undo for manual grading without another verdict', () => {
     jev.marker = vi.fn();
     const { result, onMarked } = setup('Paris', { manual: true });
