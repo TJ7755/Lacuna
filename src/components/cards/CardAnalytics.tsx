@@ -111,7 +111,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
 
   const axisProps = {
     stroke: c.inkFaint,
-    tick: { fill: c.inkFaint, fontSize: 11 },
+    tick: { fill: c.inkFaint, fontSize: 12 },
     tickLine: false,
   };
 
@@ -248,7 +248,7 @@ export function CardAnalytics({ card, schedulingConfig, motionMultiplier }: Card
                       style={{ backgroundColor: gradeColours[g] }}
                     />
                   </div>
-                  <div className="text-[11px] text-ink-faint">{gradeLabels[g]}</div>
+                  <div className="text-xs text-ink-faint">{gradeLabels[g]}</div>
                 </div>
               );
             })}

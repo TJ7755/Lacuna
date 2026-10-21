@@ -662,7 +662,7 @@ export function UnifiedImportPanel({
                       type="button"
                       onClick={() => setFormatOverride(formatOverride === f ? null : f)}
                       className={cn(
-                        'hit-target rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-all',
+                        'hit-target rounded-full px-2.5 py-0.5 text-xs font-medium transition-all',
                         formatOverride === f
                           ? 'border border-accent/40 bg-accent-soft text-accent-ink'
                           : 'border border-transparent bg-ink/5 text-ink-faint hover:bg-ink/10',
@@ -744,7 +744,7 @@ export function UnifiedImportPanel({
                             <span className="min-w-0 truncate text-ink-faint">— {c.back}</span>
                           )}
                           {c.tags && c.tags.length > 0 && (
-                            <span className="shrink-0 text-[10px] text-ink-faint">
+                            <span className="shrink-0 text-xs text-ink-faint">
                               [{c.tags.join(', ')}]
                             </span>
                           )}

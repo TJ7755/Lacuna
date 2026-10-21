@@ -171,7 +171,7 @@ export function SessionReport({
                       <YAxis
                         allowDecimals={false}
                         stroke={c.inkFaint}
-                        tick={{ fill: c.inkFaint, fontSize: 11 }}
+                        tick={{ fill: c.inkFaint, fontSize: 12 }}
                         tickLine={false}
                         width={32}
                       />

@@ -50,7 +50,7 @@ export function CourseSectionBar() {
                 // Styling and aria-current both come from the one match above, so the two can
                 // never disagree about which section is current.
                 className={cn(
-                  'group flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition-colors',
+                  'group flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-0.5 px-1 text-xs font-semibold transition-colors',
                   isActive ? 'text-accent-ink' : 'text-ink-faint active:text-ink',
                 )}
               >

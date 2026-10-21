@@ -62,7 +62,7 @@ export function SyncStatus() {
       to="/settings"
       aria-label={accessibleLabel}
       title={accessibleLabel}
-      className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full text-xs ${tone}`}
+      className={`inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full text-sm ${tone}`}
     >
       <span
         className={`h-2 w-2 shrink-0 rounded-full ${needsAttention ? 'bg-current' : 'bg-positive'}`}

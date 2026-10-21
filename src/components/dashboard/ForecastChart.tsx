@@ -387,7 +387,7 @@ export function ForecastChart({
             .join('. ')}
         </desc>
         <g
-          className="fill-ink-faint text-[12px] tabular-nums"
+          className="fill-ink-faint text-[13px] tabular-nums"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           {ticks.map((tick) => {
@@ -419,9 +419,9 @@ export function ForecastChart({
         </g>
         <text
           x={0}
-          y={12}
+          y={14}
           aria-hidden="true"
-          className="fill-ink-soft text-[12px]"
+          className="fill-ink-soft text-sm"
           style={{ fontFamily: 'var(--font-body)' }}
         >
           Predicted exam-day recall (%)
@@ -433,7 +433,7 @@ export function ForecastChart({
             y={(plotTop + plotBottom) / 2}
             textAnchor="middle"
             dominantBaseline="central"
-            className="fill-ink-soft text-[13px]"
+            className="fill-ink-soft text-sm"
             style={{ fontFamily: 'var(--font-body)' }}
           >
             {plotNote}

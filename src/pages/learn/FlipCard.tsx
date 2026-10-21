@@ -336,7 +336,7 @@ export function FlipCard({
               >
                 <div className="flex flex-col items-center gap-1 rounded-r-lg bg-negative/10 px-2 py-3">
                   <CloseIcon width={16} height={16} className="text-negative" />
-                  <span className="text-[10px] text-negative">Swipe left</span>
+                  <span className="text-xs text-negative">Swipe left</span>
                 </div>
               </motion.div>
               <motion.div
@@ -349,7 +349,7 @@ export function FlipCard({
               >
                 <div className="flex flex-col items-center gap-1 rounded-l-lg bg-positive/10 px-2 py-3">
                   <CheckIcon width={16} height={16} className="text-positive" />
-                  <span className="text-[10px] text-positive">Swipe right</span>
+                  <span className="text-xs text-positive">Swipe right</span>
                 </div>
               </motion.div>
             </>

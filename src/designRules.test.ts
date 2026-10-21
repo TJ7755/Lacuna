@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest';
 
 const SRC = join(process.cwd(), 'src');
 
-function sourceFiles(dir: string): string[] {
+function sourceFiles(dir: string, extensions = /\.(tsx|css)$/): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return /\.(tsx|css)$/.test(entry.name) && !/\.test\./.test(entry.name) ? [path] : [];
+    if (entry.isDirectory()) return sourceFiles(path, extensions);
+    return extensions.test(entry.name) && !/\.test\./.test(entry.name) ? [path] : [];
   });
 }
 
@@ -59,6 +59,29 @@ describe('design rules', () => {
       .filter((path) => /\bfont-brand\b/.test(readFileSync(path, 'utf8')))
       .map((path) => relative(SRC, path))
       .filter((path) => !allowed.has(path));
+    expect(offenders).toEqual([]);
+  });
+
+  // 12px is the floor for any text, including chart ticks and keyboard hints: smaller sizes
+  // were accumulating one label at a time. The comparison page's scaled diagrams are exempt.
+  it('sets no text below 12px', () => {
+    const tooSmall = (size: string, unit: string) =>
+      Number(size) < (unit === 'rem' ? 0.75 : 12);
+    const sizes = [
+      /\btext-\[(\d*\.?\d+)(px|rem)\]/g,
+      /font-size:\s*(\d*\.?\d+)(px|rem)/g,
+      /\bfontSize[=:]\s*\{?['"]?(\d*\.?\d+)()/g,
+    ];
+    const offenders = sourceFiles(SRC, /\.(tsx?|css)$/)
+      .filter((path) => !relative(SRC, path).startsWith(join('pages', 'quizlet')))
+      .flatMap((path) => {
+        const source = readFileSync(path, 'utf8');
+        return sizes.flatMap((pattern) =>
+          [...source.matchAll(pattern)]
+            .filter(([, size, unit]) => tooSmall(size, unit))
+            .map(([match]) => `${relative(SRC, path)}: ${match}`),
+        );
+      });
     expect(offenders).toEqual([]);
   });
 

@@ -115,7 +115,7 @@ export function AiComposer({
           aria-label="Message actions"
           className="flex items-center justify-between gap-2 border-t border-line px-2 py-1"
         >
-          <span className="px-1 text-[10px] text-ink-faint">Shift+Enter for a new line</span>
+          <span className="px-1 text-xs text-ink-faint">Shift+Enter for a new line</span>
           <Button
             size="sm"
             variant="primary"

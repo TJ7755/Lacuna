@@ -5,8 +5,9 @@
 Extend these sources instead of copying palettes, fonts or component measurements into docs.
 
 The intended character is quiet paper-and-ink study: one clear task, readable content, restrained
-supporting text and deliberate feedback. Keep original authoring and repeat-entry workflows fluent.
-Reducing visible chrome does not justify hiding validation, unfinished work or available actions.
+supporting text and deliberate feedback. Restraint comes from colour and weight, not size: reading
+text stays at 14px or above, and no text, including chart ticks and hints, goes below 12px.
+Keep original authoring and repeat-entry workflows fluent.Reducing visible chrome does not justify hiding validation, unfinished work or available actions.
 
 Motion communicates continuity between a trigger and its expanded surface. It must preserve
 readable text, immediate input and the selected focus target. Retargeting or reopening a retained

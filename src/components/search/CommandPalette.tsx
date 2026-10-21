@@ -315,7 +315,7 @@ function CommandPaletteDialog({
                 className="flex-1 bg-transparent text-sm text-ink outline-none focus-visible:shadow-none placeholder:text-ink-faint"
               />
               {showHints && (
-                <kbd className="rounded border border-line px-1.5 py-0.5 text-[10px] text-ink-faint">
+                <kbd className="rounded border border-line px-1.5 py-0.5 text-xs text-ink-faint">
                   Esc
                 </kbd>
               )}
@@ -403,7 +403,7 @@ function CommandPaletteDialog({
 
             {/* Footer shortcuts */}
             {showHints && (
-              <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-[10px] text-ink-faint">
+              <div className="flex items-center gap-3 border-t border-line bg-surface-raised/30 px-4 py-2 text-xs text-ink-faint">
                 <span className="flex items-center gap-1">
                   <kbd className="rounded border border-line px-1 py-0.5">↑</kbd>
                   <kbd className="rounded border border-line px-1 py-0.5">↓</kbd>

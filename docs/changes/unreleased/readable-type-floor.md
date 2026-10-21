@@ -1,0 +1,1 @@
+- Raise small text to a 12px floor across the app, with larger forecast-chart labels, weekday letters and sync status on Today.

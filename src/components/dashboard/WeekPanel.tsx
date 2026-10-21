@@ -77,7 +77,7 @@ export function WeekPanel({
                     delay: (0.5 + index * 0.06) * multiplier,
                   }}
                 />
-                <span className="text-[11px] leading-none text-ink-faint">{DAY_LETTERS[index]}</span>
+                <span className="text-xs leading-none text-ink-faint">{DAY_LETTERS[index]}</span>
               </span>
             );
           })}
