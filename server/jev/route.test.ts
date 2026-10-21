@@ -3,6 +3,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { exchangeCredential, loadAccessConfiguration } from '../ai/access';
 import route from '../../api/ai/jev';
 
+const background = vi.hoisted(() => ({ tasks: [] as Promise<unknown>[] }));
+vi.mock('@vercel/functions', () => ({
+  waitUntil: (task: Promise<unknown>) => {
+    background.tasks.push(task);
+  },
+}));
+
 const credential = 'a'.repeat(40);
 function configured() {
   vi.stubEnv(
@@ -35,7 +42,8 @@ function request(
     body: JSON.stringify(body),
   });
 }
-afterEach(() => {
+afterEach(async () => {
+  await Promise.all(background.tasks.splice(0));
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
@@ -122,22 +130,20 @@ it('caps structured fields and rejects free-form instructions, future purposes a
 });
 it('reserves and settles usage once for a batch of parallel marking questions', async () => {
   configured();
-  const fetcher = vi
-    .fn()
-    .mockImplementation(async (url, init) =>
-      url === 'https://redis.example'
-        ? Response.json({ result: 1 })
-        : Response.json({
-            model: 'jev-1.14.0',
-            answers: Object.fromEntries(
-              Object.keys(JSON.parse(init.body).questions).map((key) => [
-                key,
-                { type: 'noul', noul: 0.99 },
-              ]),
-            ),
-            usage: { input_tokens: 150, output_tokens: 12 },
-          }),
-    );
+  const fetcher = vi.fn().mockImplementation(async (url, init) =>
+    url === 'https://redis.example'
+      ? Response.json({ result: 1 })
+      : Response.json({
+          model: 'jev-1.14.0',
+          answers: Object.fromEntries(
+            Object.keys(JSON.parse(init.body).questions).map((key) => [
+              key,
+              { type: 'noul', noul: 0.99 },
+            ]),
+          ),
+          usage: { input_tokens: 150, output_tokens: 12 },
+        }),
+  );
   vi.stubGlobal('fetch', fetcher);
   const allocation = {
     prompt: 'Q',
@@ -163,4 +169,97 @@ it('reserves and settles usage once for a batch of parallel marking questions', 
     .map(([, init]) => JSON.parse(init.body));
   expect(commands).toHaveLength(2);
   expect(commands[1]).toContain(150);
+});
+
+it('returns a validated verdict while settlement is still pending', async () => {
+  configured();
+  let release!: (response: Response) => void;
+  let settling = false;
+  const fetcher = vi.fn(async (url, init) => {
+    if (url !== 'https://redis.example')
+      return Response.json({
+        model: 'jev-1.14.0',
+        answers: { decision: { type: 'noul', noul: 0.98 } },
+        usage: { input_tokens: 123, output_tokens: 12 },
+      });
+    if (JSON.parse(init.body)[2] === 4) return Response.json({ result: 1 });
+    settling = true;
+    return new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const pending = route.fetch(request());
+  await vi.waitFor(() => expect(settling).toBe(true));
+  try {
+    const response = await Promise.race([
+      pending,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 0)),
+    ]);
+    expect(response?.status).toBe(200);
+    expect(background.tasks).toHaveLength(1);
+    expect(await response!.json()).toMatchObject({ value: 1, inputTokens: 123 });
+  } finally {
+    release(Response.json({ result: 1 }));
+    await pending;
+  }
+});
+it('keeps the verdict successful if deferred settlement fails without releasing the reservation', async () => {
+  configured();
+  const fetcher = vi.fn(async (url, init) => {
+    if (url !== 'https://redis.example')
+      return Response.json({
+        model: 'jev-1.14.0',
+        answers: { decision: { type: 'noul', noul: 0.98 } },
+        usage: { input_tokens: 123, output_tokens: 12 },
+      });
+    if (JSON.parse(init.body)[2] === 4) return Response.json({ result: 1 });
+    throw new Error('Settlement unavailable');
+  });
+  vi.stubGlobal('fetch', fetcher);
+  const response = await route.fetch(request());
+  expect(response.status).toBe(200);
+  expect(background.tasks).toHaveLength(1);
+  await Promise.all(background.tasks);
+  expect(fetcher.mock.calls.filter(([url]) => url === 'https://redis.example')).toHaveLength(2);
+});
+
+it('reports reserve, TypeSafe and total durations without secrets or content', async () => {
+  configured();
+  let clock = 100;
+  const timing = vi.spyOn(performance, 'now').mockImplementation(() => clock);
+  const fetcher = vi.fn(async (url) => {
+    if (url === 'https://redis.example') {
+      clock += 20;
+      return Response.json({ result: 1 });
+    }
+    clock += 190;
+    return Response.json({
+      model: 'jev-1.14.0',
+      answers: { decision: { type: 'noul', noul: 0.98 } },
+      usage: { input_tokens: 123, output_tokens: 12 },
+    });
+  });
+  vi.stubGlobal('fetch', fetcher);
+  try {
+    const response = await route.fetch(request());
+    expect(response.headers.get('Server-Timing')).toBe(
+      'reserve;dur=20.0, typesafe;dur=190.0, total;dur=210.0',
+    );
+    expect(response.headers.get('Timing-Allow-Origin')).toBeNull();
+    expect(fetcher.mock.calls.filter(([url]) => url === 'https://redis.example')).toHaveLength(2);
+  } finally {
+    timing.mockRestore();
+  }
+});
+it('reports elapsed timing for refused reservations without calling TypeSafe', async () => {
+  configured();
+  const fetcher = vi.fn().mockResolvedValue(Response.json({ result: 0 }));
+  vi.stubGlobal('fetch', fetcher);
+  const response = await route.fetch(request());
+  expect(response.status).toBe(429);
+  expect(response.headers.get('Server-Timing')).toMatch(
+    /^reserve;dur=\d+\.\d, typesafe;dur=0\.0, total;dur=\d+\.\d$/,
+  );
+  expect(fetcher).toHaveBeenCalledTimes(1);
 });

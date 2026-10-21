@@ -1,0 +1,1 @@
+- Return automatic marking verdicts before usage settlement and expose server timing for latency measurement. (#715)

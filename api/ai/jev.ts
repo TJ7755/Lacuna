@@ -6,11 +6,29 @@ import { jevMarkRequestSchema } from '../../src/jev/protocol.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
+    const started = performance.now();
+    const timings = { reserve: 0, typesafe: 0 };
+    const measure = async <T>(part: keyof typeof timings, work: () => Promise<T>): Promise<T> => {
+      const start = performance.now();
+      try {
+        return await work();
+      } finally {
+        timings[part] = performance.now() - start;
+      }
+    };
+    const finish = (response: Response) => {
+      response.headers.set(
+        'Server-Timing',
+        `reserve;dur=${timings.reserve.toFixed(1)}, typesafe;dur=${timings.typesafe.toFixed(1)}, total;dur=${(performance.now() - started).toFixed(1)}`,
+      );
+      return response;
+    };
     const origin = allowedOrigin(request);
-    if (origin === false) return new Response('Origin is not allowed.', { status: 403 });
-    const headers = aiHeaders(origin);
-    const error = (status: number, message: string) => new Response(message, { status, headers });
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+    const headers = aiHeaders(origin === false ? null : origin);
+    const error = (status: number, message: string) =>
+      finish(new Response(message, { status, headers }));
+    if (origin === false) return error(403, 'Origin is not allowed.');
+    if (request.method === 'OPTIONS') return finish(new Response(null, { status: 204, headers }));
     if (request.method !== 'POST') return error(405, 'Method not allowed.');
     const access = loadAccessConfiguration(process.env);
     const key = process.env.TYPESAFE_API_KEY?.trim();
@@ -44,19 +62,23 @@ export default {
     const parsed = jevMarkRequestSchema.safeParse(value);
     if (!parsed.success) return error(400, 'Invalid request.');
     try {
-      const settle = await createJevUsageStore(url, token).reserve(limit);
+      const settle = await measure('reserve', () => createJevUsageStore(url, token).reserve(limit));
       if (!settle) return error(429, 'Jev input-token ceiling reached.');
       // Do not release on transport failure: the provider may already have charged for it.
       // Unsettled reservations remain charged against this month's fuse, never expiring mid-call.
       const signal = AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]);
-      const result =
+      const result = await measure('typesafe', async () =>
         'allocations' in parsed.data
           ? await callJevAllocationBatch(parsed.data, key, signal)
-          : await callJevDecision(parsed.data, key, signal);
-      await settle(result.inputTokens);
-      return Response.json(result, { headers });
+          : await callJevDecision(parsed.data, key, signal),
+      );
+      const response = finish(Response.json(result, { headers }));
+      // Failed settlement retains the conservative reservation; never delay a valid verdict for it.
+      waitUntil(settle(result.inputTokens).catch(() => {}));
+      return response;
     } catch {
       return error(503, 'Jev is unavailable.');
     }
   },
 };
+import { waitUntil } from '@vercel/functions';

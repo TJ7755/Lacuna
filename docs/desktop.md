@@ -134,6 +134,9 @@ input tokens per UTC day and month. Admission reserves the full 65,536-token con
 calling TypeSafe, then settles to reported usage. Concurrent reservations count against the
 fuse; near the limit a request may be refused early. Transport failures retain their reservation
 because the provider may already have charged. Counters and reservations have month-specific keys.
+Settlement runs after the response through Vercel's `waitUntil`; a failed settlement leaves the
+reservation counted. `Server-Timing` reports reservation, TypeSafe and total handler durations
+in milliseconds, excluding settlement and platform startup. It contains no prompts or credentials.
 
 Consent and the Jev switch live only in device localStorage. The shared access code uses the
 existing device key. None enters backups, course exports or sync. Stale consent means off;
