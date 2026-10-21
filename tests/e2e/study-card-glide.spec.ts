@@ -273,15 +273,32 @@ test('profiles the Yes transition without changing its visuals', async ({ page }
     }),
   );
   const gaps = frames.times.slice(1).map((time, i) => time - frames.times[i]);
-  console.log(
-    JSON.stringify({ summary, frames: frames.times.length, worstGap: Math.max(...gaps) }),
-  );
   await testInfo.attach('grade-timeline.json', {
-    body: JSON.stringify({ summary, frames, events }),
+    body: JSON.stringify({ summary, frames, worstGap: Math.max(...gaps), events }),
     contentType: 'application/json',
   });
   await page.screenshot({ path: testInfo.outputPath('after-yes.png') });
   await cdp.detach();
   expect(summary.Layout.count).toBeLessThan(20);
   expect(frames.nativeFlight).toBe(true);
+});
+
+test('captures the liquid silhouette through a complete return', async ({ page }, testInfo) => {
+  await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
+  await startStudy(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForTimeout(800);
+  const clip = (await page.locator('.study-controls').boundingBox())!;
+  await page.clock.pauseAt(new Date('2026-01-01T00:01:00Z'));
+  await page.locator('[data-study-face="back"]').evaluate((face) => {
+    face
+      .closest('[role="button"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
+  let previous = 0;
+  for (const time of [0, 80, 160, 320, 640, 1000]) {
+    await page.clock.runFor(time - previous);
+    previous = time;
+    await page.screenshot({ clip, path: testInfo.outputPath(`liquid-${time}.png`) });
+  }
 });

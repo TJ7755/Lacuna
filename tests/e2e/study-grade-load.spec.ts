@@ -50,28 +50,29 @@ for (const firstLesson of [false, true]) {
     await page.waitForTimeout(800);
     await cdp.send('Profiler.enable');
     await cdp.send('Profiler.start');
-    const elapsed = await page
-      .getByRole('button', { name: firstLesson ? 'Easy' : 'Easy', exact: true })
-      .evaluate(
-        (button) =>
-          new Promise<number>((resolve) => {
-            const started = performance.now();
-            (button as HTMLButtonElement).click();
-            function sample() {
-              if (document.querySelector('[data-study-face="front"]'))
-                resolve(performance.now() - started);
-              else if (performance.now() - started > 10_000) resolve(performance.now() - started);
-              else requestAnimationFrame(sample);
-            }
-            requestAnimationFrame(sample);
-          }),
-      );
+    const elapsed = await page.getByRole('button', { name: 'Easy', exact: true }).evaluate(
+      (button) =>
+        new Promise<number>((resolve) => {
+          const started = performance.now();
+          (button as HTMLButtonElement).click();
+          function sample() {
+            if (document.querySelector('[data-study-face="front"]'))
+              resolve(performance.now() - started);
+            else if (performance.now() - started > 10_000) resolve(performance.now() - started);
+            else requestAnimationFrame(sample);
+          }
+          requestAnimationFrame(sample);
+        }),
+    );
     const { profile } = await cdp.send('Profiler.stop');
     await testInfo.attach('grade.cpuprofile', {
       body: JSON.stringify(profile),
       contentType: 'application/json',
     });
-    console.log(JSON.stringify({ elapsed }));
+    await testInfo.attach('grade-time.json', {
+      body: JSON.stringify({ elapsed }),
+      contentType: 'application/json',
+    });
     await cdp.detach();
     expect(elapsed).toBeLessThan(330);
   });
