@@ -141,8 +141,9 @@ Usage is recorded after the response with Vercel's `waitUntil`, in the existing 
 month token/call counters. Known usage updates the local total even if Redis fails. Failed
 provider calls increment calls with zero known input tokens; unreported usage is unknown.
 There are no reservations. Old reservation keys are ignored; no Redis migration is required.
-`Server-Timing` reports TypeSafe and total handler durations in milliseconds. It excludes
-background Redis work and platform startup and contains no prompts or credentials.
+`Server-Timing` reports TypeSafe and total handler durations in milliseconds. It does not wait for
+background Redis work; platform startup is outside these measurements. It contains no prompts
+or credentials.
 
 Consent and the Jev switch live only in device localStorage. The shared access code uses the
 existing device key. None enters backups, course exports or sync. Stale consent means off;
@@ -162,7 +163,14 @@ Submitted allocation lines encountered while paused or abandoned after a failure
 self-marking in that page session; they are never queued for recovery.
 
 For typed equivalence, only the plain-text prompt, expected answer and normalised typed answer
-are sent. For written allocations, only the part prompt (including its ancestor prompts),
+are sent. One TypeSafe request asks the equivalence noul (the sole grading decision), a
+six-way answer-kind choice, and independent coverage nouls for 2–8 expected-answer parts.
+Kind is unknown below 0.7 confidence; coverage is true at 0.8 or above, false at 0.2 or below,
+and otherwise unknown. Successful uncertain verdicts still return feedback for manual marking.
+The shared splitter returns offsets into the original expected answer, preserving grouped
+maths and splitting list punctuation, bullets and the final item's conjunction. Feedback and
+its thresholds/version enter device cache keys; feedback never enters review provenance.
+For written allocations, only the part prompt (including its ancestor prompts),
 criterion, optional explanation, maximum marks and submitted written answer are sent.
 Uncached independent allocations are submitted together: TypeSafe receives one shared state
 with each distinct part prompt and answer once, and parallel noul/score questions whose

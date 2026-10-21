@@ -5,6 +5,7 @@ import {
 } from '../ai/session/hostedTransport';
 import { HOSTED_SERVICE_ORIGIN } from '../config/origins';
 import { decisionHash, jevDecisionCache, type JevDecisionCache } from './cache';
+import { splitJevExpectedAnswer } from './answerParts';
 import {
   jevDecisionRequestSchema,
   jevDecisionResultSchema,
@@ -233,6 +234,19 @@ export function createJevEngine(
     }
   }
   function checked(request: JevDecisionRequest, result: JevDecisionResult): JevDecisionResult {
+    if (request.purpose === 'typed-equivalence' && result.feedback) {
+      const split = splitJevExpectedAnswer(request.expected);
+      const parts = split.length >= 2 && split.length <= 8 ? split : [];
+      if (
+        parts.length !== result.feedback.parts.length ||
+        parts.some(
+          (part, index) =>
+            part.start !== result.feedback!.parts[index].start ||
+            part.end !== result.feedback!.parts[index].end,
+        )
+      )
+        throw new Pause('error');
+    }
     const maximum = request.purpose === 'typed-equivalence' ? 1 : request.maxMarks;
     const threshold =
       request.purpose === 'mark-allocation'
@@ -360,9 +374,13 @@ export function createJevEngine(
             confidence: result.confidence,
             markedAt: Date.now(),
           },
-          feedback: { kind: null, parts: [] },
+          feedback: result.feedback ?? { kind: null, parts: [] },
         }
-      : { outcome: 'unsure', feedback: null };
+      : {
+          outcome: 'unsure',
+          feedback:
+            result && eligible() && !request.signal?.aborted ? (result.feedback ?? null) : null,
+        };
   }
   const controller = {
     enable(version: number) {

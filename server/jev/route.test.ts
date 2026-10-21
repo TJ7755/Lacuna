@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { exchangeCredential, loadAccessConfiguration } from '../ai/access';
-let route: typeof import('../../api/ai/jev').default;
+import type routeHandler from '../../api/ai/jev';
+let route: typeof routeHandler;
 
 const background = vi.hoisted(() => ({ tasks: [] as Promise<unknown>[] }));
 vi.mock('@vercel/functions', () => ({
