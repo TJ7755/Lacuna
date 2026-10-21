@@ -155,6 +155,19 @@ describe('review activity projection middleware', () => {
     expect((await db.reviewActivity.get('card-1'))?.timestamps).toEqual([400, 400]);
   });
 
+  it('preserves transaction context across collection deletion batches', async () => {
+    await db.reviewHistory.bulkAdd(
+      Array.from({ length: 201 }, (_, index) => entry(`review-${index}`, 'card-1', index)),
+    );
+
+    await db.transaction('rw', db.reviewHistory, () =>
+      db.reviewHistory.where('cardId').equals('card-1').delete(),
+    );
+
+    expect(await db.reviewHistory.count()).toBe(0);
+    expect(await db.reviewActivity.count()).toBe(0);
+  });
+
   it('rolls back canonical and derived writes when the transaction aborts', async () => {
     await expect(
       db.transaction('rw', db.reviewHistory, async (tx) => {
