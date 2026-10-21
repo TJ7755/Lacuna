@@ -29,17 +29,31 @@ function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
  */
 function LiquidLayer({
   question,
+  pending,
+  chosen,
+  negative,
   reveal,
   slots,
   m,
 }: {
   question: boolean;
+  pending: boolean;
+  chosen: number | undefined;
+  negative: boolean;
   reveal: Rect;
   slots: Rect[];
   m: number;
 }) {
   const filterId = `study-liquid-${useId().replace(/[^\w-]/g, '')}`;
-  const primary = slots[slots.length - 1];
+  const primaryIndex = chosen ?? slots.length - 1;
+  const primary = slots[primaryIndex];
+  // While an answer is being judged, the pill gathers into one bead at its centre.
+  const bead = {
+    left: reveal.left + reveal.width / 2 - reveal.height / 2,
+    top: reveal.top,
+    width: reveal.height,
+    height: reveal.height,
+  };
   const spring =
     m === 0
       ? { duration: 0 }
@@ -59,10 +73,12 @@ function LiquidLayer({
 
   // The drained liquid only passes between the primary drop and its neighbour, so that is
   // the one neck. It rests inside the reveal pill, so it needs both on the pill's line.
-  const neighbour = slots[slots.length - 2];
+  const neighbour = primaryIndex === slots.length - 1 ? slots[slots.length - 2] : undefined;
   const neighbourGap = neighbour && (neighbour.left + neighbour.width + primary.left) / 2;
   const bridge =
+    !pending &&
     neighbour &&
+    neighbourGap !== undefined &&
     neighbour.top === primary.top &&
     primary.top === reveal.top &&
     neighbourGap - BRIDGE_WIDTH / 2 >= reveal.left &&
@@ -91,8 +107,9 @@ function LiquidLayer({
         style={{ filter: `url(#${filterId})` }}
       >
         {slots.map((slot, index) => {
-          const keeps = slot === primary;
-          const target = question ? reveal : keeps ? slot : sink;
+          const keeps = index === primaryIndex;
+          const target = question ? reveal : pending ? bead : keeps ? slot : sink;
+          const whole = question || pending || keeps;
           return (
             <motion.div
               key={index}
@@ -104,22 +121,32 @@ function LiquidLayer({
                 width: target.width,
                 height: target.height,
                 // A pull thins the liquid mid-move; a draining tail thins as it is drawn in.
-                scaleY: question ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
+                scaleY: question || pending ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
               }}
               transition={{
-                default: question || keeps ? spring : drain,
+                default: whole ? spring : drain,
                 scaleY: { duration: 0.42 * m, times: [0, 0.35, 1], ease: 'easeOut' },
               }}
             >
               <motion.div
                 data-liquid-drop={keeps ? 'primary' : 'drain'}
-                className="absolute inset-0 rounded-full bg-accent transition-[filter] duration-150"
+                className={
+                  'absolute inset-0 rounded-full transition-[filter,background-color] duration-300 ' +
+                  (negative ? 'bg-negative' : 'bg-accent')
+                }
                 initial={false}
-                animate={{ scale: question || keeps ? 1 : 0 }}
+                animate={{
+                  // The bead breathes while it waits, so the wait reads as thought.
+                  scale: pending && m > 0 ? [1, 1.14, 1] : whole ? 1 : 0,
+                }}
                 transition={
-                  question
-                    ? { duration: 0.08 * m }
-                    : { duration: 0.12 * m, delay: 0.2 * m, ease: 'easeIn' }
+                  pending && m > 0
+                    ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
+                    : question || pending
+                      ? { duration: 0.08 * m }
+                      : keeps
+                        ? { duration: 0.18 * m }
+                        : { duration: 0.12 * m, delay: 0.2 * m, ease: 'easeIn' }
                 }
               />
             </motion.div>
@@ -163,19 +190,34 @@ function LiquidLayer({
  */
 export function LiquidGradeControls({
   question,
+  pending = false,
+  chosen,
+  chosenNegative = false,
   grades,
   rowClassName,
+  revealLabel = 'Show answer',
+  revealLead,
   onReveal,
   m,
 }: {
   question: boolean;
+  /** An answer is being judged: the liquid waits as a bead and no grade is offered yet. */
+  pending?: boolean;
+  /** The grade a judgement chose: all the liquid flows into it instead of the primary. */
+  chosen?: number;
+  /** Whether the chosen grade is a negative one, which the liquid takes the colour of. */
+  chosenNegative?: boolean;
   grades: ReactNode[];
   rowClassName: string;
+  revealLabel?: ReactNode;
+  /** Content above the reveal pill that fades with it, such as a typed answer field. */
+  revealLead?: ReactNode;
   onReveal: () => void;
   m: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const revealRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [rects, setRects] = useState<{ reveal: Rect; slots: Rect[] }>();
@@ -184,13 +226,18 @@ export function LiquidGradeControls({
   useLayoutEffect(() => {
     const measure = () => {
       const reveal = revealRef.current;
+      const pill = pillRef.current;
       const row = rowRef.current;
-      if (!reveal || !row) return;
+      if (!reveal || !pill || !row) return;
       setRects({
-        reveal: rectOf(reveal),
+        reveal: rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
         slots: slotRefs.current
           .slice(0, grades.length)
-          .map((slot) => (slot ? rectOf(slot, row.offsetLeft, row.offsetTop) : rectOf(reveal))),
+          .map((slot) =>
+            slot
+              ? rectOf(slot, row.offsetLeft, row.offsetTop)
+              : rectOf(pill, reveal.offsetLeft, reveal.offsetTop),
+          ),
       });
     };
     measure();
@@ -211,7 +258,17 @@ export function LiquidGradeControls({
         '[&:has([data-liquid-primary]_button:hover)_[data-liquid-drop=primary]]:brightness-105'
       }
     >
-      {rects && <LiquidLayer question={question} reveal={rects.reveal} slots={rects.slots} m={m} />}
+      {rects && (
+        <LiquidLayer
+          question={question}
+          pending={pending && !question}
+          chosen={question ? undefined : chosen}
+          negative={!question && chosen !== undefined && chosenNegative}
+          reveal={rects.reveal}
+          slots={rects.slots}
+          m={m}
+        />
+      )}
       <motion.div
         ref={revealRef}
         data-liquid-reveal
@@ -226,22 +283,26 @@ export function LiquidGradeControls({
         inert={!question}
         aria-hidden={!question}
       >
-        <Button
-          variant="primary"
-          size="lg"
-          className={'w-full' + (measured ? ' bg-transparent!' : '')}
-          onClick={onReveal}
-        >
-          Show answer
-        </Button>
+        {revealLead}
+        <div ref={pillRef}>
+          <Button
+            variant="primary"
+            size="lg"
+            className={'w-full' + (measured ? ' bg-transparent!' : '')}
+            onClick={onReveal}
+          >
+            {revealLabel}
+          </Button>
+        </div>
       </motion.div>
       <div
         ref={rowRef}
         className={`relative col-start-1 row-start-1 mx-auto self-start ${rowClassName}`}
-        inert={question}
-        aria-hidden={question}
+        inert={question || pending}
+        aria-hidden={question || pending}
       >
         {grades.map((grade, index) => {
+          const holder = index === (chosen ?? grades.length - 1);
           const primary = index === grades.length - 1;
           return (
             <motion.div
@@ -249,13 +310,22 @@ export function LiquidGradeControls({
               ref={(el) => {
                 slotRefs.current[index] = el;
               }}
-              data-liquid-primary={primary || undefined}
+              data-liquid-primary={holder || undefined}
               className={
-                'flex min-w-0 flex-1' + (primary && measured ? ' [&_button]:bg-transparent!' : '')
+                'flex min-w-0 flex-1' +
+                (measured && (holder || primary) ? ' [&_button]:bg-transparent!' : '') +
+                // A judged negative grade holds the liquid, so its label sits on the fill.
+                (measured && holder && !primary
+                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:text-paper!' : '[&_button]:text-accent-fg!'}`
+                  : '') +
+                // The primary drained elsewhere: it stays as an empty shell.
+                (measured && primary && !holder
+                  ? ' [&_button]:text-ink! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong'
+                  : '')
               }
               initial={false}
               animate={{
-                opacity: question ? 0 : 1,
+                opacity: question || pending ? 0 : 1,
                 // Outlined grades split away from the centre as the liquid leaves them.
                 x: question && !primary ? `${(centre - index) * 6}%` : '0%',
               }}
@@ -270,7 +340,7 @@ export function LiquidGradeControls({
                       opacity: {
                         duration: 0.2 * m,
                         // Outlined grades wait until their liquid has drained past them.
-                        delay: (primary ? 0.14 : 0.24) * m,
+                        delay: (holder ? 0.14 : 0.24) * m,
                         ease: 'easeOut',
                       },
                     }

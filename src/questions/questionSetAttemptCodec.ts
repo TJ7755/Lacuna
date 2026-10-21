@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jevMarkProvenanceSchema } from '../jev/provenance';
 import { questionSchedulerConfigFingerprint } from './scheduler';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
@@ -22,9 +23,16 @@ const decision = z.discriminatedUnion('status', [
       allocationId: z.string().min(1),
       status: z.literal('awarded'),
       marks: z.number().int().nonnegative(),
+      markedBy: jevMarkProvenanceSchema.optional(),
     })
     .strict(),
-  z.object({ allocationId: z.string().min(1), status: z.literal('unsure') }).strict(),
+  z
+    .object({
+      allocationId: z.string().min(1),
+      status: z.literal('unsure'),
+      markedBy: jevMarkProvenanceSchema.optional(),
+    })
+    .strict(),
 ]);
 const annotation = z
   .object({

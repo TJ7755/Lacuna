@@ -1,4 +1,5 @@
 import { modifierShortcutLabel } from '../electron/runtime';
+import { useJevAttemptMarking } from '../jev';
 import { QuestionSetPracticeStepper } from '../components/question-sets/QuestionSetPracticeStepper';
 import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
@@ -381,6 +382,7 @@ function PracticeWorkspace({
             />
           )}
         </StepSwap>
+        {marking && <JevMarkingStatus attemptId={attempt.id} />}
         <footer className="qs-attempt-footer">
           <QuestionSetPracticeNavigation
             rows={
@@ -518,5 +520,24 @@ function PracticeWorkspace({
         </div>
       </article>
     </div>
+  );
+}
+
+function JevMarkingStatus({ attemptId }: { attemptId: string }) {
+  const progress = useJevAttemptMarking(attemptId);
+  const text =
+    progress.state === 'marking'
+      ? `Marking your answers… ${progress.remaining} ${progress.remaining === 1 ? 'line' : 'lines'} left.`
+      : progress.state === 'done' && progress.marked > 0
+        ? `${progress.marked} ${progress.marked === 1 ? 'line was' : 'lines were'} marked automatically.` +
+          (progress.leftForYou > 0
+            ? ` ${progress.leftForYou} ${progress.leftForYou === 1 ? 'needs' : 'need'} your mark.`
+            : '')
+        : null;
+  if (!text) return null;
+  return (
+    <p role="status" className="qs-muted">
+      {text}
+    </p>
   );
 }

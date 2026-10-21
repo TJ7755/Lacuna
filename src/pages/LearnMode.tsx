@@ -1,6 +1,8 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
+import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
+import type { JevMarkProvenance } from '../jev';
 import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -64,8 +66,19 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
   const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
   const undoInFlightRef = useRef(false);
+  const completionInFlightRef = useRef(false);
+  const lastTypedAnswerRef = useRef<{ cardId: string; answer: string } | null>(null);
+  const [manualRestoredCardId, setManualRestoredCardId] = useState<string | null>(null);
+  const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
+  const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
+  const stepFinished = useCallback(
+    (summary: SessionSummary) => {
+      if (!leavingSessionRef.current) onStepFinished?.(summary);
+    },
+    [onStepFinished],
+  );
   const routeParams = useParams<{ courseId: string; lessonId: string }>();
   const courseId = request?.kind === 'practice' ? request.courseId : routeParams.courseId;
   const lessonId = request?.kind === 'lesson' ? request.lessonId : routeParams.lessonId;
@@ -125,7 +138,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     standaloneSimple ||
     (lessonId
       ? lessonCourse?.learnFirst !== false
-      : dueReviewRequest || (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
+      : dueReviewRequest ||
+          (request?.kind === 'practice' && (request.mode === 'exam' || request.mode === 'catch-up'))
         ? false
         : studyMode === 'simple');
 
@@ -205,6 +219,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     setTimeLimitOverride,
     backOut,
     finish,
+    confirmCompletion,
     serveNext,
     serveNextRef,
     reveal,
@@ -251,7 +266,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     mode,
     navigate,
     onFlowExit,
-    onStepFinished,
+    onStepFinished: onStepFinished ? stepFinished : undefined,
     notify,
     distraction,
     onCardServed: resetForCard,
@@ -267,29 +282,58 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
 
   const undoWithTransitionCancel = useCallback(async () => {
-    if (undoInFlightRef.current) return;
+    if (undoInFlightRef.current || completionInFlightRef.current) return;
     undoInFlightRef.current = true;
     setMenuOpen(false);
     try {
       cardTransitionRef.current?.cancel();
       runRef.current = 0;
       setStreakMoment(null);
-      await undoLast();
+      const typed = lastTypedAnswerRef.current;
+      if (typed) setManualRestoredCardId(typed.cardId);
+      const restored = await undoLast({ reveal: typed !== null });
+      if (restored && typed?.cardId === restored.id) {
+        setTypedAnswer(typed.answer);
+        lastTypedAnswerRef.current = null;
+      }
     } finally {
       undoInFlightRef.current = false;
     }
-  }, [undoLast, setMenuOpen]);
+  }, [undoLast, setMenuOpen, setTypedAnswer]);
+
+  const confirmReport = async (then: () => void, leaving = false) => {
+    if (completionInFlightRef.current || undoInFlightRef.current) return;
+    completionInFlightRef.current = true;
+    setConfirmingCompletion(true);
+    if (leaving) leavingSessionRef.current = true;
+    try {
+      if (await confirmCompletion()) then();
+      else leavingSessionRef.current = false;
+    } finally {
+      completionInFlightRef.current = false;
+      setConfirmingCompletion(false);
+    }
+  };
 
   const answerWithUndo = useCallback(
     (
       input: boolean | Grade | MachineMarkedAnswer,
       source: 'touch' | 'keyboard' = 'keyboard',
       velocity = 0,
+      markedBy?: JevMarkProvenance,
+      automatic = false,
     ) => {
       if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
-          const result = await answer(input);
+          const result = await answer(
+            input,
+            automatic ? { markedBy, retainUndo: true } : undefined,
+          );
+          lastTypedAnswerRef.current =
+            result.undoAvailable && isTypingCard && current
+              ? { cardId: current.id, answer: typedAnswer }
+              : null;
           if (result.undoAvailable) {
             notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
               actionLabel: 'Undo',
@@ -311,12 +355,30 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         setStreakMoment({ run: runRef.current, key: Date.now() });
       }
     },
-    [answer, notify, undoWithTransitionCancel],
+    [answer, notify, undoWithTransitionCancel, isTypingCard, current, typedAnswer],
   );
 
+  const typedAutoMark = useTypedAutoMark({
+    card: current,
+    phase,
+    isTypingCard,
+    typedAnswer,
+    answerStrictness,
+    occlusionAnswerText,
+    paused: editing || menuOpen || hintsOpen || leaveConfirmationOpen,
+    manual: manualRestoredCardId === current?.id,
+    onHold: () => cardTransitionRef.current?.cancel(),
+    m,
+    onMarked: (correct, provenance) =>
+      answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined, true),
+  });
+
+  const typedJudgement = useMemo(() => typedAnswerJudgement(typedAutoMark), [typedAutoMark]);
+
   useEffect(() => {
-    if (editing || menuOpen || hintsOpen) cardTransitionRef.current?.cancel();
-  }, [editing, menuOpen, hintsOpen]);
+    if (editing || menuOpen || hintsOpen || leaveConfirmationOpen)
+      cardTransitionRef.current?.cancel();
+  }, [editing, menuOpen, hintsOpen, leaveConfirmationOpen]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -388,10 +450,11 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     <StudyEntrance className="min-h-dvh overflow-x-clip bg-paper">
       <SessionExitGuard
         ref={exitGuardRef}
+        onOpenChange={setLeaveConfirmationOpen}
         active={() =>
           !leavingSessionRef.current &&
-          current !== null &&
-          (phase === 'question' || phase === 'answer')
+          ((current !== null && (phase === 'question' || phase === 'answer')) ||
+            (phase === 'finished' && canUndo))
         }
         itemName="Card"
         resumable={isSimpleMode}
@@ -401,8 +464,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           cardTransitionRef.current?.cancel();
           persistSimpleResume();
         }}
-        onConfirm={() => {
+        onConfirm={async () => {
           leavingSessionRef.current = true;
+          if (phase === 'finished' && !(await confirmCompletion())) {
+            leavingSessionRef.current = false;
+            throw new Error('Session completion could not be saved.');
+          }
         }}
         onExplicitLeave={backOut}
       />
@@ -418,39 +485,49 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
           >
             <SessionReport
               summary={summary}
-              onReturn={backOut}
+              returnLabel={onStepFinished ? 'Continue' : 'Done'}
+              actionsDisabled={confirmingCompletion}
+              onUndo={canUndo ? () => void undoWithTransitionCancel() : undefined}
+              onReturn={() =>
+                void confirmReport(() => {
+                  if (!onStepFinished) backOut();
+                }, !onStepFinished)
+              }
               onContinue={
-                summary.reachedGoal &&
-                !summary.limitReached &&
-                !summary.timeLimitReached &&
-                !summary.simpleMode
+                onStepFinished ||
+                (summary.reachedGoal &&
+                  !summary.limitReached &&
+                  !summary.timeLimitReached &&
+                  !summary.simpleMode)
                   ? undefined
                   : summary.simpleMode
-                    ? () => {
-                        // Restart simple mode: reset all simple state and begin again.
-                        simpleMastered.current = new Set();
-                        simpleWrong.current = new Set();
-                        simpleQueue.current = cardsRef.current.filter(
-                          (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
-                        );
-                        events.current = [];
-                        progressBefore.current = 0;
-                        sessionStartMs.current = Date.now();
-                        setSummary(null);
-                        setSessionCardIds(simpleQueue.current.map((card) => card.id));
-                        resetSimpleSessionOutcomes();
-                        serveNext();
-                      }
-                    : () => {
-                        const ctx = ctxRef.current;
-                        if (!ctx) return;
-                        events.current = [];
-                        progressBefore.current = cachedSessionProgress(cardsRef.current, ctx);
-                        setSummary(null);
-                        setLimitOverride(true);
-                        setTimeLimitOverride(true);
-                        serveNext();
-                      }
+                    ? () =>
+                        void confirmReport(() => {
+                          // Restart simple mode: reset all simple state and begin again.
+                          simpleMastered.current = new Set();
+                          simpleWrong.current = new Set();
+                          simpleQueue.current = cardsRef.current.filter(
+                            (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
+                          );
+                          events.current = [];
+                          progressBefore.current = 0;
+                          sessionStartMs.current = Date.now();
+                          setSummary(null);
+                          setSessionCardIds(simpleQueue.current.map((card) => card.id));
+                          resetSimpleSessionOutcomes();
+                          serveNext();
+                        })
+                    : () =>
+                        void confirmReport(() => {
+                          const ctx = ctxRef.current;
+                          if (!ctx) return;
+                          events.current = [];
+                          progressBefore.current = cachedSessionProgress(cardsRef.current, ctx);
+                          setSummary(null);
+                          setLimitOverride(true);
+                          setTimeLimitOverride(true);
+                          serveNext();
+                        })
               }
             />
           </motion.div>
@@ -630,6 +707,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                             answerWithUndo(input, source, velocity)
                           }
                           typedAnswer={typedAnswer}
+                          typedJudgement={typedJudgement}
                           isTypingCard={isTypingCard}
                           mode={mode}
                           isLinesModeCard={isLinesModeCard}
@@ -646,6 +724,18 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                 )
               )}
 
+              {isTypingCard && (
+                // The liquid and the card carry the verdict visually; this says it aloud.
+                <div aria-live="polite" className="sr-only">
+                  {typedAutoMark.state === 'checking'
+                    ? 'Checking your answer.'
+                    : typedAutoMark.state === 'marked'
+                      ? typedAutoMark.correct
+                        ? 'Marked correct.'
+                        : 'Marked incorrect.'
+                      : ''}
+                </div>
+              )}
               {!suppressClassicGrading && (
                 <StudyControls
                   // Typed answers start each card afresh; other controls persist so their
@@ -655,6 +745,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                   feedback={gradeFeedback}
                   isTypingCard={isTypingCard}
                   isTouchMode={isTouchMode}
+                  autoMark={
+                    typedAutoMark.state === 'checking'
+                      ? { pending: true }
+                      : typedAutoMark.state === 'marked'
+                        ? { pending: false, correct: typedAutoMark.correct }
+                        : undefined
+                  }
                   gradingMode={gradingMode}
                   typedAnswer={typedAnswer}
                   typingInputRef={typingInputRef}

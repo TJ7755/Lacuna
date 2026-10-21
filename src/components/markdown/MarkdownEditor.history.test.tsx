@@ -9,7 +9,11 @@ function Editor() {
 }
 
 function historyKey(key: string, shiftKey = false) {
-  fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), { key, ctrlKey: true, shiftKey });
+  fireEvent.keyDown(screen.getByRole('textbox', { name: 'Front' }), {
+    key,
+    ctrlKey: true,
+    shiftKey,
+  });
 }
 
 describe('Markdown editor undo history', () => {
@@ -31,9 +35,13 @@ describe('Markdown editor undo history', () => {
     render(<Editor />);
     const field = screen.getByRole('textbox', { name: 'Front' });
     fireEvent.change(field, { target: { value: 'First paste' } });
-    await act(async () => { vi.advanceTimersByTime(801); });
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
     fireEvent.change(field, { target: { value: 'Second paste' } });
-    await act(async () => { vi.advanceTimersByTime(801); });
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
     historyKey('z');
     expect(field).toHaveValue('First paste');
     historyKey('z');
@@ -45,7 +53,9 @@ describe('Markdown editor undo history', () => {
     const field = screen.getByRole('textbox', { name: 'Front' });
     fireEvent.keyDown(field, { key: 'x' });
     fireEvent.change(field, { target: { value: 'First edit' } });
-    await act(async () => { vi.advanceTimersByTime(801); });
+    await act(async () => {
+      vi.advanceTimersByTime(801);
+    });
     historyKey('z');
     fireEvent.change(field, { target: { value: 'New edit' } });
     historyKey('y');

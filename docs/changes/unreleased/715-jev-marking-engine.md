@@ -1,0 +1,1 @@
+- Add an optional, consent-gated Jev marking engine for typed answers and submitted written-answer allocations, with a separate paid TypeSafe route, conservative abstention, device caching and portable mark provenance. (#715)

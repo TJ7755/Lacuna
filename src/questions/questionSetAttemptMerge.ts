@@ -85,6 +85,21 @@ export function mergeQuestionSetAttemptPair(
   const selected = incomingWins ? incoming : existing;
   const winner = structuredClone(selected);
   const loser = incomingWins ? existing : incoming;
+  // A model result is subordinate to a learner decision, including across peers.
+  const winnerHasModelMarks = winner.decisions.some((decision) => decision.markedBy);
+  winner.decisions = winner.decisions.map((decision) => {
+    const other = loser.decisions.find((row) => row.allocationId === decision.allocationId);
+    return decision.markedBy && other && !other.markedBy ? structuredClone(other) : decision;
+  });
+  if (winnerHasModelMarks) {
+    for (const decision of loser.decisions) {
+      if (
+        !decision.markedBy &&
+        !winner.decisions.some((row) => row.allocationId === decision.allocationId)
+      )
+        winner.decisions.push(structuredClone(decision));
+    }
+  }
   for (const original of submitted(loser)) {
     const target = winner.responses.find((row) => row.nodeId === original.nodeId)!;
     if (!target.submitted) {
@@ -142,9 +157,9 @@ export function mergeQuestionSetAttemptPair(
         canonicalJson({
           source: value.source,
           schedulerConfigFingerprint: value.schedulerConfigFingerprint,
-          decisions: [...value.decisions].sort((a, b) =>
-            a.allocationId.localeCompare(b.allocationId),
-          ),
+          decisions: value.decisions
+            .map(({ markedBy: _markedBy, ...decision }) => decision)
+            .sort((a, b) => a.allocationId.localeCompare(b.allocationId)),
         });
       if (prior && outcomes(prior) !== outcomes(snapshot)) disputed.add(snapshot.questionId);
       if (

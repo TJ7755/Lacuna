@@ -1,0 +1,1 @@
+- Let optional Jev marking recover on later study requests after temporary failures, while leaving abandoned exam-answer lines for self-marking. (#715)

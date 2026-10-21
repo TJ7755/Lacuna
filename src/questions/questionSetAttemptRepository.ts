@@ -135,6 +135,7 @@ async function mutate(
   expectedRevisionId: string,
   now: number,
   change: (record: QuestionSetAttemptRecord) => void | Promise<void>,
+  options: { recordExposure?: boolean } = {},
 ): Promise<QuestionSetAttemptRecord> {
   return db.transaction('rw', [db.questionSetAttempts, db.courses], async () => {
     const raw = await db.questionSetAttempts.get(id);
@@ -147,7 +148,12 @@ async function mutate(
     const activeQuestion = answerableNodes(next.receipt).find(
       (node) => node.nodeId === next.activeNodeId,
     )?.questionId;
-    if (next.shownQuestionIds && activeQuestion && !next.shownQuestionIds.includes(activeQuestion))
+    if (
+      options.recordExposure !== false &&
+      next.shownQuestionIds &&
+      activeQuestion &&
+      !next.shownQuestionIds.includes(activeQuestion)
+    )
       next.shownQuestionIds.push(activeQuestion);
     next.revisionId = makeId();
     next.updatedAt = Math.max(now, current.updatedAt + 1);
@@ -200,6 +206,11 @@ export function submitPracticeQuestion(
     if (!attempt.revealedQuestionIds.includes(questionId))
       attempt.revealedQuestionIds.push(questionId);
     if (attempt.responses.every((response) => response.submitted)) attempt.status = 'marking';
+  }).then((attempt) => {
+    void import('../jev/attempts')
+      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
+      .catch(() => {});
+    return attempt;
   });
 }
 
@@ -218,6 +229,11 @@ export function submitQuestionSetPaper(
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';
+  }).then((attempt) => {
+    void import('../jev/attempts')
+      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
+      .catch(() => {});
+    return attempt;
   });
 }
 
@@ -259,7 +275,22 @@ export function saveQuestionSetMarking(
     ) {
       throw new Error('Submit a response before annotating or correcting it.');
     }
-    Object.assign(attempt, clone(input));
+    const next = clone(input);
+    next.decisions = next.decisions.map((decision) => {
+      const previous = attempt.decisions.find((row) => row.allocationId === decision.allocationId);
+      if (
+        previous?.markedBy &&
+        (previous.status !== decision.status ||
+          (previous.status === 'awarded' &&
+            decision.status === 'awarded' &&
+            previous.marks !== decision.marks))
+      ) {
+        const { markedBy: _markedBy, ...learnerDecision } = decision;
+        return learnerDecision;
+      }
+      return decision;
+    });
+    Object.assign(attempt, next);
   });
 }
 
@@ -335,4 +366,57 @@ export function undoConceptPracticeAttempt(
     if (!attempt.conceptPractice) throw new Error('This is not a Concept practice attempt.');
     attempt.undoneAt ??= now;
   });
+}
+
+class JevDecisionSkipped extends Error {}
+
+/** Model writes use the same revision guard as learner writes, then retry from current evidence. */
+export async function applyJevAllocationDecision(
+  id: string,
+  expectedRevisionId: string,
+  nodeId: string,
+  decision: Extract<SelfMarkDecision, { status: 'awarded' }>,
+  stillEnabled: () => boolean,
+): Promise<boolean> {
+  let revision = expectedRevisionId;
+  for (let retry = 0; retry < 3; retry++) {
+    try {
+      await mutate(
+        id,
+        revision,
+        Date.now(),
+        (attempt) => {
+          if (
+            !stillEnabled() ||
+            !decision.markedBy ||
+            attempt.status === 'complete' ||
+            attempt.undoneAt !== undefined ||
+            attempt.decisions.some((row) => row.allocationId === decision.allocationId) ||
+            attempt.responses.find((row) => row.nodeId === nodeId)?.submitted?.kind !== 'written' ||
+            !answerableNodes(attempt.receipt).some(
+              (node) =>
+                node.nodeId === nodeId && node.allocationIds.includes(decision.allocationId),
+            )
+          )
+            throw new JevDecisionSkipped();
+          attempt.decisions.push(clone(decision));
+        },
+        { recordExposure: false },
+      );
+      return true;
+    } catch (error) {
+      if (error instanceof JevDecisionSkipped) return false;
+      if (!(error instanceof QuestionSetAttemptRevisionConflictError)) throw error;
+      const current = await getQuestionSetAttempt(id);
+      if (
+        !current ||
+        !stillEnabled() ||
+        current.decisions.some((row) => row.allocationId === decision.allocationId)
+      )
+        return false;
+      revision = current.revisionId;
+    }
+  }
+  // Sustained concurrent edits are safely abandoned for the learner to mark.
+  return false;
 }

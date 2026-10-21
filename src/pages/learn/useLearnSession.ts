@@ -1,3 +1,4 @@
+import type { JevMarkProvenance } from '../../jev/types';
 import { catchUpPracticePool } from '../../course/catchUpPractice';
 import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
@@ -7,6 +8,7 @@ import { db, makeId } from '../../db/schema';
 import {
   getSchedulingUnit,
   performanceForCourseBackingDecks,
+  performanceForReviewUnit,
   performanceForReviewUnits,
 } from '../../db/backingDecks';
 import { getCourse, listCourseAssessments } from '../../db/read';
@@ -16,6 +18,7 @@ import type {
   Course,
   Grade,
   Lesson,
+  LessonCardExposure,
   Sequence,
   ReviewSessionKind,
   RevisionPlan,
@@ -129,6 +132,8 @@ import {
 
 /** One submitted answer, as the grading paths need it. */
 interface AnswerResponse {
+  retainUndo: boolean;
+  markedBy?: JevMarkProvenance;
   correct: boolean;
   manualGrade: Grade | null;
   machineMarked: MachineMarkedAnswer | null;
@@ -139,6 +144,8 @@ interface AnswerResponse {
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
+  responseTimeSec: number;
+  retainOnCompletion: boolean;
   undo: ReviewUndo;
   cooldowns: CooldownMap;
   eventsLen: number;
@@ -152,6 +159,13 @@ interface AnswerSnapshot {
   revisionRetryAt: Map<string, number>;
   revisionFailures: Map<string, number>;
   revisionReviewEventIds: string[];
+  simple?: {
+    queue: Card[];
+    mastered: Set<string>;
+    wrong: Set<string>;
+    cardIds: string[];
+    exposureAdded: LessonCardExposure | null;
+  };
 }
 
 export type { AnswerResult } from './answerSteps';
@@ -464,6 +478,9 @@ export function useLearnSession({
   // Guards against a double key-press / click submitting the same card twice.
   const submitting = useRef(false);
   const finalising = useRef(false);
+  const pendingCompletion = useRef<SessionSummary | null>(null);
+  const completionPromise = useRef<Promise<boolean> | null>(null);
+  const completionConfirmed = useRef(false);
   // Retained across a failed submission retry; cleared only when the player advances.
   const pendingReviewEventId = useRef<string | null>(null);
   // Per-unit counts from canonical events for the current local calendar day.
@@ -698,117 +715,182 @@ export function useLearnSession({
     [],
   );
 
-  const finaliseSummary = useCallback(
-    (nextSummary: SessionSummary) => {
-      if (!mountedRef.current || finalising.current) return;
-      finalising.current = true;
-      if (nextSummary.reachedGoal) setSchedulerProgress(1);
-      setCanUndo(false);
-      lastAnswer.current = null;
-      void (async () => {
-        let deliveredSummary = nextSummary;
-        const revisionPlan = revisionPlanRef.current;
-        if (revisionPlan && requestWindowId) {
-          const completedAt = Date.now();
-          const refreshedPlan = await refreshRevisionPlan(
-            revisionPlan.id,
-            revisionPlan.input.projection,
-            completedAt,
-          );
-          const updatedPlan = await completeRevisionWindow(
-            refreshedPlan.id,
-            requestWindowId,
-            {
-              id: reviewSessionIdRef.current,
-              windowId: requestWindowId,
-              startedAt: revisionWindowStartedAt.current,
-              completedAt,
-              cardIds: [...revisionCovered.current],
-              reviewEventIds: revisionReviewEventIds.current,
-              improvedCardIds: [...revisionImproved.current],
-              parkedCardIds: [...revisionParked.current],
-            },
-            completedAt,
-          );
-          revisionPlanRef.current = updatedPlan;
-          const windowDayParts = requestWindowId.split(':');
-          const completedWindowDay = windowDayParts[windowDayParts.length - 1];
-          const nextWindow = updatedPlan.windows.find(
-            (window) => window.status === 'scheduled' && window.day >= completedWindowDay,
-          );
-          const latestReplan =
-            updatedPlan.revision > revisionInitialRevision.current
-              ? updatedPlan.replans[updatedPlan.replans.length - 1]
-              : undefined;
-          const objectiveContext = ctxRef.current?.decks.values().next().value?.oc;
-          const model = objectiveContext
-            ? createHalfLifeLogisticModel(objectiveContext.ctx.decay)
-            : undefined;
-          const readinessCards = cardsRef.current.filter((card) =>
-            updatedPlan.scope.eligibleCardIds.includes(card.id),
-          );
-          const readiness =
-            model &&
-            updatedPlan.input.projection.projectionMode === 'memory-model' &&
-            model.version === updatedPlan.input.projection.memoryModelVersion &&
-            readinessCards.every(
-              (card) =>
-                model.validate({
-                  card,
-                  now: completedAt,
-                  assessmentAt: updatedPlan.input.deadlineAt,
-                }).valid,
-            )
-              ? readinessFromPredictions(
-                  readinessCards.map((card) =>
-                    model.predictRecall({ card, at: updatedPlan.input.deadlineAt }),
-                  ),
+  /**
+   * Commit a provisional report exactly once. False keeps the report and Undo
+   * available after a failure; callers must await true before leaving/continuing.
+   */
+  const confirmCompletion = useCallback((): Promise<boolean> => {
+    if (completionPromise.current) return completionPromise.current;
+    if (submitting.current && lastAnswer.current?.retainOnCompletion) return Promise.resolve(false);
+    const nextSummary = pendingCompletion.current;
+    if (!nextSummary) return Promise.resolve(completionConfirmed.current);
+    const commit = async (): Promise<boolean> => {
+      try {
+        const { deliveredSummary, completedPlan } = await db.transaction(
+          'rw',
+          [
+            db.revisionPlans,
+            db.courseAssessments,
+            db.courses,
+            db.lessons,
+            db.cards,
+            db.lessonCards,
+            db.lessonCardExposures,
+            db.lessonCompletions,
+            db.reviewHistory,
+            db.practiceNodes,
+            db.practiceMilestones,
+            db.schedulingPerformance,
+            db.coursePerformance,
+          ],
+          async () => {
+            let deliveredSummary = nextSummary;
+            let completedPlan = revisionPlanRef.current;
+            const revisionPlan = revisionPlanRef.current;
+            if (revisionPlan && requestWindowId) {
+              const completedAt = Date.now();
+              const refreshedPlan = await refreshRevisionPlan(
+                revisionPlan.id,
+                revisionPlan.input.projection,
+                completedAt,
+              );
+              const updatedPlan = await completeRevisionWindow(
+                refreshedPlan.id,
+                requestWindowId,
+                {
+                  id: reviewSessionIdRef.current,
+                  windowId: requestWindowId,
+                  startedAt: revisionWindowStartedAt.current,
+                  completedAt,
+                  cardIds: [...revisionCovered.current],
+                  reviewEventIds: revisionReviewEventIds.current,
+                  improvedCardIds: [...revisionImproved.current],
+                  parkedCardIds: [...revisionParked.current],
+                },
+                completedAt,
+              );
+              completedPlan = updatedPlan;
+              const windowDayParts = requestWindowId.split(':');
+              const completedWindowDay = windowDayParts[windowDayParts.length - 1];
+              const nextWindow = updatedPlan.windows.find(
+                (window) => window.status === 'scheduled' && window.day >= completedWindowDay,
+              );
+              const latestReplan =
+                updatedPlan.revision > revisionInitialRevision.current
+                  ? updatedPlan.replans[updatedPlan.replans.length - 1]
+                  : undefined;
+              const objectiveContext = ctxRef.current?.decks.values().next().value?.oc;
+              const model = objectiveContext
+                ? createHalfLifeLogisticModel(objectiveContext.ctx.decay)
+                : undefined;
+              const readinessCards = cardsRef.current.filter((card) =>
+                updatedPlan.scope.eligibleCardIds.includes(card.id),
+              );
+              const readiness =
+                model &&
+                updatedPlan.input.projection.projectionMode === 'memory-model' &&
+                model.version === updatedPlan.input.projection.memoryModelVersion &&
+                readinessCards.every(
+                  (card) =>
+                    model.validate({
+                      card,
+                      now: completedAt,
+                      assessmentAt: updatedPlan.input.deadlineAt,
+                    }).valid,
                 )
-              : null;
-          deliveredSummary = {
-            ...nextSummary,
-            reachedGoal: true,
-            revision: {
-              cardsCovered: revisionCovered.current.size,
-              cardsImproved: revisionImproved.current.size,
-              cardsParked: revisionParked.current.size,
-              workNotReached: Math.max(
-                0,
-                revisionPlan.scope.eligibleCardIds.length - revisionCovered.current.size,
-              ),
-              ...(readiness?.standardDeviation === undefined
-                ? {}
-                : {
-                    predictedReadiness: readiness.probability,
-                    readinessUncertainty: readiness.standardDeviation,
-                  }),
-              ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
-              ...(latestReplan?.explanation ? { replanExplanation: latestReplan.explanation } : {}),
-            },
-          };
+                  ? readinessFromPredictions(
+                      readinessCards.map((card) =>
+                        model.predictRecall({ card, at: updatedPlan.input.deadlineAt }),
+                      ),
+                    )
+                  : null;
+              deliveredSummary = {
+                ...nextSummary,
+                reachedGoal: true,
+                revision: {
+                  cardsCovered: revisionCovered.current.size,
+                  cardsImproved: revisionImproved.current.size,
+                  cardsParked: revisionParked.current.size,
+                  workNotReached: Math.max(
+                    0,
+                    revisionPlan.scope.eligibleCardIds.length - revisionCovered.current.size,
+                  ),
+                  ...(readiness?.standardDeviation === undefined
+                    ? {}
+                    : {
+                        predictedReadiness: readiness.probability,
+                        readinessUncertainty: readiness.standardDeviation,
+                      }),
+                  ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
+                  ...(latestReplan?.explanation
+                    ? { replanExplanation: latestReplan.explanation }
+                    : {}),
+                },
+              };
+            }
+            if (practiceSessionRef.current) {
+              await persistPracticeMilestone(cardsRef.current, deliveredSummary.reachedGoal);
+            }
+            if (!revisionPlan && ratchetCourseIdRef.current) {
+              await ratchetUnlocks(deliveredSummary.reachedGoal);
+            }
+            return { deliveredSummary, completedPlan };
+          },
+        );
+        revisionPlanRef.current = completedPlan;
+        if (isSimpleMode && deliveredSummary.reachedGoal) clearSimpleSession(simpleSessionScope);
+        pendingCompletion.current = null;
+        completionConfirmed.current = true;
+        lastAnswer.current = null;
+        if (mountedRef.current) {
+          setCanUndo(false);
+          setSummary(deliveredSummary);
+          setPhase('finished');
+          onStepFinished?.(deliveredSummary);
         }
-        if (practiceSessionRef.current) {
-          await persistPracticeMilestone(cardsRef.current, deliveredSummary.reachedGoal);
-        }
-        if (!revisionPlan && ratchetCourseIdRef.current) {
-          await ratchetUnlocks(deliveredSummary.reachedGoal);
-        }
-        if (!mountedRef.current) return;
-        if (onStepFinished) {
-          onStepFinished(deliveredSummary);
-          return;
-        }
-        setSummary(deliveredSummary);
-        setPhase('finished');
-      })().catch((cause) => {
-        finalising.current = false;
+        return true;
+      } catch (cause) {
+        if (!lastAnswer.current?.retainOnCompletion) finalising.current = false;
         notify(
           cause instanceof Error ? cause.message : 'Could not finish the study window.',
           'negative',
         );
-      });
+        return false;
+      } finally {
+        completionPromise.current = null;
+      }
+    };
+    completionPromise.current = commit();
+    return completionPromise.current;
+  }, [
+    isSimpleMode,
+    notify,
+    onStepFinished,
+    persistPracticeMilestone,
+    ratchetUnlocks,
+    requestWindowId,
+    simpleSessionScope,
+  ]);
+
+  const finaliseSummary = useCallback(
+    (nextSummary: SessionSummary) => {
+      if (!mountedRef.current || finalising.current) return;
+      finalising.current = true;
+      completionConfirmed.current = false;
+      if (nextSummary.reachedGoal) setSchedulerProgress(1);
+      pendingCompletion.current = nextSummary;
+      // Completion can hand the player to another step and ratchet curriculum
+      // progress. Keep those effects pending while the final answer is reversible.
+      if (lastAnswer.current?.retainOnCompletion) {
+        setSummary(nextSummary);
+        setPhase('finished');
+      } else {
+        lastAnswer.current = null;
+        setCanUndo(false);
+        void confirmCompletion();
+      }
     },
-    [notify, onStepFinished, persistPracticeMilestone, ratchetUnlocks, requestWindowId],
+    [confirmCompletion],
   );
 
   const finish = useCallback(
@@ -819,7 +901,6 @@ export function useLearnSession({
       dailyGoalReached = false,
     ) => {
       if (!mountedRef.current) return;
-      if (isSimpleMode && reachedGoal) clearSimpleSession(simpleSessionScope);
       const ctx = ctxRef.current;
       const total = distraction.sessionMs();
       const focus =
@@ -846,15 +927,7 @@ export function useLearnSession({
         mode,
       });
     },
-    [
-      objectiveLabel,
-      distraction,
-      cachedSessionProgress,
-      isSimpleMode,
-      mode,
-      finaliseSummary,
-      simpleSessionScope,
-    ],
+    [objectiveLabel, distraction, cachedSessionProgress, isSimpleMode, mode, finaliseSummary],
   );
 
   useEffect(() => {
@@ -988,7 +1061,10 @@ export function useLearnSession({
           ? simpleQueue.current.filter((card) => !simpleMastered.current.has(card.id))
           : cardsRef.current;
         const upcoming = sessionPreloadCards(
-          pool, current.id, isSimpleMode ? null : ctxRef.current, cooldowns.current,
+          pool,
+          current.id,
+          isSimpleMode ? null : ctxRef.current,
+          cooldowns.current,
         );
         stopPreloading = preloadSessionImages(upcoming, occlusionMapRef.current);
       }, 0);
@@ -1021,6 +1097,8 @@ export function useLearnSession({
     lastAnswer.current = null;
     submitting.current = false;
     finalising.current = false;
+    pendingCompletion.current = null;
+    completionConfirmed.current = false;
     progressBefore.current = 0;
     progressCacheRef.current = { dirty: true, value: 0 };
     perfRef.current = new Map();
@@ -1068,7 +1146,8 @@ export function useLearnSession({
     setLessonNotesScreen(null);
     if (!enabled) return;
     void (async () => {
-      const measureStartup = performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
+      const measureStartup =
+        performance.getEntriesByName('lacuna:measure-study-startup').length > 0;
       const markLoad = (stage: string) => {
         if (measureStartup) performance.mark(`lacuna:study-load:${stage}`);
       };
@@ -1238,40 +1317,48 @@ export function useLearnSession({
           : makeExamDateContext(course, courseLessons, examDates);
         cards = catchUpPractice
           ? catchUpPracticePool(
-              allCards, course, courseLessons, courseLinks, examDateContext, reachedLessonIds,
-              Date.now(), earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
+              allCards,
+              course,
+              courseLessons,
+              courseLinks,
+              examDateContext,
+              reachedLessonIds,
+              Date.now(),
+              earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
             )
           : standaloneSimple
-          ? course.archived
-            ? []
-            : allCards
-          : selectedAssessment
-            ? activeRevisionPlan
-              ? allCards.filter((card) =>
-                  activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
-                )
-              : assessmentPracticePool(selectedAssessment, {
-                  course,
-                  assessments: examDates,
-                  practiceNodes: manualNodes,
-                  lessons: courseLessons,
-                  cards: allCards,
-                  links: courseLinks,
-                  exposures: courseExposures,
-                  reachedLessonIds,
-                })
-            : dueReview
-              ? dueReviewPool(fullScope, course)
-              : examPractice
-                ? examPracticePool(fullScope, course, examDateContext)
-                : eligiblePracticePool(fullScope, course, examDateContext);
+            ? course.archived
+              ? []
+              : allCards
+            : selectedAssessment
+              ? activeRevisionPlan
+                ? allCards.filter((card) =>
+                    activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
+                  )
+                : assessmentPracticePool(selectedAssessment, {
+                    course,
+                    assessments: examDates,
+                    practiceNodes: manualNodes,
+                    lessons: courseLessons,
+                    cards: allCards,
+                    links: courseLinks,
+                    exposures: courseExposures,
+                    reachedLessonIds,
+                  })
+              : dueReview
+                ? dueReviewPool(fullScope, course)
+                : examPractice
+                  ? examPracticePool(fullScope, course, examDateContext)
+                  : eligiblePracticePool(fullScope, course, examDateContext);
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
           // Introductions have already rationed new cards for traditional courses.
           // Direct-FSRS courses need the scheduler to enforce the same course-wide cap.
           newCardsPerDay:
-            course.learnFirst === false || catchUpPractice ? schedulingUnit.newCardsPerDay : undefined,
+            course.learnFirst === false || catchUpPractice
+              ? schedulingUnit.newCardsPerDay
+              : undefined,
         };
         if (course.learnFirst === false && !plannedRevision && !standaloneSimple) {
           cards = studyPool(cards, practiceConfig, Date.now(), undefined, allCards);
@@ -1599,7 +1686,7 @@ export function useLearnSession({
   const answerSimple = useCallback(
     async (
       cardNow: Card,
-      { correct, machineMarked, t, distracted }: AnswerResponse,
+      { correct, machineMarked, t, distracted, markedBy, retainUndo }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const deck = answerUnit(cardNow);
       if (!deck) return { undoAvailable: false };
@@ -1617,30 +1704,97 @@ export function useLearnSession({
         performance: perf,
       });
 
+      const simpleSnapshot = {
+        queue: [...simpleQueue.current],
+        mastered: new Set(simpleMastered.current),
+        wrong: new Set(simpleWrong.current),
+        cardIds: [...sessionCardIds],
+        exposureAdded: null as LessonCardExposure | null,
+      };
+      const eventsLen = events.current.length;
+      const outcomeBefore = sessionCardOutcomesRef.current.get(cardNow.id);
       const eventId = pendingReviewEventId.current ?? makeId();
       pendingReviewEventId.current = eventId;
-      const { result, performance: nextPerf } = await persistAnswer(
-        {
-          card: cardNow,
-          eventId,
-          sessionId: reviewSessionIdRef.current,
-          sessionKind: reviewSessionKind,
-          deck,
-          kind: reviewKindRef.current,
-          grade,
-          responseTimeSec: t,
-          distracted,
-          hintUsed,
-          correct,
-          marksEarned: machineMarked?.marksEarned,
-          marksAvailable: machineMarked?.marksAvailable,
-          lineVerdicts: machineMarked?.lineVerdicts,
-          checkerDisputes: machineMarked?.checkerDisputes,
+      const { result, nextPerf, perfBefore } = await db.transaction(
+        'rw',
+        [
+          db.cards,
+          db.courses,
+          db.schedulingUnits,
+          db.sessionHistory,
+          db.coursePerformance,
+          db.schedulingPerformance,
+          db.reviewHistory,
+          db.lessonCardExposures,
+        ],
+        async () => {
+          const perfBefore =
+            (await performanceForReviewUnit(deck.id, reviewKindRef.current)) ?? null;
+          const lessonId = correct ? lessonExposureIdRef.current : null;
+          const exposureBefore = lessonId
+            ? await db.lessonCardExposures.get([lessonId, cardNow.id])
+            : undefined;
+          const { result, performance: nextPerf } = await persistAnswer(
+            {
+              card: cardNow,
+              eventId,
+              sessionId: reviewSessionIdRef.current,
+              sessionKind: reviewSessionKind,
+              deck,
+              kind: reviewKindRef.current,
+              grade,
+              responseTimeSec: t,
+              distracted,
+              hintUsed,
+              correct,
+              marksEarned: machineMarked?.marksEarned,
+              marksAvailable: machineMarked?.marksAvailable,
+              lineVerdicts: machineMarked?.lineVerdicts,
+              checkerDisputes: machineMarked?.checkerDisputes,
+              markedBy,
+            },
+            deck.id,
+            perf,
+          );
+          if (lessonId && !exposureBefore) {
+            simpleSnapshot.exposureAdded = await upsertLessonCardExposure(lessonId, cardNow.id);
+          }
+          return { result, nextPerf, perfBefore };
         },
-        deck.id,
-        perf,
       );
       if (nextPerf) perfRef.current.set(deck.id, nextPerf);
+      lastAnswer.current =
+        result.recorded && retainUndo
+          ? {
+              responseTimeSec: t,
+              retainOnCompletion: true,
+              undo: {
+                eventId,
+                cardBefore: result.cardBefore,
+                perfBefore,
+                sessionHistoryId: result.sessionHistoryId,
+                deckId: deck.id,
+                kind: result.kind,
+                lastInteractedAtBefore: result.lastInteractedAtBefore,
+                updatedAtBefore: result.updatedAtBefore,
+                undoStateAfter: result.undoStateAfter,
+              },
+              cooldowns: new Map(cooldowns.current),
+              eventsLen,
+              deckId: deck.id,
+              deckReviews: reviewsByDeck.current.get(deck.id) ?? 0,
+              outcomeBefore,
+              revisionCovered: new Set(revisionCovered.current),
+              revisionImproved: new Set(revisionImproved.current),
+              revisionParked: new Set(revisionParked.current),
+              revisionCompleted: new Set(revisionCompleted.current),
+              revisionRetryAt: new Map(revisionRetryAt.current),
+              revisionFailures: new Map(revisionFailures.current),
+              revisionReviewEventIds: [...revisionReviewEventIds.current],
+              simple: simpleSnapshot,
+            }
+          : null;
+      setCanUndo(result.recorded && retainUndo);
       const updated = result.card;
       cardsRef.current = cardsRef.current.map((card) => (card.id === updated.id ? updated : card));
       simpleQueue.current = simpleQueue.current.map((card) =>
@@ -1651,11 +1805,6 @@ export function useLearnSession({
         { cardId: cardNow.id, grade, correct, responseTimeSec: t, distracted },
       ];
 
-      if (correct) {
-        if (lessonExposureIdRef.current) {
-          await upsertLessonCardExposure(lessonExposureIdRef.current, updated.id);
-        }
-      }
       const nextSimple = transitionSimpleAnswer(
         {
           queue: simpleQueue.current,
@@ -1683,9 +1832,9 @@ export function useLearnSession({
       } else {
         serveNext();
       }
-      return { undoAvailable: false };
+      return { undoAvailable: lastAnswer.current !== null };
     },
-    [answerUnit, finish, persistSimpleResume, reviewSessionKind, serveNext],
+    [answerUnit, finish, persistSimpleResume, reviewSessionKind, serveNext, sessionCardIds],
   );
 
   /** Item ids of a sequence's lines already mastered this session (a resumed pass). */
@@ -1818,7 +1967,7 @@ export function useLearnSession({
   const answerScheduled = useCallback(
     async (
       cardNow: Card,
-      { correct, manualGrade, machineMarked, t, distracted }: AnswerResponse,
+      { correct, manualGrade, machineMarked, t, distracted, markedBy, retainUndo }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const ctx = ctxRef.current;
       const deck = answerUnit(cardNow);
@@ -1874,6 +2023,7 @@ export function useLearnSession({
           marksAvailable: machineMarked?.marksAvailable,
           lineVerdicts: machineMarked?.lineVerdicts,
           checkerDisputes: machineMarked?.checkerDisputes,
+          markedBy,
         },
         deck.id,
         perf,
@@ -1896,10 +2046,6 @@ export function useLearnSession({
       nextOutcomes.set(cardNow.id, correct ? 'correct' : 'wrong');
       sessionCardOutcomesRef.current = nextOutcomes;
       setSchedulerProgress(sessionCompletionProgress(nextCards, ctx, nextOutcomes));
-      if (practiceSessionRef.current) {
-        await persistPracticeMilestone(nextCards, false);
-      }
-
       if (revisionPlanRef.current && requestWindowId) {
         if (recorded) revisionReviewEventIds.current.push(eventId);
         const now = Date.now();
@@ -1960,6 +2106,8 @@ export function useLearnSession({
 
       lastAnswer.current = recorded
         ? {
+            responseTimeSec: t,
+            retainOnCompletion: retainUndo,
             undo: {
               eventId,
               cardBefore,
@@ -2011,7 +2159,7 @@ export function useLearnSession({
       });
       if (stop) {
         finish(...stop);
-        return { undoAvailable: false };
+        return lastAnswer.current ? answerResult : { undoAvailable: false };
       }
 
       if (revisionPlanRef.current) {
@@ -2020,10 +2168,13 @@ export function useLearnSession({
       }
       if (sessionComplete(nextCards, ctx)) {
         finish(true);
-        return { undoAvailable: false };
+        return lastAnswer.current ? answerResult : { undoAvailable: false };
       }
       serveNext();
-      return answerResult;
+      if (!pendingCompletion.current && practiceSessionRef.current) {
+        await persistPracticeMilestone(nextCards, false);
+      }
+      return lastAnswer.current ? answerResult : { undoAvailable: false };
     },
     [
       answerUnit,
@@ -2040,7 +2191,14 @@ export function useLearnSession({
   );
 
   const answer = useCallback(
-    async (input: AnswerInput): Promise<AnswerResult> => {
+    async (
+      input: AnswerInput,
+      options?: {
+        markedBy?: JevMarkProvenance;
+        /** Automatic typed verdicts retain Undo through the final report. */
+        retainUndo?: boolean;
+      },
+    ): Promise<AnswerResult> => {
       if (submitting.current) return { undoAvailable: false };
       submitting.current = true;
       const phaseNow = phaseRef.current;
@@ -2058,6 +2216,8 @@ export function useLearnSession({
 
       try {
         const response: AnswerResponse = {
+          retainUndo: options?.retainUndo ?? false,
+          markedBy: options?.markedBy,
           correct: answerCorrect(input),
           manualGrade: typeof input === 'number' ? input : null,
           machineMarked,
@@ -2074,50 +2234,96 @@ export function useLearnSession({
     [distraction, isSimpleMode, answerSimple, answerScheduled],
   );
 
-  const undoLast = useCallback(async () => {
-    const snap = lastAnswer.current;
-    const ctx = ctxRef.current;
-    if (!snap || !ctx) return;
-    try {
-      await undoReview(snap.undo);
-      if (!mountedRef.current) return;
-      cardsRef.current = cardsRef.current.map((c) =>
-        c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
-      );
-      const restoredOutcomes = new Map(sessionCardOutcomesRef.current);
-      if (snap.outcomeBefore) restoredOutcomes.set(snap.undo.cardBefore.id, snap.outcomeBefore);
-      else restoredOutcomes.delete(snap.undo.cardBefore.id);
-      sessionCardOutcomesRef.current = restoredOutcomes;
-      setSessionCardOutcomes(restoredOutcomes);
-      setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
-      cooldowns.current = snap.cooldowns;
-      revisionCovered.current = snap.revisionCovered;
-      revisionImproved.current = snap.revisionImproved;
-      revisionParked.current = snap.revisionParked;
-      revisionCompleted.current = snap.revisionCompleted;
-      revisionRetryAt.current = snap.revisionRetryAt;
-      revisionFailures.current = snap.revisionFailures;
-      revisionReviewEventIds.current = snap.revisionReviewEventIds;
-      if (snap.undo.perfBefore) perfRef.current.set(snap.deckId, snap.undo.perfBefore);
-      events.current = events.current.slice(0, snap.eventsLen);
-      // Decrement the per-deck review counter on undo.
-      const prevReviews = snap.deckReviews - 1;
-      if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
-      else reviewsByDeck.current.delete(snap.deckId);
-      lastAnswer.current = null;
-      setCanUndo(false);
-      progressCacheRef.current.dirty = true;
-      setCurrent(snap.undo.cardBefore);
-      setPhase('question');
-      onCardServedRef.current?.();
-      setHintStep(0);
-      pendingReviewEventId.current = null;
-      timerStart.current = performance.now();
-      distraction.beginCard();
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
-    }
-  }, [distraction, notify]);
+  const undoLast = useCallback(
+    async (options?: { reveal?: boolean }) => {
+      const snap = lastAnswer.current;
+      const ctx = ctxRef.current;
+      if (!snap || !ctx || submitting.current || completionPromise.current) return;
+      submitting.current = true;
+      try {
+        await db.transaction(
+          'rw',
+          [
+            db.cards,
+            db.courses,
+            db.schedulingUnits,
+            db.sessionHistory,
+            db.coursePerformance,
+            db.schedulingPerformance,
+            db.reviewHistory,
+            db.lessonCardExposures,
+          ],
+          async () => {
+            const exposure = snap.simple?.exposureAdded;
+            if (exposure) {
+              const key: [string, string] = [exposure.lessonId, exposure.cardId];
+              const currentExposure = await db.lessonCardExposures.get(key);
+              if (JSON.stringify(currentExposure) !== JSON.stringify(exposure)) {
+                throw new Error(
+                  'The lesson exposure changed after this answer, so undo is no longer available.',
+                );
+              }
+              await db.lessonCardExposures.delete(key);
+            }
+            await undoReview(snap.undo);
+          },
+        );
+        if (!mountedRef.current) return;
+        cardsRef.current = cardsRef.current.map((c) =>
+          c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
+        );
+        const restoredOutcomes = new Map(sessionCardOutcomesRef.current);
+        if (snap.outcomeBefore) restoredOutcomes.set(snap.undo.cardBefore.id, snap.outcomeBefore);
+        else restoredOutcomes.delete(snap.undo.cardBefore.id);
+        sessionCardOutcomesRef.current = restoredOutcomes;
+        setSessionCardOutcomes(restoredOutcomes);
+        setSchedulerProgress(sessionCompletionProgress(cardsRef.current, ctx, restoredOutcomes));
+        cooldowns.current = snap.cooldowns;
+        revisionCovered.current = snap.revisionCovered;
+        revisionImproved.current = snap.revisionImproved;
+        revisionParked.current = snap.revisionParked;
+        revisionCompleted.current = snap.revisionCompleted;
+        revisionRetryAt.current = snap.revisionRetryAt;
+        revisionFailures.current = snap.revisionFailures;
+        revisionReviewEventIds.current = snap.revisionReviewEventIds;
+        perfRef.current.set(snap.deckId, snap.undo.perfBefore ?? emptyPerformance(snap.deckId));
+        events.current = events.current.slice(0, snap.eventsLen);
+        if (snap.simple) {
+          simpleQueue.current = snap.simple.queue;
+          simpleMastered.current = snap.simple.mastered;
+          simpleWrong.current = snap.simple.wrong;
+          setSessionCardIds(snap.simple.cardIds);
+          persistSimpleResume(restoredOutcomes);
+        }
+        // Simple passes do not increment the scheduled daily review counter.
+        const prevReviews = snap.deckReviews - (snap.simple ? 0 : 1);
+        if (prevReviews > 0) reviewsByDeck.current.set(snap.deckId, prevReviews);
+        else reviewsByDeck.current.delete(snap.deckId);
+        pendingCompletion.current = null;
+        completionConfirmed.current = false;
+        finalising.current = false;
+        setSummary(null);
+        lastAnswer.current = null;
+        setCanUndo(false);
+        progressCacheRef.current.dirty = true;
+        setCurrent(snap.undo.cardBefore);
+        setPhase(options?.reveal ? 'answer' : 'question');
+        onCardServedRef.current?.();
+        setHintStep(0);
+        pendingReviewEventId.current = null;
+        timerStart.current = performance.now();
+        distraction.beginCard();
+        responseTime.current = snap.responseTimeSec;
+        distraction.setAnswerVisible(options?.reveal === true);
+        return snap.undo.cardBefore;
+      } catch (err) {
+        notify(err instanceof Error ? err.message : 'Could not undo the last answer.', 'negative');
+      } finally {
+        submitting.current = false;
+      }
+    },
+    [distraction, notify, persistSimpleResume],
+  );
 
   /** Drop the current card from the live pool after a suspend/bury, then move on. */
   const afterRemoval = useCallback(() => {
@@ -2280,6 +2486,7 @@ export function useLearnSession({
     hide,
     answer,
     undoLast,
+    confirmCompletion,
     openEdit,
     cancelEdit,
     handleEdited,

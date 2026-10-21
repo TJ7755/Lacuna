@@ -57,7 +57,7 @@ export const DEFAULT_AI_QUOTA_LIMITS: AiQuotaLimits = {
   globalConcurrent: 4,
 };
 
-function quotaCommand(
+export function quotaCommand(
   url: string,
   token: string,
   fetcher: typeof fetch,
