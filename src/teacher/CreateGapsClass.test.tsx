@@ -53,7 +53,7 @@ it('creates both secrets with one generated code and continues without downloadi
   expect(screen.getByRole('checkbox')).toBeChecked();
   submit();
   expect(await screen.findByRole('heading', { name: 'Class created' })).toBeVisible();
-  expect(screen.getByRole('heading', { name: 'Class created' })).toHaveFocus();
+  await waitFor(() => expect(screen.getByRole('heading', { name: 'Class created' })).toHaveFocus());
   const code = mocks.createFromLink.mock.calls[0][1];
   expect(code).toMatch(/^[0-9A-Z]{24}$/);
   expect(mocks.create).toHaveBeenCalledWith(shareId, code);
