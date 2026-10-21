@@ -3,11 +3,24 @@ import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { parse } from 'yaml';
-import { verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
+import { extractArchive, verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
 
 const root = new URL('../', import.meta.url);
 const revision = readFileSync(new URL('.bun-version', root), 'utf8').trim();
 const action = parse(readFileSync(new URL('.github/actions/setup-bun/action.yml', root), 'utf8'));
+
+test('Windows ZIP extraction uses native tar rather than Git tar interpreting a drive as a host', () => {
+  const calls = [];
+  const directory = 'D:\\a\\Lacuna\\runtime download';
+  extractArchive(directory, {
+    platform: 'win32',
+    systemRoot: 'C:\\Windows',
+    execute: (...args) => calls.push(args),
+  });
+  assert.deepEqual(calls, [
+    ['C:\\Windows\\System32\\tar.exe', ['-xf', 'bun.zip'], { cwd: directory }],
+  ]);
+});
 
 test('the Bun security guard rejects changed downloads and unreviewed revisions', () => {
   assert.doesNotThrow(() => verifyRevision(revision));

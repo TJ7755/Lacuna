@@ -13,7 +13,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { delimiter, dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve, win32 } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -30,6 +30,18 @@ export function verifyArchive(bytes, expected) {
 export function verifyRevision(actual) {
   if (actual.trim() !== pin.revision) {
     throw new Error(`Bun revision mismatch: expected ${pin.revision}, received ${actual.trim()}`);
+  }
+}
+
+export function extractArchive(
+  directory,
+  { platform = process.platform, systemRoot = process.env.SystemRoot, execute = execFileSync } = {},
+) {
+  if (platform === 'win32') {
+    if (!systemRoot) throw new Error('SystemRoot is required to find the native Windows tar.exe');
+    execute(win32.join(systemRoot, 'System32', 'tar.exe'), ['-xf', 'bun.zip'], { cwd: directory });
+  } else {
+    execute('unzip', ['-q', join(directory, 'bun.zip'), '-d', directory]);
   }
 }
 
@@ -58,10 +70,8 @@ export async function installBun() {
       verifyArchive(bytes, asset.sha256);
       const archive = join(temporary, 'bun.zip');
       writeFileSync(archive, bytes);
-      if (process.platform === 'win32') {
-        execFileSync('tar', ['-xf', archive, '-C', temporary]);
-      } else {
-        execFileSync('unzip', ['-q', archive, '-d', temporary]);
+      extractArchive(temporary);
+      if (process.platform !== 'win32') {
         chmodSync(join(temporary, archiveName, 'bun'), 0o755);
       }
       const extracted = join(
