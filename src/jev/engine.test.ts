@@ -7,6 +7,7 @@ const emptyCache = () => ({ get: vi.fn(async () => undefined), put: vi.fn(async 
 const request = { cardId: 'c', prompt: 'What?', expected: 'Water', answer: 'Water molecules' };
 afterEach(() => {
   localStorage.clear();
+  vi.restoreAllMocks();
   vi.useRealTimers();
 });
 it.each([
@@ -91,7 +92,7 @@ it('resolves one hung request within the typed timeout without pausing', async (
   expect(await result).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status()).toMatchObject({ state: 'ready' });
 });
-it('abstains on low confidence and offline transport failures', async () => {
+it('abstains on low confidence without pausing', async () => {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
   const fetcher = vi
     .fn()
@@ -103,9 +104,6 @@ it('abstains on low confidence and offline transport failures', async () => {
   engine.enable(1);
   expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
   expect(engine.status().state).toBe('ready');
-  fetcher.mockRejectedValue(new Error('network failed'));
-  expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
-  expect(engine.status()).toMatchObject({ state: 'paused', reason: 'offline' });
 });
 it('honours an external abort even if the transport ignores it', async () => {
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
@@ -230,6 +228,102 @@ it('pauses only after three consecutive failures', async () => {
   expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
   expect(fetcher).toHaveBeenCalledTimes(4);
 });
+
+it.each(['marking', 'session exchange'])(
+  'retries transient %s network failures without an online event',
+  async (stage) => {
+    vi.useFakeTimers();
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    let failing = true;
+    const fetcher = vi.fn<typeof fetch>(async (url) => {
+      const isSession = String(url).endsWith('/session');
+      if (failing && (stage === 'session exchange' ? isSession : !isSession))
+        throw new TypeError('Failed to fetch');
+      if (isSession) return Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 });
+      return Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 });
+    });
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    engine.enable(1);
+    for (let count = 1; count <= 3; count++) {
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      if (count < 3) expect(engine.status().state).toBe('ready');
+    }
+    expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+    for (const delay of [60_000, 300_000, 900_000, 900_000]) {
+      const calls = fetcher.mock.calls.length;
+      expect(engine.marker()).toBeNull();
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(fetcher).toHaveBeenCalledTimes(calls + 1);
+      expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+    }
+    failing = false;
+    const calls = fetcher.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(900_000);
+    expect(fetcher).toHaveBeenCalledTimes(calls);
+    expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+    expect(await engine.marker()!(request)).toMatchObject({ outcome: 'correct' });
+    expect(engine.status().state).toBe('ready');
+    if (stage === 'session exchange') await vi.advanceTimersByTimeAsync(3_600_000);
+    failing = true;
+    for (let count = 1; count <= 3; count++) {
+      await engine.markTyped(request);
+      if (count < 3) expect(engine.status().state).toBe('ready');
+    }
+    expect(engine.status()).toMatchObject({ state: 'paused', reason: 'error' });
+    failing = false;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await engine.markTyped(request)).toMatchObject({ outcome: 'correct' });
+  },
+);
+
+it.each(['marking', 'session exchange'])(
+  'waits for an online event after the browser goes offline during %s',
+  async (stage) => {
+    vi.useFakeTimers();
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+    let failing = true;
+    const fetcher = vi.fn<typeof fetch>(async (url) => {
+      const isSession = String(url).endsWith('/session');
+      if (failing && (stage === 'session exchange' ? isSession : !isSession)) {
+        online.mockReturnValue(false);
+        throw new TypeError('Failed to fetch');
+      }
+      if (isSession) return Response.json({ token: 's', expiresAt: Date.now() + 3_600_000 });
+      return Response.json({ model: 'jev-1.14.0', value: 1, confidence: 0.97, inputTokens: 12 });
+    });
+    const engine = createJevEngine({ fetcher, cache: emptyCache() });
+    const unsubscribe = engine.subscribe(() => {});
+    try {
+      engine.enable(1);
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(engine.status()).toMatchObject({ state: 'paused', reason: 'offline' });
+      failing = false;
+      const calls = fetcher.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(24 * 60 * 60_000);
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      online.mockReturnValue(true);
+      expect(engine.marker()).toBeNull();
+      expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+      expect(engine.status()).toMatchObject({ state: 'paused', reason: 'offline' });
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      globalThis.dispatchEvent(new Event('online'));
+      expect(fetcher).toHaveBeenCalledTimes(calls);
+      expect(engine.status().state).toBe('ready');
+      expect(await engine.markTyped(request)).toMatchObject({ outcome: 'correct' });
+    } finally {
+      unsubscribe();
+    }
+  },
+);
 
 it.each([500, 503])(
   'admits only natural requests after growing backoff for status %s and resets on success',

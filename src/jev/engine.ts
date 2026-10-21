@@ -134,7 +134,7 @@ export function createJevEngine(
               access: 'access-code-rejected',
               quota: 'limit-reached',
               unavailable: 'service-disabled',
-              network: 'offline',
+              network: globalThis.navigator?.onLine === false ? 'offline' : 'error',
               invalid: 'error',
             } as const
           )[error.kind]
@@ -263,18 +263,12 @@ export function createJevEngine(
     signal.throwIfAborted();
     if (!eligible()) return null;
     const origin = globalThis.window?.electronAPI?.isElectron === true ? HOSTED_SERVICE_ORIGIN : '';
-    let response: Response;
-    try {
-      response = await fetcher(`${origin}/api/ai/jev`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal,
-      });
-    } catch (error) {
-      if (!signal.aborted) throw new Pause('offline');
-      throw error;
-    }
+    const response = await fetcher(`${origin}/api/ai/jev`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    });
     if (!response.ok)
       throw new Pause(
         response.status === 401
