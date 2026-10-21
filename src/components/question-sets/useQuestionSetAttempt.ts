@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { liveQuery } from 'dexie';
 import { useBlocker } from 'react-router-dom';
 import {
   getQuestionSetAttempt,
@@ -25,7 +26,7 @@ export function useQuestionSetAttempt(courseId: string, setId: string, attemptId
         if (cancelled) return;
         if (!record || record.courseId !== courseId || record.questionSetId !== setId) {
           setMissing(true);
-        } else setSession(new QuestionSetAttemptSession(record));
+        } else setSession(new QuestionSetAttemptSession(record, getQuestionSetAttempt));
       })
       .catch((cause) => {
         if (!cancelled) setError(String(cause));
@@ -34,6 +35,17 @@ export function useQuestionSetAttempt(courseId: string, setId: string, attemptId
       cancelled = true;
     };
   }, [courseId, setId, attemptId, loadAttempt]);
+  // Background marking writes the stored attempt; follow it so later saves start from it.
+  useEffect(() => {
+    if (!session) return;
+    const subscription = liveQuery(() => getQuestionSetAttempt(attemptId)).subscribe({
+      next: (record) => {
+        if (record) session.adopt(record);
+      },
+      error: () => undefined,
+    });
+    return () => subscription.unsubscribe();
+  }, [session, attemptId]);
   return { session, error, missing, retryLoad };
 }
 

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
+import { QuestionSetAttemptRevisionConflictError } from '../../questions/questionSetAttemptRepository';
 import { QuestionSetAttemptSession } from './questionSetAttemptSession';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 
 const initial = {
   id: 'attempt',
   revisionId: 'r1',
+  updatedAt: 1,
   responses: [{ nodeId: 'q1', draft: { kind: 'written', text: '' } }],
 } as QuestionSetAttemptRecord;
 describe('attempt write queue', () => {
@@ -60,4 +62,47 @@ it('retains accepted commands queued behind a failure and replays them in order'
   await session.retry();
   expect(later).toHaveBeenCalledWith(expect.objectContaining({ revisionId: 'r2' }));
   expect(session.snapshot.record.revisionId).toBe('r3');
+});
+
+describe('background writes', () => {
+  it('re-runs a command once against the latest record after a background write', async () => {
+    const stored = { ...initial, revisionId: 'r2', updatedAt: 2 };
+    const session = new QuestionSetAttemptSession(initial, async () => stored);
+    const seen: string[] = [];
+    await session.run(async (current) => {
+      seen.push(current.revisionId);
+      if (current.revisionId === 'r1') throw new QuestionSetAttemptRevisionConflictError();
+      return { ...current, revisionId: 'r3', updatedAt: 3 };
+    });
+    expect(seen).toEqual(['r1', 'r2']);
+    expect(session.snapshot.record.revisionId).toBe('r3');
+    expect(session.snapshot.error).toBeNull();
+  });
+  it('stops on a second conflict instead of retrying indefinitely', async () => {
+    const session = new QuestionSetAttemptSession(initial, async () => initial);
+    const command = vi.fn(async () => {
+      throw new QuestionSetAttemptRevisionConflictError();
+    });
+    await expect(session.run(command)).rejects.toThrow(QuestionSetAttemptRevisionConflictError);
+    expect(command).toHaveBeenCalledTimes(2);
+  });
+  it('adopts newer stored revisions only while idle', async () => {
+    const session = new QuestionSetAttemptSession(initial);
+    session.adopt({ ...initial, revisionId: 'old', updatedAt: 0 });
+    expect(session.snapshot.record.revisionId).toBe('r1');
+    let release!: () => void;
+    const pending = session.run(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ ...initial, revisionId: 'r2', updatedAt: 2 });
+        }),
+    );
+    await Promise.resolve();
+    session.adopt({ ...initial, revisionId: 'bg', updatedAt: 5 });
+    release();
+    await pending;
+    expect(session.snapshot.record.revisionId).toBe('r2');
+    session.adopt({ ...initial, revisionId: 'bg', updatedAt: 5 });
+    expect(session.snapshot.record.revisionId).toBe('bg');
+  });
 });
