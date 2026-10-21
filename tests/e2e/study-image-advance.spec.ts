@@ -101,6 +101,8 @@ test('measures original-sized JPEG and PNG card advances at 4x CPU slowdown', as
     StudyLoadFixture: { seed(images: unknown): Promise<unknown> };
   }).StudyLoadFixture.seed(images), images));
   await page.addInitScript(() => {
+    // Keep the measured image sequence fixed while the production scheduler shuffles ties.
+    Math.random = () => 1 - Number.EPSILON;
     const entries: ImageProbeEntry[] = [];
     Object.assign(window, { imageProbe: entries });
     const create = URL.createObjectURL;

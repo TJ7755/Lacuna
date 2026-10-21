@@ -122,15 +122,16 @@ export interface ScoredCard {
   score: number;
 }
 
-/** Score and sort all cards in descending order under the deck's objective. */
+/** Score descending by objective; an optional session policy breaks exact ties only. */
 export function sortByObjective(
   cards: Card[],
   oc: ObjectiveContext,
   now: number = Date.now(),
+  tieBreak?: (a: Card, b: Card) => number,
 ): ScoredCard[] {
   return cards
     .map((card) => ({ card, score: scoreCard(card, oc, now) }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || (tieBreak?.(a.card, b.card) ?? 0));
 }
 
 /**
