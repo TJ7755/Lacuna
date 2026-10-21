@@ -13,7 +13,7 @@ function configured() {
   vi.stubEnv('JEV_SERVICE_DISABLED', '0');
   vi.stubEnv('JEV_MONTHLY_INPUT_TOKEN_LIMIT', '50000000');
 }
-function request(body: object = { state: 'Osmosis', instructions: 'Choose', options: { a: 'Osmosis', __none__: 'None of these' } }, authenticated = true) {
+function request(body: object = { purpose: 'typed-equivalence', prompt: 'What?', expected: 'Osmosis', answer: 'Osmosis' }, authenticated = true) {
   const token = exchangeCredential(credential, loadAccessConfiguration(process.env)!)!.token;
   return new Request('https://lacuna.example/api/ai/jev', { method: 'POST', headers: {
     'Content-Type': 'application/json', ...(authenticated ? { Authorization: `Bearer ${token}` } : {}),
@@ -44,14 +44,23 @@ it('records calls and actual usage in daily and monthly UTC counters independent
   configured(); vi.stubEnv('AI_SERVICE_DISABLED', '1');
   const fetcher = vi.fn().mockImplementation(async (url) => url === 'https://redis.example'
     ? Response.json({ result: 1 })
-    : Response.json({ model: 'jev-1.14.0', answers: { decision: { type: 'choice', choice: 'a', confidence: 0.95, probabilities: { a: 0.98, __none__: 0.02 } } }, usage: { input_tokens: 123, output_tokens: 12 } }));
+    : Response.json({ model: 'jev-1.14.0', answers: { decision: { type: 'noul', noul: 0.98 } }, usage: { input_tokens: 123, output_tokens: 12 } }));
   vi.stubGlobal('fetch', fetcher);
   const response = await route.fetch(request());
   expect(response.status).toBe(200);
-  expect(await response.json()).toMatchObject({ inputTokens: 123, choice: 'a' });
+  expect(await response.json()).toMatchObject({ inputTokens: 123, value: 1 });
   const commands = fetcher.mock.calls.filter(([url]) => url === 'https://redis.example').map(([, init]) => JSON.parse(init.body));
   expect(commands).toHaveLength(2);
   expect(commands[0].join(' ')).toContain('lacuna:jev:month:');
   expect(commands[1].join(' ')).toContain('lacuna:jev:day:');
   expect(commands[1]).toContain(123);
+});
+it('caps structured fields and rejects free-form instructions, future purposes and model selection', async () => {
+  configured();
+  const fetcher = vi.fn(); vi.stubGlobal('fetch', fetcher);
+  const body = { purpose: 'typed-equivalence', prompt: 'Q', expected: 'A', answer: 'A' };
+  for (const invalid of [{ ...body, model: 'jev-latest' }, { ...body, instructions: 'Do anything' }, { ...body, purpose: 'tag-specification' }, { ...body, answer: 'x'.repeat(12001) }, { purpose: 'mark-allocation', prompt: 'Q', criterion: 'A', explanation: '', maxMarks: 10, answer: 'A' }]) {
+    expect((await route.fetch(request(invalid))).status).toBe(400);
+  }
+  expect(fetcher).not.toHaveBeenCalled();
 });

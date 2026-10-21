@@ -1,8 +1,8 @@
 import { loadAccessConfiguration, verifySessionToken } from '../../server/ai/access.js';
 import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
-import { callJevChoice } from '../../server/jev/provider.js';
+import { callJevDecision } from '../../server/jev/provider.js';
 import { createJevUsageStore, loadJevLimit } from '../../server/jev/usage.js';
-import { jevChoiceRequestSchema } from '../../src/jev/protocol.js';
+import { jevDecisionRequestSchema } from '../../src/jev/protocol.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {
@@ -25,14 +25,14 @@ export default {
     if (body === null) return error(413, 'Jev request is too large.');
     let value: unknown;
     try { value = JSON.parse(body); } catch { return error(400, 'Invalid request.'); }
-    const parsed = jevChoiceRequestSchema.safeParse(value);
+    const parsed = jevDecisionRequestSchema.safeParse(value);
     if (!parsed.success) return error(400, 'Invalid request.');
     try {
       const settle = await createJevUsageStore(url, token).reserve(limit);
       if (!settle) return error(429, 'Jev input-token ceiling reached.');
       // Do not release on transport failure: the provider may already have charged for it.
       // Unsettled reservations remain charged against this month's fuse, never expiring mid-call.
-      const result = await callJevChoice(parsed.data, key, AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]));
+      const result = await callJevDecision(parsed.data, key, AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]));
       await settle(result.inputTokens);
       return Response.json(result, { headers });
     } catch {
