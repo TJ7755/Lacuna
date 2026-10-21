@@ -25,6 +25,7 @@ export function PathEditorSurface({
   onClosed,
   onDelete,
   deleteNoun,
+  cancellable = false,
   children,
 }: {
   label: string;
@@ -32,6 +33,7 @@ export function PathEditorSurface({
   onClosed: () => void;
   onDelete?: () => Promise<boolean>;
   deleteNoun?: string;
+  cancellable?: boolean;
   children: ReactNode;
 }) {
   const [source] = useState(pathEditorSource);
@@ -163,6 +165,12 @@ export function PathEditorSurface({
     }
   }
 
+  function dismiss() {
+    if (pending.current || closing) return;
+    if (cancellable) setClosing(true);
+    else void finish();
+  }
+
   return createPortal(
     <div
       ref={trap}
@@ -172,7 +180,10 @@ export function PathEditorSurface({
       aria-hidden={closing || undefined}
       onKeyDown={(event) => {
         if (event.defaultPrevented) return;
-        if (event.key === 'Escape' || ((event.metaKey || event.ctrlKey) && event.key === 'Enter')) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          dismiss();
+        } else if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
           event.preventDefault();
           void finish();
         }
@@ -185,7 +196,7 @@ export function PathEditorSurface({
         initial={{ opacity: 0 }}
         animate={{ opacity: closing ? 0 : 1 }}
         transition={{ duration: 0.18 * multiplier }}
-        onClick={() => void finish()}
+        onClick={dismiss}
       />
       <motion.div
         data-path-editor-surface=""
@@ -225,9 +236,16 @@ export function PathEditorSurface({
             ) : (
               <span />
             )}
-            <Button variant="primary" disabled={busy || closing} onClick={() => void finish()}>
-              {busy ? 'Saving…' : 'Done'}
-            </Button>
+            <div className="flex items-center gap-3">
+              {cancellable && (
+                <Button variant="ghost" disabled={busy || closing} onClick={dismiss}>
+                  Cancel
+                </Button>
+              )}
+              <Button variant="primary" disabled={busy || closing} onClick={() => void finish()}>
+                {busy ? 'Saving…' : 'Done'}
+              </Button>
+            </div>
           </footer>
         </motion.div>
       </motion.div>
