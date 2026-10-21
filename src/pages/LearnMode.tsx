@@ -648,7 +648,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
               {!suppressClassicGrading && (
                 <StudyControls
-                  key={`controls-${current?.id}`}
+                  // Typed answers start each card afresh; other controls persist so their
+                  // grades can flow back into the next card's reveal.
+                  key={isTypingCard ? `controls-${current?.id}` : 'controls'}
                   phase={phase}
                   feedback={gradeFeedback}
                   isTypingCard={isTypingCard}

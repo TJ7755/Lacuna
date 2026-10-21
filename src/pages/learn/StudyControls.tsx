@@ -7,8 +7,12 @@ import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { TouchBottomSheet } from './TouchBottomSheet';
 import type { Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
+import { LiquidGradeControls } from './LiquidGradeControls';
 
-/** Both phases share a grid cell, reserving the larger height before a flip. */
+/**
+ * Both phases share a grid cell, reserving the larger height before a flip. Typed answers
+ * fade between their input and the grades; other cards use the liquid controls.
+ */
 export function StudyControls({
   phase,
   feedback,
@@ -43,10 +47,84 @@ export function StudyControls({
     if (question) input.focus({ preventScroll: true });
     else if (document.activeElement === input) input.blur();
   }, [question, isTypingCard, typingInputRef]);
+  const grade = (
+    input: boolean | Grade,
+    variant: 'danger' | 'secondary' | 'primary',
+    label: React.ReactNode,
+  ) => (
+    <StudyGradeButton
+      key={String(input)}
+      grade={input}
+      feedback={feedback}
+      m={m}
+      variant={variant}
+      size="lg"
+      className={gradingMode === 'manual' ? 'w-full' : 'w-full flex-1'}
+      onClick={() => onAnswer(input, 'keyboard')}
+    >
+      {label}
+    </StudyGradeButton>
+  );
+  // The primary grade comes last: the liquid controls draw its fill.
+  const grades =
+    gradingMode === 'manual'
+      ? [
+          grade(
+            1,
+            'danger',
+            <>
+              <CloseIcon width={18} height={18} />
+              Again
+            </>,
+          ),
+          grade(2, 'secondary', 'Hard'),
+          grade(3, 'secondary', 'Good'),
+          grade(
+            4,
+            'primary',
+            <>
+              <CheckIcon width={18} height={18} />
+              Easy
+            </>,
+          ),
+        ]
+      : [
+          grade(
+            false,
+            'danger',
+            <>
+              <CloseIcon width={18} height={18} />
+              No
+            </>,
+          ),
+          grade(
+            true,
+            'primary',
+            <>
+              <CheckIcon width={18} height={18} />
+              Yes
+            </>,
+          ),
+        ];
+  const gradeRowClassName =
+    gradingMode === 'manual'
+      ? 'grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4'
+      : 'flex w-full max-w-md gap-3';
   return (
     <>
-      {(isTypingCard || !isTouchMode) && (
-        <div className={'study-controls grid w-full shrink-0 ' + (isTypingCard ? 'mt-6' : 'mt-8')}>
+      {!isTypingCard && !isTouchMode && (
+        <div className="study-controls mt-8 w-full shrink-0">
+          <LiquidGradeControls
+            question={question}
+            grades={grades}
+            rowClassName={gradeRowClassName}
+            onReveal={onReveal}
+            m={m}
+          />
+        </div>
+      )}
+      {isTypingCard && (
+        <div className="study-controls mt-6 grid w-full shrink-0">
           <motion.div
             className="col-start-1 row-start-1 flex w-full flex-col items-center self-start gap-3"
             initial={false}
@@ -55,42 +133,31 @@ export function StudyControls({
             inert={!question}
             aria-hidden={!question}
           >
-            {isTypingCard ? (
-              <div className="mx-auto w-full max-w-md">
-                <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
-                  Your answer
-                </label>
-                <input
-                  id="study-typed-answer"
-                  ref={typingInputRef}
-                  type="text"
-                  value={typedAnswer}
-                  onChange={(event) => onTypedAnswer(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                      event.preventDefault();
-                      onReveal();
-                    }
-                  }}
-                  placeholder="Type your answer…"
-                  className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
-                />
-                <div className="mt-3 flex justify-center">
-                  <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
-                    Check answer
-                  </Button>
-                </div>
+            <div className="mx-auto w-full max-w-md">
+              <label htmlFor="study-typed-answer" className="mb-2 block text-sm text-ink-soft">
+                Your answer
+              </label>
+              <input
+                id="study-typed-answer"
+                ref={typingInputRef}
+                type="text"
+                value={typedAnswer}
+                onChange={(event) => onTypedAnswer(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    onReveal();
+                  }
+                }}
+                placeholder="Type your answer…"
+                className="w-full rounded-lg border border-line-strong bg-surface px-4 py-3 text-ink outline-none transition-colors focus:border-accent"
+              />
+              <div className="mt-3 flex justify-center">
+                <Button variant="primary" size="lg" className="w-full" onClick={onReveal}>
+                  Check answer
+                </Button>
               </div>
-            ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full max-w-[13.5rem]"
-                onClick={onReveal}
-              >
-                Show answer
-              </Button>
-            )}
+            </div>
           </motion.div>
           {!isTouchMode && (
             <motion.div
@@ -101,83 +168,7 @@ export function StudyControls({
               inert={question}
               aria-hidden={question}
             >
-              {gradingMode === 'manual' ? (
-                <div className="grid w-full max-w-2xl grid-cols-2 gap-3 md:grid-cols-4">
-                  <StudyGradeButton
-                    grade={1}
-                    feedback={feedback}
-                    m={m}
-                    variant="danger"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => onAnswer(1, 'keyboard')}
-                  >
-                    <CloseIcon width={18} height={18} />
-                    Again
-                  </StudyGradeButton>
-                  <StudyGradeButton
-                    grade={2}
-                    feedback={feedback}
-                    m={m}
-                    variant="secondary"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => onAnswer(2, 'keyboard')}
-                  >
-                    Hard
-                  </StudyGradeButton>
-                  <StudyGradeButton
-                    grade={3}
-                    feedback={feedback}
-                    m={m}
-                    variant="secondary"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => onAnswer(3, 'keyboard')}
-                  >
-                    Good
-                  </StudyGradeButton>
-                  <StudyGradeButton
-                    grade={4}
-                    feedback={feedback}
-                    m={m}
-                    variant="primary"
-                    size="lg"
-                    className="w-full"
-                    onClick={() => onAnswer(4, 'keyboard')}
-                  >
-                    <CheckIcon width={18} height={18} />
-                    Easy
-                  </StudyGradeButton>
-                </div>
-              ) : (
-                <div className="flex w-full max-w-md gap-3">
-                  <StudyGradeButton
-                    grade={false}
-                    feedback={feedback}
-                    m={m}
-                    variant="danger"
-                    size="lg"
-                    className="w-full flex-1"
-                    onClick={() => onAnswer(false, 'keyboard')}
-                  >
-                    <CloseIcon width={18} height={18} />
-                    No
-                  </StudyGradeButton>
-                  <StudyGradeButton
-                    grade={true}
-                    feedback={feedback}
-                    m={m}
-                    variant="primary"
-                    size="lg"
-                    className="w-full flex-1"
-                    onClick={() => onAnswer(true, 'keyboard')}
-                  >
-                    <CheckIcon width={18} height={18} />
-                    Yes
-                  </StudyGradeButton>
-                </div>
-              )}
+              <div className={gradeRowClassName}>{grades}</div>
             </motion.div>
           )}
         </div>

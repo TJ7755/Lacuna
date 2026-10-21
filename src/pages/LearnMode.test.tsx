@@ -1116,7 +1116,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
   });
 
-  it('keeps practice-session chrome mounted while Yes and No replace the card surface', async () => {
+  it('keeps practice-session chrome and grading controls mounted while Yes and No replace the card surface', async () => {
     const now = Date.now();
     const deck = await createCourse('Continuous practice');
     await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
@@ -1149,6 +1149,9 @@ describe('LearnMode course/lesson scope', () => {
     const firstSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
     expect(header).not.toBeNull();
     expect(firstSurface).not.toBeNull();
+    // The grades flow back into the next card's reveal, so the controls must persist.
+    const reveal = () => screen.getByText(/^show answer$/i, { selector: 'button' });
+    const firstReveal = reveal();
 
     await answerNo();
     await waitFor(() => {
@@ -1156,6 +1159,7 @@ describe('LearnMode course/lesson scope', () => {
       expect(next?.dataset.studyCardId).not.toBe(firstSurface?.dataset.studyCardId);
       expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBe(progress);
       expect(progress.closest('header')).toBe(header);
+      expect(reveal()).toBe(firstReveal);
     });
 
     const secondSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
