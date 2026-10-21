@@ -36,6 +36,16 @@ async function reset() {
 describe('asset garbage collection', () => {
   beforeEach(reset);
 
+  it('does not scan content owners when there are no assets to collect', async () => {
+    const reads = vi.spyOn(db.cards, 'offset');
+    try {
+      expect(await collectOrphanedAssets()).toBe(0);
+      expect(reads).not.toHaveBeenCalled();
+    } finally {
+      reads.mockRestore();
+    }
+  });
+
   it('keeps a freshly stored asset that an open editor has not saved yet', async () => {
     // Uploading stores the asset before the card that references it is saved; a sweep
     // scheduled by anything else in that window must not delete it.

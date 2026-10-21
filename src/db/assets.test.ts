@@ -14,6 +14,7 @@ import {
   referencedAssetHashesInCards,
   referencedAssetHashesInValues,
   scheduleAssetGc,
+  pauseAssetGc,
   storeAudioBlob,
   storeImageBlob,
   stripAssetMedia,
@@ -405,6 +406,36 @@ describe('image assets', () => {
     expect(await db.assets.get(orphan.hash)).toBeUndefined();
     for (const kept of [question, attempt, set, draft])
       expect(await db.assets.get(kept.hash)).toBeDefined();
+  });
+
+  it('keeps a scheduled sweep pending until the final study guard releases it', async () => {
+    const orphan = await storeImageBlob(new Blob(['paused']), 'image/png', 1, 1);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    let releaseFirst = () => {};
+    let releaseSecond = () => {};
+    try {
+      vi.setSystemTime(afterGrace());
+      scheduleAssetGc(100);
+      await vi.advanceTimersByTimeAsync(50);
+      releaseFirst = pauseAssetGc();
+      releaseSecond = pauseAssetGc();
+      scheduleAssetGc(20);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await db.assets.get(orphan.hash)).toBeDefined();
+      releaseFirst();
+      releaseFirst();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(await db.assets.get(orphan.hash)).toBeDefined();
+      releaseSecond();
+      await vi.advanceTimersByTimeAsync(19);
+      expect(await db.assets.get(orphan.hash)).toBeDefined();
+      await vi.advanceTimersByTimeAsync(1);
+      await vi.waitFor(async () => expect(await db.assets.get(orphan.hash)).toBeUndefined());
+    } finally {
+      releaseFirst();
+      releaseSecond();
+      vi.useRealTimers();
+    }
   });
 
   it('runs one deferred orphan sweep after rapid rescheduling', async () => {

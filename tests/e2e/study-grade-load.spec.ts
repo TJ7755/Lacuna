@@ -140,13 +140,12 @@ for (const firstLesson of [false, true]) {
       const elapsed = await page.evaluate(
         () => (window as unknown as { gradeVisible: Promise<number> }).gradeVisible,
       );
+      const database = await page.evaluate(() => ({
+        release: performance.getEntriesByName('study-grade:release').at(-1)!.startTime,
+        transactions: window.gradeDatabaseProbe,
+      }));
       await testInfo.attach('grade-database.json', {
-        body: JSON.stringify(
-          await page.evaluate(() => ({
-            release: performance.getEntriesByName('study-grade:release').at(-1)?.startTime,
-            transactions: window.gradeDatabaseProbe,
-          })),
-        ),
+        body: JSON.stringify(database),
         contentType: 'application/json',
       });
       const { profile } = await cdp.send('Profiler.stop');
@@ -159,6 +158,16 @@ for (const firstLesson of [false, true]) {
         contentType: 'application/json',
       });
       await cdp.detach();
+      expect(
+        database.transactions.filter(
+          (transaction) =>
+            transaction.mode === 'readwrite' &&
+            transaction.stores.includes('assets') &&
+            transaction.stores.includes('cards') &&
+            transaction.at < database.release + elapsed &&
+            transaction.at + (transaction.duration ?? Infinity) > database.release,
+        ),
+      ).toEqual([]);
       expect(elapsed).toBeLessThan(650);
     });
   }
