@@ -101,32 +101,13 @@ describe('lazy route import recovery', () => {
     vi.restoreAllMocks();
   });
 
-  it('reloads a failed route once across document loads, then shows the boundary', async () => {
-    const first = await failedRoute();
-    await waitFor(() => expect(window.location.reload).toHaveBeenCalledOnce());
-    first.unmount();
-    vi.resetModules();
+  it('keeps Suspense visible while shared recovery replaces the document', async () => {
+    recoverFromChunkFailure.mockResolvedValue(true);
     await failedRoute();
-    expect(await screen.findByText('Something went wrong')).toBeInTheDocument();
-    expect(window.location.reload).toHaveBeenCalledOnce();
-  });
-
-  it('clears recovery after the failed route loads successfully', async () => {
-    const first = await failedRoute();
-    await waitFor(() => expect(window.location.reload).toHaveBeenCalledOnce());
-    first.unmount();
-    vi.resetModules();
-    const { lazyRouteModule } = await import('./routeModule');
-    const Route = lazyRouteModule(async () => ({ default: () => <h1>Recovered route</h1> }));
-    const recovered = render(
-      <Suspense fallback={null}>
-        <Route />
-      </Suspense>,
-    );
-    await screen.findByRole('heading', { name: 'Recovered route' });
-    recovered.unmount();
-    await failedRoute();
-    await waitFor(() => expect(window.location.reload).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(recoverFromChunkFailure).toHaveBeenCalledOnce());
+    expect(screen.getByText('Loading route')).toBeInTheDocument();
+    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
+    expect(window.location.reload).not.toHaveBeenCalled();
   });
 
   it('leaves module evaluation errors to the error boundary', async () => {
@@ -144,38 +125,7 @@ describe('lazy route import recovery', () => {
     expect(window.location.reload).not.toHaveBeenCalled();
   });
 
-  it('falls through safely when session storage is unavailable', async () => {
-    const deniedStorage = vi
-      .spyOn(window.sessionStorage, 'setItem')
-      .mockImplementation(() => {
-        throw new Error('Storage denied');
-      });
-    try {
-      await failedRoute();
-      expect(await screen.findByText('Something went wrong')).toBeInTheDocument();
-      expect(window.location.reload).not.toHaveBeenCalled();
-    } finally {
-      // Prototype-backed storage spies survive the suite-level restores in this
-      // environment; release it here or later tests inherit the denial.
-      deniedStorage.mockRestore();
-    }
-  });
-
-  it('escalates to shared recovery once the guarded reload is exhausted', async () => {
-    sessionStorage.setItem('lacuna:route-import-reload', window.location.href);
-    recoverFromChunkFailure.mockResolvedValue(true);
-    await failedRoute();
-
-    await waitFor(() => expect(recoverFromChunkFailure).toHaveBeenCalledOnce());
-    // Recovery taking over replaces the document itself, so the boundary must
-    // not take the route back while the claimed recovery runs, and the route
-    // path itself may not piggyback a second bare reload.
-    expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument();
-    expect(window.location.reload).not.toHaveBeenCalled();
-  });
-
   it('keeps the error boundary when shared recovery is unavailable instead of looping', async () => {
-    sessionStorage.setItem('lacuna:route-import-reload', window.location.href);
     await failedRoute();
 
     await waitFor(() => expect(recoverFromChunkFailure).toHaveBeenCalledOnce());

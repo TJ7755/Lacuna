@@ -11,7 +11,7 @@ export interface StaleChunkRecoveryEnvironment {
   confirmOnline(): Promise<boolean>;
 }
 
-let recoveryPending = false;
+let pendingRecovery: Promise<boolean> | undefined;
 
 /**
  * Clear every service worker and cache still serving the route stale bytes,
@@ -21,11 +21,20 @@ let recoveryPending = false;
  * an offline start would clear the shell keeping the application usable, and a
  * claimed cooldown would reload repeatedly inside the failing minute.
  */
-export async function recoverFromChunkFailure(
+export function recoverFromChunkFailure(
   environment: StaleChunkRecoveryEnvironment = browserEnvironment(),
 ): Promise<boolean> {
-  if (!environment.online() || recoveryPending) return false;
-  recoveryPending = true;
+  // Vite reports the rejection before React.lazy does. Both callers must wait
+  // for the same cleanup, otherwise a route can reload into the stale shell.
+  if (pendingRecovery) return pendingRecovery;
+  if (!environment.online()) return Promise.resolve(false);
+  pendingRecovery = performRecovery(environment).finally(() => {
+    pendingRecovery = undefined;
+  });
+  return pendingRecovery;
+}
+
+async function performRecovery(environment: StaleChunkRecoveryEnvironment): Promise<boolean> {
   try {
     const confirmed = await environment.confirmOnline();
     if (!confirmed) return false;
@@ -34,8 +43,6 @@ export async function recoverFromChunkFailure(
     return true;
   } catch {
     return false;
-  } finally {
-    recoveryPending = false;
   }
 }
 
