@@ -229,12 +229,8 @@ svg.gaps-turn[data-open] {
   opacity: 0;
   pointer-events: none;
 }
-.gaps-sidebar-theme,
 .gaps-sidebar-collapse {
   transition: transform 340ms var(--gaps-ease);
-}
-.gaps-sidebar:not([data-collapsed]) .gaps-sidebar-theme {
-  transform: translateY(52px);
 }
 .gaps-sidebar:not([data-collapsed]) .gaps-sidebar-collapse {
   transform: translateX(194px);

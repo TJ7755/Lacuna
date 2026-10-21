@@ -1,0 +1,1 @@
+- Remove the empty row above expanded sidebar controls in Learning and Gaps, make notifications more compact throughout the app, and lower study feedback beside the answer controls on wide screens.

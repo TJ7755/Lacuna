@@ -6,6 +6,30 @@ test.skip(
   'Run verify:browser -- --gaps for the separate teacher build',
 );
 
+test('expanded Gaps footer has no empty row above its controls', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  const sidebar = page.getByRole('complementary', { name: 'Gaps' });
+  const more = sidebar.getByRole('navigation', { name: 'More', exact: true });
+  const theme = sidebar.getByRole('button', { name: 'Toggle colour theme' });
+  await expect
+    .poll(async () => {
+      const controls = (await theme.boundingBox())!;
+      const links = (await more.boundingBox())!;
+      return controls.y - links.y - links.height;
+    })
+    .toBeLessThanOrEqual(12);
+  await page.screenshot({ path: testInfo.outputPath('expanded-footer.png') });
+  await sidebar.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(72);
+  const expand = (await sidebar
+    .getByRole('button', { name: 'Expand sidebar', exact: true })
+    .boundingBox())!;
+  const themeBox = (await theme.boundingBox())!;
+  expect(expand.y).toBeGreaterThanOrEqual(themeBox.y + themeBox.height);
+  expect(expand.y + expand.height).toBeLessThanOrEqual(900);
+});
+
 for (const width of [1280, 390]) {
   test(`standalone Gaps has no learner startup at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });

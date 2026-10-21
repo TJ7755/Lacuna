@@ -295,17 +295,69 @@ for (const inputMode of ['keyboard', 'touch']) {
       const grades = page.getByRole('button', { name: /^(Yes|No)$/ });
       await expectFits(page, grades);
       await expect(notifications.getByRole('button', { name: 'Undo' })).toBeVisible();
-      const notification = await notifications.boundingBox();
+      const notification = await notifications
+        .getByRole('button', { name: 'Undo' })
+        .locator('..')
+        .boundingBox();
+      expect(notification!.height).toBeLessThanOrEqual(56);
       for (const grade of await grades.all()) {
         const bounds = (await grade.boundingBox())!;
-        expect(notification!.y + notification!.height).toBeLessThanOrEqual(bounds.y);
+        if (viewport.width >= 1280 && inputMode === 'keyboard') {
+          expect(notification!.x).toBeGreaterThanOrEqual(bounds.x + bounds.width);
+          expect(viewport.height - notification!.y - notification!.height).toBeLessThanOrEqual(24);
+        } else {
+          expect(notification!.y + notification!.height).toBeLessThanOrEqual(bounds.y);
+        }
       }
+      expect(
+        (await notifications.getByRole('button', { name: 'Undo' }).boundingBox())!.height,
+      ).toBeGreaterThanOrEqual(44);
       await capture(page, `feedback-${inputMode}-${viewport.width}x${viewport.height}`);
       // Undo remains usable even though the notification surface passes taps through.
       await notifications.getByRole('button', { name: 'Undo' }).click();
       await expect(activeCard).toHaveAttribute('data-study-card-id', firstId!);
     });
   }
+}
+
+for (const viewport of [viewports[0], viewports[2]]) {
+  test(`typed feedback stays compact and clear of the next answer at ${viewport.width}px`, async ({
+    page,
+  }, testInfo) => {
+    const { card, lessonId } = await prepareCard(page);
+    await seedCard(page, card, 'typed', 3);
+    await page.evaluate(() => localStorage.setItem('lacuna.inputMode', 'keyboard'));
+    await page.setViewportSize(viewport);
+    await page.goto(`/#/lesson/${lessonId}/learn`);
+    const activeCard = page.locator('[data-study-card-id]').last();
+    await expect(activeCard).toBeVisible();
+    const firstId = await activeCard.getAttribute('data-study-card-id');
+    const input = page.getByRole('textbox', { name: 'Your answer', exact: true });
+    await input.fill('Answer');
+    await page.getByRole('button', { name: 'Check answer', exact: true }).click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect(activeCard).not.toHaveAttribute('data-study-card-id', firstId!);
+    await expect(input).toBeFocused();
+    const undo = page
+      .getByLabel('Notifications', { exact: true })
+      .getByRole('button', { name: 'Undo' });
+    await expect(undo).toBeVisible();
+    const notification = (await undo.locator('..').boundingBox())!;
+    expect(notification.height).toBeLessThanOrEqual(56);
+    const inputBox = (await input.boundingBox())!;
+    if (viewport.width >= 1280) {
+      expect(notification.x).toBeGreaterThanOrEqual(inputBox.x + inputBox.width);
+      expect(viewport.height - notification.y - notification.height).toBeLessThanOrEqual(24);
+    } else {
+      expect(notification.y + notification.height).toBeLessThanOrEqual(inputBox.y);
+    }
+    await expect(
+      page.getByLabel('Notifications', { exact: true }).getByText('Card added.', { exact: true }),
+    ).toBeHidden();
+    await page.screenshot({ path: testInfo.outputPath('typed-feedback.png') });
+    await undo.click();
+    await expect(activeCard).toHaveAttribute('data-study-card-id', firstId!);
+  });
 }
 
 for (const kind of ['cloze', 'typed', 'image', 'long-text']) {

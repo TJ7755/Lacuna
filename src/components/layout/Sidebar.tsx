@@ -384,20 +384,12 @@ export function Sidebar({
       </nav>
       <div
         className={cn(
-          'flex items-center justify-between px-3',
+          'items-center justify-between px-3',
           sidebarSettings.compactMode ? 'py-2' : 'py-3 short:py-1',
-          drawer ? 'gap-2' : 'flex-col items-start pl-[14px]',
+          drawer ? 'flex gap-2' : 'grid grid-cols-[44px] items-start gap-y-2 pl-[14px]',
         )}
       >
-        <motion.div
-          // Desktop keeps the stacked footprint so nothing above shifts. Expanded, the theme
-          // toggle drops into the bottom slot beside the chevron; collapsed, it rises to the
-          // upper slot. Same curve as the width, so reversals stay in step.
-          initial={false}
-          animate={drawer ? undefined : { y: collapsed ? 0 : '100%' }}
-          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
-          className={cn(!drawer && 'pb-2')}
-        >
+        <div className={cn(!drawer && 'col-start-1 row-start-1')}>
           <button
             type="button"
             onClick={toggleTheme}
@@ -413,15 +405,16 @@ export function Sidebar({
           >
             {resolvedTheme === 'dark' ? <SunIcon /> : <MoonIcon />}
           </button>
-        </motion.div>
+        </div>
         {collapseControl && (
           <motion.div
-            // The chevron stays on the bottom line and slides between the rail column and the
-            // row's right edge.
+            // Expanded controls share one row; only the collapsed rail needs a second row.
+            layout={!drawer && m > 0 ? 'position' : undefined}
             initial={false}
             animate={drawer ? undefined : { x: collapsed ? 0 : DESKTOP_CHEVRON_ROW_X }}
             transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
             data-testid={drawer ? undefined : 'sidebar-collapse-slot'}
+            className={cn(!drawer && 'col-start-1', !drawer && !collapsed && 'row-start-1')}
           >
             <button
               type="button"
