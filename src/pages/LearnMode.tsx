@@ -3,6 +3,7 @@ import './learn/studyLayout.css';
 import { StudyControls } from './learn/StudyControls';
 import { TypedAutoMarkCue } from './learn/TypedAutoMarkCue';
 import { useTypedAutoMark } from './learn/useTypedAutoMark';
+import type { JevMarkProvenance } from '../jev';
 import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -288,11 +289,12 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
       input: boolean | Grade | MachineMarkedAnswer,
       source: 'touch' | 'keyboard' = 'keyboard',
       velocity = 0,
+      markedBy?: JevMarkProvenance,
     ) => {
       if (undoInFlightRef.current) return;
       const commit = () =>
         void (async () => {
-          const result = await answer(input);
+          const result = await answer(input, markedBy ? { markedBy } : undefined);
           if (result.undoAvailable) {
             notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
               actionLabel: 'Undo',
@@ -326,7 +328,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     occlusionAnswerText,
     paused: editing || menuOpen || hintsOpen,
     m,
-    onMarked: (correct) => answerWithUndo(correct),
+    onMarked: (correct, provenance) =>
+      answerWithUndo(correct, 'keyboard', 0, provenance ?? undefined),
   });
 
   useEffect(() => {
