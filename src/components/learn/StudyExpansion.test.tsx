@@ -62,3 +62,23 @@ describe('StudyExpansion layering', () => {
     expect(surface).toHaveStyle({ zIndex: '50' });
   });
 });
+
+describe('StudyExpansion dismissal focus', () => {
+  it('does not leave a focus highlight on Study after pointer dismissal', () => {
+    render(<StudyActions />);
+    const study = screen.getByRole('button', { name: /^Study$/ });
+    fireEvent.click(study);
+    const close = screen.getByRole('button', { name: 'Close session preview' });
+    fireEvent.pointerDown(close);
+    fireEvent.click(close);
+    expect(study).not.toHaveFocus();
+  });
+
+  it('returns keyboard focus to Study after Escape', () => {
+    render(<StudyActions />);
+    const study = screen.getByRole('button', { name: /^Study$/ });
+    fireEvent.click(study);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(study).toHaveFocus();
+  });
+});
