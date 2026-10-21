@@ -1,6 +1,19 @@
 import { expect, test } from '@playwright/test';
 import { build } from 'esbuild';
 
+interface GradeDatabaseProbe {
+  at: number;
+  duration?: number;
+  stores: string[];
+  mode: string;
+}
+
+declare global {
+  interface Window {
+    gradeDatabaseProbe: GradeDatabaseProbe[];
+  }
+}
+
 for (const firstLesson of [false, true]) {
   for (const gesture of [false, true]) {
     test(`grades visibly via ${gesture ? 'swipe' : 'Easy'} in ${firstLesson ? 'a new 13-card lesson' : 'a large course'}`, async ({
@@ -33,6 +46,23 @@ for (const firstLesson of [false, true]) {
       const cdp = await page.context().newCDPSession(page);
       await page.addInitScript(() => {
         localStorage.setItem('lacuna.gradingMode', 'manual');
+        window.gradeDatabaseProbe = [];
+        const transaction = IDBDatabase.prototype.transaction;
+        IDBDatabase.prototype.transaction = function (...args) {
+          const tx = transaction.apply(this, args);
+          const probe: GradeDatabaseProbe = {
+            at: performance.now(),
+            stores: Array.from(tx.objectStoreNames),
+            mode: tx.mode,
+          };
+          window.gradeDatabaseProbe.push(probe);
+          const complete = () => {
+            probe.duration = performance.now() - probe.at;
+          };
+          tx.addEventListener('complete', complete, { once: true });
+          tx.addEventListener('abort', complete, { once: true });
+          return tx;
+        };
       });
       await page.goto('/#/course/heavy-course-0');
       await page.getByRole('button', { name: 'Study', exact: true }).click();
@@ -57,6 +87,7 @@ for (const firstLesson of [false, true]) {
             'pointerup',
             () => {
               const started = performance.now();
+              performance.mark('study-grade:release');
               let visibleFrames = 0;
               function sample() {
                 const face = document.querySelector<HTMLElement>('[data-study-face="front"]');
@@ -109,6 +140,15 @@ for (const firstLesson of [false, true]) {
       const elapsed = await page.evaluate(
         () => (window as unknown as { gradeVisible: Promise<number> }).gradeVisible,
       );
+      await testInfo.attach('grade-database.json', {
+        body: JSON.stringify(
+          await page.evaluate(() => ({
+            release: performance.getEntriesByName('study-grade:release').at(-1)?.startTime,
+            transactions: window.gradeDatabaseProbe,
+          })),
+        ),
+        contentType: 'application/json',
+      });
       const { profile } = await cdp.send('Profiler.stop');
       await testInfo.attach('grade.cpuprofile', {
         body: JSON.stringify(profile),
