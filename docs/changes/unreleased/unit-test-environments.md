@@ -1,0 +1,1 @@
+- Run pure scheduling, course logic, generator, server and command-line tests in Node without loading browser or React setup, retaining Happy DOM for browser and persistence integration tests and keeping file isolation.
