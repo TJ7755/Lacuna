@@ -1,3 +1,5 @@
+import { makeId } from '../utils/id';
+
 export interface ActiveStudyFlowIdentity {
   courseId: string;
   sessionId: string;
@@ -63,7 +65,7 @@ export function readActiveStudyFlow(): ActiveStudyFlowIdentity | null {
 export function startActiveStudyFlow(
   courseId: string,
   now: number = Date.now(),
-  sessionId: string = makeSessionId(),
+  sessionId: string = makeId(),
 ): ActiveStudyFlowIdentity | null {
   const identity = parseIdentity({ courseId, sessionId, startedAt: now, lastActiveAt: now });
   if (!identity) return null;
@@ -73,14 +75,6 @@ export function startActiveStudyFlow(
     // The flow remains usable without device-local resume state.
   }
   return identity;
-}
-
-function makeSessionId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
 }
 
 export function touchActiveStudyFlow(

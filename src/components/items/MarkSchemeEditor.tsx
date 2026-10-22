@@ -13,6 +13,7 @@ import {
 } from '../../items/markSchemeCompiler';
 import { verifyWorkingLines } from '../../items/verify';
 import { runWorkingFixtures } from '../../items/fixtureRunner';
+import { makeId } from '../../utils/id';
 import { Button } from '../ui/Button';
 import { cn } from '../ui/cn';
 
@@ -319,7 +320,7 @@ export function MarkSchemeEditor({
                 onFixturesChange([
                   ...fixtures,
                   {
-                    id: makeFixtureId(),
+                    id: makeId(),
                     studentAnswer: testLines,
                     expectedMarks: testResult.marksEarned,
                   },
@@ -408,14 +409,6 @@ function answerLines(answer: string): string[] {
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-}
-
-function makeFixtureId(): string {
-  try {
-    return crypto.randomUUID();
-  } catch {
-    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-  }
 }
 
 function SchemeError({ error }: { error: MarkSchemeCompileError }) {

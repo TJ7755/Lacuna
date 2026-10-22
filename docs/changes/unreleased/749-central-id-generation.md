@@ -1,0 +1,1 @@
+- Use the shared identifier generator for study sessions, mark-scheme fixtures and AI tool sessions, retaining cryptographic randomness when only `getRandomValues` is available. (#749)
