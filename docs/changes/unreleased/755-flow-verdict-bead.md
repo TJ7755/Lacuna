@@ -1,1 +1,1 @@
-- Let the automatic-marking bead pulse as joined Flow drops, beginning grey and smoothly taking a green or red verdict colour; keep it visible and still with reduced motion. (#755)
+- Let the automatic-marking circle pulse evenly, beginning grey and smoothly taking a green or red verdict colour; keep it visible and still with reduced motion. (#755)

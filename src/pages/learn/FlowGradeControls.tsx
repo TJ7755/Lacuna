@@ -208,32 +208,12 @@ function FlowSplitLiquid({
     >
       <defs>
         {slots.map((slot, index) => (
-          <motion.g
+          <FlowShape
             key={index}
             id={`${id}-shell-${index}`}
-            style={centred}
-            initial={false}
-            animate={
-              pulsing
-                ? {
-                    x: [0, index % 2 === 0 ? -12 : 12, 0, index % 2 === 0 ? 8 : -8, 0],
-                    y: [0, index % 2 === 0 ? 5 : -5, 0, index % 2 === 0 ? -7 : 7, 0],
-                    scaleX: index % 2 === 0 ? [1, 0.78, 1.12, 0.9, 1] : [1, 1.12, 0.86, 1.06, 1],
-                    scaleY: index % 2 === 0 ? [1, 1.18, 0.9, 1.12, 1] : [1, 0.9, 1.12, 0.94, 1],
-                  }
-                : { x: 0, y: 0, scaleX: 1, scaleY: 1 }
-            }
-            transition={
-              pulsing
-                ? { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' }
-                : spring
-            }
-          >
-            <FlowShape
-              to={question ? segments[index] : waiting ? bead : slot}
-              transition={spring}
-            />
-          </motion.g>
+            to={question ? segments[index] : waiting ? bead : slot}
+            transition={spring}
+          />
         ))}
         {liquid('body', null)}
         {/* The colour only ever shows within the joined surface drops. */}
@@ -281,7 +261,7 @@ function FlowSplitLiquid({
       <motion.g
         style={centred}
         initial={false}
-        animate={{ scale: pulsing ? [1, 1.08, 1] : 1 }}
+        animate={{ scale: pulsing ? [1, 1.16, 1] : 1 }}
         transition={
           pulsing
             ? { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' }

@@ -95,13 +95,19 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         expect(grey[1]).toBe(grey[2]);
         expect(grey[3]).toBe(255);
 
-        // Sample actual drop movement, including the static reduced-motion presentation.
-        const drop = layer.locator('defs > g').first();
-        const before = await drop.getAttribute('style');
+        // The whole bead pulses evenly, retaining a circle rather than deforming its drops.
+        const bead = layer.locator(':scope > g');
+        const before = await bead.getAttribute('style');
         await page.waitForTimeout(400);
-        const after = await drop.getAttribute('style');
+        const after = await bead.getAttribute('style');
         if (reducedMotion === 'reduce') expect(after).toBe(before);
         else expect(after).not.toBe(before);
+        const aspectRatio = await layer.locator(':scope > g > g').first().locator('use').first()
+          .evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            return bounds.width / bounds.height;
+          });
+        expect(aspectRatio).toBeCloseTo(1, 1);
         await page.screenshot({ path: test.info().outputPath('grey-waiting.png') });
 
         await page.locator('[data-flow-colour]').evaluate((element) => {

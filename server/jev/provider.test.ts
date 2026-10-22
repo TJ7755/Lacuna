@@ -87,10 +87,11 @@ it('rounds expected scores only when the rounded level has concentrated probabil
   ).toMatchObject({ value: null, confidence: 0 });
 });
 it.each([
-  [0.85, 1],
-  [0.15, 0],
-  [0.8499, null],
-  [0.1501, null],
+  [0.75, 1],
+  [0.25, 0],
+  [0.7499, null],
+  [0.2501, null],
+  [0.21, 0],
   [0.5, null],
 ])('uses the probability threshold for noul %s', async (noul, value) => {
   const fetcher = vi.fn().mockResolvedValue(
