@@ -1,5 +1,4 @@
 import { modifierShortcutLabel } from '../electron/runtime';
-import { useJevAttemptMarking } from '../jev';
 import { QuestionSetPracticeStepper } from '../components/question-sets/QuestionSetPracticeStepper';
 import { QuestionSetPanel } from '../components/question-sets/QuestionSetPanel';
 import { QuestionSetPracticeNavigation } from '../components/question-sets/QuestionSetPracticeNavigation';
@@ -211,19 +210,10 @@ function PracticeWorkspace({
       blankConfirmation.show();
       return;
     }
-    const submitted = await progress.run((row) =>
+    await progress.run((row) =>
       row.mode === 'paper'
         ? submitQuestionSetPaper(row.id, row.revisionId)
         : submitPracticeQuestion(row.id, row.revisionId, questionId),
-    );
-    const first = group[0];
-    await progress.run(() =>
-      saveQuestionSetAttemptPosition(
-        submitted.id,
-        submitted.revisionId,
-        first.id,
-        first.node.answer!.allocations[0].id,
-      ),
     );
     blankConfirmation.close();
   }
@@ -293,17 +283,6 @@ function PracticeWorkspace({
           )}
         </div>
       </header>
-      {attempt.conceptPractice && (
-        <p className="px-5 text-sm text-ink-soft" role="note">
-          Skill practice ·{' '}
-          {attempt.conceptPractice.novelty === 'unseen'
-            ? 'Unseen question'
-            : 'Familiar question — previously exposed content'}
-          {attempt.receipt.bank?.blueprint &&
-            ` · ${attempt.receipt.bank.blueprint.type} · ${attempt.receipt.bank.blueprint.difficulty} · ${attempt.receipt.bank.blueprint.context}`}
-          {attempt.undoneAt !== undefined && ' · Undone: excluded from skill scheduling'}
-        </p>
-      )}
       {(progress.error || actionError) && (
         <div className="qs-error" role="alert">
           {progress.error?.message ?? actionError}
@@ -414,7 +393,6 @@ function PracticeWorkspace({
             />
           )}
         </StepSwap>
-        {marking && <JevMarkingStatus attemptId={attempt.id} />}
         <footer className="qs-attempt-footer">
           <QuestionSetPracticeNavigation
             rows={
@@ -551,24 +529,5 @@ function MarkPips({ max, awarded, label }: { max: number; awarded: number; label
         </span>
       )}
     </span>
-  );
-}
-
-function JevMarkingStatus({ attemptId }: { attemptId: string }) {
-  const progress = useJevAttemptMarking(attemptId);
-  const text =
-    progress.state === 'marking'
-      ? `Marking your answers… ${progress.remaining} ${progress.remaining === 1 ? 'line' : 'lines'} left.`
-      : progress.state === 'done' && progress.marked > 0
-        ? `${progress.marked} ${progress.marked === 1 ? 'line was' : 'lines were'} marked automatically.` +
-          (progress.leftForYou > 0
-            ? ` ${progress.leftForYou} ${progress.leftForYou === 1 ? 'needs' : 'need'} your mark.`
-            : '')
-        : null;
-  if (!text) return null;
-  return (
-    <p role="status" className="qs-muted">
-      {text}
-    </p>
   );
 }

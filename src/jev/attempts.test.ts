@@ -22,7 +22,10 @@ beforeEach(async () => {
   localStorage.clear();
   await Promise.all(db.tables.map((table) => table.clear()));
 });
-async function fixture(kind: 'written' | 'calculation' | 'multiple-choice' = 'written') {
+async function fixture(
+  kind: 'written' | 'calculation' | 'multiple-choice' = 'written',
+  marks = [1, 2],
+) {
   const course = await createCourse('Biology');
   const concept = await createConcept(course.id, 'Water');
   const set = await createQuestionSet({
@@ -37,7 +40,7 @@ async function fixture(kind: 'written' | 'calculation' | 'multiple-choice' = 'wr
         prompt: 'Explain osmosis',
         parts: [],
         answer: {
-          maxMarks: 3,
+          maxMarks: marks.reduce((total, value) => total + value, 0),
           response:
             kind === 'multiple-choice'
               ? {
@@ -51,7 +54,7 @@ async function fixture(kind: 'written' | 'calculation' | 'multiple-choice' = 'wr
                 }
               : { kind },
           prerequisiteConceptIds: [],
-          allocations: [1, 2].map((maxMarks) => ({
+          allocations: marks.map((maxMarks) => ({
             id: `a${maxMarks}`,
             criterion: `Water ${maxMarks}`,
             maxMarks,
@@ -398,6 +401,140 @@ it('leaves a timed-out attempt manual without pausing or queueing its lines', as
     const calls = fetcher.mock.calls.length;
     await markJevAttempt(attempt.id, engine);
     expect(fetcher).toHaveBeenCalledTimes(calls);
+  } finally {
+    timer.mockRestore();
+  }
+});
+
+it('marks only the criterion the learner opens', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async (request) => result(request.maxMarks!));
+  await markJevAttempt(attempt.id, engine, 'a2');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).allocations).toEqual([
+    expect.objectContaining({ criterion: 'Water 2', maxMarks: 2 }),
+  ]);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+    expect.objectContaining({ allocationId: 'a2', marks: 2, markedBy: expect.any(Object) }),
+  ]);
+});
+
+it('sends an opened criterion once however often it is revisited', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async () => result(null));
+  await Promise.all([
+    markJevAttempt(attempt.id, engine, 'a1'),
+    markJevAttempt(attempt.id, engine, 'a1'),
+  ]);
+  await markJevAttempt(attempt.id, engine, 'a1');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+});
+
+it('does not mark criteria when an attempt is submitted', async () => {
+  const fetcher = vi.fn(async () => Response.json({}));
+  vi.stubGlobal('fetch', fetcher);
+  const { jevEngine } = await import('./engine');
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  jevEngine.enable(1);
+  try {
+    const { attempt } = await fixture();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  } finally {
+    jevEngine.disable();
+    vi.unstubAllGlobals();
+  }
+});
+
+it('holds a quick verdict on an opened criterion until it has visibly been judged', async () => {
+  const { attempt } = await fixture();
+  const { engine } = engineWith(async (request) => result(request.maxMarks!));
+  const started = Date.now();
+  const marking = markJevAttempt(attempt.id, engine, 'a1', 80);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  await marking;
+  expect(Date.now() - started).toBeGreaterThanOrEqual(80);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(1);
+});
+
+it('persists all six criterion verdicts arriving together while requests stay independent', async () => {
+  const { attempt } = await fixture('written', [1, 2, 3, 4, 5, 6]);
+  const releases: Array<() => void> = [];
+  const { engine, fetcher } = engineWith(
+    (request) => new Promise((resolve) => releases.push(() => resolve(result(request.maxMarks!)))),
+  );
+  const marking = Promise.all(
+    [1, 2, 3, 4, 5, 6].map((index) => markJevAttempt(attempt.id, engine, `a${index}`)),
+  );
+  await vi.waitFor(() => expect(releases).toHaveLength(6));
+  releases.forEach((release) => release());
+  await marking;
+  expect(fetcher).toHaveBeenCalledTimes(7);
+  const marked = (await getQuestionSetAttempt(attempt.id))!;
+  expect(marked.decisions.map((row) => row.allocationId).sort()).toEqual([
+    'a1',
+    'a2',
+    'a3',
+    'a4',
+    'a5',
+    'a6',
+  ]);
+  expect(marked.decisions.every((row) => row.markedBy?.by === 'jev')).toBe(true);
+});
+
+it.each(['conflict', 'storage error'] as const)(
+  'allows a confident verdict that could not be applied (%s) to recover on a revisit',
+  async (failure) => {
+    const { attempt } = await fixture();
+    const { engine } = engineWith(async (request) => result(request.maxMarks!));
+    const repository = await import('../questions/questionSetAttemptRepository');
+    const apply = vi.spyOn(repository, 'applyJevAllocationDecision');
+    if (failure === 'conflict') apply.mockResolvedValueOnce(false);
+    else apply.mockRejectedValueOnce(new Error('Storage write failed'));
+    try {
+      await markJevAttempt(attempt.id, engine, 'a1');
+      expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+      await markJevAttempt(attempt.id, engine, 'a1');
+      expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+        expect.objectContaining({ allocationId: 'a1', marks: 1 }),
+      ]);
+    } finally {
+      apply.mockRestore();
+    }
+  },
+);
+
+it('discards a held verdict after disabling and re-enabling Jev, while fresh work remains valid', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async (request) => result(request.maxMarks!));
+  const schedule = globalThis.setTimeout;
+  let release!: () => void;
+  const timer = vi
+    .spyOn(globalThis, 'setTimeout')
+    .mockImplementation((callback, delay, ...args) => {
+      if (delay !== undefined && delay > 9_000 && delay <= 10_000) {
+        release = () => callback(...args);
+        return schedule(() => {}, 0);
+      }
+      return schedule(callback, delay, ...args);
+    });
+  try {
+    const marking = markJevAttempt(attempt.id, engine, 'a1', 10_000);
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+    engine.disable();
+    engine.enable(1);
+    release();
+    await marking;
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+    await markJevAttempt(attempt.id, engine, 'a1');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    await markJevAttempt(attempt.id, engine, 'a2');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+      expect.objectContaining({ allocationId: 'a2', marks: 2 }),
+    ]);
   } finally {
     timer.mockRestore();
   }

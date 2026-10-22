@@ -1,0 +1,3 @@
+- Question-set automatic marking now marks each criterion when it is opened, showing the floating dot while the answer is judged and flowing into the awarded mark, with a sparkle marking AI-awarded choices in place of the explanatory text. Typed flashcards and question sets hold quick verdicts briefly so the answer is visibly judged before it moves on. (#734)
+- Skill practice attempts no longer show the "Skill practice · Unseen question" line above the question. (#734)
+- Submission opens the first marking criterion atomically, simultaneous criterion verdicts save without competing for the same attempt revision, and disabling automatic marking permanently cancels held verdicts. Confident verdicts that fail to save can retry on a later visit. (#734)

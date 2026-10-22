@@ -12,6 +12,8 @@ import * as attemptRepository from '../questions/questionSetAttemptRepository';
 import { createQuestionSet } from '../questions/questionSetRepository';
 import type { QuestionSet } from '../questions/questionSets';
 import { QuestionSetPractice } from './QuestionSetPractice';
+import { jevEngine } from '../jev/engine';
+import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
 
 // Browser tests exercise motion; component tests keep focus and persistence deterministic.
 vi.mock('../state/motionSpeed', () => ({
@@ -479,6 +481,60 @@ describe('QuestionSetPractice', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
   });
+
+  it.each(['paper', 'practice'] as const)(
+    'requests only the displayed first criterion when submitting %s from a later part',
+    async (mode) => {
+      const { course, set } = await fixture();
+      let attempt = await startQuestionSetAttempt(set.id, mode, 200);
+      for (const nodeId of ['q1-a', 'q1-b', 'q2']) {
+        attempt = await attemptRepository.saveQuestionSetResponseDraft(
+          attempt.id,
+          attempt.revisionId,
+          nodeId,
+          { kind: 'written', text: `My ${mode} answer` },
+          mode === 'paper' ? nodeId : 'q1-b',
+        );
+      }
+      const requested: string[] = [];
+      const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.endsWith('/session'))
+          return Response.json({ token: 'session', expiresAt: Date.now() + 60_000 });
+        const { allocations } = JSON.parse(String(init?.body));
+        requested.push(...allocations.map((row: { criterion: string }) => row.criterion));
+        return Response.json({
+          model: 'jev-1.14.0',
+          inputTokens: 20,
+          decisions: allocations.map(() => ({ model: 'jev-1.14.0', value: 1, confidence: 0.98 })),
+        });
+      });
+      vi.stubGlobal('fetch', fetcher);
+      localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+      jevEngine.enable(1);
+      try {
+        open(course.id, set.id, attempt.id);
+        await screen.findByRole('heading', { name: mode === 'paper' ? 'Q2' : 'Q1 (b)' });
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: mode === 'paper' ? 'Submit paper' : 'Submit question',
+          }),
+        );
+        await screen.findByText('Controls cell activities.');
+        await waitFor(async () =>
+          expect((await getQuestionSetAttempt(attempt.id))?.decisions.length).toBeGreaterThan(0),
+        );
+        expect(requested).toEqual(['Controls cell activities.']);
+        expect((await getQuestionSetAttempt(attempt.id))?.decisions).toEqual([
+          expect.objectContaining({ allocationId: 'a1' }),
+        ]);
+      } finally {
+        cleanup();
+        jevEngine.disable();
+        localStorage.clear();
+        vi.unstubAllGlobals();
+      }
+    },
+  );
 
   it('requires explicit confirmation before submitting a blank Paper answer', async () => {
     const { course, set } = await fixture();
