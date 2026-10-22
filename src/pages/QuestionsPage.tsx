@@ -53,7 +53,7 @@ export function QuestionsPage() {
     const next = new URLSearchParams(params);
     if (value) next.set('q', value);
     else next.delete('q');
-    setParams(next, { replace: true });
+    setParams(next, { replace: true, flushSync: true });
   };
   const origin = {
     questionSetReturnTo: location.pathname + location.search,
@@ -105,6 +105,7 @@ export function QuestionsPage() {
   const root = useQuestionSetScroll(
     `question-set-library-scroll:${courseId}:${search}`,
     !!course && !!data,
+    `question-set-library:${courseId}`,
   );
   if (course === undefined || data === undefined)
     return <PageLoading fallback={<CoursePathSkeleton />} />;
