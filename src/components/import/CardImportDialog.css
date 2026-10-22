@@ -144,7 +144,6 @@
   font-size: 14px;
   font-weight: 600;
 }
-.import-destination select,
 .import-destination > label input {
   width: 100%;
   min-width: 0;
@@ -159,7 +158,6 @@
   outline: none;
   transition: border-color calc(0.16s * var(--import-motion, 1));
 }
-.import-destination select:focus,
 .import-destination > label input:focus {
   border-color: hsl(var(--accent));
 }
