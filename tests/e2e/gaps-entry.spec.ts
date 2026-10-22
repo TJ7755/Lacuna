@@ -42,12 +42,16 @@ for (const viewport of [
     );
     await page.goto('https://gaps.getlacuna.app/#/share');
     await expect(page.getByRole('heading', { name: 'Share', exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'Class insights', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    // Class insights opens Gaps itself in a new tab.
+    const insights = page.getByRole('link', { name: 'Class insights', exact: true });
+    await expect(insights).toHaveAttribute('href', 'https://gaps.getlacuna.app');
+    const [gaps] = await Promise.all([page.waitForEvent('popup'), insights.click()]);
+    gaps.on('pageerror', (error) => errors.push(error.message));
+    await expect(gaps.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
 
-    await page.reload();
-    await expect(page.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
-    await expect(page).toHaveURL('https://gaps.getlacuna.app/#/teach');
+    await gaps.reload();
+    await expect(gaps.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
+    await expect(gaps).toHaveURL('https://gaps.getlacuna.app/#/teach');
     expect(errors).toEqual([]);
   });
 }
