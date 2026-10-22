@@ -241,9 +241,6 @@ function PracticeWorkspace({
               : `Part ${index + 1} of ${nodes.length}`}
         </span>
         <div className="qs-actions">
-          <span className="qs-status" role="status">
-            {progress.error ? 'Not saved' : progress.dirty || progress.saving ? 'Saving…' : ''}
-          </span>
           {marking && (
             <div className="qs-header-tools">
               <QuestionSetPanel

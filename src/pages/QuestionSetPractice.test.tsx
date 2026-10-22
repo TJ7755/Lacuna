@@ -134,7 +134,6 @@ function open(
 
 async function answerAndAdvance(value: string, nextHeading: string) {
   fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value } });
-  await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
   const next = screen.getByRole('button', { name: 'Next' });
   await waitFor(() => expect(next).not.toBeDisabled());
   fireEvent.click(next);
@@ -236,7 +235,8 @@ describe('QuestionSetPractice', () => {
       screen.queryByText('Submit all parts of this question before opening its mark scheme.'),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Your answer')).not.toBeInTheDocument();
-    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
     const stepper = screen.getByRole('button', { name: 'Practice, part 1 of 3' });
     expect(stepper).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(stepper);
@@ -309,7 +309,6 @@ describe('QuestionSetPractice', () => {
       const award = screen.getByRole('radio', { name: '1 / 1' });
       await waitFor(() => expect(award).not.toBeDisabled());
       fireEvent.click(award);
-      await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
       await waitFor(() => {
         expect(award).toBeInTheDocument();
         expect(award).toBeChecked();
@@ -436,7 +435,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'A persisted response.' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     const save = screen.getByRole('button', { name: 'Save and finish later' });
     await waitFor(() => expect(save).not.toBeDisabled());
     fireEvent.click(save);
@@ -468,6 +466,54 @@ describe('QuestionSetPractice', () => {
     expect(await screen.findByLabelText('Your answer')).toHaveValue('Controls the cell.');
   });
 
+  it('saves a draft without routine saving chrome', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    open(course.id, set.id, attempt.id);
+    const answer = await screen.findByLabelText('Your answer');
+    const original = attemptRepository.saveQuestionSetResponseDraft;
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const save = vi
+      .spyOn(attemptRepository, 'saveQuestionSetResponseDraft')
+      .mockImplementationOnce(async (...args) => {
+        await pending;
+        return original(...args);
+      });
+    fireEvent.change(answer, { target: { value: 'Quiet save.' } });
+    await waitFor(() => expect(save).toHaveBeenCalled(), { timeout: 2000 });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
+    expect(screen.queryByText('Not saved')).not.toBeInTheDocument();
+    release();
+    await waitFor(async () =>
+      expect((await getQuestionSetAttempt(attempt.id))?.responses[0].draft).toEqual({
+        kind: 'written',
+        text: 'Quiet save.',
+      }),
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('keeps a failed draft save visible and retryable', async () => {
+    const { course, set } = await fixture();
+    const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
+    open(course.id, set.id, attempt.id);
+    vi.spyOn(attemptRepository, 'saveQuestionSetResponseDraft').mockRejectedValueOnce(
+      new Error('Storage unavailable'),
+    );
+    fireEvent.change(await screen.findByLabelText('Your answer'), {
+      target: { value: 'Unsaved answer.' },
+    });
+    const alert = await screen.findByRole('alert', {}, { timeout: 2000 });
+    expect(alert).toHaveTextContent('Storage unavailable');
+    expect(screen.getByRole('button', { name: 'Retry save' })).toBeInTheDocument();
+    expect(screen.queryByText('Saving…')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('reveals the Paper mark scheme only after submitting the paper', async () => {
     const { course, set } = await fixture();
     const attempt = await startQuestionSetAttempt(set.id, 'paper', 200);
@@ -477,7 +523,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
   });
@@ -601,7 +646,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await waitFor(async () =>
       expect((await getQuestionSetAttempt(attempt.id))?.activeAllocationId).toBe('a1'),
@@ -657,7 +701,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
     await waitFor(async () =>
@@ -685,7 +728,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Answer three' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit paper' }));
     await screen.findByText('Controls cell activities.');
     await waitFor(async () =>
@@ -715,7 +757,6 @@ describe('QuestionSetPractice', () => {
     fireEvent.change(await screen.findByLabelText('Your answer'), {
       target: { value: 'Original two' },
     });
-    await waitFor(() => expect(screen.getByRole('status')).toBeEmptyDOMElement());
     fireEvent.click(screen.getByRole('button', { name: 'Submit question' }));
     expect(await screen.findByText('Controls cell activities.')).toBeInTheDocument();
     expect(screen.queryByText('Describes selective permeability.')).not.toBeInTheDocument();

@@ -67,6 +67,37 @@ async function startTranslation(page: Page) {
   await page.goto(`/#/course/${courseId}/question-sets/${content.id}`);
   await page.getByRole('button', { name: 'Start', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
+  return new URL(page.url()).hash.split('/').at(-1)!;
+}
+
+function storedDraftText(page: Page, attemptId: string, nodeId: string) {
+  return page.evaluate(
+    ({ attemptId, nodeId }) =>
+      new Promise<string | null>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('questionSetAttempts', 'readonly');
+          const get = transaction.objectStore('questionSetAttempts').get(attemptId);
+          get.onerror = () => reject(get.error);
+          get.onsuccess = () => {
+            const attempt = get.result as
+              | {
+                  responses?: Array<{
+                    nodeId: string;
+                    draft?: { kind: string; text?: string };
+                  }>;
+                }
+              | undefined;
+            const draft = attempt?.responses?.find((row) => row.nodeId === nodeId)?.draft;
+            resolve(draft?.kind === 'written' ? (draft.text ?? '') : null);
+          };
+          transaction.oncomplete = () => database.close();
+        };
+      }),
+    { attemptId, nodeId },
+  );
 }
 
 for (const viewport of [
@@ -79,14 +110,14 @@ for (const viewport of [
     }, testInfo) => {
       await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
       await page.emulateMedia({ colorScheme: theme });
-      await startTranslation(page);
+      const attemptId = await startTranslation(page);
       await page.setViewportSize(viewport);
       const card = page.locator('article.qs-paper');
       const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
       const primary = page.locator('[data-attempt-primary]');
       const capture = async (state: string) => {
         await expect(card.locator('[inert]')).toHaveCount(0);
-        await expect(page.locator('.qs-status')).toBeEmpty();
+        await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
         await page.screenshot({
           path: testInfo.outputPath(`${state}.png`),
           animations: 'disabled',
@@ -115,7 +146,14 @@ for (const viewport of [
       await assertFits();
       const header = page.locator('.qs-practice-header');
       const back = header.getByRole('link');
+      const stepper = header.locator('.qs-part-stepper');
       const finish = header.getByRole('button', { name: 'Save and finish later', exact: true });
+      const headerBoxes = async () => ({
+        back: await back.boundingBox(),
+        stepper: await stepper.boundingBox(),
+        finish: await finish.boundingBox(),
+      });
+      const initialHeader = await headerBoxes();
       expect((await back.boundingBox())!.y).toBe((await finish.boundingBox())!.y);
       const fieldHeight = (await answer.boundingBox())!.height;
       await answer.fill('A line of working.\n'.repeat(30));
@@ -123,7 +161,13 @@ for (const viewport of [
         .poll(async () => (await answer.boundingBox())!.height)
         .toBeGreaterThan(fieldHeight);
       await assertFits();
-      await answer.fill('Le chat');
+      for (const text of ['Le chat', 'Le chat!', 'Le chat']) {
+        await answer.fill(text);
+        await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
+        await expect(page.getByText('Not saved', { exact: true })).toHaveCount(0);
+        await expect.poll(() => storedDraftText(page, attemptId, 'part-a')).toBe(text);
+        expect(await headerBoxes()).toEqual(initialHeader);
+      }
       await expect.poll(async () => (await answer.boundingBox())!.height).toBe(fieldHeight);
       await capture('answering');
       await answer.press('Control+Enter');
