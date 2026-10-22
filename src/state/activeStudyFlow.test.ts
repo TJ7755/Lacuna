@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearActiveStudyFlow,
   readActiveStudyFlow,
@@ -9,8 +9,20 @@ import {
 const STORAGE_KEY = 'lacuna.activeStudyFlow';
 
 beforeEach(() => localStorage.clear());
+afterEach(() => vi.unstubAllGlobals());
 
 describe('active study flow identity', () => {
+  it('stores a UUID session identity when only getRandomValues is available', () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+
+    const identity = startActiveStudyFlow('course-1', 100);
+
+    expect(identity?.sessionId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(readActiveStudyFlow()).toEqual(identity);
+  });
+
   it('stores only the active course identity and timestamps', () => {
     expect(startActiveStudyFlow('course-1', 100, 'session-1')).toEqual({
       courseId: 'course-1',

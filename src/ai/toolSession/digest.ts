@@ -1,3 +1,5 @@
+export { makeId as defaultCreateId } from '../../utils/id';
+
 /** Canonical JSON keeps object key order from changing a call's approval binding. */
 export function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -7,11 +9,6 @@ export function canonicalJson(value: unknown): string {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
     .join(',')}}`;
-}
-
-export function defaultCreateId(): string {
-  if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export async function defaultDigest(canonicalInput: string): Promise<string> {
