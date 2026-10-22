@@ -3,6 +3,8 @@
 The site root `/` carries build-time landing HTML inside the application shell
 document. `bun run build` renders the React landing tree into
 `dist/index.html`; a first-visit browser hydrates the same tree.
+The prerender plugin links the hydration entry's statically imported stylesheets
+in the document head so the landing page is styled before JavaScript loads.
 
 - `LandingRoot.tsx` is the shared tree for the server render and the client
   hydration. It skips app initialisation: no database, seed or service worker.

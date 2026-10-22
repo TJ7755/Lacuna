@@ -7,6 +7,19 @@ const homepage = readFileSync(
   'utf8',
 );
 
+test('the landing page is styled before JavaScript loads', async ({ page }) => {
+  await page.route('**/*', (route) =>
+    route.request().resourceType() === 'script' ? route.abort() : route.continue(),
+  );
+  await page.goto('/');
+  const landing = page.locator('#root .landing-page');
+  await expect(landing).toBeVisible();
+  await expect(landing).toHaveCSS('background-color', 'rgb(19, 25, 16)');
+  const hero = page.getByRole('region', { name: 'Revision around your exam' });
+  await expect(hero).toHaveCSS('display', 'flex');
+  await expect(hero.getByRole('heading', { level: 1 })).toHaveCSS('font-weight', '500');
+});
+
 for (const scenario of [
   { name: 'first visit', hash: '', hidden: false },
   { name: 'first-visit anchor', hash: '#how-it-works', hidden: false },

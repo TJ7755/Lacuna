@@ -13,6 +13,7 @@ interface PublicPage {
 /** Render the same React page that the browser hydrates; no separate SEO copy. */
 export function publicPagePrerenderPlugin(): Plugin {
   let renderer: ViteDevServer | undefined;
+  let base = '/';
   const pages: PublicPage[] = [
     {
       path: '/compare/quizlet/index.html',
@@ -28,6 +29,9 @@ export function publicPagePrerenderPlugin(): Plugin {
   return {
     name: 'lacuna-public-page-prerender',
     apply: 'build',
+    configResolved(config) {
+      base = config.base;
+    },
     transformIndexHtml: {
       order: 'post',
       async handler(html, context) {
@@ -55,7 +59,42 @@ export function publicPagePrerenderPlugin(): Plugin {
           }
           if (markup.includes('/src/'))
             throw new Error('Unresolved public-page asset in rendered HTML.');
-          return html.replace(page.placeholder, markup);
+          const renderedHtml = html.replace(page.placeholder, markup);
+          if (page.path !== 'index.html') return renderedHtml;
+
+          // Prerendered content needs its lazy entry's CSS before JavaScript runs.
+          // Follow static imports only: unrelated app routes must stay lazy.
+          const bundle = context.bundle ?? {};
+          const entry = Object.values(bundle).find(
+            (asset) =>
+              asset.type === 'chunk' &&
+              asset.moduleIds.some((id) => id.endsWith('/src/pages/landing/entry-client.tsx')),
+          );
+          if (!entry) throw new Error('Missing landing hydration chunk.');
+          const visited = new Set<string>();
+          const stylesheets = new Set<string>();
+          function collectStyles(fileName: string): void {
+            if (visited.has(fileName)) return;
+            visited.add(fileName);
+            const chunk = bundle[fileName];
+            if (chunk?.type !== 'chunk') return;
+            for (const dependency of chunk.imports) collectStyles(dependency);
+            for (const stylesheet of chunk.viteMetadata?.importedCss ?? []) {
+              stylesheets.add(stylesheet);
+            }
+          }
+          collectStyles(entry.fileName);
+          return {
+            html: renderedHtml,
+            tags: [...stylesheets]
+              .map((fileName) => `${base}${fileName}`)
+              .filter((href) => !html.includes(`href="${href}"`))
+              .map((href) => ({
+                tag: 'link',
+                attrs: { rel: 'stylesheet', crossorigin: true, href },
+                injectTo: 'head' as const,
+              })),
+          };
         } finally {
           await renderer?.close();
           renderer = undefined;
