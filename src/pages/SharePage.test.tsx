@@ -401,10 +401,32 @@ describe('SharePage', () => {
     expectAppDestination(screen.getByRole('link', { name: 'Create a course on Today' }), '/');
   });
 
-  it('links to the teacher entry from sharing', () => {
-    given(mockCourse);
+  it('opens Gaps for the selected shared course without requiring local credentials', async () => {
+    const shareId = 'a'.repeat(32);
+    const other = { ...mockCourse, id: 'other', name: 'Other course' };
+    given(other, linked(shareId, 1));
+    mockReadShareCredentials.mockResolvedValue(null);
     render(<SharePage />);
-    expectAppDestination(screen.getByRole('link', { name: 'Class insights' }), '/teach');
+    const link = screen.getByRole('link', { name: 'Class insights' });
+    expect(link).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await screen.findByText(/Copy and pass on this link/);
+
+    chooseCourse('Other course');
+    expect(link).toHaveAttribute('href', 'https://gaps.getlacuna.app');
+    chooseCourse('Test Course');
+    expect(link).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
+  });
+
+  it.each(['unshared', 'loading', 'empty'])('links to Gaps with %s courses', (state) => {
+    if (state === 'unshared') given(mockCourse);
+    if (state === 'empty') given();
+    render(<SharePage />);
+    const link = screen.getByRole('link', { name: 'Class insights' });
+    expect(link).toHaveAttribute('href', 'https://gaps.getlacuna.app');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('saves the course as a file', async () => {

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/coursePageLayout';
 import { ShareCourseContent } from '../components/share/ShareCourseContent';
+import { gapsClassUrl } from '../components/share/gapsClassUrl';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { Menu } from '../components/ui/Menu';
 import { SectionCard } from '../components/ui/SectionCard';
@@ -42,7 +43,14 @@ export function SharePage() {
     <div className={`${PAGE_FRAME} pb-12`}>
       <header className={PAGE_HEADER}>
         <h1 className={PAGE_TITLE}>Share</h1>
-        <Link to="/teach" className={buttonClassName('secondary')}>Class insights</Link>
+        <a
+          href={gapsClassUrl(course?.distribution?.shareId)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonClassName('secondary')}
+        >
+          Class insights
+        </a>
         {course && courses && courses.length > 1 && (
           <Menu
             label="Course to share"

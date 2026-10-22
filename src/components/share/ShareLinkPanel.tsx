@@ -23,6 +23,7 @@ import { expandingActionSpring, motionTransition, scaledSpring } from '../ui/mot
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
+import { gapsClassUrl } from './gapsClassUrl';
 import { useActionFocus } from '../../hooks/useActionFocus';
 
 type LinkState = { shareId: string; revision: number };
@@ -375,7 +376,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 )}
                 <div className="mt-4">
                   <a
-                    href={`https://gaps.getlacuna.app/#course=${link.shareId}`}
+                    href={gapsClassUrl(link.shareId)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={buttonClassName('primary')}
