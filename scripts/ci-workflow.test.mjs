@@ -309,3 +309,8 @@ test('a retry cannot share or cancel newer pull-request validation even if the b
     assert.equal(render(workflow.concurrency['cancel-in-progress'], action, {}, false, 2), 'false');
   }
 });
+
+test('Security records the tested workflow commit for guarded recovery', () => {
+  const security = parse(readFileSync(new URL('../.github/workflows/security.yml', import.meta.url), 'utf8'));
+  assert.equal(render(security['run-name'], 'synchronize'), 'Security push-sha');
+});

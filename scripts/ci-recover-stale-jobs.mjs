@@ -59,11 +59,15 @@ export function recoverStaleJob({ repository, runId, api = githubApi }) {
   if (branch.object?.sha !== run.head_sha) {
     return 'No recovery: the branch has moved to another commit.';
   }
+  const titlePattern =
+    run.path === '.github/workflows/ci.yml'
+      ? /^CI (?:validation|metadata) ([a-f0-9]{40})$/
+      : /^Security ([a-f0-9]{40})$/;
+  const testedCommit = titlePattern.exec(run.display_title ?? '')?.[1];
+  if (!testedCommit) return 'No recovery: the tested workflow commit is not recorded.';
   // Old runs retain their original concurrency policy when rerun. Inspect the candidate
-  // definition as well as isolating retries in the current CI workflow.
-  const file = api(
-    `repos/${repository}/contents/${run.path}?ref=${encodeURIComponent(run.head_sha)}`,
-  );
+  // definition at the tested commit, which differs from head_sha for pull requests.
+  const file = api(`repos/${repository}/contents/${run.path}?ref=${testedCommit}`);
   if (file.encoding !== 'base64')
     throw new Error('Cannot inspect the candidate workflow definition');
   const definition = parse(Buffer.from(file.content, 'base64').toString('utf8'));

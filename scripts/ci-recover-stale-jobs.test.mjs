@@ -10,6 +10,7 @@ const retryGroup =
 
 function fixture(overrides = {}, jobOverrides = {}) {
   const run = {
+    display_title: `${overrides.path === '.github/workflows/security.yml' ? 'Security' : 'CI validation'} ${'a'.repeat(40)}`,
     id: 42,
     run_attempt: 1,
     status: 'completed',
@@ -35,6 +36,7 @@ function fixture(overrides = {}, jobOverrides = {}) {
     ...jobOverrides,
   };
   const writes = [];
+  const requests = [];
   let reads = 0;
   const invoke = ({
     jobs = [job],
@@ -46,6 +48,7 @@ function fixture(overrides = {}, jobOverrides = {}) {
       repository: 'owner/repo',
       runId: 42,
       api(endpoint, options = {}) {
+        requests.push(endpoint);
         if (options.method === 'POST') {
           writes.push(endpoint);
           return {};
@@ -60,7 +63,7 @@ function fixture(overrides = {}, jobOverrides = {}) {
         return ++reads === 1 ? run : current;
       },
     });
-  return { run, job, writes, invoke };
+  return { run, job, writes, requests, invoke };
 }
 
 test('recovers the observed completed-workflow/running-job mismatch using one real rerun', () => {
@@ -198,4 +201,16 @@ test('old candidates and workflow definitions without retry isolation cannot sta
   }
   const security = fixture({ path: '.github/workflows/security.yml' });
   assert.match(security.invoke({ definition: { jobs: {} } }), /Requested one retry/);
+});
+
+test('inspects the tested merge commit instead of the PR head and excludes unversioned legacy runs', () => {
+  const f = fixture();
+  assert.match(f.invoke(), /Requested one retry/);
+  assert.ok(
+    f.requests.includes(`repos/owner/repo/contents/.github/workflows/ci.yml?ref=${'a'.repeat(40)}`),
+  );
+  assert.ok(!f.requests.some((endpoint) => endpoint.endsWith('?ref=candidate')));
+  const legacy = fixture({ display_title: 'Old workflow' });
+  assert.match(legacy.invoke(), /tested workflow commit is not recorded/);
+  assert.deepEqual(legacy.writes, []);
 });

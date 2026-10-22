@@ -31,7 +31,9 @@ job rerun. This handles stale GitHub reporting, not slow tests. It runs trusted 
 and never writes check conclusions or changes branch protection. Fork runs, failed workflows,
 unfinished steps, obsolete branch commits, unsafe legacy workflow concurrency, multiple incomplete
 job records and repeated recovery are excluded. CI retries use a separate concurrency group, so an
-older retry cannot cancel validation for a newer commit even if the branch advances during recovery. A failed
+older retry cannot cancel validation for a newer commit even if the branch advances during recovery.
+Recovery inspects the workflow definition at the tested commit recorded in its run title, not the
+PR head commit; older runs without that record need manual inspection. A failed
 recovery needs operator inspection; it does not authorise an administrative merge.
 
 To inspect or recover a completed run manually using the same guards:
