@@ -1,0 +1,1 @@
+- Inset the import destination and lesson dropdown arrows consistently with other controls, retaining space for long names. (#756)

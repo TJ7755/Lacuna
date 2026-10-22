@@ -5,6 +5,7 @@ import type { CourseSchedulingMode } from '../../db/types';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import { canEditLessons } from '../../course/lessonViewMode';
+import { Select } from '../ui/Select';
 
 export function useImportDestination() {
   const [courseId, setCourseId] = useState('');
@@ -64,7 +65,8 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
     <div className="import-destination">
       <label>
         Destination
-        <select
+        <Select
+          className="h-12 w-full min-w-0"
           value={draft.courseId}
           onChange={(event) => {
             draft.setCourseId(event.target.value);
@@ -79,12 +81,13 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
                 {course.name}
               </option>
             ))}
-        </select>
+        </Select>
       </label>
       {draft.courseId && (
         <label>
           Lesson
-          <select
+          <Select
+            className="h-12 w-full min-w-0"
             value={draft.lessonId}
             onChange={(event) => draft.setLessonId(event.target.value)}
           >
@@ -94,7 +97,7 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
                 {lesson.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {!draft.lessonId && (
