@@ -458,6 +458,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile
         working-directory: relay
+      - name: Trust this checkout for source fingerprinting
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - run: ${{ matrix.command }}
       - name: Preserve standalone browser evidence
         if: always()
