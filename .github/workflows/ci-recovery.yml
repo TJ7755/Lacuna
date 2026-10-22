@@ -30,6 +30,8 @@ jobs:
         with:
           node-version: '24.22.1'
           package-manager-cache: false
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile --ignore-scripts
       - name: Retry a successfully finished job with a stale running record
         env:
           GH_TOKEN: ${{ github.token }}

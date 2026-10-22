@@ -16,12 +16,13 @@ permissions:
   contents: read
   actions: read
 
+# Retries have their own group so an older run cannot cancel newer validation.
 # Metadata edits must not cancel validation. Reused results require the exact tested merge commit.
 # Only an explicit title/body edit without a base change is metadata-only; unknown
 # edited payloads fail closed by running CI.
 concurrency:
-  group: ci-${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.sha }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
+  group: ci-${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title || github.event.changes.body) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.run_attempt == 1 && github.event_name == 'pull_request' && (github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body)) }}
 
 jobs:
   documentation:

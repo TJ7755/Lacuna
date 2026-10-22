@@ -29,7 +29,9 @@ If a successful CI or Security workflow retains a running job record after every
 `Complete job`, succeeded, [CI recovery](../../.github/workflows/ci-recovery.yml) requests one real
 job rerun. This handles stale GitHub reporting, not slow tests. It runs trusted default-branch code
 and never writes check conclusions or changes branch protection. Fork runs, failed workflows,
-unfinished steps, multiple incomplete job records and repeated recovery are excluded. A failed
+unfinished steps, obsolete branch commits, unsafe legacy workflow concurrency, multiple incomplete
+job records and repeated recovery are excluded. CI retries use a separate concurrency group, so an
+older retry cannot cancel validation for a newer commit even if the branch advances during recovery. A failed
 recovery needs operator inspection; it does not authorise an administrative merge.
 
 To inspect or recover a completed run manually using the same guards:

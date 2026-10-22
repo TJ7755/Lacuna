@@ -1,12 +1,17 @@
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { parse } from 'yaml';
 
 const workflows = new Set(['.github/workflows/ci.yml', '.github/workflows/security.yml']);
 
-function githubApi(endpoint, { method = 'GET', paginate = false } = {}) {
+export function githubApi(
+  endpoint,
+  { method = 'GET', paginate = false, execute = execFileSync } = {},
+) {
   const args = ['api', endpoint, '--method', method];
   if (paginate) args.push('--paginate', '--slurp');
-  return JSON.parse(execFileSync('gh', args, { encoding: 'utf8' }));
+  const output = execute('gh', args, { encoding: 'utf8' });
+  return method === 'POST' && !output.trim() ? null : JSON.parse(output);
 }
 
 export function recoverStaleJob({ repository, runId, api = githubApi }) {
@@ -46,11 +51,36 @@ export function recoverStaleJob({ repository, runId, api = githubApi }) {
     job.steps.at(-1).name !== 'Complete job' ||
     job.steps.at(-1).conclusion !== 'success'
   ) {
-    throw new Error('The incomplete job has no evidence of successful runner completion; no retry.');
+    throw new Error(
+      'The incomplete job has no evidence of successful runner completion; no retry.',
+    );
+  }
+  const branch = api(`repos/${repository}/git/ref/heads/${encodeURIComponent(run.head_branch)}`);
+  if (branch.object?.sha !== run.head_sha) {
+    return 'No recovery: the branch has moved to another commit.';
+  }
+  // Old runs retain their original concurrency policy when rerun. Inspect the candidate
+  // definition as well as isolating retries in the current CI workflow.
+  const file = api(
+    `repos/${repository}/contents/${run.path}?ref=${encodeURIComponent(run.head_sha)}`,
+  );
+  if (file.encoding !== 'base64')
+    throw new Error('Cannot inspect the candidate workflow definition');
+  const definition = parse(Buffer.from(file.content, 'base64').toString('utf8'));
+  const isolatedPrefix = "ci-${{ github.run_attempt > 1 && format('retry-{0}', github.run_id) || ";
+  if (
+    (definition.concurrency && !definition.concurrency.group?.startsWith(isolatedPrefix)) ||
+    Object.values(definition.jobs ?? {}).some((candidate) => candidate.concurrency)
+  ) {
+    return 'No recovery: the candidate workflow concurrency is not isolated for retries.';
   }
   // Check again immediately before writing: another actor may already have retried the run.
   const current = api(`${base}/runs/${runId}`);
-  if (current.run_attempt !== 1 || current.status !== 'completed' || current.conclusion !== 'success') {
+  if (
+    current.run_attempt !== 1 ||
+    current.status !== 'completed' ||
+    current.conclusion !== 'success'
+  ) {
     return 'No recovery: the workflow changed while its jobs were inspected.';
   }
   api(`${base}/jobs/${job.id}/rerun`, { method: 'POST' });
