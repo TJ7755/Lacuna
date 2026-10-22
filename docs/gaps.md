@@ -505,7 +505,7 @@ Before publication, inspect the generated file list and run:
 
 ```bash
 bun run build:gaps
-PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts
+PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts gaps-artefact-labels.spec.ts
 PLAYWRIGHT_WEB_PORT=4327 bun run verify:browser -- --project=chromium gaps-entry.spec.ts landing-preview.spec.ts
 VITE_GAPS_REPORTING_ENABLED=true PLAYWRIGHT_WEB_PORT=4337 bun run verify:browser -- --project=chromium gaps-daily-flow.spec.ts
 ```
