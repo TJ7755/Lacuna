@@ -419,6 +419,29 @@ describe('SharePage', () => {
     expect(link).toHaveAttribute('href', `https://gaps.getlacuna.app/#course=${shareId}`);
   });
 
+  it('prefills Class insights with an imported course share link', () => {
+    const shareId = 'c'.repeat(32);
+    localStorage.setItem('lacuna.shareImports', JSON.stringify({ [shareId]: mockCourse.id }));
+    try {
+      given({
+        ...mockCourse,
+        distributedCopy: { lineageId: 'publisher', revision: 7 },
+      } as Course);
+      render(<SharePage />);
+      expect(screen.getByRole('link', { name: 'Class insights' })).toHaveAttribute(
+        'href',
+        `https://gaps.getlacuna.app/#course=${shareId}`,
+      );
+      expect(screen.getByRole('link', { name: 'Set up a class in Gaps' })).toHaveAttribute(
+        'href',
+        `https://gaps.getlacuna.app/#course=${shareId}`,
+      );
+      expect(screen.getByText(/^Revision 7/)).toBeVisible();
+    } finally {
+      localStorage.removeItem('lacuna.shareImports');
+    }
+  });
+
   it.each(['unshared', 'loading', 'empty'])('links to Gaps with %s courses', (state) => {
     if (state === 'unshared') given(mockCourse);
     if (state === 'empty') given();
