@@ -1,0 +1,1 @@
+- Align the WebAssembly tooling runtime override with its declared dependency so fresh installs receive the intended version. (#754)
