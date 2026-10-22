@@ -1,0 +1,1 @@
+- Keep the keyboard-only Study regression stable while outgoing and incoming cards overlap, preserving its focus and completion checks.
