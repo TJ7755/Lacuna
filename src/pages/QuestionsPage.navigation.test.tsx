@@ -146,6 +146,18 @@ describe('QuestionsPage navigation', () => {
         questionSetReturnLabel: 'Back to Questions',
       }),
     );
+    let restoredTop = 0;
+    let contentHasHeight = false;
+    Object.defineProperty(main, 'scrollTop', {
+      configurable: true,
+      get: () => restoredTop,
+      set: (value: number) => {
+        restoredTop = contentHasHeight ? value : 0;
+      },
+    });
+    setTimeout(() => {
+      contentHasHeight = true;
+    }, 50);
     fireEvent.click(screen.getByRole('link', { name: 'Back to Questions' }));
 
     expect(await screen.findByRole('searchbox', { name: 'Search sets' })).toHaveValue('kinetics');
