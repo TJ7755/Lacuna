@@ -4,7 +4,6 @@ import QRCode from 'react-qr-code';
 import { HOSTED_SERVICE_ORIGIN } from '../../ai/session/hostedTransport';
 import type { Course } from '../../db/types';
 import { formatShareLink } from '../../shareLinks/client';
-import { getShareIdForCourse } from '../../shareLinks/linkStore';
 import { readShareCredentials } from '../../shareLinks/credentials';
 import {
   publishShareLink,
@@ -23,6 +22,7 @@ import { expandingActionSpring, motionTransition, scaledSpring } from '../ui/mot
 import { SectionCard } from '../ui/SectionCard';
 import { useToast } from '../ui/Toast';
 import { CopyButton } from './CopyButton';
+import { gapsClassUrl, shareIdForCourse } from './gapsClassUrl';
 import { useActionFocus } from '../../hooks/useActionFocus';
 
 type LinkState = { shareId: string; revision: number };
@@ -39,12 +39,13 @@ function ShareLinkSurface(props: HTMLMotionProps<'div'>) {
 
 function linkFromCourse(course: Course): LinkState | null {
   const distribution = course.distribution;
+  const shareId = shareIdForCourse(course);
+  if (!shareId) return null;
   if (!distribution?.shareId) {
-    const shareId = course.distributedCopy ? getShareIdForCourse(course.id) : null;
-    return shareId ? { shareId, revision: course.distributedCopy!.revision } : null;
+    return { shareId, revision: course.distributedCopy!.revision };
   }
   return {
-    shareId: distribution.shareId,
+    shareId,
     revision: distribution.shareRevision ?? distribution.revision,
   };
 }
@@ -375,7 +376,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 )}
                 <div className="mt-4">
                   <a
-                    href={`https://gaps.getlacuna.app/#course=${link.shareId}`}
+                    href={gapsClassUrl(link.shareId)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={buttonClassName('primary')}

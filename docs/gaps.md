@@ -16,7 +16,8 @@ The view's `children` prop is the seam: the existing in-app
 [TeacherHome](../src/pages/TeacherHome.tsx) supplies locally published-course
 management, including credential checks; standalone Gaps supplies its separately
 saved, verified course connections.
-`#/teach` remains available on the main website and desktop, linked from Share.
+`#/teach` remains available on the main website and desktop. Share opens standalone
+Gaps, prefilling the selected course when it has a public share id.
 The standalone build has one view and needs no router. Bare roots and old hashes
 such as `#/teach` and `#/share` render that same teacher workspace;
 its sharing link explicitly opens the main site.

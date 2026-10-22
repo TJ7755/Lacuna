@@ -166,10 +166,11 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
     code = ((await response.json()) as { shareId: string }).shareId;
   }
 
-  await teacher.getByRole('link', { name: 'Class insights', exact: true }).click();
-  await expect(teacher.getByRole('heading', { name: 'Gaps', exact: true })).toBeVisible();
-  await expect(teacher.getByRole('heading', { name: 'Link biology', exact: true })).toBeVisible();
-  await teacher.getByRole('link', { name: 'Manage sharing for Link biology' }).click();
+  // Class insights opens Gaps with the published course prefilled.
+  await expect(teacher.getByRole('link', { name: 'Class insights', exact: true })).toHaveAttribute(
+    'href',
+    `https://gaps.getlacuna.app/#course=${sourceCode}`,
+  );
   await expect(teacher.getByRole('textbox', { name: 'Share link', exact: true })).toBeVisible();
 
   const studentContext = await browser.newContext();
