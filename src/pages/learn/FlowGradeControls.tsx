@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { motionTransition } from '../../components/ui/motion';
+import { MOTION_EASING, motionTransition } from '../../components/ui/motion';
 import type { AutoMark } from './types';
 
 interface Rect {
@@ -115,7 +115,7 @@ function FlowShape({ id, to, transition }: { id?: string; to: Rect; transition: 
 function FlowSplitLiquid({
   question,
   waiting,
-  pulsing,
+  neutral,
   holder,
   negative,
   reveal,
@@ -126,8 +126,8 @@ function FlowSplitLiquid({
   question: boolean;
   /** The drops stay gathered on one waiting bead instead of splitting into the grades. */
   waiting: boolean;
-  /** The verdict is still pending: the bead breathes while it waits. */
-  pulsing: boolean;
+  /** No verdict has arrived yet: keep the waiting liquid neutral. */
+  neutral: boolean;
   holder: number;
   negative: boolean;
   reveal: Rect;
@@ -187,6 +187,14 @@ function FlowSplitLiquid({
   );
   const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
   const shells = slots.map((_, index) => <use key={index} href={`#${id}-shell-${index}`} />);
+  const pulsing = waiting && m > 0;
+  const colour = neutral
+    ? 'hsl(from var(--color-ink-faint) h 0% l)'
+    : negative
+      ? 'var(--color-negative)'
+      : waiting
+        ? 'var(--color-positive)'
+        : 'var(--color-accent)';
 
   return (
     <svg
@@ -200,12 +208,32 @@ function FlowSplitLiquid({
     >
       <defs>
         {slots.map((slot, index) => (
-          <FlowShape
+          <motion.g
             key={index}
             id={`${id}-shell-${index}`}
-            to={question ? segments[index] : waiting ? bead : slot}
-            transition={spring}
-          />
+            style={centred}
+            initial={false}
+            animate={
+              pulsing
+                ? {
+                    x: [0, index % 2 === 0 ? -12 : 12, 0, index % 2 === 0 ? 8 : -8, 0],
+                    y: [0, index % 2 === 0 ? 5 : -5, 0, index % 2 === 0 ? -7 : 7, 0],
+                    scaleX: index % 2 === 0 ? [1, 0.78, 1.12, 0.9, 1] : [1, 1.12, 0.86, 1.06, 1],
+                    scaleY: index % 2 === 0 ? [1, 1.18, 0.9, 1.12, 1] : [1, 0.9, 1.12, 0.94, 1],
+                  }
+                : { x: 0, y: 0, scaleX: 1, scaleY: 1 }
+            }
+            transition={
+              pulsing
+                ? { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' }
+                : spring
+            }
+          >
+            <FlowShape
+              to={question ? segments[index] : waiting ? bead : slot}
+              transition={spring}
+            />
+          </motion.g>
         ))}
         {liquid('body', null)}
         {/* The colour only ever shows within the joined surface drops. */}
@@ -253,10 +281,10 @@ function FlowSplitLiquid({
       <motion.g
         style={centred}
         initial={false}
-        animate={{ scale: pulsing && m > 0 ? [1, 1.14, 1] : 1 }}
+        animate={{ scale: pulsing ? [1, 1.08, 1] : 1 }}
         transition={
-          pulsing && m > 0
-            ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
+          pulsing
+            ? { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' }
             : { duration: 0.08 * m }
         }
       >
@@ -267,7 +295,12 @@ function FlowSplitLiquid({
           data-flow-colour
           mask={`url(#${id}-within)`}
           filter={`url(#${id}-colour)`}
-          style={{ fill: negative ? 'var(--color-negative)' : 'var(--color-accent)' }}
+          style={{
+            fill: colour,
+            transition: neutral
+              ? 'none'
+              : `fill ${0.3 * m}s cubic-bezier(${MOTION_EASING.standard.join(',')})`,
+          }}
         >
           {slots.map((slot, index) => {
             const keeps = index === holder;
@@ -280,11 +313,13 @@ function FlowSplitLiquid({
                 initial={false}
                 animate={{
                   scaleY:
-                    question || waiting
-                      ? [1, 0.9, 1.03, 1]
-                      : keeps
-                        ? [1, 0.82, 1.05, 1]
-                        : [1, 0.7, 0.55, 0.45],
+                    m === 0
+                      ? 1
+                      : question || waiting
+                        ? [1, 0.9, 1.03, 1]
+                        : keeps
+                          ? [1, 0.82, 1.05, 1]
+                          : [1, 0.7, 0.55, 0.45],
                 }}
                 transition={{ duration: 0.42 * m, times: [0, 0.3, 0.65, 1], ease: 'easeOut' }}
               >
@@ -384,7 +419,7 @@ export function FlowGradeControls({
     );
     return () => window.clearTimeout(timer);
   }, [flow.started, flow.settled, flow.restored]);
-  const flowing = measured && (flow.started !== flow.settled || (automatic && m > 0));
+  const flowing = measured && (flow.started !== flow.settled || automatic);
   const still = measured && (flowing || flow.started !== flow.restored);
 
   useLayoutEffect(() => {
@@ -440,7 +475,7 @@ export function FlowGradeControls({
         <FlowSplitLiquid
           question={question}
           waiting={automatic}
-          pulsing={judging}
+          neutral={judging}
           holder={grades.length - 1}
           negative={!question && autoMark !== undefined && !autoMark.pending && !autoMark.correct}
           reveal={rects.reveal}
