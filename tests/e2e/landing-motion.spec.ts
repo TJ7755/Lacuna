@@ -27,4 +27,6 @@ test('landing keeps a stable promise, accessible motion control and direct entry
   ).toBeInViewport();
   await hero.getByRole('link', { name: 'Start revising' }).click();
   await expect(page).toHaveURL(/#\/$/);
+  await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
 });

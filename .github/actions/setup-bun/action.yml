@@ -3,6 +3,18 @@ description: Install the checksum-verified stable Bun release and reject any oth
 runs:
   using: composite
   steps:
+    - name: Restore verified Bun download
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: relay/node_modules/.cache/security-runtime/downloads
+        key: bun-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'relay/scripts/security-bun.json') }}
+    - name: Restore Bun package downloads
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-packages-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'bun.lock', 'relay/bun.lock', 'tooling/handwriting-maths/bun.lock') }}
+        restore-keys: |
+          bun-packages-${{ runner.os }}-${{ runner.arch }}-
     - name: Install the checksum-verified security revision
       shell: bash
       run: node relay/scripts/security-bun.mjs --install

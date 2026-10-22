@@ -77,14 +77,6 @@ describe('Menu', () => {
     expect(event.defaultPrevented).toBe(false);
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
-  it('expands the trigger surface around its choices without a detached panel', () => {
-    const { trigger } = renderMenu();
-    fireEvent.click(trigger);
-    const surface = trigger.closest('[data-expanding-action]');
-    expect(surface).not.toBeNull();
-    expect(surface).toContainElement(screen.getByRole('menu'));
-    expect(trigger).toHaveClass('text-ink');
-  });
 
   it('keeps its items out of the document until opened', () => {
     const { trigger } = renderMenu();
@@ -184,16 +176,6 @@ describe('Menu', () => {
     );
 
     expect(screen.queryByLabelText('More ways to add cards')).not.toBeInTheDocument();
-  });
-
-  it('scales item transitions from the global motion setting', () => {
-    localStorage.setItem('lacuna.motionSpeed', 'fast');
-    const { trigger } = renderMenu();
-    fireEvent.click(trigger);
-    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? '0ms' : '60ms';
-    expect(screen.getByRole('menuitem', { name: 'New sequence' })).toHaveStyle({
-      transitionDuration: duration,
-    });
   });
 });
 

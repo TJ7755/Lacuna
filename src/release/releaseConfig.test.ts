@@ -410,95 +410,19 @@ describe('release configuration', () => {
       for (const [, reference, version] of references) {
         if (reference === './.github/actions/setup-bun') {
           // This action is versioned with the checkout, rather than fetched from another repository.
-          expect(
-            readFileSync(resolve(root, '.github/actions/setup-bun/action.yml'), 'utf8'),
-          ).not.toMatch(/\buses:/);
+          const action = readFileSync(
+            resolve(root, '.github/actions/setup-bun/action.yml'),
+            'utf8',
+          );
+          for (const [, reference] of action.matchAll(/uses: (\S+)/g)) {
+            expect(reference).toMatch(/^[\w.-]+\/[\w.-]+@[a-f0-9]{40}$/);
+          }
           continue;
         }
         expect(reference).toMatch(/^[\w.-]+\/[\w.-]+(?:\/[\w.-]+)?@[a-f0-9]{40}$/);
         expect(version).toMatch(/^v\d+\.\d+\.\d+$/);
       }
     }
-  });
-
-  it('requires Chromium shards, serial image, sidebar and study timing, and focused mobile WebKit smoke', () => {
-    const tests = workflowJob(ciWorkflow, 'browser-tests');
-    expect(tests).toContain('shard: [1, 2, 3, 4]');
-    expect(tests).toContain('fail-fast: false');
-    expect(tests).toContain(
-      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-functional --shard=${{ matrix.shard }}/4',
-    );
-    expect(tests).toContain('if: always()');
-    expect(tests).toContain('playwright-report/');
-    expect(tests).toContain('test-results/');
-    expect(tests).toContain('name: browser-results-${{ matrix.shard }}');
-    expect(tests).not.toContain('continue-on-error');
-    const timing = workflowJob(ciWorkflow, 'browser-timing');
-    expect(timing).toContain('runs-on: ubuntu-latest');
-    expect(timing).toContain("if: needs.changes.outputs.docs_only != 'true'");
-    expect(timing).toContain('playwright install --with-deps chromium');
-    expect(timing).toContain(
-      'bunx playwright test -c tests/config/playwright.web.ci.config.ts --project=chromium-image-performance --project=chromium-sidebar-motion --project=chromium-study-performance --workers=1',
-    );
-    expect(timing.match(/- run: .*playwright test /g)).toHaveLength(1);
-    expect(timing).not.toContain('continue-on-error');
-    expect(timing).not.toContain('STUDY_IMAGE_ADVANCE_BUDGET_MS');
-    expect(timing).toContain('if: always()');
-    expect(timing).toContain('playwright-report/');
-    expect(timing).toContain('test-results/');
-    const mobile = workflowJob(ciWorkflow, 'browser-mobile');
-    expect(mobile).toContain('playwright install --with-deps webkit');
-    expect(mobile).toContain('bun run test:e2e:web -- --project=webkit-mobile --workers=1');
-    expect(mobile).toContain('if: always()');
-    expect(mobile).toContain('playwright-report/');
-    const gate = workflowJob(ciWorkflow, 'browser-smoke');
-    expect(gate).toContain('needs: [changes, browser-tests, browser-timing, browser-mobile]');
-    expect(gate).toContain('SCOPE_RESULT: ${{ needs.changes.result }}');
-    expect(gate).toContain('RESULT: ${{ needs.browser-tests.result }}');
-    expect(gate).toContain('MOBILE_RESULT: ${{ needs.browser-mobile.result }}');
-    expect(gate).toContain('TIMING_RESULT: ${{ needs.browser-timing.result }}');
-    expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
-    expect(gate).toContain(
-      'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
-    );
-    expect(gate).toContain(
-      'if [ "$SCOPE_RESULT" != success ] || ! ok "$RESULT" || ! ok "$TIMING_RESULT" || ! ok "$MOBILE_RESULT"; then',
-    );
-  });
-
-  it('fails the browser gate when any required browser job fails or is unexpectedly skipped', () => {
-    const workflow = parse(ciWorkflow) as {
-      jobs: Record<string, { steps: { run?: string }[] }>;
-    };
-    const gate = workflow.jobs['browser-smoke'].steps.find((step) => step.run)?.run;
-    expect(gate).toBeDefined();
-    const success = {
-      SCOPE_RESULT: 'success',
-      DOCS_ONLY: 'false',
-      RESULT: 'success',
-      TIMING_RESULT: 'success',
-      MOBILE_RESULT: 'success',
-    };
-    const runGate = (env: Record<string, string>) =>
-      spawnSync('sh', ['-c', gate!], {
-        env: { ...process.env, ...env, GITHUB_STEP_SUMMARY: devNull },
-      }).status;
-    expect(runGate(success)).toBe(0);
-    for (const job of ['SCOPE_RESULT', 'RESULT', 'TIMING_RESULT', 'MOBILE_RESULT']) {
-      for (const result of ['failure', 'cancelled', 'skipped', '']) {
-        expect(runGate({ ...success, [job]: result })).not.toBe(0);
-      }
-      expect(runGate({ ...success, DOCS_ONLY: 'true', [job]: 'failure' })).not.toBe(0);
-    }
-    expect(
-      runGate({
-        SCOPE_RESULT: 'success',
-        DOCS_ONLY: 'true',
-        RESULT: 'skipped',
-        TIMING_RESULT: 'skipped',
-        MOBILE_RESULT: 'skipped',
-      }),
-    ).toBe(0);
   });
 
   it('runs both locked Python suites and makes them part of the required test gate', () => {

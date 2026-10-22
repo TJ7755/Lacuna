@@ -1527,4 +1527,4 @@ removed during sanitisation and covers rendering, fallback source and theme upda
 
 ## Earlier history
 
-See [changes through v0.2.7](archive/changes-through-0.2.7.md) for the complete earlier record.
+See [changes through v0.2.7](https://github.com/TJ7755/Lacuna/blob/b7995873874bbf4d5074430b34481491cc59588c/docs/archive/changes-through-0.2.7.md) for the complete earlier record.

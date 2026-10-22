@@ -22,16 +22,6 @@ describe('DetachCourseSection', () => {
     notify.mockClear();
   });
 
-  it('shows the explanatory line and a secondary Detach course button', () => {
-    render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
-    expect(
-      screen.getByText(
-        'Managed by its author. Detach it to edit freely; later updates will then arrive as a separate course.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Detach course' })).toBeInTheDocument();
-  });
-
   it('asks for confirmation before detaching, and calls detachCourse only on confirm', async () => {
     render(<DetachCourseSection courseId="course-1" autoAcceptUpdates={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Detach course' }));

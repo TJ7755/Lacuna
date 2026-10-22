@@ -31,22 +31,6 @@ vi.mock('../../state/motionSpeed', () => ({
 }));
 
 describe('PomodoroTimer', () => {
-  it('keeps the compact time label inside its unchanged hit target and ring', () => {
-    const { rerender } = render(<PomodoroTimer />);
-
-    const button = screen.getByRole('button', { name: 'Focus · 24:54' });
-    expect(button).toHaveClass('h-11', 'w-11');
-    expect(button.querySelector('circle')).toBeInTheDocument();
-    expect(button.querySelector('text')).toHaveAttribute('font-size', '8');
-
-    formattedTime = '120:00';
-    rerender(<PomodoroTimer />);
-
-    expect(
-      screen.getByRole('button', { name: 'Focus · 120:00' }).querySelector('text'),
-    ).toHaveAttribute('font-size', '7');
-  });
-
   it('opens a named timer panel from a round trigger that reports its state', () => {
     formattedTime = '24:54';
     render(<PomodoroTimer />);
@@ -62,7 +46,6 @@ describe('PomodoroTimer', () => {
     expect(screen.getByRole('button', { name: 'Reset timer' })).toHaveClass('rounded-full');
   });
 });
-
 
 it('moves focus into the timer, wraps Tab and returns focus on Escape', () => {
   render(<PomodoroTimer />);

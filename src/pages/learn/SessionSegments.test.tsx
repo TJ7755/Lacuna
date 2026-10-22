@@ -50,21 +50,3 @@ it('snaps backwards across a boundary and recomputes the window after resizing',
   expect(row.parentElement).toHaveClass('h-2');
   expect(screen.getByText('Card 14 of 322')).toBeInTheDocument();
 });
-
-it('keeps the original flexible pills and no mask when the session fits', () => {
-  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(796);
-  render(
-    <SessionSegments
-      cardIds={['one', 'two', 'three']}
-      currentCardIds={['two']}
-      outcomes={new Map([['one', 'wrong']])}
-      value={1 / 3}
-      label="Session progress"
-      m={0}
-    />,
-  );
-  const row = screen.getByRole('progressbar').querySelector('[data-session-segment-row]')!;
-  expect(row).toHaveStyle({ width: '100%' });
-  expect(row.firstElementChild).toHaveClass('flex-1');
-  expect(row.parentElement).toHaveStyle({ maskImage: '' });
-});

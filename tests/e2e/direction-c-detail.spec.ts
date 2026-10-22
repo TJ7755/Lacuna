@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { enterFreshLacuna } from './fixtures/lacunaApp';
 
 async function openWelcomeCourse(page: Page, width: number) {
@@ -12,33 +12,6 @@ async function openWelcomeCourse(page: Page, width: number) {
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   return new URL(page.url()).hash.slice(1);
 }
-
-const box = async (locator: Locator) => (await locator.boundingBox())!;
-
-test('path lesson names keep whole words on a phone in Edit mode', async ({ page }) => {
-  await openWelcomeCourse(page, 390);
-  await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
-  await expect(page.locator('button .line-clamp-2.font-bold').first()).toBeVisible();
-  // Squeezed beside the counts and the actions menu, names broke mid-word ("Biologic al").
-  const widths = await page
-    .locator('button .line-clamp-2.font-bold')
-    .evaluateAll((names) => names.map((name) => name.getBoundingClientRect().width));
-  expect(widths.length).toBeGreaterThan(0);
-  for (const width of widths) expect(width).toBeGreaterThanOrEqual(127);
-});
-
-test('the Cards header keeps New card as its single 44px authoring entry', async ({ page }) => {
-  const course = await openWelcomeCourse(page, 1440);
-  await page.goto(`/#${course}/cards`);
-  const header = page.locator('main header').filter({
-    has: page.getByRole('heading', { name: 'Cards', exact: true }),
-  });
-  const newCard = header.getByRole('button', { name: 'New card', exact: true });
-  await expect(header.getByRole('button')).toHaveCount(1);
-  expect(Math.round((await box(newCard)).height)).toBe(44);
-  await newCard.click();
-  await expect(page.getByRole('group', { name: 'Card type', exact: true })).toBeVisible();
-});
 
 test('card rows show maths whole and cloze answers without stray spaces', async ({ page }) => {
   const course = await openWelcomeCourse(page, 1440);

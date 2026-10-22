@@ -69,13 +69,14 @@ test('metadata edits reuse validation without cancelling CI or bypassing require
   }
 });
 
-
 test('metadata reuse requires a successful validation run for the exact merge commit', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-'));
   try {
     const step = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
     const gh = join(directory, 'gh');
-    writeFileSync(gh, `#!/bin/bash
+    writeFileSync(
+      gh,
+      `#!/bin/bash
 if [ "$1" = api ] && [[ "$2" == *"/runs?"* ]]; then
   printf '%s' "$RUNS"
 elif [ "$1" = api ]; then
@@ -84,7 +85,9 @@ else
   printf '%s\\n' "$*" > "$WATCH_ARGS"
   exit "$WATCH_STATUS"
 fi
-`, { mode: 0o755 });
+`,
+      { mode: 0o755 },
+    );
     const run = (runs, status = '0', conclusion = 'success') => {
       const output = join(directory, 'output');
       const summary = join(directory, 'summary');
@@ -111,7 +114,10 @@ fi
     const valid = { id: 42, display_title: 'CI validation current-merge' };
     assert.equal(run([valid]).status, 0);
     assert.equal(run([valid]).output, 'docs_only=true\n');
-    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /run watch 42 --repo owner\/repo --exit-status/);
+    assert.match(
+      readFileSync(join(directory, 'watch'), 'utf8'),
+      /run watch 42 --repo owner\/repo --exit-status/,
+    );
     for (const runs of [
       [],
       [{ id: 1, display_title: 'CI validation older-merge' }],
@@ -134,13 +140,12 @@ fi
   }
 });
 
-
 test('metadata aggregate gates reject missing, failed or cancelled reuse', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-reuse-gates-'));
   try {
     for (const job of ['test', 'browser-smoke']) {
-      const step = workflow.jobs[job].steps.find((step) =>
-        step.name === 'Require successful reused validation',
+      const step = workflow.jobs[job].steps.find(
+        (step) => step.name === 'Require successful reused validation',
       );
       for (const status of ['success', 'failure', 'cancelled', 'skipped', '']) {
         const result = spawnSync('bash', ['-e', '-c', step.run], {
@@ -256,4 +261,40 @@ test('aggregate shell gates fail closed and report each dependency result', () =
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test('browser consumers use the same pinned browser image and shared production artefact', () => {
+  const version = readFileSync(new URL('../bun.lock', import.meta.url), 'utf8').match(
+    /"@playwright\/test": \["@playwright\/test@([^"\s]+)"/,
+  )[1];
+  const jobs = workflow.jobs;
+  const consumers = ['browser-tests', 'browser-timing', 'browser-mobile'];
+  const producer = jobs.production.steps.find((step) =>
+    step.uses?.startsWith('actions/upload-artifact@'),
+  );
+  assert.ok(producer);
+  for (const name of [...consumers, 'browser-standalone']) {
+    assert.match(
+      jobs[name].container.image,
+      new RegExp(
+        `^mcr\\.microsoft\\.com/playwright:v${version.replaceAll('.', '\\.')}\\-noble@sha256:[a-f0-9]{64}$`,
+      ),
+    );
+    assert.ok(!jobs[name].steps.some((step) => /playwright install/.test(step.run ?? '')));
+    assert.ok(jobs['browser-smoke'].needs.includes(name));
+  }
+  for (const name of consumers) {
+    const job = jobs[name];
+    assert.ok(job.needs.includes('production'));
+    const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
+    assert.equal(download.with.name, producer.with.name);
+    assert.equal(download.with.path, producer.with.path);
+    assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
+  }
+  const timing = jobs['browser-timing'];
+  assert.ok(
+    timing.steps.some((step) =>
+      /--project=\$\{\{ matrix.project }} --workers=1/.test(step.run ?? ''),
+    ),
+  );
 });
