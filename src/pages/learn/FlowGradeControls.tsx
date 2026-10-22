@@ -1,4 +1,12 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
 import { motionTransition } from '../../components/ui/motion';
@@ -10,9 +18,6 @@ interface Rect {
   height: number;
 }
 
-/** Width of the fill held between the primary drop and its neighbour as they part. */
-const BRIDGE_WIDTH = 96;
-
 function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
   return {
     left: el.offsetLeft + offsetLeft,
@@ -22,228 +27,308 @@ function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
   };
 }
 
-/** Keep the pill's round ends circular while its compositor layer changes width. */
-function FlowDrop({
-  target,
-  base,
-  question,
-  pending,
-  keeps,
-  negative,
-  spring,
-  scaleTransition,
-  m,
-}: {
-  target: Rect;
-  base: Rect;
+interface FlowControlsProps {
   question: boolean;
-  pending: boolean;
-  keeps: boolean;
-  negative: boolean;
-  spring: Transition;
-  scaleTransition: Transition;
+  /** An answer is being judged: the liquid waits as a bead and no grade is offered yet. */
+  pending?: boolean;
+  /** The grade a judgement chose: the colour drains into it instead of the primary. */
+  chosen?: number;
+  /** Whether the chosen grade is a negative one, whose colour the liquid takes. */
+  chosenNegative?: boolean;
+  grades: ReactNode[];
+  rowClassName: string;
+  revealLabel?: ReactNode;
+  /** Content above the reveal pill that fades with it, such as a typed answer field. */
+  revealLead?: ReactNode;
+  onReveal: () => void;
   m: number;
-}) {
-  const width = useMotionValue(target.width);
-  const height = useMotionValue(target.height);
-  const scaleX = useTransform(width, (value) => value / base.width);
-  const scaleY = useTransform(height, (value) => value / base.height);
-  const borderRadius = useTransform(
-    () => `${(height.get() * base.width) / (2 * width.get())}px / ${base.height / 2}px`,
-  );
+}
+
+const centreX = (rect: Rect) => rect.left + rect.width / 2;
+const centreY = (rect: Rect) => rect.top + rect.height / 2;
+
+/** How long, before motion scaling, the liquid draws the split before the buttons' own chrome returns. */
+const SPLIT_SETTLE = 0.6;
+/** How long, in seconds, button transitions stay off after their chrome returns. */
+const HANDBACK = 0.2;
+/** How far drops overshoot their slots as they split, and the pill as they gather. */
+const SPLIT_BOUNCE = 0.5;
+const GATHER_BOUNCE = 0.42;
+
+/**
+ * The pill cut into one segment per grade. Inner ends reach half the height into their
+ * neighbours, so together the segments draw exactly the pill until they part.
+ */
+function pillSegments(pill: Rect, count: number): Rect[] {
+  const share = pill.width / count;
+  return Array.from({ length: count }, (_, index) => {
+    const left = Math.max(pill.left, pill.left + share * index - pill.height / 2);
+    const right = Math.min(
+      pill.left + pill.width,
+      pill.left + share * (index + 1) + pill.height / 2,
+    );
+    return { left, top: pill.top, width: right - left, height: pill.height };
+  });
+}
+
+/** A rect grown by the colour's margin over the surface it is clipped to. */
+function swell(rect: Rect, across = 16, down = 16): Rect {
+  return {
+    left: rect.left - across,
+    top: rect.top - down,
+    width: rect.width + across * 2,
+    height: rect.height + down * 2,
+  };
+}
+
+/** A pill whose geometry springs between rects, about its centre so it grows evenly. */
+function FlowShape({ id, to, transition }: { id?: string; to: Rect; transition: Transition }) {
+  const cx = useMotionValue(centreX(to));
+  const cy = useMotionValue(centreY(to));
+  const width = useMotionValue(to.width);
+  const height = useMotionValue(to.height);
+  const x = useTransform(() => cx.get() - width.get() / 2);
+  const y = useTransform(() => cy.get() - height.get() / 2);
+  const radius = useTransform(height, (value) => value / 2);
+  const { left, top, width: w, height: h } = to;
   useLayoutEffect(() => {
-    const horizontal = animate(width, target.width, spring);
-    const vertical = animate(height, target.height, spring);
-    return () => {
-      horizontal.stop();
-      vertical.stop();
-    };
-  }, [width, height, target.width, target.height, spring]);
-  return (
-    <motion.div
-      className="absolute"
-      style={{ width: base.width, height: base.height, scaleX, scaleY, originX: 0, originY: 0 }}
-      initial={false}
-      animate={{ x: target.left, y: target.top }}
-      transition={spring}
-    >
-      <motion.div
-        className="absolute inset-0"
-        initial={false}
-        animate={{
-          scaleY: question || pending ? [1, 0.9, 1] : keeps ? [1, 0.86, 1] : [1, 0.7, 0.45],
-        }}
-        transition={{ duration: 0.42 * m, times: [0, 0.35, 1], ease: 'easeOut' }}
-      >
-        <motion.div
-          data-flow-drop={keeps ? 'primary' : 'drain'}
-          className={
-            'absolute inset-0 transition-[filter,background-color] duration-300 ' +
-            (negative ? 'bg-negative' : 'bg-accent')
-          }
-          style={{ borderRadius }}
-          initial={false}
-          animate={{
-            scale: pending && m > 0 ? [1, 1.14, 1] : question || pending || keeps ? 1 : 0,
-          }}
-          transition={scaleTransition}
-        />
-      </motion.div>
-    </motion.div>
-  );
+    const running = (
+      [
+        [cx, left + w / 2],
+        [cy, top + h / 2],
+        [width, w],
+        [height, h],
+      ] as const
+    ).map(([value, target]) => animate(value, target, transition));
+    return () => running.forEach((controls) => controls.stop());
+  }, [cx, cy, width, height, left, top, w, h, transition]);
+  return <motion.rect id={id} x={x} y={y} width={width} height={height} rx={radius} />;
 }
 
 /**
- * A connecting accent fill behind the reveal and grade buttons. A blur and alpha-threshold
- * filter fuses drops wherever they touch, which draws the necks. Buttons keep their own
- * fill so their labels stay readable before measurement and throughout movement.
+ * The liquid that draws the pill splitting into its grades. Each grade has a surface drop,
+ * which springs from its segment of the pill to its slot, and a colour drop, which pours
+ * into the holder unless it is the holder. A blur and alpha threshold fuses near
+ * drops of each kind, so the surface drops stay joined by necks that thin and snap as they
+ * part, and the colour flows along them into the holder.
  */
-function FlowGradeFill({
+function FlowSplitLiquid({
   question,
   pending,
-  chosen,
+  holder,
   negative,
   reveal,
   slots,
+  visible,
   m,
 }: {
   question: boolean;
   pending: boolean;
-  chosen: number | undefined;
+  holder: number;
   negative: boolean;
   reveal: Rect;
   slots: Rect[];
+  visible: boolean;
   m: number;
 }) {
-  const filterId = `study-flow-${useId().replace(/[^\w-]/g, '')}`;
-  const primaryIndex = chosen ?? slots.length - 1;
-  const primary = slots[primaryIndex];
-  // While an answer is being judged, the pill gathers into one bead at its centre.
+  const id = `study-flow-${useId().replace(/[^\w-]/g, '')}`;
   const bead = {
-    left: reveal.left + reveal.width / 2 - reveal.height / 2,
+    left: centreX(reveal) - reveal.height / 2,
     top: reveal.top,
     width: reveal.height,
     height: reveal.height,
   };
+  const segments = pillSegments(reveal, slots.length);
+  const target = slots[holder];
+  // Colour enters the holder at its end nearest the drop it comes from.
+  const sinkFor = (index: number) => ({
+    left: index > holder ? target.left + target.width - target.height : target.left,
+    top: target.top,
+    width: target.height,
+    height: target.height,
+  });
   const spring = useMemo<Transition>(
     () =>
       m === 0
         ? { duration: 0 }
         : question
-          ? { type: 'spring', visualDuration: 0.42 * m, bounce: 0.32 }
-          : { type: 'spring', visualDuration: 0.44 * m, bounce: 0.36 },
+          ? { type: 'spring', visualDuration: 0.36 * m, bounce: GATHER_BOUNCE }
+          : { type: 'spring', visualDuration: 0.37 * m, bounce: SPLIT_BOUNCE },
     [m, question],
   );
   const drain = useMemo<Transition>(
-    () => (m === 0 ? { duration: 0 } : { type: 'spring', visualDuration: 0.26 * m, bounce: 0 }),
+    () => (m === 0 ? { duration: 0 } : { type: 'spring', visualDuration: 0.22 * m, bounce: 0 }),
     [m],
   );
-  // Outlined grades never hold fill: their share drains into the primary drop as the
-  // pill splits, ending as a bead at its near end that it absorbs.
-  const sink = {
-    left: primary.left,
-    top: primary.top,
-    width: primary.height,
-    height: primary.height,
-  };
 
-  // The drained fill only passes between the primary drop and its neighbour, so that is
-  // the one neck. It rests inside the reveal pill, so it needs both on the pill's line.
-  const neighbour = primaryIndex === slots.length - 1 ? slots[slots.length - 2] : undefined;
-  const neighbourGap = neighbour && (neighbour.left + neighbour.width + primary.left) / 2;
-  const bridge =
-    !pending &&
-    neighbour &&
-    neighbourGap !== undefined &&
-    neighbour.top === primary.top &&
-    primary.top === reveal.top &&
-    neighbourGap - BRIDGE_WIDTH / 2 >= reveal.left &&
-    neighbourGap + BRIDGE_WIDTH / 2 <= reveal.left + reveal.width
-      ? neighbourGap
-      : undefined;
+  const liquid = (name: string, edge: ReactNode) => (
+    <filter
+      id={`${id}-${name}`}
+      filterUnits="userSpaceOnUse"
+      colorInterpolationFilters="sRGB"
+      x="-50%"
+      y="-50%"
+      width="200%"
+      height="200%"
+    >
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
+      <feColorMatrix
+        in="blur"
+        type="matrix"
+        values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -11"
+        result="liquid"
+      />
+      {edge}
+    </filter>
+  );
+  const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
+  const shells = slots.map((_, index) => <use key={index} href={`#${id}-shell-${index}`} />);
 
   return (
-    <>
-      <svg aria-hidden width="0" height="0" className="absolute">
-        <filter id={filterId} x="-20%" y="-60%" width="140%" height="220%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur" />
-          <feColorMatrix
-            in="blur"
-            mode="matrix"
-            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -10"
-            result="fused-fill"
+    <svg
+      aria-hidden
+      data-flow-layer
+      className={
+        // The buttons' own chrome takes over at once, so the liquid leaves at once too.
+        'pointer-events-none absolute inset-0 h-full w-full overflow-visible' +
+        (visible ? '' : ' invisible')
+      }
+    >
+      <defs>
+        {slots.map((slot, index) => (
+          <FlowShape
+            key={index}
+            id={`${id}-shell-${index}`}
+            to={question ? segments[index] : pending ? bead : slot}
+            transition={spring}
           />
-          <feComposite in="SourceGraphic" in2="fused-fill" operator="atop" />
-        </filter>
-      </svg>
-      <div
-        aria-hidden
-        data-flow-layer
-        className="pointer-events-none absolute inset-0"
-        style={{ filter: `url(#${filterId})` }}
-      >
-        {slots.map((slot, index) => {
-          const keeps = index === primaryIndex;
-          const target = question ? reveal : pending ? bead : keeps ? slot : sink;
-          const whole = question || pending || keeps;
-          return (
-            <FlowDrop
-              key={index}
-              target={target}
-              base={reveal}
-              question={question}
-              pending={pending}
-              keeps={keeps}
-              negative={negative}
-              spring={whole ? spring : drain}
-              m={m}
-              scaleTransition={
-                pending && m > 0
-                  ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
-                  : question || pending
-                    ? { duration: 0.08 * m }
-                    : keeps
-                      ? { duration: 0.18 * m }
-                      : { duration: 0.12 * m, delay: 0.2 * m, ease: 'easeIn' }
-              }
-            />
-          );
-        })}
-        {bridge !== undefined && (
-          // Holds the neck between the primary drop and the fill draining into it, thins,
-          // then snaps; on the way back it fills in so the drops fuse.
-          <motion.div
-            className="absolute rounded-full bg-accent"
-            style={{
-              left: bridge - BRIDGE_WIDTH / 2,
-              top: primary.top,
-              width: BRIDGE_WIDTH,
-              height: primary.height,
-            }}
-            initial={false}
-            animate={
-              question
-                ? { scaleY: 1, scaleX: 1 }
-                : { scaleY: [1, 0.85, 0.3, 0], scaleX: [1, 1.15, 0.7, 0.4] }
-            }
-            transition={
-              question
-                ? { duration: 0.22 * m, delay: 0.06 * m, ease: 'easeOut' }
-                : { duration: 0.42 * m, times: [0, 0.3, 0.75, 1], ease: 'easeIn' }
-            }
-          />
+        ))}
+        {liquid('body', null)}
+        {/* The colour only ever shows within the joined surface drops. */}
+        <mask
+          id={`${id}-within`}
+          maskUnits="userSpaceOnUse"
+          x="-50%"
+          y="-50%"
+          width="200%"
+          height="200%"
+        >
+          <g filter={`url(#${id}-body)`} fill="white">
+            {shells}
+          </g>
+        </mask>
+        {liquid(
+          'shell',
+          <>
+            {/* A fine outline traced around the joined drops. */}
+            <feMorphology in="liquid" operator="erode" radius="1" result="inner" />
+            <feComposite in="liquid" in2="inner" operator="out" result="ring" />
+            <feFlood style={{ floodColor: 'var(--color-line-strong)' }} result="line" />
+            <feComposite in="line" in2="ring" operator="in" result="outline" />
+            <feMerge>
+              <feMergeNode in="liquid" />
+              <feMergeNode in="outline" />
+            </feMerge>
+          </>,
         )}
-      </div>
-    </>
+        {liquid(
+          'colour',
+          <>
+            {/* A soft highlight along the top edge, as light catching a curved surface. */}
+            <feOffset in="liquid" dy="1.5" result="lowered" />
+            <feComposite in="liquid" in2="lowered" operator="out" result="rim" />
+            <feFlood floodColor="white" floodOpacity="0.45" result="light" />
+            <feComposite in="light" in2="rim" operator="in" result="highlight" />
+            <feMerge>
+              <feMergeNode in="liquid" />
+              <feMergeNode in="highlight" />
+            </feMerge>
+          </>,
+        )}
+      </defs>
+      <motion.g
+        style={centred}
+        initial={false}
+        animate={{ scale: pending && m > 0 ? [1, 1.14, 1] : 1 }}
+        transition={
+          pending && m > 0
+            ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
+            : { duration: 0.08 * m }
+        }
+      >
+        <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
+          {shells}
+        </g>
+        <g
+          data-flow-colour
+          mask={`url(#${id}-within)`}
+          filter={`url(#${id}-colour)`}
+          style={{ fill: negative ? 'var(--color-negative)' : 'var(--color-accent)' }}
+        >
+          {slots.map((slot, index) => {
+            const keeps = index === holder;
+            const whole = question || pending || keeps;
+            return (
+              // Each colour drop squashes as it springs, rebounding; those that drain thin as they pour.
+              <motion.g
+                key={index}
+                style={centred}
+                initial={false}
+                animate={{
+                  scaleY:
+                    question || pending
+                      ? [1, 0.9, 1.03, 1]
+                      : keeps
+                        ? [1, 0.82, 1.05, 1]
+                        : [1, 0.7, 0.55, 0.45],
+                }}
+                transition={{ duration: 0.42 * m, times: [0, 0.3, 0.65, 1], ease: 'easeOut' }}
+              >
+                <motion.g
+                  style={centred}
+                  initial={false}
+                  animate={{ scale: whole ? 1 : 0 }}
+                  transition={
+                    question || pending
+                      ? { duration: 0.08 * m }
+                      : keeps
+                        ? { duration: 0.15 * m }
+                        : { duration: 0.1 * m, delay: 0.17 * m, ease: 'easeIn' }
+                  }
+                >
+                  <FlowShape
+                    to={
+                      // Colour that stays overfills the surface it is clipped to, so the
+                      // surface's outline and rebound never show past it.
+                      question
+                        ? swell(segments[index])
+                        : pending
+                          ? swell(bead)
+                          : keeps
+                            ? // Enough to cover its squash, not to reach a neighbour.
+                              swell(slot, 3)
+                            : sinkFor(index)
+                    }
+                    transition={whole ? spring : drain}
+                  />
+                </motion.g>
+              </motion.g>
+            );
+          })}
+        </g>
+      </motion.g>
+    </svg>
   );
 }
 
 /**
- * Show answer, then the grade buttons, as one continuous fill. On reveal the pill pinches
- * into the primary (last) grade, which springs into its slot and wobbles as it settles,
- * while outlined grades appear as empty shells where the fill has drained away. On the
- * next card the fill flows back out and merges into the pill. `grades` are rendered
- * with their primary grade last.
+ * Show answer, then the grade buttons, as one liquid. On reveal the pill splits
+ * into a drop per grade, joined by necks, and the colour of every other drop drains into
+ * the primary (last) grade while they are still connected; the necks then thin and snap,
+ * leaving outlined grades. On the next card the drops flow back together and the colour
+ * returns. While the liquid moves, the buttons show only their labels, riding on their
+ * drops, and are already usable; their own fills and outlines return once it settles.
+ * `grades` are rendered with their primary grade last.
  */
 export function FlowGradeControls({
   question,
@@ -256,22 +341,7 @@ export function FlowGradeControls({
   revealLead,
   onReveal,
   m,
-}: {
-  question: boolean;
-  /** An answer is being judged: the fill waits as a bead and no grade is offered yet. */
-  pending?: boolean;
-  /** The grade a judgement chose: all the fill flows into it instead of the primary. */
-  chosen?: number;
-  /** Whether the chosen grade is a negative one, which the fill takes the colour of. */
-  chosenNegative?: boolean;
-  grades: ReactNode[];
-  rowClassName: string;
-  revealLabel?: ReactNode;
-  /** Content above the reveal pill that fades with it, such as a typed answer field. */
-  revealLead?: ReactNode;
-  onReveal: () => void;
-  m: number;
-}) {
+}: FlowControlsProps) {
   const box = useRef<HTMLDivElement>(null);
   const revealRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
@@ -279,6 +349,36 @@ export function FlowGradeControls({
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [rects, setRects] = useState<{ reveal: Rect; slots: Rect[] }>();
   const measured = rects !== undefined;
+  const judging = pending && !question;
+  const gathered = question || judging;
+
+  // The liquid takes over whenever the controls change between the pill and the grades.
+  const [wasGathered, setWasGathered] = useState(gathered);
+  const [flow, setFlow] = useState({ started: 0, settled: 0, restored: 0 });
+  if (wasGathered !== gathered) {
+    setWasGathered(gathered);
+    if (m > 0) setFlow((current) => ({ ...current, started: current.started + 1 }));
+  }
+  useEffect(() => {
+    if (flow.started === flow.settled) return;
+    const timer = window.setTimeout(
+      () => setFlow((current) => ({ ...current, settled: flow.started })),
+      SPLIT_SETTLE * m * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [flow.started, flow.settled, m]);
+  // The buttons' chrome returns at once beneath the fading liquid, then their own colour
+  // transitions resume.
+  useEffect(() => {
+    if (flow.settled !== flow.started || flow.restored === flow.started) return;
+    const timer = window.setTimeout(
+      () => setFlow((current) => ({ ...current, restored: flow.settled })),
+      HANDBACK * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [flow.started, flow.settled, flow.restored]);
+  const flowing = measured && (flow.started !== flow.settled || (judging && m > 0));
+  const still = measured && (flowing || flow.started !== flow.restored);
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -304,32 +404,48 @@ export function FlowGradeControls({
     return () => observer.disconnect();
   }, [grades.length]);
 
-  const centre = (grades.length - 1) / 2;
+  const holder = chosen ?? grades.length - 1;
+  // Where each grade's label rides from: its segment of the pill, or the waiting bead.
+  const origins = rects
+    ? judging
+      ? rects.slots.map(() => ({ x: centreX(rects.reveal), y: centreY(rects.reveal) }))
+      : pillSegments(rects.reveal, grades.length).map((segment) => ({
+          x: centreX(segment),
+          y: centreY(segment),
+        }))
+    : undefined;
+  const spring = useMemo<Transition>(
+    () =>
+      m === 0
+        ? { duration: 0 }
+        : { type: 'spring', visualDuration: 0.37 * m, bounce: SPLIT_BOUNCE },
+    [m],
+  );
+  // While the liquid draws the controls, the buttons keep only their labels. Their chrome
+  // leaves and returns at once rather than fading over the liquid.
+  const chrome =
+    (flowing
+      ? ' [&_button]:bg-transparent! [&_button]:border-transparent! [&_button]:ring-0!'
+      : '') + (still ? ' [&_button]:transition-none!' : '');
+
   return (
-    <div
-      ref={box}
-      // Keep the connecting fill in step with button hover feedback.
-      className={
-        'relative mx-auto grid w-full ' +
-        '[&:has([data-flow-reveal]_button:hover)_[data-flow-drop]]:brightness-105 ' +
-        '[&:has([data-flow-primary]_button:hover)_[data-flow-drop=primary]]:brightness-105'
-      }
-    >
+    <div ref={box} className="relative mx-auto grid w-full">
       {rects && (
-        <FlowGradeFill
+        <FlowSplitLiquid
           question={question}
-          pending={pending && !question}
-          chosen={question ? undefined : chosen}
+          pending={judging}
+          holder={question ? grades.length - 1 : holder}
           negative={!question && chosen !== undefined && chosenNegative}
           reveal={rects.reveal}
           slots={rects.slots}
+          visible={flowing}
           m={m}
         />
       )}
       <motion.div
         ref={revealRef}
         data-flow-reveal
-        className="relative col-start-1 row-start-1 mx-auto w-full max-w-md self-start"
+        className={'relative col-start-1 row-start-1 mx-auto w-full max-w-md self-start' + chrome}
         initial={false}
         animate={{ opacity: question ? 1 : 0 }}
         transition={question ? motionTransition('feedback', m) : { duration: 0.08 * m }}
@@ -350,44 +466,49 @@ export function FlowGradeControls({
         aria-hidden={question || pending}
       >
         {grades.map((grade, index) => {
-          const holder = index === (chosen ?? grades.length - 1);
+          const holds = index === holder;
           const primary = index === grades.length - 1;
+          const slot = rects?.slots[index];
+          const origin = origins?.[index];
+          const offset =
+            gathered && slot && origin
+              ? { x: origin.x - centreX(slot), y: origin.y - centreY(slot) }
+              : { x: 0, y: 0 };
           return (
             <motion.div
               key={index}
               ref={(el) => {
                 slotRefs.current[index] = el;
               }}
-              data-flow-primary={holder || undefined}
+              data-flow-primary={holds || undefined}
               className={
                 'flex min-w-0 flex-1' +
-                // A judged negative grade holds the fill, so its label sits on the fill.
-                (measured && holder && !primary
-                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:bg-negative! [&_button]:text-paper!' : '[&_button]:bg-accent! [&_button]:text-accent-fg!'}`
+                // A judged grade other than the primary keeps the colour, so its label sits on it.
+                (measured && holds && !primary
+                  ? chosenNegative
+                    ? ' [&_button]:text-paper!'
+                    : ' [&_button]:text-accent-fg!'
+                  : '') +
+                (measured && holds && !primary && !flowing
+                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:bg-negative!' : '[&_button]:bg-accent!'}`
                   : '') +
                 // The primary drained elsewhere: it stays as an empty shell.
-                (measured && primary && !holder
-                  ? ' [&_button]:bg-transparent! [&_button]:text-ink! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong'
-                  : '')
+                (measured && primary && !holds
+                  ? ' [&_button]:text-ink!' +
+                    (flowing
+                      ? ''
+                      : ' [&_button]:bg-transparent! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong')
+                  : '') +
+                chrome
               }
               initial={false}
-              animate={{
-                opacity: question || pending ? 0 : 1,
-                // Outlined grades split away from the centre as the fill leaves them.
-                x: question && !primary ? `${(centre - index) * 6}%` : '0%',
+              animate={{ opacity: gathered ? 0 : 1, x: offset.x, y: offset.y }}
+              transition={{
+                x: spring,
+                y: spring,
+                // Labels respond immediately; the liquid can settle around them.
+                opacity: gathered ? { duration: 0.08 * m } : motionTransition('feedback', m),
               }}
-              transition={
-                question
-                  ? { duration: 0.08 * m }
-                  : {
-                      x:
-                        m === 0
-                          ? { duration: 0 }
-                          : { type: 'spring', visualDuration: 0.44 * m, bounce: 0.36 },
-                      // Labels respond immediately; the fill can settle around them.
-                      opacity: motionTransition('feedback', m),
-                    }
-              }
             >
               {grade}
             </motion.div>

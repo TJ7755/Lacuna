@@ -34,7 +34,7 @@ Extend [shared timing and springs](../../src/components/ui/motion.ts),
 [step transitions](../../src/components/ui/StepSwap.tsx) and
 [motion preferences](../../src/state/motionSpeed.ts) rather than creating another motion framework.
 [Flow study controls](../../src/pages/learn/FlowGradeControls.tsx) own the measured reveal-to-grade
-fill; its local blur fuses accent shapes, not page backgrounds. Prefer transform and opacity for
+liquid; its local blur fuses the control's own drops, not page backgrounds. Prefer transform and opacity for
 new movement; keep measured shape changes bounded to their owning control and verify them in use.
 Keep functional settings named for the choice they expose, such as motion speed.
 

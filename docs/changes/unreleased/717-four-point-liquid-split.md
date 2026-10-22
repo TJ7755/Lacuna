@@ -1,0 +1,1 @@
+- Show answer now splits like a liquid into one drop per grade, joined by necks that thin and snap, and the colour of the other grades flows into Easy (or Yes) while the drops are still connected, bouncing as they settle. On the next card the grades flow back together into the pill. (#717)
