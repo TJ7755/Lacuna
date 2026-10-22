@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '24.22.1'
           package-manager-cache: false
-      - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs
+      - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs scripts/check-gaps-browser-registration.test.mjs
       - run: node scripts/check-docs.mjs
       - run: node scripts/changelog.mjs --check
 
@@ -441,7 +441,7 @@ jobs:
       matrix:
         include:
           - site: gaps
-            command: PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts
+            command: PLAYWRIGHT_WEB_PORT=4317 bun run verify:browser -- --gaps --project=chromium gaps-standalone.spec.ts gaps-worker-migration.spec.ts gaps-teacher-keys.spec.ts gaps-course-connection.spec.ts gaps-artefact-labels.spec.ts
           - site: library
             command: PLAYWRIGHT_WEB_PORT=4347 bun run verify:browser -- --library --project=chromium library-standalone.spec.ts
           - site: reporting
