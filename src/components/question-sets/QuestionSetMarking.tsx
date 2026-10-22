@@ -69,11 +69,13 @@ export function QuestionSetMarking({
       ? automatic && watched === allocation.id && decision.status === 'awarded'
         ? `Marked automatically: ${decision.marks} of ${allocation.maxMarks}.`
         : ''
-      : jev.state === 'left'
-        ? 'Automatic marking was not sure enough. Choose a mark.'
-        : jev.state === 'unavailable'
-          ? 'Automatic marking is paused. Choose a mark.'
-          : '';
+      : jev.state === 'failed'
+        ? 'Automatic marking could not be saved. Choose a mark.'
+        : jev.state === 'left'
+          ? 'Automatic marking was not sure enough. Choose a mark.'
+          : jev.state === 'unavailable'
+            ? 'Automatic marking is paused. Choose a mark.'
+            : '';
   const annotations = attempt.annotations.filter((row) => row.nodeId === nodeId);
   const boundaries = [
     ...new Set([
@@ -160,7 +162,8 @@ export function QuestionSetMarking({
         <p
           aria-live="polite"
           className={
-            !decision && (jev.state === 'left' || jev.state === 'unavailable')
+            !decision &&
+            (jev.state === 'left' || jev.state === 'unavailable' || jev.state === 'failed')
               ? 'qs-muted'
               : 'sr-only'
           }

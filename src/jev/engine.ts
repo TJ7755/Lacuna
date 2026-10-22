@@ -439,6 +439,7 @@ export function createJevEngine(
     decideAllocations,
     markTyped,
     eligible,
+    cancellationSignal: () => generation.signal,
     settings: () => settings,
     status: () => {
       publish(false);

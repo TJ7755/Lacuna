@@ -210,19 +210,10 @@ function PracticeWorkspace({
       blankConfirmation.show();
       return;
     }
-    const submitted = await progress.run((row) =>
+    await progress.run((row) =>
       row.mode === 'paper'
         ? submitQuestionSetPaper(row.id, row.revisionId)
         : submitPracticeQuestion(row.id, row.revisionId, questionId),
-    );
-    const first = group[0];
-    await progress.run(() =>
-      saveQuestionSetAttemptPosition(
-        submitted.id,
-        submitted.revisionId,
-        first.id,
-        first.node.answer!.allocations[0].id,
-      ),
     );
     blankConfirmation.close();
   }

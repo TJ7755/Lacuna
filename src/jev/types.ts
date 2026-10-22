@@ -90,7 +90,9 @@ export type JevAllocationMarking =
   /** Jev is on but paused, so the learner marks this line. */
   | { state: 'unavailable' }
   /** Jev could not decide this line confidently; it stays with the learner. */
-  | { state: 'left' };
+  | { state: 'left' }
+  /** A confident verdict could not be saved; a later visit may retry. */
+  | { state: 'failed' };
 
 export interface JevController {
   /** Turning on requires the current consent version to be accepted in the same call. */

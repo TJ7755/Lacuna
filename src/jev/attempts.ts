@@ -25,6 +25,18 @@ interface MarkingJob {
 }
 const jobs = new WeakMap<Engine, Map<string, MarkingJob>>();
 const tried = new WeakMap<Engine, Map<string, string>>();
+// Criteria request independently, but their decisions share one attempt revision.
+const applications = new Map<string, Promise<unknown>>();
+function serialiseApplication<T>(attemptId: string, apply: () => Promise<T>): Promise<T> {
+  const pending = (applications.get(attemptId) ?? Promise.resolve()).then(apply);
+  const settled = pending
+    .catch(() => undefined)
+    .finally(() => {
+      if (applications.get(attemptId) === settled) applications.delete(attemptId);
+    });
+  applications.set(attemptId, settled);
+  return pending;
+}
 function publish(id: string, state: JevAllocationMarking) {
   if (progress.get(id)?.state === state.state) return;
   progress.set(id, state);
@@ -105,6 +117,9 @@ export function markJevAttempt(
     return existing.promise;
   }
   const run = async () => {
+    let failedApplication = false;
+    const lifetime = engine.cancellationSignal();
+    const stillEnabled = () => !lifetime.aborted && engine.eligible();
     const attempt = await getQuestionSetAttempt(id);
     if (!attempt || attempt.status === 'complete' || attempt.undoneAt !== undefined) {
       publish(key, idle);
@@ -122,7 +137,7 @@ export function markJevAttempt(
     // Abandon every line in this run, including batches never sent after a failure or pause.
     for (const line of fresh) seen.set(`${id}:${line.allocationId}`, JSON.stringify(line.request));
     while (seen.size > 2048) seen.delete(seen.keys().next().value!);
-    if (!engine.eligible()) {
+    if (!stillEnabled()) {
       publish(key, idle);
       return;
     }
@@ -149,7 +164,7 @@ export function markJevAttempt(
     }
     if (batch.length) batches.push(batch);
     for (const queued of batches) {
-      if (!engine.eligible()) break;
+      if (!stillEnabled()) break;
       // One read immediately before the batch, plus guarded re-checks before every write.
       const current = await getQuestionSetAttempt(id);
       if (!current || current.status === 'complete' || current.undoneAt !== undefined) break;
@@ -161,36 +176,53 @@ export function markJevAttempt(
       const judged = Date.now() + judgingMs;
       const results = await engine.decideAllocations(
         pending.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
+        lifetime,
       );
       const wait = judged - Date.now();
       if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-      if (!results || !engine.eligible()) break;
+      if (!results || !stillEnabled()) break;
       for (const [index, line] of pending.entries()) {
         const result = results[index];
-        if (result.value === null) continue;
-        await applyJevAllocationDecision(
-          id,
-          current.revisionId,
-          line.nodeId,
-          {
-            allocationId: line.allocationId,
-            status: 'awarded',
-            marks: result.value,
-            markedBy: {
-              by: 'jev',
-              model: result.model,
-              confidence: result.confidence,
-              markedAt: Date.now(),
-            },
-          },
-          engine.eligible,
-        );
+        const marks = result.value;
+        if (marks === null) continue;
+        let applied = false;
+        try {
+          applied = await serialiseApplication(id, async () => {
+            const latest = await getQuestionSetAttempt(id);
+            if (!latest || !stillEnabled()) return false;
+            return applyJevAllocationDecision(
+              id,
+              latest.revisionId,
+              line.nodeId,
+              {
+                allocationId: line.allocationId,
+                status: 'awarded',
+                marks,
+                markedBy: {
+                  by: 'jev',
+                  model: result.model,
+                  confidence: result.confidence,
+                  markedAt: Date.now(),
+                },
+              },
+              stillEnabled,
+            );
+          });
+        } finally {
+          // A confident verdict that failed to save may retry on entry; abstentions stay manual.
+          if (!applied && stillEnabled()) {
+            failedApplication = true;
+            seen.delete(`${id}:${line.allocationId}`);
+          }
+        }
       }
     }
     const current = await getQuestionSetAttempt(id);
     publish(
       key,
-      engine.eligible() && current && candidates(current, only).length ? { state: 'left' } : idle,
+      engine.eligible() && current && candidates(current, only).length
+        ? { state: failedApplication ? 'failed' : 'left' }
+        : idle,
     );
   };
   const job: MarkingJob = { promise: Promise.resolve(), again: false };
@@ -202,7 +234,7 @@ export function markJevAttempt(
   };
   job.promise = drain()
     .catch(() => {
-      publish(key, only === undefined ? idle : { state: 'left' });
+      publish(key, only === undefined ? idle : { state: 'failed' });
     })
     .finally(() => {
       active!.delete(key);

@@ -191,9 +191,8 @@ export function submitPracticeQuestion(
   return mutate(id, expectedRevisionId, now, (attempt) => {
     if (attempt.mode !== 'practice' || attempt.status !== 'answering')
       throw new Error('This attempt is not answering in Practice mode.');
-    const nodeIds = answerableNodes(attempt.receipt)
-      .filter((node) => node.questionId === questionId)
-      .map((node) => node.nodeId);
+    const nodes = answerableNodes(attempt.receipt).filter((node) => node.questionId === questionId);
+    const nodeIds = nodes.map((node) => node.nodeId);
     if (!nodeIds.length) throw new Error('Question not found.');
     for (const response of attempt.responses.filter((row) => nodeIds.includes(row.nodeId))) {
       if (!response.submitted) {
@@ -205,6 +204,8 @@ export function submitPracticeQuestion(
       attempt.shownQuestionIds.push(questionId);
     if (!attempt.revealedQuestionIds.includes(questionId))
       attempt.revealedQuestionIds.push(questionId);
+    attempt.activeNodeId = nodes[0].nodeId;
+    attempt.activeAllocationId = nodes[0].allocationIds[0];
     if (attempt.responses.every((response) => response.submitted)) attempt.status = 'marking';
   });
 }
@@ -221,6 +222,9 @@ export function submitQuestionSetPaper(
       response.submitted = clone(response.draft);
       response.submittedAt = now;
     }
+    const first = answerableNodes(attempt.receipt)[0];
+    attempt.activeNodeId = first.nodeId;
+    attempt.activeAllocationId = first.allocationIds[0];
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';
