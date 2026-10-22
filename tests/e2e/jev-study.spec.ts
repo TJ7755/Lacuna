@@ -52,7 +52,7 @@ const feedback = {
   ],
 };
 
-test('pours the verdict into its grade, advances and can undo it', async ({ page }) => {
+test('keeps the verdict off the self-marking grades, advances and can undo it', async ({ page }) => {
   let release!: () => void;
   const response = new Promise<void>((resolve) => {
     release = resolve;
@@ -81,7 +81,8 @@ test('pours the verdict into its grade, advances and can undo it', async ({ page
     'Partly right',
   );
   await expect(page.locator('[data-study-face="back"] mark')).toHaveText('green');
-  await expect(page.locator('[data-flow-primary] button')).toHaveText('No');
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('jev-verdict.png') });
   await expect(card).not.toHaveAttribute('data-study-card-id', id!);
   await page.getByRole('button', { name: 'Undo last answer' }).click();

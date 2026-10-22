@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { StepSwap } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
-import type { Phase } from './types';
+import type { AutoMark, Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 
 // Thumb-zone grade buttons: tall, squarer than the pill buttons elsewhere, with the
@@ -21,6 +21,7 @@ export function TouchBottomSheet({
   onAnswer,
   m,
   isTypingCard,
+  autoMark,
 }: {
   phase: Phase;
   feedback?: StudyGradeFeedback;
@@ -30,6 +31,8 @@ export function TouchBottomSheet({
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   m: number;
   isTypingCard?: boolean;
+  /** Automatic marking of a typed answer: the self-marking grades stay away. */
+  autoMark?: AutoMark;
 }) {
   return (
     <motion.div
@@ -66,7 +69,7 @@ export function TouchBottomSheet({
           </>
         ) : (
           <>
-            {gradingMode === 'manual' ? (
+            {!autoMark && (gradingMode === 'manual' ? (
               <div className="grid w-full grid-cols-2 gap-3">
                 <StudyGradeButton
                   grade={1}
@@ -160,7 +163,7 @@ export function TouchBottomSheet({
                   Yes
                 </StudyGradeButton>
               </div>
-            )}
+            ))}
             <Button variant="ghost" size="sm" onClick={onHide}>
               Hide answer
             </Button>

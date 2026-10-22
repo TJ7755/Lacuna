@@ -4,6 +4,7 @@ import { LazyMotion, domAnimation } from 'motion/react';
 import { act, fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StudyControls } from './StudyControls';
+import type { AutoMark } from './types';
 
 describe('StudyControls typed answers', () => {
   it('keeps the question open when Enter confirms an IME candidate', () => {
@@ -75,6 +76,55 @@ it.each([false, true])(
     view.unmount();
   },
 );
+
+describe('StudyControls automatic marking', () => {
+  const props = {
+    isTypingCard: true,
+    isTouchMode: false,
+    gradingMode: 'silent' as const,
+    typedAnswer: 'Red',
+    typingInputRef: createRef<HTMLInputElement>(),
+    onTypedAnswer: vi.fn(),
+    onReveal: vi.fn(),
+    onHide: vi.fn(),
+    onAnswer: vi.fn(),
+    m: 0,
+  };
+
+  it.each(
+    [
+      { pending: true },
+      { pending: false, correct: true },
+      { pending: false, correct: false },
+    ] as AutoMark[],
+  )('offers no self-marking grades while automatic marking owns the answer (%o)', (autoMark) => {
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...props} phase="answer" autoMark={autoMark} />
+      </LazyMotion>,
+    );
+    try {
+      expect(view.queryByRole('button', { name: 'Yes' })).toBeNull();
+      expect(view.queryByRole('button', { name: 'No' })).toBeNull();
+    } finally {
+      view.unmount();
+    }
+  });
+
+  it('keeps the self-marking grades when automatic marking is not in play', () => {
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...props} phase="answer" />
+      </LazyMotion>,
+    );
+    try {
+      expect(view.getByRole('button', { name: 'Yes' })).toBeInTheDocument();
+      expect(view.getByRole('button', { name: 'No' })).toBeInTheDocument();
+    } finally {
+      view.unmount();
+    }
+  });
+});
 
 describe('StudyControls Flow fill', () => {
   const props = {

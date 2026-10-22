@@ -103,7 +103,7 @@ it('invalidates a held verdict when the expected answer is edited', async () => 
       }),
     { initialProps: { card, paused: true } },
   );
-  expect(result.current.state).toBe('marked');
+  await waitFor(() => expect(result.current.state).toBe('marked'));
   rerender({ card: { ...card, back: 'London' }, paused: false });
   await act(async () => {
     await new Promise((done) => setTimeout(done, 400));
