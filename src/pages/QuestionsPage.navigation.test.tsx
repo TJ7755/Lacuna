@@ -137,6 +137,10 @@ describe('QuestionsPage navigation', () => {
     expect(screen.getByRole('heading', { name: 'Kinetics questions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cell structure' })).not.toBeInTheDocument();
 
+    // Route transitions make the departing page inert before the shell resets main.
+    search.closest('.qs-library')!.setAttribute('inert', '');
+    main.scrollTop = 0;
+    fireEvent.scroll(main);
     fireEvent.click(screen.getByRole('link', { name: /Kinetics questions/ }));
     expect(await screen.findByText('Set: set-kinetics')).toBeInTheDocument();
     main.scrollTop = 0;
