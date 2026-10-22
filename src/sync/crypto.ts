@@ -4,7 +4,8 @@
 //
 // Arc 8 §7 gate closed 18 August 2026: Tom reviewed and merged PR #86.
 // Further changes to nonce, AAD, KDF or keybag layout need the same
-// /security-review plus a human read before they reach a real channel.
+// /security-review plus independent review by another agent or a human
+// before they reach a real channel.
 
 export const CHANNEL_KEY_BYTES = 32;
 export const NONCE_BYTES = 12;

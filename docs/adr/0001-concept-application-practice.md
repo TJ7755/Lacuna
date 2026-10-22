@@ -1,6 +1,6 @@
 # Concept application practice from immutable Question Set evidence
 
-Status: accepted for implementation; human review required before merge.
+Status: accepted for implementation; independent agent or human review required before merge.
 
 ## Decision
 

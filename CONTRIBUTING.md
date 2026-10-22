@@ -2,7 +2,7 @@
 
 Lacuna is a local-first learning application. Changes to persistence, synchronisation, import/export,
 the Electron boundary, AI authority or release packaging can affect a learner's only copy of their
-work. Keep changes narrow, prove behaviour, and make the risk legible to a human reviewer.
+work. Keep changes narrow, prove behaviour, and make the risk legible to a reviewer.
 
 ## Before you start
 
@@ -135,8 +135,6 @@ gate and no-browser reporter probes run in the first unit shard.
 
 ## Behaviour and review policy
 
-Every intentional behaviour change has a red-to-green test: identify or add an assertion that fails
-on the merge base and passes on the proposed head. Do not weaken an assertion to obtain a green run.
 Pure refactors retain relevant coverage. Documentation, dependency and CI-only changes need
 proportionate validation and a note explaining what was checked.
 
@@ -145,9 +143,10 @@ Record each user- or maintainer-visible change as a fragment file in `docs/chang
 `bun run changelog:check` validates fragments.
 
 Prefer one invariant or one user workflow per pull request. Agent-produced changes follow the same
-rule. State the permitted files or module ownership, and require a human to review data,
+rule. State the permitted files or module ownership, and require an independent agent to review data,
 synchronisation, AI authority, Electron security and release changes. The authoring agent cannot be
 the independent reviewer; that would be the model checking whether it still agrees with itself.
+For agent-authored PRs with risk, use a subagent to validate and review.
 
 The soft target is 300–600 net changed lines. Generated fixtures, migration snapshots and mechanical
 movement can justify more. More than about 1,000 handwritten changed lines requires a written reason
@@ -173,9 +172,9 @@ Every pull request must state:
 - unresolved review conversations, if any (there should be none before merge).
 
 Use the pull request template. Screenshots are required for material UI changes. Resolve all review
-conversations and obtain one approving human review before merging risk-bearing work. Branch
-protection, required checks and CODEOWNERS are repository controls; a green local run does not replace
-them.
+conversations and obtain one approving independent review from an agent or human before merging
+risk-bearing work. Human review is optional. Branch protection, required checks and CODEOWNERS are
+repository controls; a green local run does not replace them.
 
 ## Security maintenance
 

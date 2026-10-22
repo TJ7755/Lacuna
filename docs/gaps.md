@@ -550,4 +550,4 @@ admission races, expiry, revocation and transport failures, so the combined bran
 exceeds the usual handwritten-line target. Review these layers separately; do
 not merge the school-trial epic as one undifferentiated change. The separate
 production gates control collection, and the authoring agent's checks do not
-replace human review and approval.
+replace independent review by another agent or a human.

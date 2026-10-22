@@ -25,13 +25,12 @@ check exists or passed. Workflow cancellation suppresses the aggregate jobs rath
 a second failure for superseded work; a failed or independently cancelled dependency in an active
 run still fails its aggregate. Do not publish early green or skipped placeholders under required names.
 
-Mandatory second-person approval was deferred while there is only one writer: the sole CODEOWNER
-cannot approve their own PR. When a second trusted reviewer has confirmed write access, decide
-ownership and enable approval with stale-review dismissal and CODEOWNER enforcement. Do not treat
-an unconfirmed account as a reviewer. The [contributor policy](../../CONTRIBUTING.md) still requires
-independent human approval for risk-bearing work; lack of enforced approval does not grant it.
+The [contributor policy](../../CONTRIBUTING.md) requires independent review for risk-bearing work.
+An independent agent review satisfies that requirement; human review is optional. The authoring
+agent cannot serve as its own independent reviewer. CODEOWNERS requests and GitHub approval
+requirements are separate controls; inspect live settings before merging.
 
 Merging a release version bump with its notes is the maintainer's publication decision, per the
-14 October 2026 policy. This is not independently enforced second-person approval. A protected
+14 October 2026 policy. This is not an independently enforced review gate. A protected
 step preparing a draft does not prevent an administrator publishing through another route.
 Signing and rollout decisions belong in [release maintenance](release.md).

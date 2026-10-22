@@ -1,0 +1,1 @@
+- Replace the pull request checklist with Problem, Change, Scope and approval, and Verification sections; allow independent agent review to satisfy risk-bearing review requirements without mandatory human approval.

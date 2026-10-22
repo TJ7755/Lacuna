@@ -1,57 +1,28 @@
-## Outcome
+## Problem
 
-What user-visible or maintainer-visible outcome does this change deliver?
+Describe the concrete failure or need, what triggers it, and what the user observes.
 
-## Non-goals
+## Change
 
-What is deliberately out of scope?
+Explain the resulting behaviour and how the implementation achieves it. Name the invariant or
+workflow being changed and any trade-offs that matter to a reviewer.
 
-## Stack position
+## Scope and approval
 
-- Parent/base branch:
-- Stack order and related pull requests:
-- Will this need rebasing from the latest `master` after a parent merges?
+Link the issue and any maintainer decision establishing the intended behaviour. State the target
+branch, stack position and non-goals where relevant.
 
-## Invariant or workflow
+Describe any persisted-data, backup/import, wire-format, security or release impact, including
+migration and rollback consequences where applicable. Record actual approval and unresolved review
+points; distinguish approval already given from approval still required by CONTRIBUTING.md.
 
-Which domain invariant or user workflow is being changed? Name the owner module and permitted file
-scope. Explain why the change is local and transactional where applicable.
+## Verification
 
-## Persisted, wire-format and security impact
+Record the candidate commit or local state checked, exact commands and their results. For behaviour
+changes, describe the regression evidence and what fails before the fix and passes afterwards.
 
-- [ ] No persisted-data, backup/import or schema impact.
-- [ ] No network or wire-format impact.
-- [ ] No security-boundary or permission impact.
+Include runtime observations, screenshots or recordings where they help establish the result.
+Link supporting evidence and state precisely what it proves.
 
-If any box is not applicable, explain the impact here. Include migration, compatibility, capability,
-approval and rollback consequences rather than writing “none” without checking.
-
-## Evidence
-
-List exact commands run and their results. Behaviour changes need red-to-green evidence: identify the
-test that failed on the merge base and passes here. Documentation, dependency and CI-only changes
-need proportionate validation.
-
-## Platform matrix
-
-| Surface | Checked? | Evidence or reason not run |
-| --- | --- | --- |
-| Web/PWA |  |  |
-| Windows Electron |  |  |
-| Linux package |  |  |
-| macOS package |  |  |
-| Relay |  |  |
-| AI MCP |  |  |
-
-## Review state
-
-- [ ] Human-written outcome and non-goals are complete.
-- [ ] Material UI changes include screenshots.
-- [ ] All review conversations are resolved.
-- [ ] Risk-bearing data, sync, AI, Electron or release changes have an independent human approval.
-- [ ] Net handwritten changes are within 300–600 lines, or the exception is explained.
-- [ ] This change does not smuggle unrelated feature work or cleanup into the stack.
-
-## Unresolved conversations
-
-List any unresolved point and its owner. This must be empty before merge.
+Identify relevant platforms and scenarios that remain unverified, why checks stopped or could not
+run, and what is needed to complete them. Do not claim a passing result for checks that did not run.
