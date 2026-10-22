@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import { domainUiRule } from './scripts/import-architecture.mjs';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier/flat';
@@ -71,6 +72,30 @@ export default [
       ],
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  {
+    files: [
+      'src/{db,fsrs,sync,ai,mcp,questions,state,course}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
+    ],
+    plugins: { architecture: { rules: { 'no-domain-ui': domainUiRule } } },
+    rules: {
+      'architecture/no-domain-ui': [
+        'error',
+        {
+          // These integration tests deliberately exercise the UI projection of domain data.
+          integrationTests: [
+            {
+              from: 'src/db/lessonPrerequisites.test.ts',
+              to: 'src/components/import/mergeReviewRows.ts',
+            },
+            {
+              from: 'src/db/sessionHistoryRead.test.ts',
+              to: 'src/components/analytics/prepare.ts',
+            },
+          ],
+        },
+      ],
     },
   },
   {

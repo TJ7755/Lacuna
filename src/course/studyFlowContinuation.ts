@@ -1,4 +1,4 @@
-import type { SessionSummary } from '../components/learn/types';
+import type { SessionSummary } from './sessionSummary';
 import type { StudyFlowDecision, StudyFlowStep } from './studyFlowPlanner';
 
 /** Whether a finished Practice step's summary could hand straight on to more Practice. */

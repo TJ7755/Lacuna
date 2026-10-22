@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { SessionSummary } from '../components/learn/types';
+import type { SessionSummary } from './sessionSummary';
 import { CATCH_UP_STEP, type StudyFlowDecision, type StudyFlowStep } from './studyFlowPlanner';
 import { continuesWithoutPause } from './studyFlowContinuation';
 

@@ -1,0 +1,66 @@
+[
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "CardList renders GeneratedCardGroup, which recursively renders CardListBody.",
+    "edges": [
+      "src/components/cards/CardList.tsx -> src/components/cards/GeneratedCardGroup.tsx",
+      "src/components/cards/GeneratedCardGroup.tsx -> src/components/cards/CardList.tsx"
+    ]
+  },
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "Assessment coverage uses lesson membership from studyPools; studyPools uses exam-date and scheduling-horizon helpers, which resolve assessment coverage.",
+    "edges": [
+      "src/course/assessmentCoverage.ts -> src/course/studyPools.ts",
+      "src/course/studyPools.ts -> src/fsrs/examDate.ts",
+      "src/course/studyPools.ts -> src/fsrs/horizon.ts",
+      "src/fsrs/examDate.ts -> src/course/assessmentCoverage.ts",
+      "src/fsrs/horizon.ts -> src/fsrs/examDate.ts"
+    ]
+  },
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "The database schema uses asset encoding and pre-migration snapshots; asset extraction, folder mirroring and deferred tombstone pruning use the database instance.",
+    "edges": [
+      "src/db/assets.ts -> src/db/markdownAssets.ts",
+      "src/db/assets.ts -> src/db/schema.ts",
+      "src/db/backupFolder.ts -> src/db/schema.ts",
+      "src/db/markdownAssets.ts -> src/db/assets.ts",
+      "src/db/markdownAssets.ts -> src/db/schema.ts",
+      "src/db/mutationStamp.ts -> src/db/schema.ts",
+      "src/db/preMigrationSnapshots.ts -> src/db/backupFolder.ts",
+      "src/db/schema.ts -> src/db/assets.ts",
+      "src/db/schema.ts -> src/db/preMigrationSnapshots.ts",
+      "src/db/schema.ts -> src/db/tombstonePrune.ts",
+      "src/db/tombstonePrune.ts -> src/db/mutationStamp.ts",
+      "src/db/tombstonePrune.ts -> src/db/schema.ts"
+    ]
+  },
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "CoursePath loads lessons and prefetches routes; the shared lazy-loader registry includes CoursePath itself.",
+    "edges": [
+      "src/pages/CoursePath.tsx -> src/routes/loaders.ts",
+      "src/pages/CoursePath.tsx -> src/routes/useIdleRoutePrefetch.ts",
+      "src/routes/loaders.ts -> src/pages/CoursePath.tsx",
+      "src/routes/prefetch.ts -> src/routes/loaders.ts",
+      "src/routes/useIdleRoutePrefetch.ts -> src/routes/prefetch.ts"
+    ]
+  },
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "Question-bank parsing exposes lazy repository entry points; the repository uses the parser and materialiser.",
+    "edges": [
+      "src/questions/bank.ts -> src/questions/bankRepository.ts",
+      "src/questions/bankRepository.ts -> src/questions/bank.ts"
+    ]
+  },
+  {
+    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
+    "reason": "Publishing drafts uses the question-set repository; repository deletion and restoration maintain those drafts.",
+    "edges": [
+      "src/questions/questionSetDrafts.ts -> src/questions/questionSetRepository.ts",
+      "src/questions/questionSetRepository.ts -> src/questions/questionSetDrafts.ts"
+    ]
+  }
+]

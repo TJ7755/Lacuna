@@ -42,7 +42,7 @@
     "perf:check": "bun scripts/performance-audit.ts --assets-only",
     "build:assets": "vite build",
     "test:watch": "vitest",
-    "lint": "eslint src server electron tests api scripts tooling gaps \"*.config.ts\" eslint.config.js --max-warnings=0",
+    "lint": "eslint src server electron tests api scripts tooling gaps \"*.config.ts\" eslint.config.js --max-warnings=0 && node scripts/check-import-cycles.mjs",
     "lint:ai-mcp": "bun run --cwd tooling/lacuna-ai-mcp lint",
     "lint:fix": "eslint \"src/**/*.{ts,tsx}\" \"electron/**/*.{ts,tsx}\" --fix",
     "format": "bun fmt \"src/**/*.{ts,tsx,json,css}\" \".prettierrc\"",
