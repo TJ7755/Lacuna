@@ -23,11 +23,12 @@ const required = [
 
 // The workflow predicates use this shared JavaScript/Actions expression subset.
 // This checks those predicates, not GitHub's scheduler or branch-protection service.
-function render(value, action, changes = {}, cancelled = false) {
+function render(value, action, changes = {}, cancelled = false, attempt = 1) {
   const context = {
     github: {
       event_name: action ? 'pull_request' : 'push',
       run_id: 9001,
+      run_attempt: attempt,
       sha: 'push-sha',
       event: { action, changes, pull_request: action ? { number: 42 } : {} },
     },
@@ -297,4 +298,19 @@ test('browser consumers use the same pinned browser image and shared production 
       /--project=\$\{\{ matrix.project }} --workers=1/.test(step.run ?? ''),
     ),
   );
+});
+
+test('a retry cannot share or cancel newer pull-request validation even if the branch advances after inspection', () => {
+  for (const action of ['opened', 'synchronize', 'edited']) {
+    const freshGroup = render(workflow.concurrency.group, action);
+    const retryGroup = render(workflow.concurrency.group, action, {}, false, 2);
+    assert.notEqual(retryGroup, freshGroup);
+    assert.equal(retryGroup, 'ci-retry-9001');
+    assert.equal(render(workflow.concurrency['cancel-in-progress'], action, {}, false, 2), 'false');
+  }
+});
+
+test('Security records the tested workflow commit for guarded recovery', () => {
+  const security = parse(readFileSync(new URL('../.github/workflows/security.yml', import.meta.url), 'utf8'));
+  assert.equal(render(security['run-name'], 'synchronize'), 'Security push-sha');
 });

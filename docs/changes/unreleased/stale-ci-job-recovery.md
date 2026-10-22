@@ -1,0 +1,1 @@
+- Recover a successfully finished CI job whose GitHub record remains running with one guarded, targeted retry, without bypassing required checks.
