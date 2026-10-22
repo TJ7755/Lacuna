@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { parse } from 'yaml';
+import { zipSync } from 'fflate';
 import { extractArchive, verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -133,6 +134,31 @@ test('a tampered cached Bun archive fails before extraction or installation', ()
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Bun download checksum mismatch/);
     assert.doesNotMatch(result.stderr, /Bun download failed/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('Unix bootstrap extracts only the reviewed Bun executable without a system unzip', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-bun-zip-'));
+  try {
+    const binary = new TextEncoder().encode('reviewed executable');
+    for (const level of [0, 6]) {
+      writeFileSync(join(directory, 'bun.zip'), zipSync({ 'bun-test/bun': binary }, { level }));
+      extractArchive(directory, {
+        platform: 'linux',
+        archiveName: 'bun-test',
+        execute: () => {
+          throw new Error('System extraction must not run');
+        },
+      });
+      assert.deepEqual(readFileSync(join(directory, 'bun-test', 'bun')), Buffer.from(binary));
+    }
+    writeFileSync(join(directory, 'bun.zip'), zipSync({ 'other/bun': binary }));
+    assert.throws(
+      () => extractArchive(directory, { platform: 'linux', archiveName: 'bun-test' }),
+      /missing its executable/,
+    );
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

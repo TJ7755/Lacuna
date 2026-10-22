@@ -14,6 +14,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { delimiter, dirname, join, resolve, win32 } from 'node:path';
+import { inflateRawSync } from 'node:zlib';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -33,15 +34,54 @@ export function verifyRevision(actual) {
   }
 }
 
+// The complete ZIP has already passed its pinned checksum. Extract only Bun's named
+// executable, without relying on unzip being present in a minimal browser container.
+function bunExecutable(bytes, archiveName) {
+  const end = bytes.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (end < 0) throw new Error('Bun archive has no ZIP directory');
+  let offset = bytes.readUInt32LE(end + 16);
+  const count = bytes.readUInt16LE(end + 10);
+  for (let entry = 0; entry < count; entry++) {
+    if (bytes.readUInt32LE(offset) !== 0x02014b50) throw new Error('Invalid Bun ZIP directory');
+    const nameLength = bytes.readUInt16LE(offset + 28);
+    const name = bytes.toString('utf8', offset + 46, offset + 46 + nameLength);
+    if (name === `${archiveName}/bun`) {
+      const local = bytes.readUInt32LE(offset + 42);
+      if (bytes.readUInt32LE(local) !== 0x04034b50) throw new Error('Invalid Bun ZIP entry');
+      const start = local + 30 + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
+      const compressed = bytes.subarray(start, start + bytes.readUInt32LE(offset + 20));
+      const size = bytes.readUInt32LE(offset + 24);
+      const method = bytes.readUInt16LE(offset + 10);
+      const binary =
+        method === 0
+          ? compressed
+          : method === 8
+            ? inflateRawSync(compressed, { maxOutputLength: size })
+            : undefined;
+      if (!binary || binary.length !== size) throw new Error('Unsupported Bun ZIP executable');
+      return binary;
+    }
+    offset += 46 + nameLength + bytes.readUInt16LE(offset + 30) + bytes.readUInt16LE(offset + 32);
+  }
+  throw new Error('Bun archive is missing its executable');
+}
+
 export function extractArchive(
   directory,
-  { platform = process.platform, systemRoot = process.env.SystemRoot, execute = execFileSync } = {},
+  {
+    platform = process.platform,
+    systemRoot = process.env.SystemRoot,
+    execute = execFileSync,
+    archiveName = `bun-${platform}-${process.arch === 'arm64' ? 'aarch64' : process.arch}`,
+  } = {},
 ) {
   if (platform === 'win32') {
     if (!systemRoot) throw new Error('SystemRoot is required to find the native Windows tar.exe');
     execute(win32.join(systemRoot, 'System32', 'tar.exe'), ['-xf', 'bun.zip'], { cwd: directory });
   } else {
-    execute('unzip', ['-q', join(directory, 'bun.zip'), '-d', directory]);
+    const binary = bunExecutable(readFileSync(join(directory, 'bun.zip')), archiveName);
+    mkdirSync(join(directory, archiveName), { recursive: true });
+    writeFileSync(join(directory, archiveName, 'bun'), binary);
   }
 }
 
@@ -86,7 +126,7 @@ export async function installBun() {
       writeFileSync(cachedArchive, bytes);
       const archive = join(temporary, 'bun.zip');
       writeFileSync(archive, bytes);
-      extractArchive(temporary);
+      extractArchive(temporary, { archiveName });
       if (process.platform !== 'win32') {
         chmodSync(join(temporary, archiveName, 'bun'), 0o755);
       }
