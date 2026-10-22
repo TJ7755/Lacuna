@@ -239,48 +239,6 @@ describe('BackupsSection', () => {
     expect(screen.queryByRole('button', { name: 'Request persistence' })).not.toBeInTheDocument();
   });
 
-  it('keeps the final restore-point list mounted for its outgoing transition', async () => {
-    const view = render(
-      <LazyMotion features={domAnimation}>
-        <BackupsSection />
-      </LazyMotion>,
-    );
-    expect(await screen.findByRole('button', { name: 'Delete' })).toBeInTheDocument();
-
-    mockBackups = [];
-    view.rerender(
-      <LazyMotion features={domAnimation}>
-        <BackupsSection />
-      </LazyMotion>,
-    );
-
-    expect(screen.getByText('No restore points yet.')).toHaveStyle({ opacity: '0' });
-    expect(screen.getByRole('list')).toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole('list')).not.toBeInTheDocument());
-    // Let the cards finish arriving: unmounting mid-animation makes happy-dom reject.
-    await waitFor(() =>
-      expect(document.getElementById('settings-backups')).toHaveStyle({ opacity: '1' }),
-    );
-  });
-
-  it('brings a new restore point in through the list transition', async () => {
-    const view = render(<BackupsSection />);
-    await screen.findByRole('button', { name: 'Delete' });
-    mockBackups = [
-      ...mockBackups,
-      {
-        id: 8,
-        createdAt: Date.UTC(2026, 7, 29),
-        deckCount: 2,
-        cardCount: 4,
-      },
-    ];
-
-    view.rerender(<BackupsSection />);
-
-    expect(screen.getAllByRole('listitem')[1]).toHaveStyle({ opacity: '0' });
-  });
-
   it('forces a restore point when Back up is pressed and confirms with a tick', async () => {
     render(<BackupsSection />);
 

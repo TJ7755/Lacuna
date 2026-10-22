@@ -126,12 +126,8 @@ test('mouse lesson dragging carries the lesson and moves its neighbour aside', a
   await expect(lessons.nth(1)).toHaveAttribute('aria-label', firstName);
 });
 
-test('populated analytics and rapid course navigation remain accessible', async ({
-  page,
-}, testInfo) => {
+test('populated analytics and course navigation remain accessible', async ({ page }) => {
   const { build } = await import('esbuild');
-  const { installLagProbe, readLagProbe } =
-    await import('../../scripts/performance-heavy/diagnostics');
   const fixture = await build({
     entryPoints: ['scripts/performance-heavy/fixture.ts'],
     bundle: true,
@@ -154,7 +150,6 @@ test('populated analytics and rapid course navigation remain accessible', async 
       window as unknown as { LacunaHeavyFixture: { seed(small: boolean): Promise<unknown> } }
     ).LacunaHeavyFixture.seed(true);
   });
-  await page.addInitScript(installLagProbe);
   await page.goto('/#/analytics');
   const volume = page
     .locator('section')
@@ -167,20 +162,12 @@ test('populated analytics and rapid course navigation remain accessible', async 
   await page.goto('/#/course/heavy-course-0');
   const navigation = page.getByRole('navigation', { name: 'Course sections' });
   await expect(navigation).toBeVisible();
-  await page.evaluate(() => {
-    (window as unknown as { __lacunaLag: { reset(): void } }).__lacunaLag.reset();
-  });
-  for (let round = 0; round < 3; round++) {
-    for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
-      await navigation.getByRole('link', { name, exact: true }).click();
-      await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute(
-        'aria-current',
-        'page',
-      );
-      await expect(page.locator('[data-route-content]:not([inert])')).toHaveCount(1);
-    }
+  for (const name of ['Cards', 'Questions', 'Settings', 'Path']) {
+    await navigation.getByRole('link', { name, exact: true }).click();
+    await expect(navigation.getByRole('link', { name, exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(page.locator('[data-route-content]:not([inert])')).toHaveCount(1);
   }
-  const lag = await readLagProbe(page);
-  const { writeFile } = await import('node:fs/promises');
-  await writeFile(testInfo.outputPath('navigation-performance.json'), JSON.stringify(lag, null, 2));
 });

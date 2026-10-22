@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
 import { parse } from 'yaml';
 import { extractArchive, verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
@@ -35,7 +47,7 @@ test('the Bun security guard rejects changed downloads and unreviewed revisions'
     () => verifyArchive(Buffer.from('changed download'), expected),
     /checksum mismatch/,
   );
-  assert.equal(action.runs.steps[0].run, 'node relay/scripts/security-bun.mjs --install');
+  assert.equal(action.runs.steps.at(-1).run, 'node relay/scripts/security-bun.mjs --install');
 });
 
 test('every Bun workflow uses the security guard and manifests share its pin', () => {
@@ -84,5 +96,44 @@ test('Vercel builds use the verified Bun bootstrap instead of vulnerable bunx do
       `https://github.com/oven-sh/bun/releases/download/bun-v${version}/${name}`,
     );
     assert.match(asset.sha256, /^[a-f0-9]{64}$/);
+  }
+});
+
+test('a tampered cached Bun archive fails before extraction or installation', () => {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'lacuna-bun-cache-')));
+  try {
+    const archiveName = `bun-${process.platform === 'win32' ? 'windows' : process.platform}-${process.arch === 'arm64' ? 'aarch64' : process.arch}`;
+    const scripts = join(directory, 'scripts');
+    const downloads = join(directory, 'node_modules', '.cache', 'security-runtime', 'downloads');
+    mkdirSync(scripts, { recursive: true });
+    mkdirSync(downloads, { recursive: true });
+    copyFileSync(
+      new URL('../relay/scripts/security-bun.mjs', import.meta.url),
+      join(scripts, 'security-bun.mjs'),
+    );
+    writeFileSync(
+      join(scripts, 'security-bun.json'),
+      JSON.stringify({
+        commit: 'fixture',
+        revision: 'fixture-revision',
+        assets: {
+          [`${archiveName}.zip`]: {
+            url: 'https://invalid.invalid/must-not-download',
+            sha256: createHash('sha256').update('reviewed bytes').digest('hex'),
+          },
+        },
+      }),
+    );
+    writeFileSync(join(downloads, `fixture-${archiveName}.zip`), 'tampered cache');
+    const result = spawnSync(process.execPath, [join(scripts, 'security-bun.mjs'), '--install'], {
+      encoding: 'utf8',
+      timeout: 10_000,
+    });
+    assert.equal(result.error, undefined);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Bun download checksum mismatch/);
+    assert.doesNotMatch(result.stderr, /Bun download failed/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
   }
 });

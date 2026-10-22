@@ -64,10 +64,26 @@ export async function installBun() {
     mkdirSync(dirname(directory), { recursive: true });
     const temporary = mkdtempSync(join(dirname(directory), '.download-'));
     try {
-      const response = await fetch(asset.url, { signal: AbortSignal.timeout(120_000) });
-      if (!response.ok) throw new Error(`Bun download failed: HTTP ${response.status}`);
-      const bytes = Buffer.from(await response.arrayBuffer());
+      const cachedArchive = join(
+        root,
+        'node_modules',
+        '.cache',
+        'security-runtime',
+        'downloads',
+        `${pin.commit}-${archiveName}.zip`,
+      );
+      let bytes;
+      if (existsSync(cachedArchive)) {
+        bytes = readFileSync(cachedArchive);
+      } else {
+        const response = await fetch(asset.url, { signal: AbortSignal.timeout(120_000) });
+        if (!response.ok) throw new Error(`Bun download failed: HTTP ${response.status}`);
+        bytes = Buffer.from(await response.arrayBuffer());
+      }
+      // Cache downloads, never trust an extracted executable supplied by a cache.
       verifyArchive(bytes, asset.sha256);
+      mkdirSync(dirname(cachedArchive), { recursive: true });
+      writeFileSync(cachedArchive, bytes);
       const archive = join(temporary, 'bun.zip');
       writeFileSync(archive, bytes);
       extractArchive(temporary);

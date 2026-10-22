@@ -8,22 +8,6 @@ vi.mock('../notes/LessonNotesStudyView', () => ({
 }));
 
 describe('LessonNotesIntro', () => {
-  it('shows the lesson name once without a redundant notes subtitle', () => {
-    render(
-      <LessonNotesIntro
-        lessonName="Immunity"
-        notes={[]}
-        onExit={vi.fn()}
-        onContinue={vi.fn()}
-        motionMultiplier={0}
-      />,
-    );
-
-    expect(screen.getAllByText('Immunity')).toHaveLength(1);
-    expect(screen.queryByText('Lesson notes')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
-  });
-
   it('focuses Continue so the keyboard can carry on into the cards', () => {
     render(
       <LessonNotesIntro

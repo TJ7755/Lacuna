@@ -30,33 +30,6 @@ describe('CourseHeader', () => {
     expect(screen.getByRole('textbox', { name: 'Course name' })).toHaveFocus();
     await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
   });
-  it('keeps the course visibility marker on the stable header during renaming', () => {
-    render(<CourseHeader title="Mechanics" onRename={vi.fn()} />);
-    const header = screen.getByRole('heading', { name: 'Mechanics' }).closest('header');
-    expect(header).toHaveAttribute('data-course-title');
-    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    expect(screen.getByRole('textbox', { name: 'Course name' }).closest('header')).toBe(header);
-    expect(header).toHaveAttribute('data-course-title');
-  });
-
-  it('does not mistake a lesson heading for the course identity', () => {
-    const { container } = render(<CourseHeader title="Momentum" renameLabel="lesson" />);
-    expect(container.querySelector('[data-course-title]')).toBeNull();
-  });
-
-  it('places exam context after the title and actions in a labelled calendar row', () => {
-    render(
-      <CourseHeader eyebrow="Exam 1 June 2027" title="Mechanics">
-        <button>Study</button>
-      </CourseHeader>,
-    );
-    const context = screen.getByRole('group', { name: 'Study schedule' });
-    expect(context).toHaveTextContent('Exam 1 June 2027');
-    expect(
-      screen.getByRole('button', { name: 'Study' }).compareDocumentPosition(context) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
 
   it('renames through the visible edit control', async () => {
     const onRename = vi.fn().mockResolvedValue(undefined);

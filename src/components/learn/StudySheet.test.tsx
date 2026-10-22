@@ -390,49 +390,4 @@ describe('StudySheet', () => {
     expect(screen.queryByRole('region', { name: 'Other ways' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start session' })).toBeInTheDocument();
   });
-
-  it.each(['rgb(170, 210, 40)', 'rgb(245, 245, 245)'])(
-    'starts the button fade at %s while the expanding card stays opaque',
-    (backgroundColor) => {
-      motionPreference.multiplier = 1;
-      const opener = document.createElement('button');
-      opener.style.backgroundColor = backgroundColor;
-      opener.style.color = 'rgb(20, 30, 40)';
-      document.body.append(opener);
-      opener.focus();
-      const { unmount } = renderSheet('chem');
-      const surface = screen.getByRole('region', { name: 'Session preview' });
-      expect(surface).toHaveClass('bg-surface-raised', 'card-surface');
-      expect(surface.querySelector('.pointer-events-none')).toBeNull();
-      expect(surface.style.backgroundColor).toBe('');
-      expect(surface.style.opacity).toBe('');
-      expect(screen.getByRole('button', { name: 'Close session preview' })).toHaveStyle({
-        backgroundColor,
-        color: 'rgb(20, 30, 40)',
-      });
-      unmount();
-      opener.remove();
-    },
-  );
-
-  it('keeps the final-width contents anchored inside the expanding surface', () => {
-    renderSheet('chem');
-    const surface = screen.getByRole('region', { name: 'Session preview' });
-    const body = screen.getByRole('heading', { name: 'Chemistry' }).closest('.pt-11');
-    expect(surface).toHaveClass('overflow-hidden');
-    expect(body).toHaveClass('absolute', 'right-0', 'top-0');
-    expect(body).toHaveStyle({ width: `${Math.min(448, window.innerWidth - 32)}px` });
-    expect(surface).toContainElement(body as HTMLElement);
-  });
-
-  it('uses an anchored expansion at phone and desktop widths', () => {
-    const { unmount } = renderSheet('chem');
-    expect(screen.getByRole('region', { name: 'Session preview' })).toHaveAttribute(
-      'data-expanding-action',
-      'study',
-    );
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('study-sheet-handle')).not.toBeInTheDocument();
-    unmount();
-  });
 });

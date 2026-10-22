@@ -26,5 +26,5 @@ and monitor its usage rather than enabling automatic upgrades. See
 [Free plan pricing](https://upstash.com/pricing/redis).
 
 These application ceilings do not enlarge upstream request or token allowances. The
-[provider capacity research](2026-10-18-free-ai-capacity.md) records their separate constraints.
+[provider capacity research](https://github.com/TJ7755/Lacuna/blob/b7995873874bbf4d5074430b34481491cc59588c/docs/maintenance/2026-10-18-free-ai-capacity.md) records their separate constraints.
 The free-model allowlist, live zero-pricing checks and absence of paid fallback remain mandatory.

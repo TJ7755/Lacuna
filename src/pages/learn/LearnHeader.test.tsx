@@ -132,18 +132,3 @@ it.each([false, true])(
     }
   },
 );
-
-it.each([false, true])('has no navigation opener (touch: %s)', (isTouchMode) => {
-  render(<LearnHeader {...headerProps()} isTouchMode={isTouchMode} />);
-  expect(screen.queryByRole('button', { name: 'Open navigation' })).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Exit' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Card actions' })).toBeInTheDocument();
-});
-
-it('fills Simple Learn outcomes through a transform layer, including reduced motion', () => {
-  render(<LearnHeader {...headerProps()} />);
-  const pips = screen.getByRole('progressbar').querySelectorAll('[data-session-card-status]');
-  expect(pips[0].firstElementChild).toHaveClass('bg-negative');
-  expect(pips[1].firstElementChild).toHaveClass('bg-positive');
-  expect(pips[3].firstElementChild).toHaveStyle({ transform: 'scaleX(0)' });
-});

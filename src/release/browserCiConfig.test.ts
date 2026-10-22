@@ -39,6 +39,35 @@ it('serves only the isolated build, refuses port reuse and separates reports', (
   ]);
 });
 
+it('builds ordinary previews and serves prebuilt CI output without silently changing port', () => {
+  for (const prebuilt of ['', 'false', 'true']) {
+    const result = spawnSync(
+      'bun',
+      [
+        '-e',
+        'const { default: config } = await import(process.argv[1]); process.stdout.write(JSON.stringify(config.webServer));',
+        resolve(root, 'tests/config/playwright.web.config.ts'),
+      ],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          CI: 'true',
+          LACUNA_BROWSER_PREBUILT: prebuilt,
+          PLAYWRIGHT_WEB_PORT: '4399',
+        },
+        encoding: 'utf8',
+        timeout: 20_000,
+      },
+    );
+    expect(result.status, result.stderr).toBe(0);
+    const server = JSON.parse(result.stdout) as { command: string; reuseExistingServer: boolean };
+    expect(server.command.includes('bun run build:assets &&')).toBe(prebuilt !== 'true');
+    expect(server.command).toContain('vite preview --host 127.0.0.1 --port 4399 --strictPort');
+    expect(server.reuseExistingServer).toBe(false);
+  }
+});
+
 interface Suite {
   specs?: { file: string; line: number; column: number; title: string }[];
   suites?: Suite[];
