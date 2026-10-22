@@ -12,7 +12,7 @@ test('a keyboard-only learner moves from notes through a finished step without t
   await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
 
-  const studyCard = page.locator('[data-study-card-id]');
+  const studyCard = page.locator('[data-study-card-id]:not([inert])');
   const finished = page.getByRole('main', { name: 'Study progress' });
   await expect(studyCard).toBeVisible();
   // The first step is a handful of cards; answer each by keyboard until it completes.
@@ -23,12 +23,15 @@ test('a keyboard-only learner moves from notes through a finished step without t
     await expect(studyCard.locator('[data-study-face="back"]')).toBeVisible();
     await page.keyboard.press('Y');
     await expect
-      .poll(
-        async () =>
-          (await finished.isVisible()) ||
-          ((await studyCard.count()) === 1 &&
-            (await studyCard.getAttribute('data-study-card-id')) !== cardId),
-      )
+      .poll(async () => {
+        if (await finished.isVisible()) return true;
+        // The outgoing card overlaps its replacement; read the active identity atomically.
+        return studyCard.evaluateAll(
+          (cards, previousId) =>
+            cards.length === 1 && cards[0].getAttribute('data-study-card-id') !== previousId,
+          cardId,
+        );
+      })
       .toBe(true);
   }
 
