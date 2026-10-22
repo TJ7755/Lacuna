@@ -339,6 +339,7 @@ export const recordSchemas = {
   }),
   occlusions: object({
     ...timestamps,
+    regionConceptIds: z.record(id, id).optional(),
     id,
     courseId: id,
     primaryLessonId: id.nullable(),

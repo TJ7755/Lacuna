@@ -15,10 +15,13 @@ import {
 import { buildCourseFile, decodeCourseFile, withCourseFileAssets } from './courseFile';
 import { storeImageBlob } from './assets';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
+import { exportDatabase, importBackup, validateBackup } from './portability';
+import { encodeSnapshot, decodeSnapshot } from '../sync/snapshot';
 import {
   answerQuestionAttempt,
   createFixedQuestion,
   setConceptSpecificationPoints,
+  deleteConcept,
   startQuestionAttempt,
 } from '../questions/repository';
 
@@ -319,4 +322,112 @@ describe('ordinary imported generated Concept links', () => {
       ).toEqual(['other-spec:point']);
     },
   );
+  it('retains a historical arbitrary Occlusion Concept after its last generated Card is removed', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Elements');
+    const asset = await storeImageBlob(
+      new Blob(['diagram'], { type: 'image/png' }),
+      'image/png',
+      10,
+      10,
+    );
+    const occlusion = await createOcclusion(course.id, lesson.id, 'Elements', asset.hash, regions);
+    const [target, studied] = await cardsForOcclusion(occlusion);
+    const original = (await db.concepts.get(target.conceptId))!;
+    if (original.scope !== 'course') throw new Error('Expected a Course Concept.');
+    const conceptId = 'historical-imported-concept';
+    const concept = {
+      ...original,
+      id: conceptId,
+      name: 'Shared historical Concept',
+      specificationPointIds: links,
+    };
+    await db.concepts.add(concept);
+    await db.cards.update(target.id, { conceptId });
+    await db.concepts.delete(original.id);
+    await db.cards.update(studied.id, schedule);
+    const ordinary = await createCard(
+      target.schedulingUnitId,
+      'front_back',
+      'Alternate',
+      'Lithium',
+      [],
+      { conceptId },
+    );
+    const question = await createFixedQuestion({
+      courseId: course.id,
+      name: 'Element',
+      targetConceptId: conceptId,
+      prompt: 'How many?',
+      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '2' } },
+      explanation: 'Two.',
+    });
+    const relationship = await db.questionConcepts.get(question.id);
+    for (let repeat = 0; repeat < 2; repeat++) {
+      await updateOcclusion({
+        ...occlusion,
+        regions: occlusion.regions.filter((region) => region.id !== target.occlusionRegionId),
+      });
+      const backup = await exportDatabase();
+      expect(validateBackup(backup)).toBe(true);
+      const decoded = await decodeSnapshot((await encodeSnapshot(backup)).payload);
+      await importBackup(decoded, 'replace');
+      await updateOcclusion(occlusion);
+      expect(
+        (await cardsForOcclusion(occlusion)).find(
+          (card) => card.occlusionRegionId === target.occlusionRegionId,
+        )?.conceptId,
+      ).toBe(conceptId);
+      expect(await db.concepts.get(conceptId)).toEqual(concept);
+      expect(await db.cards.get(ordinary.id)).toMatchObject({ conceptId });
+      expect(await db.cards.get(studied.id)).toMatchObject(schedule);
+      expect(await db.questionConcepts.get(question.id)).toEqual(relationship);
+    }
+    expect(await db.concepts.where('courseId').equals(course.id).count()).toBe(2);
+    for (const format of ['share code', 'course file']) {
+      const file =
+        format === 'course file' ? await decodeCourseFile(await buildCourseFile(course.id)) : null;
+      const payload =
+        file?.payload ??
+        (await decodeShareDirect(
+          await encodeShareDirect(await buildCourseSharePayload(course.id)),
+        ));
+      const imported = await (file
+        ? withCourseFileAssets(file, () => importSharePayload(payload))
+        : importSharePayload(payload));
+      const [local] = await db.occlusions.where('courseId').equals(imported.courseIds[0]).toArray();
+      const [presentation] = await db.cards
+        .where('courseId')
+        .equals(local.courseId)
+        .filter((card) => card.front === 'Alternate')
+        .toArray();
+      await updateOcclusion({ ...local, regions: [] });
+      await updateOcclusion(local);
+      expect(
+        (await cardsForOcclusion(local)).some((card) => card.conceptId === presentation.conceptId),
+      ).toBe(true);
+      expect((await db.concepts.get(presentation.conceptId))?.specificationPointIds).toEqual(links);
+    }
+  });
+
+  it('protects retained Occlusion references from Concept deletion and rejects foreign mappings atomically', async () => {
+    const course = await createCourse('Biology');
+    const occlusion = await createOcclusion(course.id, null, 'Elements', 'diagram', regions);
+    const [card] = await cardsForOcclusion(occlusion);
+    const original = (await db.concepts.get(card.conceptId))!;
+    const conceptId = 'historical-occlusion';
+    await db.concepts.add({ ...original, id: conceptId });
+    await db.cards.update(card.id, { conceptId });
+    await updateOcclusion({ ...occlusion, regions: [] });
+    await expect(deleteConcept(conceptId)).rejects.toThrow('still referenced by an Occlusion');
+    const stored = await db.occlusions.get(occlusion.id);
+    const otherCourse = await createCourse('Chemistry');
+    const foreign = await createOcclusion(otherCourse.id, null, 'Other', 'diagram', regions);
+    const [foreignCard] = await cardsForOcclusion(foreign);
+    await expect(
+      updateOcclusion({ ...occlusion, regionConceptIds: { foreign: foreignCard.conceptId } }),
+    ).rejects.toThrow('belongs to another Course');
+    expect(await db.occlusions.get(occlusion.id)).toEqual(stored);
+    expect(await cardsForOcclusion(occlusion)).toHaveLength(0);
+  });
 });

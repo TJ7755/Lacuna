@@ -99,23 +99,30 @@ export async function getConceptsForSpecificationPoint(
 export async function deleteConcept(conceptId: string, now = Date.now()): Promise<void> {
   await db.transaction(
     'rw',
-    [db.concepts, db.cards, db.questionConcepts, db.questionSets, db.tombstones],
+    [db.concepts, db.cards, db.questionConcepts, db.questionSets, db.occlusions, db.tombstones],
     async (tx) => {
       const concept = await db.concepts.get(conceptId);
       if (!concept) return;
-      const [cardReference, questionReference, questionSetReference] = await Promise.all([
-        db.cards.where('conceptId').equals(conceptId).first(),
-        db.questionConcepts
-          .filter(
-            (set) =>
-              set.targetConceptIds.includes(conceptId) ||
-              set.prerequisiteConceptIds.includes(conceptId),
-          )
-          .first(),
-        db.questionSets
-          .filter((set) => referencedQuestionSetConceptIds(set).includes(conceptId))
-          .first(),
-      ]);
+      const [cardReference, questionReference, questionSetReference, occlusionReference] =
+        await Promise.all([
+          db.cards.where('conceptId').equals(conceptId).first(),
+          db.questionConcepts
+            .filter(
+              (set) =>
+                set.targetConceptIds.includes(conceptId) ||
+                set.prerequisiteConceptIds.includes(conceptId),
+            )
+            .first(),
+          db.questionSets
+            .filter((set) => referencedQuestionSetConceptIds(set).includes(conceptId))
+            .first(),
+          db.occlusions
+            .filter((occlusion) =>
+              Object.values(occlusion.regionConceptIds ?? {}).includes(conceptId),
+            )
+            .first(),
+        ]);
+      if (occlusionReference) throw new Error('The Concept is still referenced by an Occlusion.');
       if (questionSetReference) {
         throw new Error('The Concept is still referenced by a Question Set.');
       }

@@ -141,10 +141,13 @@ function conceptsForOcclusionPayloads(
   deckId: string,
   payloads: readonly GeneratedCardPayload[],
   now: number,
+  conceptIdsByRegion: ReadonlyMap<string, string> = new Map(),
 ): Concept[] {
   return payloads.map((payload, index) =>
     buildCardConcept({
-      id: conceptIdForRegion(occlusion.id, payload.occlusionRegionId),
+      id:
+        conceptIdsByRegion.get(payload.occlusionRegionId) ??
+        conceptIdForRegion(occlusion.id, payload.occlusionRegionId),
       courseId: occlusion.courseId,
       schedulingUnitId: deckId,
       name: conceptNameForCard(payload.type, payload.front, payload.back),
@@ -157,7 +160,11 @@ function conceptsForOcclusionPayloads(
 export async function cardsForOcclusion(occlusion: Occlusion): Promise<Card[]> {
   const keys = occlusion.regions.map((region) => region.id);
   if (keys.length === 0) return [];
-  return db.cards.where('occlusionRegionId').anyOf(keys).toArray();
+  return db.cards
+    .where('occlusionRegionId')
+    .anyOf(keys)
+    .filter((card) => card.courseId === occlusion.courseId)
+    .toArray();
 }
 
 /**
@@ -244,6 +251,25 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
       async (tx) => {
         const previous = await db.occlusions.get(occlusion.id);
         const existingCards = previous ? await cardsForOcclusion(previous) : [];
+        const conceptIdsByRegion = new Map(
+          Object.entries({
+            ...occlusion.regionConceptIds,
+            ...previous?.regionConceptIds,
+          }),
+        );
+        for (const card of existingCards) {
+          if (card.courseId === occlusion.courseId && card.occlusionRegionId) {
+            conceptIdsByRegion.set(card.occlusionRegionId, card.conceptId);
+          }
+        }
+        const retainedConcepts = await db.concepts.bulkGet([...conceptIdsByRegion.values()]);
+        for (const concept of retainedConcepts) {
+          if (!concept || concept.scope !== 'course' || concept.courseId !== occlusion.courseId) {
+            throw new Error(
+              'Occlusion Concept relationship is missing or belongs to another Course.',
+            );
+          }
+        }
 
         // A feature region resolves its answer through `pairedRegionId` (see
         // resolveOcclusionFace). If this edit removed the label region a surviving
@@ -271,7 +297,24 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
         const diff = diffRegeneration(cleaned, existingCards);
         const now = Date.now();
 
-        await db.occlusions.put(stampUpdatedAt(cleaned, now));
+        await db.occlusions.put(
+          stampUpdatedAt(
+            {
+              ...cleaned,
+              ...(conceptIdsByRegion.size
+                ? {
+                    regionConceptIds: Object.fromEntries(
+                      [...conceptIdsByRegion].filter(
+                        ([regionId, conceptId]) =>
+                          conceptId !== conceptIdForRegion(cleaned.id, regionId),
+                      ),
+                    ),
+                  }
+                : {}),
+            },
+            now,
+          ),
+        );
 
         if (diff.deletes.length > 0) {
           await tombstoneGeneratedCardCascade(tx, diff.deletes);
@@ -288,7 +331,13 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
           const deckId = cleaned.primaryLessonId
             ? await ensureLessonBackingDeck(cleaned.courseId, cleaned.primaryLessonId)
             : await ensureCourseBankBackingDeck(cleaned.courseId);
-          const concepts = conceptsForOcclusionPayloads(cleaned, deckId, diff.creates, now);
+          const concepts = conceptsForOcclusionPayloads(
+            cleaned,
+            deckId,
+            diff.creates,
+            now,
+            conceptIdsByRegion,
+          );
           // Concepts can also be shared by ordinary Cards and Questions.
           const existingConcepts = await db.concepts.bulkGet(concepts.map((concept) => concept.id));
           for (const [index, existing] of existingConcepts.entries()) {
@@ -301,7 +350,8 @@ export async function updateOcclusion(occlusion: Occlusion): Promise<void> {
               deckId,
               payload,
               now + i,
-              conceptIdForRegion(cleaned.id, payload.occlusionRegionId),
+              conceptIdsByRegion.get(payload.occlusionRegionId) ??
+                conceptIdForRegion(cleaned.id, payload.occlusionRegionId),
             ),
           );
           if (concepts.length > 0) await db.concepts.bulkPut(concepts);
@@ -399,8 +449,7 @@ export async function restoreOcclusion(snapshot: OcclusionSnapshot): Promise<voi
   try {
     const cardsToRestore = projectCardsForStorage(snapshot.cards);
     const reviewHistoryToRestore =
-      snapshot.reviewHistory ??
-      snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
+      snapshot.reviewHistory ?? snapshot.cards.flatMap((card) => reviewHistoryEntriesForCard(card));
     await db.transaction(
       'rw',
       [

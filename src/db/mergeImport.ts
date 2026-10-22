@@ -634,7 +634,10 @@ async function pruneRemovedLineageConcepts(
 ): Promise<void> {
   const incoming = new Set(mapping.conceptIds ?? []);
   const candidates = previousIds.filter((id) => !incoming.has(id));
-  const referenced = new Set((await db.questionSets.toArray()).flatMap(referencedQuestionSetConceptIds));
+  const referenced = new Set([
+    ...(await db.questionSets.toArray()).flatMap(referencedQuestionSetConceptIds),
+    ...(await db.occlusions.toArray()).flatMap((occlusion) => Object.values(occlusion.regionConceptIds ?? {})),
+  ]);
   const removed: string[] = [];
   for (const id of candidates) {
     const [card, set] = await Promise.all([
@@ -725,6 +728,9 @@ async function applyOcclusions(
       primaryLessonId: typeof shareOcc.pl === 'number' ? lessonIdByIndex(shareOcc.pl) : null,
       name: shareOcc.n || 'Shared occlusion',
       assetHash: shareOcc.ah,
+      ...(payload.v !== 2 && shareOcc.regionConceptIds
+        ? { regionConceptIds: shareOcc.regionConceptIds }
+        : {}),
       regions: shareOcc.regions.map((region) => ({
         id: region.id,
         role: region.r === 1 ? ('feature' as const) : ('label' as const),
