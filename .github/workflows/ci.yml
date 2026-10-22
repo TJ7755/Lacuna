@@ -161,7 +161,7 @@ jobs:
 
       - name: Verify CI predicates and browser diagnostics without browsers
         if: matrix.shard == 1
-        run: node --test scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/browser-ci-summary.test.mjs
+        run: node --test scripts/security-runtime.test.mjs scripts/ci-workflow.test.mjs scripts/ci-recover-stale-jobs.test.mjs scripts/browser-ci-summary.test.mjs
       - run: bun run test:ci:unit -- --shard=${{ matrix.shard }}/6
 
   test-coverage:
