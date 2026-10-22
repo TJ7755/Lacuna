@@ -4,6 +4,7 @@ import { consumeRatePermit } from './rateLimit.js';
 import { CHANNEL_CLEANUP_GRACE_MS, CHANNEL_TTL_MS } from './channelMaintenance.js';
 import { relayCorsHeaders } from './cors.js';
 import { insightDayExpiresAt } from './insightsProtocol.js';
+import { isOfficialPublication } from './officialPublications.js';
 
 /**
  * Teacher-published course snapshots behind a stable link. A share is an
@@ -521,6 +522,7 @@ function shareSlotKey(id: string, slot: ShareSlot): string {
 }
 
 export async function shareLive(store: BlobStore, id: string, now: () => number): Promise<boolean> {
+  if (await persistentPublicationExists(store, id)) return true;
   const [latest, source] = await Promise.all([
     lastShareWrite(store, id),
     store.get(shareSourceKey(id)),
@@ -529,9 +531,19 @@ export async function shareLive(store: BlobStore, id: string, now: () => number)
   if (!source || !(await store.stat(shareAuthKey(id)))) return false;
   const sourceId = new TextDecoder().decode(source.body);
   if (!SHARE_ID_RE.test(sourceId) || !(await store.stat(shareAuthKey(sourceId)))) return false;
+  if (await persistentPublicationExists(store, sourceId)) return true;
   // Mint flattens links to the publisher. Its updates also keep classroom links alive.
   const sourceLatest = await lastShareWrite(store, sourceId);
   return sourceLatest !== null && now() - sourceLatest < CHANNEL_TTL_MS;
+}
+
+async function persistentPublicationExists(store: BlobStore, id: string): Promise<boolean> {
+  if (!isOfficialPublication(id)) return false;
+  const [auth, payload] = await Promise.all([
+    store.stat(shareAuthKey(id)),
+    store.stat(shareSlotKey(id, 'payload')),
+  ]);
+  return auth !== null && payload !== null;
 }
 
 async function lastShareWrite(store: BlobStore, id: string): Promise<number | null> {

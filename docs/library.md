@@ -109,9 +109,9 @@ If another publisher advanced the revision, investigate that publication rather 
 older artefact over it. Verification failures may occur after both slots are live: inspect them
 before retrying, and do not treat the failed run as publication evidence.
 
-Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; the official
-link longevity policy in issue #630 remains separate. No production relay was used to validate
-this command.
+Skipping unchanged bytes does not renew a share. Ordinary share expiry is unchanged; official
+publications use the relay retention policy below after deployment. No production relay was used
+to validate this command.
 
 ## Cambridge alternative codes
 
@@ -201,3 +201,31 @@ Adding a catalogue entry generates its page automatically. Also update
 [sitemap.xml](../public/sitemap.xml) and [llms.txt](../public/llms.txt); catalogue coverage tests
 reject missing course URLs. [Public-page tests](../scripts/public-pages.test.mjs) inspect
 the built HTML after the main-site build.
+
+## Official publication retention
+
+The relay keeps the four current official publications readable while their ownership and payload
+objects exist, using the reviewed allow-list in `relay/src/officialPublications.ts`. The public
+catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
+No timer, download or unchanged-publication retry renews a share. This policy takes effect only
+when the relay change is deployed.
+
+The relay operator owns additions and removal. Before adding a share ID, verify ownership using
+the publication command's dry-run with the existing private credentials, verify the approved
+payload/hash, and review the exact ID in a relay PR. Deploy it before the ordinary expiry window
+ends. Never accept an ID from a public request or automatically copy all catalogue entries into
+this allow-list. The relay configuration deliberately contains public IDs, not write tokens.
+
+To withdraw a publication, remove its catalogue entry and use the existing authorised share DELETE
+with its write token. Retention does not defeat deletion, preserve Gaps reports beyond their own
+retention, or recreate deleted bytes. Remove the ID from the relay policy in the same withdrawal;
+removing only the policy restores ordinary age-based expiry and can make an old share immediately
+unreadable. Removing only a catalogue entry does not withdraw the underlying publication.
+
+After deployment, check all listed payload/manifest reads and compare the publication hashes.
+Monitor the existing daily maintenance result and investigate failed reads; no renewal job is
+required. If an expired share's objects still exist, deploying the reviewed allow-list restores
+availability without changing its URL or bytes. If cleanup has already removed its ownership or
+payload, the allow-list cannot recover it: stop, recover from the approved artefact and private
+ownership records through an operator-reviewed recovery, and verify the subscriber identity impact
+before publishing. Do not mint a replacement and claim the old link was repaired.

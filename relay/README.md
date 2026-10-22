@@ -293,3 +293,21 @@ Relative imports must end in `.js`. The package is ESM, Vercel emits
 extensionless TypeScript as `.js`, and Node will not resolve
 `'../src/relay'`. `typecheck` is on `NodeNext` so a missing specifier
 fails the build rather than the deployment.
+
+## Official library publication retention
+
+`src/officialPublications.ts` is the relay operator's reviewed allow-list of public share IDs.
+An entry is exempt from share TTL only while its auth and payload objects both exist. Requests,
+share owners and the public catalogue cannot add entries. No bytes, ETags, identities or upload
+timestamps are rewritten; no new endpoint or stored metadata is introduced. Deploying this relay
+change activates the policy for the listed IDs, including existing untouched objects.
+
+Ordinary shares/channels retain their existing TTL, cleanup grace and bounded scans. Classroom
+links retain their existing dependency on their publisher's availability; a retained publisher
+remains available without extending Gaps report retention. Authorised DELETE still removes the
+share and its reports, and orphan objects remain eligible for cleanup. Removing an ID restores
+the existing age-based policy, so an old publication may expire immediately.
+
+The operator procedure, withdrawal and expired-link recovery are in
+[the library procedure](../docs/library.md#official-publication-retention). Catalogue changes do
+not silently change the relay's retention authority.
