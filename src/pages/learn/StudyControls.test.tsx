@@ -1,7 +1,7 @@
 import { createRef } from 'react';
 import { renderToString } from 'react-dom/server';
 import { LazyMotion, domAnimation } from 'motion/react';
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StudyControls } from './StudyControls';
 
@@ -113,7 +113,7 @@ describe('StudyControls Flow fill', () => {
       </LazyMotion>,
     );
     const layer = view.container.querySelector('[data-flow-layer]');
-    expect(layer?.querySelector('[data-flow-drop="primary"]')).not.toBeNull();
+    expect(layer?.querySelector('[data-flow-colour]')).not.toBeNull();
     expect(view.getByText('Show answer', { selector: 'button' })).not.toHaveClass(
       'bg-transparent!',
     );
@@ -122,5 +122,33 @@ describe('StudyControls Flow fill', () => {
     ).not.toHaveClass('[&_button]:bg-transparent!');
     expect(view.getByRole('button', { name: 'No' }).closest('[data-flow-primary]')).toBeNull();
     view.unmount();
+  });
+
+  it('draws the four-point split as liquid, then restores the grade buttons', () => {
+    vi.useFakeTimers();
+    const manual = { ...props, gradingMode: 'manual' as const, m: 1 };
+    const view = render(
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...manual} phase="question" />
+      </LazyMotion>,
+    );
+    const bare = (name: string) =>
+      view.getByRole('button', { name }).closest('[class*="[&_button]:bg-transparent!"]') !== null;
+    try {
+      view.rerender(
+        <LazyMotion features={domAnimation}>
+          <StudyControls {...manual} phase="answer" />
+        </LazyMotion>,
+      );
+      expect(['Again', 'Hard', 'Good', 'Easy'].map(bare)).toEqual([true, true, true, true]);
+
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(['Again', 'Hard', 'Good', 'Easy'].map(bare)).toEqual([false, false, false, false]);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
   });
 });
