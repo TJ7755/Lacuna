@@ -1,0 +1,1 @@
+- Retain historical imported Occlusion Concept relationships when their generated Cards are removed and regenerated, preserving shared specification links, metadata and existing learner evidence through backups and sharing. (#586)

@@ -44,6 +44,13 @@ Ordinary imports remap generator and item/region IDs before deriving generated C
 the same mapping for Card and Question relationships. Regeneration reuses a surviving sibling's
 Concept, including legacy non-deterministic IDs, and retains its shared metadata. Missing generated
 faces must not discard specification links or move ordinary Cards and Questions to another Concept.
+Occlusions retain non-deterministic historical region relationships in optional `regionConceptIds`,
+recorded from existing Cards before removal. Regeneration validates same-Course ownership and retains
+the complete Concept. Backups and encrypted snapshots preserve this additive metadata; current share
+codes and Course files remap active region relationships alongside Concept IDs. Older share readers
+ignore this optional field and cannot promise this repair for historical arbitrary IDs. No schema
+index or cryptographic format changes. An association already lost before this metadata was recorded
+cannot be reconstructed safely; do not guess from names or merge unrelated Concepts.
 
 Sequence entry starts with Name focused and one blank item. The type sets its terminology and
 cue defaults; secondary settings and generated previews remain under Options and Preview. Script

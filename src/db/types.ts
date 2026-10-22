@@ -713,6 +713,8 @@ export interface Occlusion {
   assetHash: string;
   /** Ordered; stored inline as occlusions are small. */
   regions: OcclusionRegion[];
+  /** Retain proven relationships even while a region has no generated Card. */
+  regionConceptIds?: Record<string, string>;
   createdAt: number;
   /** Last mutation time. Required after schema v23; backfilled from createdAt. */
   updatedAt: number;

@@ -371,6 +371,7 @@ const ShareOcclusionRegionSchema = z.object({
  * carry the referenced asset alongside this payload. */
 const ShareOcclusionSchema = z.object({
   id: z.string(),
+  regionConceptIds: z.record(z.string().min(1), z.string().min(1)).optional(),
   n: z.string().min(1),
   ah: z.string(), // assetHash
   regions: z.array(ShareOcclusionRegionSchema),
@@ -616,6 +617,7 @@ interface ShareOcclusion {
   n: string; // name
   ah: string; // assetHash; course files carry the referenced asset separately
   regions: ShareOcclusionRegion[];
+  regionConceptIds?: Record<string, string>;
   pl?: number; // index into the payload's lessons array (primaryLessonId)
 }
 
@@ -1292,6 +1294,15 @@ export async function buildCourseSharePayload(
       id: o.id,
       n: o.name,
       ah: o.assetHash,
+      ...(o.regionConceptIds
+        ? {
+            regionConceptIds: Object.fromEntries(
+              Object.entries(o.regionConceptIds).filter(([regionId]) =>
+                o.regions.some((region) => region.id === regionId),
+              ),
+            ),
+          }
+        : {}),
       regions: o.regions.map((region) => ({
         id: region.id,
         r: (region.role === 'feature' ? 1 : 0) as 0 | 1,
@@ -1561,11 +1572,13 @@ async function importCourseSharePayload(
         if (importedConcepts.length > 0) await db.concepts.bulkAdd(importedConcepts);
       }
       const lessonIdMap = new Map(
-        payload.lessons.flatMap((lesson) => lesson.i ? [[lesson.i, makeId()] as const] : []),
+        payload.lessons.flatMap((lesson) => (lesson.i ? [[lesson.i, makeId()] as const] : [])),
       );
       const importedLessons: Lesson[] = payload.lessons.map((shareLesson, orderIndex) => ({
         id: shareLesson.i ? lessonIdMap.get(shareLesson.i)! : makeId(),
-        ...(shareLesson.pr ? { prerequisiteLessonIds: shareLesson.pr.map((id) => lessonIdMap.get(id)!) } : {}),
+        ...(shareLesson.pr
+          ? { prerequisiteLessonIds: shareLesson.pr.map((id) => lessonIdMap.get(id)!) }
+          : {}),
         courseId: course.id,
         name: shareLesson.n.trim() || 'Untitled lesson',
         orderIndex,
@@ -1782,6 +1795,19 @@ async function importCourseSharePayload(
         primaryLessonId: typeof shareOcc.pl === 'number' ? (lessonIds[shareOcc.pl] ?? null) : null,
         name: shareOcc.n || 'Shared occlusion',
         assetHash: shareOcc.ah,
+        ...(payload.v !== 2 && shareOcc.regionConceptIds
+          ? {
+              regionConceptIds: Object.fromEntries(
+                Object.entries(shareOcc.regionConceptIds).map(([regionId, conceptId]) => {
+                  const localRegionId = regionIdMap.get(regionId);
+                  const localConceptId = conceptIdMap.get(conceptId);
+                  if (!localRegionId || !localConceptId)
+                    throw new Error('Unknown Occlusion Concept relationship.');
+                  return [localRegionId, localConceptId];
+                }),
+              ),
+            }
+          : {}),
         regions: shareOcc.regions.map((region) => ({
           id: regionIdMap.get(region.id)!,
           role: region.r === 1 ? ('feature' as const) : ('label' as const),
