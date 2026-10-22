@@ -31,9 +31,6 @@
   flex: 1 0 auto;
   justify-content: flex-end;
 }
-.qs-practice-header .qs-status:empty {
-  display: none;
-}
 .qs-part-stepper {
   position: relative;
   flex: 0 1 360px;

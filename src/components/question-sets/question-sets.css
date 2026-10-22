@@ -146,11 +146,6 @@
 .qs-back:hover {
   color: hsl(var(--ink));
 }
-.qs-status {
-  font-size: 11px;
-  color: hsl(var(--ink-soft));
-  min-height: 20px;
-}
 .qs-actions {
   display: flex;
   gap: 8px;
