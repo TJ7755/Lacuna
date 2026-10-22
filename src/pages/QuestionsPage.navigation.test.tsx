@@ -120,9 +120,16 @@ describe('QuestionsPage navigation', () => {
     };
     renderLibrary();
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search sets' }), {
-      target: { value: 'kinetics' },
-    });
+    const main = screen.getByRole('main');
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    main.scrollTop = 320;
+    fireEvent.scroll(main);
+    const search = screen.getByRole('searchbox', { name: 'Search sets' });
+    search.focus();
+    fireEvent.change(search, { target: { value: 'kinetics' } });
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    expect(main.scrollTop).toBe(320);
+    expect(search).toHaveFocus();
 
     expect(screen.getByLabelText('Current location')).toHaveTextContent(
       '/course/course-1/questions?q=kinetics',
@@ -130,9 +137,6 @@ describe('QuestionsPage navigation', () => {
     expect(screen.getByRole('heading', { name: 'Kinetics questions' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Cell structure' })).not.toBeInTheDocument();
 
-    const main = screen.getByRole('main');
-    main.scrollTop = 320;
-    fireEvent.scroll(main);
     fireEvent.click(screen.getByRole('link', { name: /Kinetics questions/ }));
     expect(await screen.findByText('Set: set-kinetics')).toBeInTheDocument();
     main.scrollTop = 0;
