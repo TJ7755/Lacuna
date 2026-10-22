@@ -29,8 +29,8 @@ imports remain the typechecker's responsibility.
 The checker finds strongly connected components in linear time after parsing/resolution.
 Every reported internal edge belongs to a cycle. Each entry in
 `import-cycle-exceptions.json` records one exact cyclic edge set, its reason and
-[the follow-up issue](https://github.com/TJ7755/Lacuna/issues/765). Seven groups pre-date this
-rule: generated cards, assessment scheduling, database maintenance, JEV attempts, route
+[the follow-up issue](https://github.com/TJ7755/Lacuna/issues/765). Six groups pre-date this
+rule: generated cards, assessment scheduling, database maintenance, route
 prefetching, question banks and question-set drafts. No folder or import kind is blanket
 exempted. New or enlarged components fail, and removing/changing an existing component
 requires deleting/updating its stale exception. Removing these debts is separate work.

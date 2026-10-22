@@ -38,14 +38,6 @@
   },
   {
     "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "JEV marking reads and updates attempts; attempt submission lazily starts JEV marking.",
-    "edges": [
-      "src/jev/attempts.ts -> src/questions/questionSetAttemptRepository.ts",
-      "src/questions/questionSetAttemptRepository.ts -> src/jev/attempts.ts"
-    ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
     "reason": "CoursePath loads lessons and prefetches routes; the shared lazy-loader registry includes CoursePath itself.",
     "edges": [
       "src/pages/CoursePath.tsx -> src/routes/loaders.ts",
