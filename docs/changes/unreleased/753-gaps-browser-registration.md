@@ -1,0 +1,1 @@
+- Run the Gaps invitation and recovery purpose-label browser regression in CI and the documented pre-publication checks, with a CI guard against losing its registration. (#753)

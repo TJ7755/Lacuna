@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '24.22.1'
           package-manager-cache: false
-      - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs
+      - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs scripts/check-gaps-browser-registration.test.mjs
       - run: node scripts/check-docs.mjs
       - run: node scripts/changelog.mjs --check
 
