@@ -91,10 +91,10 @@ describe('Vercel configuration', () => {
       packageManager: string;
     };
     const runtime = JSON.parse(await readFile('relay/scripts/security-bun.json', 'utf8')) as {
-      revision: string;
+      version: string;
     };
 
-    expect(manifest.packageManager).toBe(`bun@${runtime.revision}`);
+    expect(manifest.packageManager).toBe(`bun@${runtime.version}`);
     expect(config.installCommand).toBe(
       'node relay/scripts/security-bun.mjs install --frozen-lockfile',
     );

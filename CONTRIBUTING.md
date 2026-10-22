@@ -6,8 +6,8 @@ work. Keep changes narrow, prove behaviour, and make the risk legible to a revie
 
 ## Before you start
 
-Use the exact Bun revision in `.bun-version`, matching CI. The temporary canary contains the
-eMudhra certificate fix; do not substitute the vulnerable stable release or a moving canary.
+Use the exact Bun release in `.bun-version`, matching CI. The verified bootstrap checks its
+archive checksum and full revision; use it when installing Bun for a fresh checkout.
 Use Node 22.23.4, 24.22.1 or 26.12.1 or a newer supported patch release. Check before installing:
 
 ```bash
@@ -178,7 +178,7 @@ repository controls; a green local run does not replace them.
 
 ## Security maintenance
 
-[TLS trust maintenance](docs/maintenance/tls-trust.md) covers the temporary Bun security pin,
+[TLS trust maintenance](docs/maintenance/tls-trust.md) covers the verified Bun runtime pin,
 certificate checks and the separate machine, deployment and desktop rollout steps.
 
 [Security automation](.github/workflows/security.yml) owns audit workspaces and configuration.

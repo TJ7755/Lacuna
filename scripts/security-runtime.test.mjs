@@ -6,7 +6,8 @@ import { parse } from 'yaml';
 import { extractArchive, verifyArchive, verifyRevision } from '../relay/scripts/security-bun.mjs';
 
 const root = new URL('../', import.meta.url);
-const revision = readFileSync(new URL('.bun-version', root), 'utf8').trim();
+const version = readFileSync(new URL('.bun-version', root), 'utf8').trim();
+const pin = JSON.parse(readFileSync(new URL('relay/scripts/security-bun.json', root), 'utf8'));
 const action = parse(readFileSync(new URL('.github/actions/setup-bun/action.yml', root), 'utf8'));
 
 test('Windows ZIP extraction uses native tar rather than Git tar interpreting a drive as a host', () => {
@@ -23,8 +24,8 @@ test('Windows ZIP extraction uses native tar rather than Git tar interpreting a 
 });
 
 test('the Bun security guard rejects changed downloads and unreviewed revisions', () => {
-  assert.doesNotThrow(() => verifyRevision(revision));
-  for (const installed of ['1.4.3+c6da4a4d3', '1.4.4-canary.1+unreviewed']) {
+  assert.doesNotThrow(() => verifyRevision(pin.revision));
+  for (const installed of ['1.4.3+c6da4a4d3', '1.4.4-canary.1+963452075', '1.4.4+unreviewed']) {
     assert.throws(() => verifyRevision(installed), /Bun revision mismatch/);
   }
   const archive = Buffer.from('reviewed download');
@@ -56,7 +57,7 @@ test('every Bun workflow uses the security guard and manifests share its pin', (
     'tooling/handwriting-maths/package.json',
   ]) {
     const manifest = JSON.parse(readFileSync(new URL(file, root), 'utf8'));
-    assert.equal(manifest.packageManager, `bun@${revision}`, file);
+    assert.equal(manifest.packageManager, `bun@${version}`, file);
   }
 });
 
@@ -75,6 +76,13 @@ test('Vercel builds use the verified Bun bootstrap instead of vulnerable bunx do
     if (config.buildCommand)
       assert.match(config.buildCommand, /node relay\/scripts\/security-bun\.mjs run build/);
   }
-  const pin = JSON.parse(readFileSync(new URL('relay/scripts/security-bun.json', root), 'utf8'));
-  assert.equal(pin.revision, revision);
+  assert.equal(pin.version, version);
+  assert.equal(pin.revision, `${version}+${pin.commit.slice(0, 9)}`);
+  for (const [name, asset] of Object.entries(pin.assets)) {
+    assert.equal(
+      asset.url,
+      `https://github.com/oven-sh/bun/releases/download/bun-v${version}/${name}`,
+    );
+    assert.match(asset.sha256, /^[a-f0-9]{64}$/);
+  }
 });

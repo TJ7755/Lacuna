@@ -82,6 +82,71 @@ describe('web typechecking', () => {
     }
   }, 60_000);
 
+  it('matches native TypeScript diagnostics for the remaining project configurations', () => {
+    const projects = [
+      ['tsconfig.server.json', ['server/probe.ts', 'api/probe.ts']],
+      ['electron/tsconfig.json', ['main.ts']],
+      ['electron/tsconfig.preload.json', ['preload.ts']],
+      ['electron/tsconfig.mcp.json', ['mcp/probe.ts']],
+      ['relay/tsconfig.json', ['src/probe.ts', 'api/probe.ts', 'tests/probe.ts']],
+      ['tooling/lacuna-ai-mcp/tsconfig.json', ['src/probe.ts']],
+      ['tooling/handwriting-maths/tsconfig.json', ['src/probe.ts']],
+    ] as const;
+    for (const [project, sources] of projects) {
+      const directory = mkdtempSync(join(tmpdir(), 'lacuna-typecheck-'));
+      try {
+        const config = JSON.parse(readFileSync(join(root, project), 'utf8')) as {
+          compilerOptions: { types?: string[] };
+        };
+        config.compilerOptions.types = [];
+        writeFileSync(join(directory, 'tsconfig.json'), JSON.stringify(config));
+        writeFileSync(join(directory, 'package.json'), '{"type":"module"}');
+        for (const source of sources) {
+          mkdirSync(dirname(join(directory, source)), { recursive: true });
+          writeFileSync(join(directory, source), 'export const probe: number = "invalid";\n');
+        }
+        writeFileSync(
+          join(directory, 'outside.ts'),
+          'export const excluded: number = "invalid";\n',
+        );
+        const run = (command: string, args: string[]) =>
+          spawnSync(command, args, { cwd: directory, encoding: 'utf8', timeout: 20_000 });
+        const check = () => run('bun', ['check', '-p', 'tsconfig.json', '--no-pretty']);
+        const invalid = check();
+        const native = run(process.execPath, [
+          join(root, 'node_modules/@typescript/native/bin/tsc'),
+          '-p',
+          'tsconfig.json',
+          '--noEmit',
+          '--pretty',
+          'false',
+        ]);
+        for (const result of [invalid, native]) {
+          expect(result.error, project).toBeUndefined();
+          expect(result.status, project).toBe(1);
+        }
+        const diagnostics = (output: string) =>
+          output
+            .split(/\r?\n/)
+            .filter((line) => line.includes('error TS'))
+            .sort();
+        expect(diagnostics(invalid.stdout), project).toHaveLength(sources.length);
+        expect(diagnostics(invalid.stdout), project).toEqual(diagnostics(native.stdout));
+        for (const source of sources) {
+          writeFileSync(join(directory, source), 'export const probe: number = 1;\n');
+        }
+        const valid = check();
+        expect(valid.error, project).toBeUndefined();
+        expect(valid.status, project).toBe(0);
+        expect(
+          readdirSync(directory, { recursive: true }).some((file) => /\.jsx?$/.test(file)),
+        ).toBe(false);
+      } finally {
+        rmSync(directory, { recursive: true, force: true });
+      }
+    }
+  }, 60_000);
+
   it('pins the same supported Bun release for development and every workflow', () => {
     expect(manifest.packageManager).toBe(
       `bun@${readFileSync(join(root, '.bun-version'), 'utf8').trim()}`,

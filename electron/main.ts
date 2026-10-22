@@ -430,7 +430,7 @@ if (installationInProgress) {
     // The specifier is built from a variable, not a string literal, so tsc does not
     // statically resolve and pull electron/mcp/server.ts (and, transitively, the whole
     // src/mcp/registry.ts module graph) into *this* project's program — that graph is
-    // type-checked separately by tsc -p electron/tsconfig.mcp.json, which resolves it the
+    // type-checked separately by bun check -p electron/tsconfig.mcp.json, which resolves it the
     // way the rest of src/ does (see that file's build comment). A literal specifier here
     // would drag those files under this project's NodeNext resolution and rootDir instead.
     const mcpServerModulePath = './mcp/server.js';

@@ -1,5 +1,5 @@
 name: Set up the patched Bun runtime
-description: Install the temporary security canary and reject any other revision.
+description: Install the checksum-verified stable Bun release and reject any other revision.
 runs:
   using: composite
   steps:
