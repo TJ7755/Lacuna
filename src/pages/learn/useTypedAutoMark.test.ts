@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Card } from '../../db/types';
 import type * as JevModule from '../../jev';
 import type { JevTypedAnswerRequest, JevTypedVerdict } from '../../jev';
-import { JEV_TYPED_TIMEOUT_MS } from '../../jev';
+import { JEV_JUDGING_MS, JEV_TYPED_TIMEOUT_MS } from '../../jev';
 import { TYPED_AUTO_MARK_DELAY_MS, useTypedAutoMark } from './useTypedAutoMark';
 
 const jev = vi.hoisted(() => ({
@@ -55,12 +55,15 @@ describe('useTypedAutoMark', () => {
     expect(onMarked).not.toHaveBeenCalled();
   });
 
-  it('holds a submitted answer back before marking it', () => {
+  it('shows a submitted answer being judged before marking it', () => {
     jev.marker = vi.fn();
     const { result } = setup('Paris');
     expect(result.current).toEqual({ state: 'checking' });
     act(() => {
-      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS - 1);
+      vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS - 1);
     });
     expect(result.current).toEqual({ state: 'checking' });
     act(() => {
@@ -74,6 +77,9 @@ describe('useTypedAutoMark', () => {
     const { result, onMarked } = setup('Paris');
     act(() => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
     expect(result.current).toMatchObject({ state: 'marked', correct: true, provenance: null });
     act(() => {
@@ -90,6 +96,11 @@ describe('useTypedAutoMark', () => {
     await act(async () => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
     });
+    // A quick verdict is held until the answer has visibly been judged.
+    expect(result.current).toEqual({ state: 'checking' });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+    });
     expect(result.current).toMatchObject({ state: 'marked', correct: true });
     act(() => {
       vi.advanceTimersByTime(1000);
@@ -105,6 +116,9 @@ describe('useTypedAutoMark', () => {
     const { result, onMarked } = setup('Lyon');
     await act(async () => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
     expect(result.current).toEqual({ state: 'idle' });
     act(() => {
@@ -132,6 +146,9 @@ describe('useTypedAutoMark', () => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
     });
     act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
       vi.advanceTimersByTime(5000);
     });
     expect(onMarked).not.toHaveBeenCalled();
@@ -149,6 +166,9 @@ describe('useTypedAutoMark', () => {
     const { onMarked } = setup('Paris');
     act(() => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
     act(() => {
       vi.advanceTimersByTime(200);
@@ -180,6 +200,9 @@ describe('useTypedAutoMark', () => {
     });
     act(() => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
     act(() => {
       vi.advanceTimersByTime(5000);
@@ -227,6 +250,9 @@ describe('useTypedAutoMark', () => {
     });
     await act(async () => {
       vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS);
+    });
+    act(() => {
+      vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS);
     });
     expect(jev.marker).toHaveBeenCalledWith(
       expect.objectContaining({

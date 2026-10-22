@@ -193,8 +193,9 @@ since TypeSafe returns no separate noul confidence.
 Multi-mark allocations require both provider confidence and probability at the rounded expected score of at least 0.85.
 TypeSafe accepts at most ten score levels, so allocations above nine marks remain manual.
 Low-confidence lines remain undecided; learner decisions, including explicit unsure decisions,
-are never overwritten. Reloading can resume submitted undecided lines when the marking hook is
-mounted; abandoning the page leaves those lines available for self-marking. Confident verdicts
+are never overwritten. Submission sends nothing: each line is marked only when the learner
+opens its criterion, and is shown being judged for at least `JEV_JUDGING_MS` (motion-scaled).
+Unopened lines stay undecided; abandoning the page leaves them available for self-marking. Confident verdicts
 have a bounded device-only cache in a separate IndexedDB database, storing hashes and results,
 without the submitted text. Repeated uncertain lines are attempted once per mounted runtime.
 

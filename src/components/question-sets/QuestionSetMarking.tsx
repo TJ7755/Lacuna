@@ -11,9 +11,10 @@ import { MarkdownView } from '../markdown/MarkdownView';
 import { Button } from '../ui/Button';
 import { sourceAnchorFromSelection } from '../notes/noteAnchors';
 import { flattenQuestionSet } from '../../questions/questionSetAuthoring';
-import { EditIcon, PlusIcon } from '../ui/icons';
+import { EditIcon, PlusIcon, SparklesIcon } from '../ui/icons';
 import { collapse } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { JEV_JUDGING_MS, useJevAllocationMarking } from '../../jev';
 
 export function QuestionSetMarking({
   attempt,
@@ -49,6 +50,30 @@ export function QuestionSetMarking({
   const savedCorrection = attempt.corrections.find((row) => row.nodeId === nodeId)?.content ?? '';
   const [correction, setCorrection] = useState(savedCorrection);
   const decision = attempt.decisions.find((row) => row.allocationId === allocation.id);
+  const multiplier = speedMultiplier(motionSpeed);
+  const jev = useJevAllocationMarking(
+    attempt.id,
+    attempt.status === 'complete' ? undefined : allocation.id,
+    JEV_JUDGING_MS * Math.max(multiplier, 0.3),
+  );
+  const pending = jev.state === 'marking' && !decision;
+  const automatic = decision?.status === 'awarded' ? decision.markedBy : undefined;
+  // Only a verdict the learner watched arrive is revealed; revisits show it at rest.
+  const [watched, setWatched] = useState<string | null>(null);
+  if (pending && watched !== allocation.id) setWatched(allocation.id);
+  if (!pending && watched !== null && watched !== allocation.id) setWatched(null);
+  const revealing = watched === allocation.id && multiplier > 0;
+  const status = pending
+    ? 'Marking this answer automatically…'
+    : decision
+      ? automatic && watched === allocation.id && decision.status === 'awarded'
+        ? `Marked automatically: ${decision.marks} of ${allocation.maxMarks}.`
+        : ''
+      : jev.state === 'left'
+        ? 'Automatic marking was not sure enough. Choose a mark.'
+        : jev.state === 'unavailable'
+          ? 'Automatic marking is paused. Choose a mark.'
+          : '';
   const annotations = attempt.annotations.filter((row) => row.nodeId === nodeId);
   const boundaries = [
     ...new Set([
@@ -86,8 +111,10 @@ export function QuestionSetMarking({
           </QuestionSetPanel>
         )}
         <QuestionSetChoices
+          key={allocation.id}
           label="Marks awarded"
           flow
+          pending={pending}
           accentValues={(value) => value !== '' && value !== 'unsure'}
           describedBy={`qs-question-${nodeId}`}
           value={
@@ -112,16 +139,34 @@ export function QuestionSetMarking({
             ...Array.from({ length: allocation.maxMarks + 1 }, (_, marks) => ({
               value: String(marks),
               label: `${marks} / ${allocation.maxMarks}`,
+              description: automatic &&
+                decision?.status === 'awarded' &&
+                decision.marks === marks && (
+                  <motion.span
+                    className="qs-choice-jev"
+                    title={`Marked automatically (${Math.round(automatic.confidence * 100)}% sure). Choose another mark to override it.`}
+                    initial={revealing ? { opacity: 0, scale: 0.4 } : false}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.24 * multiplier, delay: 0.22 * multiplier }}
+                  >
+                    <SparklesIcon width={14} height={14} aria-hidden="true" />
+                    <span className="sr-only">, marked automatically</span>
+                  </motion.span>
+                ),
             })),
             { value: 'unsure', label: 'Unsure' },
           ]}
         />
-        {decision?.status === 'awarded' && decision.markedBy && (
-          <p className="qs-muted">
-            Marked automatically ({Math.round(decision.markedBy.confidence * 100)}% sure). Change
-            the mark to override it.
-          </p>
-        )}
+        <p
+          aria-live="polite"
+          className={
+            !decision && (jev.state === 'left' || jev.state === 'unavailable')
+              ? 'qs-muted'
+              : 'sr-only'
+          }
+        >
+          {status}
+        </p>
       </section>
       <section className="qs-marking-answer">
         <div className="qs-answer-frame">
@@ -184,7 +229,9 @@ export function QuestionSetMarking({
                       value={note ?? ''}
                       onChange={(event) => {
                         setNote(event.target.value);
-                        onDraftChange(Boolean(event.target.value.trim()) || correction !== savedCorrection);
+                        onDraftChange(
+                          Boolean(event.target.value.trim()) || correction !== savedCorrection,
+                        );
                       }}
                     />
                   </label>

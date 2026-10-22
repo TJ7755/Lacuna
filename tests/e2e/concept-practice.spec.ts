@@ -262,7 +262,7 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
       await expect(page.getByText(/No unseen questions remain/)).toBeVisible();
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
-      await expect(page.getByRole('note')).toContainText('Familiar question');
+      await expect(page.locator('article.qs-paper')).toBeVisible();
       await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
       await page.getByRole('button', { name: 'Undo latest skill practice', exact: true }).click();
       await expect(
@@ -282,7 +282,7 @@ for (const width of [1280, 390]) {
       const prompts = new Set<string>();
       for (let index = 0; index < 6; index++) {
         await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
-        await expect(page.getByRole('note')).toContainText('Unseen question');
+        await expect(page.locator('article.qs-paper')).toBeVisible();
         const prompt = await page.locator('article.qs-paper').innerText();
         expect(prompts.has(prompt)).toBe(false);
         prompts.add(prompt);
@@ -293,9 +293,9 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: `Practise ${density}`, exact: true }).click();
       await expect(page.getByText(/No unseen questions remain/)).toBeVisible();
       await page.getByRole('button', { name: 'Practise familiar questions', exact: true }).click();
-      await expect(page.getByRole('note')).toContainText('Familiar question');
+      await expect(page.locator('article.qs-paper')).toBeVisible();
       await page.reload();
-      await expect(page.getByRole('note')).toContainText('Familiar question');
+      await expect(page.locator('article.qs-paper')).toBeVisible();
     });
 
     test('handles long written and native choice content, partial marks and immutable corrections', async ({

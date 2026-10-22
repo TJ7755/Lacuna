@@ -4,6 +4,7 @@ import { markdownAnswerCorrect, markdownPlainText } from '../../components/markd
 import { answerComparisonOptions, type AnswerStrictness } from '../../state/answerStrictness';
 import { renderClozeFront } from '../../utils/cloze';
 import {
+  JEV_JUDGING_MS,
   JEV_TYPED_TIMEOUT_MS,
   useJevTypedMarker,
   type JevMarkProvenance,
@@ -151,10 +152,17 @@ export function useTypedAutoMark({
     const options = answerComparisonOptions(answerStrictness);
     setMark({ state: 'checking' });
     const controller = new AbortController();
+    const scale = Math.max(m, 0.3);
+    // A verdict, however quick, waits until the answer has visibly been judged.
+    const shownAt = performance.now() + JEV_JUDGING_MS * scale;
     let settle: number | undefined;
+    let reveal: number | undefined;
+    const show = (next: TypedAutoMark) => {
+      reveal = window.setTimeout(() => setMark(next), Math.max(0, shownAt - performance.now()));
+    };
     const pause = window.setTimeout(() => {
       if (markdownAnswerCorrect(expected, { answer: typedAnswer, options })) {
-        setMark({ state: 'marked', correct: true, provenance: null });
+        show({ state: 'marked', correct: true, provenance: null });
         return;
       }
       settle = window.setTimeout(() => {
@@ -164,14 +172,17 @@ export function useTypedAutoMark({
       const expectedText = markdownPlainText(expected);
       marker({
         cardId: card.id,
-        prompt: markdownPlainText(card.type === 'cloze' ? renderClozeFront(card.front) : card.front),
+        prompt: markdownPlainText(
+          card.type === 'cloze' ? renderClozeFront(card.front) : card.front,
+        ),
         expected: expectedText,
         answer: typedAnswer,
         signal: controller.signal,
       })
         .then((verdict) => {
           if (controller.signal.aborted) return;
-          setMark(
+          window.clearTimeout(settle);
+          show(
             verdict.outcome === 'unsure'
               ? verdict.feedback
                 ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
@@ -189,10 +200,11 @@ export function useTypedAutoMark({
           if (!controller.signal.aborted) setMark({ state: 'idle' });
         })
         .finally(() => window.clearTimeout(settle));
-    }, TYPED_AUTO_MARK_DELAY_MS * Math.max(m, 0.3));
+    }, TYPED_AUTO_MARK_DELAY_MS * scale);
     return () => {
       window.clearTimeout(pause);
       window.clearTimeout(settle);
+      window.clearTimeout(reveal);
       controller.abort();
     };
     // Content edits invalidate an in-flight request or a verdict held behind the editor.

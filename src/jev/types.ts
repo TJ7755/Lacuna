@@ -82,11 +82,15 @@ export interface JevTypedFeedback {
   parts: JevAnswerPart[];
 }
 
-/** Background marking of one submitted written-answer attempt. */
-export type JevAttemptMarking =
+/** Automatic marking of the written-answer criterion the learner has open. */
+export type JevAllocationMarking =
+  /** Nothing to do: Jev is off, the line is decided or it is not a written answer. */
   | { state: 'idle' }
-  | { state: 'marking'; remaining: number }
-  | { state: 'done'; marked: number; leftForYou: number };
+  | { state: 'marking' }
+  /** Jev is on but paused, so the learner marks this line. */
+  | { state: 'unavailable' }
+  /** Jev could not decide this line confidently; it stays with the learner. */
+  | { state: 'left' };
 
 export interface JevController {
   /** Turning on requires the current consent version to be accepted in the same call. */
@@ -97,6 +101,12 @@ export interface JevController {
   connectAccessCode(code: string): Promise<{ ok: true } | { ok: false; message: string }>;
   hasAccessCode(): boolean;
 }
+
+/**
+ * Shortest time, before motion scaling, an answer is shown being judged. Jev and local matches
+ * can answer almost at once; without this a verdict lands before the learner sees it being made.
+ */
+export const JEV_JUDGING_MS = 1200;
 
 /** Longest the study screen waits for a typed verdict before falling back to manual grading. */
 export const JEV_TYPED_TIMEOUT_MS = 2500;

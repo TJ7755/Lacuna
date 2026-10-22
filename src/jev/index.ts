@@ -19,5 +19,5 @@ export function useJevTypedMarker() {
   useJevStatus();
   return jevEngine.marker();
 }
-export { useJevAttemptMarking, markJevAttempt } from './attempts';
+export { useJevAllocationMarking, markJevAttempt } from './attempts';
 export { splitJevExpectedAnswer, type JevExpectedAnswerPart } from './answerParts';

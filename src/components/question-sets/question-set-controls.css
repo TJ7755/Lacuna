@@ -140,6 +140,29 @@
   background: hsl(var(--accent));
   box-shadow: none;
 }
+/* While a mark is pending, the drop waits as a neutral bead, as on a typed flashcard. */
+.qs-choices[data-flow] [data-choice-drop='pending'] {
+  left: calc(50% - 20px);
+  right: auto;
+  width: 40px;
+}
+.qs-choices[data-flow] [data-choice-drop='pending'] > span {
+  background: hsl(var(--ink-faint) / 0.55);
+  box-shadow: none;
+}
+.qs-choices[data-flow] input:checked + [data-choice-drop='pending'] + span {
+  color: transparent;
+}
+.qs-choices[data-flow][data-pending] label:not(:has(input:checked)) span {
+  color: hsl(var(--ink-faint));
+}
+.qs-choices[data-flow] .qs-choice-jev {
+  display: inline-flex;
+  min-height: 0;
+  margin-left: 6px;
+  padding: 0;
+  color: inherit;
+}
 .qs-choices[data-flow] input:focus-visible + [data-choice-drop] {
   outline: none;
 }

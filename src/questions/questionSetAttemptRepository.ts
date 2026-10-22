@@ -206,11 +206,6 @@ export function submitPracticeQuestion(
     if (!attempt.revealedQuestionIds.includes(questionId))
       attempt.revealedQuestionIds.push(questionId);
     if (attempt.responses.every((response) => response.submitted)) attempt.status = 'marking';
-  }).then((attempt) => {
-    void import('../jev/attempts')
-      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
-      .catch(() => {});
-    return attempt;
   });
 }
 
@@ -229,11 +224,6 @@ export function submitQuestionSetPaper(
     attempt.paperSubmittedAt = now;
     attempt.revealedQuestionIds = attempt.receipt.questions.map((question) => question.id);
     attempt.status = 'marking';
-  }).then((attempt) => {
-    void import('../jev/attempts')
-      .then(({ markJevAttempt }) => markJevAttempt(attempt.id))
-      .catch(() => {});
-    return attempt;
   });
 }
 

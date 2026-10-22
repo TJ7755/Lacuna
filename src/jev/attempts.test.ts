@@ -402,3 +402,57 @@ it('leaves a timed-out attempt manual without pausing or queueing its lines', as
     timer.mockRestore();
   }
 });
+
+it('marks only the criterion the learner opens', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async (request) => result(request.maxMarks!));
+  await markJevAttempt(attempt.id, engine, 'a2');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).allocations).toEqual([
+    expect.objectContaining({ criterion: 'Water 2', maxMarks: 2 }),
+  ]);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+    expect.objectContaining({ allocationId: 'a2', marks: 2, markedBy: expect.any(Object) }),
+  ]);
+});
+
+it('sends an opened criterion once however often it is revisited', async () => {
+  const { attempt } = await fixture();
+  const { engine, fetcher } = engineWith(async () => result(null));
+  await Promise.all([
+    markJevAttempt(attempt.id, engine, 'a1'),
+    markJevAttempt(attempt.id, engine, 'a1'),
+  ]);
+  await markJevAttempt(attempt.id, engine, 'a1');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+});
+
+it('does not mark criteria when an attempt is submitted', async () => {
+  const fetcher = vi.fn(async () => Response.json({}));
+  vi.stubGlobal('fetch', fetcher);
+  const { jevEngine } = await import('./engine');
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  jevEngine.enable(1);
+  try {
+    const { attempt } = await fixture();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  } finally {
+    jevEngine.disable();
+    vi.unstubAllGlobals();
+  }
+});
+
+it('holds a quick verdict on an opened criterion until it has visibly been judged', async () => {
+  const { attempt } = await fixture();
+  const { engine } = engineWith(async (request) => result(request.maxMarks!));
+  const started = Date.now();
+  const marking = markJevAttempt(attempt.id, engine, 'a1', 80);
+  await new Promise((resolve) => setTimeout(resolve, 40));
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  await marking;
+  expect(Date.now() - started).toBeGreaterThanOrEqual(80);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(1);
+});

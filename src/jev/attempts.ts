@@ -8,15 +8,15 @@ import {
 import type { QuestionSetAttemptRecord } from '../questions/questionSetAttempts';
 import type { QuestionAnswer } from '../questions/questionSets';
 import { jevEngine, type createJevEngine } from './engine';
-import type { JevAttemptMarking } from './types';
+import type { JevAllocationMarking } from './types';
 import {
   JEV_BATCH_MAX_ALLOCATIONS,
   JEV_BATCH_REQUEST_BYTE_LIMIT,
   type JevDecisionRequest,
 } from './protocol';
 
-const idle: JevAttemptMarking = { state: 'idle' };
-const progress = new Map<string, JevAttemptMarking>();
+const idle: JevAllocationMarking = { state: 'idle' };
+const progress = new Map<string, JevAllocationMarking>();
 const listeners = new Set<() => void>();
 type Engine = ReturnType<typeof createJevEngine>;
 interface MarkingJob {
@@ -25,14 +25,14 @@ interface MarkingJob {
 }
 const jobs = new WeakMap<Engine, Map<string, MarkingJob>>();
 const tried = new WeakMap<Engine, Map<string, string>>();
-function publish(id: string, state: JevAttemptMarking) {
-  if (JSON.stringify(progress.get(id)) === JSON.stringify(state)) return;
+function publish(id: string, state: JevAllocationMarking) {
+  if (progress.get(id)?.state === state.state) return;
   progress.set(id, state);
   // Only retain progress for a bounded number of recently viewed attempts.
   if (progress.size > 128) progress.delete(progress.keys().next().value!);
   listeners.forEach((listener) => listener());
 }
-function candidates(attempt: QuestionSetAttemptRecord) {
+function candidates(attempt: QuestionSetAttemptRecord, only?: string) {
   const nodes: Array<{ nodeId: string; prompt: string; answer: QuestionAnswer }> = [];
   const add = (
     node: { id: string; prompt: string; answer?: QuestionAnswer },
@@ -56,6 +56,7 @@ function candidates(attempt: QuestionSetAttemptRecord) {
     const submitted = attempt.responses.find((row) => row.nodeId === node.nodeId)?.submitted;
     if (submitted?.kind !== 'written') return [];
     return node.answer.allocations.flatMap((allocation) =>
+      (only !== undefined && allocation.id !== only) ||
       attempt.decisions.some((row) => row.allocationId === allocation.id)
         ? []
         : [
@@ -76,10 +77,21 @@ function candidates(attempt: QuestionSetAttemptRecord) {
   });
 }
 
-/** Safe to call repeatedly. Reloads resume undecided submitted lines; failures leave them manual. */
-export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<void> {
+/**
+ * Safe to call repeatedly. Reloads resume undecided submitted lines; failures leave them manual.
+ * With `only`, marks just that allocation: the criterion the learner has open, which is shown
+ * being judged for at least `judgingMs` however quickly the verdict arrives.
+ */
+export function markJevAttempt(
+  attemptId: string,
+  engine: Engine = jevEngine,
+  only?: string,
+  judgingMs = 0,
+): Promise<void> {
+  const id = attemptId;
+  const key = only === undefined ? id : `${id}:${only}`;
   if (engine.status().state === 'off') {
-    publish(id, idle);
+    publish(key, idle);
     return Promise.resolve();
   }
   let active = jobs.get(engine);
@@ -87,7 +99,7 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
     active = new Map();
     jobs.set(engine, active);
   }
-  const existing = active.get(id);
+  const existing = active.get(key);
   if (existing) {
     existing.again = true;
     return existing.promise;
@@ -95,10 +107,10 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
   const run = async () => {
     const attempt = await getQuestionSetAttempt(id);
     if (!attempt || attempt.status === 'complete' || attempt.undoneAt !== undefined) {
-      publish(id, idle);
+      publish(key, idle);
       return;
     }
-    const lines = candidates(attempt);
+    const lines = candidates(attempt, only);
     let seen = tried.get(engine);
     if (!seen) {
       seen = new Map();
@@ -111,7 +123,7 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
     for (const line of fresh) seen.set(`${id}:${line.allocationId}`, JSON.stringify(line.request));
     while (seen.size > 2048) seen.delete(seen.keys().next().value!);
     if (!engine.eligible()) {
-      publish(id, idle);
+      publish(key, idle);
       return;
     }
     const batches: Array<typeof lines> = [];
@@ -145,10 +157,13 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
         (line) => !current.decisions.some((row) => row.allocationId === line.allocationId),
       );
       if (!pending.length) continue;
-      publish(id, { state: 'marking', remaining: pending.length });
+      publish(key, { state: 'marking' });
+      const judged = Date.now() + judgingMs;
       const results = await engine.decideAllocations(
         pending.map(({ request: { purpose: _purpose, ...allocation } }) => allocation),
       );
+      const wait = judged - Date.now();
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
       if (!results || !engine.eligible()) break;
       for (const [index, line] of pending.entries()) {
         const result = results[index];
@@ -173,15 +188,10 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
       }
     }
     const current = await getQuestionSetAttempt(id);
-    if (!engine.eligible() || !current) {
-      publish(id, idle);
-      return;
-    }
-    publish(id, {
-      state: 'done',
-      marked: current.decisions.filter((line) => line.markedBy?.by === 'jev').length,
-      leftForYou: candidates(current).length,
-    });
+    publish(
+      key,
+      engine.eligible() && current && candidates(current, only).length ? { state: 'left' } : idle,
+    );
   };
   const job: MarkingJob = { promise: Promise.resolve(), again: false };
   const drain = async () => {
@@ -192,16 +202,24 @@ export function markJevAttempt(id: string, engine: Engine = jevEngine): Promise<
   };
   job.promise = drain()
     .catch(() => {
-      publish(id, idle);
+      publish(key, only === undefined ? idle : { state: 'left' });
     })
     .finally(() => {
-      active!.delete(id);
+      active!.delete(key);
     });
-  active.set(id, job);
+  active.set(key, job);
   return job.promise;
 }
 
-export function useJevAttemptMarking(attemptId: string): JevAttemptMarking {
+/**
+ * Marks the open criterion when the learner reaches it, never the criteria they have not opened.
+ * Leaving starts nothing new; a request already sent still lands on its own criterion.
+ */
+export function useJevAllocationMarking(
+  attemptId: string,
+  allocationId: string | undefined,
+  judgingMs = 0,
+): JevAllocationMarking {
   const settings = useSyncExternalStore(jevEngine.subscribe, jevEngine.settings);
   const status = useSyncExternalStore(jevEngine.subscribe, jevEngine.status);
   const revision = useLiveQuery(
@@ -214,10 +232,16 @@ export function useJevAttemptMarking(attemptId: string): JevAttemptMarking {
       listeners.delete(listener);
     };
   }, []);
-  const snapshot = useCallback(() => progress.get(attemptId) ?? idle, [attemptId]);
+  const key = `${attemptId}:${allocationId}`;
+  const snapshot = useCallback(() => progress.get(key) ?? idle, [key]);
   const state = useSyncExternalStore(subscribe, snapshot);
   useEffect(() => {
-    void markJevAttempt(attemptId);
-  }, [attemptId, revision, settings.enabled, status.state]);
-  return !settings.enabled || status.state !== 'ready' ? idle : state;
+    if (allocationId !== undefined)
+      void markJevAttempt(attemptId, jevEngine, allocationId, judgingMs);
+    // The judging time applies to the next request; a change alone starts nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, allocationId, revision, settings.enabled, status.state]);
+  if (!settings.enabled || allocationId === undefined) return idle;
+  if (status.state === 'paused' && state.state !== 'left') return { state: 'unavailable' };
+  return status.state === 'ready' ? state : idle;
 }
