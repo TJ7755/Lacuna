@@ -1,0 +1,1 @@
+- Load the landing page's styles with its prerendered HTML so first visits do not flash unstyled content while JavaScript loads.

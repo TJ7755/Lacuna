@@ -49,8 +49,9 @@ const RECORD_REVIEW_CARD_COUNTS = [500, 2_000, 10_000] as const;
 const INITIAL_ASSET_BUDGET = {
   javascriptBytes: 910_000,
   javascriptGzipBytes: 280_000,
-  cssBytes: 130_000,
-  cssGzipBytes: 22_000,
+  // Include the landing styles required to paint prerendered HTML before hydration.
+  cssBytes: 150_000,
+  cssGzipBytes: 27_000,
 } as const;
 
 function benchmark(fn: () => unknown, repetitions: number): number {
