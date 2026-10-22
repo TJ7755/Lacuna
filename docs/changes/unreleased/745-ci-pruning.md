@@ -1,1 +1,1 @@
-- Cut repeated CI browser installation and web builds, split functional and timing work across runners, cache verified toolchain/package downloads, and remove redundant UI tests and historical documentation. (#745)
+- Cut repeated CI browser installation and web builds, balance functional work across eight shards and isolate timing projects, cache verified toolchain/package downloads, and remove redundant UI tests and historical documentation. (#745)
