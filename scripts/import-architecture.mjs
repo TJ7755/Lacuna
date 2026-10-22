@@ -3,9 +3,10 @@ import { join, relative, resolve, sep } from 'node:path';
 import ts from 'typescript';
 
 const sourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
+const declarationExtension = /\.d\.[cm]?ts$/;
 export const sourcePath = (root, file) => relative(root, file).split(sep).join('/');
 
-export function createResolver(root) {
+export function createResolver(root, { runtime = false } = {}) {
   const configFile = join(root, 'tsconfig.app.json');
   const config = existsSync(configFile)
     ? ts.readConfigFile(configFile, ts.sys.readFile).config
@@ -20,13 +21,21 @@ export function createResolver(root) {
     moduleResolution: ts.ModuleResolutionKind.Bundler,
     allowJs: true,
   };
+  // Value edges must reach implementations, not companion declarations that
+  // TypeScript prefers for type checking. Boundary checks still include types.
+  const host = runtime
+    ? {
+        ...ts.sys,
+        fileExists: (file) => !declarationExtension.test(file) && ts.sys.fileExists(file),
+      }
+    : ts.sys;
   const cache = ts.createModuleResolutionCache(root, (file) => file, compilerOptions);
   return (specifier, importer) => {
     const resolved = ts.resolveModuleName(
       specifier.split(/[?#]/, 1)[0],
       importer,
       compilerOptions,
-      ts.sys,
+      host,
       cache,
     ).resolvedModule;
     if (!resolved || resolved.isExternalLibraryImport) return;
@@ -114,7 +123,7 @@ function valueSpecifiers(clause) {
 }
 
 export function importGraph(root) {
-  const resolveImport = createResolver(root);
+  const resolveImport = createResolver(root, { runtime: true });
   const graph = new Map();
   const walk = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) =>
@@ -122,7 +131,7 @@ export function importGraph(root) {
     )) {
       const file = join(directory, entry.name);
       if (entry.isDirectory()) walk(file);
-      else if (sourceExtension.test(file) && !/\.d\.[cm]?ts$/.test(file)) {
+      else if (sourceExtension.test(file) && !declarationExtension.test(file)) {
         const source = ts.createSourceFile(
           file,
           readFileSync(file, 'utf8'),

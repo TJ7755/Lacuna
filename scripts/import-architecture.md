@@ -20,6 +20,8 @@ calls. Explicit `import type`, `export type` and all-type named imports/exports 
 edges. Mixed imports retain their value edge. Declaration files, external packages and
 non-code assets are excluded. Resolution uses `tsconfig.app.json`, including paths and
 extension/index resolution; Vite query/hash suffixes are removed before resolution.
+Value-edge resolution skips declarations so companion `.d.ts`, `.d.mts` and `.d.cts`
+files cannot hide JavaScript implementations. The UI boundary check still resolves declarations.
 Computed module specifiers, implicit type-only usage without a `type` keyword, loader
 execution order and external package cycles are outside this syntax-based check. Unresolved
 imports remain the typechecker's responsibility.

@@ -47,6 +47,8 @@ describe('domain-to-UI boundary', () => {
       );
     }
     project.write('src/components/declaration.d.ts', 'export interface Contract {}');
+    project.write('src/pages/runtime.js', 'export const value = 1;');
+    project.write('src/pages/runtime.d.ts', 'export declare const value: number;');
     project.write('src/components/import/mergeReviewRows.ts', 'export const value = 1;');
     project.write('src/components/analytics/prepare.ts', 'export const value = 1;');
     const probes = [
@@ -68,6 +70,8 @@ describe('domain-to-UI boundary', () => {
         "export type { Contract } from '@ui/contract';",
         "export { value } from '../components';",
         "export type { Contract } from '../components/declaration';",
+        "export { value } from '../pages/runtime.js';",
+        "export type Result = typeof import('../pages/runtime.js').value;",
         'export const load = () => import(`../components/contract`);',
         "export { value } from '../components/contract?worker';",
       ].map((source) => ({ filePath: 'src/course/probe.ts', source, forbidden: true })),
@@ -173,6 +177,47 @@ describe('src value-import cycles', () => {
     const result = cycles(project.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('src/a.mjs -> src/a.mjs');
+  });
+
+  it.each([
+    ['js', 'd.ts'],
+    ['jsx', 'd.ts'],
+    ['mjs', 'd.mts'],
+    ['cjs', 'd.cts'],
+  ])('rejects a JavaScript cycle shadowed by companion declarations (%s)', (extension, declaration) => {
+    const project = fixture();
+    const source = (target: string) =>
+      extension === 'cjs' ? `require('./${target}.cjs');` : `import './${target}.${extension}';`;
+    project.write(`src/a.${extension}`, source('b'));
+    project.write(`src/b.${extension}`, source('a'));
+    expect(cycles(project.root).status).toBe(1);
+    project.write(`src/a.${declaration}`, 'export {};');
+    project.write(`src/b.${declaration}`, 'export {};');
+    const result = cycles(project.root);
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain(`src/a.${extension} -> src/b.${extension}`);
+    expect(result.stderr).toContain(`src/b.${extension} -> src/a.${extension}`);
+  });
+
+  it('resolves runtime aliases and indexes without adding explicit type-only edges', () => {
+    const project = fixture();
+    project.write(
+      'tsconfig.app.json',
+      JSON.stringify({ compilerOptions: { paths: { '@source/*': ['./src/*'] } } }),
+    );
+    project.write('src/a.ts', "import { b } from '@source/b'; export const a = () => b;");
+    project.write('src/b/index.js', "import { a } from '../a'; export const b = () => a;");
+    project.write('src/b/index.d.ts', 'export declare const b: () => unknown;');
+    const result = cycles(project.root);
+    expect(result.error).toBeUndefined();
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stderr).toContain('src/a.ts -> src/b/index.js');
+    expect(result.stderr).toContain('src/b/index.js -> src/a.ts');
+    project.write('src/a.ts', "export type { b } from '@source/b';");
+    const typeOnly = cycles(project.root);
+    expect(typeOnly.error).toBeUndefined();
+    expect(typeOnly.status, typeOnly.stderr).toBe(0);
   });
 
   it.each([
