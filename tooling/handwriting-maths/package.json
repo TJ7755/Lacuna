@@ -2,17 +2,16 @@
   "name": "lacuna-handwriting-maths",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "bun@1.4.4-canary.1+963452075",
+  "packageManager": "bun@1.4.4",
   "type": "module",
   "description": "Appendix A.2 prototype: handwritten maths input. Exploratory, not shipped.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "bun check -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
     "vite": "^8.3.4",
     "vitest": "5.0.5"
   }

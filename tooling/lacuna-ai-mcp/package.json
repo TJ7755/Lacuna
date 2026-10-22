@@ -10,7 +10,7 @@
     "build": "esbuild src/index.ts --bundle --platform=node --format=esm --external:@modelcontextprotocol/server --external:'@modelcontextprotocol/server/*' --external:zod --outfile=dist/index.js --banner:js='#!/usr/bin/env node'",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run -c vitest.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "bun check -p tsconfig.json"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
@@ -20,7 +20,6 @@
     "@modelcontextprotocol/client": "2.0.0",
     "@types/node": "^22.0.0",
     "esbuild": "^0.28.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vitest": "5.0.1"
   }

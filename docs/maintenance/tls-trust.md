@@ -5,8 +5,9 @@ a browser does not update those stores. The October 2026 eMudhra incident theref
 runtime updates as well as the Python lockfile changes.
 
 The versioned manifests, workflow configuration and `.bun-version` hold the current runtime pins.
-The temporary Bun canary is deliberate: the stable release still trusted a compromised certificate
-when tested. [Bun's upstream fix](https://github.com/oven-sh/bun/pull/46159) is merged.
+Bun uses a stable release containing both the
+[eMudhra distrust fix](https://github.com/oven-sh/bun/pull/46159) and the
+[Brotli decoder fix](https://github.com/oven-sh/bun/pull/46392).
 
 `relay/scripts/security-bun.mjs` installs the reviewed binary for CI and Vercel builds. It checks the
 download against the SHA-256 digest in the adjacent JSON manifest before executing it, then checks
@@ -14,10 +15,10 @@ the exact revision. It creates a local cache under the relay's ignored `node_mod
 CI adds that directory to `PATH`; Vercel invokes the same bootstrap for installation and builds.
 The script lives inside the relay so the relay project does not need source outside its root.
 
-Canary download URLs move. A changed download fails the checksum check rather than silently
-changing the runtime. Once a patched stable release is published, review its certificate behaviour,
-replace the temporary bootstrap with the normal version-pinned setup, update all manifests and
-Vercel commands together, and regenerate lockfiles only with the selected Bun revision.
+Downloads use versioned stable release URLs. A changed download fails the checksum check rather
+than silently changing the runtime. When updating Bun, review its certificate and Brotli decoder
+behaviour, update all manifests and platform checksums together, and regenerate lockfiles only
+with the selected Bun release.
 
 For a fresh local checkout, run `node relay/scripts/security-bun.mjs --install` using a patched Node
 release. Run commands through `node relay/scripts/security-bun.mjs <arguments>` to use that exact

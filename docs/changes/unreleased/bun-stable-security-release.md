@@ -1,0 +1,1 @@
+- Replace the temporary Bun canary with the stable security release, retaining checksum-verified downloads for development, CI and Vercel builds.
