@@ -1,0 +1,1 @@
+- Give hosted API functions the server TypeScript configuration so Vercel resolves Node types, modern libraries and shared imports correctly, and stops API packaging on type errors.
