@@ -1,20 +1,50 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
-// Unit tests for the FSRS-6 engine, forward simulation, IndexedDB migrations,
-// components, hooks and state management. Happy DOM supplies browser globals;
-// tests/setup.ts supplies fake IndexedDB for persistence tests.
+const nodeTests = [
+  'src/fsrs/**/*.test.ts',
+  'src/course/**/*.test.ts',
+  'src/questions/generators/**/*.test.ts',
+  'server/**/*.test.ts',
+  'scripts/**/*.test.ts',
+];
+
+// These tests also exercise browser-backed preferences through the repository.
+const browserStorageTests = [
+  'src/course/localLessonOrder.test.ts',
+  'src/fsrs/optimise.persistence.test.ts',
+];
 export default defineConfig({
   test: {
     allowOnly: !process.env.CI,
     environment: 'happy-dom',
     clearMocks: false,
-    include: [
-      'src/**/*.test.ts',
-      'src/**/*.test.tsx',
-      'scripts/**/*.test.ts',
-      'server/**/*.test.ts',
+    pool: 'forks',
+    isolate: true,
+    projects: [
+      {
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: nodeTests,
+          exclude: [...configDefaults.exclude, ...browserStorageTests],
+        },
+      },
+      {
+        test: {
+          name: 'browser',
+          include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+          exclude: [...configDefaults.exclude, ...nodeTests],
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'browser-storage',
+          include: browserStorageTests,
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
     ],
-    setupFiles: ['./tests/setup.ts'],
     // One worker keeps the suite inside the memory budget of supported developer
     // machines and makes timing-sensitive component tests deterministic.
     maxWorkers: 1,
