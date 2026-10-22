@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const JEV_MODEL = 'jev-1.14.0';
-export const JEV_TYPED_CORRECT_THRESHOLD = 0.85;
-export const JEV_TYPED_INCORRECT_THRESHOLD = 0.85;
+export const JEV_TYPED_CORRECT_THRESHOLD = 0.75;
+export const JEV_TYPED_INCORRECT_THRESHOLD = 0.75;
 export const JEV_ALLOCATION_CONFIDENCE_THRESHOLD = 0.85;
 export const JEV_TYPED_KIND_CONFIDENCE_THRESHOLD = 0.7;
 export const JEV_TYPED_PART_COVERED_THRESHOLD = 0.8;

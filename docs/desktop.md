@@ -187,8 +187,9 @@ See the official [API reference](https://docs.typesafe.ai/api/system-one),
 [score contract](https://docs.typesafe.ai/primitives/score) and
 [model versions](https://docs.typesafe.ai/models).
 
-Noul marks use a 0.85 probability threshold in either direction; their provenance confidence
-is the chosen outcome probability, since TypeSafe returns no separate noul confidence.
+Typed-equivalence marks use a 0.75 probability threshold in either direction. Single-mark
+allocations retain 0.85. Their provenance confidence is the chosen outcome probability,
+since TypeSafe returns no separate noul confidence.
 Multi-mark allocations require both provider confidence and probability at the rounded expected score of at least 0.85.
 TypeSafe accepts at most ten score levels, so allocations above nine marks remain manual.
 Low-confidence lines remain undecided; learner decisions, including explicit unsure decisions,

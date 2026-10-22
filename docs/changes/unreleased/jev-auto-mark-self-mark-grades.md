@@ -1,0 +1,1 @@
+- Keep the self-marking grade controls away while automatic marking judges or has judged a typed answer, leaving them in place whenever it is switched off or leaves the verdict to the learner.

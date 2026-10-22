@@ -98,7 +98,7 @@ it('abstains on low confidence without pausing', async () => {
     .fn()
     .mockResolvedValueOnce(Response.json({ token: 's', expiresAt: Date.now() + 60_000 }))
     .mockResolvedValueOnce(
-      Response.json({ model: 'jev-1.14.0', value: null, confidence: 0.84, inputTokens: 12 }),
+      Response.json({ model: 'jev-1.14.0', value: null, confidence: 0.74, inputTokens: 12 }),
     );
   const engine = createJevEngine({ fetcher, cache: emptyCache() });
   engine.enable(1);
@@ -145,12 +145,37 @@ it('rechecks current thresholds for a cached verdict before applying it', async 
   const engine = createJevEngine({
     fetcher,
     cache: {
-      get: async () => ({ model: 'jev-1.14.0', value: 1, confidence: 0.84, inputTokens: 12 }),
+      get: async () => ({ model: 'jev-1.14.0', value: 1, confidence: 0.74, inputTokens: 12 }),
       put: async () => {},
     },
   });
   engine.enable(1);
   expect(await engine.markTyped(request)).toEqual({ outcome: 'unsure', feedback: null });
+  expect(fetcher).not.toHaveBeenCalled();
+});
+it.each([
+  [1, 0.7499, 'unsure'],
+  [1, 0.75, 'correct'],
+  [1, 0.79, 'correct'],
+  [0, 0.7499, 'unsure'],
+  [0, 0.75, 'incorrect'],
+  [0, 0.79, 'incorrect'],
+] as const)('applies the typed threshold to cached value %s at confidence %s', async (
+  value,
+  confidence,
+  outcome,
+) => {
+  localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'code');
+  const fetcher = vi.fn();
+  const engine = createJevEngine({
+    fetcher,
+    cache: {
+      get: async () => ({ model: 'jev-1.14.0', value, confidence, inputTokens: 12 }),
+      put: async () => {},
+    },
+  });
+  engine.enable(1);
+  expect(await engine.markTyped(request)).toMatchObject({ outcome });
   expect(fetcher).not.toHaveBeenCalled();
 });
 it('stays off if the browser refuses access to localStorage', () => {

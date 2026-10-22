@@ -52,7 +52,99 @@ const feedback = {
   ],
 };
 
-test('pours the verdict into its grade, advances and can undo it', async ({ page }) => {
+async function flowColour(page: Page) {
+  return page.locator('[data-flow-colour]').evaluate((element) => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = getComputedStyle(element).fill;
+    context.fillRect(0, 0, 1, 1);
+    return [...context.getImageData(0, 0, 1, 1).data];
+  });
+}
+
+for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+  for (const correct of [false, true]) {
+    test(`morphs a grey waiting bead into a ${correct ? 'green' : 'red'} verdict (${reducedMotion})`, async ({
+      page,
+    }) => {
+      await page.emulateMedia({ reducedMotion });
+      let release!: () => void;
+      const response = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route('**/api/ai/jev', async (route) => {
+        await response;
+        await route.fulfill({
+          json: {
+            value: correct ? 1 : 0,
+            confidence: 0.98,
+            inputTokens: 600,
+            model: 'jev-1.14.0',
+          },
+        });
+      });
+      await start(page);
+      await submit(page);
+      await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+      await page.keyboard.down('Space');
+      try {
+        const layer = page.locator('[data-flow-layer]');
+        await expect(layer).toBeVisible();
+        const grey = await flowColour(page);
+        expect(grey[0]).toBe(grey[1]);
+        expect(grey[1]).toBe(grey[2]);
+        expect(grey[3]).toBe(255);
+
+        // The whole bead pulses evenly, retaining a circle rather than deforming its drops.
+        const bead = layer.locator(':scope > g');
+        const before = await bead.getAttribute('style');
+        await page.waitForTimeout(400);
+        const after = await bead.getAttribute('style');
+        if (reducedMotion === 'reduce') expect(after).toBe(before);
+        else expect(after).not.toBe(before);
+        const aspectRatio = await layer.locator(':scope > g > g').first().locator('use').first()
+          .evaluate((element) => {
+            const bounds = element.getBoundingClientRect();
+            return bounds.width / bounds.height;
+          });
+        expect(aspectRatio).toBeCloseTo(1, 1);
+        await page.screenshot({ path: test.info().outputPath('grey-waiting.png') });
+
+        await page.locator('[data-flow-colour]').evaluate((element) => {
+          (window as unknown as { flowColourFrames: Promise<string[]> }).flowColourFrames =
+            new Promise((resolve) => {
+              const fills: string[] = [];
+              const started = performance.now();
+              const sample = () => {
+                fills.push(getComputedStyle(element).fill);
+                if (performance.now() - started < 500) requestAnimationFrame(sample);
+                else resolve(fills);
+              };
+              sample();
+            });
+        });
+        release();
+        await expect.poll(async () => {
+          const [r, g, b] = await flowColour(page);
+          return correct ? g > r && g > b : r > g && r > b;
+        }).toBe(true);
+        const fills = await page.evaluate(
+          () => (window as unknown as { flowColourFrames: Promise<string[]> }).flowColourFrames,
+        );
+        if (reducedMotion !== 'reduce') expect(new Set(fills).size).toBeGreaterThan(2);
+        await expect(layer).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
+        await page.screenshot({ path: test.info().outputPath('verdict-colour.png') });
+      } finally {
+        release();
+        await page.keyboard.up('Space');
+      }
+    });
+  }
+}
+
+test('keeps the verdict off the self-marking grades, advances and can undo it', async ({ page }) => {
   let release!: () => void;
   const response = new Promise<void>((resolve) => {
     release = resolve;
@@ -81,7 +173,8 @@ test('pours the verdict into its grade, advances and can undo it', async ({ page
     'Partly right',
   );
   await expect(page.locator('[data-study-face="back"] mark')).toHaveText('green');
-  await expect(page.locator('[data-flow-primary] button')).toHaveText('No');
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('jev-verdict.png') });
   await expect(card).not.toHaveAttribute('data-study-card-id', id!);
   await page.getByRole('button', { name: 'Undo last answer' }).click();

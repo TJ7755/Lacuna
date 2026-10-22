@@ -9,7 +9,8 @@ import {
 } from 'react';
 import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { motionTransition } from '../../components/ui/motion';
+import { MOTION_EASING, motionTransition } from '../../components/ui/motion';
+import type { AutoMark } from './types';
 
 interface Rect {
   left: number;
@@ -29,12 +30,11 @@ function rectOf(el: HTMLElement, offsetLeft = 0, offsetTop = 0): Rect {
 
 interface FlowControlsProps {
   question: boolean;
-  /** An answer is being judged: the liquid waits as a bead and no grade is offered yet. */
-  pending?: boolean;
-  /** The grade a judgement chose: the colour drains into it instead of the primary. */
-  chosen?: number;
-  /** Whether the chosen grade is a negative one, whose colour the liquid takes. */
-  chosenNegative?: boolean;
+  /**
+   * Automatic marking owns the revealed answer: the liquid waits as a bead and the
+   * self-marking grades never split off, taking the verdict's colour once it lands.
+   */
+  autoMark?: AutoMark;
   grades: ReactNode[];
   rowClassName: string;
   revealLabel?: ReactNode;
@@ -114,7 +114,8 @@ function FlowShape({ id, to, transition }: { id?: string; to: Rect; transition: 
  */
 function FlowSplitLiquid({
   question,
-  pending,
+  waiting,
+  neutral,
   holder,
   negative,
   reveal,
@@ -123,7 +124,10 @@ function FlowSplitLiquid({
   m,
 }: {
   question: boolean;
-  pending: boolean;
+  /** The drops stay gathered on one waiting bead instead of splitting into the grades. */
+  waiting: boolean;
+  /** No verdict has arrived yet: keep the waiting liquid neutral. */
+  neutral: boolean;
   holder: number;
   negative: boolean;
   reveal: Rect;
@@ -183,6 +187,14 @@ function FlowSplitLiquid({
   );
   const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
   const shells = slots.map((_, index) => <use key={index} href={`#${id}-shell-${index}`} />);
+  const pulsing = waiting && m > 0;
+  const colour = neutral
+    ? 'hsl(from var(--color-ink-faint) h 0% l)'
+    : negative
+      ? 'var(--color-negative)'
+      : waiting
+        ? 'var(--color-positive)'
+        : 'var(--color-accent)';
 
   return (
     <svg
@@ -199,7 +211,7 @@ function FlowSplitLiquid({
           <FlowShape
             key={index}
             id={`${id}-shell-${index}`}
-            to={question ? segments[index] : pending ? bead : slot}
+            to={question ? segments[index] : waiting ? bead : slot}
             transition={spring}
           />
         ))}
@@ -249,10 +261,10 @@ function FlowSplitLiquid({
       <motion.g
         style={centred}
         initial={false}
-        animate={{ scale: pending && m > 0 ? [1, 1.14, 1] : 1 }}
+        animate={{ scale: pulsing ? [1, 1.16, 1] : 1 }}
         transition={
-          pending && m > 0
-            ? { duration: 1.1 * m, repeat: Infinity, ease: 'easeInOut' }
+          pulsing
+            ? { duration: 1.6 * m, repeat: Infinity, ease: 'easeInOut' }
             : { duration: 0.08 * m }
         }
       >
@@ -263,11 +275,16 @@ function FlowSplitLiquid({
           data-flow-colour
           mask={`url(#${id}-within)`}
           filter={`url(#${id}-colour)`}
-          style={{ fill: negative ? 'var(--color-negative)' : 'var(--color-accent)' }}
+          style={{
+            fill: colour,
+            transition: neutral
+              ? 'none'
+              : `fill ${0.3 * m}s cubic-bezier(${MOTION_EASING.standard.join(',')})`,
+          }}
         >
           {slots.map((slot, index) => {
             const keeps = index === holder;
-            const whole = question || pending || keeps;
+            const whole = question || waiting || keeps;
             return (
               // Each colour drop squashes as it springs, rebounding; those that drain thin as they pour.
               <motion.g
@@ -276,11 +293,13 @@ function FlowSplitLiquid({
                 initial={false}
                 animate={{
                   scaleY:
-                    question || pending
-                      ? [1, 0.9, 1.03, 1]
-                      : keeps
-                        ? [1, 0.82, 1.05, 1]
-                        : [1, 0.7, 0.55, 0.45],
+                    m === 0
+                      ? 1
+                      : question || waiting
+                        ? [1, 0.9, 1.03, 1]
+                        : keeps
+                          ? [1, 0.82, 1.05, 1]
+                          : [1, 0.7, 0.55, 0.45],
                 }}
                 transition={{ duration: 0.42 * m, times: [0, 0.3, 0.65, 1], ease: 'easeOut' }}
               >
@@ -289,7 +308,7 @@ function FlowSplitLiquid({
                   initial={false}
                   animate={{ scale: whole ? 1 : 0 }}
                   transition={
-                    question || pending
+                    question || waiting
                       ? { duration: 0.08 * m }
                       : keeps
                         ? { duration: 0.15 * m }
@@ -302,7 +321,7 @@ function FlowSplitLiquid({
                       // surface's outline and rebound never show past it.
                       question
                         ? swell(segments[index])
-                        : pending
+                        : waiting
                           ? swell(bead)
                           : keeps
                             ? // Enough to cover its squash, not to reach a neighbour.
@@ -328,13 +347,13 @@ function FlowSplitLiquid({
  * leaving outlined grades. On the next card the drops flow back together and the colour
  * returns. While the liquid moves, the buttons show only their labels, riding on their
  * drops, and are already usable; their own fills and outlines return once it settles.
+ * While automatic marking owns a submitted answer the pill gathers into a waiting bead
+ * instead: the grades never split off, and the verdict colours the bead.
  * `grades` are rendered with their primary grade last.
  */
 export function FlowGradeControls({
   question,
-  pending = false,
-  chosen,
-  chosenNegative = false,
+  autoMark,
   grades,
   rowClassName,
   revealLabel = 'Show answer',
@@ -349,14 +368,17 @@ export function FlowGradeControls({
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [rects, setRects] = useState<{ reveal: Rect; slots: Rect[] }>();
   const measured = rects !== undefined;
-  const judging = pending && !question;
-  const gathered = question || judging;
+  const judging = autoMark?.pending === true && !question;
+  const automatic = autoMark !== undefined && !question;
+  const gathered = question || automatic;
 
-  // The liquid takes over whenever the controls change between the pill and the grades.
-  const [wasGathered, setWasGathered] = useState(gathered);
+  // The liquid takes over whenever the controls change shape between the pill, the
+  // waiting bead and the split grades.
+  const shape = question ? 'pill' : automatic ? 'bead' : 'split';
+  const [wasShape, setWasShape] = useState(shape);
   const [flow, setFlow] = useState({ started: 0, settled: 0, restored: 0 });
-  if (wasGathered !== gathered) {
-    setWasGathered(gathered);
+  if (wasShape !== shape) {
+    setWasShape(shape);
     if (m > 0) setFlow((current) => ({ ...current, started: current.started + 1 }));
   }
   useEffect(() => {
@@ -377,7 +399,7 @@ export function FlowGradeControls({
     );
     return () => window.clearTimeout(timer);
   }, [flow.started, flow.settled, flow.restored]);
-  const flowing = measured && (flow.started !== flow.settled || (judging && m > 0));
+  const flowing = measured && (flow.started !== flow.settled || automatic);
   const still = measured && (flowing || flow.started !== flow.restored);
 
   useLayoutEffect(() => {
@@ -404,10 +426,9 @@ export function FlowGradeControls({
     return () => observer.disconnect();
   }, [grades.length]);
 
-  const holder = chosen ?? grades.length - 1;
   // Where each grade's label rides from: its segment of the pill, or the waiting bead.
   const origins = rects
-    ? judging
+    ? automatic
       ? rects.slots.map(() => ({ x: centreX(rects.reveal), y: centreY(rects.reveal) }))
       : pillSegments(rects.reveal, grades.length).map((segment) => ({
           x: centreX(segment),
@@ -433,9 +454,10 @@ export function FlowGradeControls({
       {rects && (
         <FlowSplitLiquid
           question={question}
-          pending={judging}
-          holder={question ? grades.length - 1 : holder}
-          negative={!question && chosen !== undefined && chosenNegative}
+          waiting={automatic}
+          neutral={judging}
+          holder={grades.length - 1}
+          negative={!question && autoMark !== undefined && !autoMark.pending && !autoMark.correct}
           reveal={rects.reveal}
           slots={rects.slots}
           visible={flowing}
@@ -462,11 +484,10 @@ export function FlowGradeControls({
       <div
         ref={rowRef}
         className={`relative col-start-1 row-start-1 mx-auto self-start ${rowClassName}`}
-        inert={question || pending}
-        aria-hidden={question || pending}
+        inert={gathered}
+        aria-hidden={gathered}
       >
         {grades.map((grade, index) => {
-          const holds = index === holder;
           const primary = index === grades.length - 1;
           const slot = rects?.slots[index];
           const origin = origins?.[index];
@@ -480,27 +501,8 @@ export function FlowGradeControls({
               ref={(el) => {
                 slotRefs.current[index] = el;
               }}
-              data-flow-primary={holds || undefined}
-              className={
-                'flex min-w-0 flex-1' +
-                // A judged grade other than the primary keeps the colour, so its label sits on it.
-                (measured && holds && !primary
-                  ? chosenNegative
-                    ? ' [&_button]:text-paper!'
-                    : ' [&_button]:text-accent-fg!'
-                  : '') +
-                (measured && holds && !primary && !flowing
-                  ? ` [&_button]:border-transparent! ${chosenNegative ? '[&_button]:bg-negative!' : '[&_button]:bg-accent!'}`
-                  : '') +
-                // The primary drained elsewhere: it stays as an empty shell.
-                (measured && primary && !holds
-                  ? ' [&_button]:text-ink!' +
-                    (flowing
-                      ? ''
-                      : ' [&_button]:bg-transparent! [&_button]:ring-1 [&_button]:ring-inset [&_button]:ring-line-strong')
-                  : '') +
-                chrome
-              }
+              data-flow-primary={primary || undefined}
+              className={'flex min-w-0 flex-1' + chrome}
               initial={false}
               animate={{ opacity: gathered ? 0 : 1, x: offset.x, y: offset.y }}
               transition={{

@@ -49,6 +49,9 @@ const IDLE: TypedAutoMark = { state: 'idle' };
 /** How long a mark stays visible before the card is dismissed with it, before motion scaling. */
 export const TYPED_AUTO_MARK_HOLD_MS = 700;
 
+/** How long a submitted answer waits before it is marked, before motion scaling. */
+export const TYPED_AUTO_MARK_DELAY_MS = 500;
+
 /**
  * Marks a revealed typed answer without the learner grading it, while automatic marking is on.
  * A word-for-word match is marked correct locally; anything else asks the marker, and an unsure
@@ -138,53 +141,58 @@ export function useTypedAutoMark({
     };
   }, [canHold, paused]);
 
-  // Decide the mark once per revealed answer.
+  // Decide the mark once per revealed answer, after the pause that keeps a verdict from
+  // landing in the same breath as the submission.
   useEffect(() => {
     dismissAt.current = null;
     setMark({ state: 'idle' });
     if (!active || !card || typedAnswer.trim() === '') return;
     const expected = typingExpectedAnswer(card, occlusionAnswerText);
     const options = answerComparisonOptions(answerStrictness);
-    if (markdownAnswerCorrect(expected, { answer: typedAnswer, options })) {
-      setMark({ state: 'marked', correct: true, provenance: null });
-      return;
-    }
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      setMark(IDLE);
-      controller.abort();
-    }, JEV_TYPED_TIMEOUT_MS);
     setMark({ state: 'checking' });
-    const expectedText = markdownPlainText(expected);
-    marker({
-      cardId: card.id,
-      prompt: markdownPlainText(card.type === 'cloze' ? renderClozeFront(card.front) : card.front),
-      expected: expectedText,
-      answer: typedAnswer,
-      signal: controller.signal,
-    })
-      .then((verdict) => {
-        if (controller.signal.aborted) return;
-        setMark(
-          verdict.outcome === 'unsure'
-            ? verdict.feedback
-              ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
-              : { state: 'idle' }
-            : {
-                state: 'marked',
-                correct: verdict.outcome === 'correct',
-                provenance: verdict.provenance,
-                feedback: verdict.feedback,
-                expected: expectedText,
-              },
-        );
+    const controller = new AbortController();
+    let settle: number | undefined;
+    const pause = window.setTimeout(() => {
+      if (markdownAnswerCorrect(expected, { answer: typedAnswer, options })) {
+        setMark({ state: 'marked', correct: true, provenance: null });
+        return;
+      }
+      settle = window.setTimeout(() => {
+        setMark(IDLE);
+        controller.abort();
+      }, JEV_TYPED_TIMEOUT_MS);
+      const expectedText = markdownPlainText(expected);
+      marker({
+        cardId: card.id,
+        prompt: markdownPlainText(card.type === 'cloze' ? renderClozeFront(card.front) : card.front),
+        expected: expectedText,
+        answer: typedAnswer,
+        signal: controller.signal,
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setMark({ state: 'idle' });
-      })
-      .finally(() => window.clearTimeout(timeout));
+        .then((verdict) => {
+          if (controller.signal.aborted) return;
+          setMark(
+            verdict.outcome === 'unsure'
+              ? verdict.feedback
+                ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
+                : { state: 'idle' }
+              : {
+                  state: 'marked',
+                  correct: verdict.outcome === 'correct',
+                  provenance: verdict.provenance,
+                  feedback: verdict.feedback,
+                  expected: expectedText,
+                },
+          );
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setMark({ state: 'idle' });
+        })
+        .finally(() => window.clearTimeout(settle));
+    }, TYPED_AUTO_MARK_DELAY_MS * Math.max(m, 0.3));
     return () => {
-      window.clearTimeout(timeout);
+      window.clearTimeout(pause);
+      window.clearTimeout(settle);
       controller.abort();
     };
     // Content edits invalidate an in-flight request or a verdict held behind the editor.

@@ -47,4 +47,21 @@ describe('TouchBottomSheet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show answer' }));
     expect(onReveal).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the self-marking grades away while automatic marking owns the answer', () => {
+    render(
+      <TouchBottomSheet
+        phase="answer"
+        gradingMode="silent"
+        onReveal={vi.fn()}
+        onHide={vi.fn()}
+        onAnswer={vi.fn()}
+        m={0}
+        autoMark={{ pending: false, correct: true }}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Yes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'No' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hide answer' })).toBeInTheDocument();
+  });
 });

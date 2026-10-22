@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { fadeLiftTiming } from '../../components/ui/StepSwap';
 import { CheckIcon, CloseIcon } from '../../components/ui/icons';
 import { TouchBottomSheet } from './TouchBottomSheet';
-import type { Phase } from './types';
+import type { AutoMark, Phase } from './types';
 import { StudyGradeButton, type StudyGradeFeedback } from './StudyGradeButton';
 import { FlowGradeControls } from './FlowGradeControls';
 
@@ -40,7 +40,7 @@ export function StudyControls({
   onHide: () => void;
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
-  autoMark?: { pending: true } | { pending: false; correct: boolean };
+  autoMark?: AutoMark;
   m: number;
 }) {
   const question = phase === 'question';
@@ -135,13 +135,8 @@ export function StudyControls({
       />
     </>
   );
-  // A verdict pours the fill into the grade it chose: Yes or Good, else No or Again.
-  const chosen =
-    autoMark && !autoMark.pending
-      ? autoMark.correct
-        ? grades.length - (gradingMode === 'manual' ? 2 : 1)
-        : 0
-      : undefined;
+  // While automatic marking owns the answer the grades stay away: the learner
+  // self-marks only when it is off or leaves the verdict to them.
   return (
     <>
       {!isTypingCard && !isTouchMode && (
@@ -159,9 +154,7 @@ export function StudyControls({
         <div className="study-controls mt-6 w-full shrink-0">
           <FlowGradeControls
             question={question}
-            pending={autoMark?.pending === true}
-            chosen={chosen}
-            chosenNegative={chosen === 0}
+            autoMark={autoMark}
             grades={grades}
             rowClassName={gradeRowClassName}
             revealLabel="Check answer"
@@ -200,6 +193,7 @@ export function StudyControls({
           onAnswer={onAnswer}
           m={m}
           isTypingCard={isTypingCard}
+          autoMark={autoMark}
         />
       )}
     </>
