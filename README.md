@@ -1,55 +1,75 @@
 # Toast layout evidence for #826 / PR #832
 
-All screenshots contain synthetic fixture content. Chromium on macOS, 900px height, reduced motion.
+Final candidate: `c7a3caad331369ee2ac263bd1c83e19388e0b621`. Base: `acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46`.
+All screenshots contain synthetic fixture content. Chromium, 900px height for import layout captures;
+the recitation geometry replay uses CI's 1280 by 720 viewport.
 
-- Base: `acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46` (`before/`).
-- Initial reviewed candidate: `09e7f632f3c9f5de0aeadcd722cee3805b87a629` (`after/`).
-- Corrected candidate: `7ec49d5a45f42767ea966723448c7545b20308ed` (`corrected/`).
+[Earlier compact-action correction and initial issue evidence](round2-evidence.md) remains retained.
+That page describes the earlier reviewed `7ec49d5a45f42767ea966723448c7545b20308ed` candidate, not the final candidate.
 
-The real course-file import adds 63 cards, then updates five and removes 58 to emit the exact
-reported message. Captures show the destination course page after SharedCourseImport completes.
-The final candidate retains balanced wrapping, padding, first-line icon alignment and the inset
-countdown track in all six width/theme combinations.
+## Final import-toast layout
 
-| Viewport and theme | Base update | Corrected update | Corrected short |
+The real course-file import adds 63 cards, then updates five and removes 58, producing the exact
+reported update message. Final screenshots retain balanced two-line wrapping, 12px vertical padding,
+first-line icon alignment and an inset countdown track. Single-line notifications stay compact.
+
+| Width and theme | Original update | Final update | Final short |
 | --- | --- | --- | --- |
-| 1440px light | [Base](before/1440-light-update-toast-detail.png) | [Corrected](corrected/1440-light-update-toast-detail.png) | [Short](corrected/1440-light-short-toast.png) |
-| 1440px dark | [Base](before/1440-dark-update-toast-detail.png) | [Corrected](corrected/1440-dark-update-toast-detail.png) | [Short](corrected/1440-dark-short-toast.png) |
-| 390px light | [Base](before/390-light-update-toast-detail.png) | [Corrected](corrected/390-light-update-toast-detail.png) | [Short](corrected/390-light-short-toast.png) |
-| 390px dark | [Base](before/390-dark-update-toast-detail.png) | [Corrected](corrected/390-dark-update-toast-detail.png) | [Short](corrected/390-dark-short-toast.png) |
-| 320px light | [Base](before/320-light-update-toast-detail.png) | [Corrected](corrected/320-light-update-toast-detail.png) | [Short](corrected/320-light-short-toast.png) |
-| 320px dark | [Base](before/320-dark-update-toast-detail.png) | [Corrected](corrected/320-dark-update-toast-detail.png) | [Short](corrected/320-dark-short-toast.png) |
+| 1440px light | [Base](before/1440-light-update-toast-detail.png) | [Final](round3/1440-light-update-toast-detail.png) | [Short](round3/1440-light-short-toast.png) |
+| 1440px dark | [Base](before/1440-dark-update-toast-detail.png) | [Final](round3/1440-dark-update-toast-detail.png) | [Short](round3/1440-dark-short-toast.png) |
+| 390px light | [Base](before/390-light-update-toast-detail.png) | [Final](round3/390-light-update-toast-detail.png) | [Short](round3/390-light-short-toast.png) |
+| 390px dark | [Base](before/390-dark-update-toast-detail.png) | [Final](round3/390-dark-update-toast-detail.png) | [Short](round3/390-dark-short-toast.png) |
+| 320px light | [Base](before/320-light-update-toast-detail.png) | [Final](round3/320-light-update-toast-detail.png) | [Short](round3/320-light-short-toast.png) |
+| 320px dark | [Base](before/320-dark-update-toast-detail.png) | [Final](round3/320-dark-update-toast-detail.png) | [Short](round3/320-dark-short-toast.png) |
 
-Full-viewport update captures are retained beside the detail captures as `*-update-toast.png`.
-Original before/after screenshots remain available for the initial reviewed candidate.
+Full-viewport update captures are retained as `round3/*-update-toast.png`.
 
-## CI regression and correction
+## Corrected shard-6 diagnosis
 
-[Failed CI job](https://github.com/TJ7755/Lacuna/actions/runs/39980796154/job/120508695387):
-`dashboard-course-actions.spec.ts:58` measured 86px against the unchanged 56px compact-toast
-limit at 390px and 1440px, on both original attempts and retries. This is deterministic,
-not an infrastructure flake. A single-line toast with one notification reproduced it locally.
+[Exact failed job](https://github.com/TJ7755/Lacuna/actions/runs/39982533438/job/120514112183)
+tested the merge of `7ec49d5a45f42767ea966723448c7545b20308ed` into `acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46`. Both attempts timed out at
+`recitation.spec.ts:48`, clicking Study Poems: the Sequence added toast intercepted pointer events.
+The retained trace repeatedly targets y=645 while the toast occupies y=642 through 704.
+[CI failure screenshot](round3/ci-shard6-failure.png).
 
-The separate countdown row and uniform 12px vertical padding added height around the 44px action
-button: 44 + 24 + 12 + 4 + 2 = 86px. The correction keeps action/persistent toasts compact,
-centres the icon/message group beside their controls and uses an absolutely inset 2px track.
-Message-only toasts keep their roomier layout. Timers, pause handling, actions, live-region
-attributes and existing assertions are unchanged.
+A normal local run and five repeated runs with two workers passed. Rather than calling this a flake,
+a temporary diagnostic test replayed the stable CI click geometry at y=645, normalising only the
+horizontal font metrics. It uses the real sequence-creation and study flow, with an ordinary click;
+no forced click, timer change, pause removal or weakened assertion.
 
-| Width | Base source | Reviewed candidate (86px failure) | Corrected candidate |
+| Application source | Toast height and top | Replay result | Screenshot |
 | --- | --- | --- | --- |
-| 390px | [Base](ci-diagnosis/baseline/390-dashboard.png) | [Reviewed](ci-diagnosis/reviewed-candidate/390-dashboard.png) | [Corrected](ci-diagnosis/corrected/390-dashboard.png) |
-| 1440px | [Base](ci-diagnosis/baseline/1440-dashboard.png) | [Reviewed](ci-diagnosis/reviewed-candidate/1440-dashboard.png) | [Corrected](ci-diagnosis/corrected/1440-dashboard.png) |
+| Exact base application source | 44px, y=660 | Pass | [Base](round3/base-ci-geometry.png) |
+| Reviewed `7ec49d5a` | 62px, y=642 | Click intercepted | [Reviewed](round3/reviewed-ci-geometry.png) |
+| Final `c7a3caad` | 46px, y=658 | Pass | [Final](round3/fixed-ci-geometry.png) |
 
-Commands and results:
+The base application source matched the base commit with an empty diff excluding the temporary
+replay test. The replay normalises the trigger centre to 16px inside the toast's left edge, while
+retaining CI's y=645 click point. The correction keeps the reviewed width and changes only height:
+placing the track inside existing padding removes the extra countdown row. The temporary replay
+was removed from the source tree after verification; local diagnostic evidence retains its source,
+patch, geometry attachments and traces. The permanent toast-layout spec now asserts short toasts
+remain at most 56px. It failed on the reviewed source at 62px before this correction.
 
-- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/dashboard-course-actions.spec.ts --workers=1`: reviewed candidate 2 failures (86px), 3 passes.
-- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/dashboard-course-actions.spec.ts --workers=1 --grep 'Today course actions preserve keyboard focus'`: exact base source 2 passes. The bound branch stayed in place; the entire working source matched the base, proved by an empty base diff and reverse-patch fingerprint `045c35cb5219de442db9aac7b82bf2f22bf1fb735734bacac16f09028b9dd286`.
-- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/dashboard-course-actions.spec.ts tests/e2e/toast-layout.spec.ts --workers=1`: corrected candidate 11 passes, including the unchanged 56px compact-height and 44px Undo-target assertions, keyboard focus, actual Undo and all six update-toast layouts.
-- `bun run test -- src/components/ui/Toast.test.tsx --maxWorkers=1`: corrected candidate 13 passes, including timer, hover/focus pause, announcements, persistence and callback coverage.
-- `bun run typecheck`, `bun run lint`, `bun run docs:check`, `bun run changelog:check`: passed.
+## Commands and results
 
-The corrected browser run verified frozen source subsequently committed as `7ec49d5a45f42767ea966723448c7545b20308ed`.
-Its patch SHA-256 from the reviewed candidate is `5f2e209c2aef9a4cd705f5da40a7f9591b6651c23c9623f4910a9677dfb208f8`;
-this matches the committed patch. No assertions were loosened. Native platforms and WebKit
-were not rerun locally; fresh independent review and the full CI gates are required for the new SHA.
+- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/recitation.spec.ts --workers=1`: reviewed source, one pass.
+- `CI=true PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/recitation.spec.ts --repeat-each=5 --workers=2`: reviewed source, five passes; local timing alone does not reproduce CI.
+- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/toast-recitation-ci-replay.spec.ts --workers=1`: reviewed source fails on toast interception; final source passes. This was a temporary diagnostic test.
+- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/recitation.spec.ts tests/e2e/toast-recitation-ci-replay.spec.ts --workers=1`: exact base application source, two passes.
+- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/toast-layout.spec.ts --workers=1 --grep 'toast layout at 1440px in light'`: reviewed source with the strengthened regression, fails at 62px against the unchanged compact-toast limit of 56px.
+- `PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/recitation.spec.ts tests/e2e/dashboard-course-actions.spec.ts tests/e2e/toast-layout.spec.ts tests/e2e/study-card-fit.spec.ts --workers=1 --grep 'cumulative recitation|toast layout|course actions|Sidebar ordering|feedback'`: final source, 16 passes and two failures. All six toast cases, recitation, all five dashboard cases, keyboard study-feedback and typed study-feedback pass, including the original 56px height, 44px target and 24px bottom-gap assertions. Two touch-study measurements fail as described below.
+- `bun run test -- src/components/ui/Toast.test.tsx --maxWorkers=1`: 13 passes.
+- `bun run typecheck`, `bun run lint`, `bun run docs:check`, `bun run changelog:check`: pass.
+
+The two extra local touch-study checks measured Undo slightly below 44px during the existing entrance
+scaling (43.99px and 43.97px). A controlled comparison using
+`PLAYWRIGHT_WEB_PORT=4426 bun run verify:browser -- --project=chromium tests/e2e/study-card-fit.spec.ts --workers=1 --repeat-each=2 --grep 'beneath feedback in touch'`
+produced the same three failures and one pass on both reviewed and final application source.
+Retained snapshots show the unchanged entrance scale still below one. These failures are reported,
+not hidden or claimed as passing. No animation or target-size assertion was changed in this fix.
+
+The final browser run verified frozen source subsequently committed as `c7a3caad331369ee2ac263bd1c83e19388e0b621`.
+The patch SHA-256 from the reviewed candidate is `0bde8d76e736a3ee1e91ec573bf5c88d2d77db0252e46fb1400645d9a140195e` and matches
+the committed patch. Fresh independent review and a fresh full CI pass are required for the final SHA.
+Native platforms and WebKit were not rerun locally.
