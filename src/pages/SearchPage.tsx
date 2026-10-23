@@ -1,7 +1,7 @@
 import { searchHelp } from './help/searchHelp';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import { m as motion } from 'motion/react';
 import { useSearchData } from '../state/useSearchData';
 import {
@@ -39,6 +39,10 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const query = params.get('q') ?? '';
   const deferredQuery = useDeferredValue(query);
+  const navigationType = useNavigationType();
+  // History restores scroll against these rows. A stale deferred query can insert
+  // unrelated rows, then shift the restored viewport when they disappear.
+  const searchQuery = navigationType === 'POP' ? query : deferredQuery;
   const filterKey = params.getAll('filter').sort().join(',');
   const filters = useMemo(
     () =>
@@ -52,7 +56,7 @@ export function SearchPage() {
   const [active, setActive] = useState(0);
   const shown = Number(params.get('shown'));
   const selectionChanged = useRef(false);
-  const criteria = `${deferredQuery}:${[...filters].join(',')}`;
+  const criteria = `${searchQuery}:${[...filters].join(',')}`;
 
   const results = useMemo<SearchHit[]>(() => {
     const scope = {
@@ -62,19 +66,19 @@ export function SearchPage() {
     };
     // Structured filters narrow only Cards; a text query still matches other content.
     return [
-      ...(deferredQuery.trim()
-        ? searchHelp(deferredQuery)
+      ...(searchQuery.trim()
+        ? searchHelp(searchQuery)
             .slice(0, 3)
             .map((topic): SearchHit => ({ kind: 'help', topic }))
         : []),
-      ...searchCourseContent(deferredQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
-      ...searchQuestionsInScope(deferredQuery, {
+      ...searchCourseContent(searchQuery, scope.courses, scope.lessons, searchData?.notes ?? []),
+      ...searchQuestionsInScope(searchQuery, {
         ...scope,
         questions: searchData?.questions ?? [],
       }),
-      ...searchCardsInScope(deferredQuery, scope, { filters: [...filters] }),
+      ...searchCardsInScope(searchQuery, scope, { filters: [...filters] }),
     ];
-  }, [deferredQuery, searchData, filters]);
+  }, [searchQuery, searchData, filters]);
   const limit =
     Number.isFinite(shown) && shown > PAGE_SIZE
       ? Math.min(Math.floor(shown), Math.max(PAGE_SIZE, results.length))
@@ -141,7 +145,7 @@ export function SearchPage() {
       if (next >= limit) setLimit(limit + PAGE_SIZE);
       selectionChanged.current = true;
       setActive(next);
-    } else if (event.key === 'Enter' && hasResults && query === deferredQuery) {
+    } else if (event.key === 'Enter' && hasResults && query === searchQuery) {
       event.preventDefault();
       const hit = visible[active];
       if (hit) void navigate(hitPath(hit));
@@ -253,8 +257,8 @@ export function SearchPage() {
           >
             <StudyDrawing kind="search" className="mb-4 h-14 w-14 opacity-60" />
             <p className="text-sm text-ink-faint">
-              {deferredQuery.trim() ? (
-                <>Nothing matches &ldquo;{deferredQuery}&rdquo;.</>
+              {searchQuery.trim() ? (
+                <>Nothing matches &ldquo;{searchQuery}&rdquo;.</>
               ) : (
                 'Nothing matches these filters.'
               )}
@@ -274,7 +278,7 @@ export function SearchPage() {
                   key={hitKey(hit)}
                   index={index}
                   hit={hit}
-                  query={deferredQuery}
+                  query={searchQuery}
                   id={`search-option-${index}`}
                   selected={index === active}
                   onSelect={() => setActive(index)}
