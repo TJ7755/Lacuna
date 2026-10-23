@@ -35,10 +35,19 @@ describe('bundled specification catalogue', () => {
     expect([second.durationMinutes, second.totalMarks]).toEqual([75, 70]);
     const core = paperPoints(specification, first, {});
     expect(core.map((point) => point.id)).toEqual(
-      specification.points.filter((point) => !point.ref.endsWith('B')).map((point) => point.id),
+      specification.points
+        .filter(
+          (point) =>
+            !point.ref.endsWith('B') && !['2.g.plants', '5.a.fish', '5.d'].includes(point.id),
+        )
+        .map((point) => point.id),
     );
     expect(paperPoints(specification, second, {})).toEqual(specification.points);
     expect(core.some((point) => point.id === '2.14b')).toBe(false);
+    expect(core).toHaveLength(173);
+    for (const heading of ['2.g.plants', '5.a.fish', '5.d']) {
+      expect(core.some((point) => point.id === heading)).toBe(false);
+    }
     expect(core.some((point) => point.id === '2.15')).toBe(true);
   });
 });

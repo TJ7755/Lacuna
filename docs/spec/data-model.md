@@ -91,7 +91,8 @@ as do retained foreign, unknown and out-of-selection links.
 The [catalogue index](../../src/specifications/index.ts) validates bundled entries once and exports
 `specificationCatalogue` and `findSpecification(id)`. It includes Pearson Edexcel International GCSE
 Biology 4BI1, sourced from the official Issue 3 (September 2024) specification and its command-word
-appendix. Paper 1 excludes B-suffixed statements; Paper 2 covers all content. The published AO
+appendix. Paper 1 excludes B-suffixed statements and headings with only B-suffixed descendants;
+Paper 2 covers all content. The published AO
 weightings are ranges, retained exactly in the objective descriptions; `weightingPercent` stays
 absent rather than inventing a midpoint.
 
