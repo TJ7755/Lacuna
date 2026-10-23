@@ -135,8 +135,9 @@ describe('pollShareUpdates', () => {
     });
   });
 
-  it('merges a newer teacher revision and queues it for review', async () => {
+  it('merges a newer teacher revision and queues it for review after opting out', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     recordShareImport(SHARE_ID, course.id);
     const revised = coursePayload({
       rv: 2,
@@ -231,6 +232,7 @@ describe('pollShareUpdates', () => {
 
   it('stores bundled media when a polled update carries new images', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     recordShareImport(SHARE_ID, course.id);
     const imageBytes = new TextEncoder().encode('new-diagram');
     const hash = await sha256Blob(new Blob([imageBytes], { type: 'image/png' }));
@@ -274,6 +276,7 @@ describe('pollShareUpdates', () => {
 
   it('does not let a slow older poll roll back a newer merged revision', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     recordShareImport(SHARE_ID, course.id);
     let releaseRev2!: () => void;
     const rev2Gate = new Promise<void>((resolve) => {

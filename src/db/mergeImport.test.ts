@@ -224,7 +224,7 @@ describe('mergeImport: first import of a lineage', () => {
       lineageId: 'lineage-1',
       revision: 1,
       locked: true,
-      autoAcceptUpdates: false,
+      autoAcceptUpdates: true,
       sourceLabel: 'Ms Teacher',
       source: { name: 'Biology', description: '', unlockMode: 'open', creator: 'Ms Teacher' },
     });
@@ -960,6 +960,7 @@ describe('mergeImport: merge apply', () => {
     const imported = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     course = imported.course;
     courseId = course.id;
+    await db.courses.update(courseId, { 'distributedCopy.autoAcceptUpdates': false });
   });
 
   it('re-importing an unchanged payload produces an empty diff (no queue, revision updated)', async () => {
@@ -1028,7 +1029,7 @@ describe('mergeImport: merge apply', () => {
     });
   });
 
-  it('queues a teacher update for review when autoAcceptUpdates is false (default)', async () => {
+  it('queues a teacher update for review when autoAcceptUpdates is false', async () => {
     const payload = coursePayload({
       rv: 2,
       lessons: [lessonOne({ n: 'Cells (revised)' })],
@@ -1142,7 +1143,7 @@ describe('mergeImport: merge apply', () => {
     expect(result.queuedForReview).toBe(false);
   });
 
-  it('queues a teacher removal for review as a plain removal by default', async () => {
+  it('queues a teacher removal for review as a plain removal after opting out', async () => {
     const payload = coursePayload({ rv: 2, lessons: [lessonOne({ cards: [] })] });
     const result = await mergeLineageUpdate(courseId, payload);
     expect(result.queuedForReview).toBe(true);
@@ -1608,6 +1609,7 @@ describe('mergeImport: bank cards, lesson links and lesson moves', () => {
 
   it('moves a card when the queued update is accepted later', async () => {
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne(), lessonTwo()] }));
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     await mergeLineageUpdate(
       course.id,
       coursePayload({
