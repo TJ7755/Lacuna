@@ -1,0 +1,223 @@
+[
+  {
+    "scale": 0.96,
+    "toastHeight": 51.8399658203125,
+    "bottomGap": 17.08001708984375,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 46.0799560546875,
+        "width": 57.105010986328125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.975827,
+    "toastHeight": 52.694580078125,
+    "bottomGap": 16.6527099609375,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 46.8397216796875,
+        "width": 58.046417236328125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.98817,
+    "toastHeight": 53.3612060546875,
+    "bottomGap": 16.31939697265625,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.43212890625,
+        "width": 58.7806396484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.994399,
+    "toastHeight": 53.697509765625,
+    "bottomGap": 16.1512451171875,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.731201171875,
+        "width": 59.15118408203125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.997361,
+    "toastHeight": 53.8575439453125,
+    "bottomGap": 16.07122802734375,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.873291015625,
+        "width": 59.327423095703125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.998753,
+    "toastHeight": 53.93267822265625,
+    "bottomGap": 16.03369140625,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.940185546875,
+        "width": 59.41021728515625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.99949,
+    "toastHeight": 53.972412109375,
+    "bottomGap": 16.0137939453125,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.9754638671875,
+        "width": 59.45404052734375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999827,
+    "toastHeight": 53.99072265625,
+    "bottomGap": 16.004638671875,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.99169921875,
+        "width": 59.47412109375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999956,
+    "toastHeight": 53.99755859375,
+    "bottomGap": 16.001220703125,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.9979248046875,
+        "width": 59.48175048828125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999996,
+    "toastHeight": 53.999755859375,
+    "bottomGap": 16.0001220703125,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 47.999755859375,
+        "width": 59.484130859375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Undo",
+        "height": 48,
+        "width": 59.484375,
+        "hittable": true
+      }
+    ]
+  }
+]

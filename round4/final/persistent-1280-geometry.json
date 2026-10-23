@@ -1,0 +1,344 @@
+[
+  {
+    "scale": 0.96,
+    "toastHeight": 51.8399658203125,
+    "bottomGap": 17.08001708984375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 46.0799560546875,
+        "width": 46.0799560546875,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 46.0799560546875,
+        "width": 55.5899658203125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.973627,
+    "toastHeight": 52.5758056640625,
+    "bottomGap": 16.71209716796875,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 46.734130859375,
+        "width": 46.734130859375,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 46.734130859375,
+        "width": 56.3790283203125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.987615,
+    "toastHeight": 53.3311767578125,
+    "bottomGap": 16.33441162109375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.405517578125,
+        "width": 47.405517578125,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.405517578125,
+        "width": 57.1890869140625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.993878,
+    "toastHeight": 53.66943359375,
+    "bottomGap": 16.165283203125,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.7061767578125,
+        "width": 47.7061767578125,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.7061767578125,
+        "width": 57.5517578125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.997115,
+    "toastHeight": 53.84423828125,
+    "bottomGap": 16.077880859375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.861572265625,
+        "width": 47.8614501953125,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.861572265625,
+        "width": 57.7391357421875,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.998694,
+    "toastHeight": 53.929443359375,
+    "bottomGap": 16.0352783203125,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.9373779296875,
+        "width": 47.937255859375,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.9373779296875,
+        "width": 57.83056640625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.99943,
+    "toastHeight": 53.96923828125,
+    "bottomGap": 16.015380859375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.97265625,
+        "width": 47.97265625,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.97265625,
+        "width": 57.873291015625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999801,
+    "toastHeight": 53.9892578125,
+    "bottomGap": 16.00537109375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.990478515625,
+        "width": 47.990478515625,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.990478515625,
+        "width": 57.894775390625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999951,
+    "toastHeight": 53.997314453125,
+    "bottomGap": 16.0013427734375,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.9976806640625,
+        "width": 47.9976806640625,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.9976806640625,
+        "width": 57.9033203125,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 0.999994,
+    "toastHeight": 53.9996337890625,
+    "bottomGap": 16.00018310546875,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 47.999755859375,
+        "width": 47.999755859375,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 47.999755859375,
+        "width": 57.9058837890625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  },
+  {
+    "scale": 1,
+    "toastHeight": 54,
+    "bottomGap": 16,
+    "controls": [
+      {
+        "label": "Dismiss",
+        "height": 48,
+        "width": 48,
+        "hittable": true
+      },
+      {
+        "label": "Keep",
+        "height": 48,
+        "width": 57.90625,
+        "hittable": true
+      }
+    ]
+  }
+]
