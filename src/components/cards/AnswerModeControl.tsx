@@ -21,7 +21,7 @@ export function AnswerModeChoices({
     // A disabled fieldset disables every option while a change saves.
     <fieldset disabled={disabled} className="contents">
       <PillToggleGroup
-        label="Lesson answer mode"
+        label="Suggested answer mode"
         size="sm"
         value={value}
         onChange={onChange}
@@ -37,17 +37,14 @@ export function AnswerModeChoices({
 /** A draft field: the editor saves this with the rest of the card. */
 export function CardAnswerModeField({
   courseId,
-  lessonId,
   value,
   onChange,
 }: {
   courseId: string | undefined;
-  lessonId: string | undefined;
   value: AnswerMode | undefined;
   onChange: (value: AnswerMode | undefined) => void;
 }) {
   const course = useCourse(courseId);
-  const lesson = useLesson(lessonId);
   if (!course || course.archived || !isLessonAuthoringMode(course)) return null;
   return (
     <label className="flex min-w-0 flex-col gap-2 text-sm font-semibold text-ink">
@@ -62,13 +59,9 @@ export function CardAnswerModeField({
           )
         }
       >
-        <option value="inherit">
-          {lessonId
-            ? `Lesson (${lesson?.answerMode === 'type' ? 'Type' : 'Reveal'})`
-            : 'Default (Reveal)'}
-        </option>
-        <option value="reveal">Reveal answer</option>
-        <option value="type">Type answer</option>
+        <option value="inherit">Lesson default</option>
+        <option value="reveal">Reveal only</option>
+        <option value="type">Suggest typing</option>
       </Select>
     </label>
   );
@@ -98,7 +91,7 @@ export function LessonAnswerModeControl({
   }
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-sm text-ink">Answer by</p>
+      <p className="text-sm text-ink">Suggested answer mode</p>
       <AnswerModeChoices
         value={lesson.answerMode ?? 'reveal'}
         disabled={saving}
@@ -149,9 +142,9 @@ export function SelectedCardsAnswerMode({
       <option value="" disabled>
         Answer by…
       </option>
-      <option value="inherit">Use lesson setting</option>
-      <option value="reveal">Reveal answer</option>
-      <option value="type">Type answer</option>
+      <option value="inherit">Lesson default</option>
+      <option value="reveal">Reveal only</option>
+      <option value="type">Suggest typing</option>
     </Select>
   );
 }

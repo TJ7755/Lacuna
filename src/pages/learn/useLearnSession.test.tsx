@@ -15,6 +15,7 @@ import { ASSET_GC_GRACE_MS, scheduleAssetGc, storeImageBlob } from '../../db/ass
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '../../db/search';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
+import { writeAnswerInput } from '../../state/answerInput';
 import { simpleSessionStorageKey } from './simpleSessionPersistence';
 import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
 
@@ -74,6 +75,7 @@ async function seedCurricularPractice() {
 }
 
 beforeEach(async () => {
+  localStorage.removeItem('lacuna.answerInput');
   await Promise.all([
     db.cards.clear(),
     db.schedulingUnits.clear(),
@@ -144,7 +146,8 @@ describe('useLearnSession answer boundary', () => {
     session.unmount();
   });
 
-  it('lets an explicit reveal override a typing lesson', async () => {
+  it('lets an explicit reveal override a typing lesson and learner preference', async () => {
+    writeAnswerInput('type');
     const course = await createCourse('Typing', { learnFirst: false });
     const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
@@ -153,6 +156,26 @@ describe('useLearnSession answer boundary', () => {
     const session = renderHook(() => useLearnSession(params));
     await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
     expect(session.result.current.isTypingCard).toBe(false);
+    session.unmount();
+  });
+
+  it.each([true, false])('records the actual ordinary input and removes it on undo (typing: %s)', async (typing) => {
+    writeAnswerInput(typing ? 'type' : 'reveal');
+    const course = await createCourse('Typing', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: typing ? 'reveal' : 'type' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    expect(session.result.current.isTypingCard).toBe(typing);
+    act(() => session.result.current.reveal());
+    act(() => writeAnswerInput(typing ? 'reveal' : 'type'));
+    await act(async () => { await session.result.current.answer(true, { retainUndo: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({ input: typing ? 'typed' : 'reveal' });
+    await act(async () => { await session.result.current.undoLast({ reveal: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    await act(async () => { await session.result.current.answer(true, { retainUndo: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({ input: typing ? 'typed' : 'reveal' });
     session.unmount();
   });
 
@@ -626,6 +649,7 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(1);
+    expect(await db.reviewHistory.where('cardId').equals(currentCardId).first()).toMatchObject({ input: 'reveal' });
 
     await act(async () => {
       await result.current.undoLast();

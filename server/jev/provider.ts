@@ -7,6 +7,7 @@ import {
   JEV_TYPED_PART_COVERED_THRESHOLD,
   JEV_TYPED_PART_NOT_COVERED_THRESHOLD,
   JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+  JEV_TYPED_MAX_PARTS,
   JEV_TYPED_CORRECT_THRESHOLD,
   JEV_TYPED_INCORRECT_THRESHOLD,
   type JevDecisionRequest,
@@ -168,7 +169,7 @@ export async function callJevDecision(
   }
   const { purpose: _purpose, ...state } = request;
   const split = splitJevExpectedAnswer(request.expected);
-  const parts = split.length >= 2 && split.length <= 8 ? split : [];
+  const parts = split.length >= 2 && split.length <= JEV_TYPED_MAX_PARTS ? split : [];
   const questions: Record<string, WireQuestion> = {
     decision: {
       type: 'noul',

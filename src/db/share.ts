@@ -478,7 +478,7 @@ interface ShareCard {
   id?: string;
   /**
    * 0 = front/back, 1 = cloze, 2 = reversible front/back pair (expands to two
-   * cards). 3 = typing — retired as a card type (see src/state/typingSetting.ts);
+   * cards). 3 = typing — retired as a card type (see src/state/answerInput.ts);
    * still decoded on import for backward compatibility with older share codes,
    * where it unpacks to a plain front_back card.
    */

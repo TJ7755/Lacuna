@@ -119,6 +119,7 @@ describe('card exporters: course/lesson naming', () => {
     const deck = await createCourse('Biology');
     const card = await createCard(deck.id, 'front_back', 'Q', 'A');
     const review = {
+      input: 'typed' as const,
       eventId: 'event-1',
       sessionId: 'session-1',
       sessionKind: 'revision-plan' as const,
@@ -150,6 +151,7 @@ describe('card exporters: course/lesson naming', () => {
     const [json] = JSON.parse(await exportReviewHistoryJson());
     expect(json).toEqual(
       expect.objectContaining({
+        input: 'typed',
         eventId: 'event-1',
         sessionId: 'session-1',
         sessionKind: 'revision-plan',

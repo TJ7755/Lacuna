@@ -462,6 +462,15 @@ export function markdownPlainText(source: string): string {
   return plainTextFromHtml(renderMarkdownToHtml(source, false, false));
 }
 
+/** The answer's rendered shape, including reference images and GFM tables. */
+export function markdownAnswerShape(source: string): { text: string; hasVisual: boolean } {
+  const html = renderMarkdownToHtml(source, false, false);
+  return {
+    text: plainTextFromHtml(html, true),
+    hasVisual: /<(?:img|table)\b/i.test(html),
+  };
+}
+
 function renderMarkdownToHtml(
   prepared: string,
   allowEmbeds: boolean,

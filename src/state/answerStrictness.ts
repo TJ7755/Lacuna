@@ -2,7 +2,7 @@ import { createLocalSetting, oneOf } from './localSetting';
 import type { AnswerComparisonOptions } from '../utils/answerComparison';
 
 /**
- * How strictly a typed answer (see src/state/typingSetting.ts) is compared against
+ * How strictly a typed answer (see src/state/answerInput.ts) is compared against
  * the expected answer, per src/utils/answerComparison.ts's AnswerComparisonOptions.
  *  - `lenient`: ignore case and punctuation (default — the pre-existing behaviour).
  *  - `standard`: ignore case, but punctuation must match.

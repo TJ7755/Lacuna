@@ -470,7 +470,7 @@ class LacunaDatabase extends Dexie {
       });
 
     // Version 13: retire the 'typing' card type. Typed answering is now a global
-    // Learn-mode presentation mode (src/state/typingSetting.ts) that applies to any
+    // Learn-mode presentation mode (src/state/answerInput.ts) that applies to any
     // eligible card, rather than a dedicated card type. Existing 'typing' cards fold
     // into 'front_back' — no other field changes, so no data is lost.
     this.version(13)

@@ -1,0 +1,1 @@
+- Choose whether to follow course answer suggestions, type suitable answers or reveal them in Study settings. Cards marked Reveal only retain that restriction. Reviews record the input method without storing typed answers, and Exact grading leaves semantic matches for manual grading.

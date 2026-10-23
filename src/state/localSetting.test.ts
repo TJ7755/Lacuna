@@ -17,7 +17,7 @@ import { writeAutoOptimiseDefault } from './optimiseSetting';
 import { readPracticeDefaults, writePracticeDefaults } from './practiceDefaults';
 import { writeSidebarSettings } from './sidebarSettings';
 import { useStudyMode } from './studyMode';
-import { writeTypingSetting } from './typingSetting';
+import { writeAnswerInput } from './answerInput';
 
 const colour = createLocalSetting({
   key: 'lacuna.testColour',
@@ -74,7 +74,7 @@ describe('createLocalSetting', () => {
 
 describe('device-local setting keys', () => {
   // Renaming a key silently resets every live user's preference.
-  it('keeps every existing storage key', () => {
+  it('uses the expected device-local storage keys', () => {
     writeAnswerStrictness('exact');
     writeAudioSettings({ autoplay: false, playbackSpeed: 1 });
     writeCourseCardDetail({ activity: false });
@@ -91,10 +91,11 @@ describe('device-local setting keys', () => {
     writeSidebarSettings({});
     const studyMode = renderHook(() => useStudyMode());
     act(() => studyMode.result.current[1]('simple'));
-    writeTypingSetting('type');
+    writeAnswerInput('type');
 
     expect(Object.keys(localStorage).sort()).toEqual([
       'lacuna.afterFinalExam',
+      'lacuna.answerInput',
       'lacuna.answerStrictness',
       'lacuna.audioSettings',
       'lacuna.autoOptimise',
@@ -109,7 +110,6 @@ describe('device-local setting keys', () => {
       'lacuna.sidebarSettings',
       'lacuna.startInFocusMode',
       'lacuna.studyMode',
-      'lacuna.typingSetting',
     ]);
   });
 });

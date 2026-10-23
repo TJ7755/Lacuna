@@ -36,7 +36,6 @@ vi.mock('../db/mutationStamp', () => ({ readSyncState: () => new Promise(() => {
 vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
 vi.mock('../components/import/UnifiedExportPanel', () => ({ UnifiedExportPanel: () => null }));
 vi.mock('../state/gradingMode', () => ({ useGradingMode: () => ['silent', vi.fn()] }));
-vi.mock('../state/typingSetting', () => ({ useTypingSetting: () => ['reveal', vi.fn()] }));
 vi.mock('../state/optimiseSetting', () => ({ useAutoOptimiseDefault: () => [true, vi.fn()] }));
 vi.mock('../state/practiceDefaults', () => ({
   usePracticeDefaults: () => [
@@ -125,6 +124,7 @@ describe('Settings', () => {
     setMotionSpeed.mockClear();
     scrollIntoView.mockClear();
     window.location.hash = '';
+    localStorage.clear();
   });
 
   it('updates the default Focus Mode preference', () => {
@@ -136,10 +136,20 @@ describe('Settings', () => {
     expect(setStartInFocusMode).toHaveBeenCalledWith(true);
   });
 
-  it('keeps authored typing controls out of global settings', () => {
+  it('persists the global answer input preference', () => {
+    const view = render(<Settings />);
+    fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
+    expect(screen.getByRole('radio', { name: 'As the course suggests' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Typing where possible' }));
+    expect(localStorage.getItem('lacuna.answerInput')).toBe('type');
+    view.unmount();
     render(<Settings />);
-
-    expect(screen.queryByRole('switch', { name: 'Type your answer' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
+    expect(screen.getByRole('radio', { name: 'Typing where possible' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('radio', { name: 'Revealing' }));
+    expect(localStorage.getItem('lacuna.answerInput')).toBe('reveal');
+    fireEvent.click(screen.getByRole('radio', { name: 'As the course suggests' }));
+    expect(localStorage.getItem('lacuna.answerInput')).toBe('course');
   });
 
   it('selects the course card progress metric', () => {

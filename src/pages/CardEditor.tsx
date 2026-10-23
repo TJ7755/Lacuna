@@ -1059,7 +1059,6 @@ export function CardEditor() {
                 {!isStructured && (
                   <CardAnswerModeField
                     courseId={courseId}
-                    lessonId={lessonId ?? card?.primaryLessonId ?? undefined}
                     value={answerMode}
                     onChange={(value) => modifyDraftField(setAnswerMode, value)}
                   />

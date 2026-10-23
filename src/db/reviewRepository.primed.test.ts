@@ -5,13 +5,13 @@ import { createCourse, createCourseCard, recordReview } from './repository';
 import { hydrateCardsWithHistory } from './reviewHistoryRead';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import { PRIMING_WINDOW_MS } from '../fsrs/primedReview';
-import type { Card, Course } from './types';
+import type { Card, Course, ReviewLog } from './types';
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
 });
 
-async function review(course: Course, card: Card, eventId: string, sessionId: string, now: number) {
+async function review(course: Course, card: Card, eventId: string, sessionId: string, now: number, input?: ReviewLog['input']) {
   const [current] = await hydrateCardsWithHistory([(await db.cards.get(card.id))!]);
   const result = await recordReview({
     card: current,
@@ -25,6 +25,7 @@ async function review(course: Course, card: Card, eventId: string, sessionId: st
     distracted: false,
     correct: true,
     now,
+    input,
   });
   return result.card.history.at(-1);
 }
@@ -64,4 +65,20 @@ it('keeps the primed flag through a backup round trip and rejects a malformed on
   await importBackup(backup, 'replace');
   const restored = await db.reviewHistory.where('cardId').equals(card.id).sortBy('timestamp');
   expect(restored.map((entry) => entry.primed ?? false)).toEqual([false, true]);
+});
+
+it('preserves optional input through history hydration and backup restore, and validates it', async () => {
+  const course = await createCourse('Inputs');
+  const card = await createCourseCard(course.id, 'front_back', 'Question', 'Answer');
+  const now = Date.now();
+  await review(course, card, 'legacy', 'session', now);
+  await review(course, card, 'typed', 'session', now + 1000, 'typed');
+  await review(course, card, 'reveal', 'session', now + 2000, 'reveal');
+  const backup = await exportDatabase();
+  expect(backup.reviewHistory?.slice().sort((a, b) => a.timestamp - b.timestamp).map((entry) => entry.input)).toEqual([undefined, 'typed', 'reveal']);
+  expect(validateBackup({ ...backup, reviewHistory: backup.reviewHistory?.map((entry) => ({ ...entry, input: 'type' })) })).toBe(false);
+  expect(validateBackup({ ...backup, cards: backup.cards.map((row) => ({ ...row, history: [{ ...backup.reviewHistory![0], input: 'type' }] })) })).toBe(false);
+  await importBackup(JSON.parse(JSON.stringify(backup)), 'replace');
+  const [restored] = await hydrateCardsWithHistory([(await db.cards.get(card.id))!]);
+  expect(restored.history.map((entry) => entry.input)).toEqual([undefined, 'typed', 'reveal']);
 });

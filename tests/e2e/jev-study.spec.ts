@@ -16,7 +16,7 @@ test.beforeAll(async () => {
   fixture = bundle.outputFiles[0].text;
 });
 
-async function start(page: Page, enabled = true, simple = false) {
+async function start(page: Page, enabled = true, simple = false, globalTyping = false) {
   await page.route('**/api/ai/session', (route) =>
     route.fulfill({
       json: { token: 'browser-test-session', expiresAt: Date.now() + 600_000 },
@@ -24,16 +24,16 @@ async function start(page: Page, enabled = true, simple = false) {
   );
   await enterFreshLacuna(page);
   await page.addScriptTag({ content: fixture });
-  const seeded = await page.evaluate(async (enabled) => {
+  const seeded = await page.evaluate(async ({ enabled, globalTyping }) => {
     const fixture = (
       window as unknown as {
         JevStudyFixture: {
-          seed(enabled: boolean): Promise<{ lessonId: string; cardIds: string[] }>;
+          seed(enabled: boolean, globalTyping: boolean): Promise<{ lessonId: string; cardIds: string[] }>;
         };
       }
     ).JevStudyFixture;
-    return fixture.seed(enabled);
-  }, enabled);
+    return fixture.seed(enabled, globalTyping);
+  }, { enabled, globalTyping });
   await page.goto(`/#/lesson/${seeded.lessonId}/learn?${simple ? 'mode=simple' : 'filter=new'}`);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
 }
@@ -401,3 +401,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     await page.screenshot({ path: test.info().outputPath(`flow-next-${reducedMotion}.png`) });
   });
 }
+
+test('types a reveal lesson through the learner preference and applies a Jev mark', async ({ page }) => {
+  await page.route('**/api/ai/jev', (route) => route.fulfill({
+    json: { value: 1, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0' },
+  }));
+  await start(page, true, false, true);
+  const first = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
+  await submit(page);
+  await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+  await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute('data-study-card-id', first!);
+  await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
+});

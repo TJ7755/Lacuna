@@ -368,6 +368,7 @@ describe('LearnMode course/lesson scope', () => {
     expect(cards).toHaveLength(2);
     const reviews = await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray();
     expect(reviews).toHaveLength(2);
+    expect(reviews.every((review) => review.input === undefined)).toBe(true);
     const gradeFor = (itemId: string) => {
       const card = cards.find((candidate) => candidate.sequenceItemId === itemId)!;
       return reviews.find((review) => review.cardId === card.id)?.grade;
@@ -1311,6 +1312,7 @@ describe('LearnMode course/lesson scope', () => {
           ],
         });
       });
+      expect((await storedReviewsForCard(card.id))[0]).not.toHaveProperty('input');
     } finally {
       performanceNow.mockRestore();
     }

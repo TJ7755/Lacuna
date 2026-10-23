@@ -93,7 +93,6 @@ import type {
 } from './types';
 import {
   hasMachineMarkedPayload,
-  isTypingEligible,
   isUnrenderableItemPayload,
 } from './sessionCardCapabilities';
 import {
@@ -101,6 +100,8 @@ import {
   loadSimpleSession,
   saveSimpleSession,
 } from './simpleSessionPersistence';
+import { useAnswerInput } from '../../state/answerInput';
+import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { resolveLearnSessionScope } from './sessionScope';
@@ -119,6 +120,7 @@ import {
 /** One submitted answer, as the grading paths need it. */
 interface AnswerResponse {
   retainUndo: boolean;
+  input?: 'typed' | 'reveal';
   markedBy?: JevMarkProvenance;
   correct: boolean;
   manualGrade: Grade | null;
@@ -130,6 +132,7 @@ interface AnswerResponse {
 
 /** What undoing the most recent answer needs to restore (DB + in-session state). */
 interface AnswerSnapshot {
+  input?: AnswerResponse['input'];
   responseTimeSec: number;
   retainOnCompletion: boolean;
   undo: ReviewUndo;
@@ -331,14 +334,14 @@ export function useLearnSession({
   // to ordinary front_back cards — its plain-text `back` fallback is not a typing target.
   const currentOcclusionData =
     current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
-  const isTypingCard =
-    current !== null &&
-    (current.answerMode ??
-      answerModeLessonsRef.current.get(lessonId ?? current.primaryLessonId ?? '')?.answerMode ??
-      'reveal') === 'type' &&
-    (current.occlusionRegionId !== undefined
-      ? currentOcclusionData?.answerText !== undefined
-      : isTypingEligible(current));
+  const presentedAnswerInput = useRef<AnswerResponse['input']>(undefined);
+  const [answerInputPreference] = useAnswerInput();
+  const isTypingCard = current !== null && resolveAnswerMode(
+    current,
+    answerModeLessonsRef.current.get(lessonId ?? current.primaryLessonId ?? '')?.answerMode,
+    answerInputPreference,
+    currentOcclusionData?.answerText,
+  ) === 'type';
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
@@ -1499,11 +1502,17 @@ export function useLearnSession({
   const reveal = useCallback(() => {
     setPhase((p) => {
       if (p !== 'question') return p;
+      const card = currentRef.current;
+      if (card) {
+        presentedAnswerInput.current = reviewAnswerInput(
+          card, linesModeMapRef.current.has(card.id), isTypingCard,
+        );
+      }
       responseTime.current = (performance.now() - timerStart.current) / 1000;
       return 'answer';
     });
     distraction.setAnswerVisible(true);
-  }, [distraction]);
+  }, [distraction, isTypingCard]);
 
   /** Reveal a scheduled recitation, timing it per recited line for calibration. */
   const revealRecitation = useCallback(
@@ -1542,7 +1551,7 @@ export function useLearnSession({
   const answerSimple = useCallback(
     async (
       cardNow: Card,
-      { correct, machineMarked, t, distracted, markedBy, retainUndo }: AnswerResponse,
+      { correct, machineMarked, t, distracted, markedBy, retainUndo, input }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const deck = answerUnit(cardNow);
       if (!deck) return { undoAvailable: false };
@@ -1608,6 +1617,7 @@ export function useLearnSession({
               lineVerdicts: machineMarked?.lineVerdicts,
               checkerDisputes: machineMarked?.checkerDisputes,
               markedBy,
+              input,
             },
             deck.id,
             perf,
@@ -1623,6 +1633,7 @@ export function useLearnSession({
         result.recorded && retainUndo
           ? {
               responseTimeSec: t,
+              input,
               retainOnCompletion: true,
               undo: {
                 eventId,
@@ -1823,7 +1834,7 @@ export function useLearnSession({
   const answerScheduled = useCallback(
     async (
       cardNow: Card,
-      { correct, manualGrade, machineMarked, t, distracted, markedBy, retainUndo }: AnswerResponse,
+      { correct, manualGrade, machineMarked, t, distracted, markedBy, retainUndo, input }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const ctx = ctxRef.current;
       const deck = answerUnit(cardNow);
@@ -1880,6 +1891,7 @@ export function useLearnSession({
           lineVerdicts: machineMarked?.lineVerdicts,
           checkerDisputes: machineMarked?.checkerDisputes,
           markedBy,
+          input,
         },
         deck.id,
         perf,
@@ -1963,6 +1975,7 @@ export function useLearnSession({
       lastAnswer.current = recorded
         ? {
             responseTimeSec: t,
+            input,
             retainOnCompletion: retainUndo,
             undo: {
               eventId,
@@ -2073,6 +2086,7 @@ export function useLearnSession({
       try {
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? false,
+          input: reviewAnswerInput(cardNow, linesModeMapRef.current.has(cardNow.id), presentedAnswerInput.current === 'typed'),
           markedBy: options?.markedBy,
           correct: answerCorrect(input),
           manualGrade: typeof input === 'number' ? input : null,
@@ -2170,6 +2184,7 @@ export function useLearnSession({
         timerStart.current = performance.now();
         distraction.beginCard();
         responseTime.current = snap.responseTimeSec;
+        presentedAnswerInput.current = snap.input;
         distraction.setAnswerVisible(options?.reveal === true);
         return snap.undo.cardBefore;
       } catch (err) {

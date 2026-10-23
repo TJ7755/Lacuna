@@ -15,6 +15,7 @@ import {
   type JevDecisionRequest,
   type JevDecisionResult,
   JEV_ALLOCATION_CONFIDENCE_THRESHOLD,
+  JEV_TYPED_MAX_PARTS,
   JEV_TYPED_CORRECT_THRESHOLD,
   JEV_TYPED_INCORRECT_THRESHOLD,
 } from './protocol';
@@ -236,7 +237,7 @@ export function createJevEngine(
   function checked(request: JevDecisionRequest, result: JevDecisionResult): JevDecisionResult {
     if (request.purpose === 'typed-equivalence' && result.feedback) {
       const split = splitJevExpectedAnswer(request.expected);
-      const parts = split.length >= 2 && split.length <= 8 ? split : [];
+      const parts = split.length >= 2 && split.length <= JEV_TYPED_MAX_PARTS ? split : [];
       if (
         parts.length !== result.feedback.parts.length ||
         parts.some(

@@ -10,6 +10,7 @@ import { HOSTED_ACCESS_STORAGE_KEY } from '../ai/session/hostedTransport';
 it('exports mark evidence but excludes device consent and credentials from backup and sync', async () => {
   await Promise.all(db.tables.map((table) => table.clear()));
   localStorage.setItem(HOSTED_ACCESS_STORAGE_KEY, 'private-access-code-sentinel');
+  localStorage.setItem('lacuna.answerInput', 'reveal');
   const engine = createJevEngine();
   engine.enable(1);
   expect(localStorage.getItem(JEV_SETTINGS_STORAGE_KEY)).toContain('acceptedConsentVersion');
@@ -32,9 +33,11 @@ it('exports mark evidence but excludes device consent and credentials from backu
     distracted: false,
     correct: true,
     markedBy,
+    input: 'typed',
   });
   const backup = await exportDatabase();
   expect(backup.reviewHistory?.[0].markedBy).toEqual(markedBy);
+  expect(backup.reviewHistory?.[0].input).toBe('typed');
   const encoded = await encodeSnapshot(backup);
   const decoded = await decodeSnapshot(encoded.payload);
   const merged = mergeSnapshots(backup, decoded);
@@ -42,9 +45,11 @@ it('exports mark evidence but excludes device consent and credentials from backu
   expect((await exportDatabase()).reviewHistory?.[0].markedBy).toEqual(markedBy);
   await importBackup(backup, 'merge');
   expect((await exportDatabase()).reviewHistory?.[0].markedBy).toEqual(markedBy);
+  expect((await exportDatabase()).reviewHistory?.[0].input).toBe('typed');
   const serialised = JSON.stringify(merged);
   for (const excluded of [
     'private-access-code-sentinel',
+    'lacuna.answerInput',
     JEV_SETTINGS_STORAGE_KEY,
     'acceptedConsentVersion',
     HOSTED_ACCESS_STORAGE_KEY,

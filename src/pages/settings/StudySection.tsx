@@ -3,6 +3,7 @@ import { FlameIcon } from '../../components/ui/icons';
 import { NumberField } from './NumberField';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { MIN_OPTIMISE_REVIEWS } from '../../fsrs/optimiseConfig';
+import { useAnswerInput } from '../../state/answerInput';
 import { useAnswerStrictness, type AnswerStrictness } from '../../state/answerStrictness';
 import { useStartInFocusMode } from '../../state/focusModePreference';
 import { useGradingMode } from '../../state/gradingMode';
@@ -29,6 +30,7 @@ const FINAL_EXAM_POLICIES: Array<{
 ];
 
 export function StudySection() {
+  const [answerInput, setAnswerInput] = useAnswerInput();
   const [gradingMode, setGradingMode] = useGradingMode();
   const [answerStrictness, setAnswerStrictness] = useAnswerStrictness();
   const [startInFocusMode, setStartInFocusMode] = useStartInFocusMode();
@@ -75,6 +77,25 @@ export function StudySection() {
               playbackSpeed: Number(speed) as AudioPlaybackSpeed,
             })
           }
+        />
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0 flex-1 basis-64">
+          <div className="font-semibold text-ink">Answer cards by</div>
+          <p className="mt-1 text-sm text-ink-soft">
+            When Jev is on, typed answers are marked automatically.
+          </p>
+        </div>
+        <SegmentedPills
+          label="Answer cards by"
+          value={answerInput}
+          options={[
+            { value: 'course', label: 'As the course suggests' },
+            { value: 'type', label: 'Typing where possible' },
+            { value: 'reveal', label: 'Revealing' },
+          ]}
+          onChange={setAnswerInput}
         />
       </div>
 
