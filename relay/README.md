@@ -103,6 +103,9 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
    Minting works without it via the public path.
 7. Deploy.
 
+Deploy source-linked share support in the relay before deploying the link-based Gaps UI.
+An older relay cannot create a usable linked class; the Gaps client rejects that response.
+
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
 are set on every response, including errors.
