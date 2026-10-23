@@ -464,7 +464,7 @@ export function markdownPlainText(source: string): string {
 
 /** Inspect embed-aware output so media URLs are not offered as typing targets. */
 export function markdownAnswerShape(source: string): { text: string; hasVisual: boolean } {
-  const html = renderMarkdownToHtml(source, true, false);
+  const html = renderMarkdownToHtml(prepareNumericAnswer(source), true, false);
   const body = new DOMParser().parseFromString(html, 'text/html').body;
   return {
     text: plainTextFromHtml(body, true),
@@ -474,6 +474,13 @@ export function markdownAnswerShape(source: string): { text: string; hasVisual: 
       ) !== null ||
       Array.from(body.querySelectorAll('svg')).some((svg) => !svg.closest('.katex')),
   };
+}
+
+function prepareNumericAnswer(source: string): string {
+  // Four leading spaces start a code block; up to three still allow a list marker.
+  return /^(?:[ \t]*\r?\n)* {0,3}\d+\.[ \t]*(?:\r?\n[ \t]*)*$/.test(source)
+    ? source.replace('.', '\\.')
+    : source;
 }
 
 function renderMarkdownToHtml(
@@ -585,13 +592,7 @@ export const MarkdownView = memo(function MarkdownView({
         : clozeMode === 'back'
           ? renderClozeBack(resolved)
           : resolved;
-    // Four leading spaces start a code block; up to three still allow a list marker.
-    if (
-      literalNumericAnswer &&
-      /^(?:[ \t]*\r?\n)* {0,3}\d+\.[ \t]*(?:\r?\n[ \t]*)*$/.test(prepared)
-    ) {
-      prepared = prepared.replace('.', '\\.');
-    }
+    if (literalNumericAnswer) prepared = prepareNumericAnswer(prepared);
     const rendered = renderMarkdownToHtml(prepared, allowEmbeds, enlargeImages);
     return typedAnswerFeedback
       ? typedAnswerFeedbackHtml(rendered, typedAnswerFeedback, clozeMode === 'back')

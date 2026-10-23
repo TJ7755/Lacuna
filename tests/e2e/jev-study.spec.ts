@@ -215,12 +215,14 @@ test('drains with the card flight and reforms the next pill without delaying typ
   await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
 });
 
-test('keeps the verdict off the self-marking grades, advances and can undo it', async ({ page }) => {
+test('keeps submitted typing through a cross-tab preference change and Undo', async ({ page }) => {
   let release!: () => void;
+  let requested = false;
   const response = new Promise<void>((resolve) => {
     release = resolve;
   });
   await page.route('**/api/ai/jev', async (route) => {
+    requested = true;
     await response;
     await route.fulfill({
       json: {
@@ -236,6 +238,12 @@ test('keeps the verdict off the self-marking grades, advances and can undo it', 
   const card = page.locator('[data-study-card-id]').first();
   const id = await card.getAttribute('data-study-card-id');
   await submit(page);
+  await expect.poll(() => requested).toBe(true);
+  const settings = await page.context().newPage();
+  await settings.goto('/');
+  await settings.evaluate(() => localStorage.setItem('lacuna.answerInput', 'reveal'));
+  await settings.close();
+  await expect(page.getByText('Checking your answer.', { exact: true })).toHaveCount(1);
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
   await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('jev-checking.png') });
@@ -255,6 +263,8 @@ test('keeps the verdict off the self-marking grades, advances and can undo it', 
   );
   await expect(page.getByRole('button', { name: 'No', exact: true })).toBeVisible();
   await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toHaveCount(0);
+  await expect(page.locator('[data-study-face="back"] [aria-label="Submitted response"]'))
+    .toHaveText('Red and blue');
   await page.screenshot({ path: test.info().outputPath('jev-undo-manual.png') });
 });
 
