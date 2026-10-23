@@ -1,3 +1,4 @@
+import { lessonCardMembershipForLessons } from './lessonMembership';
 import type {
   Card,
   Course,
@@ -14,7 +15,7 @@ import { MASTERY_R } from '../fsrs/params';
 import { daysUntil } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
 import { isLessonUnlocked, lessonEffectiveReleaseDates } from './path';
-import { lessonCardMembershipForLessons, practiceCardScope } from './studyPools';
+import { practiceCardScope } from './studyPools';
 import { earlierCourseLessonIds } from './courseEntry';
 
 export interface AssessmentPracticeOption {

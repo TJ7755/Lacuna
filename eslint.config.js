@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import { relayImportsRule } from './scripts/relay-imports.mjs';
 import { domainUiRule } from './scripts/import-architecture.mjs';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -123,6 +124,48 @@ export default [
     // Command-line tooling reports through the console by design.
     files: ['scripts/**', 'tooling/**'],
     rules: { 'no-console': 'off' },
+  },
+  {
+    files: [
+      '{src,server,electron,tests,api,scripts,tooling}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}',
+      '*.config.ts',
+    ],
+    plugins: { 'relay-contract': { rules: { 'no-deep-imports': relayImportsRule } } },
+    rules: {
+      'relay-contract/no-deep-imports': [
+        'error',
+        {
+          // Exact integration edges for in-process relay fixtures, never a general test waiver.
+          integrationTests: [
+            { from: 'src/insights/classKey.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'src/insights/classKey.test.ts', to: 'relay/src/store.ts' },
+            { from: 'src/insights/classKey.test.ts', to: 'relay/src/channelMaintenance.ts' },
+            { from: 'src/insights/mailbox.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'src/insights/mailbox.test.ts', to: 'relay/src/store.ts' },
+            { from: 'src/insights/outbox.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'src/insights/outbox.test.ts', to: 'relay/src/store.ts' },
+            { from: 'src/shareLinks/verifyOwner.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'src/shareLinks/verifyOwner.test.ts', to: 'relay/src/store.ts' },
+            { from: 'src/teacher/connectionStore.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'src/teacher/connectionStore.test.ts', to: 'relay/src/store.ts' },
+            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'relay/src/relay.ts' },
+            { from: 'tests/e2e/fixtures/aiRelay.ts', to: 'relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-artefact-labels.spec.ts', to: 'relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-course-connection.spec.ts', to: 'relay/src/store.ts' },
+            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'relay/src/relay.ts' },
+            { from: 'tests/e2e/gaps-daily-flow.spec.ts', to: 'relay/src/store.ts' },
+            { from: 'tests/e2e/share-links.spec.ts', to: 'relay/src/relay.ts' },
+            { from: 'tests/e2e/share-links.spec.ts', to: 'relay/src/store.ts' },
+            { from: 'scripts/library-publish-cli.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'scripts/library-publish-cli.test.ts', to: 'relay/src/store.ts' },
+            { from: 'scripts/library-publish.test.ts', to: 'relay/src/relay.ts' },
+            { from: 'scripts/library-publish.test.ts', to: 'relay/src/store.ts' },
+          ],
+        },
+      ],
+    },
   },
   prettier,
 ];

@@ -8,7 +8,7 @@ import {
   deleteQuestionSetDraft,
   loadQuestionSetDraft,
   QuestionSetDraftConflictError,
-} from './questionSetDrafts';
+} from './questionSetDraftMaintenance';
 import { validateQuestionSet, referencedQuestionSetConceptIds, type QuestionAnswer, type QuestionSet } from './questionSets';
 
 export class QuestionSetRevisionConflictError extends Error {

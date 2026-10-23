@@ -1,4 +1,4 @@
-import { completedIsoDayLabel, isoDayStartMs } from '../../relay/src/insightsDay';
+import { completedIsoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
 
 export interface InsightsOptInState {
   optedIn: boolean;

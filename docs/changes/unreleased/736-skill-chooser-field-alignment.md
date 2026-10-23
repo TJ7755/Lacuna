@@ -1,0 +1,1 @@
+- Style the all-skills dropdown consistently and align its practice button with the field, including narrow layouts and long skill names. (#736)

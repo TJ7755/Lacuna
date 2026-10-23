@@ -10,8 +10,12 @@
 //    will introduce). It deliberately does not change the dashboard denominator, so
 //    the deck's exam-day trajectory stays honest while a session paces new material.
 
-import { MS_PER_DAY } from './params';
-import type { Card, SchedulerConfig } from '../db/types';
+import { MASTERY_R, MS_PER_DAY } from './params';
+import { resolveCardExamDate, type ExamDateContext } from './examDate';
+import { rAtExam } from './forwardSim';
+import { decayOf } from './fsrs';
+import { cardSchedulingHorizon } from './horizon';
+import type { Card, Course, SchedulerConfig } from '../db/types';
 import { cardReviewTimestamps, type ReviewActivity } from './heatmap';
 
 /** Whether a card may be studied or counted at `now` (not suspended, not buried). */
@@ -85,4 +89,42 @@ export function studyPool(
       .map((c) => c.id),
   );
   return available.filter((c) => c.state !== 0 || newAllowed.has(c.id));
+}
+
+/** Exam-target practice, or scheduled work and new cards without a future exam. */
+export function eligiblePracticePool(
+  scope: Card[],
+  course: Course,
+  examDateContext: ExamDateContext,
+  now: number = Date.now(),
+): Card[] {
+  if (course.archived) return [];
+  const decay = decayOf(course.fsrsParameters);
+  return scope.filter((card) => {
+    if (!isAvailable(card, now)) return false;
+    const examDate = resolveCardExamDate(card, examDateContext, now);
+    if (examDate === undefined || examDate < now) {
+      return card.state === 0 || (card.due !== null && card.due <= now);
+    }
+    const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
+    return rAtExam(card, horizon, now, decay) < MASTERY_R;
+  });
+}
+
+/** Scheduled reviews due now, independent of lessons and exam readiness. */
+export function dueReviewPool(cards: Card[], course: Course, now: number = Date.now()): Card[] {
+  return course.archived ? [] : dueCards(cards, now);
+}
+
+/** Optional early revision for cards below their own future exam target. */
+export function examPracticePool(
+  cards: Card[],
+  course: Course,
+  examDateContext: ExamDateContext,
+  now: number = Date.now(),
+): Card[] {
+  return eligiblePracticePool(cards, course, examDateContext, now).filter((card) => {
+    const examDate = resolveCardExamDate(card, examDateContext, now);
+    return examDate !== undefined && examDate >= now;
+  });
 }

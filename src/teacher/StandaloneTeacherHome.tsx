@@ -4,7 +4,7 @@ import { buttonClassName } from '../components/ui/buttonStyles';
 import { cn } from '../components/ui/cn';
 import { LacunaIcon, MenuIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
-import { completedIsoDayLabel } from '../../relay/src/insightsDay';
+import { completedIsoDayLabel } from '../../relay/shared/insights/index';
 import type { ConnectedGapsCourse } from './connectionStore';
 import { GapsSidebar, type GapsPage, type SidebarClass } from './GapsSidebar';
 import { Spinner, usePresence } from './gapsUi';
