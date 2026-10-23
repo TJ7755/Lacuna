@@ -30,6 +30,7 @@ export function resolveAnswerMode(
   const expected = typingExpectedAnswer(card, occlusionAnswerText);
   const { text, hasVisual } = markdownAnswerShape(expected);
   return hasVisual ||
+    text.length === 0 ||
     text.length > PREFERRED_TYPING_MAX_CHARACTERS ||
     splitJevExpectedAnswer(text).length > JEV_TYPED_MAX_PARTS
     ? 'reveal'
@@ -38,9 +39,9 @@ export function resolveAnswerMode(
 
 export function reviewAnswerInput(
   card: Pick<Card, 'payload'>,
-  linesMode: boolean,
+  recitation: boolean,
   typing: boolean,
 ): ReviewLog['input'] {
-  if (card.payload || linesMode) return undefined;
+  if (card.payload || recitation) return undefined;
   return typing ? 'typed' : 'reveal';
 }

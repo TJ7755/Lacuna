@@ -1510,19 +1510,20 @@ export function useLearnSession({
       const card = currentRef.current;
       if (card) {
         presentedAnswerInput.current = reviewAnswerInput(
-          card, linesModeMapRef.current.has(card.id), isTypingCard,
+          card, recitationSequence !== null, isTypingCard,
         );
       }
       responseTime.current = (performance.now() - timerStart.current) / 1000;
       return 'answer';
     });
     distraction.setAnswerVisible(true);
-  }, [distraction, isTypingCard]);
+  }, [distraction, isTypingCard, recitationSequence]);
 
   /** Reveal a scheduled recitation, timing it per recited line for calibration. */
   const revealRecitation = useCallback(
     (lines: number) => {
       if (phaseRef.current !== 'question') return;
+      presentedAnswerInput.current = undefined;
       responseTime.current = (performance.now() - timerStart.current) / 1000 / Math.max(1, lines);
       setPhase('answer');
       distraction.setAnswerVisible(true);
@@ -2091,7 +2092,7 @@ export function useLearnSession({
       try {
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? false,
-          input: reviewAnswerInput(cardNow, linesModeMapRef.current.has(cardNow.id), presentedAnswerInput.current === 'typed'),
+          input: reviewAnswerInput(cardNow, recitationSequence !== null, presentedAnswerInput.current === 'typed'),
           markedBy: options?.markedBy,
           correct: answerCorrect(input),
           manualGrade: typeof input === 'number' ? input : null,
@@ -2106,7 +2107,7 @@ export function useLearnSession({
         submitting.current = false;
       }
     },
-    [distraction, isSimpleMode, answerSimple, answerScheduled],
+    [distraction, isSimpleMode, answerSimple, answerScheduled, recitationSequence],
   );
 
   const undoLast = useCallback(
@@ -2323,6 +2324,7 @@ export function useLearnSession({
     hintStep,
     setHintStep,
     isTypingCard,
+    presentedAnswerInput: presentedAnswerInput.current,
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,

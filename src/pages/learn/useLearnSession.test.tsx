@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createCard,
+  cardsForSequence,
+  createSequence,
   createCourse,
   createLesson,
   createLessonCard,
@@ -15,6 +17,7 @@ import { ASSET_GC_GRACE_MS, scheduleAssetGc, storeImageBlob } from '../../db/ass
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '../../db/search';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
+import { isLabelCardId } from '../../db/sequenceGeneration';
 import { writeAnswerInput } from '../../state/answerInput';
 import { simpleSessionStorageKey } from './simpleSessionPersistence';
 import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
@@ -226,6 +229,34 @@ describe('useLearnSession answer boundary', () => {
       expect(await db.reviewHistory.where('cardId').equals(secondId).first()).toMatchObject({ input: 'reveal' });
     } finally {
       session.unmount();
+    }
+  });
+
+  it.each(['type', 'reveal'] as const)('records %s input for an ordinary lines-sequence label', async (preference) => {
+    writeAnswerInput(preference);
+    const course = await createCourse('Sequence labels', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary');
+    const sequence = await createSequence(course.id, lesson.id, 'Vocabulary', [
+      { id: 'line-1', value: 'Answer', label: 'Question' },
+    ], { mode: 'lines', generateLabelCards: true });
+    const cards = await cardsForSequence(sequence);
+    const label = cards.find((card) => isLabelCardId(card.sequenceItemId!))!;
+    for (const card of cards) if (card.id !== label.id) await db.cards.delete(card.id);
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(label.id));
+      expect(session.result.current.isLinesModeCard).toBe(true);
+      expect(session.result.current.recitationSequence).toBeNull();
+      expect(session.result.current.isTypingCard).toBe(preference === 'type');
+      act(() => session.result.current.reveal());
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(label.id).first()).toMatchObject({
+        input: preference === 'type' ? 'typed' : 'reveal',
+      });
+    } finally {
+      session.unmount();
+      await db.sequences.delete(sequence.id);
     }
   });
 

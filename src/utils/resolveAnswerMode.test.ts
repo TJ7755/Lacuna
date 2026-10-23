@@ -42,6 +42,13 @@ describe('resolveAnswerMode', () => {
     expect(resolveAnswerMode({ ...card, answerMode: 'type' }, 'type', 'reveal')).toBe('reveal');
   });
 
+  it.each(['$\\sqrt{x}$', '$\\overrightarrow{AB}$'])(
+    'keeps short formula answers eligible under the typing preference: %s',
+    (back) => {
+      expect(resolveAnswerMode({ ...card, back }, 'reveal', 'type')).toBe('type');
+    },
+  );
+
   const unsuitable = [
     '![Diagram](https://example.com/image.png)',
     '![Diagram][figure]\n\n[figure]: https://example.com/image.png',
@@ -51,6 +58,15 @@ describe('resolveAnswerMode', () => {
     'x'.repeat(PREFERRED_TYPING_MAX_CHARACTERS + 1),
     Array.from({ length: JEV_TYPED_MAX_PARTS + 1 }, (_, i) => `part ${i}`).join(', '),
     Array.from({ length: JEV_TYPED_MAX_PARTS + 1 }, (_, i) => `- part ${i}`).join('\n'),
+    '```mermaid\ngraph LR; A-->B\n```',
+    '<audio controls src="https://example.com/answer.mp3"></audio>',
+    '<audio controls src="https://example.com/answer.mp3">Listen to the answer</audio>',
+    '![audio](blob:answer)',
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>',
+    '',
+    '   ',
+    '<!-- no answer text -->',
   ];
   it.each(unsuitable)('limits only typing introduced by the preference: %s', (back) => {
     const shaped = { ...card, back };
@@ -111,7 +127,7 @@ describe('resolveAnswerMode', () => {
   });
 });
 
-it('omits review input for lines and payload faces', () => {
+it('omits review input for recitation and payload faces', () => {
   expect(reviewAnswerInput(card, false, true)).toBe('typed');
   expect(reviewAnswerInput(card, false, false)).toBe('reveal');
   expect(reviewAnswerInput(card, true, true)).toBeUndefined();

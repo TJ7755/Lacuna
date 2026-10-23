@@ -1,9 +1,11 @@
 import 'fake-indexeddb/auto';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { createCourse, createLesson, createLessonCard } from '../db/repository';
 import { db } from '../db/schema';
+import { AccentProvider } from '../state/AccentContext';
+import { writeAnswerInput } from '../state/answerInput';
 import { ThemeProvider } from '../state/ThemeContext';
 import { ToastProvider } from '../components/ui/Toast';
 import { LearnMode } from './LearnMode';
@@ -43,4 +45,30 @@ describe('typed study accessibility', () => {
     expect(await screen.findByRole('button', { name: 'Yes' })).toBeInTheDocument();
     expect(await db.reviewHistory.count()).toBe(0);
   });
+});
+
+it('clears an unsubmitted answer when switching away from typing', async () => {
+  writeAnswerInput('type');
+  const course = await createCourse('Abandoned typing');
+  const lesson = await createLesson(course.id, 'Vocabulary');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  render(
+    <ThemeProvider>
+      <AccentProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </AccentProvider>
+    </ThemeProvider>,
+  );
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Your answer' }), {
+    target: { value: 'Answer' },
+  });
+  act(() => writeAnswerInput('reveal'));
+  act(() => writeAnswerInput('type'));
+  expect(screen.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
 });

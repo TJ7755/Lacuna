@@ -33,8 +33,9 @@ export function typedAnswerCorrect(html: string, feedback: TypedAnswerFeedback):
 }
 
 /** The plain text of already-sanitised Markdown, as typed answers are compared with it. */
-export function plainTextFromHtml(html: string, preserveLineBreaks = false): string {
-  const body = new DOMParser().parseFromString(html, 'text/html').body;
+export function plainTextFromHtml(html: string | HTMLElement, preserveLineBreaks = false): string {
+  const body =
+    typeof html === 'string' ? new DOMParser().parseFromString(html, 'text/html').body : html;
   const text = expectedText(body, false).expected;
   return preserveLineBreaks
     ? text.replace(/[^\S\n]+/g, ' ').replace(/\n+/g, '\n').trim()

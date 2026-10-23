@@ -413,3 +413,24 @@ test('types a reveal lesson through the learner preference and applies a Jev mar
   await expect(page.locator('[data-study-card-id]').first()).not.toHaveAttribute('data-study-card-id', first!);
   await expect(page.getByRole('textbox', { name: 'Your answer' })).toBeVisible();
 });
+
+test('does not mark abandoned typing when another tab changes the answer preference', async ({ page, context }) => {
+  await start(page, true, true, true);
+  const first = await page.locator('[data-study-card-id]').first().getAttribute('data-study-card-id');
+  await page.getByRole('textbox', { name: 'Your answer' }).fill('Red, green and blue.');
+  const settings = await context.newPage();
+  await settings.goto('/#/settings#settings-study');
+  const options = settings.getByRole('radiogroup', { name: 'Answer cards by' });
+  await options.getByRole('radio', { name: 'Revealing', exact: true }).click();
+  await page.bringToFront();
+  await expect(page.getByRole('textbox', { name: 'Your answer' })).toHaveCount(0);
+  await page.locator('button').filter({ hasText: /^Show answer$/ }).click();
+  await settings.bringToFront();
+  await options.getByRole('radio', { name: 'Typing where possible', exact: true }).click();
+  await page.bringToFront();
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
+  await page.waitForTimeout(2500);
+  await expect(page.locator('[data-study-card-id]').first()).toHaveAttribute('data-study-card-id', first!);
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
+  await settings.close();
+});

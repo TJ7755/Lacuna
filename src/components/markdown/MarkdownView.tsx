@@ -462,12 +462,17 @@ export function markdownPlainText(source: string): string {
   return plainTextFromHtml(renderMarkdownToHtml(source, false, false));
 }
 
-/** The answer's rendered shape, including reference images and GFM tables. */
+/** Inspect embed-aware output so media URLs are not offered as typing targets. */
 export function markdownAnswerShape(source: string): { text: string; hasVisual: boolean } {
-  const html = renderMarkdownToHtml(source, false, false);
+  const html = renderMarkdownToHtml(source, true, false);
+  const body = new DOMParser().parseFromString(html, 'text/html').body;
   return {
-    text: plainTextFromHtml(html, true),
-    hasVisual: /<(?:img|table)\b/i.test(html),
+    text: plainTextFromHtml(body, true),
+    hasVisual:
+      body.querySelector(
+        'img, table, audio, video, iframe, object, embed, canvas, pre.lacuna-mermaid',
+      ) !== null ||
+      Array.from(body.querySelectorAll('svg')).some((svg) => !svg.closest('.katex')),
   };
 }
 
