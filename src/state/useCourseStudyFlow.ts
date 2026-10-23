@@ -4,7 +4,7 @@ import { availableCards, dueCards } from '../fsrs/eligibility';
 import { buildDeckSecondsMap } from '../fsrs/stats';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { buildPath } from '../course/path';
-import { lessonCardMembership } from '../course/studyPools';
+import { lessonCardMembership } from '../course/lessonMembership';
 import { currentAssessmentPracticeContext } from '../course/assessmentPractice';
 import {
   buildCourseStudyFlowSnapshot,

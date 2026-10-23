@@ -21,7 +21,7 @@ import type {
   LessonCardExposure,
   LessonCardLink,
 } from '../db/types';
-import { dueReviewPool } from './studyPools';
+import { dueReviewPool } from '../fsrs/eligibility';
 import { nearestExamDate, examIsUrgent } from './path';
 
 export interface CourseHeaderStats {
