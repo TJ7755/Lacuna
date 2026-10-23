@@ -1623,3 +1623,38 @@ describe('mergeImport: bank cards, lesson links and lesson moves', () => {
     expect((await db.cards.get('card-1'))?.primaryLessonId).toBe('lesson-2');
   });
 });
+
+describe('lineage recovery preserves protected V5 authoring baselines', () => {
+  beforeEach(async () => { await db.delete(); await db.open(); });
+
+  it.each(['missing registry', 'missing set revision', 'edited set'])(
+    'rejects %s atomically instead of bypassing Question Set guards', async (damage) => {
+      const payload = questionPayloadV5();
+      const { course } = await importLineageFirstTime(payload);
+      if (damage === 'missing registry') await db.lineageIdMappings.delete(payload.li!);
+      else await db.lineageIdMappings.update(payload.li!, { lessonIds: [],
+        ...(damage === 'missing set revision' ? { questionSetRevisions: {} } : {}) });
+      if (damage === 'edited set') await db.questionSets.update('set-quadratics', {
+        title: 'Learner paper', contentRevisionId: 'learner-revision',
+      });
+      const before = await exportDatabase();
+      const next = questionPayloadV5({ rv: 22 });
+      next.questionSets[0].title = 'Publisher paper';
+      await expect(mergeLineageUpdate(course.id, next)).rejects.toThrow(/Question Set/);
+      expect({ ...await exportDatabase(), exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
+    },
+  );
+
+  it('restores Lesson membership without changing V5 Question evidence or path activities', async () => {
+    const payload = questionPayloadV5();
+    const { course } = await importLineageFirstTime(payload);
+    await db.lineageIdMappings.update(payload.li!, { lessonIds: [], cardIds: [] });
+    const before = await exportDatabase();
+    await mergeLineageUpdate(course.id, questionPayloadV5({ rv: 22 }));
+    const after = await exportDatabase();
+    expect(after.questionSetAttempts).toEqual(before.questionSetAttempts);
+    expect(after.questions?.map(({ authoringRevisionId: _revision, ...row }) => row))
+      .toEqual(before.questions?.map(({ authoringRevisionId: _revision, ...row }) => row));
+    expect(after.practiceNodes).toEqual(before.practiceNodes);
+  });
+});

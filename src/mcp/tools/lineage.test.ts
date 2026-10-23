@@ -50,6 +50,16 @@ describe('mcp lineage tools', () => {
   });
 
   describe('lacuna.diff_lineage_update', () => {
+    it('recovers missing membership read-only and reports differences as conflicts', async () => {
+      await db.lineageIdMappings.delete('lineage-1');
+      const code = await encodeShareDirect(coursePayload({ rv: 22, lessons: [lessonOne({ n: 'Publisher cells' })] }));
+      const result = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(result.data.diff.creates).toEqual({ lessons: [], notes: [], cards: [] });
+      expect(result.data.diff.conflicts).toHaveLength(1);
+      expect(await db.lineageIdMappings.get('lineage-1')).toBeUndefined();
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
+    });
+
     it('rejects authored Question Sets until lineage preview supports them', async () => {
       const code = await encodeShareDirect(
         {

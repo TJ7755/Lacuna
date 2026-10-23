@@ -178,3 +178,20 @@ If neither snapshot contains the missing Concept, or its Course does not match, 
 fails without replacing the database. Keep the affected export and look for an older intact backup;
 do not delete Question Sets or edit deletion receipts to force sync through. A snapshot whose
 Concept records have all been lost cannot be repaired automatically by this workflow.
+
+### Incomplete published-course tracking
+
+Before a lineage update writes, validate the tracking row's Course binding and the global ownership
+of incoming and mapped identities, including removal targets. Recover Lesson/Note/ordinary Card
+membership from retained publisher snapshots or incoming source IDs already owned by the bound
+Course. Notes require an owned parent Lesson; generated Cards retain their generator's identity.
+Retained snapshots remain unchanged. Missing snapshots mean unknown baseline: differing content
+requires the existing conflict review even when automatic updates are enabled. Unmatched local
+rows without source evidence remain local, never inferred publisher removals.
+
+Question Set revision markers, Assessment snapshots and path-activity snapshots retain their
+existing edit guards. Missing authoring baselines that cannot establish a safe merge produce an
+integrity error with backup/recovery guidance, including after an accepted backup restore omitted
+lineage bookkeeping. Recovery never treats current learner content as a confirmed old publisher
+baseline. Preview uses the same membership classification without persisting it; pending review
+application validates tracking and target ownership again before applying decisions.
