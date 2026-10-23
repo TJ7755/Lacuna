@@ -12,24 +12,6 @@
   },
   {
     "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "The database schema uses asset encoding and pre-migration snapshots; asset extraction, folder mirroring and deferred tombstone pruning use the database instance.",
-    "edges": [
-      "src/db/assets.ts -> src/db/markdownAssets.ts",
-      "src/db/assets.ts -> src/db/schema.ts",
-      "src/db/backupFolder.ts -> src/db/schema.ts",
-      "src/db/markdownAssets.ts -> src/db/assets.ts",
-      "src/db/markdownAssets.ts -> src/db/schema.ts",
-      "src/db/mutationStamp.ts -> src/db/schema.ts",
-      "src/db/preMigrationSnapshots.ts -> src/db/backupFolder.ts",
-      "src/db/schema.ts -> src/db/assets.ts",
-      "src/db/schema.ts -> src/db/preMigrationSnapshots.ts",
-      "src/db/schema.ts -> src/db/tombstonePrune.ts",
-      "src/db/tombstonePrune.ts -> src/db/mutationStamp.ts",
-      "src/db/tombstonePrune.ts -> src/db/schema.ts"
-    ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
     "reason": "CoursePath loads lessons and prefetches routes; the shared lazy-loader registry includes CoursePath itself.",
     "edges": [
       "src/pages/CoursePath.tsx -> src/routes/loaders.ts",

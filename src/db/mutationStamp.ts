@@ -6,7 +6,7 @@
 
 import type { Transaction } from 'dexie';
 import { migrateLegacyRelayUrl } from '../sync/pairingConfig';
-import { db } from './schema';
+import { db } from './database';
 import type { SyncState, Tombstone } from './types';
 
 export const TOMBSTONE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;

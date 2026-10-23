@@ -38,6 +38,7 @@ export default defineConfig({
         'src/db/backupSnapshot.ts',
         'src/db/portability.ts',
         'src/db/assets.ts',
+        'src/db/assetCodec.ts',
       ],
       thresholds: {
         perFile: true,
@@ -53,6 +54,7 @@ export default defineConfig({
         'src/db/portability.ts': { statements: 85, branches: 76, functions: 88, lines: 85 },
         'src/db/backupSnapshot.ts': { statements: 85, branches: 76, functions: 88, lines: 85 },
         'src/db/assets.ts': { statements: 68, branches: 68, functions: 82, lines: 68 },
+        'src/db/assetCodec.ts': { statements: 68, branches: 68, functions: 82, lines: 68 },
       },
     },
   },

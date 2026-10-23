@@ -2,7 +2,7 @@
 // separate from snapshot creation so Settings can inspect folder support without
 // loading the full database portability pipeline.
 
-import { db } from './schema';
+import { db } from './database';
 import type { BackupFile } from './types';
 
 const MAX_RESTORE_POINTS = 10;
