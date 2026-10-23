@@ -149,6 +149,15 @@ A published lineage has permanent source identities and revisions. Importing a n
 updates material while retaining learner Card state, canonical history and Question evidence.
 Repeated/equal/older revisions must not duplicate or roll back accepted content.
 
+First-time course imports through files, text codes, QR codes and share/class links require a
+learner study-target choice. The published final exam date is a suggestion: learners confirm it,
+change it or choose steady retention (no fixed exam). Save the choice through the final-assessment
+API within the import transaction; retain the original publisher snapshot for lineage comparison.
+Later teacher updates retain the learner's final date, time zone and scheduling mode, including
+when the learner confirmed the original suggestion. Final assessment content and coverage still
+follow the existing published-content conflict rules. Checkpoint dates are unchanged. No extra
+confirmation marker, migration or share-format version is needed.
+
 New shared-course imports enable **Apply updates automatically**. Non-conflicting author updates
 use the existing automatic application path; conflicts with learner edits still wait for review.
 Learners can turn the setting off in Course settings. Re-imports, reopening, backup restore and

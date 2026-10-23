@@ -60,6 +60,7 @@ for (const width of [1440, 390]) {
       ),
     });
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+    await page.getByRole('radio', { name: /Exam date/ }).press('Space');
     await page.getByRole('button', { name: 'Add to my courses' }).click();
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
     // The import result links directly to the local course on desktop and mobile.

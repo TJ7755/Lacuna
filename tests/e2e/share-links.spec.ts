@@ -181,6 +181,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   await expect(student.getByText(/Link biology —/)).toBeVisible();
+  await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await student.goto('/#/');
   await expect(
@@ -376,6 +377,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   await enterFreshLacuna(page);
   await page.goto(`/#/s/${source.shareId}`);
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect.poll(() => readStudentRevision(page)).toBe(17);
   await page.evaluate(() => new Promise<void>((resolve, reject) => {
