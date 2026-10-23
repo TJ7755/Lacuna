@@ -40,6 +40,9 @@ async function importRevision(page: Page, revision: number) {
       }),
     ),
   });
+  if (revision === 1) {
+    await page.getByRole('radio', { name: /Exam date/ }).press('Space');
+  }
   await page
     .getByRole('button', {
       name: revision === 1 ? 'Add to my courses' : 'Update course',
