@@ -84,7 +84,28 @@ Concept links; published teacher replacement/removal retains its existing author
 [Tag resolution](../../src/specifications/tagResolver.ts) proposes links from `spec:<ref>` and
 `spec:<code>:<ref>` tags without changing records. References match exactly; qualification codes
 ignore case. Repeated identical tags yield one proposal. Ambiguous/unmatched tags remain explicit,
-as do retained foreign, unknown and out-of-selection links. The catalogue still ships no entries.
+as do retained foreign, unknown and out-of-selection links.
+
+### Bundled catalogue identities
+
+The [catalogue index](../../src/specifications/index.ts) validates bundled entries once and exports
+`specificationCatalogue` and `findSpecification(id)`. It includes Pearson Edexcel International GCSE
+Biology 4BI1, sourced from the official Issue 3 (September 2024) specification and its command-word
+appendix. Paper 1 excludes B-suffixed statements; Paper 2 covers all content. The published AO
+weightings are ranges, retained exactly in the objective descriptions; `weightingPercent` stays
+absent rather than inventing a midpoint.
+
+Specification IDs use `<board>-<qualification>-<code>`, all lower case, for example
+`pearson-edexcel-international-gcse-4bi1`. Content point IDs are the board reference lower-cased,
+including suffix letters: `2.15`, `2.14b`. Topic headings use their reference (`2`); lettered
+sub-topics are qualified by topic (`2.e`). Unnumbered groups extend their enclosing heading
+(`2.e.plants`, `2.e.humans`). Display references preserve the source spelling and case.
+
+IDs are permanent once merged because user data stores them. A renumbered specification issue
+must retain existing IDs or receive a new specification entry; never silently rewrite stored
+identities. Titles are paraphrased labels for cross-reference, not substitutes for the source's
+full teaching requirements. The public catalogue contains no learning content or copyrighted
+vocabulary lists.
 
 ## Question sets and drafts
 

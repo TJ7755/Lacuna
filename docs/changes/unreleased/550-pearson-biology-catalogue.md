@@ -1,0 +1,1 @@
+- Add the validated Pearson Edexcel International GCSE Biology 4BI1 catalogue, with permanent statement references, paper coverage and official assessment metadata. (#550)
