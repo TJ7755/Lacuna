@@ -1,0 +1,613 @@
+$ vitest run src/pages/ShareLinkPage.test.tsx "--maxWorkers=1"
+
+ RUN  v5.0.5 <worktree>
+
+ ❯ |browser| src/pages/ShareLinkPage.test.tsx (14 tests | 2 failed) 2197ms
+   × opens and focuses the imported course after recording its share link 1014ms
+   × waits for successful confirmation before opening the imported course 1019ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |browser| src/pages/ShareLinkPage.test.tsx > opens and focuses the imported course after recording its share link
+TestingLibraryElementError: Unable to find role="heading" and name "Imported biology course"
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="mx-auto w-full max-w-[1190px] px-[18px] min-[481px]:px-6 md:px-10 pb-10"
+    >
+      <header
+        class="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
+        <h1
+          class="font-display text-4xl font-semibold tracking-tight md:text-[44px]"
+        >
+          Shared course
+        </h1>
+      </header>
+      <div
+        class="relative"
+      >
+        <div
+          style="pointer-events: auto;"
+        >
+          <div
+            class="space-y-6"
+          >
+            <section
+              class="rounded-3xl bg-surface card-surface p-6 rounded-3xl bg-surface card-surface p-6"
+            >
+              <div
+                class="mb-5 flex items-center gap-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="text-accent-ink"
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                  />
+                </svg>
+                <h2
+                  class="font-display text-xl"
+                >
+                  Import a shared course
+                </h2>
+              </div>
+              <div
+                class="mb-5"
+              >
+                <input
+                  accept=".lacuna"
+                  aria-label="Course file to import"
+                  class="hidden"
+                  type="file"
+                />
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                    />
+                  </svg>
+                  Choose course file
+                </button>
+              </div>
+              <div
+                class="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]"
+              >
+                <textarea
+                  aria-label="Share link or code to import"
+                  class="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+                  placeholder="Paste a share link or code"
+                  rows="4"
+                />
+              </div>
+              <div
+                class="mt-4 flex flex-wrap gap-2"
+              >
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  Read code
+                </button>
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                    />
+                    <circle
+                      cx="12"
+                      cy="13"
+                      r="4"
+                    />
+                  </svg>
+                  Scan QR code
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="mx-auto w-full max-w-[1190px] px-[18px] min-[481px]:px-6 md:px-10 pb-10"
+    >
+      <header
+        class="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
+        <h1
+          class="font-display text-4xl font-semibold tracking-tight md:text-[44px]"
+        >
+          Shared course
+        </h1>
+      </header>
+      <div
+        class="relative"
+      >
+        <div
+          style="pointer-events: auto;"
+        >
+          <div
+            class="space-y-6"
+          >
+            <section
+              class="rounded-3xl bg-surface card-surface p-6 rounded-3xl bg-surface card-surface p-6"
+            >
+              <div
+                class="mb-5 flex items-center gap-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="text-accent-ink"
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                  />
+                </svg>
+                <h2
+                  class="font-display text-xl"
+                >
+                  Import a shared course
+                </h2>
+              </div>
+              <div
+                class="mb-5"
+              >
+                <input
+                  accept=".lacuna"
+                  aria-label="Course file to import"
+                  class="hidden"
+                  type="file"
+                />
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                    />
+                  </svg>
+                  Choose course file
+                </button>
+              </div>
+              <div
+                class="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]"
+              >
+                <textarea
+                  aria-label="Share link or code to import"
+                  class="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+                  placeholder="Paste a share link or code"
+                  rows="4"
+                />
+              </div>
+              <div
+                class="mt-4 flex flex-wrap gap-2"
+              >
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  Read code
+                </button>
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                    />
+                    <circle
+                      cx="12"
+                      cy="13"
+                      r="4"
+                    />
+                  </svg>
+                  Scan QR code
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/ShareLinkPage.test.tsx:221:23
+    219|     [SHARE_ID]: 'biology',
+    220|   });
+    221|   expect(await screen.findByRole('heading', { name: 'Imported biology …
+       |                       ^
+    222| });
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |browser| src/pages/ShareLinkPage.test.tsx > waits for successful confirmation before opening the imported course
+TestingLibraryElementError: Unable to find role="heading" and name "Imported biology course"
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="mx-auto w-full max-w-[1190px] px-[18px] min-[481px]:px-6 md:px-10 pb-10"
+    >
+      <header
+        class="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
+        <h1
+          class="font-display text-4xl font-semibold tracking-tight md:text-[44px]"
+        >
+          Shared course
+        </h1>
+      </header>
+      <div
+        class="relative"
+      >
+        <div
+          style="pointer-events: auto;"
+        >
+          <div
+            class="space-y-6"
+          >
+            <section
+              class="rounded-3xl bg-surface card-surface p-6 rounded-3xl bg-surface card-surface p-6"
+            >
+              <div
+                class="mb-5 flex items-center gap-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="text-accent-ink"
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                  />
+                </svg>
+                <h2
+                  class="font-display text-xl"
+                >
+                  Import a shared course
+                </h2>
+              </div>
+              <div
+                class="mb-5"
+              >
+                <input
+                  accept=".lacuna"
+                  aria-label="Course file to import"
+                  class="hidden"
+                  type="file"
+                />
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                    />
+                  </svg>
+                  Choose course file
+                </button>
+              </div>
+              <div
+                class="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]"
+              >
+                <textarea
+                  aria-label="Share link or code to import"
+                  class="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+                  placeholder="Paste a share link or code"
+                  rows="4"
+                />
+              </div>
+              <div
+                class="mt-4 flex flex-wrap gap-2"
+              >
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  Read code
+                </button>
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                    />
+                    <circle
+                      cx="12"
+                      cy="13"
+                      r="4"
+                    />
+                  </svg>
+                  Scan QR code
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div
+      class="mx-auto w-full max-w-[1190px] px-[18px] min-[481px]:px-6 md:px-10 pb-10"
+    >
+      <header
+        class="mb-8 flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
+        <h1
+          class="font-display text-4xl font-semibold tracking-tight md:text-[44px]"
+        >
+          Shared course
+        </h1>
+      </header>
+      <div
+        class="relative"
+      >
+        <div
+          style="pointer-events: auto;"
+        >
+          <div
+            class="space-y-6"
+          >
+            <section
+              class="rounded-3xl bg-surface card-surface p-6 rounded-3xl bg-surface card-surface p-6"
+            >
+              <div
+                class="mb-5 flex items-center gap-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="text-accent-ink"
+                  fill="none"
+                  height="18"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.6"
+                  viewBox="0 0 24 24"
+                  width="18"
+                >
+                  <path
+                    d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                  />
+                </svg>
+                <h2
+                  class="font-display text-xl"
+                >
+                  Import a shared course
+                </h2>
+              </div>
+              <div
+                class="mb-5"
+              >
+                <input
+                  accept=".lacuna"
+                  aria-label="Course file to import"
+                  class="hidden"
+                  type="file"
+                />
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"
+                    />
+                  </svg>
+                  Choose course file
+                </button>
+              </div>
+              <div
+                class="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]"
+              >
+                <textarea
+                  aria-label="Share link or code to import"
+                  class="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+                  placeholder="Paste a share link or code"
+                  rows="4"
+                />
+              </div>
+              <div
+                class="mt-4 flex flex-wrap gap-2"
+              >
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  Read code
+                </button>
+                <button
+                  class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-surface-raised text-ink border border-line-strong hover:border-ink/40 min-h-11 min-w-11 px-4 text-sm"
+                  data-press=""
+                  disabled=""
+                  style="transition-duration: 0ms;"
+                >
+                  <svg
+                    aria-hidden="true"
+                    fill="none"
+                    height="18"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.6"
+                    viewBox="0 0 24 24"
+                    width="18"
+                  >
+                    <path
+                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                    />
+                    <circle
+                      cx="12"
+                      cy="13"
+                      r="4"
+                    />
+                  </svg>
+                  Scan QR code
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/pages/ShareLinkPage.test.tsx:236:23
+    234|   expect(screen.queryByRole('heading', { name: 'Imported biology cours…
+    235|   confirm(true);
+    236|   expect(await screen.findByRole('heading', { name: 'Imported biology …
+       |                       ^
+    237| });
+    238|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 12 passed (14)
+   Start at  16:36:57
+   Duration  2.74s (tests 82%, import 6%, transform 5%, environment 5%, setup 3%)
+
+error: script "test" exited with code 1

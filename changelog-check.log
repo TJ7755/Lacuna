@@ -1,0 +1,2 @@
+$ node scripts/changelog.mjs --check
+173 fragment(s) valid

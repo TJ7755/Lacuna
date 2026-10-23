@@ -1,0 +1,10 @@
+$ vitest run src/pages/ShareLinkPage.test.tsx src/components/import/SharedCourseImport.test.tsx src/components/import/SharedCourseImport.codes.test.tsx src/shareLinks/linkStore.test.ts "--maxWorkers=1"
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  4 passed (4)
+      Tests  49 passed (49)
+   Start at  16:42:10
+   Duration  9.20s (tests 33%, import 25%, environment 20%, setup 15%, transform 7%)
+

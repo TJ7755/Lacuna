@@ -1,0 +1,24 @@
+{
+  "source": {
+    "commit": "10404bf289c701ab8abc774808d28f563885f354",
+    "status": "",
+    "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "site": "lacuna",
+  "args": [
+    "--project=chromium",
+    "share-links.spec.ts",
+    "shared-course-import-action.spec.ts",
+    "--workers=1"
+  ],
+  "startedAt": "2026-10-23T15:44:03.987Z",
+  "buildDirectory": "<worktree>/artifacts/browser-checks/run-M67E3o/dist",
+  "indexSha256": "78a61f9154618a1ced38256a7ed629f1f0553175c57e927149ffa5bf9b0ca6a9",
+  "sourceAfter": {
+    "commit": "10404bf289c701ab8abc774808d28f563885f354",
+    "status": "",
+    "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "completedAt": "2026-10-23T15:45:16.264Z",
+  "exitCode": 0
+}

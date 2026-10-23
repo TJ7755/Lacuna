@@ -1,0 +1,540 @@
+$ node scripts/check-browser.mjs "--project=chromium" share-links.spec.ts --grep "opens the confirmed" "--workers=1"
+Browser evidence: <worktree>/artifacts/browser-checks/run-FZTp9K/source.json
+$ vite build --outDir "<worktree>/artifacts/browser-checks/run-FZTp9K/dist" --emptyOutDir
+vite v8.3.4 building client environment for production...
+transforming...
+[INEFFECTIVE_DYNAMIC_IMPORT] src/db/backupFolder.ts is dynamically imported by src/db/preMigrationSnapshots.ts but also statically imported by src/db/backupRestorePoint.ts, dynamic import will not move module into another chunk.
+
+✓ 5031 modules transformed.
+rendering chunks...
+[plugin lacuna-settings-static-closure] Settings static closure: 277193 raw bytes, 79731 gzip bytes across 33 chunks.
+[plugin lacuna-app-shell-precache] Application shell precache: 81 shell scripts, 23 shared Cards dependencies and 14 Import route files (60 KiB of script).
+(node:11076) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+computing gzip size...
+artifacts/browser-checks/run-FZTp9K/dist/assets/markdownAssetExtraction--GvMIDIE.js           2.87 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/share.worker-Cam2ekYe.js                      3.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff             4.42 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2            4.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2            5.20 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2            5.46 kB
+artifacts/browser-checks/run-FZTp9K/dist/courses/index.html                                   5.69 kB │ gzip:   2.09 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff             5.98 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff             6.18 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size1-Regular-C195tn64.woff             6.49 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2      6.90 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2         6.91 kB
+artifacts/browser-checks/run-FZTp9K/dist/courses/physics0972/index.html                       7.12 kB │ gzip:   2.71 kB
+artifacts/browser-checks/run-FZTp9K/dist/courses/chemistry4ch1/index.html                     7.21 kB │ gzip:   2.70 kB
+artifacts/browser-checks/run-FZTp9K/dist/courses/biology4bi1/index.html                       7.29 kB │ gzip:   2.75 kB
+artifacts/browser-checks/run-FZTp9K/dist/courses/history0977/index.html                       7.36 kB │ gzip:   2.84 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf              7.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff       7.65 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff          7.71 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2           9.64 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2       10.34 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf             10.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Script-Regular-D5yQViql.woff           10.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2         11.31 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2            11.34 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf             11.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2        12.02 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2          12.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf             12.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff        12.31 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf       12.34 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf          12.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff          13.20 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff             13.29 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2      13.56 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff         14.11 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff           14.40 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff       16.02 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2         16.40 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-Italic-t53AETM-.woff2             16.44 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf            16.64 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2         16.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2             16.98 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff          18.66 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-Italic-DA0__PXp.woff              18.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff          19.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf         19.43 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf           19.57 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf              19.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Italic-BMLOBm91.woff              19.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf          22.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/index.html                                          22.89 kB │ gzip:   5.77 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf            24.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2               25.32 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Regular-B22Nviop.woff2            26.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf        27.55 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2             28.07 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff                29.91 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff             30.77 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf           31.19 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf               31.30 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf           32.96 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff              33.51 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf               33.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf                 51.33 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf              53.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/apkgImport.worker-C-8CNdcl.js                55.68 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/recall-bQpv63pX.png                          56.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/compare/quizlet/index.html                          61.64 kB │ gzip:  14.05 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf               63.63 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetPracticeNode-BhhrPJ8x.js          91.84 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/dailyBackup.worker-DZdxn0jU.js              148.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/domain-BspMZyEA.js                          158.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/wasi-worker-browser-C8AJpTzT.js             202.11 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/optimise.worker-nqFfUSoa.js                 227.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/settings-Lu0ewtZr.png                       268.09 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/course-q6X3AdYN.png                         286.77 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lesson-Br0PhygT.png                         315.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/fsrs-binding.wasm32-wasi-BCb3XNhu.wasm      598.17 kB │ gzip: 234.65 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sql-wasm-C1D_RJuy.wasm                      684.89 kB │ gzip: 338.96 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/index-CGQ_DoSe.css                            0.16 kB │ gzip:   0.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ImportPanel-BItXJn9R.css                      1.52 kB │ gzip:   0.56 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/courses-Br4LxqSJ.css                          1.66 kB │ gzip:   0.61 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CoursePageArrival-Cl4BepKd.css                1.70 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/TeacherHome-C3mTPQ86.css                      2.56 kB │ gzip:   0.82 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Method-B1xjWhzH.css                           2.68 kB │ gzip:   0.96 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Download-DpXpQprw.css                         2.84 kB │ gzip:   0.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/DesktopUpdateController-BKpXkHpB.css          2.88 kB │ gzip:   0.93 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseStudyFlow-D_1DVZh4.css                  3.93 kB │ gzip:   1.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/question-composer-DQiTJkrk.css                3.96 kB │ gzip:   1.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Landing-BwiuIQ_7.css                          4.71 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/LearnMode-B7yCF1_G.css                        5.73 kB │ gzip:   1.66 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetPractice-wt2H92aI.css              7.28 kB │ gzip:   2.02 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ComparisonResponsive-51EM_M3v.css             7.68 kB │ gzip:   2.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardImportDialog-B78y1dYB.css                10.74 kB │ gzip:   2.29 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Landing-OQgotLUu.css                         12.80 kB │ gzip:   3.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/question-sets-7-wczcNB.css                   13.35 kB │ gzip:   3.04 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/quizlet-Dk04cLHS.css                         26.10 kB │ gzip:   5.42 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MarkdownView-CppIvWOo.css                    31.07 kB │ gzip:   8.45 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/icons-Dc5CHVy_.css                          124.05 kB │ gzip:  21.44 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/leech-DGkUZQWA.js                             0.05 kB │ gzip:   0.07 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/plural-qGvSiUZh.js                            0.08 kB │ gzip:   0.10 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/features-animation-BrZcpEBO.js                0.10 kB │ gzip:   0.11 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/grants-D8tcxPue.js                            0.11 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/channel-DJEPbK4C.js                           0.11 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/pie-XZMESJXO-Cm51NIUG.js                      0.12 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/info-OHQRW6UA-CafNPaiv.js                     0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/radar-ABXABTNO-BwwovKR2.js                    0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/packet-JDAUHWVQ-JGWe6jlj.js                   0.12 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cynefin-EF2NZ3EQ-DVElYEJf.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/treemap-SAJKECNS-Bzkupj28.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/wardley-7MLQ67FV-Cq6FCfeE.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/gitGraph-VSP46ZUC-C-ETfZbB.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/railroad-I3PHUGI6-JDivUgkS.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/treeView-D4JQ5SDB-9ba_MZ7W.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/railroad-peg-JR7BVNR7-C8nX7-As.js             0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/architecture-WOLXFQ4H-Dm01SkXV.js             0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/railroad-abnf-LNEFI6M7-CzT0ftzw.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/railroad-ebnf-DWYD2UWJ-D7GP3er0.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/eventmodeling-K75KTNOO-Cz07ILC_.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/origins-C5k0UB5S.js                           0.14 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/motionFeatures-CZkZOPPN.js                    0.15 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-Y2CYZVJY-DsF7k-Jl.js                    0.15 kB │ gzip:   0.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/haptic-DSyklCkM.js                            0.17 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-2Q5K7J3B-C1jixKkw.js                    0.19 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/linkSchemas-BRGFOkM8.js                       0.20 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/markdownAssets-BWaxN1-B.js                    0.21 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-JWPE2WC7-DVXcaiue.js                    0.22 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/tombstonePrune-BPdmNe1k.js                    0.22 kB │ gzip:   0.19 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/answerMode-7g1NOjrh.js                        0.23 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-XXDRQBXY-DD-OM98o.js                    0.25 kB │ gzip:   0.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lockHint-W8r7y9XM.js                          0.25 kB │ gzip:   0.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/generatedConceptIds-C9tUr1_m.js               0.26 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/headerStats-D-pQkMmY.js                       0.27 kB │ gzip:   0.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/fixtureRunner-xkJf6tku.js                     0.29 kB │ gzip:   0.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/compat-09RdQZcw.js                            0.34 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/audio-ysw4U22O.js                             0.35 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/init-ZlXS9mIS.js                              0.35 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-5VM5RSS4-ZNzvKenW.js                    0.36 kB │ gzip:   0.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/choiceChip-D8gEqKB2.js                        0.37 kB │ gzip:   0.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Select-DYY51fns.js                            0.39 kB │ gzip:   0.29 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SettingsSectionHeading-BrNsyQ2m.js            0.39 kB │ gzip:   0.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/audioSettings-BmtkeOoD.js                     0.40 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/heatmap-BeXguklV.js                           0.41 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useActionFocus-DE-M0CV9.js                    0.41 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/answerStrictness-C57WJw6x.js                  0.41 kB │ gzip:   0.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MissingRecord-Daprv782.js                     0.42 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/GeneratedCardBadge-WSglKcrm.js                0.46 kB │ gzip:   0.31 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/entityAvailability-T9JpZlaI.js                0.46 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useDesktopUpdater-UHPwo9uz.js                 0.47 kB │ gzip:   0.30 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/runtime-BOxpVSLl.js                           0.54 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-VQ5W62QI-DvtFWoQH.js                    0.57 kB │ gzip:   0.39 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/flowDiagram-IUGLLWBU-CbffUfMr.js              0.57 kB │ gzip:   0.32 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CreateButton-DH-aQY2D.js                      0.58 kB │ gzip:   0.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SessionExitGuard-BCRzdJep.js                  0.58 kB │ gzip:   0.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-J5ZVWO5B-oDCd-gWO.js                    0.63 kB │ gzip:   0.43 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/credentials-BQHGauaJ.js                       0.63 kB │ gzip:   0.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diffImport-TcySoZf-.js                        0.64 kB │ gzip:   0.43 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/infoDiagram-MVDRKAX5-JtMA604y.js              0.65 kB │ gzip:   0.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/credentials-BStbx-24.js                       0.66 kB │ gzip:   0.37 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cloze-CV30mwGE.js                             0.70 kB │ gzip:   0.40 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ContentDisclosure-ldcqSn7q.js                 0.70 kB │ gzip:   0.44 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/importCardExport-k_47M1J_.js                  0.76 kB │ gzip:   0.49 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/InlineSettingsDisclosure-DJ7k2uhB.js          0.81 kB │ gzip:   0.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/swimlanesDiagram-AYQRV4AK-pGMiFSoG.js         0.83 kB │ gzip:   0.48 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sizeCapture-INFHLROL-3uHXrFqA.js              0.87 kB │ gzip:   0.51 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-DUW6YSOI-Dgx8z5s3.js                    0.89 kB │ gzip:   0.46 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/editorOrigin-6E9uFrtN.js                      0.91 kB │ gzip:   0.51 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useQuestionData-BIVJiGpK.js                   0.93 kB │ gzip:   0.42 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/horizon-CU4I9MPh.js                           0.94 kB │ gzip:   0.47 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ProgressBar-Bk_96nLz.js                       1.01 kB │ gzip:   0.60 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/DangerZoneSection-tyQ1wAKQ.js                 1.04 kB │ gzip:   0.62 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/compressImage-DrlzCuzD.js                     1.05 kB │ gzip:   0.53 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/linkStore-BE_3y-Jy.js                         1.05 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lessonPrerequisites-CaDd_7tt.js               1.05 kB │ gzip:   0.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/PupilClassPage-DduY_vRp.js                    1.06 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lessonOrder-qK3Wy2HN.js                       1.06 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/RelatedQuestionSets-DLXxfweK.js               1.09 kB │ gzip:   0.64 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetDrafts-Cc13lw3t.js                 1.11 kB │ gzip:   0.56 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SettingsUi-CgP2x4J_.js                        1.13 kB │ gzip:   0.65 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Toggle-CEoQ0n-y.js                            1.15 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Landing-T-h-8gGN.js                           1.16 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ordinal-CPleeUAT.js                           1.18 kB │ gzip:   0.57 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/import-BdBH8i6j.js                            1.20 kB │ gzip:   0.68 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useQuestionSetScroll-Bcb87T5b.js              1.22 kB │ gzip:   0.55 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetChoices-C1LvroGW.js                1.33 kB │ gzip:   0.73 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/eligibility-DcbgjlRL.js                       1.33 kB │ gzip:   0.62 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lessonOrder-ClTNeiJY.js                       1.35 kB │ gzip:   0.69 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/dexie-react-hooks-T9xzoGrv.js                 1.37 kB │ gzip:   0.64 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/backupFolder-DkY9-5Vc.js                      1.37 kB │ gzip:   0.70 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/inputMode-L5RDwu7S.js                         1.39 kB │ gzip:   0.60 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-ZAUX2LTX-GiS_WrVe.js                    1.41 kB │ gzip:   0.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/KeyHints-BCzfdUQ1.js                          1.44 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/RouteAnnouncement-FcsoZ5Hk.js                 1.47 kB │ gzip:   0.75 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetAttemptList-5OxKNskF.js            1.48 kB │ gzip:   0.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sequencePresets-DLIy_YE2.js                   1.48 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/OcclusionStudyFace-BCGDHlM_.js                1.51 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/NumberField-CcKeVL79.js                       1.53 kB │ gzip:   0.83 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/band-DZ4Jagyz.js                              1.53 kB │ gzip:   0.66 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseFileControls-DPFMgnyq.js                1.58 kB │ gzip:   0.86 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardContent-CVzGvA2P.js                       1.59 kB │ gzip:   0.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/occlusionGeneration-CQSQuZhu.js               1.61 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/mutationStamp-Bxwej6F8.js                     1.61 kB │ gzip:   0.72 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/OcclusionMaskLayer-DatLCXOl.js                1.63 kB │ gzip:   0.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardTypePicker-CuxlVSV6.js                    1.64 kB │ gzip:   0.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/StepSwap-CKCGq73o.js                          1.65 kB │ gzip:   0.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/agentMemoryRecord-SuwWT0TJ.js                 1.65 kB │ gzip:   0.72 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/railroadDiagram-Y72NRBL7-Bt5TuaF4.js          1.65 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sequenceGeneration-BZLl3iV1.js                1.70 kB │ gzip:   0.83 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/markdownAssetExtraction-CcrZ0OIY.js           1.81 kB │ gzip:   0.98 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/payloadValidation-55gekTne.js                 1.81 kB │ gzip:   0.82 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/abnfDiagram-WEYOIA3C-DJGeeFBd.js              1.84 kB │ gzip:   0.89 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-UHW7PFBP-jJTG1S8S.js                    1.95 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetPracticeNode-CspYDstc.js           1.95 kB │ gzip:   0.81 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-55XCU76K-DytH0oq8.js                    1.96 kB │ gzip:   0.88 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/pegDiagram-ECIUJNBX-7YijbcZQ.js               2.01 kB │ gzip:   0.94 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ebnfDiagram-V4P3TTPT-Agq0j4BC.js              2.05 kB │ gzip:   0.88 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/dist-C82PhWLt.js                              2.16 kB │ gzip:   0.97 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/courseFile-CRYJ5wZB.js                        2.19 kB │ gzip:   1.02 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/rawDatabaseSnapshot-DbIMea8G.js               2.22 kB │ gzip:   0.90 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useLessonOrderData-Cf8txWf1.js                2.27 kB │ gzip:   1.08 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetRouteState-DUBPlDJB.js             2.27 kB │ gzip:   0.99 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/entry-client-CRheO83s.js                      2.28 kB │ gzip:   1.04 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/backupSnapshot-DBT7NLpr.js                    2.28 kB │ gzip:   0.87 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/enrolment-qdHktS7G.js                         2.29 kB │ gzip:   1.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/scheduler-COmxGzFB.js                         2.34 kB │ gzip:   1.05 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ComparisonResponsive-DOE6DM8R.js              2.37 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/NavigationGuard-BAOA0V6S.js                   2.39 kB │ gzip:   1.15 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/noteAnchors-BqNjCjc1.js                       2.48 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useCourseStudyFlowRecords-B1HX_bLi.js         2.51 kB │ gzip:   1.05 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetSearch-DtnaHbHb.js                 2.56 kB │ gzip:   1.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/drafts-ZAHSQH46.js                            2.61 kB │ gzip:   1.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useCourseStudyFlow-B0EXZMmw.js                2.67 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/assessmentCoverage-DruFhS3E.js                2.74 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetAnswer-Db0sDhPu.js                 2.76 kB │ gzip:   1.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ArchivedCourses-Brr3eCLl.js                   2.80 kB │ gzip:   1.34 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/envelope-DAUSVYYr.js                          2.82 kB │ gzip:   1.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/shortcutGroups-Buz31e_S.js                    3.05 kB │ gzip:   1.00 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/repository.concepts-ClCI3Tcu.js               3.19 kB │ gzip:   1.34 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/polling-mSXJQMMz.js                           3.23 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseActions-Cb7NtXUa.js                     3.30 kB │ gzip:   1.59 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/schema-Efo6BDOW.js                            3.37 kB │ gzip:   1.53 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/AnswerModeControl-DQHtK48N.js                 3.39 kB │ gzip:   1.39 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/assetCache-Cgd7q0V5.js                        3.43 kB │ gzip:   1.61 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/triggers-CZ8daIrK.js                          3.44 kB │ gzip:   1.70 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/backups-DVp2eyMY.js                           3.45 kB │ gzip:   1.69 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/recitationFlow-CC5ayXF4.js                    3.45 kB │ gzip:   1.37 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/arc-weJmsz3x.js                               3.48 kB │ gzip:   1.47 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/practiceNodeRepository-DoJNXiEC.js            3.57 kB │ gzip:   1.15 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/selection-BYXgP83j.js                         3.60 kB │ gzip:   1.55 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ConfirmInline-CVO8hCM-.js                     3.68 kB │ gzip:   1.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/McpBridgeController-C-3PgXJk.js               3.75 kB │ gzip:   1.79 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/hostedTransport-Ft7TXNxp.js                   3.78 kB │ gzip:   1.75 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/crypto-Cc6nneTK.js                            3.83 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/agentMemoryRepository-hSUU96Zv.js             3.84 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/relay-ksf9oMYB.js                             3.85 kB │ gzip:   1.53 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/backingDecks-LjuZVk4w.js                      3.85 kB │ gzip:   1.35 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetPanel-BgWf11kL.js                  3.91 kB │ gzip:   1.75 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MathsAnswerInput-B2cf4AmK.js                  3.95 kB │ gzip:   1.86 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/TeacherHome-BHCGaEn5.js                       3.95 kB │ gzip:   1.62 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/bankRepository-uQg-iqcX.js                    4.23 kB │ gzip:   1.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-I5XIIV2D-D96RvGfz.js                  4.34 kB │ gzip:   1.89 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/search-Q1jujcEm.js                            4.49 kB │ gzip:   1.72 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/AddLessonControl-DVo9f7OS.js                  4.53 kB │ gzip:   2.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/defaultLocale-BFoDCU3G.js                     4.63 kB │ gzip:   2.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/GapsConnectionExport-DXZmxGYP.js              4.76 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/read-CBlT4e04.js                              4.80 kB │ gzip:   1.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/question-sets-DNfLeKOY.js                     4.81 kB │ gzip:   1.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/recitationInput-BzEDxWPw.js                   4.85 kB │ gzip:   1.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseInsightsSection-DSq8zi7P.js             5.23 kB │ gzip:   2.39 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/DesktopUpdateController-B69L6pCu.js           5.27 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/numericAnswerSpec-BZ7aa0hQ.js                 5.27 kB │ gzip:   2.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Download-DvHyQjki.js                          5.42 kB │ gzip:   1.89 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-4EMNKR2T-24puhfze.js                    5.43 kB │ gzip:   2.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/client-loojbwJp.js                            5.44 kB │ gzip:   2.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Menu-x9cWPy-5.js                              5.57 kB │ gzip:   2.38 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/export-eJUei4Fc.js                            5.59 kB │ gzip:   2.11 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/studyFlowSnapshot-PNzmFUCx.js                 5.64 kB │ gzip:   2.05 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ShareLinkPage-A6NSR_TG.js                     5.65 kB │ gzip:   2.13 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sequenceRepository-DY52KJI6.js                5.74 kB │ gzip:   1.90 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/linear-FD-9takj.js                            5.75 kB │ gzip:   2.37 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-YZO67HFG-B5U7EIMl.js                    5.83 kB │ gzip:   2.68 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/AnnotatedNoteContent-D03TcF2e.js              5.97 kB │ gzip:   2.15 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-RJA3I4VV-Bh2nZELc.js                  6.06 kB │ gzip:   2.56 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SearchPage-DKZbl5hp.js                        6.07 kB │ gzip:   2.62 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/pieDiagram-GNMPY74T-sG7Pmi_c.js               6.19 kB │ gzip:   2.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SearchResultOption-D-Kvpca7.js                6.20 kB │ gzip:   2.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/occlusionRepository-Bn4CrOLo.js               6.27 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/AssessmentEditor-auxKT0Ua.js                  6.36 kB │ gzip:   2.18 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/path-_a7gsM36.js                              6.42 kB │ gzip:   2.54 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/courses-C-FgRBcd.js                           6.46 kB │ gzip:   2.57 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/revisionPlan-CkLgDEvZ.js                      6.83 kB │ gzip:   2.43 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CommandPalette-DxauQmP4.js                    6.90 kB │ gzip:   2.79 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/prompts-DJU42vp3.js                           7.15 kB │ gzip:   2.87 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/generators-7hp5Xeby.js                        7.21 kB │ gzip:   2.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ForecastChart-BbhOjGcC.js                     7.60 kB │ gzip:   3.39 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/instructions-D9NCk0K7.js                      7.70 kB │ gzip:   3.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ImportPanel-D3CR4p7G.js                       7.78 kB │ gzip:   3.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/domain-C6ytoHbV.js                            8.03 kB │ gzip:   3.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cardImport-DlUEfctq.js                        8.08 kB │ gzip:   3.44 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-ODIL2UCW-CmtDn5LT.js                  8.19 kB │ gzip:   3.65 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/HelpPage-CfyhP9ph.js                          8.27 kB │ gzip:   2.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetAttemptCodec-CGDJXRHy.js           8.84 kB │ gzip:   2.66 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MarkdownEditor-zVCb22nh.js                    9.14 kB │ gzip:   3.49 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardsPage-DiXRrkEM.js                         9.30 kB │ gzip:   3.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SyncPairingFlow-DNwNxfcH.js                   9.74 kB │ gzip:   3.45 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cynefinDiagram-WF24UDRP-DkUtI-jx.js           9.93 kB │ gzip:   3.50 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/repository-uGthXMfV.js                       10.07 kB │ gzip:   3.68 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetOverview-B85Uwn_a.js              10.20 kB │ gzip:   3.58 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/searchHelp-Byq1Vp1Y.js                       10.24 kB │ gzip:   3.77 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SharedCourseImport-sVwQzWWe.js               10.37 kB │ gzip:   3.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-ZCHMQSOR-BmPPocFI.js                   10.39 kB │ gzip:   4.32 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-PFBEJUXE-CpydB412.js                 10.92 kB │ gzip:   4.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/delivery-BIZYA3JB.js                         10.93 kB │ gzip:   4.48 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetCodec-L6zCelAp.js                 11.07 kB │ gzip:   3.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetRepository-DGA9oHvo.js            11.12 kB │ gzip:   3.38 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/StudySheet-JrKy0_vC.js                       11.87 kB │ gzip:   4.33 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MarkSchemeEditor-36utmI_6.js                 12.59 kB │ gzip:   4.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lessonRepository-FodFUIDa.js                 12.87 kB │ gzip:   3.49 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MergeReviewPanel-DeHNzONf.js                 13.34 kB │ gzip:   4.88 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/questionSetAttemptRepository-D2ePULXg.js     14.07 kB │ gzip:   4.98 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/jev-BH_RA3HG.js                              14.27 kB │ gzip:   5.79 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseAnalytics-KrlH-gjI.js                  14.29 kB │ gzip:   4.54 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-HNE4Q36P-CUBnGNdZ.js                   14.84 kB │ gzip:   4.19 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/time-DQt9QpA_.js                             14.92 kB │ gzip:   4.81 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-2E7WHVMD-6F8rVOJe.js                   15.64 kB │ gzip:   4.35 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/repository-f6dtRb_b.js                       15.69 kB │ gzip:   3.73 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-CBK3MWTC-BMo5DXsr.js                 15.75 kB │ gzip:   5.52 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/pairing-Bnxs0SFz.js                          15.79 kB │ gzip:   5.46 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/manualMerge-8SD3HlxQ.js                      15.96 kB │ gzip:   4.95 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/OcclusionEditor-Bvy0esbF.js                  16.42 kB │ gzip:   5.70 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/mermaid-parser.core-dcH-WZxC.js              16.46 kB │ gzip:   3.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/seed-CNB_E9RL.js                             17.04 kB │ gzip:   6.54 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ishikawaDiagram-HPEHV2GE-DLrAhEiL.js         17.30 kB │ gzip:   6.53 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionEditor-CuT-3wEE.js                   17.42 kB │ gzip:   5.97 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Landing-5tIyRzrb.js                          17.72 kB │ gzip:   5.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionLearnMode-DE3VpVEp.js                18.58 kB │ gzip:   6.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Area-gZQdyJYu.js                             18.72 kB │ gzip:   5.84 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-7S6XSTFO-CHuU1qbE.js                   18.89 kB │ gzip:   6.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardAnalytics-CLslxFcw.js                    19.11 kB │ gzip:   6.07 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseStudyFlow-DnsldS0f.js                  19.29 kB │ gzip:   5.93 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Analytics-CsZaNgz6.js                        19.66 kB │ gzip:   6.67 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SharePage-CPLVhPd0.js                        19.76 kB │ gzip:   6.76 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/kanban-definition-FNSA4HC5-BACijaTP.js       20.26 kB │ gzip:   7.14 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/LessonView-DxAoicwX.js                       20.82 kB │ gzip:   7.36 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/BarChart-EwM6o3NN.js                         20.91 kB │ gzip:   6.91 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sankeyDiagram-SY24JHO5-_VGH-ihZ.js           22.78 kB │ gzip:   8.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardImportDialog-BpSjRt48.js                 23.06 kB │ gzip:   7.74 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/journeyDiagram-BOSHW7O7-B94VUpcI.js          23.15 kB │ gzip:   8.15 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/EnabledAiRuntime-C78JwchE.js                 23.64 kB │ gzip:   7.25 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/mindmap-definition-6OY57UG3-BE_eQpkm.js      23.66 kB │ gzip:   8.06 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/graphlib-DS17s2tU.js                         23.90 kB │ gzip:   8.31 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/isArguments-2ZchtnyI.js                      23.95 kB │ gzip:   7.92 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lib-C0jtiAXP.js                              23.96 kB │ gzip:   8.57 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SequenceEditor-ClCwh4D9.js                   24.32 kB │ gzip:   8.28 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/AiPanel-CyDbbzWa.js                          24.63 kB │ gzip:   7.26 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/icons-CzvjmTSC.js                            25.11 kB │ gzip:   7.99 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/wardleyDiagram-IVAIDKWA-onm5iog5.js          25.20 kB │ gzip:   6.54 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetPractice-CmW4mgsX.js              26.06 kB │ gzip:   8.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/rough.esm-Dy-Kn_BL.js                        27.10 kB │ gzip:   8.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/FadeInView-D8_1Je8J.js                       27.48 kB │ gzip:   9.70 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CoursePageArrival-muPUsiRi.js                28.25 kB │ gzip:   9.72 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/gitGraphDiagram-PDYL7XHY-COQeHyF2.js         29.00 kB │ gzip:   8.55 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/purify.es-B7SQ8EAD.js                        29.07 kB │ gzip:  11.45 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/StudyCardTransition-DW3EvBPk.js              29.31 kB │ gzip:  10.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/share-CsLc1siY.js                            29.37 kB │ gzip:   9.55 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/timeline-definition-JXYKGLGB-Dy-eR3zf.js     30.45 kB │ gzip:  10.03 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/erDiagram-KYQIGQAA-BdFXVmGN.js               30.64 kB │ gzip:  10.57 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/requirementDiagram-EQYSW5RA-BtpFEQSU.js      31.06 kB │ gzip:   9.82 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CardEditor-Docm44JZ.js                       32.23 kB │ gzip:  10.52 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Method-DqacMKqf.js                           32.52 kB │ gzip:  10.16 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/quadrantDiagram-D57K4MC3-Bpfq2ksK.js         33.52 kB │ gzip:   9.73 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cardListContext-Df6Vxlwv.js                  35.64 kB │ gzip:  11.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/src-CQipM0cR.js                              37.18 kB │ gzip:  12.40 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-WQQL4CDK-5RdzAWR5.js                   37.87 kB │ gzip:   8.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionSetEditor-BBd7q_Gu.js                38.47 kB │ gzip:  12.06 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/mergeImport-_iqwXyXB.js                      39.98 kB │ gzip:  11.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/vennDiagram-Q3Y3IDCW-zJPHHJh3.js             41.18 kB │ gzip:  15.11 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/quizlet-CMi3I48a.js                          41.18 kB │ gzip:  12.03 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/stateDiagram-v2-A6IESKWZ-nC7s4pO9.js         41.57 kB │ gzip:  13.90 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/blockDiagram-RJAE7QA3-9J196sNO.js            42.50 kB │ gzip:  13.89 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/xychartDiagram-4URNHDU4-CrwvXl97.js          43.24 kB │ gzip:  11.87 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/relay-am76AaSO.js                            43.53 kB │ gzip:  12.85 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CoursePath-CIYI0Bru.js                       46.88 kB │ gzip:  14.44 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/portability-90FysChK.js                      47.78 kB │ gzip:  13.24 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/dagre-NK4GIZVX-CTPF2ysr.js                   47.83 kB │ gzip:  17.10 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/CourseSettings-DzBphyH6.js                   49.06 kB │ gzip:  13.99 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/classDiagram-v2-4MYWR3UA-4xxxr1MJ.js         49.73 kB │ gzip:  16.17 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-AQDTSKZB-CxlwtaDq.js                   51.87 kB │ gzip:  16.63 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/apkgParser-kxn9gY7c.js                       54.22 kB │ gzip:  20.06 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/ganttDiagram-R7GPNTJY-HKPCFQfK.js            55.35 kB │ gzip:  18.59 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/executor-8X-MTly1.js                         56.34 kB │ gzip:  15.49 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/QuestionsPage-BZCZGXZp.js                    58.72 kB │ gzip:  17.61 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-NQOKRVIF-YX7A8ioc.js                   62.82 kB │ gzip:  20.40 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/c4Diagram-XDPPPE54-XN26x_yW.js               65.08 kB │ gzip:  18.60 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/diagram-TYUNFSNR-Dd6p7ERd.js                 80.50 kB │ gzip:  25.19 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cose-bilkent-JH36ORCC-CwwzXBRJ.js            81.24 kB │ gzip:  21.53 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/mermaid.core-DwvZ5lP_.js                     85.07 kB │ gzip:  29.42 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/Settings-DYKASbQg.js                         89.98 kB │ gzip:  24.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/schemas-sZxgVjIK.js                          95.80 kB │ gzip:  26.96 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/swimlanes-B3ENRKFQ-BX-FG2mE.js              106.49 kB │ gzip:  36.22 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-HAGFOTED-rlS_HGVB.js                  115.56 kB │ gzip:  29.27 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/sequenceDiagram-BLEHNHQU-BGFwuW3r.js        117.67 kB │ gzip:  31.37 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/LearnMode-6fiu4_Ps.js                       130.90 kB │ gzip:  41.88 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/verify-DmeOC4Th.js                          146.75 kB │ gzip:  41.90 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/architectureDiagram-ZHVYKT53-CHSGcwIn.js    148.90 kB │ gzip:  41.12 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/usecaseDiagram-WPOLBNNX-Biu4rpYx.js         187.92 kB │ gzip:  49.21 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/client-BYLi7C6U.js                          207.36 kB │ gzip:  64.94 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-DSNLSHJZ-Bd5nb1Ns.js                  212.72 kB │ gzip:  29.09 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/useChartColours-BMo2QMjm.js                 281.03 kB │ gzip:  79.97 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/lib-BUGfRecR.js                             290.96 kB │ gzip:  88.91 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/app-HLyUoRle.js                             322.26 kB │ gzip: 100.69 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/SectionCard-BoqD9rgD.js                     325.37 kB │ gzip: 100.07 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/esm-Bd5Go6BK.js                             368.71 kB │ gzip: 108.08 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/cytoscape.esm-Yq6u8L66.js                   434.85 kB │ gzip: 137.78 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/chunk-NGNAAXSQ-DqoPQk1a.js                  629.05 kB │ gzip: 127.32 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/MarkdownView-BGUdvrQn.js                    696.45 kB │ gzip: 213.88 kB
+artifacts/browser-checks/run-FZTp9K/dist/assets/elk-QONTBCTQ-C7TOAR2h.js                  1,463.35 kB │ gzip: 455.96 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[INEFFECTIVE_DYNAMIC_IMPORT] src/db/courseRepository.ts is dynamically imported by src/components/course/NewCourseForm.tsx, src/pages/Dashboard.tsx but also statically imported by src/components/course/CoursePageNavigation.tsx, src/components/course/FinalExamLifecycleController.tsx, src/components/dashboard/CourseActions.tsx, src/components/mcp/McpBridgeController.tsx, src/components/share/OtherShareWays.tsx, ..., dynamic import will not move module into another chunk.
+
+✓ built in 1.66s
+
+PWA v2.0.0
+mode      generateSW
+precache  137 entries (980.47 KiB)
+files generated
+  artifacts/browser-checks/run-FZTp9K/dist/sw.js
+  artifacts/browser-checks/run-FZTp9K/dist/workbox-835c8c05.js
+[WebServer] (node:11202) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] [vite:react-swc] We recommend switching to `@vitejs/plugin-react` for improved performance as no swc plugins are used. More information at https://vite.dev/rolldown
+
+Running 2 tests using 1 worker
+
+(node:11203) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 1280px (6.3s)
+(node:11383) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  2 [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 390px (6.9s)
+
+
+  1) [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 1280px 
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected: "http://127.0.0.1:4418/#/course/6916fe23-037b-4b40-b08b-2072ca7dd13d"
+    Received: "http://127.0.0.1:4418/#/s/2265a5f515741655ab6e8a305a44b7aa"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 5000ms
+        14 × locator resolved to <html lang="en-GB" data-accent="volt" class="lacuna-app-shell dark">…</html>
+           - unexpected value "http://127.0.0.1:4418/#/s/2265a5f515741655ab6e8a305a44b7aa"
+
+
+      43 |       JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id] as string, shareId,
+      44 |     );
+    > 45 |     await expect(page).toHaveURL(`${new URL(page.url()).origin}/#/course/${courseId}`);
+         |                        ^
+      46 |     const heading = page.getByRole('heading', { name: 'Shared biology', exact: true });
+      47 |     await expect(heading).toBeFocused();
+      48 |     await expect(heading).toBeInViewport();
+        at <worktree>/tests/e2e/share-links.spec.ts:45:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-aacb9-g-focus-and-Study-at-1280px-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-aacb9-g-focus-and-Study-at-1280px-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-aacb9-g-focus-and-Study-at-1280px-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-aacb9-g-focus-and-Study-at-1280px-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 390px 
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected: "http://127.0.0.1:4418/#/course/457a9a57-3cc5-42c5-a3ed-777c24ad208b"
+    Received: "http://127.0.0.1:4418/#/s/c40cc0da8bd04155152e34aff9122cd0"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 5000ms
+        14 × locator resolved to <html lang="en-GB" data-accent="volt" class="lacuna-app-shell dark">…</html>
+           - unexpected value "http://127.0.0.1:4418/#/s/c40cc0da8bd04155152e34aff9122cd0"
+
+
+      43 |       JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id] as string, shareId,
+      44 |     );
+    > 45 |     await expect(page).toHaveURL(`${new URL(page.url()).origin}/#/course/${courseId}`);
+         |                        ^
+      46 |     const heading = page.getByRole('heading', { name: 'Shared biology', exact: true });
+      47 |     await expect(heading).toBeFocused();
+      48 |     await expect(heading).toBeInViewport();
+        at <worktree>/tests/e2e/share-links.spec.ts:45:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-80170-ng-focus-and-Study-at-390px-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-80170-ng-focus-and-Study-at-390px-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-80170-ng-focus-and-Study-at-390px-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace artifacts/browser-checks/run-FZTp9K/test-results/share-links-opens-the-conf-80170-ng-focus-and-Study-at-390px-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 1280px 
+    [chromium] › tests/e2e/share-links.spec.ts:12:3 › opens the confirmed shared course with heading focus and Study at 390px 
+error: script "verify:browser" exited with code 1
