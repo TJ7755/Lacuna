@@ -30,14 +30,6 @@
   },
   {
     "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "Question-bank parsing exposes lazy repository entry points; the repository uses the parser and materialiser.",
-    "edges": [
-      "src/questions/bank.ts -> src/questions/bankRepository.ts",
-      "src/questions/bankRepository.ts -> src/questions/bank.ts"
-    ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
     "reason": "Publishing drafts uses the question-set repository; repository deletion and restoration maintain those drafts.",
     "edges": [
       "src/questions/questionSetDrafts.ts -> src/questions/questionSetRepository.ts",
