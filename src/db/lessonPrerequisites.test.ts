@@ -94,6 +94,7 @@ describe('advisory Lesson prerequisites and Course creator', () => {
 
   it('adopts lineage links, queues changes, preserves learner edits and tracks creator baselines', async () => {
     const { course } = await importLineageFirstTime(published());
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     expect((await db.lessons.get('atp'))?.prerequisiteLessonIds).toEqual(['cells']);
     expect(course.creator).toBe('Lacuna Biology Project');
     const next = published(2);
@@ -132,6 +133,7 @@ describe('advisory Lesson prerequisites and Course creator', () => {
 
   it('accepts a batch that reverses dependency direction without an intermediate cycle', async () => {
     const { course } = await importLineageFirstTime(published());
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     const next = published(2);
     next.lessons[0].pr = ['atp'];
     next.lessons[1].pr = [];
@@ -212,6 +214,7 @@ describe('advisory Lesson prerequisites and Course creator', () => {
 
   it('retains lineage snapshots and queued prerequisites through backup restore', async () => {
     const { course } = await importLineageFirstTime(published());
+    await db.courses.update(course.id, { 'distributedCopy.autoAcceptUpdates': false });
     const next = published(2);
     next.lessons[1].pr = [];
     await mergeLineageUpdate(course.id, next);
