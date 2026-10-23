@@ -1,0 +1,10 @@
+$ vitest run "--maxWorkers=1" src/jev/attempts.test.ts src/questions/questionSetAttemptRepository.test.ts
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  2 passed (2)
+      Tests  52 passed (52)
+   Start at  16:37:16
+   Duration  1.40s (tests 43%, import 25%, environment 12%, setup 10%, transform 9%)
+

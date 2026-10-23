@@ -1,0 +1,9 @@
+$ bun run typecheck:web && bun run typecheck:server && bun run typecheck:electron
+$ bun check -b
+✓ No type errors in 2,016 files across 3 projects [315.57ms]
+$ bun check -p tsconfig.server.json
+✓ No type errors in 41 files [42.64ms]
+$ bun check -p electron/tsconfig.json && bun check -p electron/tsconfig.preload.json && bun check -p electron/tsconfig.mcp.json
+✓ No type errors in 9 files [13.83ms]
+✓ No type errors in 1 file [11.32ms]
+✓ No type errors in 37 files [42.82ms]

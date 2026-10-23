@@ -1,0 +1,122 @@
+$ vitest run "--maxWorkers=1" src/jev/attempts.test.ts
+
+ RUN  v5.0.5 <worktree>
+
+ ❯ |browser| src/jev/attempts.test.ts (28 tests | 5 failed) 385ms
+   × persists unsure lines with provenance and applies explicit zero marks 10ms
+   × retains unsure decisions on re-entry, keeps summaries provisional and allows a numeric override 4ms
+   × sends an opened criterion once however often it is revisited 2ms
+   × allows a verdict (null) that could not be applied (conflict) to recover on a revisit 3ms
+   × allows a verdict (null) that could not be applied (storage error) to recover on a revisit 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |browser| src/jev/attempts.test.ts > persists unsure lines with provenance and applies explicit zero marks
+AssertionError: expected [ { allocationId: 'a1', …(3) } ] to deeply equal [ ObjectContaining{…}, …(1) ]
+
+- Expected
++ Received
+
+@@ -8,16 +8,6 @@
+        "model": "jev-1.14.0",
+      },
+      "marks": 0,
+      "status": "awarded",
+    },
+-   ObjectContaining {
+-     "allocationId": "a2",
+-     "markedBy": {
+-       "by": "jev",
+-       "confidence": 0.5,
+-       "markedAt": Any<Number>,
+-       "model": "jev-1.14.0",
+-     },
+-     "status": "unsure",
+-   },
+  ]
+
+ ❯ src/jev/attempts.test.ts:127:64
+    125|   const { engine } = engineWith(async (request) => result(request.maxM…
+    126|   await markJevAttempt(attempt.id, engine);
+    127|   expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual…
+       |                                                                ^
+    128|     expect.objectContaining({
+    129|       allocationId: 'a1',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |browser| src/jev/attempts.test.ts > retains unsure decisions on re-entry, keeps summaries provisional and allows a numeric override
+AssertionError: expected [] to have a length of 2 but got +0
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ src/jev/attempts.test.ts:223:27
+    221|   await markJevAttempt(attempt.id, engine);
+    222|   const saved = (await getQuestionSetAttempt(attempt.id))!;
+    223|   expect(saved.decisions).toHaveLength(2);
+       |                           ^
+    224|   expect(saved.decisions.every((row) => row.status === 'unsure' && row…
+    225|   expect(summariseSelfMarking(saved.receipt, saved.decisions)).toMatch…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |browser| src/jev/attempts.test.ts > sends an opened criterion once however often it is revisited
+AssertionError: expected [] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+- [
+-   ObjectContaining {
+-     "allocationId": "a1",
+-     "status": "unsure",
+-   },
+- ]
++ []
+
+ ❯ src/jev/attempts.test.ts:454:64
+    452|   await markJevAttempt(attempt.id, engine, 'a1');
+    453|   expect(fetcher).toHaveBeenCalledTimes(2);
+    454|   expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual…
+       |                                                                ^
+    455|     expect.objectContaining({ allocationId: 'a1', status: 'unsure' }),
+    456|   ]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |browser| src/jev/attempts.test.ts > allows a verdict (null) that could not be applied (conflict) to recover on a revisit
+ FAIL  |browser| src/jev/attempts.test.ts > allows a verdict (null) that could not be applied (storage error) to recover on a revisit
+AssertionError: expected [] to deeply equal [ ObjectContaining{…} ]
+
+- Expected
++ Received
+
+- [
+-   ObjectContaining {
+-     "allocationId": "a1",
+-     "status": "unsure",
+-   },
+- ]
++ []
+
+ ❯ src/jev/attempts.test.ts:528:68
+    526|       expect((await getQuestionSetAttempt(attempt.id))!.decisions).toE…
+    527|       await markJevAttempt(attempt.id, engine, 'a1');
+    528|       expect((await getQuestionSetAttempt(attempt.id))!.decisions).toE…
+       |                                                                    ^
+    529|         expect.objectContaining(value === null
+    530|           ? { allocationId: 'a1', status: 'unsure' }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 23 passed (28)
+   Start at  16:35:32
+   Duration  1.05s (tests 39%, import 23%, transform 18%, environment 12%, setup 8%)
+
+error: script "test" exited with code 1
