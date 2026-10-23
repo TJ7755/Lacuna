@@ -7,6 +7,11 @@ export interface QuestionSetSearchContext {
   concepts?: readonly { id: string; name: string }[];
 }
 
+export interface QuestionSetSearchOptions {
+  /** Callers must resolve live course authoring capability; learner searches leave this disabled. */
+  includeMarkScheme?: boolean;
+}
+
 /** Retain authored labels and image descriptions, never link destinations or asset identities. */
 function searchableText(source: string): string {
   return plainPreview(
@@ -51,12 +56,13 @@ export function questionSetSearchContext(
 
 /** AND across words/fields; best location covers most words, then the whole phrase.
  * Ties retain field order and input set order. Callers own course scope and draft visibility.
- * Only prompts, option wording and named context are indexed; marking is deliberately excluded.
+ * Marking is excluded unless an authorised authoring caller explicitly enables it.
  */
 export function searchQuestionSets<T extends QuestionSet>(
   sets: readonly T[],
   query: string,
   context: QuestionSetSearchContext = {},
+  options: QuestionSetSearchOptions = {},
 ): { content: T; location: string; excerpt: string }[] {
   const phrase = normalise(query);
   const words = [...new Set(phrase.split(' ').filter(Boolean))];
@@ -78,6 +84,20 @@ export function searchQuestionSets<T extends QuestionSet>(
             .join('')
             .replace(/^Q/, 'Question ');
         fields.push({ location, text: row.node.prompt });
+        if (options.includeMarkScheme === true) {
+          for (const allocation of row.node.answer?.allocations ?? []) {
+            fields.push({
+              location: `Mark scheme: ${location} criterion`,
+              text: allocation.criterion,
+            });
+            if (allocation.explanation) {
+              fields.push({
+                location: `Mark scheme: ${location} explanation`,
+                text: allocation.explanation,
+              });
+            }
+          }
+        }
         if (row.node.answer?.response.kind === 'multiple-choice') {
           row.node.answer.response.options.forEach((option) =>
             fields.push({ location: `${location} option`, text: option.content }),

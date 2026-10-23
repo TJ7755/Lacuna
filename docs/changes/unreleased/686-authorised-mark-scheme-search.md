@@ -1,0 +1,1 @@
+- Course authors can find question sets by mark-scheme criteria and explanations in the Questions library and path picker, with labelled matching locations. Learner searches exclude answer-only content; family search covers stored representatives and templates without generating variants. (#686)

@@ -61,3 +61,18 @@ bank import action to call `importQuestionBank(value, courseId)` and its bank ex
 `materialiseQuestionBank(value, courseId)` resolves deterministic content without database access.
 `resolveFamilyVariant(set, index)` resolves one stored family without changing its authored identity;
 `declarativeFamilyCapacity(set.bank.family)` reports the finite number of available variants.
+
+Question-set keyword search covers stored representative content, authored family templates and
+named metadata. It does not generate variants or index arbitrary unseen numeric wording. Matching
+is case-insensitive, accent-insensitive and punctuation/whitespace-normalised, with all query words
+required across searchable fields. Each set appears once in input order; the excerpt location covers
+the most query words, then the whole phrase, retaining field order on ties.
+
+Mark-scheme criteria and explanations are searchable only when a caller explicitly enables them
+after resolving the live Course's effective authoring mode and archived state. The Questions library
+and path picker use that existing capability; study mode, locked distributed copies and archived
+Courses exclude answer-only text from both matching and excerpts. The shared search defaults to
+excluding marking. Marking matches identify the Question/part and criterion or explanation; family
+template matches are labelled as templates. Markdown labels and image descriptions remain searchable;
+link destinations, asset URLs and internal identities do not become search fields. Existing draft
+visibility stays with the caller; the path picker still lists saved sets only.

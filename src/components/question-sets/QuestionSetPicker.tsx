@@ -1,3 +1,6 @@
+import { useParams } from 'react-router-dom';
+import { resolveLessonViewMode } from '../../course/lessonViewMode';
+import { useCourse } from '../../state/useCourseData';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
@@ -31,10 +34,13 @@ export function QuestionSetPicker({
   onClose: () => void;
   host: HTMLElement;
 }) {
+  const { courseId } = useParams<{ courseId: string }>();
+  const course = useCourse(courseId);
+  const author = !!course && resolveLessonViewMode(course) === 'edit' && !course.archived;
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(value);
   const trap = useFocusTrap(true, { autoFocusSelector: 'input[type="search"]' });
-  const results = searchQuestionSets(sets, query, context);
+  const results = searchQuestionSets(sets, query, context, { includeMarkScheme: author });
   return createPortal(
     <DialogPanel
       label="Choose a question set"

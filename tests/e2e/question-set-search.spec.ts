@@ -30,6 +30,21 @@ for (const width of [1280, 390]) {
     await expect(page.getByText(/Question 1: Explain selective permeability/)).toBeVisible();
     await expect(page.getByText('Secret marking criterion', { exact: true })).toHaveCount(0);
     await page.screenshot({ path: test.info().outputPath(`library-${width}.png`) });
+    await librarySearch.fill('secret marking criterion');
+    await expect(page.getByRole('heading', { name: 'Cell practice', exact: true })).toBeVisible();
+    await expect(
+      page.getByText('Mark scheme: Question 1 criterion: Secret marking criterion'),
+    ).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`author-mark-scheme-${width}.png`) });
+    await page.goto(`/#${coursePath}`);
+    await page.getByRole('button', { name: 'View mode', exact: true }).click();
+    await page.goto(`/#${coursePath}/questions`);
+    await librarySearch.fill('secret marking criterion');
+    await expect(page.getByRole('heading', { name: 'No matching sets' })).toBeVisible();
+    await expect(page.getByText(/Secret marking criterion/)).toHaveCount(0);
+    await page.screenshot({ path: test.info().outputPath(`learner-mark-scheme-${width}.png`) });
+    await librarySearch.fill('selective permeability');
+    await expect(page.getByRole('heading', { name: 'Cell practice', exact: true })).toBeVisible();
     await page.goto(`/#${coursePath}`);
     await page.setViewportSize({ width, height: 844 });
     await page.getByRole('button', { name: 'Edit mode', exact: true }).click();
@@ -87,7 +102,11 @@ for (const width of [1280, 390]) {
     await expect(search).toBeFocused();
     await expect(choice).not.toBeChecked();
     await search.fill('secret marking criterion');
-    await expect(choice).toHaveCount(0);
+    await expect(choice).toBeVisible();
+    await expect(
+      picker.getByText('Mark scheme: Question 1 criterion: Secret marking criterion'),
+    ).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`picker-mark-scheme-${width}.png`) });
     await search.fill('selective permeability');
     await search.press('Tab');
     await choice.press('Space');
