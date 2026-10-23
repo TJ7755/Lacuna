@@ -6,7 +6,7 @@
   "description": "Lacuna sync relay: opaque ciphertext over Vercel Blob.",
   "scripts": {
     "typecheck": "bun check",
-    "lint": "eslint src api tests scripts --ext .ts,.mjs",
+    "lint": "eslint src api tests scripts shared --ext .ts,.mjs",
     "test": "vitest run"
   },
   "engines": {

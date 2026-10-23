@@ -311,3 +311,12 @@ the existing age-based policy, so an old publication may expire immediately.
 The operator procedure, withdrawal and expired-link recovery are in
 [the library procedure](../docs/library.md#official-publication-retention). Catalogue changes do
 not silently change the relay's retention authority.
+
+## Shared insights contract
+
+The app and relay import the reporting-day helpers and wire protocol through
+`shared/insights/index.ts`. This explicit surface stays inside the relay project root so
+Vercel can bundle `api/index.ts` without including files outside its configured directory.
+`src/insightsProtocol.ts` and `src/insightsDay.ts` retain compatibility re-exports for existing
+relay tests. Root consumers must use the shared entry point; ESLint rejects deep imports
+except the exact integration-test fixture edges declared in the root configuration.

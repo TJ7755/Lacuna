@@ -1,5 +1,5 @@
 import { createLocalSetting, type LocalSetting } from './localSetting';
-import { isoDayStartMs } from '../../relay/src/insightsDay';
+import { isoDayStartMs } from '../../relay/shared/insights/index';
 
 /**
  * The class-insights opt-in and its daily marker, stored per course on the

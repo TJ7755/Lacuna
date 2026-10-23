@@ -7,7 +7,7 @@ import type {
   QuestionSetAttemptRecord,
   QuestionSetResponseValue,
 } from '../questions/questionSetAttempts';
-import { DAY_MS, isoDayStartMs } from '../../relay/src/insightsDay';
+import { DAY_MS, isoDayStartMs } from '../../relay/shared/insights/index';
 import {
   DailyEvidenceTooLargeError,
   encodeDailyEvidence,

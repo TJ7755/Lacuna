@@ -1,10 +1,10 @@
 import Dexie from 'dexie';
-import { completedIsoDayLabel } from '../../relay/src/insightsDay';
+import { completedIsoDayLabel } from '../../relay/shared/insights/index';
 import {
   INSIGHT_ID_RE,
   parseInsightEnvelope,
   type InsightEnvelope,
-} from '../../relay/src/insightsProtocol';
+} from '../../relay/shared/insights/index';
 import { normaliseRelayUrl } from '../sync/relay';
 import { sealInsightEnvelope, type InsightsRecipient } from './envelope';
 import { putInsightEnvelope } from './mailbox';

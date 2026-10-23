@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { expect, test, type Page } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
-import { DAY_MS, completedIsoDayLabel } from '../../relay/src/insightsDay';
+import { DAY_MS, completedIsoDayLabel } from '../../relay/shared/insights/index';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 import { parseClassCode } from '../../src/insights/classCode';
 import { addLessonCard, reviewOnlyCard, readAll } from './fixtures/syncConvergence';
