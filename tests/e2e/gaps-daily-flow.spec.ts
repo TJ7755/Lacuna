@@ -190,6 +190,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       .getByLabel('Class code', { exact: true })
       .fill(` ${code.toLowerCase().replace('-', ' - ')} `);
     await pupil.getByRole('button', { name: 'Join class', exact: true }).click();
+    await pupil.getByRole('radio', { name: /Exam date/ }).press('Space');
     await pupil.getByRole('button', { name: 'Add to my courses' }).click();
     const consent = pupil.getByRole('switch', { name: 'Share insights with your teacher' });
     await expect(consent).toHaveAttribute('aria-checked', 'false');
@@ -228,6 +229,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await wire(returning);
     await enterFreshLacuna(returning);
     await returning.goto(`/#/s/${sourceShareId}`);
+    await returning.getByRole('radio', { name: /Exam date/ }).press('Space');
     await returning.getByRole('button', { name: 'Add to my courses' }).click();
     await expect(returning.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
     const beforeCourses = await readAll<{ id: string; distributedCopy?: unknown }>(

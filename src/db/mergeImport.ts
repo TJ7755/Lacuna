@@ -68,7 +68,7 @@ import type {
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
-import { importSharePayload } from './share';
+import { applyImportedCourseScheduling, importSharePayload, type ImportCourseScheduling } from './share';
 import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type {
   Card,
@@ -965,7 +965,10 @@ async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
  * instead of `makeId()`, and a `LineageIdMapping` membership registry plus initial
  * content snapshots are written so the next re-import can diff against this state.
  */
-export async function importLineageFirstTime(payload: SharePayload): Promise<{ course: Course }> {
+export async function importLineageFirstTime(
+  payload: SharePayload,
+  scheduling?: ImportCourseScheduling,
+): Promise<{ course: Course }> {
   if (!isLineagePayload(payload)) {
     throw new Error('Payload does not carry a course lineage (missing li/rv).');
   }
@@ -973,7 +976,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
   // A detached copy (or the teacher's own course) already holds these ids, and
   // adoption cannot reuse them, so fall back to a plain, untracked import.
   if (await lineageIdsInUse(payload)) {
-    const { courseIds } = await importSharePayload(payload);
+    const { courseIds } = await importSharePayload(payload, scheduling);
     const course = await db.courses.get(courseIds[0]);
     if (!course) throw new Error('Course not found.');
     const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
@@ -1185,6 +1188,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await clearTombstone(tx, 'lineageIdMappings', payload.li);
     await db.pendingMergeReviews.where('courseId').equals(course.id).delete();
 
+    if (scheduling) await applyImportedCourseScheduling(course.id, scheduling);
     const assessments = await db.courseAssessments.where('courseId').equals(course.id).toArray();
     return { course: hydrateCourse(course, finalAssessmentForCourse(course.id, assessments)) };
   });
