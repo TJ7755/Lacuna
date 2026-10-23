@@ -1,3 +1,4 @@
+import { lessonCardMembership } from '../../course/lessonMembership';
 import type { JevMarkProvenance } from '../../jev/types';
 import { catchUpPracticePool } from '../../course/catchUpPractice';
 import { earlierCourseLessonIds } from '../../course/courseEntry';
@@ -54,7 +55,6 @@ import {
   dueReviewPool,
   examPracticePool,
   directLessonStudyPool,
-  lessonCardMembership,
   lessonStudyPool,
   practiceCardScope,
   practiceReadiness,

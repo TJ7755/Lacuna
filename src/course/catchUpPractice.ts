@@ -1,8 +1,9 @@
+import { lessonCardMembershipForLessons } from './lessonMembership';
 import type { Card, Course, Lesson, LessonCardLink } from '../db/types';
 import type { ExamDateContext } from '../fsrs/examDate';
 import { studyPool } from '../fsrs/eligibility';
 import { earlierLessonIds } from './courseEntry';
-import { eligiblePracticePool, lessonCardMembershipForLessons } from './studyPools';
+import { eligiblePracticePool } from './studyPools';
 
 /** Earlier knowledge enters real FSRS practice without fabricated teaching evidence. */
 export function catchUpPracticePool(

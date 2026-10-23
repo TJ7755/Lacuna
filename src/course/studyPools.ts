@@ -11,17 +11,18 @@ import type {
   PracticeNode,
   SchedulerConfig,
 } from '../db/types';
-import { resolveCardExamDate, type ExamDateContext } from '../fsrs/examDate';
+import type { ExamDateContext } from '../fsrs/examDate';
 import { rAtExam } from '../fsrs/forwardSim';
 import { decayOf } from '../fsrs/fsrs';
 import { cardSchedulingHorizon } from '../fsrs/horizon';
-import { dueCards, isAvailable, studyPool } from '../fsrs/eligibility';
+import { studyPool } from '../fsrs/eligibility';
 import type { ReviewActivity } from '../fsrs/heatmap';
 import { isLeech } from '../fsrs/leech';
 import { MASTERY_R } from '../fsrs/params';
 import { lessonCardMembership } from './lessonMembership';
 
 export { lessonCardMembership, lessonCardMembershipForLessons } from './lessonMembership';
+export { eligiblePracticePool, dueReviewPool, examPracticePool } from '../fsrs/eligibility';
 
 /** Cards still needing a successful introduction in this particular lesson. */
 export function lessonStudyPool(
@@ -150,48 +151,10 @@ export function practiceCardScope(
   return cardCount > 0 ? scope.slice(0, cardCount) : scope;
 }
 
-/** Exam-target practice, or scheduled work and new cards without a future exam. */
-export function eligiblePracticePool(
-  scope: Card[],
-  course: Course,
-  examDateContext: ExamDateContext,
-  now: number = Date.now(),
-): Card[] {
-  if (course.archived) return [];
-  const decay = decayOf(course.fsrsParameters);
-  return scope.filter((card) => {
-    if (!isAvailable(card, now)) return false;
-    const examDate = resolveCardExamDate(card, examDateContext, now);
-    if (examDate === undefined || examDate < now) {
-      return card.state === 0 || (card.due !== null && card.due <= now);
-    }
-    const horizon = cardSchedulingHorizon(card, course, examDateContext, now);
-    return rAtExam(card, horizon, now, decay) < MASTERY_R;
-  });
-}
-
 export interface PracticeReadiness {
   securedCardCount: number;
   totalCardCount: number;
   fraction: number;
-}
-
-/** Scheduled reviews due now, independent of lessons and exam readiness. */
-export function dueReviewPool(cards: Card[], course: Course, now: number = Date.now()): Card[] {
-  return course.archived ? [] : dueCards(cards, now);
-}
-
-/** Optional early revision for cards below their own future exam target. */
-export function examPracticePool(
-  cards: Card[],
-  course: Course,
-  examDateContext: ExamDateContext,
-  now: number = Date.now(),
-): Card[] {
-  return eligiblePracticePool(cards, course, examDateContext, now).filter((card) => {
-    const examDate = resolveCardExamDate(card, examDateContext, now);
-    return examDate !== undefined && examDate >= now;
-  });
 }
 
 /**
