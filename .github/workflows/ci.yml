@@ -47,6 +47,16 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docs_only: ${{ steps.metadata.outputs.docs_only || steps.scope.outputs.docs_only }}
+      app: ${{ steps.metadata.outputs.app || steps.scope.outputs.app }}
+      electron: ${{ steps.metadata.outputs.electron || steps.scope.outputs.electron }}
+      relay: ${{ steps.metadata.outputs.relay || steps.scope.outputs.relay }}
+      tooling: ${{ steps.metadata.outputs.tooling || steps.scope.outputs.tooling }}
+      sites: ${{ steps.metadata.outputs.sites || steps.scope.outputs.sites }}
+      docs: ${{ steps.metadata.outputs.docs || steps.scope.outputs.docs }}
+      handwriting: ${{ steps.metadata.outputs.handwriting || steps.scope.outputs.handwriting }}
+      python: ${{ steps.metadata.outputs.python || steps.scope.outputs.python }}
+      ai_mcp: ${{ steps.metadata.outputs.ai_mcp || steps.scope.outputs.ai_mcp }}
+      lint: ${{ steps.metadata.outputs.lint || steps.scope.outputs.lint }}
     steps:
       - id: metadata
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
@@ -63,17 +73,19 @@ jobs:
             echo "No validation run exists for this merge commit. Reopen the PR or push a commit to validate it."
             exit 1
           fi
-          gh run watch "$run_id" --repo "$GH_REPO" --exit-status
+          gh run watch "$run_id" --repo "$GH_REPO" --exit-status --interval 60
           conclusion=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .conclusion)
           [ "$conclusion" = success ]
           echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
           echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          for area in app electron relay tooling sites docs handwriting python ai_mcp lint; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
           fetch-depth: 0
           persist-credentials: false
       - id: scope
+        shell: bash
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -81,9 +93,9 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           if [ "$EVENT_NAME" = pull_request ]; then
-            git diff --name-only "$BASE_SHA...$HEAD_SHA" | node scripts/ci-change-scope.mjs >> "$GITHUB_OUTPUT"
+            git diff --name-status -z --find-renames "$BASE_SHA...$HEAD_SHA" | node scripts/ci-change-scope.mjs --name-status >> "$GITHUB_OUTPUT"
           else
-            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            printf 'unknown-root-path\n' | node scripts/ci-change-scope.mjs >> "$GITHUB_OUTPUT"
           fi
 
   typecheck:
@@ -92,28 +104,28 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: needs.changes.outputs.app == 'false'
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
         working-directory: relay
       - run: bun run typecheck
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.app != 'false'
 
   lint:
     name: lint
@@ -121,29 +133,29 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: needs.changes.outputs.lint == 'false'
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.lint != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.lint != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.lint != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.lint != 'false'
       - run: bun run lint
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.lint != 'false'
 
   test-unit:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.app != 'false'
     strategy:
       fail-fast: false
       matrix:
@@ -167,7 +179,7 @@ jobs:
 
   test-coverage:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.app != 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -185,7 +197,7 @@ jobs:
 
   python-tools:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.python != 'false'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -220,7 +232,11 @@ jobs:
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
-          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          APP: ${{ needs.changes.outputs.app }}
+          SITES: ${{ needs.changes.outputs.sites }}
+          HANDWRITING: ${{ needs.changes.outputs.handwriting }}
+          PYTHON: ${{ needs.changes.outputs.python }}
+          ELECTRON: ${{ needs.changes.outputs.electron }}
           DOCUMENTATION_RESULT: ${{ needs.documentation.result }}
           UNIT_RESULT: ${{ needs.test-unit.result }}
           COVERAGE_RESULT: ${{ needs.test-coverage.result }}
@@ -228,11 +244,11 @@ jobs:
           PYTHON_RESULT: ${{ needs.python-tools.result }}
           MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}
         run: |
-          # "skipped" passes only when the change scope was classified as documentation-only.
-          ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
+          # A skipped dependency passes only with an explicit unaffected scope.
+          ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }
           {
             echo '### Test dependencies'
-            echo "- Scope classification: $SCOPE_RESULT (documentation-only: $DOCS_ONLY)"
+            echo "- Scope classification: $SCOPE_RESULT (app: $APP; sites: $SITES; electron: $ELECTRON)"
             echo "- Documentation: $DOCUMENTATION_RESULT"
             echo "- Unit shards: $UNIT_RESULT"
             echo "- Coverage: $COVERAGE_RESULT"
@@ -240,8 +256,8 @@ jobs:
             echo "- Python: $PYTHON_RESULT"
             echo "- macOS Electron: $MACOS_ELECTRON_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" || ! ok "$COVERAGE_RESULT" || ! ok "$HANDWRITING_RESULT" || ! ok "$PYTHON_RESULT" || ! ok "$MACOS_ELECTRON_RESULT"; then
-            echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT docs-only=$DOCS_ONLY"
+          if [ "$SCOPE_RESULT" != success ] || [ "$DOCUMENTATION_RESULT" != success ] || ! ok "$UNIT_RESULT" "$APP" || ! ok "$COVERAGE_RESULT" "$APP" || ! ok "$HANDWRITING_RESULT" "$HANDWRITING" || ! ok "$PYTHON_RESULT" "$PYTHON" || ! ok "$MACOS_ELECTRON_RESULT" "$ELECTRON"; then
+            echo "Tests did not pass: documentation=$DOCUMENTATION_RESULT unit=$UNIT_RESULT coverage=$COVERAGE_RESULT handwriting=$HANDWRITING_RESULT python=$PYTHON_RESULT macos-electron=$MACOS_ELECTRON_RESULT app=$APP sites=$SITES"
             exit 1
           fi
 
@@ -256,7 +272,7 @@ jobs:
 
   handwriting:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.handwriting != 'false'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -280,32 +296,32 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: needs.changes.outputs.relay == 'false'
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         working-directory: relay
       - run: bun run typecheck
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         working-directory: relay
       - run: bun run lint
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         working-directory: relay
       - run: bun run test
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.relay != 'false'
         working-directory: relay
 
   ai-mcp:
@@ -314,37 +330,37 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: needs.changes.outputs.ai_mcp == 'false'
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: relay
       - run: bun run typecheck
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run lint
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run test
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
       - run: bun run build
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.ai_mcp != 'false'
         working-directory: tooling/lacuna-ai-mcp
 
   production:
@@ -353,27 +369,27 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: (needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun run build:assets
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - name: Share the tested web build
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-web-dist
@@ -381,16 +397,19 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
+      - name: Verify standalone site contracts
+        if: needs.changes.outputs.sites == 'true' && needs.changes.outputs.app == 'false'
+        run: bun run test -- src/build src/release/pwaAssets.test.ts src/vercelConfig.test.ts
       - run: node --test scripts/public-pages.test.mjs
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun run perf:check
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun run release:scenario
-        if: needs.changes.outputs.docs_only != 'true'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
 
   browser-tests:
     needs: [changes, production]
-    if: needs.changes.outputs.docs_only != 'true'
+    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -432,7 +451,7 @@ jobs:
   # These sites and feature flags require their own isolated builds.
   browser-standalone:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -473,7 +492,7 @@ jobs:
   # Each timing project runs on its own runner without competing functional workers.
   browser-timing:
     needs: [changes, production]
-    if: needs.changes.outputs.docs_only != 'true'
+    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -513,7 +532,7 @@ jobs:
 
   browser-mobile:
     needs: [changes, production]
-    if: needs.changes.outputs.docs_only != 'true'
+    if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:7852dc5a7d72f5fe458a597d690f6c42fbc8e9e26ddfa95f8e6ef552558d9bbf
@@ -556,24 +575,30 @@ jobs:
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         env:
           SCOPE_RESULT: ${{ needs.changes.result }}
-          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
+          APP: ${{ needs.changes.outputs.app }}
+          SITES: ${{ needs.changes.outputs.sites }}
+          HANDWRITING: ${{ needs.changes.outputs.handwriting }}
+          PYTHON: ${{ needs.changes.outputs.python }}
+          ELECTRON: ${{ needs.changes.outputs.electron }}
           RESULT: ${{ needs.browser-tests.result }}
           MOBILE_RESULT: ${{ needs.browser-mobile.result }}
           TIMING_RESULT: ${{ needs.browser-timing.result }}
           STANDALONE_RESULT: ${{ needs.browser-standalone.result }}
         run: |
-          # "skipped" passes only when the change scope was classified as documentation-only.
-          ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }
+          # A skipped dependency passes only with an explicit unaffected scope.
+          WEB=true
+          if [ "$APP" = false ] && [ "$SITES" = false ]; then WEB=false; fi
+          ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }
           {
             echo '### Browser dependencies'
-            echo "- Scope classification: $SCOPE_RESULT (documentation-only: $DOCS_ONLY)"
+            echo "- Scope classification: $SCOPE_RESULT (app: $APP; sites: $SITES; electron: $ELECTRON)"
             echo "- Functional shards: $RESULT"
             echo "- Isolated timing projects: $TIMING_RESULT"
             echo "- Standalone sites: $STANDALONE_RESULT"
             echo "- Mobile WebKit: $MOBILE_RESULT"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SCOPE_RESULT" != success ] || ! ok "$RESULT" || ! ok "$TIMING_RESULT" || ! ok "$MOBILE_RESULT" || ! ok "$STANDALONE_RESULT"; then
-            echo "Browser jobs did not pass: scope=$SCOPE_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT docs-only=$DOCS_ONLY"
+          if [ "$SCOPE_RESULT" != success ] || ! ok "$RESULT" "$WEB" || ! ok "$TIMING_RESULT" "$WEB" || ! ok "$MOBILE_RESULT" "$WEB" || ! ok "$STANDALONE_RESULT" "$WEB"; then
+            echo "Browser jobs did not pass: scope=$SCOPE_RESULT functional=$RESULT timing=$TIMING_RESULT mobile=$MOBILE_RESULT standalone=$STANDALONE_RESULT app=$APP sites=$SITES"
             exit 1
           fi
 
@@ -592,29 +617,29 @@ jobs:
     if: needs.changes.result == 'success'
     runs-on: windows-latest
     steps:
-      - name: Report documentation-only scope
-        if: needs.changes.outputs.docs_only == 'true'
+      - name: Report unaffected scope
+        if: needs.changes.outputs.electron == 'false'
         shell: bash
-        run: echo 'Documentation-only change; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.electron != 'false'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.electron != 'false'
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.electron != 'false'
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.electron != 'false'
       - run: bun run test:e2e:electron-ai
-        if: needs.changes.outputs.docs_only != 'true'
+        if: needs.changes.outputs.electron != 'false'
 
   electron-macos-smoke:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.electron != 'false'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -642,7 +667,7 @@ jobs:
 
   windows-installed-upgrade:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    if: needs.changes.outputs.electron != 'false'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -439,9 +439,9 @@ describe('release configuration', () => {
     expect(gate).toContain(
       'needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
     );
-    expect(gate).toContain('DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}');
+    expect(gate).toContain('PYTHON: ${{ needs.changes.outputs.python }}');
     expect(gate).toContain(
-      'ok() { [ "$1" = success ] || { [ "$DOCS_ONLY" = true ] && [ "$1" = skipped ]; }; }',
+      'ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }',
     );
     expect(gate).toContain('MACOS_ELECTRON_RESULT: ${{ needs.electron-macos-smoke.result }}');
     expect(gate).toContain('! ok "$MACOS_ELECTRON_RESULT"');
@@ -465,7 +465,11 @@ describe('release configuration', () => {
       ...process.env,
       GITHUB_STEP_SUMMARY: devNull,
       SCOPE_RESULT: 'success',
-      DOCS_ONLY: 'true',
+      APP: 'false',
+      SITES: 'false',
+      HANDWRITING: 'false',
+      PYTHON: 'false',
+      ELECTRON: 'false',
       UNIT_RESULT: 'skipped',
       COVERAGE_RESULT: 'skipped',
       HANDWRITING_RESULT: 'skipped',
