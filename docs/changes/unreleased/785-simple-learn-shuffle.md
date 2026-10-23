@@ -1,0 +1,1 @@
+- Shuffle cards once when starting a fresh Simple Learn session or another Keep studying pass, keeping recitations together in line order and preserving saved session queues. (#785)

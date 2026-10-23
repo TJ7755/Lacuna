@@ -111,6 +111,43 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
   });
 
+  it('shuffles the fresh Keep studying pass and saves that queue order', async () => {
+    const course = await createCourse('Repeat pass');
+    const lesson = await createLesson(course.id, 'Facts');
+    for (const front of ['First fact', 'Second fact', 'Third fact']) {
+      await createLessonCard(course.id, lesson.id, 'front_back', front, 'Answer');
+    }
+    const cards = await db.cards.where('courseId').equals(course.id).toArray();
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    try {
+      render(
+        <ThemeProvider><AccentProvider><ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+            <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
+          </MemoryRouter>
+        </ToastProvider></AccentProvider></ThemeProvider>,
+      );
+      for (const card of cards) {
+        await findStudyFaceText(card.front);
+        await answerYes();
+      }
+      const keepStudying = await screen.findByRole('button', { name: 'Keep studying' });
+      random.mockReturnValue(0);
+      fireEvent.click(keepStudying);
+      const expected = [cards[1].id, cards[2].id, cards[0].id];
+      await waitFor(() => expect(loadSimpleSession(
+        { kind: 'lesson', lessonId: lesson.id, standalone: true }, expected,
+      )).toMatchObject({ queueCardIds: expected, masteredCardIds: [], outcomes: new Map(), events: [] }));
+      await findStudyFaceText(cards[1].front);
+      await answerYes();
+      await findStudyFaceText(cards[2].front);
+      await answerYes();
+      await findStudyFaceText(cards[0].front);
+    } finally {
+      random.mockRestore();
+    }
+  }, 15_000);
+
   it('does not paint a focus ring on the programmatic study container', async () => {
     const course = await createCourse('Focus ring');
     const lesson = await createLesson(course.id, 'Focus lesson');

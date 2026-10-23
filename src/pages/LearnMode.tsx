@@ -241,6 +241,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     progressBefore,
     sessionStartMs,
     simpleQueue,
+    createSimpleQueue,
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
@@ -512,8 +513,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                           // Restart simple mode: reset all simple state and begin again.
                           simpleMastered.current = new Set();
                           simpleWrong.current = new Set();
-                          simpleQueue.current = cardsRef.current.filter(
-                            (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
+                          simpleQueue.current = createSimpleQueue(
+                            cardsRef.current.filter(
+                              (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
+                            ),
                           );
                           events.current = [];
                           progressBefore.current = 0;

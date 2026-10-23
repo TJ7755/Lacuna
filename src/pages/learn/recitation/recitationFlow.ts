@@ -241,10 +241,10 @@ export function reviewLines(plan: RecitationPlan, itemId: string): number[] {
  * the position of its first card, in poem order, so the progress bar follows the
  * recitation. Other cards keep their places.
  */
-export function inRecitationOrder(
+function recitationGroups(
   cards: Card[],
   sequenceByCard: ReadonlyMap<string, Sequence>,
-): Card[] {
+): Card[][] {
   const groups = new Map<string, Card[]>();
   const positionsBySequence = new Map<string, ReadonlyMap<string, number>>();
   for (const card of cards) {
@@ -264,11 +264,32 @@ export function inRecitationOrder(
   const position = (card: Card) =>
     positionsBySequence.get(sequenceByCard.get(card.id)!.id)!.get(card.sequenceItemId!) ?? -1;
   const placed = new Set<string>();
-  return cards.flatMap((card) => {
+  return cards.flatMap((card): Card[][] => {
     const sequence = sequenceByCard.get(card.id);
-    if (!sequence || !card.sequenceItemId) return [card];
+    if (!sequence || !card.sequenceItemId) return [[card]];
     if (placed.has(sequence.id)) return [];
     placed.add(sequence.id);
-    return [...groups.get(sequence.id)!].sort((a, b) => position(a) - position(b));
+    return [[...groups.get(sequence.id)!].sort((a, b) => position(a) - position(b))];
   });
+}
+
+export function inRecitationOrder(
+  cards: Card[],
+  sequenceByCard: ReadonlyMap<string, Sequence>,
+): Card[] {
+  return recitationGroups(cards, sequenceByCard).flat();
+}
+
+/** Shuffle whole recitations and individual cards, preserving each recitation's line order. */
+export function shuffledSimpleQueue(
+  cards: Card[],
+  sequenceByCard: ReadonlyMap<string, Sequence>,
+  random: () => number = Math.random,
+): Card[] {
+  const groups = recitationGroups(cards, sequenceByCard);
+  for (let index = groups.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(random() * (index + 1));
+    [groups[index], groups[other]] = [groups[other], groups[index]];
+  }
+  return groups.flat();
 }
