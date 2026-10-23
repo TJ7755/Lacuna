@@ -1,11 +1,17 @@
-import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, type CallToolResult } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
+import {
+  _electron as electron,
+  expect,
+  test,
+  type ElectronApplication,
+  type Page,
+} from '@playwright/test';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const require = createRequire(import.meta.url);
@@ -110,17 +116,51 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     'The release gate runs against the supported macOS and Windows desktop builds.',
   );
 
+  const testInfo = test.info();
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-electron-ai-')));
   const executablePath = electronExecutable();
   let app: ElectronApplication | undefined;
   let client: Client | undefined;
+
+  let page: Page | undefined;
+  let tracing = false;
+  let completed = false;
+  const errors: Array<{ kind: string; message: string }> = [];
+  const recordError = (kind: string, message: string) => {
+    errors.push({
+      kind,
+      message: message
+        .replaceAll(profile, '<synthetic-profile>')
+        .replaceAll(root, '<repository>')
+        .replace(/(Bearer\s+)[^\s]+/gi, '$1<redacted>')
+        .replace(/((?:token|secret|api[_-]?key|authorization)\s*[:=]\s*)[^\s,;]+/gi, '$1<redacted>')
+        .slice(0, 1_000),
+    });
+    if (errors.length > 30) errors.shift();
+  };
+  const retain = async (name: string, file: string, capture: () => Promise<unknown>) => {
+    try {
+      await capture();
+      await testInfo.attach(name, { path: file });
+    } catch (error) {
+      recordError('diagnostic', error instanceof Error ? error.message : String(error));
+    }
+  };
 
   try {
     app = await electron.launch({
       executablePath,
       args: [root, `--user-data-dir=${profile}`],
     });
-    const page = await app.firstWindow();
+    const context = app.context();
+    context.on('weberror', (event) => recordError('pageerror', event.error().message));
+    context.on('console', (message) => {
+      if (message.type() === 'error') recordError('console', message.text());
+    });
+    // Manually launched Electron contexts are not covered by the config's page tracing.
+    await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
+    tracing = true;
+    page = await app.firstWindow();
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setDeviceMetricsOverride', {
       width: 1200,
@@ -247,7 +287,38 @@ test('the enabled Electron renderer accepts a companion and completes a message 
     expect(
       toolData(await client.callTool({ name: 'lacuna.disconnect', arguments: {} })),
     ).toMatchObject({ disconnected: true });
+    completed = true;
   } finally {
+    if (app && tracing) {
+      if (!completed) {
+        if (page && !page.isClosed()) {
+          const screenshotPage = page;
+          const file = testInfo.outputPath('electron-renderer.png');
+          await retain('electron-renderer', file, () =>
+            screenshotPage.screenshot({ path: file, timeout: 5_000 }),
+          );
+        }
+        const context = app.context();
+        const file = testInfo.outputPath('electron-context-trace.zip');
+        await retain('trace', file, () => context.tracing.stop({ path: file }));
+        const stateFile = testInfo.outputPath('electron-renderer-state.json');
+        await retain('electron-renderer-state', stateFile, () =>
+          writeFile(
+            stateFile,
+            JSON.stringify(
+              { url: page?.url() ?? null, closed: page?.isClosed() ?? null, errors },
+              null,
+              2,
+            ),
+          ),
+        );
+      } else {
+        await app
+          .context()
+          .tracing.stop()
+          .catch(() => undefined);
+      }
+    }
     await client?.close().catch(() => undefined);
     await app?.close().catch(() => undefined);
     await rm(profile, { recursive: true, force: true });
