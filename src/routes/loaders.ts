@@ -43,8 +43,7 @@ export const loadCourseAnalytics = () =>
 export const loadCoursePath = () =>
   import('../pages/CoursePath').then((module) => ({ default: module.CoursePath }));
 
-export const loadLessonView = () =>
-  import('../pages/LessonView').then((module) => ({ default: module.LessonView }));
+export { loadLessonView } from './lessonRoute';
 
 export const loadCardsPage = () =>
   import('../pages/CardsPage').then((module) => ({ default: module.CardsPage }));

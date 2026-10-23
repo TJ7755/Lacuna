@@ -48,9 +48,9 @@ import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
-import { loadLessonView } from '../routes/loaders';
+import { loadLessonView, prefetchLessonView } from '../routes/lessonRoute';
 import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
-import { useIdleRoutePrefetch } from '../routes/useIdleRoutePrefetch';
+import { useIdlePrefetch } from '../routes/useIdlePrefetch';
 
 const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
 
@@ -92,8 +92,9 @@ export function CoursePath() {
   const records = useCoursePathRecords(courseId);
   const course = records?.course;
   const lessons = records?.lessons;
-  useIdleRoutePrefetch(
+  useIdlePrefetch(
     lessons?.slice(0, 1).map((lesson) => `/course/${courseId}/lesson/${lesson.id}`) ?? [],
+    prefetchLessonView,
   );
   const courseCards = records?.cards;
   // Match the existing Dexie sort: an undated assessment keeps its relative position.
