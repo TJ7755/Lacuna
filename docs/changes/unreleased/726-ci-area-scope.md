@@ -1,0 +1,1 @@
+- Select CI checks by changed area while preserving required check names, shared-contract validation and fail-closed metadata reuse. (#726)

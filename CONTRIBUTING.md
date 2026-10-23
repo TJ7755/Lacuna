@@ -103,17 +103,28 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
-Pull requests that change only documentation skip heavy CI work. Each suite run still checks
-repository file links and changelog fragments in the documentation job; its result feeds the
-required aggregate test gate. Run `bun run docs:check` and `bun run changelog:check` locally after
-documentation changes.
-A change is documentation-only when every path is under `docs/` or `.github/ISSUE_TEMPLATE/`,
-is `.github/PULL_REQUEST_TEMPLATE.md`, or is a Markdown file in the repository root. Markdown under
-`src/`, `tooling/` or `public/` is not, because code consumes it. Pushes to master always run everything.
-The rule lives in `scripts/ci-change-scope.mjs`.
+CI classifies pull requests by changed area in `scripts/ci-change-scope.mjs`. Documentation-only
+changes retain the lightweight documentation checks. Handwriting and Python harness changes select
+their existing tooling jobs; static-site changes select production and browser checks. Relay changes
+also select app and browser checks and standalone AI MCP tests, because integration fixtures import
+relay implementations. AI MCP changes also select app and native checks. Root lint runs for tooling
+and site changes because those paths are covered by its configuration.
 
-Required worker jobs acknowledge documentation-only scope on a runner so GitHub resolves their
-required check names; their install/check steps and non-required heavy jobs remain skipped.
+Every `src/` change, root configuration, workflow, unknown path, relay shared contract or bootstrap
+script selects the complete matrix. Training coefficients and model-port fixtures remain conservative
+shared inputs until their runtime consumers move under `src/`. Mixed changes combine their scopes.
+Git rename records include both endpoints; deleted paths still count. Missing or malformed scope
+cannot acknowledge skipped dependencies. Pushes to master always run everything.
+
+Documentation means paths under `docs/` or `.github/ISSUE_TEMPLATE/`,
+`.github/PULL_REQUEST_TEMPLATE.md`, or Markdown in the repository root. Markdown under `src/`,
+`tooling/` or `public/` is consumed by code and follows its owning area. Run `bun run docs:check` and
+`bun run changelog:check` locally after documentation changes.
+
+Required worker jobs acknowledge unaffected scope on a runner so GitHub resolves their existing
+required check names. The existing test and browser aggregate gates require successful selected
+jobs and accept skipped jobs only for explicit unaffected flags. No branch-protection changes are
+needed. A measured baseline is retained in [CI timings](docs/performance/ci-726-baseline.md).
 
 Title/body-only PR edits do not repeat validation or cancel its current run. They reuse the latest
 successful CI validation run for the exact test merge commit and PR head, waiting if necessary.

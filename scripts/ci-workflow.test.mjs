@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { parse } from 'yaml';
+import { classifyPaths } from './ci-change-scope.mjs';
 
 const workflow = parse(
   readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8'),
@@ -114,7 +115,7 @@ fi
     };
     const valid = { id: 42, display_title: 'CI validation current-merge' };
     assert.equal(run([valid]).status, 0);
-    assert.equal(run([valid]).output, 'docs_only=true\n');
+    assert.match(run([valid]).output, /^docs_only=true\napp=false\n/);
     assert.match(
       readFileSync(join(directory, 'watch'), 'utf8'),
       /run watch 42 --repo owner\/repo --exit-status/,
@@ -206,14 +207,14 @@ test('documentation-only changes resolve required names without running heavy st
     const job = workflow.jobs[name];
     assert.equal(job.if, "needs.changes.result == 'success'", name);
     const [acknowledgement, ...heavySteps] = job.steps;
-    assert.equal(acknowledgement.if, "needs.changes.outputs.docs_only == 'true'", name);
+    assert.equal(acknowledgement.if, name === 'production' ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} == 'false'`, name);
     assert.equal(acknowledgement.shell, 'bash', name);
     assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
     assert.ok(heavySteps.length > 0, name);
     for (const step of heavySteps) {
       assert.equal(
         step.if,
-        "needs.changes.outputs.docs_only != 'true'",
+        name === 'production' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} != 'false'`,
         `${name}: ${step.uses ?? step.run}`,
       );
     }
@@ -231,7 +232,7 @@ test('aggregate shell gates fail closed and report each dependency result', () =
         writeFileSync(summary, '');
         const env = {
           ...process.env,
-          DOCS_ONLY: 'false',
+          APP: 'true', SITES: 'true', ELECTRON: 'true', HANDWRITING: 'true', PYTHON: 'true',
           GITHUB_STEP_SUMMARY: summary,
           ...Object.fromEntries(results.map((key) => [key, 'success'])),
           ...overrides,
@@ -252,11 +253,11 @@ test('aggregate shell gates fail closed and report each dependency result', () =
           .filter((key) => !['SCOPE_RESULT', 'DOCUMENTATION_RESULT'].includes(key))
           .map((key) => [key, 'skipped']),
       );
-      assert.equal(run({ ...docs, DOCS_ONLY: 'true' }).status, 0);
-      assert.equal(run({ ...docs, DOCS_ONLY: 'true', SCOPE_RESULT: 'failure' }).status, 1);
+      assert.equal(run({ ...docs, APP: 'false', SITES: 'false', ELECTRON: 'false', HANDWRITING: 'false', PYTHON: 'false' }).status, 0);
+      assert.equal(run({ ...docs, APP: 'false', SITES: 'false', ELECTRON: 'false', HANDWRITING: 'false', PYTHON: 'false', SCOPE_RESULT: 'failure' }).status, 1);
       for (const key of Object.keys(docs)) {
-        assert.equal(run({ ...docs, DOCS_ONLY: 'true', [key]: 'failure' }).status, 1);
-        assert.equal(run({ ...docs, DOCS_ONLY: 'true', [key]: 'cancelled' }).status, 1);
+        assert.equal(run({ ...docs, APP: 'false', SITES: 'false', ELECTRON: 'false', HANDWRITING: 'false', PYTHON: 'false', [key]: 'failure' }).status, 1);
+        assert.equal(run({ ...docs, APP: 'false', SITES: 'false', ELECTRON: 'false', HANDWRITING: 'false', PYTHON: 'false', [key]: 'cancelled' }).status, 1);
       }
     }
   } finally {
@@ -313,4 +314,64 @@ test('a retry cannot share or cancel newer pull-request validation even if the b
 test('Security records the tested workflow commit for guarded recovery', () => {
   const security = parse(readFileSync(new URL('../.github/workflows/security.yml', import.meta.url), 'utf8'));
   assert.equal(render(security['run-name'], 'synchronize'), 'Security push-sha');
+});
+
+
+test('scope collection uses NUL records, pipefail and conservative push classification', () => {
+  const scope = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
+  assert.match(scope.run, /git diff --name-status -z --find-renames/);
+  assert.match(scope.run, /--name-status/);
+  assert.match(scope.run, /unknown-root-path/);
+  // GitHub's default bash invocation has pipefail; specify it explicitly to make the contract visible.
+  assert.equal(scope.shell, 'bash');
+});
+
+test('aggregate gates accept only explicitly unaffected dependencies', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-area-gates-'));
+  try {
+    for (const job of ['test', 'browser-smoke']) {
+      const step = workflow.jobs[job].steps[0];
+      const results = Object.keys(step.env).filter((key) => key.endsWith('RESULT'));
+      const dependencies = job === 'test'
+        ? { UNIT_RESULT: 'APP', COVERAGE_RESULT: 'APP', HANDWRITING_RESULT: 'HANDWRITING', PYTHON_RESULT: 'PYTHON', MACOS_ELECTRON_RESULT: 'ELECTRON' }
+        : { RESULT: 'APP', TIMING_RESULT: 'APP', MOBILE_RESULT: 'APP', STANDALONE_RESULT: 'SITES' };
+      for (const [dependency, area] of Object.entries(dependencies)) {
+        for (const flag of ['false', 'true', '', 'unknown']) {
+          for (const result of ['success', 'skipped', 'failure', 'cancelled', '']) {
+            const env = { ...process.env, ...Object.fromEntries(results.map((key) => [key, 'success'])),
+              APP: 'false', SITES: 'false', HANDWRITING: 'false', PYTHON: 'false', ELECTRON: 'false',
+              [dependency]: result, [area]: flag, GITHUB_STEP_SUMMARY: join(directory, 'summary') };
+            const execution = spawnSync('bash', ['-e', '-c', step.run], { env, encoding: 'utf8' });
+            assert.equal(execution.status, result === 'success' || (result === 'skipped' && flag === 'false') ? 0 : 1, `${job} ${dependency} ${flag} ${result}`);
+          }
+        }
+      }
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('controlled path fixtures select the expected existing worker jobs', () => {
+  const workers = ['typecheck', 'lint', 'test-unit', 'test-coverage', 'python-tools', 'handwriting', 'relay', 'ai-mcp', 'production', 'browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile', 'electron-ai', 'electron-macos-smoke', 'windows-installed-upgrade'];
+  const web = ['production', 'browser-tests', 'browser-standalone', 'browser-timing', 'browser-mobile'];
+  for (const [paths, expected] of [
+    [['docs/README.md'], []],
+    [['relay/src/relay.ts'], ['typecheck', 'test-unit', 'test-coverage', 'relay', 'ai-mcp', ...web]],
+    [['tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting']],
+    [['tooling/short-term-memory/stm_harness/contract.py'], ['lint', 'python-tools']],
+    [['library/index.html'], ['lint', ...web]],
+    [['docs/README.md', 'gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting', ...web]],
+    [['src/fsrs/coefficients/model.json'], workers],
+    [['relay/shared/insights/index.ts'], workers],
+    [['unknown/file'], workers],
+  ]) {
+    const outputs = Object.fromEntries(Object.entries(classifyPaths(paths)).map(([key, value]) => [key, String(value)]));
+    const context = { needs: { changes: { result: 'success', outputs } } };
+    const selected = workers.filter((name) => {
+      const job = workflow.jobs[name];
+      const predicate = required.includes(name) ? job.steps[1].if : job.if;
+      return runInNewContext(predicate, context);
+    });
+    assert.deepEqual(selected.sort(), [...expected].sort(), paths.join(', '));
+  }
 });
