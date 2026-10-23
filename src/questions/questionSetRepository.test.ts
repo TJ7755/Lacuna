@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from '../db/repository';
 import { createLessonCard } from '../db/cardRepository';
 import { deleteCourse, restoreCourse, snapshotCourse } from '../db/courseRepository';
@@ -21,7 +21,7 @@ import {
   removeAuthoredQuestionSet,
   updateQuestionSet,
 } from './questionSetRepository';
-import { createQuestionSetDraft, createEmptyQuestionSetDraft, loadQuestionSetDraft, saveQuestionSetDraft } from './questionSetDrafts';
+import { createQuestionSetDraft, createEmptyQuestionSetDraft, loadQuestionSetDraft, QuestionSetDraftConflictError, saveQuestionSetDraft } from './questionSetDrafts';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
 import { createQuestionSetPracticeNode } from '../db/practiceNodeRepository';
 import type { QuestionSet } from './questionSets';
@@ -216,6 +216,34 @@ describe('Question-set repository', () => {
     expect(await db.assets.get(draftHash)).toBeUndefined();
   });
 
+  it('rolls back draft and path removal when deleting published content fails', async () => {
+    const { course, lesson, assessment, concept } = await fixture();
+    const created = await createQuestionSet(
+      content(course.id, lesson.id, assessment.id, concept.id),
+    );
+    const draft = await saveQuestionSetDraft(
+      createQuestionSetDraft(created, created.contentRevisionId),
+      { expectedDraftRevisionId: null },
+    );
+    const pathNode = await createQuestionSetPracticeNode(course.id, created.id, lesson.id);
+    const remove = vi.spyOn(db.questionSets, 'delete').mockRejectedValueOnce(new Error('Disk failed'));
+
+    try {
+      await expect(removeAuthoredQuestionSet(course.id, created.id, {
+        expectedContentRevisionId: created.contentRevisionId,
+        expectedDraftRevisionId: draft.draftRevisionId,
+      })).rejects.toThrow('Disk failed');
+    } finally {
+      remove.mockRestore();
+    }
+
+    expect(await loadQuestionSetDraft(course.id, created.id)).toEqual(draft);
+    expect(await getQuestionSet(created.id)).toEqual(created);
+    expect(await db.practiceNodes.get(pathNode.id)).toEqual(pathNode);
+    expect(await db.tombstones.get(['practiceNodes', pathNode.id])).toBeUndefined();
+    expect(await db.tombstones.get(['questionSets', created.id])).toBeUndefined();
+  });
+
   it('refuses stale or read-only removal without deleting draft or content', async () => {
     const { course, lesson, assessment, concept } = await fixture();
     const created = await createQuestionSet(content(course.id, lesson.id, assessment.id, concept.id));
@@ -225,7 +253,7 @@ describe('Question-set repository', () => {
     const options = { expectedContentRevisionId: created.contentRevisionId, expectedDraftRevisionId: draft.draftRevisionId };
     await expect(removeAuthoredQuestionSet(course.id, created.id, {
       ...options, expectedDraftRevisionId: 'stale',
-    })).rejects.toThrow('changed in another window');
+    })).rejects.toBeInstanceOf(QuestionSetDraftConflictError);
     await expect(removeAuthoredQuestionSet(course.id, created.id, {
       ...options, expectedContentRevisionId: 'stale',
     })).rejects.toThrow('changed since it was opened');
