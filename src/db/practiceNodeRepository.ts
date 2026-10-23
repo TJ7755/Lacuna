@@ -86,15 +86,17 @@ export async function createQuestionSetPracticeNode(
 export async function updateQuestionSetPracticeNode(
   id: string,
   afterLessonId: string,
+  questionSetId?: string,
 ): Promise<QuestionSetPracticeNode> {
   return db.transaction('rw', [db.courses, db.questionSets, db.lessons, db.practiceNodes], async () => {
     const existing = await db.practiceNodes.get(id);
     if (!existing || existing.type !== 'question-set' || !existing.questionSetId) {
       throw new Error('Question Set activity not found.');
     }
-    await requireQuestionSetActivityReferences(existing.courseId, existing.questionSetId, afterLessonId);
+    const selectedSetId = questionSetId ?? existing.questionSetId;
+    await requireQuestionSetActivityReferences(existing.courseId, selectedSetId, afterLessonId);
     const node: QuestionSetPracticeNode = {
-      ...parseQuestionSetPracticeNode(existing), afterLessonId,
+      ...parseQuestionSetPracticeNode(existing), afterLessonId, questionSetId: selectedSetId,
       updatedAt: Math.max(Date.now(), existing.updatedAt + 1),
     };
     await db.practiceNodes.put(node);

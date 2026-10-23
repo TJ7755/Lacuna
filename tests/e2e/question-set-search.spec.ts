@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const width of [1280, 390]) {
-  test(`finds prompt wording in the library and path picker at ${width}px`, async ({ page }) => {
+  test(`finds prompt wording and replaces a saved path activity at ${width}px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
@@ -20,6 +22,18 @@ for (const width of [1280, 390]) {
     await page
       .getByRole('textbox', { name: 'Q1 mark scheme', exact: true })
       .fill('Secret marking criterion');
+    await page.getByRole('textbox', { name: 'Q1 question', exact: true }).press('Control+Enter');
+    await expect(page).toHaveURL(/question-sets\/[^/]+$/);
+    await page.goto(`/#${coursePath}/questions`);
+    await page.getByRole('button', { name: 'New question set', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Name', exact: true }).fill('Tissue practice');
+    await page.keyboard.press('Enter');
+    await page
+      .getByRole('textbox', { name: 'Q1 question', exact: true })
+      .fill('Explain how specialised cells form tissues.');
+    await page
+      .getByRole('textbox', { name: 'Q1 mark scheme', exact: true })
+      .fill('Cells work together.');
     await page.getByRole('textbox', { name: 'Q1 question', exact: true }).press('Control+Enter');
     await expect(page).toHaveURL(/question-sets\/[^/]+$/);
     await page.goto(`/#${coursePath}/questions`);
@@ -104,5 +118,56 @@ for (const width of [1280, 390]) {
     await expect(
       page.getByRole('button', { name: 'Practice questions: Cell practice', exact: true }),
     ).toBeVisible();
+    const activity = page.getByRole('button', {
+      name: 'Practice questions: Cell practice',
+      exact: true,
+    });
+    await activity.click();
+    const editor = page.getByRole('dialog', { name: 'Edit practice questions', exact: true });
+    const current = editor.getByRole('button', { name: 'Cell practice', exact: true });
+    await current.press('Enter');
+    await expect(search).toBeFocused();
+    await expect(picker.getByRole('radio', { name: /Cell practice/ })).toBeChecked();
+    await search.fill('specialised cells');
+    const replacement = picker.getByRole('radio', { name: /Tissue practice/ });
+    await search.press('Tab');
+    await expect(replacement).toBeFocused();
+    await replacement.press('Space');
+    await replacement.press('Escape');
+    await expect(current).toBeFocused();
+    await current.press('Enter');
+    await expect(picker.getByRole('radio', { name: /Cell practice/ })).toBeChecked();
+    await search.fill('specialised cells');
+    await replacement.check();
+    await picker.getByRole('button', { name: 'Use question set', exact: true }).click();
+    await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(activity).toBeVisible();
+    await activity.click();
+    await current.click();
+    await search.fill('specialised cells');
+    await replacement.check();
+    await picker.getByRole('button', { name: 'Use question set', exact: true }).click();
+    await page.screenshot({ path: test.info().outputPath(`replacement-editor-${width}.png`) });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      width,
+    );
+    await editor.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(activity).toHaveCount(0);
+    const saved = page.getByRole('button', {
+      name: 'Practice questions: Tissue practice',
+      exact: true,
+    });
+    await expect(saved).toBeVisible();
+    await page.reload();
+    await expect(saved).toBeVisible();
+    await saved.click();
+    await editor.getByRole('button', { name: 'Tissue practice', exact: true }).click();
+    await expect(picker.getByRole('radio', { name: /Tissue practice/ })).toBeChecked();
+    await page.screenshot({ path: test.info().outputPath(`replacement-picker-${width}.png`) });
+    await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: 'View mode', exact: true }).click();
+    await saved.click();
+    await expect(page.getByRole('heading', { name: 'Tissue practice', exact: true })).toBeVisible();
   });
 }

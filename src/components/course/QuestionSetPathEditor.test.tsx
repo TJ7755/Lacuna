@@ -268,18 +268,74 @@ describe('QuestionSetPathEditor', () => {
     const onClose = vi.fn();
     render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Question set' })).toHaveValue('Cell structure'),
+      expect(screen.getByRole('button', { name: 'Cell structure' })).toBeInTheDocument(),
     );
-    expect(screen.getByRole('textbox', { name: 'Question set' })).toHaveAttribute('readonly');
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'Delete' }), { key: 'Escape' });
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() =>
-      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id),
+      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id, set.id),
     );
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   });
+
+  it('replaces an existing set by identity despite duplicate titles and keeps the lesson anchor', async () => {
+    const { course, firstLesson, set } = await fixture();
+    const replacement = await createQuestionSet({ ...set, id: 'set-2' });
+    const node = activity(course.id, set.id, firstLesson.id);
+    const onClose = vi.fn();
+    render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Cell structure' }));
+    const choices = await screen.findAllByRole('radio', { name: /Cell structure/ });
+    expect(choices[0]).toBeChecked();
+    fireEvent.click(choices[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
+    expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
+    vi.mocked(updateQuestionSetPracticeNode).mockRejectedValueOnce(
+      new Error('The Question Set must belong to this Course.'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await screen.findByRole('alert');
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cell structure' }));
+    expect((await screen.findAllByRole('radio', { name: /Cell structure/ }))[1]).toBeChecked();
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: 'Choose a question set' })).getByRole('button', {
+        name: 'Cancel',
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(updateQuestionSetPracticeNode).toHaveBeenLastCalledWith(
+      node.id,
+      firstLesson.id,
+      replacement.id,
+    );
+    expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'cancels replacement without saving (confirmed choice: %s)',
+    async (confirm) => {
+      const { course, firstLesson, set } = await fixture();
+      await createQuestionSet({ ...set, id: 'set-2', title: 'Replacement' });
+      const node = activity(course.id, set.id, firstLesson.id);
+      const onClose = vi.fn();
+      render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Cell structure' }));
+      fireEvent.click(await screen.findByRole('radio', { name: /Replacement/ }));
+      if (confirm) {
+        fireEvent.click(screen.getByRole('button', { name: 'Use question set' }));
+      } else {
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+        expect(screen.getByRole('button', { name: 'Cell structure' })).toHaveFocus();
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+      expect(updateQuestionSetPracticeNode).not.toHaveBeenCalled();
+    },
+  );
 
   it('keeps a selected draft open if its question set disappears and saving fails', async () => {
     const { course, firstLesson, set } = await fixture();

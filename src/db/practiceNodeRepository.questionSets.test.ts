@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createCourse } from './courseRepository';
 import { createLesson, deleteLesson, restoreLesson, snapshotLesson } from './lessonRepository';
 import { db } from './schema';
@@ -13,6 +13,19 @@ import {
   updatePracticeNode,
 } from './practiceNodeRepository';
 import { createQuestionSet } from '../questions/questionSetRepository';
+import { importQuestionBank, declarativeFamilyCapacity } from '../questions/bank';
+import familyExample from '../../docs/question-bank/examples/numeric-family.json';
+import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
+import { createEmptyQuestionSetDraft, saveQuestionSetDraft } from '../questions/questionSetDrafts';
+
+async function replacementFixture() {
+  const course = await createCourse('Physics');
+  const lesson = await createLesson(course.id, 'Density');
+  const [set] = await importQuestionBank(familyExample, course.id);
+  const replacement = await createQuestionSet({ ...set, id: 'replacement' });
+  const node = await createQuestionSetPracticeNode(course.id, set.id, lesson.id);
+  return { course, lesson, set, replacement, node };
+}
 
 describe('Question Set path activities', () => {
   beforeEach(async () => {
@@ -130,6 +143,112 @@ describe('Question Set path activities', () => {
       'read-only',
     );
     expect(await db.practiceNodes.count()).toBe(0);
+  });
+
+  it('replaces the reference without changing bank families, attempts or activity identity', async () => {
+    const { course, lesson, set, replacement, node } = await replacementFixture();
+    await db.practiceNodes.update(node.id, {
+      name: 'Teacher activity',
+      updatedAt: Date.now() + 10_000,
+    });
+    const before = (await db.practiceNodes.get(node.id))!;
+    const open = await startQuestionSetAttempt(set.id, 'practice');
+    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+    expect(updated).toEqual({
+      ...before,
+      questionSetId: replacement.id,
+      updatedAt: before.updatedAt + 1,
+    });
+    expect(await db.questionSetAttempts.toArray()).toEqual([open]);
+    expect(await db.questionSets.get(set.id)).toEqual(set);
+    expect(await db.questionSets.get(replacement.id)).toEqual(replacement);
+    expect(declarativeFamilyCapacity(replacement.bank!.family!)).toBe(6);
+    expect(await db.practiceMilestones.count()).toBe(0);
+    const next = await startQuestionSetAttempt(updated.questionSetId, 'practice');
+    expect(next).toMatchObject({
+      courseId: course.id,
+      questionSetId: replacement.id,
+      receipt: replacement,
+    });
+  });
+
+  it.each([
+    'foreign set',
+    'missing set',
+    'draft only',
+    'foreign lesson',
+    'missing lesson',
+    'archived',
+    'locked',
+    'missing course',
+    'missing activity',
+    'Card activity',
+  ])('rejects replacement with %s without a partial write', async (reason) => {
+    const { course, lesson, set, replacement, node } = await replacementFixture();
+    const other = await createCourse('Other');
+    let setId = replacement.id;
+    let lessonId = lesson.id;
+    if (reason === 'foreign set') await db.questionSets.update(setId, { courseId: other.id });
+    if (reason === 'missing set') await db.questionSets.delete(setId);
+    if (reason === 'draft only') {
+      setId = 'unsaved-draft';
+      await saveQuestionSetDraft(createEmptyQuestionSetDraft(course.id, setId), {
+        expectedDraftRevisionId: null,
+      });
+    }
+    if (reason === 'foreign lesson') lessonId = (await createLesson(other.id, 'Other')).id;
+    if (reason === 'missing lesson') lessonId = 'removed';
+    if (reason === 'archived') await db.courses.update(course.id, { archived: true });
+    if (reason === 'locked') {
+      await db.courses.update(course.id, {
+        distributedCopy: {
+          lineageId: 'publisher',
+          revision: 1,
+          locked: true,
+          autoAcceptUpdates: true,
+        },
+      });
+    }
+    if (reason === 'missing course') await db.courses.delete(course.id);
+    if (reason === 'missing activity') await db.practiceNodes.delete(node.id);
+    if (reason === 'Card activity') await db.practiceNodes.update(node.id, { type: 'manual' });
+    const before = await db.practiceNodes.get(node.id);
+    await expect(updateQuestionSetPracticeNode(node.id, lessonId, setId)).rejects.toThrow();
+    expect(await db.practiceNodes.get(node.id)).toEqual(before);
+    expect(await db.questionSets.get(set.id)).toEqual(set);
+  });
+
+  it('serialises replacement and an anchor-only move using the current stored fields', async () => {
+    const { course, lesson, replacement, node } = await replacementFixture();
+    const nextLesson = await createLesson(course.id, 'Pressure');
+    await Promise.all([
+      updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id),
+      updateQuestionSetPracticeNode(node.id, nextLesson.id),
+    ]);
+    expect(await db.practiceNodes.get(node.id)).toMatchObject({
+      questionSetId: replacement.id,
+      afterLessonId: nextLesson.id,
+    });
+  });
+
+  it('fails atomically if the selected set is removed before the save or the write fails', async () => {
+    const { lesson, replacement, node } = await replacementFixture();
+    const write = vi.spyOn(db.practiceNodes, 'put').mockRejectedValueOnce(new Error('Disk full'));
+    try {
+      await expect(
+        updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id),
+      ).rejects.toThrow('Disk full');
+    } finally {
+      write.mockRestore();
+    }
+    expect(await db.practiceNodes.get(node.id)).toEqual(node);
+    await Promise.all([
+      db.questionSets.delete(replacement.id),
+      expect(updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id)).rejects.toThrow(
+        'Question Set',
+      ),
+    ]);
+    expect(await db.practiceNodes.get(node.id)).toEqual(node);
   });
 
   it('removes an activity with its anchor lesson and restores it on undo', async () => {

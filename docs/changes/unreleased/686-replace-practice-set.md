@@ -1,0 +1,1 @@
+- Replace the saved question set in a path practice activity using the existing searchable picker, retaining the lesson anchor and historical attempts while showing progress for the selected set. (#686)

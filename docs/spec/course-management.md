@@ -29,6 +29,19 @@ unlocking authoring. School-specific or local preferences must not rewrite the p
 order or become authoritative teacher corrections. Check the actual access and ordering resolvers
 before adding another flag to a view.
 
+### Replacing practice questions
+
+An existing single-set path activity can choose a different saved Question Set through the same
+picker used when adding it. Picker cancellation retains the editor's previous choice; cancelling
+the editor retains the saved activity. Done validates the current same-Course set, Lesson anchor
+and authoring permission in the write transaction. Activity identity, name and creation time survive.
+
+Path progress follows the selected set's existing attempts. Old-set completion does not complete
+a different set; a replacement with its own history retains that progress. Existing attempts remain
+accessible through their original set and receipt, including attempts still in progress. Replacement
+does not rewrite receipts, responses, marking or bank-family definitions, and does not change the
+existing practice launch or variant-selection rules. Each activity still references one set.
+
 ### Local lesson order on locked imports
 
 Course settings offers Move up/down and **Use publisher order** on supported locked
