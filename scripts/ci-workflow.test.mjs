@@ -120,6 +120,7 @@ fi
       readFileSync(join(directory, 'watch'), 'utf8'),
       /run watch 42 --repo owner\/repo --exit-status/,
     );
+    assert.match(readFileSync(join(directory, 'watch'), 'utf8'), /--interval 60/);
     for (const runs of [
       [],
       [{ id: 1, display_title: 'CI validation older-merge' }],
@@ -380,7 +381,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
 
 test('site-only production runs the existing build, hosting and asset contracts', () => {
   const step = workflow.jobs.production.steps.find((step) => step.name === 'Verify standalone site contracts');
-  assert.equal(step.run, 'bun run test -- src/build src/release/pwaAssets.test.ts');
+  assert.equal(step.run, 'bun run test -- src/build src/release/pwaAssets.test.ts src/vercelConfig.test.ts');
   for (const [app, sites, expected] of [['false', 'true', true], ['true', 'true', false], ['false', 'false', false]]) {
     assert.equal(runInNewContext(step.if, { needs: { changes: { outputs: { app, sites } } } }), expected);
   }

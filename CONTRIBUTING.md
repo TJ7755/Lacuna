@@ -130,7 +130,12 @@ needed. A measured baseline is retained in [CI timings](docs/performance/ci-726-
 
 Title/body-only PR edits do not repeat validation or cancel its current run. They reuse the latest
 successful CI validation run for the exact test merge commit and PR head, waiting if necessary.
-The validation run identity is recorded in the changes job summary. Missing, failed or cancelled
+The validation run identity is recorded in the changes job summary. Metadata waits poll once per
+minute: independent metadata runs must not exhaust the repository Actions API allowance. Keep their
+concurrency groups separate; deduplicating by cancelling or replacing a run can leave required checks
+unresolved. This reduces polling frequency twentyfold, but does not eliminate concurrent waiters.
+On API rate limits, wait for `Retry-After` or the `x-ratelimit-reset` time before retrying a failed job;
+do not repeatedly rerun it against an exhausted allowance. See [GitHub rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api). Missing, failed or cancelled
 validation fails closed; reopen the PR or push a commit to establish validation after adopting this
 workflow. The test and browser gates reject failed reuse even when their other dependencies skip.
 
