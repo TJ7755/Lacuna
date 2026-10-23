@@ -336,12 +336,16 @@ export function useLearnSession({
     current !== null ? (occlusionMapRef.current.get(current.id) ?? null) : null;
   const presentedAnswerInput = useRef<AnswerResponse['input']>(undefined);
   const [answerInputPreference] = useAnswerInput();
-  const isTypingCard = current !== null && resolveAnswerMode(
-    current,
-    answerModeLessonsRef.current.get(lessonId ?? current.primaryLessonId ?? '')?.answerMode,
-    answerInputPreference,
-    currentOcclusionData?.answerText,
-  ) === 'type';
+  const lessonAnswerMode = answerModeLessonsRef.current.get(
+    lessonId ?? current?.primaryLessonId ?? '',
+  )?.answerMode;
+  const occlusionAnswerText = currentOcclusionData?.answerText;
+  const isTypingCard = useMemo(
+    () => current !== null && resolveAnswerMode(
+      current, lessonAnswerMode, answerInputPreference, occlusionAnswerText,
+    ) === 'type',
+    [current, lessonAnswerMode, answerInputPreference, occlusionAnswerText],
+  );
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
   // A payload the current client cannot render as a study face at all: present but
   // not machine-markable (unknown v, or a known-but-unbuilt kind such as `scaffold`).
@@ -804,6 +808,7 @@ export function useLearnSession({
   /** Present the next eligible card, or finish if the goal has been reached. */
   const serveNext = useCallback(() => {
     if (!mountedRef.current) return;
+    presentedAnswerInput.current = undefined;
 
     if (isSimpleMode) {
       persistSimpleResume();

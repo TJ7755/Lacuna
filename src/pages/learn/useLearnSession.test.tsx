@@ -179,6 +179,56 @@ describe('useLearnSession answer boundary', () => {
     session.unmount();
   });
 
+  it('does not reparse the typing answer during unrelated renders or phase changes', async () => {
+    writeAnswerInput('type');
+    const course = await createCourse('Typing cache', { learnFirst: false });
+    const card = await createCard(course.id, 'front_back', 'Question', '**Answer**');
+    const parse = vi.spyOn(DOMParser.prototype, 'parseFromString');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+      expect(session.result.current.isTypingCard).toBe(true);
+      const parsed = parse.mock.calls.length;
+      expect(parsed).toBeGreaterThan(0);
+      session.rerender();
+      act(() => session.result.current.reveal());
+      expect(parse).toHaveBeenCalledTimes(parsed);
+      act(() => session.result.current.hide());
+      expect(parse).toHaveBeenCalledTimes(parsed);
+      act(() => writeAnswerInput('reveal'));
+      expect(session.result.current.isTypingCard).toBe(false);
+      act(() => writeAnswerInput('type'));
+      expect(parse.mock.calls.length).toBeGreaterThan(parsed);
+    } finally {
+      session.unmount();
+      parse.mockRestore();
+    }
+  });
+
+  it('clears the previous card input before an alternate reveal path', async () => {
+    writeAnswerInput('type');
+    const course = await createCourse('Input capture', { learnFirst: false });
+    await createCard(course.id, 'front_back', 'First question', 'Answer');
+    await createCard(course.id, 'front_back', 'Second question', 'Answer');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current).not.toBeNull());
+      const firstId = session.result.current.current!.id;
+      act(() => session.result.current.reveal());
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(firstId).first()).toMatchObject({ input: 'typed' });
+      const secondId = session.result.current.current!.id;
+      expect(secondId).not.toBe(firstId);
+      act(() => session.result.current.revealRecitation(1));
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(secondId).first()).toMatchObject({ input: 'reveal' });
+    } finally {
+      session.unmount();
+    }
+  });
+
   it.each([
     ['maxReviewsPerDay', 'limitReached'],
     ['dailyReviewGoal', 'reachedGoal'],
