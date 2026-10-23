@@ -1,0 +1,239 @@
+$ vitest run src/db/importScheduling.test.ts "--maxWorkers=1"
+
+ RUN  v5.0.5 <worktree>
+
+ ❯ |browser| src/db/importScheduling.test.ts (8 tests | 8 failed) 126ms
+   × applies the learner target on plain v2 import 30ms
+   × applies the learner target on plain v6 import 9ms
+   × retains the learner target through v2 lineage updates 11ms
+   × retains the learner target through v6 lineage updates 7ms
+   × preserves no fixed exam after a later teacher mode change (false) 17ms
+   × preserves no fixed exam after a later teacher mode change (true) 26ms
+   × applies the choice to detached-ID fallback imports 16ms
+   × rolls back a failed scheduling choice with the imported content 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > applies the learner target on plain v2 import
+AssertionError: expected { …(12) } to match object { schedulingMode: 'exam', …(2) }
+(9 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "examDate": 1950000000000,
++   "examDate": 1900000000000,
+    "schedulingMode": "exam",
+    "timeZone": "Europe/London",
+  }
+
+ ❯ src/db/importScheduling.test.ts:37:85
+     35|   const original = structuredClone(source);
+     36|   const { courseIds } = await importSharePayload(source, scheduling);
+     37|   expect(await db.courseAssessments.where('courseId').equals(courseIds…
+       |                                                                                     ^
+     38|   expect(source).toEqual(original);
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > applies the learner target on plain v6 import
+AssertionError: expected { id: 'scheduling-final', …(10) } to match object { schedulingMode: 'exam', …(2) }
+(9 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "examDate": 1950000000000,
+-   "schedulingMode": "exam",
+-   "timeZone": "Europe/London",
++   "examDate": 1900000000000,
++   "timeZone": "UTC",
+  }
+
+ ❯ src/db/importScheduling.test.ts:37:85
+     35|   const original = structuredClone(source);
+     36|   const { courseIds } = await importSharePayload(source, scheduling);
+     37|   expect(await db.courseAssessments.where('courseId').equals(courseIds…
+       |                                                                                     ^
+     38|   expect(source).toEqual(original);
+     39| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > retains the learner target through v2 lineage updates
+AssertionError: expected { …(20) } to match object { schedulingMode: 'exam', …(2) }
+(28 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "examDate": 1950000000000,
++   "examDate": 1900000000000,
+    "schedulingMode": "exam",
+    "timeZone": "Europe/London",
+  }
+
+ ❯ src/db/importScheduling.test.ts:44:18
+     42|   const first = payload(version);
+     43|   const { course } = await importLineageFirstTime(first, scheduling);
+     44|   expect(course).toMatchObject(scheduling);
+       |                  ^
+     45|   for (const rv of [2, 3]) {
+     46|     const revised = payload(version);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > retains the learner target through v6 lineage updates
+AssertionError: expected { …(20) } to match object { schedulingMode: 'exam', …(2) }
+(28 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "examDate": 1950000000000,
++   "examDate": 1900000000000,
+    "schedulingMode": "exam",
+-   "timeZone": "Europe/London",
++   "timeZone": "UTC",
+  }
+
+ ❯ src/db/importScheduling.test.ts:44:18
+     42|   const first = payload(version);
+     43|   const { course } = await importLineageFirstTime(first, scheduling);
+     44|   expect(course).toMatchObject(scheduling);
+       |                  ^
+     45|   for (const rv of [2, 3]) {
+     46|     const revised = payload(version);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > preserves no fixed exam after a later teacher mode change (false)
+ FAIL  |browser| src/db/importScheduling.test.ts > preserves no fixed exam after a later teacher mode change (true)
+Error: A locally edited Assessment conflicts with this published update.
+ ❯ applyLineageAssessments src/db/assessmentLineage.ts:85:13
+     83|     }
+     84|     if (existing && (!previousIds.has(id) || !unchanged(existing, prev…
+     85|       throw new Error('A locally edited Assessment conflicts with this…
+       |             ^
+     86|     }
+     87|     if (exam.a !== null && exam.a !== undefined && !lessons[exam.a]) {
+ ❯ Transaction.<anonymous> src/db/mergeImport.ts:1399:64
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > applies the choice to detached-ID fallback imports
+AssertionError: expected 'exam' to be 'steady' // Object.is equality
+
+Expected: "steady"
+Received: "exam"
+
+ ❯ src/db/importScheduling.test.ts:92:33
+     90|   const { course } = await importLineageFirstTime(source, { scheduling…
+     91|   expect(course.distributedCopy).toBeUndefined();
+     92|   expect(course.schedulingMode).toBe('steady');
+       |                                 ^
+     93|   expect(course.examDate).toBeUndefined();
+     94| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  |browser| src/db/importScheduling.test.ts > rolls back a failed scheduling choice with the imported content
+AssertionError: promise resolved "{ course: { …(20) } }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "course": {
++     "autoPractice": true,
++     "createdAt": 1000,
++     "creator": undefined,
++     "description": "",
++     "distributedCopy": {
++       "autoAcceptUpdates": true,
++       "lineageId": "scheduling-lineage",
++       "locked": true,
++       "revision": 1,
++       "source": {
++         "creator": undefined,
++         "description": "",
++         "name": "Biology",
++         "unlockMode": "open",
++       },
++     },
++     "examDate": 1900000000000,
++     "examObjective": "expectedMarks",
++     "fsrsParameters": {
++       "enable_fuzz": true,
++       "learning_steps": [
++         "1m",
++         "10m",
++       ],
++       "maximum_interval": 36500,
++       "relearning_steps": [
++         "10m",
++       ],
++       "requestRetention": 0.9,
++       "w": [
++         0.212,
++         1.2931,
++         2.3065,
++         8.2956,
++         6.4133,
++         0.8334,
++         3.0194,
++         0.001,
++         1.8722,
++         0.1666,
++         0.796,
++         1.4835,
++         0.0614,
++         0.2629,
++         1.6483,
++         0.6014,
++         1.8729,
++         0.5425,
++         0.0912,
++         0.0658,
++         0.1542,
++       ],
++     },
++     "fsrsVersion": 6,
++     "id": "12c846b8-da05-4584-b03d-435fa8a7f494",
++     "lessonViewMode": "study",
++     "name": "Biology",
++     "practiceMaxGap": 2,
++     "practiceThresholdMinutesFar": 8,
++     "practiceThresholdMinutesNear": 4,
++     "practiceUrgentWindowDays": 7,
++     "schedulingMode": "exam",
++     "timeZone": "UTC",
++     "unlockMode": "open",
++     "updatedAt": 1792769781868,
++   },
+  }
+
+ ❯ src/db/importScheduling.test.ts:97:92
+     95|
+     96| it('rolls back a failed scheduling choice with the imported content', …
+     97|   await expect(importLineageFirstTime(payload(6), { ...scheduling, exa…
+       |                                                                                            ^
+     98|   expect(await db.courses.count()).toBe(0);
+     99|   expect(await db.cards.count()).toBe(0);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed (8)
+   Start at  16:36:21
+   Duration  691ms (import 35%, tests 20%, environment 18%, setup 15%, transform 12%, worker 1%)
+
+error: script "test" exited with code 1
