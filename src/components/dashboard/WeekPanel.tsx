@@ -7,7 +7,7 @@ import type { WeekSummary } from '../../state/weekSummary';
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-/** The figures under the forecast: the streak, this week's volume, and which days had study. */
+/** The figures under the forecast: the streak, recent review volume, and this week's study days. */
 export function WeekPanel({
   week,
   streak,
@@ -50,7 +50,7 @@ export function WeekPanel({
       <div className="flex items-center gap-3 text-ink-soft">
         <CardsIcon width={20} height={20} aria-hidden="true" />
         <div className="flex flex-col-reverse leading-tight">
-          <dt className="text-sm text-ink-faint">cards this week</dt>
+          <dt className="text-sm text-ink-faint">cards in the last 7 days</dt>
           <dd className="font-display text-2xl font-semibold tracking-tight text-ink tabular-nums">
             <CountUp value={week.reviewed} multiplier={multiplier} />
           </dd>
