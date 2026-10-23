@@ -119,7 +119,7 @@ describe('ForecastChart axis', () => {
     expect(labels.map((label) => label.textContent)).toEqual(['90%', '80%', '80%']);
     const colours = ['hsl(var(--series-1))', 'hsl(var(--series-5))', 'hsl(var(--accent-ink))'];
     labels.forEach((label, index) => {
-      expect(label).toHaveAttribute('fill', colours[index]);
+      expect(label.closest('g')).toHaveAttribute('fill', colours[index]);
       expect(label.closest('g')!.querySelector('path')).toHaveAttribute('stroke', colours[index]);
     });
     const legend = screen.getByRole('list', { name: 'Courses' });
