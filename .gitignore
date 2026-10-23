@@ -17,3 +17,4 @@ electron/dist-electron/
 .env*
 !.env.example
 /.ai-invites/
+.vercel

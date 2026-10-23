@@ -17,14 +17,20 @@ Do not add private teaching files or owner credentials to this public catalogue.
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
-therefore shows no review or progress status. The current links publish Biology revision 22,
-Chemistry revision 16, Physics revision 15 and History revision 13.
+therefore shows no review or progress status. The science expansion records 22 approved,
+limited-scope selections alongside unchanged
+History revision 13. Native Biology is revision 25, Chemistry revision 18 and Physics revision 17.
+The other science entries comprise 18 board variants and AQA Combined Science 8464 revision 1.
+Combined Science contains only seven introductory lessons on cells and microscopy; the
+351-lesson research union is not published. RS is excluded. All science share URLs and counts were filled from verified exact-byte
+publication records.
 
 The catalogue also records `author`, `publisher`, `revision` and an optional `revisionDate`
 (YYYY-MM-DD) for the published revision. Use Lacuna for authorship and publishing unless a
 course has a recorded author or publisher. Derive revision numbers and dates from publication
-records; omit unknown fields. The current revision numbers come from the publication record
-above; no publication dates are recorded, so dates remain absent. These fields appear on both
+records; omit unknown fields. The science revision/count snapshots match the exact candidates
+accepted in the final review on 23 October 2026. Revision dates are optional and omitted from this catalogue snapshot; exact publication
+timestamps are retained in operator records. These fields appear on both
 the library course sheet and the public course page. They do not imply external review or
 awarding-body endorsement.
 
@@ -48,8 +54,10 @@ explicit `.lacuna` course file. It validates through the existing course/media v
 and uploads the original bytes, then downloads both slots to verify the payload SHA-256 and
 manifest before reporting `published`. It never imports, rebuilds, increments revisions, rewrites
 identities, mints links or updates the catalogue. Keep source artefacts in the private content
-repository. This first slice does not authorise publishing any existing official course; prove the
-workflow on a synthetic share in a local/staging relay first.
+repository. The command itself grants no publishing authority. The science expansion has explicit
+requester approval conditional on final independent review of the exact frozen hashes. This
+approval does not extend to RS, later rebuilds or unreviewed content. Historical draft approval
+fields remain unchanged; requester approval is not trusted builder approval.
 
 Supply ownership through `LACUNA_RELAY_URL` and `LACUNA_WRITE_TOKEN` in the process environment,
 or `--credentials "$LACUNA_OWNER_FILE"`. The latter is a JSON file outside the repository,
@@ -115,15 +123,20 @@ to validate this command.
 
 ## Cambridge alternative codes
 
-The catalogue keeps `0972` and `0977` as the primary codes and retains the existing course
-IDs and share URLs. `alternativeCodes` supplies `0625` and `0470` for display, text search and
-public-page metadata. These are two grading versions of the same subject content, not extra
-courses. The qualification label is Cambridge IGCSE because the combined listing serves both
-the A*–G and 9–1 scales.
+Science entries use the single awarding-body label `Cambridge`. Physics `0972` and `0625`
+now have separate catalogue entries and distinct publication lineages. The native `physics0972`
+ID and stable share URL remain unchanged, but `0625` is no longer its display/search alias.
+Do not treat the two downloads as interchangeable subscriber updates, even where teaching is shared.
+The 9–1 science entries use the Cambridge IGCSE (9–1) qualification label.
+
+History remains unchanged: `0977` retains `0470` through `alternativeCodes` for display,
+search and public-page metadata, with its original ID, URL, revision and counts.
 
 ### Official syllabus check
 
-Checked on 20 October 2026 against the following Cambridge International PDFs. Neither the
+Historical syllabus comparison checked on 20 October 2026 against the following Cambridge
+International PDFs.
+This comparison does not merge the separately published Physics lineages. Neither the
 catalogue nor its course sheet declares exam years; this check is limited to the editions below
 and does not establish coverage for later syllabuses or audit every published lesson.
 
@@ -160,6 +173,19 @@ The codes also differ in entry arrangements, not just grades. The PDF covers off
 November for all four codes, with an additional March series in India for 0625/0470. The 9–1
 versions have administrative-zone restrictions; consult the current Cambridge syllabus pages
 before making entries. Do not treat these metadata aliases as interchangeable exam-entry codes.
+
+## Science acceptance limits
+
+The final review accepts the exact 22 frozen candidates and their selected-topic summaries.
+It does not certify full syllabus coverage, tier filtering, laboratory competence, future exam
+entry, board endorsement or every retained paragraph/Card. Grouped coverage ledgers remain
+limitations. Originality declarations and targeted checks are not an exhaustive rights audit.
+Historical build/import/update checks do not certify later Biology bytes; current matching
+reports and static lineage checks were reviewed separately. Timings remain estimates.
+
+The expanded catalogue uses the existing fields, course sheets and public-page generator.
+Distinct board lineages remain distinct. Keep the native links stable when updating their
+approved revisions and use verified publication records for new links.
 
 ## Develop and check
 

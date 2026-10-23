@@ -7,16 +7,16 @@ export function courseForPath(path: string): LibraryCourse | undefined {
 }
 
 export function courseMetadata(course?: LibraryCourse) {
-  const name = course ? `${course.subject} ${courseCodes(course)}` : 'Free IGCSE revision courses';
+  const name = course ? `${course.subject} ${courseCodes(course)}` : 'Free GCSE and IGCSE revision courses';
   const title = course ? `${name} revision — ${course.qualification}` : name;
   const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(
-    libraryCourses.map(({ subject }) => subject),
+    [...new Set(libraryCourses.map(({ subject }) => subject))],
   );
   const description = course
     ? course.stats
       ? `Free ${course.qualification} ${course.subject} (${courseCodes(course)}) revision course: ${course.stats.cards.toLocaleString('en-GB')} flashcards, ${course.stats.notes.toLocaleString('en-GB')} notes and ${course.stats.practiceSets.toLocaleString('en-GB')} exam-style practice sets, planned to your exam date.`
       : `Free ${course.qualification} ${course.subject} (${courseCodes(course)}) revision course with flashcards, notes and exam-style practice, planned to your exam date.`
-    : `Free IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`;
+    : `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`;
   return {
     title: `${title} | Lacuna`,
     ogTitle: title,

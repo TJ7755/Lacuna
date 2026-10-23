@@ -26,7 +26,6 @@ describe('public course catalogue', () => {
   );
 
   it.each([
-    ['physics0972', '0972', '0625'],
     ['history0977', '0977', '0470'],
   ])(
     'includes both codes in %s content, metadata and structured data',
@@ -59,6 +58,15 @@ describe('public course catalogue', () => {
     },
   );
 
+  it('gives each Physics grading variant its own course page', () => {
+    for (const code of ['0972', '0625']) {
+      const course = libraryCourses.find((entry) => entry.code === code)!;
+      expect(courseMetadata(course).title).toContain(code);
+      expect(course.alternativeCodes).toBeUndefined();
+      expect(courseMetadata(course).canonical).toBe(`https://getlacuna.app/courses/${course.id}/`);
+    }
+  });
+
   it('advertises every course in both source crawl files', () => {
     for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
       const source = readFileSync(path, 'utf8');
@@ -69,12 +77,12 @@ describe('public course catalogue', () => {
     }
   });
 
-  it('uses catalogue order and British list formatting in the index description', () => {
+  it('lists each subject once using British list formatting in the index description', () => {
     const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(
-      libraryCourses.map(({ subject }) => subject),
+      [...new Set(libraryCourses.map(({ subject }) => subject))],
     );
     expect(courseMetadata().description).toBe(
-      `Free IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
+      `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
     );
   });
 
