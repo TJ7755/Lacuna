@@ -2,8 +2,9 @@ import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/course
 import { StepSwap } from '../components/ui/StepSwap';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useIsPresent } from 'motion/react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -50,11 +51,20 @@ const INCOMPLETE_MESSAGE =
 export function ShareLinkPage() {
   const { code } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const present = useIsPresent();
   const [state, setState] = useState<ShareLinkState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [joinedCourse, setJoinedCourse] = useState<string | null>(null);
   const [joinError, setJoinError] = useState('');
-  const importGeneration = useRef(0);
+  const activeImportRoute = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
+    activeImportRoute.current = present ? location.key : null;
+    return () => {
+      activeImportRoute.current = null;
+    };
+  }, [location.key, present]);
 
   async function join(
     shareId: string,
@@ -177,7 +187,6 @@ export function ShareLinkPage() {
     })();
     return () => {
       cancelled = true;
-      importGeneration.current += 1;
       controller.abort();
     };
   }, [code, attempt]);
@@ -216,10 +225,10 @@ export function ShareLinkPage() {
             <SharedCourseImport
               initialFile={state.file}
               onImported={(courseId) => {
-                const generation = importGeneration.current;
+                if (activeImportRoute.current !== location.key) return;
                 void join(state.shareId, state.expectedLineageId, courseId, state.recipient)
                   .then(() => {
-                    if (generation !== importGeneration.current || state.recipient) return;
+                    if (activeImportRoute.current !== location.key || state.recipient) return;
                     const pathname = `/course/${encodeURIComponent(courseId)}`;
                     void navigate(pathname);
                     focusImportedCourseHeading(pathname);
@@ -287,12 +296,15 @@ function focusImportedCourseHeading(pathname: string) {
   const previousFocus = document.activeElement;
   const previousPage = document.querySelector('[data-route-content]:not([inert])');
   const observer = new MutationObserver(focusHeading);
-  const timeout = window.setTimeout(() => observer.disconnect(), 10_000);
+  let frame = 0;
+  const timeout = window.setTimeout(stop, 10_000);
   function stop() {
     observer.disconnect();
     window.clearTimeout(timeout);
+    window.cancelAnimationFrame(frame);
   }
   function focusHeading() {
+    window.cancelAnimationFrame(frame);
     const page = document.querySelector('[data-route-content]:not([inert])');
     if (page && page !== previousPage && page.getAttribute('data-route-content') !== pathname) {
       stop();
@@ -312,9 +324,10 @@ function focusImportedCourseHeading(pathname: string) {
       stop();
       return;
     }
-    stop();
     heading.tabIndex = -1;
     heading.focus();
+    if (document.activeElement === heading) stop();
+    else frame = window.requestAnimationFrame(focusHeading);
   }
   observer.observe(document.body, { childList: true, subtree: true });
   focusHeading();

@@ -253,6 +253,14 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   await expect(student.getByText(/Link biology —/)).toBeVisible();
   await student.getByRole('button', { name: 'Add to my courses' }).click();
+  await expect
+    .poll(() =>
+      student.evaluate(
+        (shareId) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[shareId],
+        code,
+      ),
+    )
+    .toBeTruthy();
   await student.goto('/#/');
   await expect(
     student
