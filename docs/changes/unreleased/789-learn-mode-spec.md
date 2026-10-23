@@ -1,0 +1,1 @@
+- Remove stale and duplicated Simple Learn and recitation descriptions from the study specification; source and tests remain the authority for behaviour. (#789)
