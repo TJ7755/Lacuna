@@ -128,6 +128,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const { bindings } = useShortcutBindings();
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
+  const [cardDeparting, setCardDeparting] = useState(false);
   const isTouchMode = useIsTouchMode();
   const { notify } = useToast();
   const [studyMode] = useStudyMode();
@@ -682,6 +683,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
                       cardId={current.id}
                       phase={phase}
                       multiplier={m}
+                      onDepartureChange={setCardDeparting}
                     >
                       {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
                         <NumericStudyFace
@@ -752,10 +754,9 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               )}
               {!suppressClassicGrading && (
                 <StudyControls
-                  // Typed answers start each card afresh; other controls persist so their
-                  // grades can flow back into the next card's reveal.
-                  key={isTypingCard ? `controls-${current?.id}` : 'controls'}
+                  // Keep the liquid mounted so its draining bead can reform the next pill.
                   phase={phase}
+                  departing={cardDeparting}
                   feedback={gradeFeedback}
                   isTypingCard={isTypingCard}
                   isTouchMode={isTouchMode}

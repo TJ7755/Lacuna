@@ -86,6 +86,7 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       await start(page);
       await submit(page);
       await expect(page.locator('[data-study-face="back"] [data-typed-checking]')).toBeVisible();
+      await page.getByRole('main', { name: 'Study card' }).focus();
       await page.keyboard.down('Space');
       try {
         const layer = page.locator('[data-flow-layer]');
@@ -110,15 +111,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         expect(aspectRatio).toBeCloseTo(1, 1);
         await page.screenshot({ path: test.info().outputPath('grey-waiting.png') });
 
-        await page.locator('[data-flow-colour]').evaluate((element) => {
-          (window as unknown as { flowColourFrames: Promise<string[]> }).flowColourFrames =
+        await page.locator('[data-flow-verdict] circle').evaluate((element) => {
+          (window as unknown as { flowVerdictFrames: Promise<string[]> }).flowVerdictFrames =
             new Promise((resolve) => {
-              const fills: string[] = [];
+              const scales: string[] = [];
               const started = performance.now();
               const sample = () => {
-                fills.push(getComputedStyle(element).fill);
+                scales.push(getComputedStyle(element).transform);
                 if (performance.now() - started < 500) requestAnimationFrame(sample);
-                else resolve(fills);
+                else resolve(scales);
               };
               sample();
             });
@@ -127,11 +128,15 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
         await expect.poll(async () => {
           const [r, g, b] = await flowColour(page);
           return correct ? g > r && g > b : r > g && r > b;
-        }).toBe(true);
-        const fills = await page.evaluate(
-          () => (window as unknown as { flowColourFrames: Promise<string[]> }).flowColourFrames,
+        }, { intervals: [10] }).toBe(true);
+        if (reducedMotion !== 'reduce') {
+          await page.waitForTimeout(40);
+          await page.screenshot({ path: test.info().outputPath('verdict-welling.png') });
+        }
+        const scales = await page.evaluate(
+          () => (window as unknown as { flowVerdictFrames: Promise<string[]> }).flowVerdictFrames,
         );
-        if (reducedMotion !== 'reduce') expect(new Set(fills).size).toBeGreaterThan(2);
+        if (reducedMotion !== 'reduce') expect(new Set(scales).size).toBeGreaterThan(2);
         await expect(layer).toBeVisible();
         await expect(page.getByRole('button', { name: 'Yes', exact: true })).toHaveCount(0);
         await expect(page.getByRole('button', { name: 'No', exact: true })).toHaveCount(0);
@@ -143,6 +148,72 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
     });
   }
 }
+
+test('drains with the card flight and reforms the next pill without delaying typing', async ({
+  page,
+}) => {
+  await page.route('**/api/ai/jev', (route) =>
+    route.fulfill({
+      json: { value: 1, confidence: 0.98, inputTokens: 600, model: 'jev-1.14.0' },
+    }),
+  );
+  await start(page);
+  await submit(page);
+  await expect(page.locator('[data-flow-layer]')).toHaveAttribute('data-flow-state', 'bead');
+  await page.getByRole('main', { name: 'Study card' }).focus();
+  await page.keyboard.down('Space');
+  await expect(page.locator('[data-study-face="back"] [data-typed-verdict]')).toBeVisible();
+  await page.waitForTimeout(600);
+  const liquid = page.locator('[data-flow-layer]');
+  const samples = await liquid.evaluateHandle((element) => {
+    const card = document.querySelector('[data-study-card-id]')!;
+    const shell = element.querySelector(':scope > g use')!;
+    const width = shell.getBoundingClientRect().width;
+    const started = performance.now();
+    return {
+      width,
+      finished: new Promise<{ state: string | null; width: number; x: number; focused: boolean }[]>(
+        (resolve) => {
+          const frames: { state: string | null; width: number; x: number; focused: boolean }[] = [];
+          const sample = () => {
+            frames.push({
+              state: element.getAttribute('data-flow-state'),
+              width: shell.getBoundingClientRect().width,
+              x: new DOMMatrixReadOnly(getComputedStyle(card).transform).m41,
+              focused: document.activeElement?.id === 'study-typed-answer',
+            });
+            if (performance.now() - started < 700) requestAnimationFrame(sample);
+            else resolve(frames);
+          };
+          requestAnimationFrame(sample);
+        },
+      ),
+    };
+  });
+  await page.keyboard.up('Space');
+  await page.waitForTimeout(40);
+  await page.screenshot({ path: test.info().outputPath('bead-draining.png') });
+  const { width, frames } = await samples.evaluate(async (sample) => ({
+    width: sample.width,
+    frames: await sample.finished,
+  }));
+  await samples.dispose();
+  await test.info().attach('liquid-exit-frames.json', {
+    body: JSON.stringify({ width, frames }),
+    contentType: 'application/json',
+  });
+  expect(frames.some((frame) => frame.state === 'draining' && Math.abs(frame.x) > 0)).toBe(true);
+  expect(frames.some((frame) => frame.state === 'draining' && frame.width < width * 0.95)).toBe(
+    true,
+  );
+  expect(frames.find((frame) => frame.state === 'pill')?.focused).toBe(true);
+  await expect(page.getByRole('textbox', { name: 'Your answer' })).toHaveValue('');
+  await page.getByRole('textbox', { name: 'Your answer' }).fill('Already typing');
+  await page.screenshot({ path: test.info().outputPath('next-question-ready.png') });
+  await page.getByRole('button', { name: 'Undo last answer' }).click();
+  await expect(liquid).toHaveAttribute('data-flow-state', 'split');
+  await expect(page.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
+});
 
 test('keeps the verdict off the self-marking grades, advances and can undo it', async ({ page }) => {
   let release!: () => void;

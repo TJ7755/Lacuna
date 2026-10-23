@@ -56,6 +56,13 @@ export function expandingActionSpring(multiplier: number) {
   return { ...spring, mass: 1 };
 }
 
+/** Local liquid takes colour, then drains on acceptance without a rebound. */
+export function liquidSpring(multiplier: number, draining = false) {
+  return multiplier === 0
+    ? { duration: 0 }
+    : { type: 'spring' as const, visualDuration: (draining ? 0.22 : 0.3) * multiplier, bounce: 0 };
+}
+
 /**
  * Shared height-collapse configuration for disclosures: expands to auto height and
  * collapses to zero, scaling timing by the motion multiplier and becoming immediate

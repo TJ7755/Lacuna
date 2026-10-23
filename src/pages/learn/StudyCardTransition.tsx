@@ -41,14 +41,25 @@ export interface StudyCardTransitionHandle {
 /** Persistence chooses the next card; presence retains the old presentation during the write. */
 export const StudyCardTransition = forwardRef<
   StudyCardTransitionHandle,
-  { cardId: string; phase: Phase; multiplier: number; children: ReactNode }
->(function StudyCardTransition({ cardId, phase, multiplier: m, children }, ref) {
+  {
+    cardId: string;
+    phase: Phase;
+    multiplier: number;
+    onDepartureChange?: (departing: boolean) => void;
+    children: ReactNode;
+  }
+>(function StudyCardTransition({ cardId, phase, multiplier: m, onDepartureChange, children }, ref) {
   const element = useRef<HTMLDivElement>(null);
   const busy = useRef(false);
   const commitTimer = useRef<number | null>(null);
   const [presentation, setPresentation] = useState({ cardId, phase, serial: 0 });
   const [reset, setReset] = useState(0);
   const [departure, setDeparture] = useState<Departure | null>(null);
+
+  // Controls outside the card begin their exit in the same commit as its flight.
+  useLayoutEffect(() => {
+    onDepartureChange?.(departure !== null);
+  }, [departure, onDepartureChange]);
 
   // A repeated id is still a new presentation when grading returns to the question.
   // Adjust before React commits, so presence retains the previous answer and its props.
