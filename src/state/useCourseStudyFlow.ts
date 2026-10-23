@@ -29,8 +29,9 @@ interface CourseStudyFlowData {
 export function useCourseStudyFlow(
   courseId: string | undefined,
   refreshKey = 0,
+  enabled = true,
 ): CourseStudyFlowData | null | undefined {
-  const records = useCourseStudyFlowRecords(courseId, refreshKey);
+  const records = useCourseStudyFlowRecords(courseId, refreshKey, enabled);
 
   return useMemo(() => {
     if (records === undefined) return undefined;
