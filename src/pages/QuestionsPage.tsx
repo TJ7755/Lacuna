@@ -132,6 +132,7 @@ export function QuestionsPage() {
     visibleRows.map((row) => row.content),
     search,
     data,
+    { includeMarkScheme: author },
   ).map((hit) => ({ ...hit, draft: drafts.has(hit.content.id) }));
   const create = async () => {
     if (creating || !name.trim()) return;

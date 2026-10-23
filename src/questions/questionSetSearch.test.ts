@@ -122,15 +122,79 @@ describe('question-set search', () => {
     expect(searchQuestionSets([content], 'internal-note-id')).toEqual([]);
   });
 
-  it('never searches marking, explanations, correct-option identities or internal identities', () => {
+  it('excludes marking and explanations by default, including cross-field queries', () => {
     for (const query of [
       'secret criterion',
       'hidden explanation',
       'option-id',
       'target-id',
       'set-id',
+      'cell hidden',
     ])
       expect(searchQuestionSets([set], query, context)).toEqual([]);
+  });
+
+  it.each([
+    ['secret criterion', 'Mark scheme: Question 1(a)(i) criterion', 'Secret criterion'],
+    ['hidden explanation', 'Mark scheme: Question 1(a)(i) explanation', 'Hidden explanation'],
+  ])('finds authorised %s matches with a labelled location', (query, location, excerpt) => {
+    expect(searchQuestionSets([set], query, context, { includeMarkScheme: true })).toMatchObject([
+      { content: set, location, excerpt },
+    ]);
+    expect(searchQuestionSets([set], query, context, { includeMarkScheme: false })).toEqual([]);
+  });
+
+  it('combines authorised words across fields and retains order and deduplication', () => {
+    const other = { ...set, id: 'other' };
+    expect(
+      searchQuestionSets([other, set, set], 'cell hidden explanation', context, {
+        includeMarkScheme: true,
+      }).map((hit) => [hit.content.id, hit.location]),
+    ).toEqual([
+      ['other', 'Mark scheme: Question 1(a)(i) explanation'],
+      ['set-id', 'Mark scheme: Question 1(a)(i) explanation'],
+    ]);
+  });
+
+  it('searches every allocation at question, part and subpart depth without Markdown noise', () => {
+    const content = structuredClone(set);
+    content.questions[0].answer = answer;
+    content.questions[0].parts[0].answer = answer;
+    content.questions[0].parts[0].subparts[0].answer!.allocations.push({
+      ...answer.allocations[0],
+      id: 'second-allocation',
+      criterion: '**Accept** [alternatives](https://example.test/private-criterion)',
+      explanation: '![Worked diagram](asset:private-explanation)',
+    });
+    for (const query of ['accept alternatives', 'worked diagram']) {
+      expect(searchQuestionSets([content], query, {}, { includeMarkScheme: true })).toHaveLength(1);
+      expect(searchQuestionSets([content], query)).toEqual([]);
+    }
+    for (const query of [
+      'private-criterion',
+      'private-explanation',
+      'allocation-id',
+      'option-id',
+    ]) {
+      expect(searchQuestionSets([content], query, {}, { includeMarkScheme: true })).toEqual([]);
+    }
+    expect(
+      searchQuestionSets([content], 'secret criterion', {}, { includeMarkScheme: true })[0]
+        .location,
+    ).toBe('Mark scheme: Question 1 criterion');
+    delete content.questions[0].answer;
+    expect(
+      searchQuestionSets([content], 'secret criterion', {}, { includeMarkScheme: true })[0]
+        .location,
+    ).toBe('Mark scheme: Question 1(a) criterion');
+  });
+
+  it('never puts answer-only text in learner excerpts for public or empty queries', () => {
+    for (const query of ['', 'cell', 'semi permeable']) {
+      const [hit] = searchQuestionSets([set], query, context);
+      expect(hit).toBeDefined();
+      expect(hit.excerpt).not.toMatch(/secret|hidden/i);
+    }
   });
 
   it('searches all available bank blueprint/source fields and Concept names', () => {
@@ -150,5 +214,29 @@ describe('question-set search', () => {
     expect(searchQuestionSets([family], 'unmaterialised')).toMatchObject([
       { location: 'Template: Question 1', excerpt: 'Unmaterialised template wording' },
     ]);
+  });
+  it('searches representative and template marking once without expanding unseen family variants', () => {
+    const [family] = materialiseQuestionBank(parseQuestionBank(familyBank), 'course');
+    family.bank!.family!.template.questions[0].answer!.allocations[0].criterion =
+      'Template criterion: density from mass and volume';
+    const original = structuredClone(family);
+    for (const [query, location] of [
+      ['density 12 2 6', 'Mark scheme: Question 1 criterion'],
+      ['template criterion', 'Mark scheme: Template: Question 1 criterion'],
+    ]) {
+      expect(searchQuestionSets([family], query, {}, { includeMarkScheme: true })).toMatchObject([
+        { content: family, location },
+      ]);
+      expect(searchQuestionSets([family], query)).toEqual([]);
+    }
+    family.bank!.family!.template.questions[0].answer!.allocations[0].explanation =
+      'Unmaterialised worked explanation';
+    expect(
+      searchQuestionSets([family], 'unmaterialised worked', {}, { includeMarkScheme: true }),
+    ).toMatchObject([{ location: 'Mark scheme: Template: Question 1 explanation' }]);
+    expect(searchQuestionSets([family], 'unmaterialised worked')).toEqual([]);
+    expect(searchQuestionSets([family], '24 4 6', {}, { includeMarkScheme: true })).toEqual([]);
+    delete family.bank!.family!.template.questions[0].answer!.allocations[0].explanation;
+    expect(family).toEqual(original);
   });
 });
