@@ -3,10 +3,23 @@ import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router-d
 import { describe, expect, it, vi } from 'vitest';
 import { SearchPage } from './SearchPage';
 import { useRef } from 'react';
+import type * as React from 'react';
 import { useScrollMemory } from '../components/layout/scrollMemory';
 import { Outlet } from 'react-router-dom';
 import type { Card, Course, LegacyDeckRecord, Lesson, Note } from '../db/types';
 import type { FixedQuestionDefinition, QuestionDefinition } from '../questions/types';
+
+const deferredQueryState = vi.hoisted(() => ({ held: false }));
+vi.mock('react', async () => {
+  const actual = await vi.importActual<typeof React>('react');
+  return {
+    ...actual,
+    useDeferredValue: <T,>(value: T) => {
+      const deferred = actual.useDeferredValue(value);
+      return deferredQueryState.held ? '' : deferred;
+    },
+  };
+});
 
 const mockDeck: LegacyDeckRecord = {
   id: 'deck-1',
@@ -127,6 +140,46 @@ vi.mock('../state/useSearchData', () => ({
 }));
 
 describe('SearchPage', () => {
+  it('uses the restored query before a deferred update can insert unrelated rows on Back', async () => {
+    dataHooks.useSearchData.mockReturnValue({
+      cards: [
+        ...Array.from({ length: 18 }, (_, i) => ({
+          ...mockCard,
+          id: `unrelated-${i}`,
+          front: `Earlier unrelated ${i}`,
+        })),
+        ...Array.from({ length: 100 }, (_, i) => ({
+          ...mockCard,
+          id: `match-${i}`,
+          front: `Palatine ${String(i).padStart(3, '0')}`,
+        })),
+      ],
+      courses: [mockCourse],
+      lessons: [],
+      notes: [],
+      questions: [],
+    });
+    // A pending route can retain SearchPage with the editor's empty query. Hold
+    // that deferred value across Back to expose the intermediate unfiltered list.
+    deferredQueryState.held = true;
+    try {
+      const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
+        initialEntries: [
+          '/search?q=Palatine&filter=new&shown=160',
+          '/course/course-1/cards/match-80/edit',
+        ],
+      });
+      render(<RouterProvider router={router} />);
+      await act(() => router.navigate(-1));
+      expect(screen.getByRole('combobox')).toHaveValue('Palatine');
+      expect(screen.getAllByRole('option')).toHaveLength(100);
+      expect(screen.queryByRole('option', { name: /Earlier unrelated/ })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('option')[0]).toHaveTextContent('Palatine 000');
+    } finally {
+      deferredQueryState.held = false;
+    }
+  });
+
   it('shows ranked Help results, caps them at three and opens their topic', () => {
     const router = createMemoryRouter([{ path: '*', element: <SearchPage /> }], {
       initialEntries: ['/search?q=swipe'],
