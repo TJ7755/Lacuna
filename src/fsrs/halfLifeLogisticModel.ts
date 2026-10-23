@@ -1,4 +1,4 @@
-import frozenCoefficients from '../../tooling/short-term-memory/coefficients/half-life-logistic-v3.json';
+import frozenCoefficients from './coefficients/half-life-logistic-v3.json';
 import type { Card, ReviewLog, RevisionProjection } from '../db/types';
 import type {
   CramMemoryModel,

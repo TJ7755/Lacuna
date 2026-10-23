@@ -595,7 +595,7 @@ less extreme in aggregate contribution — see the per-user log-loss values abov
 
 ## Frozen runtime contract
 
-The live coefficients are in `coefficients/half-life-logistic-v3.json` (`half-life-logistic-v3-
+The live coefficients are in `src/fsrs/coefficients/half-life-logistic-v3.json` (repository root) (`half-life-logistic-v3-
 routed`, validation phase 3). Inputs are elapsed seconds, preceding outcome, first-review state,
 prior success/failure counts and FSRS state. Counts are capped at eight for model features.
 Missing, corrupt or out-of-range inputs fall back to FSRS-6. The coefficients themselves are
