@@ -222,8 +222,18 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await student.goto(`/#/course/${studentCourseId}/cards`);
   await expect(student.getByText('Mitosis stages', { exact: true }).first()).toBeVisible();
 
-  // An edited card queues behind the "Update available" badge instead of
-  // applying silently; accepting it in review updates the student copy.
+  await student.goto(`/#/course/${studentCourseId}/settings`);
+  const automaticUpdates = student.getByRole('switch', { name: 'Apply updates automatically' });
+  await expect(automaticUpdates).toBeChecked();
+  await automaticUpdates.scrollIntoViewIfNeeded();
+  await student.screenshot({ path: testInfo.outputPath('automatic-updates-default.png') });
+  await automaticUpdates.click();
+  await expect(automaticUpdates).not.toBeChecked();
+  await student.reload();
+  await expect(automaticUpdates).not.toBeChecked();
+
+  // After opting out, an author edit queues for review.
+
   await editOnlyCard(teacher, teacherCourseId!, 'Mitosis stages revised');
   await openShare(teacher, 'Link biology');
   await teacher.getByRole('button', { name: 'Update link' }).click();

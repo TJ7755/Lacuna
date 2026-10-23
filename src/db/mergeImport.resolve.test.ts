@@ -52,6 +52,7 @@ describe('mergeImport: review resolution', () => {
     await db.open();
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     courseId = course.id;
+    await db.courses.update(courseId, { 'distributedCopy.autoAcceptUpdates': false });
   });
 
   it('accepts a queued update, applies it, and refreshes the mapping snapshot', async () => {

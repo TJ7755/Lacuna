@@ -46,6 +46,7 @@ describe('mcp lineage tools', () => {
     await db.open();
     const { course } = await importLineageFirstTime(coursePayload({ lessons: [lessonOne()] }));
     courseId = course.id;
+    await db.courses.update(courseId, { 'distributedCopy.autoAcceptUpdates': false });
   });
 
   describe('lacuna.diff_lineage_update', () => {

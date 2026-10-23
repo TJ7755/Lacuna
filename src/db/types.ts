@@ -419,7 +419,7 @@ export interface CourseDistributedCopy {
   revision: number;
   /** True unless the student has detached from the lineage. */
   locked: boolean;
-  /** Whether non-conflicting updates apply automatically on re-import. Default false. */
+  /** Whether non-conflicting updates apply automatically on re-import. Defaults to true for new shared-course imports. */
   autoAcceptUpdates: boolean;
   /** Optional "shared by" display string, mirrors `by` in `SharePayloadV2`. */
   sourceLabel?: string;

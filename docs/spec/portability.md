@@ -123,6 +123,12 @@ A published lineage has permanent source identities and revisions. Importing a n
 updates material while retaining learner Card state, canonical history and Question evidence.
 Repeated/equal/older revisions must not duplicate or roll back accepted content.
 
+New shared-course imports enable **Apply updates automatically**. Non-conflicting author updates
+use the existing automatic application path; conflicts with learner edits still wait for review.
+Learners can turn the setting off in Course settings. Re-imports, reopening, backup restore and
+peer sync retain saved preferences through their existing record rules; this default does not
+migrate existing Courses or attach detached copies to a lineage.
+
 Teacher edits, learner edits and upstream removals require their explicit three-way decisions.
 Persist the accepted upstream baseline separately from the local chosen result so a deferred or
 Keep mine decision is not presented again as new evidence on every update. Adopted IDs must remain

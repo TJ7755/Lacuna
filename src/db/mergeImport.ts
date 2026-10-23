@@ -1012,7 +1012,7 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
         lineageId: payload.li,
         revision: payload.rv,
         locked: true,
-        autoAcceptUpdates: false,
+        autoAcceptUpdates: true,
         source: courseSource(payload),
         ...(typeof payload.by === 'string' ? { sourceLabel: payload.by } : {}),
       },
