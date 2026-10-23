@@ -1308,6 +1308,17 @@ class LacunaDatabase extends Dexie {
     this.version(30).stores({
       concepts: 'id, scopeKey, courseId, updatedAt, *specificationPointIds',
     });
+
+    // Version 31: ordered activity membership and matching last-imported snapshots.
+    this.version(31).stores({}).upgrade(async (tx) => {
+      const { parseQuestionSetPracticeNode, normalisePracticeNodeLineage } = await Dexie.waitFor(import('./questionSetPracticeNode'));
+      await tx.table<PracticeNode, string>('practiceNodes').toCollection().modify((node, ref) => {
+        if (node.type === 'question-set') ref.value = parseQuestionSetPracticeNode(node);
+      });
+      await tx.table<LineageIdMapping, string>('lineageIdMappings').toCollection().modify((mapping, ref) => {
+        ref.value = normalisePracticeNodeLineage(mapping);
+      });
+    });
   }
 }
 

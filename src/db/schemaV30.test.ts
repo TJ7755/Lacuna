@@ -60,7 +60,7 @@ describe('schema v30 specification links', () => {
 
     await db.open();
 
-    expect(db.verno).toBe(30);
+    expect(db.verno).toBe(31);
     expect(await db.courses.get(course.id)).toEqual(course);
     expect(await db.concepts.bulkGet(concepts.map((concept) => concept.id))).toEqual(concepts);
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
@@ -79,7 +79,7 @@ describe('schema v30 specification links', () => {
     ).toEqual(['concept-1']);
   });
 
-  it('uses v30 as the default snapshot target for a v29 database', async () => {
+  it('uses the latest default snapshot target for a v29 database', async () => {
     const name = `lacuna-v30-snapshot-${Date.now()}`;
     const legacy = new Dexie(name);
     legacy.version(29).stores({ courses: 'id, createdAt' });
@@ -91,7 +91,7 @@ describe('schema v30 specification links', () => {
     try {
       await ensurePreMigrationSnapshot(name, undefined, saveSnapshot);
       expect(saveSnapshot).toHaveBeenCalledExactlyOnceWith(
-        30,
+        31,
         expect.objectContaining({ courses: [course] }),
       );
     } finally {

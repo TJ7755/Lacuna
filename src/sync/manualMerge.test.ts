@@ -363,7 +363,7 @@ describe('manualMerge', () => {
     await manualMerge(backup(), { beforeApply });
 
     expect(beforeApply).toHaveBeenCalledWith(
-      expect.objectContaining({ app: 'lacuna-v14', version: 14 }),
+      expect.objectContaining({ app: 'lacuna-v15', version: 15 }),
     );
     expect(order).toEqual(['before-apply', 'import']);
   });

@@ -35,13 +35,17 @@ export function QuestionSetPathEditor({
       })),
     [courseId],
   );
-  const [setId, setSetId] = useState(node?.questionSetId ?? '');
+  const singleSetId = node?.questionSetIds.length === 1 ? node.questionSetIds[0] : '';
+  const multiple = !!node && node.questionSetIds.length !== 1;
+  const [setId, setSetId] = useState(singleSetId);
+  const expectedUpdatedAt = useRef(node?.updatedAt).current;
   const [pickerOpen, setPickerOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const sentence = useRef<HTMLParagraphElement>(null);
   const title = data?.sets.find((set) => set.id === setId)?.title;
   async function save() {
+    if (multiple) return true;
     if (!node && !setId && data?.sets.length === 0) return true;
     const anchor = node?.afterLessonId ?? afterLessonId ?? data?.lessons.at(-1)?.id;
     if (!setId || !anchor) {
@@ -50,7 +54,7 @@ export function QuestionSetPathEditor({
       return false;
     }
     try {
-      if (node) await updateQuestionSetPracticeNode(node.id, anchor, setId);
+      if (node) await updateQuestionSetPracticeNode(node.id, anchor, setId, expectedUpdatedAt);
       else await createQuestionSetPracticeNode(courseId, setId, anchor);
       return true;
     } catch (cause) {
@@ -86,12 +90,16 @@ export function QuestionSetPathEditor({
           className="path-editor-chip"
           aria-haspopup="dialog"
           aria-expanded={pickerOpen}
+          disabled={multiple}
           onClick={() => setPickerOpen(true)}
         >
-          {title ?? (node && setId === node.questionSetId ? node.name : 'Choose a question set')}
+          {title ?? (node && setId === singleSetId ? node.name : 'Choose a question set')}
         </button>
         .
       </p>
+      {multiple && <p className="mt-3 text-sm text-ink-faint">
+        This activity contains {node.questionSetIds.length} question sets. Editing and practising multiple sets is not yet supported.
+      </p>}
       {pickerOpen && data && trigger.current && (
         <QuestionSetPicker
           sets={data.sets}

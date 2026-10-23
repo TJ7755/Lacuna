@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
-import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
+import type { ShareLesson, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type { Course } from './types';
 import {
   acceptAllMergeReview,
@@ -146,7 +146,7 @@ function questionPayloadV5(overrides: Partial<SharePayloadV5> = {}): SharePayloa
     v: 5,
     questionSetPracticeNodes: [{
       id: 'activity-quadratics', courseId: 'teacher-course', type: 'question-set',
-      name: 'Practice Qs', questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+      name: 'Practice Qs', questionSetIds: ['set-quadratics'], afterLessonId: 'lesson-questions',
       createdAt: 1_000, updatedAt: 1_000,
     }],
     ...overrides,
@@ -921,7 +921,7 @@ describe('mergeImport: v5 Question Set path activity lineage', () => {
   it('adopts placements, applies teacher changes and removes untouched activities', async () => {
     const { course } = await importLineageFirstTime(questionPayloadV5());
     expect(await db.practiceNodes.get('activity-quadratics')).toMatchObject({
-      courseId: course.id, questionSetId: 'set-quadratics', afterLessonId: 'lesson-questions',
+      courseId: course.id, questionSetIds: ['set-quadratics'], afterLessonId: 'lesson-questions',
     });
     const updated = questionPayloadV5({
       at: 2_000, rv: 2,
@@ -946,6 +946,52 @@ describe('mergeImport: v5 Question Set path activity lineage', () => {
       at: 2_000, rv: 2,
     }))).rejects.toThrow('locally edited Question Set activity');
     expect((await db.practiceNodes.get('activity-quadratics'))?.name).toBe('Learner edit');
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
+  });
+});
+
+describe('mergeImport: ordered Question Set activity lineage', () => {
+  beforeEach(async () => { await db.delete(); await db.open(); });
+
+  function payload(): SharePayloadV6 {
+    const base = questionPayloadV5();
+    return { ...base, v: 6,
+      questionSets: [base.questionSets[0], ...['set-b', 'set-c'].map((id) => ({ ...base.questionSets[0], id }))],
+      questionSetPracticeNodes: [{ ...base.questionSetPracticeNodes[0], questionSetIds: ['set-c', 'set-quadratics', 'set-b'] }],
+    };
+  }
+
+  it('adopts every published identity and order, removes only unreferenced sets and retains attempts', async () => {
+    const first = payload();
+    const { course } = await importLineageFirstTime(first);
+    const node = (await db.practiceNodes.get('activity-quadratics'))!;
+    expect(node.questionSetIds).toEqual(['set-c', 'set-quadratics', 'set-b']);
+    const attempt = await startQuestionSetAttempt('set-quadratics', 'practice');
+    const update = { ...first, at: 2000, rv: 2,
+      questionSets: first.questionSets.filter((set) => set.id !== 'set-quadratics'),
+      questionSetPracticeNodes: [{ ...first.questionSetPracticeNodes[0], questionSetIds: ['set-b', 'set-c'] }],
+    };
+    await mergeLineageUpdate(course.id, update);
+    expect((await db.practiceNodes.get(node.id))?.questionSetIds).toEqual(['set-b', 'set-c']);
+    expect(await db.questionSets.get('set-quadratics')).toBeUndefined();
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  });
+
+  it.each(['membership', 'order', 'anchor', 'name', 'deletion race'])('rejects %s conflicts without partial published changes', async (conflict) => {
+    const first = payload();
+    const { course } = await importLineageFirstTime(first);
+    const id = 'activity-quadratics';
+    if (conflict === 'membership') await db.practiceNodes.update(id, { questionSetIds: ['set-c'] });
+    if (conflict === 'order') await db.practiceNodes.update(id, { questionSetIds: ['set-b', 'set-c', 'set-quadratics'] });
+    if (conflict === 'anchor') await db.practiceNodes.update(id, { afterLessonId: 'local-anchor' });
+    if (conflict === 'name') await db.practiceNodes.update(id, { name: 'Local name' });
+    const before = await exportDatabase();
+    const update = { ...first, at: 2000, rv: 2,
+      questionSets: first.questionSets.filter((set) => conflict !== 'deletion race' || set.id !== 'set-b'),
+    };
+    await expect(mergeLineageUpdate(course.id, update)).rejects.toThrow('Question Set activity');
+    expect(await db.practiceNodes.toArray()).toEqual(before.practiceNodes);
+    expect(await db.questionSets.toArray()).toEqual(before.questionSets);
     expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(1);
   });
 });

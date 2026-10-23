@@ -145,7 +145,7 @@ describe('course path node actions', () => {
           id: practiceNode.id,
           nodeType: 'practice-question-set',
           practiceNode,
-          questionSetId: set.id,
+          questionSetIds: [set.id],
           nodeKey: practiceNode.id,
           afterLessonId: first.id,
         };

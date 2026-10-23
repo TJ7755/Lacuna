@@ -43,7 +43,7 @@ describe('schema v28 authored Question Sets', () => {
 
     await db.open();
 
-    expect(db.verno).toBe(30);
+    expect(db.verno).toBe(31);
     expect(await db.questions.get(legacyQuestion.id)).toEqual(legacyQuestion);
     expect(await db.questionAttempts.get(legacyAttempt.id)).toEqual(legacyAttempt);
     expect(await db.questionSets.count()).toBe(0);

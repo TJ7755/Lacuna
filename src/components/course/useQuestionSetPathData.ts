@@ -7,14 +7,16 @@ import { listQuestionSetAttempts } from '../../questions/questionSetAttemptRepos
 /** The set, this course's latest attempt and its linked exam for one path activity. */
 export function useQuestionSetPathData(node: QuestionSetPathNode) {
   const courseId = node.practiceNode.courseId;
+  const setId = node.questionSetIds.length === 1 ? node.questionSetIds[0] : undefined;
   return useLiveQuery(
     () =>
       db.transaction(
         'r',
         [db.questionSets, db.questionSetAttempts, db.courseAssessments],
         async () => {
-          const content = await getQuestionSet(node.questionSetId);
-          const attempts = await listQuestionSetAttempts(node.questionSetId);
+          if (!setId) return { content: undefined, attempt: null, exam: undefined };
+          const content = await getQuestionSet(setId);
+          const attempts = await listQuestionSetAttempts(setId);
           const exam = content?.assessmentIds[0]
             ? await db.courseAssessments.get(content.assessmentIds[0])
             : undefined;
@@ -25,6 +27,6 @@ export function useQuestionSetPathData(node: QuestionSetPathNode) {
           };
         },
       ),
-    [node.questionSetId, courseId],
+    [setId, courseId],
   );
 }

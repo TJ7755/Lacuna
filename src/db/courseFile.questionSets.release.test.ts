@@ -92,8 +92,8 @@ describe('Question Set course-file release boundaries', () => {
 
     const file = await decodeCourseFile(await buildCourseFile(course.id));
     expect(file.assets.map((asset) => asset.hash)).toEqual([image.hash]);
-    expect(file.payload.v).toBe(5);
-    if (file.payload.v !== 5) throw new Error('Expected a v5 course payload');
+    expect(file.payload.v).toBe(6);
+    if (file.payload.v !== 6) throw new Error('Expected a v6 course payload');
     expect(file.payload.questionSets).toHaveLength(1);
     expect(JSON.stringify(file)).not.toContain(privateAnswer);
     expect(JSON.stringify(file)).not.toContain(privateAnnotation);

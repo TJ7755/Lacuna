@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BackupAsset, BackupFile, CourseRecord } from '../db/types';
+import type { BackupAsset, BackupFile, CourseRecord, QuestionSetPracticeNode } from '../db/types';
 import { defaultFsrsParameters } from '../fsrs/params';
 import type {
   Concept,
@@ -211,6 +211,30 @@ function setAttempt(overrides: Partial<QuestionSetAttemptRecord> = {}): Question
     ...overrides,
   };
 }
+
+describe('ordered Question Set activity peer merge', () => {
+  it('retains whole-record LWW membership/order, canonical equal-time ties and immutable attempts', () => {
+    const lesson = { id: 'lesson', courseId: 'course-1', name: 'Lesson', isExtension: false, orderIndex: 0, createdAt: 1, updatedAt: 1 };
+    const node: QuestionSetPracticeNode = { id: 'activity', courseId: 'course-1', type: 'question-set',
+      name: 'Practice', questionSetIds: ['set-c', 'set-1', 'set-b'], afterLessonId: lesson.id, createdAt: 1, updatedAt: 2 };
+    const base = backup({ lessons: [lesson], practiceNodes: [node],
+      questionSets: [authoredSet(), { ...authoredSet(), id: 'set-b' }, { ...authoredSet(), id: 'set-c' }],
+      questionSetAttempts: [setAttempt()],
+    });
+    for (const updatedAt of [2, 3]) {
+      const winner = { ...node, questionSetIds: ['set-c', 'set-b'], updatedAt };
+      const peer = { ...base, practiceNodes: [winner] };
+      for (const merged of [mergeSnapshots(base, peer), mergeSnapshots(peer, base)]) {
+        expect(merged.practiceNodes).toEqual([winner]);
+        expect(merged.questionSetAttempts).toEqual(base.questionSetAttempts);
+      }
+    }
+    const removed = { ...base, questionSets: base.questionSets?.filter((set) => set.id !== 'set-b'),
+      tombstones: [{ table: 'questionSets' as const, recordId: 'set-b', deletedAt: 100 }],
+    };
+    expect(() => mergeSnapshots(base, removed)).toThrow('missing Question Set');
+  });
+});
 
 describe('Question peer merge', () => {
   it.each(['prior course-update damage', 'concurrent peer deletion'])(

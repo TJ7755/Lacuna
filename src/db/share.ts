@@ -464,12 +464,15 @@ const SharePayloadV5Schema = SharePayloadV4Schema.omit({ v: true }).extend({
   questionSetPracticeNodes: z.array(z.unknown()),
 });
 
+const SharePayloadV6Schema = SharePayloadV5Schema.extend({ v: z.literal(6) });
+
 const SharePayloadSchema = z.discriminatedUnion('v', [
   SharePayloadV1Schema,
   SharePayloadV2Schema,
   SharePayloadV3Schema,
   SharePayloadV4Schema,
   SharePayloadV5Schema,
+  SharePayloadV6Schema,
 ]);
 
 /** A single card in a share payload. `k` is the kind. */
@@ -711,9 +714,13 @@ export interface SharePayloadV5 extends Omit<SharePayloadV4, 'v'> {
   questionSetPracticeNodes: QuestionSetPracticeNode[];
 }
 
+export interface SharePayloadV6 extends Omit<SharePayloadV5, 'v'> {
+  v: 6;
+}
+
 /** The decoded contents of a share code, either a flat deck list or a single course. */
 export type SharePayload =
-  SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
+  SharePayloadV1 | SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
 
 /** A human-friendly summary of a share code, for the import preview. */
 export interface ShareSummary {
@@ -765,18 +772,18 @@ export function parseSharePayload(payload: unknown): SharePayload {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
   assertShareLessonPrerequisites(parse.data.lessons);
-  if (parse.data.v === 4 || parse.data.v === 5) {
+  if (parse.data.v === 4 || parse.data.v === 5 || parse.data.v === 6) {
     return {
       ...parse.data,
       questionSets: parse.data.questionSets.map(parseQuestionSetRecord),
-      ...(parse.data.v === 5
+      ...((parse.data.v === 5 || parse.data.v === 6)
         ? {
             questionSetPracticeNodes: parse.data.questionSetPracticeNodes.map(
               parseQuestionSetPracticeNode,
             ),
           }
         : {}),
-    } as SharePayloadV4 | SharePayloadV5;
+    } as SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
   }
   return parse.data;
 }
@@ -1126,7 +1133,7 @@ function packNotes(
 export async function buildCourseSharePayload(
   courseId: string,
   { includeMedia = false }: { includeMedia?: boolean } = {},
-): Promise<SharePayloadV5> {
+): Promise<SharePayloadV6> {
   const course = await db.courses.get(courseId);
   if (!course) throw new Error('Course not found.');
 
@@ -1383,7 +1390,7 @@ export async function buildCourseSharePayload(
     questionSets,
   );
   return {
-    v: 5,
+    v: 6,
     by: course.creator ?? null,
     at: Date.now(),
     course: shareCourse,
@@ -1442,7 +1449,7 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
 
 /** Import a v2/v3 single-course payload directly into the course model. */
 async function importCourseSharePayload(
-  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5,
+  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6,
 ): Promise<ImportShareResult> {
   assertShareLessonPrerequisites(payload.lessons);
   let cardCount = 0;
@@ -1904,7 +1911,7 @@ async function importCourseSharePayload(
           await db.questionConcepts.bulkAdd(importedQuestionConcepts);
         }
       }
-      if (payload.v === 4 || payload.v === 5) {
+      if (payload.v === 4 || payload.v === 5 || payload.v === 6) {
         const importedSets = importSharedQuestionSets({
           records: payload.questionSets,
           sharedLessons: payload.lessons,
@@ -1916,7 +1923,7 @@ async function importCourseSharePayload(
           makeId,
         });
         if (importedSets.length > 0) await db.questionSets.bulkAdd(importedSets);
-        if (payload.v === 5) {
+        if (payload.v === 5 || payload.v === 6) {
           const importedSetIds = new Map(
             payload.questionSets.map((set, index) => [set.id, importedSets[index].id]),
           );
@@ -1924,16 +1931,20 @@ async function importCourseSharePayload(
             payload.lessons.map((lesson, index) => [lesson.i, lessonIds[index]]),
           );
           const importedNodes = payload.questionSetPracticeNodes.map((node) => {
-            const questionSetId = importedSetIds.get(node.questionSetId);
+            const questionSetIds = node.questionSetIds.map((id) => {
+              const mapped = importedSetIds.get(id);
+              if (!mapped) throw new Error(`A shared Question Set activity references an unmapped Set: ${id}.`);
+              return mapped;
+            });
             const afterLessonId = importedLessonIds.get(node.afterLessonId);
-            if (!questionSetId || !afterLessonId) {
+            if (!afterLessonId) {
               throw new Error('A shared Question Set activity has a missing Set or Lesson.');
             }
             return parseQuestionSetPracticeNode({
               ...node,
               id: makeId(),
               courseId: course.id,
-              questionSetId,
+              questionSetIds,
               afterLessonId,
               createdAt: importedAt,
               updatedAt: importedAt,

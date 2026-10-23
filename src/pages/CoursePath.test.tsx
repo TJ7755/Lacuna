@@ -367,7 +367,7 @@ describe('CoursePath View mode', () => {
       courseId: course.id,
       type: 'question-set',
       name: 'Practice Qs',
-      questionSetId: 'question-set-1',
+      questionSetIds: ['question-set-1'],
       afterLessonId: lesson1.id,
       createdAt: 1,
       updatedAt: 1,
@@ -378,7 +378,7 @@ describe('CoursePath View mode', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Question set' }));
     expect(mockNavigate).toHaveBeenCalledWith(
-      `/course/${course.id}/question-sets/${activity.questionSetId}`,
+      `/course/${course.id}/question-sets/${activity.questionSetIds[0]}`,
       expect.objectContaining({
         state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }),
       }),

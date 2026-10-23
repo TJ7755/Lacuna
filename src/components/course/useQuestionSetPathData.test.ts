@@ -70,7 +70,7 @@ it('switches progress to the selected identity while retaining completed and res
         id: activity.id,
         nodeType: 'practice-question-set',
         practiceNode: activity,
-        questionSetId: activity.questionSetId,
+        questionSetIds: activity.questionSetIds,
         afterLessonId: activity.afterLessonId,
         nodeKey: activity.id,
       }),
@@ -83,7 +83,7 @@ it('switches progress to the selected identity while retaining completed and res
     markedParts: 1,
   });
   const open = await startQuestionSetAttempt(set.id, 'practice', 200);
-  node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+  node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt);
   rerender({ activity: node });
   await waitFor(() => expect(result.current?.content?.id).toBe(replacement.id));
   expect(result.current?.attempt).toBeNull();
@@ -102,10 +102,10 @@ it('switches progress to the selected identity while retaining completed and res
   const next = await startQuestionSetAttempt(replacement.id, 'practice', 300);
   await waitFor(() => expect(result.current?.attempt).toEqual(next));
   expect(questionSetPathProgress(result.current!.attempt)?.answeredParts).toBe(0);
-  node = await updateQuestionSetPracticeNode(node.id, lesson.id, set.id);
+  node = await updateQuestionSetPracticeNode(node.id, lesson.id, set.id, node.updatedAt);
   rerender({ activity: node });
   await waitFor(() => expect(result.current?.attempt).toEqual(resumed));
-  node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+  node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt);
   rerender({ activity: node });
   await waitFor(() => expect(result.current?.attempt).toEqual(next));
 });

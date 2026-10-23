@@ -12,7 +12,7 @@ export async function createPracticeNode(
   try {
     if (
       opts.type === 'question-set' ||
-      opts.questionSetId !== undefined ||
+      opts.questionSetIds !== undefined ||
       opts.afterLessonId !== undefined
     ) {
       throw new Error('Question Set activities require the Question Set repository API.');
@@ -36,7 +36,7 @@ export async function updatePracticeNode(
   changes: Partial<PracticeNode>,
 ): Promise<void> {
   try {
-    if (changes.type === 'question-set' || changes.questionSetId !== undefined || changes.afterLessonId !== undefined || (await db.practiceNodes.get(id))?.type === 'question-set') {
+    if (changes.type === 'question-set' || changes.questionSetIds !== undefined || changes.afterLessonId !== undefined || (await db.practiceNodes.get(id))?.type === 'question-set') {
       throw new Error('Question Set activities require the Question Set repository API.');
     }
     await db.practiceNodes.update(id, stampUpdatedAt(changes));
@@ -47,18 +47,18 @@ export async function updatePracticeNode(
 
 async function requireQuestionSetActivityReferences(
   courseId: string,
-  questionSetId: string,
+  questionSetIds: readonly string[],
   afterLessonId: string,
 ): Promise<void> {
-  const [course, set, lesson] = await Promise.all([
+  const [course, sets, lesson] = await Promise.all([
     db.courses.get(courseId),
-    db.questionSets.get(questionSetId),
+    db.questionSets.bulkGet([...questionSetIds]),
     db.lessons.get(afterLessonId),
   ]);
   if (!course || course.archived || !canEditLessons(course)) {
     throw new Error('This Course is read-only.');
   }
-  if (!set || set.courseId !== courseId) {
+  if (sets.some((set) => !set || set.courseId !== courseId)) {
     throw new Error('The Question Set must belong to this Course.');
   }
   if (!lesson || lesson.courseId !== courseId) {
@@ -68,16 +68,17 @@ async function requireQuestionSetActivityReferences(
 
 export async function createQuestionSetPracticeNode(
   courseId: string,
-  questionSetId: string,
+  questionSetIds: string | readonly string[],
   afterLessonId: string,
 ): Promise<QuestionSetPracticeNode> {
   return db.transaction('rw', [db.courses, db.questionSets, db.lessons, db.practiceNodes], async () => {
-    await requireQuestionSetActivityReferences(courseId, questionSetId, afterLessonId);
     const now = Date.now();
-    const node: QuestionSetPracticeNode = {
+    const node = parseQuestionSetPracticeNode({
       id: makeId(), courseId, type: 'question-set', name: 'Practice questions',
-      questionSetId, afterLessonId, createdAt: now, updatedAt: now,
-    };
+      questionSetIds: typeof questionSetIds === 'string' ? [questionSetIds] : questionSetIds,
+      afterLessonId, createdAt: now, updatedAt: now,
+    });
+    await requireQuestionSetActivityReferences(courseId, node.questionSetIds, afterLessonId);
     await db.practiceNodes.add(node);
     return node;
   });
@@ -86,19 +87,25 @@ export async function createQuestionSetPracticeNode(
 export async function updateQuestionSetPracticeNode(
   id: string,
   afterLessonId: string,
-  questionSetId?: string,
+  questionSetIds?: string | readonly string[],
+  expectedUpdatedAt?: number,
 ): Promise<QuestionSetPracticeNode> {
   return db.transaction('rw', [db.courses, db.questionSets, db.lessons, db.practiceNodes], async () => {
     const existing = await db.practiceNodes.get(id);
-    if (!existing || existing.type !== 'question-set' || !existing.questionSetId) {
+    if (!existing || existing.type !== 'question-set') {
       throw new Error('Question Set activity not found.');
     }
-    const selectedSetId = questionSetId ?? existing.questionSetId;
-    await requireQuestionSetActivityReferences(existing.courseId, selectedSetId, afterLessonId);
-    const node: QuestionSetPracticeNode = {
-      ...parseQuestionSetPracticeNode(existing), afterLessonId, questionSetId: selectedSetId,
+    if (questionSetIds !== undefined && expectedUpdatedAt !== existing.updatedAt) {
+      throw new Error('This activity has changed. Reopen it before editing its Question Set selection.');
+    }
+    const current = parseQuestionSetPracticeNode(existing);
+    const node = parseQuestionSetPracticeNode({
+      ...current, afterLessonId,
+      questionSetIds: questionSetIds === undefined ? current.questionSetIds
+        : typeof questionSetIds === 'string' ? [questionSetIds] : questionSetIds,
       updatedAt: Math.max(Date.now(), existing.updatedAt + 1),
-    };
+    });
+    await requireQuestionSetActivityReferences(existing.courseId, node.questionSetIds, afterLessonId);
     await db.practiceNodes.put(node);
     return node;
   });

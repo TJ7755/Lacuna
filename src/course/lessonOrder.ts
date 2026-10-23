@@ -36,7 +36,7 @@ export function localLessonOrderUnavailableReason(
   }
   const lessonIds = new Set(lessons.map((lesson) => lesson.id));
   if (
-    practiceNodes.some((node) => !node.questionSetId || !lessonIds.has(node.afterLessonId ?? ''))
+    practiceNodes.some((node) => !node.questionSetIds?.length || !lessonIds.has(node.afterLessonId ?? ''))
   ) {
     return 'Local lesson order requires lesson-anchored Question Set activities.';
   }

@@ -54,7 +54,7 @@ it('preserves inline recovery bytes while the real v4 extractor loads cold', asy
   legacy.close();
 
   await ensurePreMigrationSnapshot();
-  expect((await getPreMigrationSnapshot(30))?.payload.cards[0].front).toBe(markdown);
+  expect((await getPreMigrationSnapshot(31))?.payload.cards[0].front).toBe(markdown);
   await db.open();
 
   const card = await db.cards.get('illustrated');

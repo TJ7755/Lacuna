@@ -4,7 +4,7 @@ import { savePreMigrationSnapshot } from './preMigrationSnapshots';
 import { db } from './database';
 export { db } from './database';
 
-const CURRENT_SCHEMA_VERSION = 30;
+const CURRENT_SCHEMA_VERSION = 31;
 const DESTRUCTIVE_SCHEMA_VERSIONS = new Set([22, 24, 26]);
 
 /** Possible outcomes when trying to open the database. */

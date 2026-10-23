@@ -69,7 +69,7 @@ import type {
   ShareNoteInput,
 } from './lineageDiff';
 import { importSharePayload } from './share';
-import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
+import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type {
   Card,
   CardType,
@@ -98,12 +98,12 @@ import { assertLineageReviewIntegrity, prepareLineageMapping } from './lineageIn
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import { questionGeneratorRegistry } from '../questions/generators';
-import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes } from '../questions/questionSetLineage';
+import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes, assertStoredQuestionSetActivities } from '../questions/questionSetLineage';
 import { applyLineageAssessments } from './assessmentLineage';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 
 /** Narrowed view of the fields this module reads off a decoded course share payload. */
-type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5) & {
+type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & {
   li: string;
   rv: number;
 };
@@ -359,6 +359,7 @@ const MERGE_TABLES = [
   db.questionAttempts,
   db.questionSets,
   db.practiceNodes,
+  db.practiceMilestones,
   db.lessonCards,
   db.lessonCardExposures,
   db.lessonCompletions,
@@ -1171,9 +1172,10 @@ export async function importLineageFirstTime(payload: SharePayload): Promise<{ c
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await syncLineageLinks(tx, payload, course.id);
     await applyLineageQuestions(payload, course.id, mapping);
-    if (payload.v === 4 || payload.v === 5) await applyLineageAssessments(payload, course.id, mapping, true);
-    if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, course.id, mapping);
-    if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageAssessments(payload, course.id, mapping, true);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageQuestionSets(payload, course.id, mapping);
+    if (payload.v === 5 || payload.v === 6) await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
+    await assertStoredQuestionSetActivities(course.id);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
 
@@ -1394,9 +1396,10 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5) await applyLineageAssessments(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5) await applyLineageQuestionSets(payload, courseId, mapping);
-    if (payload.v === 5) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageAssessments(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageQuestionSets(payload, courseId, mapping);
+    if (payload.v === 5 || payload.v === 6) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
+    await assertStoredQuestionSetActivities(courseId);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
     // 6. Course details, revision + mapping bookkeeping. A detail the learner changed

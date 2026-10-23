@@ -71,7 +71,7 @@ describe('Question Set path activities', () => {
     expect(node).toMatchObject({
       courseId: course.id,
       type: 'question-set',
-      questionSetId: set.id,
+      questionSetIds: [set.id],
       afterLessonId: first.id,
     });
     await expect(updatePracticeNode(node.id, { name: 'Bypass' })).rejects.toThrow('Question Set');
@@ -134,7 +134,7 @@ describe('Question Set path activities', () => {
       createPracticeNode(course.id, {
         type: 'question-set',
         name: 'Bypass',
-        questionSetId: set.id,
+        questionSetIds: [set.id],
         afterLessonId: lesson.id,
       }),
     ).rejects.toThrow('Question Set');
@@ -153,10 +153,10 @@ describe('Question Set path activities', () => {
     });
     const before = (await db.practiceNodes.get(node.id))!;
     const open = await startQuestionSetAttempt(set.id, 'practice');
-    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, before.updatedAt);
     expect(updated).toEqual({
       ...before,
-      questionSetId: replacement.id,
+      questionSetIds: [replacement.id],
       updatedAt: before.updatedAt + 1,
     });
     expect(await db.questionSetAttempts.toArray()).toEqual([open]);
@@ -164,7 +164,7 @@ describe('Question Set path activities', () => {
     expect(await db.questionSets.get(replacement.id)).toEqual(replacement);
     expect(declarativeFamilyCapacity(replacement.bank!.family!)).toBe(6);
     expect(await db.practiceMilestones.count()).toBe(0);
-    const next = await startQuestionSetAttempt(updated.questionSetId, 'practice');
+    const next = await startQuestionSetAttempt(updated.questionSetIds[0], 'practice');
     expect(next).toMatchObject({
       courseId: course.id,
       questionSetId: replacement.id,
@@ -213,7 +213,7 @@ describe('Question Set path activities', () => {
     if (reason === 'missing activity') await db.practiceNodes.delete(node.id);
     if (reason === 'Card activity') await db.practiceNodes.update(node.id, { type: 'manual' });
     const before = await db.practiceNodes.get(node.id);
-    await expect(updateQuestionSetPracticeNode(node.id, lessonId, setId)).rejects.toThrow();
+    await expect(updateQuestionSetPracticeNode(node.id, lessonId, setId, node.updatedAt)).rejects.toThrow();
     expect(await db.practiceNodes.get(node.id)).toEqual(before);
     expect(await db.questionSets.get(set.id)).toEqual(set);
   });
@@ -222,11 +222,11 @@ describe('Question Set path activities', () => {
     const { course, lesson, replacement, node } = await replacementFixture();
     const nextLesson = await createLesson(course.id, 'Pressure');
     await Promise.all([
-      updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id),
+      updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt),
       updateQuestionSetPracticeNode(node.id, nextLesson.id),
     ]);
     expect(await db.practiceNodes.get(node.id)).toMatchObject({
-      questionSetId: replacement.id,
+      questionSetIds: [replacement.id],
       afterLessonId: nextLesson.id,
     });
   });
@@ -236,7 +236,7 @@ describe('Question Set path activities', () => {
     const write = vi.spyOn(db.practiceNodes, 'put').mockRejectedValueOnce(new Error('Disk full'));
     try {
       await expect(
-        updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id),
+        updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt),
       ).rejects.toThrow('Disk full');
     } finally {
       write.mockRestore();
@@ -244,11 +244,35 @@ describe('Question Set path activities', () => {
     expect(await db.practiceNodes.get(node.id)).toEqual(node);
     await Promise.all([
       db.questionSets.delete(replacement.id),
-      expect(updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id)).rejects.toThrow(
+      expect(updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt)).rejects.toThrow(
         'Question Set',
       ),
     ]);
     expect(await db.practiceNodes.get(node.id)).toEqual(node);
+  });
+
+  it('stores three members in order and rejects invalid or stale edits atomically', async () => {
+    const { course, lesson, set, replacement, node } = await replacementFixture();
+    const third = await createQuestionSet({ ...set, id: 'third' });
+    const other = await createCourse('Other');
+    const [foreign] = await importQuestionBank(familyExample, other.id);
+    for (const ids of [[], [set.id, set.id], [set.id, foreign.id], [set.id, 'missing']]) {
+      await expect(createQuestionSetPracticeNode(course.id, ids, lesson.id)).rejects.toThrow();
+      await expect(updateQuestionSetPracticeNode(node.id, lesson.id, ids, node.updatedAt)).rejects.toThrow();
+      expect(await db.practiceNodes.get(node.id)).toEqual(node);
+    }
+    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id,
+      [third.id, set.id, replacement.id], node.updatedAt);
+    expect(updated.questionSetIds).toEqual([third.id, set.id, replacement.id]);
+    expect(updated).not.toHaveProperty('questionSetId');
+    await expect(updateQuestionSetPracticeNode(node.id, lesson.id, [set.id], node.updatedAt))
+      .rejects.toThrow('Reopen');
+    await expect(updateQuestionSetPracticeNode(node.id, lesson.id, [set.id]))
+      .rejects.toThrow('Reopen');
+    const nextLesson = await createLesson(course.id, 'Pressure');
+    const moved = await updateQuestionSetPracticeNode(node.id, nextLesson.id);
+    expect(moved.questionSetIds).toEqual(updated.questionSetIds);
+    expect(moved.updatedAt).toBeGreaterThan(updated.updatedAt);
   });
 
   it('removes an activity with its anchor lesson and restores it on undo', async () => {

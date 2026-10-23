@@ -1,7 +1,7 @@
+import { parseQuestionSetPracticeNode } from '../db/questionSetPracticeNode';
 import { clearTombstone, recordTombstone } from '../db/mutationStamp';
 import { scheduleAssetGc } from '../db/assets';
 import { db, makeId } from '../db/schema';
-import type { Transaction } from 'dexie';
 import { canEditLessons } from '../course/lessonViewMode';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
 import {
@@ -234,7 +234,7 @@ export async function deleteQuestionSet(id: string, now = Date.now()): Promise<v
   const deleted = await db.transaction('rw', [db.questionSets, db.practiceNodes, db.practiceMilestones, db.tombstones], async (tx) => {
     const existing = await db.questionSets.get(id);
     if (!existing) return false;
-    await deleteQuestionSetPathActivities(existing.courseId, id, tx, now);
+    await requireUnreferencedQuestionSet(existing.courseId, id);
     await db.questionSets.delete(id);
     await recordTombstone(tx, 'questionSets', id, Math.max(now, existing.updatedAt + 1));
     return true;
@@ -242,22 +242,12 @@ export async function deleteQuestionSet(id: string, now = Date.now()): Promise<v
   if (deleted) scheduleAssetGc();
 }
 
-async function deleteQuestionSetPathActivities(
-  courseId: string,
-  setId: string,
-  tx: Transaction,
-  now: number,
-): Promise<void> {
+async function requireUnreferencedQuestionSet(courseId: string, setId: string): Promise<void> {
   const nodes = (await db.practiceNodes.where('courseId').equals(courseId).toArray()).filter(
-    (node) => node.type === 'question-set' && node.questionSetId === setId,
+    (node) => node.type === 'question-set' && parseQuestionSetPracticeNode(node).questionSetIds.includes(setId),
   );
-  for (const node of nodes) {
-    await db.practiceNodes.delete(node.id);
-    await recordTombstone(tx, 'practiceNodes', node.id, Math.max(now, node.updatedAt + 1));
-    if (await db.practiceMilestones.get(node.id)) {
-      await db.practiceMilestones.delete(node.id);
-      await recordTombstone(tx, 'practiceMilestones', node.id, now);
-    }
+  if (nodes.length) {
+    throw new Error(`Question Set ${setId} is used by path activities: ${nodes.map((node) => `${node.name} (${node.id})`).join(', ')}. Remove it from these activities before deleting it.`);
   }
 }
 
@@ -294,7 +284,7 @@ export async function removeAuthoredQuestionSet(
         });
       }
       if (record) {
-        await deleteQuestionSetPathActivities(courseId, setId, tx, options.now ?? Date.now());
+        await requireUnreferencedQuestionSet(courseId, setId);
         await db.questionSets.delete(setId);
         await recordTombstone(
           tx,

@@ -1,3 +1,4 @@
+import { parseQuestionSetPracticeNodeSnapshot } from './questionSetPracticeNode';
 import { z } from 'zod';
 import { validateAssessmentStructure } from './assessmentRepository';
 import type { CourseAssessment } from './types';
@@ -280,11 +281,19 @@ export const stateSchemas = {
     lessonSnapshots: z.record(text, lessonContent.omit({ unlockedAt: true })),
     noteSnapshots: z.record(text, noteContent),
     cardSnapshots: z.record(text, cardContent),
+    questionSetPracticeNodeIds: ids.optional(),
+    questionSetPracticeNodeSnapshots: z.record(text, z.unknown()).optional(),
     assessmentIds: ids
       .refine((values) => new Set(values).size === values.length, 'Duplicate assessment id')
       .optional(),
     assessmentSnapshots: z.record(text, z.looseObject({ id, courseId: id })).optional(),
   }).superRefine((mapping, context) => {
+    for (const [key, snapshot] of Object.entries(mapping.questionSetPracticeNodeSnapshots ?? {})) {
+      try { parseQuestionSetPracticeNodeSnapshot(snapshot); } catch {
+        context.addIssue({ code: 'custom', path: ['questionSetPracticeNodeSnapshots', key],
+          message: 'Invalid Question Set activity snapshot' });
+      }
+    }
     for (const [key, snapshot] of Object.entries(mapping.assessmentSnapshots ?? {})) {
       let valid = snapshot.id === key && snapshot.courseId === mapping.courseId;
       try {

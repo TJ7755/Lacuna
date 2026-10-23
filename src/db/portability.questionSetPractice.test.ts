@@ -1,9 +1,13 @@
 import 'fake-indexeddb/auto';
+import { importQuestionBank } from '../questions/bank';
+import familyExample from '../../docs/question-bank/examples/numeric-family.json';
+import type { BackupFile } from './types';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
 import {
   createPracticeNode,
+  deleteQuestionSetPracticeNode,
   createQuestionSetPracticeNode,
   updateQuestionSetPracticeNode,
 } from './practiceNodeRepository';
@@ -53,7 +57,7 @@ describe('Question Set path activity portability', () => {
     });
     const node = await createQuestionSetPracticeNode(course.id, set.id, lesson.id);
     const backup = await exportDatabase();
-    expect(backup).toMatchObject({ app: 'lacuna-v14', version: 14 });
+    expect(backup).toMatchObject({ app: 'lacuna-v15', version: 15 });
     expect(validateBackup(backup)).toBe(true);
     expect(validateBackup({ ...backup, practiceNodes: [null] })).toBe(false);
     expect(mergeSnapshots(backup, backup).practiceNodes).toEqual([node]);
@@ -77,7 +81,7 @@ describe('Question Set path activity portability', () => {
             ...mapping,
             questionSetPracticeNodeIds: [node.id],
             questionSetPracticeNodeSnapshots: {
-              [node.id]: { questionSetId: set.id, afterLessonId: lesson.id, name: node.name },
+              [node.id]: { questionSetIds: [set.id], afterLessonId: lesson.id, name: node.name },
             },
           },
         ],
@@ -85,18 +89,20 @@ describe('Question Set path activity portability', () => {
     ).lineageIdMappings?.[0];
     expect(mergedMapping?.questionSetPracticeNodeIds).toEqual([node.id]);
     expect(mergedMapping?.questionSetPracticeNodeSnapshots?.[node.id]).toMatchObject({
-      questionSetId: set.id,
+      questionSetIds: [set.id],
       afterLessonId: lesson.id,
     });
     await db.practiceNodes.clear();
     await importBackup(backup, 'replace');
     expect(await db.practiceNodes.get(node.id)).toEqual(node);
+    await expect(deleteQuestionSet(set.id)).rejects.toThrow(node.id);
+    await deleteQuestionSetPracticeNode(node.id);
     await deleteQuestionSet(set.id);
     const removed = mergeSnapshots(backup, await exportDatabase());
     expect(removed.questionSets).toEqual([]);
     expect(removed.practiceNodes).toEqual([]);
     expect(
-      validateBackup({ ...backup, practiceNodes: [{ ...node, questionSetId: undefined }] }),
+      validateBackup({ ...backup, practiceNodes: [{ ...node, questionSetIds: undefined}] }),
     ).toBe(false);
     expect(() =>
       mergeSnapshots(backup, { ...backup, practiceNodes: [{ ...node, afterLessonId: 'missing' }] }),
@@ -143,7 +149,7 @@ describe('Question Set path activity portability', () => {
     const node = await createQuestionSetPracticeNode(course.id, set.id, lesson.id);
     const attempt = await startQuestionSetAttempt(set.id, 'practice');
     let older = await exportDatabase();
-    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt);
     const newer = await exportDatabase();
     expect(updated.createdAt).toBe(node.createdAt);
     expect(updated.updatedAt).toBeGreaterThan(node.updatedAt);
@@ -171,6 +177,35 @@ describe('Question Set path activity portability', () => {
     await db.practiceNodes.update(node.id, { updatedAt: node.updatedAt + 100 });
     await importBackup(backup, 'merge');
     expect(await db.practiceNodes.get(node.id)).toEqual(backup.practiceNodes[0]);
+  });
+
+  it.each([false, true])('merges membership and order as one record (equal time: %s)', async (equalTime) => {
+    const course = await createCourse('Physics');
+    const lesson = await createLesson(course.id, 'Density');
+    const [first] = await importQuestionBank(familyExample, course.id);
+    const second = await createQuestionSet({ ...first, id: 'set-b' });
+    const third = await createQuestionSet({ ...first, id: 'set-c' });
+    const node = await createQuestionSetPracticeNode(course.id, [second.id, first.id, third.id], lesson.id);
+    const attempt = await startQuestionSetAttempt(first.id, 'practice');
+    const backup = await exportDatabase();
+    const winner = { ...node, questionSetIds: [third.id, second.id], updatedAt: node.updatedAt + (equalTime ? 0 : 1) };
+    const incoming = { ...backup, practiceNodes: [winner] };
+    expect(mergeSnapshots(backup, incoming).practiceNodes).toEqual([winner]);
+    expect(mergeSnapshots(incoming, backup).practiceNodes).toEqual([winner]);
+    await importBackup(incoming, 'merge');
+    expect(await db.practiceNodes.get(node.id)).toEqual(winner);
+    await importBackup(backup, 'merge');
+    expect(await db.practiceNodes.get(node.id)).toEqual(winner);
+    expect(await db.questionSetAttempts.toArray()).toEqual([attempt]);
+
+    const { questionSetIds: _ids, ...legacyNode } = node;
+    const legacy = { ...backup, app: 'lacuna-v14', version: 14,
+      practiceNodes: [{ ...legacyNode, questionSetId: first.id }],
+    } as unknown as BackupFile;
+    expect(validateBackup(legacy)).toBe(true);
+    await importBackup(legacy, 'replace');
+    expect((await db.practiceNodes.get(node.id))?.questionSetIds).toEqual([first.id]);
+    expect(await db.questionSetAttempts.toArray()).toEqual([attempt]);
   });
 
   it('preserves published assessment lineage metadata through backup and peer merge', async () => {

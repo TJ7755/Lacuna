@@ -91,8 +91,8 @@ describe('specification sharing', () => {
               await encodeShareDirect(await buildCourseSharePayload(course.id)),
             )
           : (await decodeCourseFile(await buildCourseFile(course.id))).payload;
-      expect(payload.v).toBe(5);
-      if (payload.v !== 5) throw new Error('Expected current course payload.');
+      expect(payload.v).toBe(6);
+      if (payload.v !== 6) throw new Error('Expected current course payload.');
       expect(payload.course).toMatchObject(qualification);
       expect(
         payload.concepts.find((concept) => concept.id === card.conceptId)?.specificationPointIds,

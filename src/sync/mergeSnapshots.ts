@@ -75,7 +75,7 @@ const NEVER_REVIEWED = {
 
 /** A current snapshot with every table merge always emits present. */
 export type MergedBackupFile = BackupFile & {
-  version: 14;
+  version: 15;
   reviewHistory: ReviewHistoryEntry[];
   schedulingUnits: SchedulingUnitRecord[];
   coursePerformance: CoursePerformance[];
@@ -397,8 +397,8 @@ export function mergeSnapshots(a: BackupFile, b: BackupFile): MergedBackupFile {
     .sort(compareTombstones);
 
   return {
-    app: 'lacuna-v14',
-    version: 14,
+    app: 'lacuna-v15',
+    version: 15,
     exportedAt: Math.max(left.exportedAt, right.exportedAt),
     cards: sortById(projectCardsForStorage(replayedCards)),
     reviewHistory: sortById(reviewHistory),
