@@ -147,12 +147,20 @@ for (const viewport of [
     await mkdir(directory, { recursive: true });
     const records = [];
     let controlsTop: number | undefined;
-    let shortHeight = 0;
+    const visited = new Set<string>();
+    const shortHeights: number[] = [];
+    const mediumHeights: number[] = [];
 
-    for (const [index, kind] of kinds.entries()) {
-      const card = page.locator(`[data-study-card-id="adaptive-${index}"]`);
-      await expect(card.locator('[data-study-face="front"]')).toBeVisible();
-      for (const side of kind === 'short-return' ? ['front'] : ['front', 'back']) {
+    for (let position = 0; position < kinds.length; position += 1) {
+      const active = page.locator('[data-study-card-id]:not([aria-hidden="true"])');
+      await expect(active.locator('[data-study-face="front"]')).toBeVisible();
+      const cardId = (await active.getAttribute('data-study-card-id'))!;
+      expect(cardId).toMatch(/^adaptive-[0-4]$/);
+      expect(visited.has(cardId)).toBe(false);
+      visited.add(cardId);
+      const kind = kinds[Number(cardId.slice('adaptive-'.length))];
+      const card = page.locator(`[data-study-card-id="${cardId}"]`);
+      for (const side of ['front', 'back']) {
         if (side === 'back')
           await page.getByRole('button', { name: 'Show answer', exact: true }).last().click();
         const body = card.locator(`[data-study-face="${side}"]`);
@@ -173,9 +181,9 @@ for (const viewport of [
         if (kind.startsWith('short')) {
           expect.soft(dimensions.height).toBeLessThanOrEqual(310);
           expect.soft(dimensions.bodyScrolls).toBe(false);
-          shortHeight = dimensions.height;
+          shortHeights.push(dimensions.height);
         } else if (kind === 'medium') {
-          expect.soft(dimensions.height).toBeGreaterThan(shortHeight);
+          mediumHeights.push(dimensions.height);
         } else if (kind === 'long') {
           expect.soft(dimensions.height).toBeCloseTo(dimensions.available, 0);
           expect.soft(dimensions.bodyScrolls).toBe(true);
@@ -227,7 +235,7 @@ for (const viewport of [
             .toBe(true);
         }
       }
-      if (kind === 'short-return') break;
+      if (position === kinds.length - 1) break;
       const transition = await page.evaluate(async () => {
         const outgoing = document.querySelector('[data-study-card-id]:not([aria-hidden="true"])')!;
         const surface = outgoing.querySelector('[data-study-face]')!.parentElement!;
@@ -270,6 +278,12 @@ for (const viewport of [
       expect.soft(transition.outgoingResize).toBeLessThan(1);
       expect.soft(transition.overlapped).toBe(true);
     }
+    expect([...visited].sort()).toEqual(kinds.map((_, index) => `adaptive-${index}`));
+    expect(shortHeights).toHaveLength(4);
+    expect(mediumHeights).toHaveLength(2);
+    // Compare after visiting every card: a shuffled medium card may precede both short cards.
+    for (const height of mediumHeights)
+      expect.soft(height).toBeGreaterThan(Math.max(...shortHeights));
     await writeFile(
       `${directory}/${viewport.width}x${viewport.height}-measurements.json`,
       JSON.stringify(records, null, 2),

@@ -101,7 +101,7 @@ import {
   loadSimpleSession,
   saveSimpleSession,
 } from './simpleSessionPersistence';
-import { inRecitationOrder } from './recitation/recitationFlow';
+import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { resolveLearnSessionScope } from './sessionScope';
 import { ratchetSessionUnlocks } from './sessionUnlocks';
@@ -420,6 +420,10 @@ export function useLearnSession({
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
+  const createSimpleQueue = useCallback(
+    (cards: Card[]) => shuffledSimpleQueue(cards, linesModeMapRef.current),
+    [],
+  );
   // Simple mode's progress bar highlights the recited lines rather than the card that
   // opened the recitation; SequenceRecitation reports them as item ids.
   const [recitationFocus, setRecitationFocus] = useState<string[]>([]);
@@ -1312,9 +1316,7 @@ export function useLearnSession({
       const serveableCards = plannedRevision || isSimpleMode ? cards : sessionServePool(cards, ctx);
       const hasServeableCards = serveableCards.length > 0;
       setSchedulerProgress(sessionCompletionProgress(cards, ctx, sessionCardOutcomesRef.current));
-      // Simple mode recites each lines-mode sequence whole, so its lines sit together.
-      const sessionOrder = isSimpleMode ? inRecitationOrder(cards, linesModeMapRef.current) : cards;
-      setSessionCardIds(sessionOrder.map((card) => card.id));
+      if (!isSimpleMode) setSessionCardIds(cards.map((card) => card.id));
       sessionCardOutcomesRef.current = new Map();
       setSessionCardOutcomes(sessionCardOutcomesRef.current);
       if (!isSimpleMode) {
@@ -1342,7 +1344,8 @@ export function useLearnSession({
               const card = cardsById.get(cardId);
               return card ? [card] : [];
             })
-          : [...sessionOrder];
+          : createSimpleQueue(cards);
+        setSessionCardIds(simpleQueue.current.map((card) => card.id));
         simpleMastered.current = new Set(resumed?.masteredCardIds ?? []);
         simpleWrong.current = new Set(
           [...(resumed?.outcomes ?? [])]
@@ -1490,6 +1493,7 @@ export function useLearnSession({
     requestWindowId,
     plannedRevision,
     simpleSessionScope,
+    createSimpleQueue,
   ]);
 
   const reveal = useCallback(() => {
@@ -2353,6 +2357,7 @@ export function useLearnSession({
     progressBefore,
     sessionStartMs,
     simpleQueue,
+    createSimpleQueue,
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
