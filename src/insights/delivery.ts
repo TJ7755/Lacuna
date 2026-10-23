@@ -5,7 +5,7 @@ import {
   createInsightsLastSentDaySetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
-import { completedIsoDayLabel } from '../../relay/src/insightsDay';
+import { completedIsoDayLabel } from '../../relay/shared/insights/index';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
 import { createInsightsOutbox } from './outbox';

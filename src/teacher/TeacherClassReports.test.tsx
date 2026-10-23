@@ -6,7 +6,7 @@ import {
   DAY_MS,
   isoDayLabel,
   isoDayStartMs,
-} from '../../relay/src/insightsDay';
+} from '../../relay/shared/insights/index';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';

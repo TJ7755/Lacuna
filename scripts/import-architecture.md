@@ -40,3 +40,14 @@ against the real ESLint configuration and cycle CLI: forbidden boundaries, permi
 contracts, DAGs, explicit type-only back edges, value cycles, exact exceptions and stale or
 expanded exceptions. `node scripts/check-import-cycles.mjs` runs the graph check alone;
 an optional directory argument selects a fixture root.
+
+`relay-contract/no-deep-imports` rejects root-runtime imports into `relay/src/` and deep
+imports into `relay/shared/`. The declared insights surface is
+`relay/shared/insights/index.ts`; its implementation stays inside the self-contained relay
+Vercel project. The rule resolves types, re-exports, literal dynamic imports and `require`
+using TypeScript, including extension/index resolution and query/hash suffix removal.
+Exact integration-test edges listed in `eslint.config.js` retain in-process relay fixtures;
+other imports from those tests are still checked. The old protocol modules only re-export
+for existing relay tests. `bun run test -- scripts/relayImports.test.ts` probes the real
+configuration. Electron MCP and API imports into the app's `src/` remain outside this first
+slice of [issue 724](https://github.com/TJ7755/Lacuna/issues/724).

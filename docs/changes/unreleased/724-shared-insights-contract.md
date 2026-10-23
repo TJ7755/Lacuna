@@ -1,0 +1,1 @@
+- Give app and relay consumers one explicit shared insights protocol entry point, with lint checks rejecting relay implementation imports outside declared integration fixtures. Wire format and reporting-day behaviour are unchanged. (#724)

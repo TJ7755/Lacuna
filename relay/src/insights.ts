@@ -13,7 +13,7 @@ import {
   parseInsightEnvelope,
   requireInsightDay,
   type InsightMailboxPage,
-} from './insightsProtocol.js';
+} from '../shared/insights/index.js';
 
 export async function handleInsight(
   store: BlobStore,
