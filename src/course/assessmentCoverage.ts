@@ -1,5 +1,5 @@
 import type { Card, CourseAssessment, Lesson, LessonCardLink } from '../db/types';
-import { lessonCardMembershipForLessons } from './studyPools';
+import { lessonCardMembershipForLessons } from './lessonMembership';
 
 export type AssessmentValidationCode =
   | 'missing-placement-lesson'

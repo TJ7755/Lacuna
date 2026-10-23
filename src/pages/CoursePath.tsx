@@ -19,7 +19,7 @@ import { buildDeckSecondsMap } from '../fsrs/stats';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
 import { buildPath, lessonEffectiveReleaseDates } from '../course/path';
-import { lessonCardMembership } from '../course/studyPools';
+import { lessonCardMembership } from '../course/lessonMembership';
 import {
   currentAssessmentPracticeContext,
   type AssessmentPracticeOption,
