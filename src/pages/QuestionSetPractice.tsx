@@ -111,6 +111,16 @@ function PracticeWorkspace({
   const answer = active.node.answer!;
   const questionId = active.parentIds[0] ?? active.id;
   const marking = feedbackAvailable(attempt, questionId);
+  const [transition, setTransition] = useState({ index, marking, direction: 0 });
+  // Derive direction from the saved position, including stepper and primary-button moves.
+  // Keep it stable through answer/autosave renders while the incoming card is animating.
+  if (transition.index !== index || transition.marking !== marking) {
+    setTransition({
+      index,
+      marking,
+      direction: transition.marking === marking ? Math.sign(index - transition.index) : 0,
+    });
+  }
   const criteria = nodes.flatMap((node) =>
     feedbackAvailable(attempt, node.parentIds[0] ?? node.id)
       ? node.node.answer!.allocations.map((allocation) => ({ nodeId: node.id, allocation }))
@@ -308,7 +318,7 @@ function PracticeWorkspace({
       <article
         className={`qs-paper rounded-3xl bg-surface card-surface ${marking ? 'qs-paper-marking' : ''}`}
       >
-        <StepSwap stepKey={`${active.id}:${marking}`}>
+        <StepSwap stepKey={`${active.id}:${marking}`} direction={transition.direction}>
           {marking ? (
             <>
               <header className="qs-part-bar">
