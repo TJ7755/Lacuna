@@ -11,7 +11,7 @@ Before: `SETTINGS_DATA_SCREENSHOT_PHASE=before PLAYWRIGHT_WEB_PORT=4425 bun run 
 Six cases fail the added width/wrapping/layout assertions against the original component.
 After: `PLAYWRIGHT_WEB_PORT=4425 bun run verify:browser -- --project=chromium tests/e2e/settings-your-data.spec.ts --workers=1`.
 Six cases pass, including keyboard focus, Escape, cancellation, unchanged stored state and the existing restore-point checks.
-The full suite runs against the committed candidate; focused screenshots were captured from the equivalent component before committing.
+Focused screenshots were captured from the equivalent component before committing. The full local suite was later interrupted as redundant with passing CI; see [validation details](VALIDATION.md).
 
 The JSON files retain measured card, panel, text and button bounds. At 1440px, the original
 Delete panel is 115.5px wide with five text lines; the fixed panel is 1022px wide with one text line.
