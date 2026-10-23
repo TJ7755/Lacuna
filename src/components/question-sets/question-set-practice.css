@@ -364,8 +364,12 @@
     padding: 16px 16px 24px;
   }
   .qs-practice-header {
+    flex-wrap: wrap;
     gap: 8px;
     margin-bottom: 12px;
+  }
+  .qs-practice-header > .qs-actions {
+    flex-basis: 100%;
   }
   .qs-practice-header > .qs-actions button {
     padding: 0 4px;

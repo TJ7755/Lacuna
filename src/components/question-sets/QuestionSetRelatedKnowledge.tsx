@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import { CardContent } from '../cards/CardContent';
 import { Button } from '../ui/Button';
+import { CardsIcon } from '../ui/icons';
+import { QuestionSetPanel } from './QuestionSetPanel';
 
 export function QuestionSetRelatedKnowledge({
   courseId,
@@ -29,6 +31,23 @@ export function QuestionSetRelatedKnowledge({
     [],
   );
   if (!cards.length) return null;
+  const previews = cards.map((card) => (
+    <section className="qs-card-preview" key={card.id}>
+      <CardContent card={card} side="front" />
+      <CardContent card={card} side="back" />
+    </section>
+  ));
+  if (submitted) {
+    return (
+      <QuestionSetPanel
+        title="Related cards"
+        icon={<CardsIcon width={18} height={18} />}
+        panelClassName="qs-practice-panel"
+      >
+        {previews}
+      </QuestionSetPanel>
+    );
+  }
   return (
     <section className="qs-related">
       <Button
@@ -55,13 +74,7 @@ export function QuestionSetRelatedKnowledge({
             : 'Use related cards · records assistance'}
       </Button>
       {error && <p role="alert">{error}</p>}
-      {open &&
-        cards.map((card) => (
-          <section className="qs-card-preview" key={card.id}>
-            <CardContent card={card} side="front" />
-            <CardContent card={card} side="back" />
-          </section>
-        ))}
+      {open && previews}
     </section>
   );
 }

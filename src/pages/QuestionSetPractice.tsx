@@ -217,6 +217,26 @@ function PracticeWorkspace({
     );
     blankConfirmation.close();
   }
+  const relatedKnowledge = (
+    <QuestionSetRelatedKnowledge
+      key={active.id}
+      courseId={attempt.courseId}
+      conceptIds={[
+        ...answer.prerequisiteConceptIds,
+        ...answer.allocations.flatMap((row) => row.targetConceptIds),
+      ]}
+      submitted={marking}
+      beforeReveal={() =>
+        progress.run((current) =>
+          recordQuestionSetAssistance(current.id, current.revisionId, {
+            nodeId: active.id,
+            kind: 'related-knowledge',
+            occurredAt: Date.now(),
+          }),
+        )
+      }
+    />
+  );
   return (
     <div className="qs-practice" ref={rootRef} onKeyDown={questionSetPrimaryKey}>
       <header className="qs-practice-header">
@@ -256,6 +276,7 @@ function PracticeWorkspace({
                   readOnly
                 />
               </QuestionSetPanel>
+              {relatedKnowledge}
               <QuestionSetReflection
                 value={attempt.reflection}
                 busy={busy || Boolean(progress.error)}
@@ -486,26 +507,7 @@ function PracticeWorkspace({
             />
           )}
         </footer>
-        <div className="qs-practice-secondary">
-          <QuestionSetRelatedKnowledge
-            key={active.id}
-            courseId={attempt.courseId}
-            conceptIds={[
-              ...answer.prerequisiteConceptIds,
-              ...answer.allocations.flatMap((row) => row.targetConceptIds),
-            ]}
-            submitted={marking}
-            beforeReveal={() =>
-              progress.run((current) =>
-                recordQuestionSetAssistance(current.id, current.revisionId, {
-                  nodeId: active.id,
-                  kind: 'related-knowledge',
-                  occurredAt: Date.now(),
-                }),
-              )
-            }
-          />
-        </div>
+        {!marking && <div className="qs-practice-secondary">{relatedKnowledge}</div>}
       </article>
     </div>
   );

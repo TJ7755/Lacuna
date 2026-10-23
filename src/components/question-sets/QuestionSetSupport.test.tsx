@@ -84,3 +84,46 @@ it.each(['1871.', '1921.', '1.', '0.'])(
     expect(beforeReveal).not.toHaveBeenCalled();
   },
 );
+
+it('keeps failed assistance hidden and allows a successful retry', async () => {
+  const beforeReveal = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('Save failed'))
+    .mockResolvedValue(undefined);
+  render(
+    <QuestionSetRelatedKnowledge
+      courseId="course"
+      conceptIds={['concept']}
+      submitted={false}
+      beforeReveal={beforeReveal}
+    />,
+  );
+  fireEvent.click(screen.getByRole('button', { name: /Use related cards/ }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Save failed');
+  expect(screen.queryByText('Movement of water.')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Use related cards/ }));
+  expect(await screen.findByText('Movement of water.')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Hide related cards' }));
+  expect(screen.queryByText('Movement of water.')).not.toBeInTheDocument();
+  expect(beforeReveal).toHaveBeenCalledTimes(2);
+});
+
+it('names and tooltips the submitted icon and exposes its expanded state', async () => {
+  render(
+    <QuestionSetRelatedKnowledge
+      courseId="course"
+      conceptIds={['concept']}
+      submitted
+      beforeReveal={vi.fn()}
+    />,
+  );
+  const trigger = screen.getByRole('button', { name: 'Related cards' });
+  expect(trigger).toHaveAttribute('title', 'Related cards');
+  expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  expect(trigger.querySelector('svg')).not.toBeNull();
+  fireEvent.click(trigger);
+  expect(trigger).toHaveAttribute('aria-expanded', 'true');
+  expect(await screen.findByRole('dialog', { name: 'Related cards' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(trigger).toHaveAttribute('aria-expanded', 'false');
+});
