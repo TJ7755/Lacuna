@@ -1,7 +1,7 @@
 import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { ConfirmInline } from '../../components/ui/ConfirmInline';
+import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
 import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
 import { readSyncState } from '../../db/mutationStamp';
@@ -521,20 +521,33 @@ export function SyncSection() {
               </AnimatedDisclosure>
             )}
 
-            <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-2 border-t border-line pt-3">
-              <div className="min-w-0 basis-full sm:flex-1 sm:basis-0">
-                <SyncDetails state={syncState} />
-              </div>
-              <div className="flex flex-wrap items-center gap-1">
-                {confirmUnpair ? (
-                  <ConfirmInline
-                    message="Remove sync from this device?"
-                    confirmLabel={busy === 'unpair' ? 'Removing…' : 'Unpair'}
-                    onCancel={() => setConfirmUnpair(false)}
-                    onConfirm={() => void handleUnpair()}
-                    variant="default"
-                  />
-                ) : (
+            <div className="flex min-w-0 flex-col gap-3 border-t border-line pt-3">
+              <SyncDetails state={syncState} />
+              <ConfirmInlineSwap
+                active={confirmUnpair || confirmDelete}
+                message={
+                  confirmUnpair
+                    ? 'Remove sync from this device?'
+                    : 'Delete the shared channel everywhere?'
+                }
+                confirmLabel={
+                  confirmUnpair
+                    ? busy === 'unpair'
+                      ? 'Removing…'
+                      : 'Unpair'
+                    : busy === 'delete'
+                      ? 'Deleting…'
+                      : 'Delete channel'
+                }
+                onCancel={() => {
+                  setConfirmUnpair(false);
+                  setConfirmDelete(false);
+                }}
+                onConfirm={confirmUnpair ? handleUnpair : handleDeleteChannel}
+                disabled={busy !== null}
+                variant={confirmUnpair ? 'default' : 'destructive'}
+              >
+                <div className="flex flex-wrap items-center gap-1">
                   <Button
                     key="remove"
                     variant="ghost"
@@ -544,15 +557,6 @@ export function SyncSection() {
                   >
                     Remove
                   </Button>
-                )}
-                {confirmDelete ? (
-                  <ConfirmInline
-                    message="Delete the shared channel everywhere?"
-                    confirmLabel={busy === 'delete' ? 'Deleting…' : 'Delete channel'}
-                    onCancel={() => setConfirmDelete(false)}
-                    onConfirm={() => void handleDeleteChannel()}
-                  />
-                ) : (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -562,8 +566,8 @@ export function SyncSection() {
                     <TrashIcon width={16} height={16} />
                     Delete channel
                   </Button>
-                )}
-              </div>
+                </div>
+              </ConfirmInlineSwap>
             </div>
           </div>
         </div>
