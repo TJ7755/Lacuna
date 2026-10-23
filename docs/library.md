@@ -230,11 +230,12 @@ the built HTML after the main-site build.
 
 ## Official publication retention
 
-The relay keeps the four current official publications readable while their ownership and payload
+The policy includes the 23 official catalogue publications, including the 19 new science links.
+The relay keeps these publications readable while their ownership and payload
 objects exist, using the reviewed allow-list in `relay/src/officialPublications.ts`. The public
 catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
-No timer, download or unchanged-publication retry renews a share. This policy takes effect only
-when the relay change is deployed.
+No timer, download or unchanged-publication retry renews a share. The additions take effect only
+when this relay change is deployed; catalogue deployment alone does not activate retention.
 
 The relay operator owns additions and removal. Before adding a share ID, verify ownership using
 the publication command's dry-run with the existing private credentials, verify the approved
