@@ -1,0 +1,1 @@
+- Separate shared Card list rendering from list actions, removing the generated-group import cycle without changing Card interactions or virtualisation. (#765)
