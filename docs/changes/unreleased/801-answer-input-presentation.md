@@ -1,0 +1,1 @@
+- Keep submitted answers and Undo in their captured typing or revealing mode when the device preference changes, and allow numeric answers such as `1871.` under Typing where possible. (#801)

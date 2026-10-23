@@ -191,7 +191,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     current,
     hintStep,
     setHintStep,
-    isTypingCard,
+    isTypingCard: isTypingQuestion,
     presentedAnswerInput,
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
@@ -277,6 +277,8 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onCardServed: resetForCard,
     onSessionReset: resetForSession,
   });
+
+  const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
 
   useEffect(() => {
     if (phase === 'question' && !isTypingCard) setTypedAnswer('');

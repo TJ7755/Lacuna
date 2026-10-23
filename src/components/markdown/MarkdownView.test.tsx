@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { describe, expect, it, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
-import { MarkdownView } from './MarkdownView';
+import { MarkdownView, markdownAnswerShape } from './MarkdownView';
+import { resolveAnswerMode } from '../../utils/resolveAnswerMode';
 import { resolveAssetMarkdownCached } from '../../db/assetCache';
 
 vi.mock('../../db/assets', () => ({
@@ -16,6 +17,18 @@ vi.mock('../../db/assetCache', () => ({
 }));
 
 describe('MarkdownView numeric answer opt-in', () => {
+  it.each(['1871.', '1.', '  1871.  ', '\n1871.\n', '\r\n   1871.\t\r\n'])(
+    'inspects numeric answers as they appear on the answer face: %j',
+    (source) => {
+      const { container } = render(<MarkdownView source={source} literalNumericAnswer />);
+      const text = container.querySelector('p')!.textContent!.trim();
+      expect(markdownAnswerShape(source)).toEqual({ text, hasVisual: false });
+      expect(
+        resolveAnswerMode({ type: 'front_back', front: 'Year?', back: source }, undefined, 'type'),
+      ).toBe('type');
+    },
+  );
+
   it('keeps ordinary Markdown list semantics and cached answer rendering separate', () => {
     const { container, rerender } = render(<MarkdownView source="1871." />);
     expect(container.querySelector('ol')).toHaveAttribute('start', '1871');
