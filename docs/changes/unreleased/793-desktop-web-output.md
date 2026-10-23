@@ -1,0 +1,1 @@
+- Keep the hosted-web Workbox runtime and crawler metadata out of desktop packages while retaining the service-worker entry used for stale-chunk recovery, renderer workers, lazy modules and licences. (#793)
