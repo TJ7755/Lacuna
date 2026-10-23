@@ -1,0 +1,1 @@
+- Separate pure lesson membership from study-pool scheduling to remove the assessment coverage import cycle without changing study behaviour. (#765)

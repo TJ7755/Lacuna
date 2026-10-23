@@ -15,6 +15,7 @@ import {
   examPracticePool,
   directLessonStudyPool,
   lessonCardMembership,
+  lessonCardMembershipForLessons,
   lessonStudyPool,
   practiceCardScope,
   practiceNodeKey,
@@ -143,6 +144,30 @@ describe('lesson pools', () => {
     expect(
       lessonCardMembership('l1', cards, [link('l1', 'a'), link('l1', 'b')]).map((c) => c.id),
     ).toEqual(['a', 'b']);
+  });
+
+  it('preserves input order and card state across several primary and linked lessons', () => {
+    const cards = [
+      makeCard('linked-only', null, { suspended: true }),
+      makeCard('outside', 'l3'),
+      makeCard('primary-and-linked', 'l1', { buriedUntil: NOW + MS_PER_DAY }),
+      makeCard('other-primary', 'l2'),
+      makeCard('unassigned', null),
+    ];
+    const links = [
+      link('l2', 'primary-and-linked'),
+      link('l1', 'linked-only'),
+      link('l2', 'linked-only'),
+      link('l3', 'unassigned'),
+      link('l1', 'missing-card'),
+    ];
+    const before = structuredClone({ cards, links });
+    const members = lessonCardMembershipForLessons(new Set(['l2', 'l1']), cards, links);
+
+    expect(members).toEqual([cards[0], cards[2], cards[3]]);
+    expect(members[0]).toBe(cards[0]);
+    expect({ cards, links }).toEqual(before);
+    expect(lessonCardMembershipForLessons(new Set(), cards, links)).toEqual([]);
   });
 
   it('excludes only exposures for this lesson', () => {

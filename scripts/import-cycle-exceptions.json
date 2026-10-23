@@ -1,17 +1,6 @@
 [
   {
     "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "Assessment coverage uses lesson membership from studyPools; studyPools uses exam-date and scheduling-horizon helpers, which resolve assessment coverage.",
-    "edges": [
-      "src/course/assessmentCoverage.ts -> src/course/studyPools.ts",
-      "src/course/studyPools.ts -> src/fsrs/examDate.ts",
-      "src/course/studyPools.ts -> src/fsrs/horizon.ts",
-      "src/fsrs/examDate.ts -> src/course/assessmentCoverage.ts",
-      "src/fsrs/horizon.ts -> src/fsrs/examDate.ts"
-    ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
     "reason": "The database schema uses asset encoding and pre-migration snapshots; asset extraction, folder mirroring and deferred tombstone pruning use the database instance.",
     "edges": [
       "src/db/assets.ts -> src/db/markdownAssets.ts",
