@@ -6,7 +6,7 @@ import {
   deletePracticeNode,
 } from '../../db/practiceNodeRepository';
 import type { Card, Lesson, LessonCardLink, PracticeNode } from '../../db/types';
-import { lessonCardMembershipForLessons } from '../../course/studyPools';
+import { lessonCardMembershipForLessons } from '../../course/lessonMembership';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { choiceChipClass } from '../ui/choiceChip';
 import { inputFrameClassName } from '../ui/Field';
