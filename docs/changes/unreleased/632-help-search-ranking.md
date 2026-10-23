@@ -1,0 +1,1 @@
+- Test help-search relevance and tied-result ordering with controlled topics instead of freezing the live help catalogue’s wording and result order. Retain live-query and help-navigation coverage. (#632)

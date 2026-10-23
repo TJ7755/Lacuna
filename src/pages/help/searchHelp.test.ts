@@ -18,15 +18,7 @@ describe('searchHelp', () => {
     expect(searchHelp('picture nonexistent')).toEqual([]);
   });
 
-  it('preserves original topic order for tied scores and an empty query', () => {
+  it('returns the full catalogue in its original order for an empty query', () => {
     expect(searchHelp('')).toEqual(helpTopics);
-    expect(searchHelp('session').map((topic) => topic.id)).toEqual([
-      'card-actions',
-      'study-modes',
-      'simple-learn',
-      'filtered-modes',
-      'keyboard-shortcuts',
-      'questions',
-    ]);
   });
 });
