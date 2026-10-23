@@ -183,7 +183,8 @@ export function useTypedAutoMark({
           if (controller.signal.aborted) return;
           window.clearTimeout(settle);
           show(
-            verdict.outcome === 'unsure'
+            (verdict.outcome === 'unsure' ||
+              (answerStrictness === 'exact' && verdict.outcome === 'correct'))
               ? verdict.feedback
                 ? { state: 'unsure', feedback: verdict.feedback, expected: expectedText }
                 : { state: 'idle' }

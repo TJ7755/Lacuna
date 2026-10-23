@@ -9,6 +9,7 @@ import { createCourse, createLesson, createLessonCard } from '../db/repository';
 import { db } from '../db/schema';
 import type * as JevModule from '../jev';
 import type * as MotionSpeedModule from '../state/motionSpeed';
+import { writeAnswerInput } from '../state/answerInput';
 import { LearnMode } from './LearnMode';
 
 vi.mock('../state/motionSpeed', async (importOriginal) => ({
@@ -96,4 +97,82 @@ describe('automatic final-answer Undo', () => {
       expect(marker).not.toHaveBeenCalled();
     },
   );
+});
+
+it('does not automatically grade an abandoned answer after cross-tab preference changes', async () => {
+  writeAnswerInput('type');
+  const course = await createCourse('Abandoned response');
+  const lesson = await createLesson(course.id, 'Vocabulary');
+  await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  const changePreference = (value: 'type' | 'reveal') =>
+    act(() => {
+      localStorage.setItem('lacuna.answerInput', value);
+      window.dispatchEvent(
+        new StorageEvent('storage', { key: 'lacuna.answerInput', newValue: value }),
+      );
+    });
+  render(
+    <ThemeProvider>
+      <AccentProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </AccentProvider>
+    </ThemeProvider>,
+  );
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Your answer' }), {
+    target: { value: 'Answer' },
+  });
+  changePreference('reveal');
+  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
+  changePreference('type');
+  for (let step = 0; step < 3; step++) {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+  }
+  expect(await db.reviewHistory.count()).toBe(0);
+  expect(screen.getByRole('button', { name: /^yes$/i })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: /^yes$/i }));
+  await waitFor(async () =>
+    expect(await db.reviewHistory.toArray()).toEqual([
+      expect.objectContaining({ input: 'reveal' }),
+    ]),
+  );
+});
+
+it('keeps a submitted typed answer eligible after the live preference changes to reveal', async () => {
+  writeAnswerInput('type');
+  const course = await createCourse('Submitted response');
+  const lesson = await createLesson(course.id, 'Vocabulary');
+  const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
+  render(
+    <ThemeProvider>
+      <AccentProvider>
+        <ToastProvider>
+          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+            <Routes>
+              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+            </Routes>
+          </MemoryRouter>
+        </ToastProvider>
+      </AccentProvider>
+    </ThemeProvider>,
+  );
+  fireEvent.change(await screen.findByRole('textbox', { name: 'Your answer' }), {
+    target: { value: 'Answer' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
+  act(() => writeAnswerInput('reveal'));
+  await waitFor(async () =>
+    expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({
+      input: 'typed',
+      correct: true,
+    }),
+  );
+  expect(marker).not.toHaveBeenCalled();
 });

@@ -27,12 +27,13 @@ describe('answer-mode author controls', () => {
     render(
       <CardAnswerModeField
         courseId="course"
-        lessonId="lesson"
         value={undefined}
         onChange={change}
       />,
     );
-    expect(screen.getByRole('option', { name: 'Lesson (Type)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Lesson default' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Suggest typing' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Reveal only' })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: 'Card answer mode' }), {
       target: { value: 'reveal' },
     });
@@ -45,6 +46,7 @@ describe('answer-mode author controls', () => {
 
   it('changes the lesson default with one click', async () => {
     render(<LessonAnswerModeControl courseId="course" lessonId="lesson" />);
+    expect(screen.getByText('Suggested answer mode')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Type answers' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -65,6 +67,8 @@ describe('answer-mode author controls', () => {
       },
     ] as Card[];
     render(<SelectedCardsAnswerMode courseId="course" cards={cards} />);
+    for (const name of ['Lesson default', 'Suggest typing', 'Reveal only'])
+      expect(screen.getByRole('option', { name })).toBeInTheDocument();
     fireEvent.change(screen.getByRole('combobox', { name: 'Selected cards answer mode' }), {
       target: { value: 'type' },
     });
@@ -81,8 +85,7 @@ describe('answer-mode author controls', () => {
         <>
           <CardAnswerModeField
             courseId="course"
-            lessonId="lesson"
-            value={undefined}
+                value={undefined}
             onChange={vi.fn()}
           />
           <LessonAnswerModeControl courseId="course" lessonId="lesson" />

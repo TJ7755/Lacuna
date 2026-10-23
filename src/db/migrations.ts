@@ -15,7 +15,7 @@ export type { LegacyDeck } from './types';
  * A card as stored before FSRS-6: the new memory fields may be absent. `type` is
  * widened to also accept the retired `'typing'` card type (see migrateCardRecord),
  * which schema v13 folds into `'front_back'` — typing became a global answer-input
- * mode (src/state/typingSetting.ts) rather than a card type.
+ * mode (src/state/answerInput.ts) rather than a card type.
  */
 export type LegacyCard = Omit<
   Card,
@@ -81,7 +81,7 @@ export function migrateCardRecord(card: LegacyCard): Card {
   // New cards are State.New (0); previously reviewed cards are treated as Review (2).
   const state = card.state ?? (card.lastReviewed === null ? 0 : 2);
   // The 'typing' card type was retired in schema v13: typed answering is now the
-  // global 'type' presentation mode (src/state/typingSetting.ts), not a card type.
+  // global 'type' presentation mode (src/state/answerInput.ts), not a card type.
   // A pre-v13 'typing' card is just a front_back card that happened to be answered
   // by typing, so it folds cleanly into front_back with no data loss.
   const type: CardType = card.type === 'typing' ? 'front_back' : (card.type as CardType);

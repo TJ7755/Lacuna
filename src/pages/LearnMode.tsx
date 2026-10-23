@@ -191,6 +191,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     hintStep,
     setHintStep,
     isTypingCard,
+    presentedAnswerInput,
     isMachineMarkedCard,
     hasUnrenderableItemPayload,
     isLinesModeCard,
@@ -276,6 +277,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onSessionReset: resetForSession,
   });
 
+  useEffect(() => {
+    if (phase === 'question' && !isTypingCard) setTypedAnswer('');
+  }, [phase, isTypingCard, setTypedAnswer]);
+
   const studyFocusRef = useStudyFocus(current?.id, phase, editing || menuOpen || hintsOpen);
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
@@ -334,7 +339,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             automatic ? { markedBy, retainUndo: true } : undefined,
           );
           lastTypedAnswerRef.current =
-            result.undoAvailable && isTypingCard && current
+            result.undoAvailable && presentedAnswerInput === 'typed' && current
               ? { cardId: current.id, answer: typedAnswer }
               : null;
           if (result.undoAvailable) {
@@ -358,13 +363,13 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
         setStreakMoment({ run: runRef.current, key: Date.now() });
       }
     },
-    [answer, notify, undoWithTransitionCancel, isTypingCard, current, typedAnswer],
+    [answer, notify, undoWithTransitionCancel, presentedAnswerInput, current, typedAnswer],
   );
 
   const typedAutoMark = useTypedAutoMark({
     card: current,
     phase,
-    isTypingCard,
+    isTypingCard: presentedAnswerInput === 'typed',
     typedAnswer,
     answerStrictness,
     occlusionAnswerText,

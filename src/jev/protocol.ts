@@ -9,6 +9,7 @@ export const JEV_TYPED_PART_COVERED_THRESHOLD = 0.8;
 export const JEV_TYPED_PART_NOT_COVERED_THRESHOLD = 0.2;
 // Bump when feedback instructions or the shared splitter change.
 export const JEV_TYPED_FEEDBACK_VERSION = 1;
+export const JEV_TYPED_MAX_PARTS = 8;
 export const JEV_ANSWER_KINDS = [
   'same',
   'spelling',
@@ -29,7 +30,7 @@ export const jevTypedFeedbackSchema = z.strictObject({
         })
         .refine((part) => part.end > part.start),
     )
-    .max(8),
+    .max(JEV_TYPED_MAX_PARTS),
 });
 const text = z.string().max(12_000);
 // Only these purposes are executable; future purposes require a new validated branch.

@@ -67,6 +67,7 @@ export const schedule = {
   learningSteps: number,
 };
 export const review = object({
+  input: z.enum(['typed', 'reveal']).optional(),
   markedBy: jevMarkProvenanceSchema.optional(),
   eventId: id.optional(),
   sessionId: id.optional(),

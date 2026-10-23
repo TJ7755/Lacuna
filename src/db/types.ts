@@ -73,6 +73,7 @@ export type ReviewSessionKind =
 
 /** A single review event appended to a card's history. */
 export interface ReviewLog {
+  input?: 'typed' | 'reveal';
   markedBy?: JevMarkProvenance;
   /** Stable identity for this attempt. Optional only for history written before schema v16. */
   eventId?: string;

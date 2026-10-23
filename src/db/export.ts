@@ -313,6 +313,7 @@ export async function exportReviewHistoryJson(): Promise<string> {
     const deckName = resolveDeckDisplay(card, maps).name;
     for (const log of card.history) {
       items.push({
+        input: log.input,
         eventId: log.eventId,
         sessionId: log.sessionId,
         sessionKind: log.sessionKind,

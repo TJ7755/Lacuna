@@ -3,6 +3,8 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createCard,
+  cardsForSequence,
+  createSequence,
   createCourse,
   createLesson,
   createLessonCard,
@@ -15,6 +17,8 @@ import { ASSET_GC_GRACE_MS, scheduleAssetGc, storeImageBlob } from '../../db/ass
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { CardFilter } from '../../db/search';
 import { useLearnSession, type UseLearnSessionParams } from './useLearnSession';
+import { isLabelCardId } from '../../db/sequenceGeneration';
+import { writeAnswerInput } from '../../state/answerInput';
 import { simpleSessionStorageKey } from './simpleSessionPersistence';
 import { makeSessionContext, selectNext, sessionServePool } from '../../fsrs/session';
 
@@ -74,6 +78,7 @@ async function seedCurricularPractice() {
 }
 
 beforeEach(async () => {
+  localStorage.removeItem('lacuna.answerInput');
   await Promise.all([
     db.cards.clear(),
     db.schedulingUnits.clear(),
@@ -144,7 +149,8 @@ describe('useLearnSession answer boundary', () => {
     session.unmount();
   });
 
-  it('lets an explicit reveal override a typing lesson', async () => {
+  it('lets an explicit reveal override a typing lesson and learner preference', async () => {
+    writeAnswerInput('type');
     const course = await createCourse('Typing', { learnFirst: false });
     const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: 'type' });
     const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
@@ -154,6 +160,104 @@ describe('useLearnSession answer boundary', () => {
     await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
     expect(session.result.current.isTypingCard).toBe(false);
     session.unmount();
+  });
+
+  it.each([true, false])('records the actual ordinary input and removes it on undo (typing: %s)', async (typing) => {
+    writeAnswerInput(typing ? 'type' : 'reveal');
+    const course = await createCourse('Typing', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary', { answerMode: typing ? 'reveal' : 'type' });
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Cat', 'chat');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+    expect(session.result.current.isTypingCard).toBe(typing);
+    act(() => session.result.current.reveal());
+    act(() => writeAnswerInput(typing ? 'reveal' : 'type'));
+    await act(async () => { await session.result.current.answer(true, { retainUndo: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({ input: typing ? 'typed' : 'reveal' });
+    await act(async () => { await session.result.current.undoLast({ reveal: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).count()).toBe(0);
+    await act(async () => { await session.result.current.answer(true, { retainUndo: true }); });
+    expect(await db.reviewHistory.where('cardId').equals(card.id).first()).toMatchObject({ input: typing ? 'typed' : 'reveal' });
+    session.unmount();
+  });
+
+  it('does not reparse the typing answer during unrelated renders or phase changes', async () => {
+    writeAnswerInput('type');
+    const course = await createCourse('Typing cache', { learnFirst: false });
+    const card = await createCard(course.id, 'front_back', 'Question', '**Answer**');
+    const parse = vi.spyOn(DOMParser.prototype, 'parseFromString');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(card.id));
+      expect(session.result.current.isTypingCard).toBe(true);
+      const parsed = parse.mock.calls.length;
+      expect(parsed).toBeGreaterThan(0);
+      session.rerender();
+      act(() => session.result.current.reveal());
+      expect(parse).toHaveBeenCalledTimes(parsed);
+      act(() => session.result.current.hide());
+      expect(parse).toHaveBeenCalledTimes(parsed);
+      act(() => writeAnswerInput('reveal'));
+      expect(session.result.current.isTypingCard).toBe(false);
+      act(() => writeAnswerInput('type'));
+      expect(parse.mock.calls.length).toBeGreaterThan(parsed);
+    } finally {
+      session.unmount();
+      parse.mockRestore();
+    }
+  });
+
+  it('clears the previous card input before an alternate reveal path', async () => {
+    writeAnswerInput('type');
+    const course = await createCourse('Input capture', { learnFirst: false });
+    await createCard(course.id, 'front_back', 'First question', 'Answer');
+    await createCard(course.id, 'front_back', 'Second question', 'Answer');
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current).not.toBeNull());
+      const firstId = session.result.current.current!.id;
+      act(() => session.result.current.reveal());
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(firstId).first()).toMatchObject({ input: 'typed' });
+      const secondId = session.result.current.current!.id;
+      expect(secondId).not.toBe(firstId);
+      act(() => session.result.current.revealRecitation(1));
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(secondId).first()).toMatchObject({ input: 'reveal' });
+    } finally {
+      session.unmount();
+    }
+  });
+
+  it.each(['type', 'reveal'] as const)('records %s input for an ordinary lines-sequence label', async (preference) => {
+    writeAnswerInput(preference);
+    const course = await createCourse('Sequence labels', { learnFirst: false });
+    const lesson = await createLesson(course.id, 'Vocabulary');
+    const sequence = await createSequence(course.id, lesson.id, 'Vocabulary', [
+      { id: 'line-1', value: 'Answer', label: 'Question' },
+    ], { mode: 'lines', generateLabelCards: true });
+    const cards = await cardsForSequence(sequence);
+    const label = cards.find((card) => isLabelCardId(card.sequenceItemId!))!;
+    for (const card of cards) if (card.id !== label.id) await db.cards.delete(card.id);
+    const params = sessionParams({ courseId: course.id, isSimpleMode: true, standaloneSimple: true, mode: 'simple' });
+    const session = renderHook(() => useLearnSession(params));
+    try {
+      await waitFor(() => expect(session.result.current.current?.id).toBe(label.id));
+      expect(session.result.current.isLinesModeCard).toBe(true);
+      expect(session.result.current.recitationSequence).toBeNull();
+      expect(session.result.current.isTypingCard).toBe(preference === 'type');
+      act(() => session.result.current.reveal());
+      await act(async () => { await session.result.current.answer(true); });
+      expect(await db.reviewHistory.where('cardId').equals(label.id).first()).toMatchObject({
+        input: preference === 'type' ? 'typed' : 'reveal',
+      });
+    } finally {
+      session.unmount();
+      await db.sequences.delete(sequence.id);
+    }
   });
 
   it.each([
@@ -626,6 +730,7 @@ describe('useLearnSession answer boundary', () => {
     expect(result.current.phase).not.toBe('answer');
     expect(result.current.events.current).toHaveLength(1);
     expect(await db.reviewHistory.where('cardId').equals(currentCardId).count()).toBe(1);
+    expect(await db.reviewHistory.where('cardId').equals(currentCardId).first()).toMatchObject({ input: 'reveal' });
 
     await act(async () => {
       await result.current.undoLast();

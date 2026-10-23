@@ -60,7 +60,7 @@ export function renderClozeBack(source: string): string {
 /**
  * The plain-text expected answer for a cloze card: every hidden span's answer,
  * joined in source order. Used by Learn mode's "type your answer" mode
- * (src/state/typingSetting.ts) to compare a typed answer against the deletions.
+ * (src/state/answerInput.ts) to compare a typed answer against the deletions.
  */
 export function clozeAnswerText(source: string): string {
   return parseClozes(source)

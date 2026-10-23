@@ -54,7 +54,7 @@ for (const width of [320, 390]) {
       expect(report).toEqual([]);
 
       // Labels and their controls never overlap, and explanations keep a reading width.
-      for (const name of ['Audio playback speed', 'Grading strictness']) {
+      for (const name of ['Audio playback speed', 'Answer cards by', 'Grading strictness']) {
         const label = page.locator('main').getByText(name, { exact: true });
         const group = page.getByRole('radiogroup', { name });
         const [labelBox, groupBox] = await Promise.all([label.boundingBox(), group.boundingBox()]);
@@ -70,6 +70,7 @@ for (const width of [320, 390]) {
       const [textBox, cardBox] = await Promise.all([explanation.boundingBox(), card.boundingBox()]);
       expect(textBox!.width).toBeGreaterThan(cardBox!.width * 0.6);
 
+      await page.getByRole('radiogroup', { name: 'Answer cards by' }).scrollIntoViewIfNeeded();
       await page.screenshot({
         path: test.info().outputPath(`settings-${width}-${scale.label}.png`),
         fullPage: true,
