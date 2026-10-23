@@ -278,6 +278,48 @@ describe('image assets', () => {
     }
   });
 
+  it.each([true, false])('retains original image bytes when compression fails and dimension loading succeeds: %s', async (loads) => {
+    const createObjectURL = vi.fn(() => 'blob:fallback-image');
+    const revokeObjectURL = vi.fn();
+    class FallbackImage {
+      naturalWidth = 31;
+      naturalHeight = 17;
+      onload: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      currentSrc = '';
+
+      get src() { return this.currentSrc; }
+      set src(value: string) {
+        this.currentSrc = value;
+        queueMicrotask(() => {
+          if (loads) this.onload?.();
+          else this.onerror?.();
+        });
+      }
+    }
+    vi.stubGlobal('Image', FallbackImage);
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL = createObjectURL;
+      static revokeObjectURL = revokeObjectURL;
+    });
+    vi.mocked(compressImageBlob).mockRejectedValueOnce(new Error('Canvas unavailable'));
+    try {
+      const uri = `data:image/png;base64,${btoa('original-fallback-image')}`;
+      const migrated = await extractMarkdownAssets(`![scan](${uri})`, (asset) => db.assets.put(asset));
+      const asset = await db.assets.get(referencedAssetHashes(migrated)[0]);
+
+      expect(asset).toMatchObject({
+        kind: 'image', mimeType: 'image/png',
+        width: loads ? 31 : 0, height: loads ? 17 : 0,
+        blob: new TextEncoder().encode('original-fallback-image'),
+      });
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:fallback-image');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('round-trips referenced assets through backup export and import', async () => {
     const deck = await createCourse('Images');
     const asset = await storeImageBlob(

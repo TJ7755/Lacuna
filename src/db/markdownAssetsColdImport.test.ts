@@ -42,6 +42,15 @@ it('preserves inline recovery bytes while the real v4 extractor loads cold', asy
     id: 'illustrated', deckId: 'legacy', type: 'front_back',
     front: markdown, back: 'Answer', createdAt: 1, history: [],
   });
+  await legacy.table('cards').put({
+    id: 'missing-content', deckId: 'legacy', type: 'front_back',
+    front: null, createdAt: 1, history: [],
+  });
+  await legacy.table('sessionHistory').add({ deckId: 'legacy', timestamp: 123 });
+  await legacy.table('userPerformance').put({
+    deckId: 'legacy', runningMeanResponseTime: 2,
+    runningStdDevResponseTime: 0, m2: 0, totalCorrectReviews: 1,
+  });
   legacy.close();
 
   await ensurePreMigrationSnapshot();
@@ -56,6 +65,13 @@ it('preserves inline recovery bytes while the real v4 extractor loads cold', asy
     blob: new TextEncoder().encode('migration-image'),
   });
   expect(card?.back).toBe('Answer');
+  expect(await db.cards.get('missing-content')).toMatchObject({ front: '', back: '' });
+  expect((await db.sessionHistory.toArray())[0]).toMatchObject({
+    timestamp: 123, courseId: card!.courseId,
+  });
+  expect(await db.userPerformance.get('legacy')).toMatchObject({
+    courseId: card!.courseId, runningMeanResponseTime: 2, totalCorrectReviews: 1,
+  });
 });
 
 it('retains the write transaction while embedded-image processing loads cold', async () => {
