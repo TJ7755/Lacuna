@@ -21,6 +21,7 @@ let mockFlows: FlowData[] = [];
 const mockFlowListeners = new Set<() => void>();
 const seenLearnRequests: unknown[] = [];
 let learnMounts = 0;
+const seenCompletions: ((summary: SessionSummary) => void)[] = [];
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -84,6 +85,7 @@ vi.mock('./LearnMode', () => ({
     sessionId?: string;
   }) => {
     seenLearnRequests.push(request);
+    seenCompletions.push(onStepFinished);
     React.useEffect(() => {
       learnMounts += 1;
     }, []);
@@ -249,6 +251,7 @@ beforeEach(() => {
   mockFlows = [];
   mockFlowListeners.clear();
   seenLearnRequests.length = 0;
+  seenCompletions.length = 0;
   learnMounts = 0;
 });
 
@@ -293,6 +296,24 @@ describe('CourseStudyFlow', () => {
       }),
     );
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('ignores repeated completion and late callbacks from an outgoing step', async () => {
+    mockFlows = [
+      flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'First lesson' }, 0),
+      flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Second lesson' }, 1),
+      flow({ kind: 'lesson', lessonId: 'lesson-3', label: 'Third lesson' }, 2),
+    ];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+    const outgoing = seenCompletions[seenCompletions.length - 1];
+    act(() => { outgoing(summary(true)); outgoing(summary(true)); });
+    fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
+    await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
+    act(() => outgoing(summary(true)));
+    expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
+    expect(await screen.findByRole('heading', { name: 'Third lesson', level: 2 })).toBeInTheDocument();
   });
 
   it('continues contiguous Practice without a hand-off screen', async () => {
@@ -414,6 +435,8 @@ describe('CourseStudyFlow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
 
     await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
+    expect(await screen.findByRole('button', { name: 'Planning next step…' })).toBeDisabled();
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 

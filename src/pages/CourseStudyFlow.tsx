@@ -168,6 +168,7 @@ function CourseStudyFlowInner() {
   }
   const committedScopeLessonIds = frozenScopeRef.current.ids;
   const committedMilestoneLessonIds = frozenScopeRef.current.milestoneIds;
+  const completedGenerationRef = useRef(-1);
 
   const request = useMemo<LearnSessionRequest | null>(() => {
     if (!displayStep) return null;
@@ -208,6 +209,10 @@ function CourseStudyFlowInner() {
     (summary: SessionSummary) => {
       const completed = currentStep ?? displayStep;
       if (!completed || !courseId) return;
+      // Explicit report continuation may repeat completion; an outgoing Learn
+      // instance must never re-plan or overwrite the next step's transition.
+      if (refreshKey <= completedGenerationRef.current) return;
+      completedGenerationRef.current = refreshKey;
       touchActiveStudyFlow(courseId);
       if (completed.kind === 'practice' && completed.mode === 'assessment') {
         setRevisionSession(null);
@@ -216,7 +221,7 @@ function CourseStudyFlowInner() {
       setTransition({ summary, completedStep: completed });
       setRefreshKey((value) => value + 1);
     },
-    [courseId, currentStep, displayStep],
+    [courseId, currentStep, displayStep, refreshKey],
   );
 
   const continueFlow = useCallback(() => {

@@ -1,0 +1,1 @@
+- Give retained, confirmed study reports a working Continue action without repeating completion writes, and ignore duplicate or late course-step completion requests. (#787)

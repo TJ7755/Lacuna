@@ -73,8 +73,10 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
+  const completionDeliveriesRef = useRef(0);
   const stepFinished = useCallback(
     (summary: SessionSummary) => {
+      completionDeliveriesRef.current += 1;
       if (!leavingSessionRef.current) onStepFinished?.(summary);
     },
     [onStepFinished],
@@ -489,11 +491,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               returnLabel={onStepFinished ? 'Continue' : 'Done'}
               actionsDisabled={confirmingCompletion}
               onUndo={canUndo ? () => void undoWithTransitionCancel() : undefined}
-              onReturn={() =>
+              onReturn={() => {
+                const deliveriesBefore = completionDeliveriesRef.current;
                 void confirmReport(() => {
                   if (!onStepFinished) backOut();
-                }, !onStepFinished)
-              }
+                  // A new confirmation delivers automatically. An already-confirmed
+                  // report still needs an explicit request to advance its parent.
+                  else if (completionDeliveriesRef.current === deliveriesBefore) stepFinished(summary);
+                }, !onStepFinished);
+              }}
               onContinue={
                 onStepFinished ||
                 (summary.reachedGoal &&
