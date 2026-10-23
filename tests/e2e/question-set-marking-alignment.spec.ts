@@ -7,6 +7,7 @@ async function alignment(rail: Locator) {
     labels.map((label) => {
       const content = label.lastElementChild!;
       const box = content.getBoundingClientRect();
+      const hitArea = label.getBoundingClientRect();
       const track = label.parentElement!.getBoundingClientRect();
       const range = document.createRange();
       range.selectNodeContents(content.firstChild!);
@@ -17,6 +18,8 @@ async function alignment(rail: Locator) {
       return {
         value: label.querySelector('input')!.value,
         height: box.height,
+        hitWidth: hitArea.width,
+        hitHeight: hitArea.height,
         railOffset: Math.abs((box.top + box.bottom - track.top - track.bottom) / 2),
         verticalOffset: Math.abs((text.top + text.bottom - box.top - box.bottom) / 2),
         horizontalOffset: Math.abs((left + right - box.left - box.right) / 2),
@@ -137,6 +140,12 @@ for (const reducedMotion of ['no-preference', 'reduce'] as const) {
       measurements[state] = await alignment(rail);
       await page.screenshot({ path: testInfo.outputPath(`${state}.png`) });
       for (const row of measurements[state]) {
+        expect
+          .soft(row.hitWidth, `${state}: ${row.value} label hit width`)
+          .toBeGreaterThanOrEqual(44);
+        expect
+          .soft(row.hitHeight, `${state}: ${row.value} label hit height`)
+          .toBeGreaterThanOrEqual(44);
         expect
           .soft(row.verticalOffset, `${state}: ${row.value} text centre`)
           .toBeLessThanOrEqual(2);
