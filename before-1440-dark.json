@@ -1,0 +1,80 @@
+[
+  {
+    "triggerLabel": "Remove",
+    "panelBounds": {
+      "x": 1178.078125,
+      "y": 792.875,
+      "width": 184.921875,
+      "height": 130
+    },
+    "promptBounds": {
+      "x": 1195.078125,
+      "y": 809.875,
+      "width": 150.921875,
+      "height": 40
+    },
+    "confirmBounds": {
+      "x": 1195.078125,
+      "y": 861.875,
+      "width": 67.84375,
+      "height": 44
+    },
+    "cancelBounds": {
+      "x": 1270.921875,
+      "y": 861.875,
+      "width": 71.921875,
+      "height": 44
+    },
+    "cardBounds": {
+      "x": 312,
+      "y": 544.875,
+      "width": 1080,
+      "height": 455
+    },
+    "initialBounds": {
+      "x": 312,
+      "y": 559.875,
+      "width": 1080,
+      "height": 321
+    }
+  },
+  {
+    "triggerLabel": "Delete channel",
+    "panelBounds": {
+      "x": 1247.515625,
+      "y": 728.875,
+      "width": 115.484375,
+      "height": 242
+    },
+    "promptBounds": {
+      "x": 1264.515625,
+      "y": 745.875,
+      "width": 81.484375,
+      "height": 100
+    },
+    "confirmBounds": {
+      "x": 1264.515625,
+      "y": 857.875,
+      "width": 81.484375,
+      "height": 44
+    },
+    "cancelBounds": {
+      "x": 1264.515625,
+      "y": 909.875,
+      "width": 71.921875,
+      "height": 44
+    },
+    "cardBounds": {
+      "x": 312,
+      "y": 432.875,
+      "width": 1080,
+      "height": 567
+    },
+    "initialBounds": {
+      "x": 312,
+      "y": 559.875,
+      "width": 1080,
+      "height": 321
+    }
+  }
+]
