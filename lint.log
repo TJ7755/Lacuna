@@ -1,0 +1,2 @@
+$ eslint src server electron tests api scripts tooling gaps "*.config.ts" eslint.config.js --max-warnings=0 && node scripts/check-import-cycles.mjs
+Import cycles: 0 tracked exceptions; no untracked cycles in src.

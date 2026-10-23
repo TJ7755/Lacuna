@@ -1,0 +1,10 @@
+$ vitest run src/pages/QuestionSetPractice.test.tsx src/pages/QuestionSetEditor.test.tsx src/components/question-sets/QuestionSetPicker.search.test.tsx "--maxWorkers=1"
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  3 passed (3)
+      Tests  50 passed (50)
+   Start at  16:37:55
+   Duration  9.25s (tests 72%, import 11%, transform 9%, environment 5%, setup 3%)
+

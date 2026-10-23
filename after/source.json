@@ -1,0 +1,24 @@
+{
+  "source": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "A  docs/changes/unreleased/827-marking-rail-alignment.md\nM  src/components/question-sets/QuestionSetChoices.tsx\nM  src/components/question-sets/question-set-controls.css\nA  tests/e2e/question-set-marking-alignment.spec.ts\n",
+    "diffSha256": "cc0949a25beb73146dedfbaf8bee07001bc42946e277783db46adce8cff9a09d"
+  },
+  "site": "lacuna",
+  "args": [
+    "--project=chromium",
+    "tests/e2e/question-set-marking-alignment.spec.ts",
+    "tests/e2e/question-set-attempt-layout.spec.ts",
+    "--workers=1"
+  ],
+  "startedAt": "2026-10-23T15:37:46.884Z",
+  "buildDirectory": "<worktree>/artifacts/browser-checks/run-i7c57A/dist",
+  "indexSha256": "8ebd2d95667a590ef285fd9c4c0a8438f9af968b0a652fc59b413fd59e1552ee",
+  "sourceAfter": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "A  docs/changes/unreleased/827-marking-rail-alignment.md\nM  src/components/question-sets/QuestionSetChoices.tsx\nM  src/components/question-sets/question-set-controls.css\nA  tests/e2e/question-set-marking-alignment.spec.ts\n",
+    "diffSha256": "cc0949a25beb73146dedfbaf8bee07001bc42946e277783db46adce8cff9a09d"
+  },
+  "completedAt": "2026-10-23T15:38:30.677Z",
+  "exitCode": 0
+}

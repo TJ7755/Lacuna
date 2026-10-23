@@ -1,0 +1,208 @@
+{
+  "pending": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ],
+  "verdict": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0.767791748046875,
+      "iconOffset": 0,
+      "iconWidth": 10.92877197265625
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ],
+  "settled": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0,
+      "iconWidth": 14
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ],
+  "manual-zero": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ],
+  "manual-unsure": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ],
+  "manual-one": [
+    {
+      "value": "",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "0",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "1",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    },
+    {
+      "value": "unsure",
+      "height": 40,
+      "railOffset": 0,
+      "verticalOffset": 0,
+      "horizontalOffset": 0,
+      "iconOffset": 0
+    }
+  ]
+}

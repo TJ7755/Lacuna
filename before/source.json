@@ -1,0 +1,23 @@
+{
+  "source": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "AM tests/e2e/question-set-marking-alignment.spec.ts\n",
+    "diffSha256": "83fcbf6c71bd2b4f054e09f20bfedbfdbde14cb51095560879b23e41dea5f96c"
+  },
+  "site": "lacuna",
+  "args": [
+    "--project=chromium",
+    "tests/e2e/question-set-marking-alignment.spec.ts",
+    "--workers=1"
+  ],
+  "startedAt": "2026-10-23T15:37:00.597Z",
+  "buildDirectory": "<worktree>/artifacts/browser-checks/run-RkZMXj/dist",
+  "indexSha256": "ec5bc7ec46ab949e17a6cf0f9d870dde53702945663c8682222d82feade89510",
+  "sourceAfter": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "AM tests/e2e/question-set-marking-alignment.spec.ts\n",
+    "diffSha256": "83fcbf6c71bd2b4f054e09f20bfedbfdbde14cb51095560879b23e41dea5f96c"
+  },
+  "completedAt": "2026-10-23T15:37:12.381Z",
+  "exitCode": 1
+}

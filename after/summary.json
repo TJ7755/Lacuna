@@ -1,0 +1,22 @@
+{
+  "stats": {
+    "startTime": "2026-10-23T15:37:49.677Z",
+    "duration": 40903.742,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "title": "centres the marking rail through automatic and manual marks (no-preference)",
+      "status": "passed",
+      "errors": []
+    },
+    {
+      "title": "centres the marking rail through automatic and manual marks (reduce)",
+      "status": "passed",
+      "errors": []
+    }
+  ]
+}

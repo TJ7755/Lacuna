@@ -1,0 +1,2 @@
+$ node scripts/check-docs.mjs
+Documentation file links pass
