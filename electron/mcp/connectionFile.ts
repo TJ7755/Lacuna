@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { MCP_COMPANION_PROTOCOL_VERSION } from '../../src/mcp/companionProtocol.js';
+import { MCP_COMPANION_PROTOCOL_VERSION } from '../../src/mcp/companionEntry.js';
 
 const HOST_USER_DATA_ARGUMENT = '--lacuna-host-user-data-dir=';
 const APP_VERSION_ARGUMENT = '--lacuna-app-version=';

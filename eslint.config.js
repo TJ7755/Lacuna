@@ -1,5 +1,5 @@
 import js from '@eslint/js';
-import { relayImportsRule } from './scripts/relay-imports.mjs';
+import { appImportsRule, relayImportsRule } from './scripts/relay-imports.mjs';
 import { domainUiRule } from './scripts/import-architecture.mjs';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
@@ -166,6 +166,11 @@ export default [
         },
       ],
     },
+  },
+  {
+    files: ['{electron/mcp,api}/**/*.{ts,tsx,js,jsx,mjs,cjs,mts,cts}'],
+    plugins: { 'app-contract': { rules: { 'no-deep-imports': appImportsRule } } },
+    rules: { 'app-contract/no-deep-imports': 'error' },
   },
   prettier,
 ];

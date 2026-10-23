@@ -10,12 +10,12 @@ import {
   type AiInstructionBundle,
   type AiRunState,
   type JsonValue,
-} from '../../src/ai/protocol.js';
+} from '../../src/ai/companionEntry.js';
 import {
   AiCompanionOperationError,
   bridgeOperationError,
   companionErrorDetails,
-} from '../../src/ai/companionErrors.js';
+} from '../../src/ai/companionEntry.js';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,
@@ -24,7 +24,7 @@ import {
   isAiCompanionResponse,
   type AiCompanionProtocolVersion,
   type AiCompanionResponse,
-} from '../../src/mcp/companionProtocol.js';
+} from '../../src/mcp/companionEntry.js';
 import {
   readCompanionConnectionFile,
   type CompanionConnectionFile,

@@ -49,5 +49,18 @@ using TypeScript, including extension/index resolution and query/hash suffix rem
 Exact integration-test edges listed in `eslint.config.js` retain in-process relay fixtures;
 other imports from those tests are still checked. The old protocol modules only re-export
 for existing relay tests. `bun run test -- scripts/relayImports.test.ts` probes the real
-configuration. Electron MCP and API imports into the app's `src/` remain outside this first
-slice of [issue 724](https://github.com/TJ7755/Lacuna/issues/724).
+configuration.
+
+`app-contract/no-deep-imports` applies the same resolved-import checks to imports from
+`electron/mcp/` and `api/` into the app's `src/`, including tests. Electron MCP uses
+`src/mcp/contractEntry.ts` for handler-free tool schemas and types,
+`src/mcp/companionEntry.ts` for socket messages and client identity types,
+`src/ai/companionEntry.ts` for AI companion contracts and errors, and
+`src/mcp/bridgeEntry.ts` for main-process dispatch, grants and connection state.
+The API uses only `src/jev/apiEntry.ts`, exposing the JEV request schema. These named
+exports preserve the existing implementations; they do not expose renderer handlers or UI.
+Keep bridge implementation exports separate from companion contracts so disposable
+companions retain their existing dependency closure. Type-only exports remain explicit.
+`bun run test -- scripts/appImports.test.ts` probes rejected deep imports and permitted
+entry points through the real configuration. The tooling coefficients import remains a
+later slice of [issue 724](https://github.com/TJ7755/Lacuna/issues/724).
