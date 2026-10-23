@@ -1,0 +1,1 @@
+- Remove duplicated relay protocol descriptions and stale client claims; retain deployment, maintenance and recovery procedures.

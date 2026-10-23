@@ -1,9 +1,7 @@
 # Lacuna relay
 
-A private sync and AI-session mailbox. Sync channels store two opaque blobs — `state` and `keybag`
-— plus a hash of the write token. AI sessions store public pairing metadata and two opaque,
-directional encrypted mailboxes. The relay never receives a private ECDH key and cannot decrypt
-conversation content.
+Opaque storage for device sync, AI sessions, course sharing and Gaps reports.
+Read the [request handler](src/relay.ts) and its tests for runtime behaviour.
 
 Production is available at `https://relay.getlacuna.app`, attached to the existing
 `lacuna-relay` Vercel project and its private Blob store. The legacy
@@ -22,10 +20,8 @@ Name.com DNS (configured 27 September 2026, TTL 300):
 Vercel provisions HTTPS for each domain. Use the current project Domains settings
 as the authority if Vercel changes these DNS targets.
 
-Browsers may read relay responses only from `https://getlacuna.app`, `https://gaps.getlacuna.app`, `https://lacuna-beta-one.vercel.app`,
-the desktop app (`app://.`) and loopback development servers. Set `RELAY_ALLOWED_ORIGINS` to a
-comma-separated list to add others, such as a preview or self-hosted web build. Requests without an
-`Origin` header, such as the terminal companion's, are unaffected.
+Set `RELAY_ALLOWED_ORIGINS` to a comma-separated list to allow additional browser origins,
+such as a preview or self-hosted web build. The defaults live in [the CORS policy](src/cors.ts).
 
 `https://preview.getlacuna.app` uses the production relay. Its exact origin is added through
 `RELAY_ALLOWED_ORIGINS=https://preview.getlacuna.app` in the **Production** environment of
@@ -34,58 +30,20 @@ adding an origin. Redeploy the existing production relay deployment after changi
 updating the environment alone does not change a running deployment. Both relay aliases must
 continue to serve it. The app preview's Vercel Deployment Protection is separate from relay CORS.
 
-Knowledge of the channel id is the read capability. Writes need the bearer
-token minted with the channel. Creating a channel needs a separate shared
-secret (`RELAY_MINT_SECRET`). `ETag` / `If-Match` is what stops two devices
-from clobbering each other on an occupied slot.
-
-## What it cannot see
-
-The relay has no accounts, user model or knowledge of Lacuna's study schema. Sync request bodies
-and AI mailbox bodies are ciphertext. Channel and AI-session identifiers are not logged.
-
 ## AI terminal pairing
 
-`POST /ai/sessions` creates a ten-minute pairing session from the browser's ephemeral P-256 public
-key. It returns a human-copyable code and a browser bearer token. `POST /ai/claim`, with the code in the
-`X-Lacuna-Pairing-Code` header (never the path, so it stays out of request logs), admits
-exactly one terminal public key and returns a separate terminal bearer token. The deprecated `POST /ai/s/:code/claim` form is still accepted for older clients. Both peers derive the
-same AES-GCM mailbox key without sending either private key to the relay.
-
-After pairing, the browser writes `/ai/s/:id/browser` and reads `/ai/s/:id/terminal`; the terminal
-does the reverse. Each direction has one writer and uses `ETag` / `If-Match`, avoiding a pointless
-multi-writer merge protocol for chat transport. `DELETE /ai/s/:id` with the browser token revokes
-the session. Claimed sessions expire after 24 hours in this prototype.
-
-The short-lived code is the terminal's pairing capability; do not paste it into an untrusted task.
-Both peers make ordinary outbound HTTPS requests. The AI transport does not use WebSockets, a
-browser extension or an inbound localhost listener. Its current encrypted payload contains chat
-claims, complete replies, Stop acknowledgements and disconnects; course/Card tools and learner
-memories are not part of this mailbox version.
-
-Pairing creation is limited to 10 requests per hour and client IP. The relay hashes Vercel's
-trusted client-address header before storing the shared compare-and-swap counter in Blob. These
-counters are separate from the device-sync mint limit.
+The short-lived pairing code is a capability; do not paste it into an untrusted task.
+Read [the AI handler](src/aiRelay.ts) and [the client transport](../src/ai/session/relay.ts)
+for pairing and mailbox behaviour.
 
 ## Daily maintenance
 
-The experimental Gaps mailbox is described in [the Gaps boundaries](../docs/gaps.md).
-It remains disabled unless `RELAY_INSIGHTS_ENABLED=1`; its client is not installed
-in the app. Encrypted daily envelopes have a fixed 84-day expiry from the end of
-their reporting day. Maintenance scans up to 500 insight objects per run using a
-stored cursor, so physical deletion can lag the immediate read/write expiry.
+Enable the Gaps mailbox with `RELAY_INSIGHTS_ENABLED=1`; the reporting boundaries and operator
+procedures are in [Gaps](../docs/gaps.md).
 
-Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. The job removes AI sessions 24
-hours after their pairing or claimed-session expiry, and removes corrupt or orphaned AI objects
-after the same 24-hour grace from their last upload. Expired pairing-rate records are atomically
-cleared to a compact marker, which the next pairing request replaces; this avoids deleting a fresh
-counter that raced with cleanup. Corrupt objects outside the pairing-rate keyspace are removed. The
-job also scans up to 100 `c/` objects per run, advancing a stored cursor so repeated runs
-eventually visit every channel. A channel group is removed only when the latest upload across
-its metadata, state and keybag is at least 90 days old, plus a 24-hour cleanup grace. The grace
-exceeds the function's maximum lifetime, so a write authorised before expiry has time to finish.
-Maintenance re-reads the group before deletion and keeps it if a slot was refreshed. A group
-with a recent slot remains intact even when its metadata is old.
+Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. Cleanup is bounded and uses
+stored cursors, so physical deletion can require several invocations. Read the maintenance
+handlers for expiry and deletion rules rather than treating this README as a second protocol spec.
 
 The route requires `Authorization: Bearer <CRON_SECRET>`. Vercel adds that header automatically to
 configured Cron invocations. If `CRON_SECRET` is missing or blank, the route returns `401` and
@@ -97,17 +55,10 @@ On Vercel, connect a **private** Blob store to the project. The platform
 injects `BLOB_STORE_ID`, `VERCEL_OIDC_TOKEN` and `BLOB_WEBHOOK_PUBLIC_KEY`.
 `@vercel/blob` reads them automatically.
 
-`RELAY_MINT_SECRET` is optional. `POST /channel` without `Authorization`
-creates a channel via the public rate-limited path (`10`/hour/IP, `429` when
-exceeded). `POST` with `Authorization: Bearer <secret>` bypasses that limit
-when `RELAY_MINT_SECRET` is set and the bearer matches; a wrong bearer is
-still `401`. An unset or empty secret simply means every mint is public —
-there is no `503` closed state. Reading, writing and deleting an existing
-channel are unchanged: `GET` stays unauthenticated, and `PUT` / `DELETE`
-still use the per-channel write token.
+`RELAY_MINT_SECRET` is an optional mint-rate-limit bypass. Leaving it unset allows public,
+rate-limited minting; setting it does not disable the public path.
 
-To keep a private relay or to give an operator bypass, generate a value
-and set it on the Vercel project. Do not commit it.
+To give an operator bypass, generate a value and set it on the Vercel project. Do not commit it.
 
 ```sh
 openssl rand -hex 32
@@ -151,6 +102,9 @@ This directory is its own Vercel project. Do not deploy it as part of the app.
 6. Optionally set `RELAY_MINT_SECRET` on the project (see Environment) to keep a private bypass.
    Minting works without it via the public path.
 7. Deploy.
+
+Deploy source-linked share support in the relay before deploying the link-based Gaps UI.
+An older relay cannot create a usable linked class; the Gaps client rejects that response.
 
 The app sets `Cross-Origin-Embedder-Policy: require-corp`, so the relay must
 stay on a separate origin. CORS and `Cross-Origin-Resource-Policy: cross-origin`
@@ -207,35 +161,6 @@ tombstone window. A device offline longer than that will find its channel
 gone. The daily maintenance job also reclaims expired channel objects after a 24-hour grace;
 it does not need a request for each channel id.
 
-## Course share links
-
-Teacher-published course snapshots behind a stable link. `POST /shares` mints
-a 32-hex share id plus write token (public path rate-limited 10/hour/IP, with
-the same `RELAY_MINT_SECRET` bypass as channels). `PUT /shares/:id/payload`
-carries the opaque course file (capped at 4 MB — larger courses keep the manual
-file); `PUT /shares/:id/meta` carries the teacher client's small polling
-manifest. Both PUTs need the bearer token and `If-Match` (`"0"` for the first
-write). `GET` on either slot is unauthenticated with `Cache-Control: no-store`;
-`DELETE /shares/:id` with the bearer token removes the group. Knowledge of the
-share id is the read capability. Shares untouched past the channel TTL plus
-grace are swept by the daily maintenance job, which reports `sharesDeleted` and
-`shareObjectsDeleted` alongside the channel counters.
-
-`POST /shares` also accepts a bounded JSON body `{"sourceShareId":"<32-hex-id>"}`
-(maximum 128 bytes). The source must be live and have both course slots. Minting
-creates independent owner credentials and an internal immutable `source` pointer,
-flattened to the original publisher. Reads of `payload` and `meta` follow that
-source and preserve its bytes and ETags; their PUTs return 409. The public
-`teacher` slot, owner verification, insights mailbox and deletion use the class’s
-own id and token. There is no public source-slot write route, external URL fetch
-or upstream credential transfer. Publisher updates also keep linked classes live;
-maintenance retains their pointers while the source is live or within cleanup grace.
-Deleting a class leaves the publisher and other classes intact. Missing or expired
-sources stop content reads; existing teacher-key and retained-report rules still apply.
-Deploy this relay support before the link-based Gaps UI. Older clients keep using
-the existing slots without a wire-format change; the new UI refuses to save a class
-if an older relay ignores the mint body and returns an empty share.
-
 ## Concurrency
 
 `ETag` is the opaque value Vercel Blob returns. It is not a counter.
@@ -274,9 +199,6 @@ ever contemplated.
 
 ## Caps
 
-`MAX_BODY_BYTES` is 25 MB (Arc 8 §13.3). The handler refuses a larger
-`Content-Length` without reading the body.
-
 Vercel Functions still reject inbound request bodies above 4.5 MB at the
 platform. A real snapshot that large cannot transit this `PUT`. That ceiling
 is accepted. Do not add client-direct Blob upload here.
@@ -284,8 +206,9 @@ is accepted. Do not add client-direct Blob upload here.
 ## Checks
 
 ```sh
-bun install
+bun install --frozen-lockfile
 bun run typecheck
+bun run lint
 bun run test
 ```
 
