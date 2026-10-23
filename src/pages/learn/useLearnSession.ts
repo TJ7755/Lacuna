@@ -420,6 +420,10 @@ export function useLearnSession({
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
+  const createSimpleQueue = useCallback(
+    (cards: Card[]) => shuffledSimpleQueue(cards, linesModeMapRef.current),
+    [],
+  );
   // Simple mode's progress bar highlights the recited lines rather than the card that
   // opened the recitation; SequenceRecitation reports them as item ids.
   const [recitationFocus, setRecitationFocus] = useState<string[]>([]);
@@ -1340,7 +1344,7 @@ export function useLearnSession({
               const card = cardsById.get(cardId);
               return card ? [card] : [];
             })
-          : shuffledSimpleQueue(cards, linesModeMapRef.current);
+          : createSimpleQueue(cards);
         setSessionCardIds(simpleQueue.current.map((card) => card.id));
         simpleMastered.current = new Set(resumed?.masteredCardIds ?? []);
         simpleWrong.current = new Set(
@@ -1489,6 +1493,7 @@ export function useLearnSession({
     requestWindowId,
     plannedRevision,
     simpleSessionScope,
+    createSimpleQueue,
   ]);
 
   const reveal = useCallback(() => {
@@ -2352,6 +2357,7 @@ export function useLearnSession({
     progressBefore,
     sessionStartMs,
     simpleQueue,
+    createSimpleQueue,
     simpleMastered,
     simpleWrong,
     lessonHasMembersRef,
