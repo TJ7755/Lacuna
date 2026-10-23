@@ -173,7 +173,7 @@ it('detects a course file, previews it and opens its course only after confirmat
   expect(mocks.importShare).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
   await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/course/biology'));
-  expect(mocks.importShare).toHaveBeenCalledWith(file.payload);
+  expect(mocks.importShare).toHaveBeenCalledWith(file.payload, undefined);
 });
 
 it('creates a lesson in an existing course with the imported cards', async () => {
