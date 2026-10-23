@@ -3,14 +3,14 @@
 // occlusion" affordance) is obvious at a glance. Reuses CardListBody/CardRow for the
 // cards themselves, so a generated card gets the exact same read-only treatment (no
 // checkbox, no delete, a subtle badge) it would if it were rendered inline; see
-// CardList.tsx's `generated` guard on CardRow. Parameterised by kind rather than split
+// CardRow.tsx's `generated` guard. Parameterised by kind rather than split
 // into two near-identical components, since a sequence group and an occlusion group
 // differ only in icon and edit-button label.
 
 import { useState } from 'react';
 import { PathIcon, ImageIcon } from '../ui/icons';
 import { Button } from '../ui/Button';
-import { CardListBody } from './CardList';
+import { CardListBody } from './CardListBody';
 import type { Card, Occlusion, SchedulerConfig } from '../../db/types';
 
 /** The minimal shape of a generated card's owner (a Sequence or an Occlusion) this group needs. */
@@ -106,6 +106,6 @@ export function GeneratedCardGroup({
 // Stable references so CardListBody/CardRow never see spurious prop changes.
 const EMPTY_SELECTION = new Set<string>();
 function NOOP() {
-  // Selection and delete are unreachable for generated cards (see CardList's `generated`
+  // Selection and delete are unreachable for generated cards (see CardRow's `generated`
   // guard), but CardListBody requires the callbacks regardless.
 }
