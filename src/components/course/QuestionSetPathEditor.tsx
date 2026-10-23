@@ -50,7 +50,7 @@ export function QuestionSetPathEditor({
       return false;
     }
     try {
-      if (node) await updateQuestionSetPracticeNode(node.id, anchor);
+      if (node) await updateQuestionSetPracticeNode(node.id, anchor, setId);
       else await createQuestionSetPracticeNode(courseId, setId, anchor);
       return true;
     } catch (cause) {
@@ -79,27 +79,17 @@ export function QuestionSetPathEditor({
     >
       <p ref={sentence} className="path-editor-sentence">
         Practise{' '}
-        {node ? (
-          <input
-            aria-label="Question set"
-            data-path-editor-focus
-            className="path-editor-name"
-            readOnly
-            value={title ?? node.name}
-          />
-        ) : (
-          <button
-            ref={trigger}
-            type="button"
-            data-path-editor-focus
-            className="path-editor-chip"
-            aria-haspopup="dialog"
-            aria-expanded={pickerOpen}
-            onClick={() => setPickerOpen(true)}
-          >
-            {title ?? 'Choose a question set'}
-          </button>
-        )}
+        <button
+          ref={trigger}
+          type="button"
+          data-path-editor-focus
+          className="path-editor-chip"
+          aria-haspopup="dialog"
+          aria-expanded={pickerOpen}
+          onClick={() => setPickerOpen(true)}
+        >
+          {title ?? (node && setId === node.questionSetId ? node.name : 'Choose a question set')}
+        </button>
         .
       </p>
       {pickerOpen && data && trigger.current && (
