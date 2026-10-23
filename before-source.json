@@ -1,0 +1,23 @@
+{
+  "source": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "M  src/jev/attempts.test.ts\nA  tests/e2e/question-set-jev-unsure.spec.ts\n",
+    "diffSha256": "6f3cb832a667015f2d4b4953189f79b1a5fda03d6c49650e4342e0f88e6af676"
+  },
+  "site": "lacuna",
+  "args": [
+    "--project=chromium",
+    "tests/e2e/question-set-jev-unsure.spec.ts",
+    "--workers=1"
+  ],
+  "startedAt": "2026-10-23T15:36:12.060Z",
+  "buildDirectory": "<worktree>/artifacts/browser-checks/run-cEPzxz/dist",
+  "indexSha256": "ec5bc7ec46ab949e17a6cf0f9d870dde53702945663c8682222d82feade89510",
+  "sourceAfter": {
+    "commit": "acec3ef9540d8e8a27f0bdefbcb251a4c4ee7a46",
+    "status": "M  src/jev/attempts.test.ts\nA  tests/e2e/question-set-jev-unsure.spec.ts\n",
+    "diffSha256": "6f3cb832a667015f2d4b4953189f79b1a5fda03d6c49650e4342e0f88e6af676"
+  },
+  "completedAt": "2026-10-23T15:36:30.180Z",
+  "exitCode": 1
+}

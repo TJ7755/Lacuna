@@ -1,0 +1,32 @@
+Attempt 1: bun run test --maxWorkers=1 src/questions/questionSetAttemptRepository.test.ts -t rejects an unsure write when undone
+$ vitest run "--maxWorkers=1" src/questions/questionSetAttemptRepository.test.ts -t "rejects an unsure write when undone"
+
+ RUN  v5.0.5 <worktree>
+
+ ❯ |browser| src/questions/questionSetAttemptRepository.test.ts (22 tests | 1 failed | 21 skipped) 84ms
+   ❯ guarded Jev decisions (8)
+     × rejects an unsure write when undone without changing the record 82ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |browser| src/questions/questionSetAttemptRepository.test.ts > guarded Jev decisions > rejects an unsure write when undone without changing the record
+Error: Attempt undo timestamp is invalid.
+ ❯ parseQuestionSetAttemptRecord src/questions/questionSetAttemptCodec.ts:330:11
+    328|     (record.undoneAt < record.createdAt || record.undoneAt > record.up…
+    329|   )
+    330|     throw new Error('Attempt undo timestamp is invalid.');
+       |           ^
+    331|   if (
+    332|     record.conceptPractice &&
+ ❯ Transaction.<anonymous> src/questions/questionSetAttemptRepository.ts:143:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 21 skipped (22)
+   Start at  16:52:10
+   Duration  1.32s (import 43%, environment 25%, transform 12%, setup 12%, tests 7%)
+
+error: script "test" exited with code 1
+Exit: 1

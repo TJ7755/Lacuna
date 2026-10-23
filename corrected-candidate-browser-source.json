@@ -1,0 +1,23 @@
+{
+  "source": {
+    "commit": "97142d999d5aa5e6befa5ace6297e5a79c200910",
+    "status": "",
+    "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "site": "lacuna",
+  "args": [
+    "--project=chromium",
+    "tests/e2e/question-set-jev-unsure.spec.ts",
+    "--workers=1"
+  ],
+  "startedAt": "2026-10-23T15:52:42.441Z",
+  "buildDirectory": "<worktree>/artifacts/browser-checks/run-uW5ILv/dist",
+  "indexSha256": "e26005f3fa95efb101fb7271b24f973f62529b8f2dc04eacf4fc0a837eb85191",
+  "sourceAfter": {
+    "commit": "97142d999d5aa5e6befa5ace6297e5a79c200910",
+    "status": "",
+    "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "completedAt": "2026-10-23T15:53:01.335Z",
+  "exitCode": 0
+}

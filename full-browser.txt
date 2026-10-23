@@ -1,0 +1,761 @@
+$ node scripts/check-browser.mjs "--workers=1"
+Browser evidence: <worktree>/artifacts/browser-checks/run-sLn3KE/source.json
+$ vite build --outDir "<worktree>/artifacts/browser-checks/run-sLn3KE/dist" --emptyOutDir
+vite v8.3.4 building client environment for production...
+transforming...
+[INEFFECTIVE_DYNAMIC_IMPORT] src/db/backupFolder.ts is dynamically imported by src/db/preMigrationSnapshots.ts but also statically imported by src/db/backupRestorePoint.ts, dynamic import will not move module into another chunk.
+
+✓ 5031 modules transformed.
+rendering chunks...
+[plugin lacuna-settings-static-closure] Settings static closure: 277200 raw bytes, 79738 gzip bytes across 33 chunks.
+[plugin lacuna-app-shell-precache] Application shell precache: 81 shell scripts, 23 shared Cards dependencies and 14 Import route files (60 KiB of script).
+WebSocket server error: Port 24678 is already in use
+(node:12334) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+WebSocket server error: Port 24678 is already in use
+WebSocket server error: Port 24678 is already in use
+computing gzip size...
+artifacts/browser-checks/run-sLn3KE/dist/assets/markdownAssetExtraction--GvMIDIE.js           2.87 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/share.worker-Cam2ekYe.js                      3.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size3-Regular-CTq5MqoE.woff             4.42 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size4-Regular-Dl5lxZxV.woff2            4.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size2-Regular-Dy4dx90m.woff2            5.20 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size1-Regular-mCD8mA8B.woff2            5.46 kB
+artifacts/browser-checks/run-sLn3KE/dist/courses/index.html                                   5.69 kB │ gzip:   2.09 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size4-Regular-BF-4gkZK.woff             5.98 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size2-Regular-oD1tc_U0.woff             6.18 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size1-Regular-C195tn64.woff             6.49 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Regular-Di6jR-x-.woff2      6.90 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2         6.91 kB
+artifacts/browser-checks/run-sLn3KE/dist/courses/physics0972/index.html                       7.12 kB │ gzip:   2.71 kB
+artifacts/browser-checks/run-sLn3KE/dist/courses/chemistry4ch1/index.html                     7.21 kB │ gzip:   2.70 kB
+artifacts/browser-checks/run-sLn3KE/dist/courses/biology4bi1/index.html                       7.29 kB │ gzip:   2.75 kB
+artifacts/browser-checks/run-sLn3KE/dist/courses/history0977/index.html                       7.36 kB │ gzip:   2.84 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size3-Regular-DgpXs0kz.ttf              7.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Regular-CTRA-rTL.woff       7.65 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Bold-BEiXGLvX.woff          7.71 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Script-Regular-D3wIWfF6.woff2           9.64 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Regular-DDBCnlJ7.woff2       10.34 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size4-Regular-DWFBv043.ttf             10.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Script-Regular-D5yQViql.woff           10.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Regular-CTYiF6lA.woff2         11.31 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Bold-CL6g_b3V.woff2            11.34 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size2-Regular-B7gKUWhC.ttf             11.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Italic-C3H0VqGB.woff2        12.02 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Bold-D1sUS0GD.woff2          12.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Size1-Regular-Dbsnue_I.ttf             12.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Regular-CS6fqUqJ.woff        12.31 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Regular-wX97UBjC.ttf       12.34 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Caligraphic-Bold-ATXxdsX0.ttf          12.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Regular-Dxdc4cR9.woff          13.20 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Bold-BsDP51OF.woff             13.29 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Typewriter-Regular-CO6r4hn1.woff2      13.56 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Italic-DN2j7dab.woff         14.11 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Bold-DbIhKOiC.woff           14.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Typewriter-Regular-C0xS9mPB.woff       16.02 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-BoldItalic-CZnvNsCZ.woff2         16.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-Italic-t53AETM-.woff2             16.44 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Script-Regular-C5JkGWo-.ttf            16.64 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-BoldItalic-DxDJ3AOS.woff2         16.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Italic-NWA7e6Wa.woff2             16.98 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-BoldItalic-iY-2wyZ7.woff          18.66 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-Italic-DA0__PXp.woff              18.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-BoldItalic-SpSLRI95.woff          19.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Regular-BNo7hRIc.ttf         19.43 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Regular-CB_wures.ttf           19.57 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Fraktur-Bold-BdnERNNW.ttf              19.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Italic-BMLOBm91.woff              19.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Italic-YYjJ1zSn.ttf          22.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/index.html                                          22.89 kB │ gzip:   5.77 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_SansSerif-Bold-CFMepnvq.ttf            24.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Bold-Cx986IdX.woff2               25.32 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Regular-B22Nviop.woff2            26.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf        27.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_AMS-Regular-BQhdFMY1.woff2             28.07 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Bold-Jm3AIy58.woff                29.91 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Regular-Dr94JaBh.woff             30.77 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-BoldItalic-B3XSjfu4.ttf           31.19 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Math-Italic-flOr_0UB.ttf               31.30 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-BoldItalic-DzxPMmG6.ttf           32.96 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_AMS-Regular-DMm9YOAa.woff              33.51 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Italic-3WenGoN9.ttf               33.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Bold-waoOVXN0.ttf                 51.33 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_Main-Regular-ypZvNtVU.ttf              53.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/apkgImport.worker-C-8CNdcl.js                55.68 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/recall-bQpv63pX.png                          56.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/compare/quizlet/index.html                          61.64 kB │ gzip:  14.05 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KaTeX_AMS-Regular-DRggAlZN.ttf               63.63 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetPracticeNode-BhhrPJ8x.js          91.84 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/dailyBackup.worker-DZdxn0jU.js              148.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/domain-BspMZyEA.js                          158.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/wasi-worker-browser-C8AJpTzT.js             202.11 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/optimise.worker-nqFfUSoa.js                 227.85 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/settings-Lu0ewtZr.png                       268.09 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/course-q6X3AdYN.png                         286.77 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lesson-Br0PhygT.png                         315.25 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/fsrs-binding.wasm32-wasi-BCb3XNhu.wasm      598.17 kB │ gzip: 234.65 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sql-wasm-C1D_RJuy.wasm                      684.89 kB │ gzip: 338.96 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/index-CGQ_DoSe.css                            0.16 kB │ gzip:   0.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ImportPanel-BItXJn9R.css                      1.52 kB │ gzip:   0.56 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/courses-Br4LxqSJ.css                          1.66 kB │ gzip:   0.61 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CoursePageArrival-Cl4BepKd.css                1.70 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/TeacherHome-C3mTPQ86.css                      2.56 kB │ gzip:   0.82 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Method-B1xjWhzH.css                           2.68 kB │ gzip:   0.96 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Download-DpXpQprw.css                         2.84 kB │ gzip:   0.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/DesktopUpdateController-BKpXkHpB.css          2.88 kB │ gzip:   0.93 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseStudyFlow-D_1DVZh4.css                  3.93 kB │ gzip:   1.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/question-composer-DQiTJkrk.css                3.96 kB │ gzip:   1.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Landing-BwiuIQ_7.css                          4.71 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/LearnMode-B7yCF1_G.css                        5.73 kB │ gzip:   1.66 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetPractice-wt2H92aI.css              7.28 kB │ gzip:   2.02 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ComparisonResponsive-51EM_M3v.css             7.68 kB │ gzip:   2.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardImportDialog-B78y1dYB.css                10.74 kB │ gzip:   2.29 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Landing-OQgotLUu.css                         12.80 kB │ gzip:   3.25 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/question-sets-7-wczcNB.css                   13.35 kB │ gzip:   3.04 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/quizlet-Dk04cLHS.css                         26.10 kB │ gzip:   5.42 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MarkdownView-CppIvWOo.css                    31.07 kB │ gzip:   8.45 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/icons-Dc5CHVy_.css                          124.05 kB │ gzip:  21.44 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/leech-DGkUZQWA.js                             0.05 kB │ gzip:   0.07 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/plural-qGvSiUZh.js                            0.08 kB │ gzip:   0.10 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/features-animation-BrZcpEBO.js                0.10 kB │ gzip:   0.11 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/grants-D8tcxPue.js                            0.11 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/channel-DJEPbK4C.js                           0.11 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/pie-XZMESJXO-Cm51NIUG.js                      0.12 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/info-OHQRW6UA-CafNPaiv.js                     0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/radar-ABXABTNO-BwwovKR2.js                    0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/packet-JDAUHWVQ-JGWe6jlj.js                   0.12 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cynefin-EF2NZ3EQ-DVElYEJf.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/treemap-SAJKECNS-Bzkupj28.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/wardley-7MLQ67FV-Cq6FCfeE.js                  0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/gitGraph-VSP46ZUC-C-ETfZbB.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/railroad-I3PHUGI6-JDivUgkS.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/treeView-D4JQ5SDB-9ba_MZ7W.js                 0.12 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/railroad-peg-JR7BVNR7-C8nX7-As.js             0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/architecture-WOLXFQ4H-Dm01SkXV.js             0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/railroad-abnf-LNEFI6M7-CzT0ftzw.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/railroad-ebnf-DWYD2UWJ-D7GP3er0.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/eventmodeling-K75KTNOO-Cz07ILC_.js            0.13 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/origins-C5k0UB5S.js                           0.14 kB │ gzip:   0.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/motionFeatures-CZkZOPPN.js                    0.15 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-Y2CYZVJY-DsF7k-Jl.js                    0.15 kB │ gzip:   0.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/haptic-DSyklCkM.js                            0.17 kB │ gzip:   0.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-2Q5K7J3B-C1jixKkw.js                    0.19 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/linkSchemas-Da9T3s57.js                       0.20 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/markdownAssets-BWaxN1-B.js                    0.21 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-JWPE2WC7-DVXcaiue.js                    0.22 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/tombstonePrune-BPdmNe1k.js                    0.22 kB │ gzip:   0.19 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/answerMode-7g1NOjrh.js                        0.23 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-XXDRQBXY-DD-OM98o.js                    0.25 kB │ gzip:   0.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lockHint-W8r7y9XM.js                          0.25 kB │ gzip:   0.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/generatedConceptIds-C9tUr1_m.js               0.26 kB │ gzip:   0.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/headerStats-D-pQkMmY.js                       0.27 kB │ gzip:   0.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/fixtureRunner-xkJf6tku.js                     0.29 kB │ gzip:   0.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/compat-09RdQZcw.js                            0.34 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/audio-ysw4U22O.js                             0.35 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/init-ZlXS9mIS.js                              0.35 kB │ gzip:   0.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-5VM5RSS4-ZNzvKenW.js                    0.36 kB │ gzip:   0.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/choiceChip-D8gEqKB2.js                        0.37 kB │ gzip:   0.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Select-qY1tjnAP.js                            0.39 kB │ gzip:   0.29 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SettingsSectionHeading-BrNsyQ2m.js            0.39 kB │ gzip:   0.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/audioSettings-BmtkeOoD.js                     0.40 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/heatmap-BeXguklV.js                           0.41 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useActionFocus-DE-M0CV9.js                    0.41 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/answerStrictness-C57WJw6x.js                  0.41 kB │ gzip:   0.25 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MissingRecord--pl5BhOR.js                     0.42 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/GeneratedCardBadge-WSglKcrm.js                0.46 kB │ gzip:   0.31 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/entityAvailability-T9JpZlaI.js                0.46 kB │ gzip:   0.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useDesktopUpdater-UHPwo9uz.js                 0.47 kB │ gzip:   0.30 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/runtime-BOxpVSLl.js                           0.54 kB │ gzip:   0.28 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-VQ5W62QI-DvtFWoQH.js                    0.57 kB │ gzip:   0.39 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/flowDiagram-IUGLLWBU-CbffUfMr.js              0.57 kB │ gzip:   0.32 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CreateButton-DH-aQY2D.js                      0.58 kB │ gzip:   0.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SessionExitGuard-BptAXH8E.js                  0.58 kB │ gzip:   0.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-J5ZVWO5B-oDCd-gWO.js                    0.63 kB │ gzip:   0.43 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/credentials-BQHGauaJ.js                       0.63 kB │ gzip:   0.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diffImport-SpmUdTAh.js                        0.64 kB │ gzip:   0.43 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/infoDiagram-MVDRKAX5-JtMA604y.js              0.65 kB │ gzip:   0.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/credentials-BStbx-24.js                       0.66 kB │ gzip:   0.37 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cloze-CV30mwGE.js                             0.70 kB │ gzip:   0.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ContentDisclosure-ldcqSn7q.js                 0.70 kB │ gzip:   0.44 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/importCardExport-k_47M1J_.js                  0.76 kB │ gzip:   0.49 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/InlineSettingsDisclosure-DJ7k2uhB.js          0.81 kB │ gzip:   0.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/swimlanesDiagram-AYQRV4AK-pGMiFSoG.js         0.83 kB │ gzip:   0.48 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sizeCapture-INFHLROL-3uHXrFqA.js              0.87 kB │ gzip:   0.51 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-DUW6YSOI-Dgx8z5s3.js                    0.89 kB │ gzip:   0.46 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/editorOrigin-5s5gbXKP.js                      0.91 kB │ gzip:   0.51 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useQuestionData-BIVJiGpK.js                   0.93 kB │ gzip:   0.42 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/horizon-CU4I9MPh.js                           0.94 kB │ gzip:   0.47 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ProgressBar-Bk_96nLz.js                       1.01 kB │ gzip:   0.60 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/DangerZoneSection-BNhTBF89.js                 1.04 kB │ gzip:   0.62 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/compressImage-DrlzCuzD.js                     1.05 kB │ gzip:   0.53 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/linkStore-BE_3y-Jy.js                         1.05 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lessonPrerequisites-CaDd_7tt.js               1.05 kB │ gzip:   0.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/PupilClassPage-DuotgqlS.js                    1.06 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lessonOrder-qK3Wy2HN.js                       1.06 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/RelatedQuestionSets-DDwoObEt.js               1.09 kB │ gzip:   0.64 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetDrafts-D3RNbJc2.js                 1.11 kB │ gzip:   0.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SettingsUi-D6Tm7jDi.js                        1.13 kB │ gzip:   0.65 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Toggle-CEoQ0n-y.js                            1.15 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Landing-D-cMxToV.js                           1.16 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ordinal-CPleeUAT.js                           1.18 kB │ gzip:   0.57 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/import-BdBH8i6j.js                            1.20 kB │ gzip:   0.68 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useQuestionSetScroll-Bcb87T5b.js              1.22 kB │ gzip:   0.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetChoices-C1LvroGW.js                1.33 kB │ gzip:   0.73 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/eligibility-DcbgjlRL.js                       1.33 kB │ gzip:   0.62 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lessonOrder-ClTNeiJY.js                       1.35 kB │ gzip:   0.69 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/dexie-react-hooks-T9xzoGrv.js                 1.37 kB │ gzip:   0.64 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/backupFolder-DkY9-5Vc.js                      1.37 kB │ gzip:   0.70 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/inputMode-L5RDwu7S.js                         1.39 kB │ gzip:   0.60 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-ZAUX2LTX-GiS_WrVe.js                    1.41 kB │ gzip:   0.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/KeyHints-CiovOI2W.js                          1.44 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/RouteAnnouncement-FcsoZ5Hk.js                 1.47 kB │ gzip:   0.75 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetAttemptList-COIRB7jF.js            1.48 kB │ gzip:   0.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sequencePresets-DLIy_YE2.js                   1.48 kB │ gzip:   0.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/OcclusionStudyFace-BCGDHlM_.js                1.51 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/NumberField-BCv0BglP.js                       1.53 kB │ gzip:   0.83 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/band-DZ4Jagyz.js                              1.53 kB │ gzip:   0.66 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseFileControls-BMwOSJCy.js                1.58 kB │ gzip:   0.86 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardContent-CVzGvA2P.js                       1.59 kB │ gzip:   0.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/occlusionGeneration-CQSQuZhu.js               1.61 kB │ gzip:   0.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/mutationStamp-Bxwej6F8.js                     1.61 kB │ gzip:   0.72 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/OcclusionMaskLayer-DatLCXOl.js                1.63 kB │ gzip:   0.85 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardTypePicker-CrgIYwc5.js                    1.64 kB │ gzip:   0.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/StepSwap-CKCGq73o.js                          1.65 kB │ gzip:   0.85 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/agentMemoryRecord-SuwWT0TJ.js                 1.65 kB │ gzip:   0.72 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/railroadDiagram-Y72NRBL7-Bt5TuaF4.js          1.65 kB │ gzip:   0.76 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sequenceGeneration-BZLl3iV1.js                1.70 kB │ gzip:   0.83 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/markdownAssetExtraction-CcrZ0OIY.js           1.81 kB │ gzip:   0.98 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/payloadValidation-55gekTne.js                 1.81 kB │ gzip:   0.82 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/abnfDiagram-WEYOIA3C-DJGeeFBd.js              1.84 kB │ gzip:   0.89 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-UHW7PFBP-jJTG1S8S.js                    1.95 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetPracticeNode-CspYDstc.js           1.95 kB │ gzip:   0.81 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-55XCU76K-DytH0oq8.js                    1.96 kB │ gzip:   0.88 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/pegDiagram-ECIUJNBX-7YijbcZQ.js               2.01 kB │ gzip:   0.94 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ebnfDiagram-V4P3TTPT-Agq0j4BC.js              2.05 kB │ gzip:   0.88 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/dist-C82PhWLt.js                              2.16 kB │ gzip:   0.97 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/courseFile-D14rqI90.js                        2.19 kB │ gzip:   1.02 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/rawDatabaseSnapshot-DbIMea8G.js               2.22 kB │ gzip:   0.90 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useLessonOrderData-Cf8txWf1.js                2.27 kB │ gzip:   1.08 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetRouteState-CM2HYd25.js             2.27 kB │ gzip:   0.99 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/entry-client-DeOFfpxd.js                      2.28 kB │ gzip:   1.04 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/backupSnapshot-DBT7NLpr.js                    2.28 kB │ gzip:   0.87 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/enrolment-CWnyGrIz.js                         2.29 kB │ gzip:   1.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/scheduler-COmxGzFB.js                         2.34 kB │ gzip:   1.05 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ComparisonResponsive-DOE6DM8R.js              2.37 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/NavigationGuard-2SGqhlqu.js                   2.39 kB │ gzip:   1.15 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/noteAnchors-BqNjCjc1.js                       2.48 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useCourseStudyFlowRecords-CzJbNFzE.js         2.51 kB │ gzip:   1.05 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetSearch-DtnaHbHb.js                 2.56 kB │ gzip:   1.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/drafts-Csg-EQg-.js                            2.61 kB │ gzip:   1.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useCourseStudyFlow-Dtu-ETc7.js                2.67 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/assessmentCoverage-DruFhS3E.js                2.74 kB │ gzip:   0.95 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetAnswer-Db0sDhPu.js                 2.76 kB │ gzip:   1.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ArchivedCourses-FgaojZau.js                   2.80 kB │ gzip:   1.34 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/envelope-CPXsgvsH.js                          2.82 kB │ gzip:   1.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/shortcutGroups-2aVzcGR1.js                    3.05 kB │ gzip:   1.00 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/repository.concepts-C3W5moj2.js               3.19 kB │ gzip:   1.34 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/polling-B-6Owk93.js                           3.23 kB │ gzip:   1.18 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseActions-fEnFTPZ_.js                     3.30 kB │ gzip:   1.59 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/schema-Efo6BDOW.js                            3.37 kB │ gzip:   1.53 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/AnswerModeControl-CRDUl1hp.js                 3.39 kB │ gzip:   1.39 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/assetCache-Cgd7q0V5.js                        3.43 kB │ gzip:   1.61 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/triggers-DzvOCfgG.js                          3.44 kB │ gzip:   1.70 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/backups-C3aURpjZ.js                           3.45 kB │ gzip:   1.69 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/recitationFlow-CC5ayXF4.js                    3.45 kB │ gzip:   1.37 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/arc-weJmsz3x.js                               3.48 kB │ gzip:   1.47 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/practiceNodeRepository-miHanASH.js            3.57 kB │ gzip:   1.15 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/selection-BYXgP83j.js                         3.60 kB │ gzip:   1.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ConfirmInline-IPdHZuD-.js                     3.68 kB │ gzip:   1.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/McpBridgeController-ByxLwoUo.js               3.75 kB │ gzip:   1.79 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/hostedTransport-Ft7TXNxp.js                   3.78 kB │ gzip:   1.75 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/crypto-Cc6nneTK.js                            3.83 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/agentMemoryRepository-hSUU96Zv.js             3.84 kB │ gzip:   1.41 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/relay-ksf9oMYB.js                             3.85 kB │ gzip:   1.53 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/backingDecks-LjuZVk4w.js                      3.85 kB │ gzip:   1.35 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetPanel-BgWf11kL.js                  3.91 kB │ gzip:   1.75 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MathsAnswerInput-Bvs7_GxB.js                  3.95 kB │ gzip:   1.86 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/TeacherHome-DAZLPblh.js                       3.95 kB │ gzip:   1.62 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/bankRepository-Bos-tXYC.js                    4.23 kB │ gzip:   1.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-I5XIIV2D-D96RvGfz.js                  4.34 kB │ gzip:   1.89 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/search-Q1jujcEm.js                            4.49 kB │ gzip:   1.72 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/AddLessonControl-AOMITAkB.js                  4.53 kB │ gzip:   2.13 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/defaultLocale-BFoDCU3G.js                     4.63 kB │ gzip:   2.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/GapsConnectionExport-Ddn43JHm.js              4.76 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/read-CuUr1acL.js                              4.80 kB │ gzip:   1.66 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/question-sets-DNfLeKOY.js                     4.81 kB │ gzip:   1.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/recitationInput-BzEDxWPw.js                   4.85 kB │ gzip:   1.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseInsightsSection-Bou69-Eh.js             5.23 kB │ gzip:   2.39 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/DesktopUpdateController-B69L6pCu.js           5.27 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/numericAnswerSpec-BZ7aa0hQ.js                 5.27 kB │ gzip:   2.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Download-2TQHc_kr.js                          5.42 kB │ gzip:   1.89 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-4EMNKR2T-24puhfze.js                    5.43 kB │ gzip:   2.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/client-loojbwJp.js                            5.44 kB │ gzip:   2.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Menu-x9cWPy-5.js                              5.57 kB │ gzip:   2.38 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/export-D8edaaK-.js                            5.59 kB │ gzip:   2.11 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/studyFlowSnapshot-C5hB9BtO.js                 5.64 kB │ gzip:   2.05 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ShareLinkPage-CmZJQ-M-.js                     5.65 kB │ gzip:   2.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sequenceRepository-BCrneySD.js                5.74 kB │ gzip:   1.90 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/linear-FD-9takj.js                            5.75 kB │ gzip:   2.37 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-YZO67HFG-B5U7EIMl.js                    5.83 kB │ gzip:   2.68 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/AnnotatedNoteContent-BZ-UnDHv.js              5.97 kB │ gzip:   2.15 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-RJA3I4VV-Bh2nZELc.js                  6.06 kB │ gzip:   2.56 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SearchPage-DW1A9TC-.js                        6.07 kB │ gzip:   2.62 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/pieDiagram-GNMPY74T-sG7Pmi_c.js               6.19 kB │ gzip:   2.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SearchResultOption-D-Kvpca7.js                6.20 kB │ gzip:   2.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/occlusionRepository-BF2rEHm3.js               6.27 kB │ gzip:   2.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/AssessmentEditor-Dw4-g2gL.js                  6.36 kB │ gzip:   2.18 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/path-_a7gsM36.js                              6.42 kB │ gzip:   2.54 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/courses-C-FgRBcd.js                           6.46 kB │ gzip:   2.57 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/revisionPlan-CZDnysDj.js                      6.83 kB │ gzip:   2.43 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CommandPalette-94qa5y6Z.js                    6.90 kB │ gzip:   2.79 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/prompts-DJU42vp3.js                           7.15 kB │ gzip:   2.87 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/generators-7hp5Xeby.js                        7.21 kB │ gzip:   2.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ForecastChart-zujEkbqz.js                     7.60 kB │ gzip:   3.39 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/instructions-D9NCk0K7.js                      7.70 kB │ gzip:   3.28 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ImportPanel-Co4v3LxP.js                       7.78 kB │ gzip:   3.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/domain-C6ytoHbV.js                            8.03 kB │ gzip:   3.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cardImport-BGbE6lx6.js                        8.08 kB │ gzip:   3.44 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-ODIL2UCW-CmtDn5LT.js                  8.19 kB │ gzip:   3.65 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/HelpPage-Q_V3QpVI.js                          8.27 kB │ gzip:   2.74 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetAttemptCodec-CGDJXRHy.js           8.84 kB │ gzip:   2.66 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MarkdownEditor-B9se4N2q.js                    9.14 kB │ gzip:   3.49 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardsPage-CdqkqyPs.js                         9.30 kB │ gzip:   3.28 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SyncPairingFlow-dnec4WIQ.js                   9.74 kB │ gzip:   3.45 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cynefinDiagram-WF24UDRP-DkUtI-jx.js           9.93 kB │ gzip:   3.50 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/repository-BsWGh-CG.js                       10.07 kB │ gzip:   3.68 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetOverview-DeVGq0hh.js              10.20 kB │ gzip:   3.58 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/searchHelp-Byq1Vp1Y.js                       10.24 kB │ gzip:   3.77 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SharedCourseImport-Duxht17l.js               10.37 kB │ gzip:   3.93 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-ZCHMQSOR-BmPPocFI.js                   10.39 kB │ gzip:   4.32 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-PFBEJUXE-CpydB412.js                 10.92 kB │ gzip:   4.25 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/delivery-BMNtXgtf.js                         10.93 kB │ gzip:   4.48 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetCodec-L6zCelAp.js                 11.07 kB │ gzip:   3.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetRepository-qVh_GEBc.js            11.12 kB │ gzip:   3.39 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/StudySheet-DTVaMY2o.js                       11.87 kB │ gzip:   4.33 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MarkSchemeEditor-fPeuKz27.js                 12.59 kB │ gzip:   4.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lessonRepository-CBAZ5M0w.js                 12.87 kB │ gzip:   3.49 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MergeReviewPanel-v91cE3i6.js                 13.34 kB │ gzip:   4.88 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/questionSetAttemptRepository-Bs3pxCoL.js     14.07 kB │ gzip:   4.98 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/jev-Dh8dHMCQ.js                              14.28 kB │ gzip:   5.80 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseAnalytics-FsSn5AaU.js                  14.29 kB │ gzip:   4.54 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-HNE4Q36P-CUBnGNdZ.js                   14.84 kB │ gzip:   4.19 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/time-DQt9QpA_.js                             14.92 kB │ gzip:   4.81 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-2E7WHVMD-6F8rVOJe.js                   15.64 kB │ gzip:   4.35 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/repository-DK0JAgZn.js                       15.69 kB │ gzip:   3.73 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-CBK3MWTC-BMo5DXsr.js                 15.75 kB │ gzip:   5.52 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/pairing-BcZmGeH-.js                          15.79 kB │ gzip:   5.46 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/manualMerge-Bt4jQ9lX.js                      15.96 kB │ gzip:   4.95 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/OcclusionEditor-Bv0Bwwwp.js                  16.42 kB │ gzip:   5.70 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/mermaid-parser.core-dcH-WZxC.js              16.46 kB │ gzip:   3.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/seed-C3eIQZF8.js                             17.04 kB │ gzip:   6.54 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ishikawaDiagram-HPEHV2GE-DLrAhEiL.js         17.30 kB │ gzip:   6.53 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionEditor-CTMhYux-.js                   17.42 kB │ gzip:   5.97 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Landing-DOGgmgFB.js                          17.72 kB │ gzip:   5.36 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionLearnMode-5uPgGmTa.js                18.58 kB │ gzip:   6.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Area-C0Cdandh.js                             18.72 kB │ gzip:   5.84 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-7S6XSTFO-CHuU1qbE.js                   18.89 kB │ gzip:   6.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardAnalytics-DXyYlhbl.js                    19.11 kB │ gzip:   6.07 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseStudyFlow-CD9U6aQg.js                  19.29 kB │ gzip:   5.93 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Analytics-C6HaePWB.js                        19.66 kB │ gzip:   6.67 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SharePage-P0rkj-ZO.js                        19.76 kB │ gzip:   6.76 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/kanban-definition-FNSA4HC5-BACijaTP.js       20.26 kB │ gzip:   7.14 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/LessonView-6izPNQXj.js                       20.82 kB │ gzip:   7.37 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/BarChart-Cxl7PpXO.js                         20.91 kB │ gzip:   6.91 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sankeyDiagram-SY24JHO5-_VGH-ihZ.js           22.78 kB │ gzip:   8.25 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardImportDialog-DmwEo58S.js                 23.06 kB │ gzip:   7.75 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/journeyDiagram-BOSHW7O7-B94VUpcI.js          23.15 kB │ gzip:   8.15 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/EnabledAiRuntime-DVMC4TTi.js                 23.64 kB │ gzip:   7.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/mindmap-definition-6OY57UG3-BE_eQpkm.js      23.66 kB │ gzip:   8.06 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/graphlib-DS17s2tU.js                         23.90 kB │ gzip:   8.31 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/isArguments-2ZchtnyI.js                      23.95 kB │ gzip:   7.92 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lib-C0jtiAXP.js                              23.96 kB │ gzip:   8.57 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SequenceEditor-DgVUX_s0.js                   24.32 kB │ gzip:   8.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/AiPanel-CEmBpWkm.js                          24.63 kB │ gzip:   7.26 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/icons-CzvjmTSC.js                            25.11 kB │ gzip:   7.99 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/wardleyDiagram-IVAIDKWA-onm5iog5.js          25.20 kB │ gzip:   6.54 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetPractice-Dn8IMw1x.js              25.99 kB │ gzip:   8.83 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/rough.esm-Dy-Kn_BL.js                        27.10 kB │ gzip:   8.85 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/FadeInView-zzXvWEvF.js                       27.48 kB │ gzip:   9.70 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CoursePageArrival-BoOeKMaM.js                28.25 kB │ gzip:   9.72 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/gitGraphDiagram-PDYL7XHY-COQeHyF2.js         29.00 kB │ gzip:   8.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/purify.es-B7SQ8EAD.js                        29.07 kB │ gzip:  11.45 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/StudyCardTransition-DW3EvBPk.js              29.31 kB │ gzip:  10.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/share-CTfMmTyo.js                            29.37 kB │ gzip:   9.55 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/timeline-definition-JXYKGLGB-Dy-eR3zf.js     30.45 kB │ gzip:  10.03 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/erDiagram-KYQIGQAA-BdFXVmGN.js               30.64 kB │ gzip:  10.57 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/requirementDiagram-EQYSW5RA-BtpFEQSU.js      31.06 kB │ gzip:   9.82 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CardEditor-CmAOSGIN.js                       32.23 kB │ gzip:  10.51 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Method-M6VCarRG.js                           32.52 kB │ gzip:  10.16 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/quadrantDiagram-D57K4MC3-Bpfq2ksK.js         33.52 kB │ gzip:   9.73 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cardListContext-iY-1zMfe.js                  35.64 kB │ gzip:  11.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/src-CQipM0cR.js                              37.18 kB │ gzip:  12.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-WQQL4CDK-5RdzAWR5.js                   37.87 kB │ gzip:   8.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionSetEditor-D9CtW65s.js                38.47 kB │ gzip:  12.06 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/mergeImport-H1CPCNuF.js                      39.98 kB │ gzip:  11.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/vennDiagram-Q3Y3IDCW-zJPHHJh3.js             41.18 kB │ gzip:  15.11 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/quizlet-CMi3I48a.js                          41.18 kB │ gzip:  12.03 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/stateDiagram-v2-A6IESKWZ-nC7s4pO9.js         41.57 kB │ gzip:  13.90 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/blockDiagram-RJAE7QA3-9J196sNO.js            42.50 kB │ gzip:  13.89 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/xychartDiagram-4URNHDU4-CrwvXl97.js          43.24 kB │ gzip:  11.87 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/relay-C3QVg-z7.js                            43.53 kB │ gzip:  12.85 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CoursePath-CTl_dSZM.js                       46.88 kB │ gzip:  14.44 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/portability-BRo1JMvN.js                      47.78 kB │ gzip:  13.24 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/dagre-NK4GIZVX-CTPF2ysr.js                   47.83 kB │ gzip:  17.10 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/CourseSettings-Dikjj66m.js                   49.06 kB │ gzip:  14.00 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/classDiagram-v2-4MYWR3UA-4xxxr1MJ.js         49.73 kB │ gzip:  16.17 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-AQDTSKZB-CxlwtaDq.js                   51.87 kB │ gzip:  16.63 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/apkgParser-26305qnA.js                       54.22 kB │ gzip:  20.07 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/ganttDiagram-R7GPNTJY-HKPCFQfK.js            55.35 kB │ gzip:  18.59 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/executor-BsX0gU7C.js                         56.34 kB │ gzip:  15.49 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/QuestionsPage-DH6YGCh4.js                    58.72 kB │ gzip:  17.62 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-NQOKRVIF-YX7A8ioc.js                   62.82 kB │ gzip:  20.40 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/c4Diagram-XDPPPE54-XN26x_yW.js               65.08 kB │ gzip:  18.60 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/diagram-TYUNFSNR-Dd6p7ERd.js                 80.50 kB │ gzip:  25.19 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cose-bilkent-JH36ORCC-CwwzXBRJ.js            81.24 kB │ gzip:  21.53 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/mermaid.core-DwvZ5lP_.js                     85.07 kB │ gzip:  29.42 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/Settings-BLcfpS5O.js                         89.98 kB │ gzip:  24.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/schemas-sZxgVjIK.js                          95.80 kB │ gzip:  26.96 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/swimlanes-B3ENRKFQ-BX-FG2mE.js              106.49 kB │ gzip:  36.22 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-HAGFOTED-rlS_HGVB.js                  115.56 kB │ gzip:  29.27 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/sequenceDiagram-BLEHNHQU-BGFwuW3r.js        117.67 kB │ gzip:  31.37 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/LearnMode-BIPRBj4N.js                       130.90 kB │ gzip:  41.87 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/verify-DmeOC4Th.js                          146.75 kB │ gzip:  41.90 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/architectureDiagram-ZHVYKT53-CHSGcwIn.js    148.90 kB │ gzip:  41.12 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/usecaseDiagram-WPOLBNNX-Biu4rpYx.js         187.92 kB │ gzip:  49.21 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/client-BYLi7C6U.js                          207.36 kB │ gzip:  64.94 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-DSNLSHJZ-Bd5nb1Ns.js                  212.72 kB │ gzip:  29.09 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/useChartColours-Cigr2Sot.js                 281.03 kB │ gzip:  79.97 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/lib-BUGfRecR.js                             290.96 kB │ gzip:  88.91 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/app-B-3lTLau.js                             322.26 kB │ gzip: 100.72 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/SectionCard-BoqD9rgD.js                     325.37 kB │ gzip: 100.07 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/esm-Bd5Go6BK.js                             368.71 kB │ gzip: 108.08 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/cytoscape.esm-Yq6u8L66.js                   434.85 kB │ gzip: 137.78 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/chunk-NGNAAXSQ-DqoPQk1a.js                  629.05 kB │ gzip: 127.32 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/MarkdownView-BGUdvrQn.js                    696.45 kB │ gzip: 213.88 kB
+artifacts/browser-checks/run-sLn3KE/dist/assets/elk-QONTBCTQ-C7TOAR2h.js                  1,463.35 kB │ gzip: 455.96 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[INEFFECTIVE_DYNAMIC_IMPORT] src/db/courseRepository.ts is dynamically imported by src/components/course/NewCourseForm.tsx, src/pages/Dashboard.tsx but also statically imported by src/components/course/CoursePageNavigation.tsx, src/components/course/FinalExamLifecycleController.tsx, src/components/dashboard/CourseActions.tsx, src/components/mcp/McpBridgeController.tsx, src/components/share/OtherShareWays.tsx, ..., dynamic import will not move module into another chunk.
+
+✓ built in 3.08s
+
+PWA v2.0.0
+mode      generateSW
+precache  137 entries (980.47 KiB)
+files generated
+  artifacts/browser-checks/run-sLn3KE/dist/sw.js
+  artifacts/browser-checks/run-sLn3KE/dist/workbox-835c8c05.js
+[WebServer] (node:12478) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] [vite:react-swc] We recommend switching to `@vitejs/plugin-react` for improved performance as no swc plugins are used. More information at https://vite.dev/rolldown
+
+Running 389 tests using 1 worker
+
+(node:12608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 [chromium] › tests/e2e/accent-label-contrast.spec.ts:5:3 › saved alternative accents keep primary action labels legible in light mode (3.1s)
+  ✓    2 [chromium] › tests/e2e/accent-label-contrast.spec.ts:5:3 › saved alternative accents keep primary action labels legible in dark mode (3.2s)
+  ✓    3 [chromium] › tests/e2e/accessibility.spec.ts:9:1 › opens quick search from the keyboard and restores focus on Escape (1.0s)
+  ✓    4 [chromium] › tests/e2e/accessibility.spec.ts:28:1 › opens quick search from the mobile drawer and restores its navigation trigger (887ms)
+  ✓    5 [chromium] › tests/e2e/accessibility.spec.ts:59:1 › replaces the shell when entering study with reduced motion (1.7s)
+  ✓    6 [chromium] › tests/e2e/ai-lifecycle.spec.ts:11:1 › preserves AI across peer sync and revokes it after full replacement (39.7s)
+  ✓    7 [chromium] › tests/e2e/ai-terminal.spec.ts:10:1 › pairs with a terminal and exchanges an encrypted reply (6.3s)
+  ✓    8 [chromium] › tests/e2e/ai-terminal.spec.ts:39:1 › creates a complete authored course through approved AI tools (17.3s)
+  ✓    9 [chromium] › tests/e2e/ai-terminal.spec.ts:182:1 › carries misconception-first instructions through a memory-guided teaching exchange (12.2s)
+  ✓   10 [chromium] › tests/e2e/ai-terminal.spec.ts:273:1 › recovers a claimed prompt through a dead terminal replacement (7.4s)
+  ✓   11 [chromium] › tests/e2e/ai-terminal.spec.ts:324:1 › recovers a committed browser write when Vercel strips the 200 acknowledgement (4.3s)
+  ✓   12 [chromium] › tests/e2e/ai-terminal.spec.ts:365:1 › restores and claims an unclaimed message once after a browser reload (5.9s)
+  ✓   13 [chromium] › tests/e2e/ai-terminal.spec.ts:391:1 › acknowledges Stop and rejects a later domain tool call (5.2s)
+  ✓   14 [chromium] › tests/e2e/anki-import.spec.ts:46:1 › previews an Anki package under production CSP while JavaScript evaluation stays blocked (2.9s)
+  ✓   15 [chromium] › tests/e2e/assessment-editor-width.spec.ts:4:1 › assessment card exclusions fit the settings editor (1.6s)
+  ✓   16 [chromium] › tests/e2e/audio-playback.spec.ts:39:1 › plays stored audio while authoring and studying in the production build (7.4s)
+  ✓   17 [chromium] › tests/e2e/card-editor-layout.spec.ts:29:3 › card editor fits 320px, Larger text, touch (3.0s)
+  ✓   18 [chromium] › tests/e2e/card-editor-layout.spec.ts:29:3 › card editor fits 390px, Default text, keyboard (3.7s)
+  ✓   19 [chromium] › tests/e2e/card-editor-layout.spec.ts:29:3 › card editor fits 768px, Larger text, touch (2.8s)
+  ✓   20 [chromium] › tests/e2e/card-editor-layout.spec.ts:29:3 › card editor fits 1063px, Default text, keyboard (4.1s)
+  ✓   21 [chromium] › tests/e2e/card-editor-layout.spec.ts:29:3 › card editor fits 1440px, Larger text, keyboard (3.8s)
+  ✓   22 [chromium] › tests/e2e/card-import-dialogue.spec.ts:34:3 › imports reversed cards with non-destructive Undo and stable bounds at 1280px (6.6s)
+  ✓   23 [chromium] › tests/e2e/card-import-dialogue.spec.ts:34:3 › imports reversed cards with non-destructive Undo and stable bounds at 390px (7.3s)
+  ✓   24 [chromium] › tests/e2e/card-import-dialogue.spec.ts:104:3 › completes the final import step with Enter from the title (2.9s)
+  ✓   25 [chromium] › tests/e2e/card-import-dialogue.spec.ts:104:3 › completes the final import step with Enter from the button (2.8s)
+  ✓   26 [chromium] › tests/e2e/cards-virtualisation.spec.ts:14:1 › bounds off-screen lesson rows and reveals later cards when scrolling (2.7s)
+  ✓   27 [chromium] › tests/e2e/concept-practice.spec.ts:152:5 › Concept practice at 1280px › keeps the long skill chooser inside the library and usable from the keyboard (2.7s)
+  ✓   28 [chromium] › tests/e2e/concept-practice.spec.ts:224:5 › Concept practice at 1280px › imports a public multipart bank, retains saved work on reimport and requires explicit familiar practice (5.2s)
+  ✓   29 [chromium] › tests/e2e/concept-practice.spec.ts:288:5 › Concept practice at 1280px › presents every finite family variant once before offering familiar questions (4.4s)
+  ✓   30 [chromium] › tests/e2e/concept-practice.spec.ts:312:5 › Concept practice at 1280px › handles long written and native choice content, partial marks and immutable corrections (5.8s)
+  ✓   31 [chromium] › tests/e2e/concept-practice.spec.ts:152:5 › Concept practice at 390px › keeps the long skill chooser inside the library and usable from the keyboard (2.6s)
+  ✓   32 [chromium] › tests/e2e/concept-practice.spec.ts:224:5 › Concept practice at 390px › imports a public multipart bank, retains saved work on reimport and requires explicit familiar practice (5.0s)
+  ✓   33 [chromium] › tests/e2e/concept-practice.spec.ts:288:5 › Concept practice at 390px › presents every finite family variant once before offering familiar questions (4.4s)
+  ✓   34 [chromium] › tests/e2e/concept-practice.spec.ts:312:5 › Concept practice at 390px › handles long written and native choice content, partial marks and immutable corrections (5.2s)
+  ✓   35 [chromium] › tests/e2e/concept-practice.spec.ts:370:3 › imports a public bank from a locked published course at 1280px (2.1s)
+  ✓   36 [chromium] › tests/e2e/concept-practice.spec.ts:370:3 › imports a public bank from a locked published course at 390px (2.2s)
+  ✓   37 [chromium] › tests/e2e/course-deletion.spec.ts:89:3 › deletes a course and restores it with Undo (reviewed: false) (1.9s)
+  ✓   38 [chromium] › tests/e2e/course-deletion.spec.ts:89:3 › deletes a course and restores it with Undo (reviewed: true) (3.9s)
+  ✓   39 [chromium] › tests/e2e/course-entry.spec.ts:5:3 › joins a locked course midway and studies prior knowledge separately at 1440px (4.6s)
+  ✓   40 [chromium] › tests/e2e/course-entry.spec.ts:5:3 › joins a locked course midway and studies prior knowledge separately at 390px (4.8s)
+  ✓   41 [chromium] › tests/e2e/course-file-sharing.spec.ts:5:1 › saves and imports course media on first use while offline (2.5s)
+  ✓   42 [chromium] › tests/e2e/course-navigation-layout.spec.ts:10:1 › workspace mode is shared by every course section (2.1s)
+  ✓   43 [chromium] › tests/e2e/course-navigation-layout.spec.ts:54:1 › dragging the course selection previews then opens the released section (1.9s)
+  ✓   44 [chromium] › tests/e2e/course-navigation-layout.spec.ts:80:1 › settings retain accessible speed stops and shared switches (2.3s)
+  ✓   45 [chromium] › tests/e2e/course-navigation-layout.spec.ts:99:1 › a long course name truncates beside the section tabs instead of running under them (1.9s)
+  ✓   46 [chromium] › tests/e2e/course-overview.spec.ts:4:1 › a listed lesson opens its real workspace; Add creates a real lesson (2.1s)
+  ✓   47 [chromium] › tests/e2e/course-overview.spec.ts:31:1 › narrow-screen keyboard activation opens the focused lesson (1.2s)
+  ✓   48 [chromium] › tests/e2e/course-overview.spec.ts:47:1 › practice editing keeps an unobstructed 44px touch target with a long name (3.3s)
+  ✓   49 [chromium] › tests/e2e/course-popover-layering.spec.ts:96:1 › the opening course action stays above the closing surface in both directions (3.1s)
+  ✓   50 [chromium] › tests/e2e/course-rename-focus.spec.ts:3:1 › opening the course rename field focuses and selects its title (1.6s)
+  ✓   51 [chromium] › tests/e2e/course-review-availability.spec.ts:5:3 › keeps course names usable with nothing due at 320px and Larger text (885ms)
+  ✓   52 [chromium] › tests/e2e/course-review-availability.spec.ts:5:3 › keeps course names usable with nothing due at 390px and Larger text (680ms)
+  ✓   53 [chromium] › tests/e2e/course-review-availability.spec.ts:28:3 › keeps due reviews and early practice separate (exam: false) (4.1s)
+  ✓   54 [chromium] › tests/e2e/course-review-availability.spec.ts:28:3 › keeps due reviews and early practice separate (exam: true) (4.4s)
+  ✓   55 [chromium] › tests/e2e/course-settings-scroll.spec.ts:4:1 › mobile course settings opens secondary settings from the keyboard without obstructing the fields (1.6s)
+  ✓   56 [chromium] › tests/e2e/daily-backup-worker.spec.ts:23:1 › commits the daily restore point without cloning its payload on the UI thread (1.2s)
+  ✓   57 [chromium] › tests/e2e/daily-backup-worker.spec.ts:43:1 › runs the daily worker for the first time after an offline reload (1.3s)
+  ✓   58 [chromium] › tests/e2e/daily-backup-worker.spec.ts:107:1 › restores a daily snapshot offline before any import or export action (2.1s)
+  ✓   59 [chromium] › tests/e2e/dashboard-course-actions.spec.ts:4:1 › course actions work on first use after going offline (2.8s)
+  ✓   60 [chromium] › tests/e2e/dashboard-course-actions.spec.ts:26:3 › Today course actions preserve keyboard focus at 390px (2.4s)
+  ✓   61 [chromium] › tests/e2e/dashboard-course-actions.spec.ts:65:3 › Sidebar ordering targets fit enlarged text at 390px (1.7s)
+  ✓   62 [chromium] › tests/e2e/dashboard-course-actions.spec.ts:26:3 › Today course actions preserve keyboard focus at 1440px (1.9s)
+  ✓   63 [chromium] › tests/e2e/dashboard-course-actions.spec.ts:65:3 › Sidebar ordering targets fit enlarged text at 1440px (1.3s)
+  ✓   64 [chromium] › tests/e2e/dashboard-header-text.spec.ts:56:3 › dashboard header actions contain enlarged labels (reduce) (1.4s)
+  ✓   65 [chromium] › tests/e2e/dashboard-header-text.spec.ts:56:3 › dashboard header actions contain enlarged labels (no-preference) (2.4s)
+  ✓   66 [chromium] › tests/e2e/data-recovery.spec.ts:41:1 › replaces a clean browser context with a media-bearing full backup (10.0s)
+  ✓   67 [chromium] › tests/e2e/deployment-recovery.spec.ts:4:1 › recovers a missing deployment chunk after cache cleanup without a manual refresh (1.7s)
+  ✓   68 [chromium] › tests/e2e/desktop-audit.spec.ts:5:3 › analytics values remain accessible with enlarged text at 768px (1.2s)
+  ✓   69 [chromium] › tests/e2e/desktop-audit.spec.ts:5:3 › analytics values remain accessible with enlarged text at 1024px (1.7s)
+  ✓   70 [chromium] › tests/e2e/desktop-audit.spec.ts:5:3 › analytics values remain accessible with enlarged text at 1920px (1.3s)
+  ✓   71 [chromium] › tests/e2e/desktop-audit.spec.ts:28:1 › a card follows a held pointer without spring lag (1.5s)
+  ✓   72 [chromium] › tests/e2e/desktop-audit.spec.ts:55:3 › course tabs and authoring remain usable at 768px with enlarged text (3.1s)
+  ✓   73 [chromium] › tests/e2e/desktop-audit.spec.ts:55:3 › course tabs and authoring remain usable at 1024px with enlarged text (3.2s)
+  ✓   74 [chromium] › tests/e2e/desktop-audit.spec.ts:89:1 › mouse lesson dragging carries the lesson and moves its neighbour aside (2.3s)
+  ✓   75 [chromium] › tests/e2e/desktop-audit.spec.ts:129:1 › populated analytics and course navigation remain accessible (2.6s)
+  ✓   76 [chromium] › tests/e2e/diagram-keyboard-audit.spec.ts:18:3 › authors, adjusts and saves a diagram with the keyboard at 390px (2.9s)
+  ✓   77 [chromium] › tests/e2e/diagram-keyboard-audit.spec.ts:18:3 › authors, adjusts and saves a diagram with the keyboard at 1440px (3.4s)
+  ✓   78 [chromium] › tests/e2e/diagram-narrow-audit.spec.ts:44:3 › the occlusion dock stays inside the page frame at 320px with Larger text (2.8s)
+  ✓   79 [chromium] › tests/e2e/diagram-narrow-audit.spec.ts:62:3 › deleting a region keeps focus and focused fields stay visible at 320px (2.5s)
+  ✓   80 [chromium] › tests/e2e/diagram-narrow-audit.spec.ts:44:3 › the occlusion dock stays inside the page frame at 390px with Larger text (2.9s)
+  ✓   81 [chromium] › tests/e2e/diagram-narrow-audit.spec.ts:62:3 › deleting a region keeps focus and focused fields stay visible at 390px (2.9s)
+  ✓   82 [chromium] › tests/e2e/direction-c-audit.spec.ts:4:1 › Progress fits a phone, with today in view on the 30-day strip (887ms)
+  ✓   83 [chromium] › tests/e2e/direction-c-audit.spec.ts:29:1 › Today keeps New course and Import together beneath its counts on a phone (1.0s)
+  ✓   84 [chromium] › tests/e2e/direction-c-audit.spec.ts:57:1 › card row actions meet the 44px target on a phone (1.1s)
+  ✓   85 [chromium] › tests/e2e/direction-c-audit.spec.ts:80:1 › controls on phone pages reach the 44px target (4.0s)
+  ✓   86 [chromium] › tests/e2e/direction-c-audit.spec.ts:162:1 › the course bar stays at the top while a course page scrolls (1.7s)
+  ✓   87 [chromium] › tests/e2e/direction-c-detail.spec.ts:16:1 › card rows show maths whole and cloze answers without stray spaces (1.6s)
+  ✓   88 [chromium] › tests/e2e/direction-c-detail.spec.ts:40:1 › a lesson's card list renders maths as the Cards page does (1.9s)
+  ✓   89 [chromium] › tests/e2e/editor-keyboard-contract.spec.ts:5:3 › card entry keeps invalid Tab traversal and the repeat loop (reduce) (2.5s)
+  ✓   90 [chromium] › tests/e2e/editor-keyboard-contract.spec.ts:5:3 › card entry keeps invalid Tab traversal and the repeat loop (no-preference) (2.2s)
+  ✓   91 [chromium] › tests/e2e/editor-keyboard-contract.spec.ts:45:1 › course composition confirmation does not submit and ordinary Enter still creates (1.3s)
+  ✓   92 [chromium] › tests/e2e/editor-keyboard-contract.spec.ts:63:3 › creation pills keep their expanded forms within a 320px viewport (717ms)
+  ✓   93 [chromium] › tests/e2e/editor-keyboard-contract.spec.ts:63:3 › creation pills keep their expanded forms within a 390px viewport (986ms)
+  ✓   94 [chromium] › tests/e2e/expanding-controls-audit.spec.ts:4:1 › Tab leaves Other ways from its trigger in both directions (2.0s)
+  ✓   95 [chromium] › tests/e2e/expanding-controls-audit.spec.ts:37:3 › Add and Other ways share accessible expanding surfaces at 390px (1.7s)
+  ✓   96 [chromium] › tests/e2e/expanding-controls-audit.spec.ts:37:3 › Add and Other ways share accessible expanding surfaces at 1440px (1.9s)
+  ✓   97 [chromium] › tests/e2e/forecast-labels.spec.ts:48:3 › forecast percentage glyphs stay intact with a halo at 100% text (1.6s)
+  ✓   98 [chromium] › tests/e2e/forecast-labels.spec.ts:48:3 › forecast percentage glyphs stay intact with a halo at 200% text (2.0s)
+  -   99 [chromium] › tests/e2e/gaps-artefact-labels.spec.ts:20:3 › keeps invitations separate from recovery through creation and restore at 1100px
+  -  100 [chromium] › tests/e2e/gaps-artefact-labels.spec.ts:20:3 › keeps invitations separate from recovery through creation and restore at 390px
+  ✓  101 [chromium] › tests/e2e/gaps-class-code-entry.spec.ts:5:3 › dashboard class action is separate from statistics and keyboard accessible at 1280px (1.6s)
+  ✓  102 [chromium] › tests/e2e/gaps-class-code-entry.spec.ts:40:3 › finds class entry and corrects invalid or unavailable codes at 1280px (3.7s)
+  ✓  103 [chromium] › tests/e2e/gaps-class-code-entry.spec.ts:5:3 › dashboard class action is separate from statistics and keyboard accessible at 390px (1.4s)
+  ✓  104 [chromium] › tests/e2e/gaps-class-code-entry.spec.ts:40:3 › finds class entry and corrects invalid or unavailable codes at 390px (3.8s)
+  -  105 [chromium] › tests/e2e/gaps-course-connection.spec.ts:15:3 › connects a verified course, survives reload and removes only its connection at 1280px
+  -  106 [chromium] › tests/e2e/gaps-course-connection.spec.ts:15:3 › connects a verified course, survives reload and removes only its connection at 390px
+  -  107 [chromium] › tests/e2e/gaps-course-connection.spec.ts:274:3 › creates a private class from someone else's course link at 1280px
+  -  108 [chromium] › tests/e2e/gaps-course-connection.spec.ts:274:3 › creates a private class from someone else's course link at 390px
+  -  109 [chromium] › tests/e2e/gaps-daily-flow.spec.ts:29:1 › relays a consenting pupil’s study evidence into the separate teacher workspace
+  ✓  110 [chromium] › tests/e2e/gaps-entry.spec.ts:9:3 › Gaps opens the teacher entry on a first visit at 1280px (3.6s)
+  ✓  111 [chromium] › tests/e2e/gaps-entry.spec.ts:9:3 › Gaps opens the teacher entry on a first visit at 390px (3.8s)
+  -  112 [chromium] › tests/e2e/gaps-standalone.spec.ts:9:1 › expanded Gaps footer has no empty row above its controls
+  -  113 [chromium] › tests/e2e/gaps-standalone.spec.ts:34:3 › standalone Gaps has no learner startup at 1280px
+  -  114 [chromium] › tests/e2e/gaps-standalone.spec.ts:34:3 › standalone Gaps has no learner startup at 390px
+  -  115 [chromium] › tests/e2e/gaps-standalone.spec.ts:145:1 › standalone Gaps leaves existing learner storage intact
+  -  116 [chromium] › tests/e2e/gaps-standalone.spec.ts:188:1 › uses Lacuna’s saved light theme and supports keyboard connection entry at 390px
+  -  117 [chromium] › tests/e2e/gaps-standalone.spec.ts:214:1 › closes mobile navigation when widening into the desktop layout
+  -  118 [chromium] › tests/e2e/gaps-teacher-keys.spec.ts:10:1 › creates an encrypted file, restores it in a fresh browser and keeps learner storage separate
+  -  119 [chromium] › tests/e2e/gaps-worker-migration.spec.ts:22:1 › retires a cached Gaps learner shell without touching courses or the main-site worker
+  ✓  120 [chromium] › tests/e2e/hosted-ai.spec.ts:23:1 › built-in AI remembers dismissal of the personal-information notice (3.2s)
+  ✓  121 [chromium] › tests/e2e/hosted-ai.spec.ts:38:1 › hosted AI answers, approves one local write and survives reload (3.6s)
+  ✓  122 [chromium] › tests/e2e/hosted-ai.spec.ts:72:1 › quota failure keeps the message available and ordinary study open (2.4s)
+  ✓  123 [chromium] › tests/e2e/hosted-ai.spec.ts:83:1 › a rejected hosted write creates no receipt and cannot execute (2.3s)
+  ✓  124 [chromium] › tests/e2e/hosted-ai.spec.ts:104:1 › a hosted read uses the local catalogue and grounded course result (2.3s)
+  ✓  125 [chromium] › tests/e2e/hosted-ai.spec.ts:128:1 › Stop fences a late provider response (2.3s)
+  ✓  126 [chromium] › tests/e2e/hosted-ai.spec.ts:149:1 › Stop during approval prevents the hosted write (2.2s)
+  ✓  127 [chromium] › tests/e2e/hosted-ai.spec.ts:167:1 › provider failure after a committed write never repeats the mutation (2.4s)
+  ✓  128 [chromium] › tests/e2e/hosted-ai.spec.ts:192:1 › another browser tab cannot own the same hosted conversation (3.1s)
+  ✓  129 [chromium] › tests/e2e/hosted-ai.spec.ts:204:1 › Sign out keeps a 44px pointer target inside the AI header (2.1s)
+  ✓  130 [chromium] › tests/e2e/import-focus-scroll.spec.ts:4:1 › inline Import autofocus preserves the expanding surface scroll position (961ms)
+  ✓  131 [chromium] › tests/e2e/import-navigation.spec.ts:5:3 › opens imports inside Today and keeps the panel usable at 1280px (4.0s)
+  ✓  132 [chromium] › tests/e2e/import-navigation.spec.ts:5:3 › opens imports inside Today and keeps the panel usable at 390px (4.9s)
+  ✓  133 [chromium] › tests/e2e/import-navigation.spec.ts:68:3 › keeps import dropdown chevrons inset and controls within bounds at 1280px (3.8s)
+  ✓  134 [chromium] › tests/e2e/import-navigation.spec.ts:68:3 › keeps import dropdown chevrons inset and controls within bounds at 390px (5.1s)
+  ✓  135 [chromium] › tests/e2e/jev-study.spec.ts:67:5 › morphs a grey waiting bead into a red verdict (no-preference) (3.9s)
+  ✓  136 [chromium] › tests/e2e/jev-study.spec.ts:67:5 › morphs a grey waiting bead into a green verdict (no-preference) (3.5s)
+  ✓  137 [chromium] › tests/e2e/jev-study.spec.ts:67:5 › morphs a grey waiting bead into a red verdict (reduce) (2.4s)
+  ✓  138 [chromium] › tests/e2e/jev-study.spec.ts:67:5 › morphs a grey waiting bead into a green verdict (reduce) (2.3s)
+  ✓  139 [chromium] › tests/e2e/jev-study.spec.ts:152:1 › drains with the card flight and reforms the next pill without delaying typing (4.9s)
+  ✓  140 [chromium] › tests/e2e/jev-study.spec.ts:218:1 › keeps submitted typing through a cross-tab preference change and Undo (4.8s)
+  ✓  141 [chromium] › tests/e2e/jev-study.spec.ts:271:1 › restores pointer grading after a timeout and ignores a late verdict (7.0s)
+  ✓  142 [chromium] › tests/e2e/jev-study.spec.ts:308:3 › retains unsure feedback with manual grading (no-preference) (3.6s)
+  ✓  143 [chromium] › tests/e2e/jev-study.spec.ts:308:3 › retains unsure feedback with manual grading (reduce) (2.2s)
+  ✓  144 [chromium] › tests/e2e/jev-study.spec.ts:336:1 › uses legacy feedback without requests while switched off (2.5s)
+  ✓  145 [chromium] › tests/e2e/jev-study.spec.ts:349:1 › marks an exact match locally without calling Jev (4.4s)
+  ✓  146 [chromium] › tests/e2e/jev-study.spec.ts:366:1 › keeps a final Simple answer undoable and restores manual marking (8.3s)
+  ✓  147 [chromium] › tests/e2e/jev-study.spec.ts:381:1 › holds an automatic answer with Space and resumes as soon as it is released (5.3s)
+  ✓  148 [chromium] › tests/e2e/jev-study.spec.ts:439:3 › shows manual grade labels promptly when they become actionable (no-preference) (3.0s)
+  ✓  149 [chromium] › tests/e2e/jev-study.spec.ts:439:3 › shows manual grade labels promptly when they become actionable (reduce) (1.3s)
+  ✓  150 [chromium] › tests/e2e/jev-study.spec.ts:486:1 › types a reveal lesson through the learner preference and applies a Jev mark (4.5s)
+  ✓  151 [chromium] › tests/e2e/jev-study.spec.ts:498:1 › does not mark abandoned typing when another tab changes the answer preference (5.2s)
+  ✓  152 [chromium] › tests/e2e/landing-film-fallback.spec.ts:6:5 › student film keeps its poster and navigation when blocked at 1280px (1.4s)
+  ✓  153 [chromium] › tests/e2e/landing-film-fallback.spec.ts:6:5 › gaps film keeps its poster and navigation when blocked at 1280px (1.3s)
+  ✓  154 [chromium] › tests/e2e/landing-film-fallback.spec.ts:6:5 › student film keeps its poster and navigation when blocked at 390px (1.3s)
+  ✓  155 [chromium] › tests/e2e/landing-film-fallback.spec.ts:6:5 › gaps film keeps its poster and navigation when blocked at 390px (1.3s)
+  ✓  156 [chromium] › tests/e2e/landing-motion.spec.ts:3:1 › landing keeps a stable promise, accessible motion control and direct entry (3.3s)
+  ✓  157 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:10:1 › the landing page is styled before JavaScript loads (327ms)
+  ✓  158 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: first visit (214ms)
+  ✓  159 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: first-visit anchor (225ms)
+  ✓  160 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: returning browser (231ms)
+  ✓  161 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: light-theme returning browser (209ms)
+  ✓  162 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: returning browser with an empty seed flag (347ms)
+  ✓  163 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: returning browser anchor (319ms)
+  ✓  164 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: app hash route (379ms)
+  ✓  165 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: storage denied (273ms)
+  ✓  166 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: storage-denied anchor (241ms)
+  ✓  167 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: storage-denied app route (232ms)
+  ✓  168 [chromium] › tests/e2e/landing-prerender-paint.spec.ts:36:3 › prerender before app modules: packaged app (224ms)
+  ✓  169 [chromium] › tests/e2e/landing-prerender.spec.ts:3:1 › returning startup reveals the app and later welcome navigation (1.7s)
+  ✓  170 [chromium] › tests/e2e/landing-prerender.spec.ts:17:1 › prerendered homepage hydrates and hands over to the study app (822ms)
+  ✓  171 [chromium] › tests/e2e/landing-prerender.spec.ts:35:1 › a first visit to a landing anchor stays on the landing page (786ms)
+  ✓  172 [chromium] › tests/e2e/landing-rework.spec.ts:3:1 › FAQ supports keyboard disclosure and retained download navigation works (2.6s)
+  ✓  173 [chromium] › tests/e2e/landing-rework.spec.ts:21:1 › enlarged text fits the phone without clipping the new sections (856ms)
+  ✓  174 [chromium] › tests/e2e/landing-rework.spec.ts:39:3 › Lacuna film loads on demand and plays the hosted 4K video (1.9s)
+  ✓  175 [chromium] › tests/e2e/landing-rework.spec.ts:39:3 › Gaps film loads on demand and plays the hosted 4K video (1.3s)
+  ✓  176 [chromium] › tests/e2e/landing-transition.spec.ts:10:1 › app-entry expansion does not rerasterise a viewport mask every frame (1.9s)
+  ✓  177 [chromium] › tests/e2e/lesson-actions.spec.ts:22:1 › path rows open lesson actions from right-click and Shift+F10, and move lessons (2.1s)
+  ✓  178 [chromium] › tests/e2e/lesson-actions.spec.ts:47:1 › deleting a lesson states its consequences, moves focus and can be undone (1.8s)
+  ✓  179 [chromium] › tests/e2e/lesson-actions.spec.ts:71:1 › the lesson heading offers the same actions and deleting it returns to the path (1.6s)
+  ✓  180 [chromium] › tests/e2e/lesson-add-toolbar.spec.ts:4:1 › the Add surface grows with enlarged text instead of clipping its label (1.9s)
+  ✓  181 [chromium] › tests/e2e/lesson-management-audit.spec.ts:5:3 › lesson settings targets and rename remain usable at 390px with enlarged text (2.5s)
+  ✓  182 [chromium] › tests/e2e/lesson-management-audit.spec.ts:5:3 › lesson settings targets and rename remain usable at 1440px with enlarged text (2.7s)
+  ✓  183 [chromium] › tests/e2e/library-links.spec.ts:41:3 › homepage exposes the library before and after hydration at 1280px (916ms)
+  ✓  184 [chromium] › tests/e2e/library-links.spec.ts:57:3 › learner can discover courses from creation and import at 1280px (2.3s)
+  ✓  185 [chromium] › tests/e2e/library-links.spec.ts:82:3 › public course index and detail expose the library without JavaScript at 1280px (600ms)
+  ✓  186 [chromium] › tests/e2e/library-links.spec.ts:41:3 › homepage exposes the library before and after hydration at 390px (1.1s)
+  ✓  187 [chromium] › tests/e2e/library-links.spec.ts:57:3 › learner can discover courses from creation and import at 390px (2.8s)
+  ✓  188 [chromium] › tests/e2e/library-links.spec.ts:82:3 › public course index and detail expose the library without JavaScript at 390px (656ms)
+  -  189 [chromium] › tests/e2e/library-standalone.spec.ts:27:3 › find either Cambridge code and open its existing share at 1280px
+  -  190 [chromium] › tests/e2e/library-standalone.spec.ts:27:3 › find either Cambridge code and open its existing share at 390px
+  -  191 [chromium] › tests/e2e/library-standalone.spec.ts:27:3 › find either Cambridge code and open its existing share at 320px
+  -  192 [chromium] › tests/e2e/library-standalone.spec.ts:69:3 › browse and open courses without learner startup at 1280px
+  -  193 [chromium] › tests/e2e/library-standalone.spec.ts:69:3 › browse and open courses without learner startup at 390px
+  -  194 [chromium] › tests/e2e/library-standalone.spec.ts:69:3 › browse and open courses without learner startup at 320px
+  -  195 [chromium] › tests/e2e/library-standalone.spec.ts:208:1 › reduced motion keeps a complete course sheet without animations
+  ✓  196 [chromium] › tests/e2e/markdown-diagrams.spec.ts:3:1 › renders Mermaid notes with safe fallback and theme updates (3.9s)
+  ✓  197 [chromium] › tests/e2e/merge-review-layout.spec.ts:6:3 › merge decisions stay reachable above course navigation at text scale 1 (3.1s)
+  ✓  198 [chromium] › tests/e2e/merge-review-layout.spec.ts:6:3 › merge decisions stay reachable above course navigation at text scale 1.35 (2.5s)
+  ✓  199 [chromium] › tests/e2e/narrow-larger-text.spec.ts:21:1 › the sequence editor action bar stays within the page at 320px with Larger text (2.0s)
+  ✓  200 [chromium] › tests/e2e/narrow-larger-text.spec.ts:41:1 › the Help shortcuts table keeps every column reachable at 320px with Larger text (1.6s)
+  ✓  201 [chromium] › tests/e2e/offline-reload.spec.ts:51:1 › reloads a visited card library with persisted data while offline (4.7s)
+  ✓  202 [chromium] › tests/e2e/optimiser-worker.spec.ts:10:1 › ships the browser trainer matching binding 0.5 (1ms)
+  ✓  203 [chromium] › tests/e2e/optimiser-worker.spec.ts:18:1 › fits valid weights through the production browser WASI worker (997ms)
+  ✓  204 [chromium] › tests/e2e/path-inline-editing.spec.ts:4:1 › edits a checkpoint in place, excludes a card and persists a dragged anchor (9.1s)
+  ✓  205 [chromium] › tests/e2e/pomodoro-timer.spec.ts:4:1 › keeps timer focus in its popup and restores elapsed time after reload (4.5s)
+  ✓  206 [chromium] › tests/e2e/practice-queue.spec.ts:6:5 › clears the last Practice cards without early repeats: Again, due only false (7.2s)
+  ✓  207 [chromium] › tests/e2e/practice-queue.spec.ts:6:5 › clears the last Practice cards without early repeats: Good, due only false (8.1s)
+  ✓  208 [chromium] › tests/e2e/practice-queue.spec.ts:6:5 › clears the last Practice cards without early repeats: Again, due only true (6.5s)
+  ✓  209 [chromium] › tests/e2e/practice-queue.spec.ts:6:5 › clears the last Practice cards without early repeats: Good, due only true (6.7s)
+  ✓  210 [chromium] › tests/e2e/preference-transitions.spec.ts:4:1 › input mode round trips preserve text size and persist (2.8s)
+  ✓  211 [chromium] › tests/e2e/preference-transitions.spec.ts:28:1 › editor presentation follows explicit modes and Auto follows physical activity (6.6s)
+  ✓  212 [chromium] › tests/e2e/progress-charts.spec.ts:16:1 › Workload ahead draws each day as a bar (1.4s)
+  ✓  213 [chromium] › tests/e2e/progress-charts.spec.ts:25:1 › Lesson breakdown keeps card counts off the percentage axis (2.4s)
+  ✓  214 [chromium] › tests/e2e/progress-leeches.spec.ts:5:1 › Leech count links to the leech cards it counts (4.4s)
+  ✓  215 [chromium] › tests/e2e/progress-narrow-text.spec.ts:6:1 › When you studied date labels never overlap at 320px with Larger text (1.4s)
+  ✓  216 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:4:1 › the Question editor footer clears the phone course bar (2.8s)
+  ✓  217 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:50:3 › Question entry requires a Concept choice and retains it across repeat and edit (reduce) (9.0s)
+  ✓  218 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:50:3 › Question entry requires a Concept choice and retains it across repeat and edit (no-preference) (10.6s)
+  ✓  219 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:134:3 › Question validation focuses the answer and invalid generator field (reduce) (2.8s)
+  ✓  220 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:134:3 › Question validation focuses the answer and invalid generator field (no-preference) (4.0s)
+  ✓  221 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:185:5 › Question save focuses the invalid alternative after answer transitions (reduce) (3.4s)
+  ✓  222 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:185:5 › Question save focuses the invalid tolerance after answer transitions (reduce) (2.9s)
+  ✓  223 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:185:5 › Question save focuses the invalid alternative after answer transitions (no-preference) (4.1s)
+  ✓  224 [chromium] › tests/e2e/question-editor-mobile-footer.spec.ts:185:5 › Question save focuses the invalid tolerance after answer transitions (no-preference) (4.3s)
+  ✓  225 [chromium] › tests/e2e/question-set-attempt-layout.spec.ts:108:5 › attempt layout at 1280×800, light (8.6s)
+  ✓  226 [chromium] › tests/e2e/question-set-attempt-layout.spec.ts:108:5 › attempt layout at 1280×800, dark (9.6s)
+  ✓  227 [chromium] › tests/e2e/question-set-attempt-layout.spec.ts:108:5 › attempt layout at 390×844, light (8.4s)
+  ✓  228 [chromium] › tests/e2e/question-set-attempt-layout.spec.ts:108:5 › attempt layout at 390×844, dark (8.7s)
+  ✓  229 [chromium] › tests/e2e/question-set-composer.spec.ts:16:3 › keyboard authoring publishes plain, multipart and multiple-choice questions (reduce) (4.0s)
+  ✓  230 [chromium] › tests/e2e/question-set-composer.spec.ts:16:3 › keyboard authoring publishes plain, multipart and multiple-choice questions (no-preference) (6.3s)
+  ✓  231 [chromium] › tests/e2e/question-set-composer.spec.ts:86:1 › resizes wrapped composer fields without ResizeObserver delivery errors (3.4s)
+  ✓  232 [chromium] › tests/e2e/question-set-jev-unsure.spec.ts:92:1 › saves automatic Unsure on re-entry and permits a numeric override (5.3s)
+  ✓  233 [chromium] › tests/e2e/question-set-jev-unsure.spec.ts:133:1 › retains a learner mark chosen while a low-confidence result is in flight (3.8s)
+  ✓  234 [chromium] › tests/e2e/question-set-practice-keyboard.spec.ts:108:5 › practice supports answer and manual-mark progression with reduce motion (3.4s)
+  ✓  235 [chromium] › tests/e2e/question-set-practice-keyboard.spec.ts:108:5 › practice supports answer and manual-mark progression with no-preference motion (4.1s)
+  ✓  236 [chromium] › tests/e2e/question-set-practice-keyboard.spec.ts:108:5 › paper supports answer and manual-mark progression with reduce motion (3.2s)
+  ✓  237 [chromium] › tests/e2e/question-set-practice-keyboard.spec.ts:108:5 › paper supports answer and manual-mark progression with no-preference motion (3.3s)
+  ✓  238 [chromium] › tests/e2e/question-set-practice-keyboard.spec.ts:174:1 › a single written part keeps its direct Tab path and blank confirmation explicit (2.3s)
+  ✓  239 [chromium] › tests/e2e/question-set-related-cards.spec.ts:107:3 › related cards stay with the current marking part at 1280px (2.8s)
+  ✓  240 [chromium] › tests/e2e/question-set-related-cards.spec.ts:107:3 › related cards stay with the current marking part at 320px (2.6s)
+  ✓  241 [chromium] › tests/e2e/question-set-search-scroll.spec.ts:5:3 › keeps scrolled search usable and restores it after navigation at 1280px (2.6s)
+  ✓  242 [chromium] › tests/e2e/question-set-search-scroll.spec.ts:5:3 › keeps scrolled search usable and restores it after navigation at 390px (2.8s)
+  ✓  243 [chromium] › tests/e2e/question-set-search.spec.ts:5:3 › finds prompt wording and replaces a saved path activity at 1280px (7.8s)
+  ✓  244 [chromium] › tests/e2e/question-set-search.spec.ts:5:3 › finds prompt wording and replaces a saved path activity at 390px (8.9s)
+  ✓  245 [chromium] › tests/e2e/quick-search-layout.spec.ts:5:3 › quick search keeps its drawing and remembers first-visit hints at 390px (2.4s)
+  ✓  246 [chromium] › tests/e2e/quick-search-layout.spec.ts:5:3 › quick search keeps its drawing and remembers first-visit hints at 1440px (3.0s)
+  ✓  247 [chromium] › tests/e2e/quizlet-comparison.spec.ts:3:1 › serves the comparison and sitemap as public documents (449ms)
+  ✓  248 [chromium] › tests/e2e/quizlet-comparison.spec.ts:28:1 › hydrates the real flashcards, scheduling and teacher sharing without starting the app (3.1s)
+  ✓  249 [chromium] › tests/e2e/quizlet-comparison.spec.ts:80:1 › keeps the mobile comparison usable with reduced motion (752ms)
+  ✓  250 [chromium] › tests/e2e/radios-to-toggles.spec.ts:4:1 › AI and study pills retain keyboard choices after reloading (2.3s)
+  ✓  251 [chromium] › tests/e2e/radios-to-toggles.spec.ts:31:1 › Question switches save generator configuration and suspension (6.4s)
+  ✘  252 [chromium] › tests/e2e/recitation.spec.ts:28:1 › learns a poem by cumulative recitation (1.5s)
+
+
+  1) [chromium] › tests/e2e/recitation.spec.ts:28:1 › learns a poem by cumulative recitation ───────
+
+    Test was interrupted.
+
+    Error: locator.click: Test ended.
+    Call log:
+      - waiting for getByRole('form', { name: 'New course' }).getByRole('button', { name: 'Create', exact: true })
+        - locator resolved to <button tabindex="0" data-press="" type="button" class="inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:opacity-40 disabled:pointer-events-none select-none bg-accent text-accent-fg hover:brightness-105 min-h-11 min-w-11 px-4 text-sm">Create</button>
+      - attempting click action
+        2 × waiting for element to be visible, enabled and stable
+          - element is not stable
+        - retrying click action
+        - waiting 20ms
+        - waiting for element to be visible, enabled and stable
+
+
+       at fixtures/lacunaApp.ts:38
+
+      36 |   await steadyRetention.press('Space');
+      37 |   await expect(steadyRetention).toBeChecked();
+    > 38 |   await form.getByRole('button', { name: 'Create', exact: true }).click();
+         |                                                                   ^
+      39 |
+      40 |   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+      41 |   await expect(
+        at createCourse (<worktree>/tests/e2e/fixtures/lacunaApp.ts:38:67)
+        at <worktree>/tests/e2e/recitation.spec.ts:30:3
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-sLn3KE/test-results/recitation-learns-a-poem-by-cumulative-recitation-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: artifacts/browser-checks/run-sLn3KE/test-results/recitation-learns-a-poem-by-cumulative-recitation-chromium/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    artifacts/browser-checks/run-sLn3KE/test-results/recitation-learns-a-poem-by-cumulative-recitation-chromium/trace.zip
+    Usage:
+
+        npx playwright show-trace artifacts/browser-checks/run-sLn3KE/test-results/recitation-learns-a-poem-by-cumulative-recitation-chromium/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 interrupted
+    [chromium] › tests/e2e/recitation.spec.ts:28:1 › learns a poem by cumulative recitation ────────
+  22 skipped
+  137 did not run
+  229 passed (12.9m)
+error: script "verify:browser" exited with code 130

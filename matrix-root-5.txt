@@ -1,0 +1,38 @@
+$ vitest run --config tests/config/vitest.recovery.config.ts --coverage --maxWorkers=1
+
+ RUN  v5.0.5 <worktree>
+      Coverage enabled with v8
+
+
+ Test Files  10 passed (10)
+      Tests  174 passed (174)
+   Start at  16:51:52
+   Duration  15.01s (import 34%, tests 27%, environment 20%, setup 11%, transform 7%, worker 2%)
+
+     Import  135 modules were evaluated 733 times · 4.47s total, 34% of tracked time
+             ~3.64s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   94.62 |    84.37 |    94.9 |   95.32 |                   
+ db                |   94.04 |    83.04 |   94.02 |   94.78 |                   
+  assetCodec.ts    |   98.38 |    92.85 |     100 |   98.18 | 71                
+  assets.ts        |   90.55 |    82.81 |      90 |   92.15 | ...40-243,275-276 
+  backups.ts       |   97.82 |     91.3 |     100 |     100 | 36,85             
+  ...Extraction.ts |   98.03 |       80 |     100 |     100 | 31-38,67,97       
+  portability.ts   |   93.56 |    81.83 |   92.64 |   93.89 | ...69,837,885,890 
+ hooks             |     100 |     87.5 |     100 |     100 |                   
+  ...otaWarning.ts |     100 |     87.5 |     100 |     100 | 29-30             
+ sync              |     100 |    96.61 |     100 |     100 |                   
+  manualMerge.ts   |     100 |    96.61 |     100 |     100 | 198               
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 94.62% ( 898/949 )
+Branches     : 84.37% ( 556/659 )
+Functions    : 94.9% ( 149/157 )
+Lines        : 95.32% ( 815/855 )
+================================================================================

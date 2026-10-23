@@ -1,0 +1,30 @@
+bun install v1.4.4 (38afee6c8)
+
++ vite@8.3.4
++ vitest@5.0.5
+
+36 packages installed [13.00ms]
+$ bun check -b && vite build
+✓ No type errors in 14 files across 1 project [22.69ms]
+vite v8.3.4 building client environment for production...
+transforming...
+✓ 9 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                2.10 kB │ gzip: 1.01 kB
+dist/assets/index-IqyZTxmr.js  6.13 kB │ gzip: 2.68 kB
+
+✓ built in 82ms
+$ vitest run
+
+ RUN  v5.0.5 <worktree>/tooling/handwriting-maths
+
+
+ Test Files  5 passed (5)
+      Tests  56 passed (56)
+   Start at  16:38:12
+   Duration  753ms (transform 47%, import 25%, tests 20%, worker 8%)
+
+    Isolate  5 workers spawned · ~96ms startup each (spawn + environment, per file)
+             at least ~386ms faster with isolate: false — reuses workers across files instead of one per file
+

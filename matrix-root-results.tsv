@@ -1,0 +1,9 @@
+bun run lint	0	59.3s	matrix-root-0.log
+bun run docs:check	0	0.2s	matrix-root-1.log
+bun run changelog:check	0	0.1s	matrix-root-2.log
+bun run test:ci:unit	130	753.7s	matrix-root-3.log
+bun run test:coverage	0	14.2s	matrix-root-4.log
+bun run test:coverage:recovery	0	15.6s	matrix-root-5.log
+bun run build:assets	0	5.9s	matrix-root-6.log
+bun run release:scenario	0	4.3s	matrix-root-7.log
+bun run perf:check	0	0.7s	matrix-root-8.log

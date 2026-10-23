@@ -1,0 +1,10 @@
+$ vitest run "--maxWorkers=1" src/questions/questionSetAttemptRepository.test.ts -t "rejects an unsure write when undone"
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 21 skipped (22)
+   Start at  16:52:32
+   Duration  2.09s (import 52%, transform 18%, environment 14%, setup 12%, tests 3%, worker 1%)
+

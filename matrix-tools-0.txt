@@ -1,0 +1,31 @@
+bun install v1.4.4 (38afee6c8)
+
++ @eslint/js@10.0.1
++ @types/node@26.6.5
++ @typescript-eslint/eslint-plugin@8.71.2
++ @typescript-eslint/parser@8.71.2
++ eslint@10.13.0
++ eslint-config-prettier@10.1.8
++ globals@17.13.0
++ typescript@6.0.2
++ vite@8.3.4
++ vitest@5.0.5
++ @vercel/blob@2.8.2
+
+157 packages installed [74.00ms]
+$ bun check
+✓ No type errors in 29 files [28.42ms]
+$ eslint src api tests scripts shared --ext .ts,.mjs
+$ vitest run
+
+ RUN  v5.0.5 <worktree>/relay
+
+
+ Test Files  12 passed (12)
+      Tests  178 passed (178)
+   Start at  16:38:08
+   Duration  3.40s (import 54%, tests 35%, transform 9%, worker 1%)
+
+    Isolate  12 workers spawned · ~82ms startup each (spawn + environment, per file)
+             at least ~907ms faster with isolate: false — reuses workers across files instead of one per file
+

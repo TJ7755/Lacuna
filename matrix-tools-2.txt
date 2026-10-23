@@ -1,0 +1,21 @@
+$ bun check -p tsconfig.json
+✓ No type errors in 13 files [68.19ms]
+$ eslint . --max-warnings=0
+$ vitest run -c vitest.config.ts
+
+ RUN  v5.0.5 <worktree>/tooling/lacuna-ai-mcp
+
+
+ Test Files  5 passed (5)
+      Tests  47 passed (47)
+   Start at  16:38:17
+   Duration  2.25s (transform 49%, import 38%, tests 12%, worker 1%)
+
+    Isolate  5 workers spawned · ~70ms startup each (spawn + environment, per file)
+             at least ~278ms faster with isolate: false — reuses workers across files instead of one per file
+
+$ esbuild src/index.ts --bundle --platform=node --format=esm --external:@modelcontextprotocol/server --external:'@modelcontextprotocol/server/*' --external:zod --outfile=dist/index.js --banner:js='#!/usr/bin/env node'
+
+  dist/index.js  50.4kb
+
+⚡ Done in 9ms

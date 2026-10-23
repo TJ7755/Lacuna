@@ -1,0 +1,11 @@
+$ node scripts/release-scenario.mjs
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  4 passed (4)
+      Tests  20 passed (20)
+   Start at  16:52:13
+   Duration  3.94s (import 42%, environment 23%, tests 15%, setup 13%, transform 8%)
+
+Release report: <worktree>/artifacts/release-scenarios/2026-10-23T15-52-13.279Z/report.json

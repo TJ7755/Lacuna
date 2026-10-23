@@ -1,0 +1,10 @@
+$ vitest run "--maxWorkers=1" src/db/courseRepository.test.ts
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  1 passed (1)
+      Tests  93 passed (93)
+   Start at  16:43:13
+   Duration  2.49s (tests 45%, import 25%, environment 11%, transform 11%, setup 6%, worker 1%)
+

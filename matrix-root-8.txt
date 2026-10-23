@@ -1,0 +1,173 @@
+$ bun scripts/performance-audit.ts --assets-only
+{
+  "measuredAt": "2026-10-23T15:52:18.200Z",
+  "session": null,
+  "recordReview": null,
+  "build": {
+    "available": true,
+    "initialJavaScript": {
+      "assets": [
+        {
+          "name": "app-B-3lTLau.js",
+          "bytes": 322260,
+          "gzipBytes": 99995
+        },
+        {
+          "name": "icons-CzvjmTSC.js",
+          "bytes": 25118,
+          "gzipBytes": 7917
+        },
+        {
+          "name": "client-BYLi7C6U.js",
+          "bytes": 207365,
+          "gzipBytes": 64366
+        },
+        {
+          "name": "SectionCard-BoqD9rgD.js",
+          "bytes": 325371,
+          "gzipBytes": 99258
+        },
+        {
+          "name": "schema-Efo6BDOW.js",
+          "bytes": 3370,
+          "gzipBytes": 1540
+        },
+        {
+          "name": "heatmap-BeXguklV.js",
+          "bytes": 412,
+          "gzipBytes": 270
+        },
+        {
+          "name": "assetCache-Cgd7q0V5.js",
+          "bytes": 3436,
+          "gzipBytes": 1593
+        },
+        {
+          "name": "dexie-react-hooks-T9xzoGrv.js",
+          "bytes": 1375,
+          "gzipBytes": 650
+        },
+        {
+          "name": "mutationStamp-Bxwej6F8.js",
+          "bytes": 1617,
+          "gzipBytes": 733
+        },
+        {
+          "name": "backingDecks-LjuZVk4w.js",
+          "bytes": 3858,
+          "gzipBytes": 1353
+        },
+        {
+          "name": "assessmentCoverage-DruFhS3E.js",
+          "bytes": 2749,
+          "gzipBytes": 952
+        },
+        {
+          "name": "horizon-CU4I9MPh.js",
+          "bytes": 947,
+          "gzipBytes": 477
+        },
+        {
+          "name": "eligibility-DcbgjlRL.js",
+          "bytes": 1335,
+          "gzipBytes": 617
+        },
+        {
+          "name": "origins-C5k0UB5S.js",
+          "bytes": 148,
+          "gzipBytes": 124
+        }
+      ],
+      "bytes": 899361,
+      "gzipBytes": 279845
+    },
+    "initialCss": {
+      "assets": [
+        {
+          "name": "icons-Dc5CHVy_.css",
+          "bytes": 124056,
+          "gzipBytes": 21100
+        },
+        {
+          "name": "index-CGQ_DoSe.css",
+          "bytes": 167,
+          "gzipBytes": 139
+        },
+        {
+          "name": "Landing-BwiuIQ_7.css",
+          "bytes": 4710,
+          "gzipBytes": 1424
+        },
+        {
+          "name": "Landing-OQgotLUu.css",
+          "bytes": 12808,
+          "gzipBytes": 3240
+        }
+      ],
+      "bytes": 141741,
+      "gzipBytes": 25903
+    },
+    "largestAssets": [
+      {
+        "name": "elk-QONTBCTQ-C7TOAR2h.js",
+        "bytes": 1463355,
+        "gzipBytes": 448236
+      },
+      {
+        "name": "MarkdownView-BGUdvrQn.js",
+        "bytes": 696454,
+        "gzipBytes": 211083
+      },
+      {
+        "name": "sql-wasm-C1D_RJuy.wasm",
+        "bytes": 684897,
+        "gzipBytes": 335095
+      },
+      {
+        "name": "chunk-NGNAAXSQ-DqoPQk1a.js",
+        "bytes": 629058,
+        "gzipBytes": 125432
+      },
+      {
+        "name": "fsrs-binding.wasm32-wasi-BCb3XNhu.wasm",
+        "bytes": 598176,
+        "gzipBytes": 230783
+      },
+      {
+        "name": "cytoscape.esm-Yq6u8L66.js",
+        "bytes": 434855,
+        "gzipBytes": 136645
+      },
+      {
+        "name": "esm-Bd5Go6BK.js",
+        "bytes": 368714,
+        "gzipBytes": 107029
+      },
+      {
+        "name": "SectionCard-BoqD9rgD.js",
+        "bytes": 325371,
+        "gzipBytes": 99258
+      },
+      {
+        "name": "app-B-3lTLau.js",
+        "bytes": 322260,
+        "gzipBytes": 99995
+      },
+      {
+        "name": "lesson-Br0PhygT.png",
+        "bytes": 315253,
+        "gzipBytes": 281980
+      },
+      {
+        "name": "lib-BUGfRecR.js",
+        "bytes": 290965,
+        "gzipBytes": 88400
+      },
+      {
+        "name": "course-q6X3AdYN.png",
+        "bytes": 286778,
+        "gzipBytes": 260834
+      }
+    ]
+  }
+}

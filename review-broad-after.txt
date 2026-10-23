@@ -1,0 +1,10 @@
+$ vitest run "--maxWorkers=2" src/jev src/questions
+
+ RUN  v5.0.5 <worktree>
+
+
+ Test Files  34 passed (34)
+      Tests  328 passed (328)
+   Start at  16:52:34
+   Duration  19.80s (environment 30%, tests 30%, import 20%, setup 16%, transform 3%, worker 1%)
+
