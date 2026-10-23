@@ -11,8 +11,17 @@ function snapshot(record: CourseAssessment): Snapshot {
   return content;
 }
 
+function publishedContent(record: Snapshot): Snapshot {
+  if (record.kind !== 'final') return record;
+  const { examDate: _date, timeZone: _zone, schedulingMode: _mode, ...content } = record;
+  return content;
+}
+
 function unchanged(record: CourseAssessment, expected: Snapshot | undefined): boolean {
-  return expected !== undefined && JSON.stringify(snapshot(record)) === JSON.stringify(expected);
+  return (
+    expected !== undefined &&
+    JSON.stringify(publishedContent(snapshot(record))) === JSON.stringify(publishedContent(expected))
+  );
 }
 
 /** Adopt published assessment identities before Question Set references are checked. */
@@ -120,9 +129,19 @@ export async function applyLineageAssessments(
           }
         : { ...common, coverageMode: 'prefix' };
     validateAssessmentStructure(record);
+    snapshots[id] = snapshot(record);
+    if (!firstImport && existing?.kind === 'final' && record.kind === 'final') {
+      // Final scheduling belongs to the learner, even when they confirmed the suggested date.
+      delete record.examDate;
+      delete record.timeZone;
+      delete record.schedulingMode;
+      if (existing.examDate !== undefined) record.examDate = existing.examDate;
+      if (existing.timeZone !== undefined) record.timeZone = existing.timeZone;
+      if (existing.schedulingMode !== undefined) record.schedulingMode = existing.schedulingMode;
+      validateAssessmentStructure(record);
+    }
     await db.courseAssessments.put(record);
     if (tombstone) await db.tombstones.delete(['courseAssessments', id]);
-    snapshots[id] = snapshot(record);
   }
   mapping.assessmentIds = [...incomingIds];
   mapping.assessmentSnapshots = snapshots;

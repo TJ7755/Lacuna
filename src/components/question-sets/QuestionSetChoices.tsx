@@ -87,7 +87,7 @@ export function QuestionSetChoices({
                   )}
                 </motion.span>
               )}
-              <span>
+              <span className="qs-choice-content">
                 {option.label}
                 {option.description}
               </span>

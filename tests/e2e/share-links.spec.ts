@@ -47,7 +47,12 @@ for (const width of [1280, 390]) {
     await enterFreshLacuna(page);
     await page.goto(`/#/s/${shareId}`);
     await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
-    await page.getByRole('button', { name: 'Add to my courses' }).press('Enter');
+    const add = page.getByRole('button', { name: 'Add to my courses' });
+    await expect(add).toBeDisabled();
+    const steady = page.getByRole('radio', { name: /Steady retention/ });
+    await steady.press('Space');
+    await expect(steady).toBeChecked();
+    await add.press('Enter');
     await expect
       .poll(() =>
         page.evaluate(
@@ -252,6 +257,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
   await expect(student.getByRole('heading', { name: 'Shared course', exact: true })).toBeVisible();
   await expect(student.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
   await expect(student.getByText(/Link biology —/)).toBeVisible();
+  await student.getByRole('radio', { name: /Exam date/ }).press('Space');
   await student.getByRole('button', { name: 'Add to my courses' }).click();
   await expect
     .poll(() =>
@@ -455,6 +461,7 @@ test('updates a synthetic library revision 17 through a Gaps class link at revis
   await enterFreshLacuna(page);
   await page.goto(`/#/s/${source.shareId}`);
   await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
   await page.getByRole('button', { name: 'Add to my courses' }).click();
   await expect.poll(() => readStudentRevision(page)).toBe(17);
   await page.evaluate(() => new Promise<void>((resolve, reject) => {

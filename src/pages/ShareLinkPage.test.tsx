@@ -238,7 +238,7 @@ it('opens and focuses the imported course after recording its share link', async
   expect(await screen.findByText('Shared biology')).toBeInTheDocument();
   expect(mocks.importShare).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
-  await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }));
+  await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }, undefined));
   expect(JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')).toEqual({
     [SHARE_ID]: 'biology',
   });
@@ -477,7 +477,7 @@ it('recovers tracking after the manifest returns', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
   expect(await screen.findByText('Shared biology')).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
-  await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }));
+  await waitFor(() => expect(mocks.importShare).toHaveBeenCalledWith({ v: 2 }, undefined));
   expect(JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')).toEqual({
     [SHARE_ID]: 'biology',
   });

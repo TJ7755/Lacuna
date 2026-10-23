@@ -173,7 +173,7 @@ describe('SharedCourseImport with course codes and files', () => {
       finish({ payload: { v: 2 }, assets: [] });
     });
     fireEvent.click(screen.getByText('Add to my courses'));
-    await waitFor(() => expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload));
+    await waitFor(() => expect(importSharePayload).toHaveBeenCalledWith(mockDecodedPayload, undefined));
     expect(mockWithCourseFileAssets).not.toHaveBeenCalled();
   });
 
@@ -192,7 +192,7 @@ describe('SharedCourseImport with course codes and files', () => {
     await waitFor(() =>
       expect(mockWithCourseFileAssets).toHaveBeenCalledWith(file, expect.any(Function)),
     );
-    expect(importSharePayload).toHaveBeenCalledWith(file.payload);
+    expect(importSharePayload).toHaveBeenCalledWith(file.payload, undefined);
     await waitFor(() =>
       expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive'),
     );
@@ -272,7 +272,7 @@ describe('SharedCourseImport with course codes and files', () => {
       fireEvent.click(screen.getByText('Add to my courses'));
 
       await waitFor(() =>
-        expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload),
+        expect(mockImportLineageFirstTime).toHaveBeenCalledWith(mockDecodedPayload, undefined),
       );
       expect(mockNotify).toHaveBeenCalledWith('Added 1 course and 2 cards.', 'positive');
     });

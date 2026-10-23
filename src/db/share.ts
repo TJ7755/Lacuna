@@ -68,6 +68,7 @@ import type {
   QuestionPayload,
 } from '../questions/types';
 import { finalAssessmentForCourse } from './assessmentMigration';
+import { updateCourseAssessment } from './assessmentRepository';
 import { stripAssetMedia } from './assets';
 import { decodeShareCode, encodeShareCode, encodeShareQrCode } from './shareCodec';
 import { LABEL_CARD_SUFFIX } from './sequenceGeneration';
@@ -1447,9 +1448,25 @@ function splitSequenceItemId(si: string): { baseId: string; isLabel: boolean } {
   return { baseId: si, isLabel: false };
 }
 
-/** Import a v2/v3 single-course payload directly into the course model. */
+/** The learner's choice, kept separate from the publisher's payload and baseline. */
+export type ImportCourseScheduling =
+  | { schedulingMode: 'steady' }
+  | { schedulingMode: 'exam'; examDate: number; timeZone: string };
+
+/** Call inside the import transaction, after published assessments have been adopted. */
+export async function applyImportedCourseScheduling(
+  courseId: string,
+  scheduling: ImportCourseScheduling,
+): Promise<void> {
+  const assessments = await db.courseAssessments.where('courseId').equals(courseId).toArray();
+  const final = finalAssessmentForCourse(courseId, assessments);
+  await updateCourseAssessment(final.id, scheduling);
+}
+
+/** Import a single-course payload directly into the course model. */
 async function importCourseSharePayload(
   payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6,
+  scheduling?: ImportCourseScheduling,
 ): Promise<ImportShareResult> {
   assertShareLessonPrerequisites(payload.lessons);
   let cardCount = 0;
@@ -1953,6 +1970,7 @@ async function importCourseSharePayload(
           if (importedNodes.length > 0) await db.practiceNodes.bulkAdd(importedNodes);
         }
       }
+      if (scheduling) await applyImportedCourseScheduling(course.id, scheduling);
     },
   );
 
@@ -1972,9 +1990,12 @@ async function importCourseSharePayload(
  * directly. A v1 deck payload is refused. All FSRS/review state starts clean for
  * the new owner.
  */
-export async function importSharePayload(payload: SharePayload): Promise<ImportShareResult> {
+export async function importSharePayload(
+  payload: SharePayload,
+  scheduling?: ImportCourseScheduling,
+): Promise<ImportShareResult> {
   if (payload.v === 1) {
     throw new Error(V1_SHARE_CODE_MESSAGE);
   }
-  return importCourseSharePayload(payload);
+  return importCourseSharePayload(payload, scheduling);
 }
