@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { createQuestionSetPracticeNode } from './practiceNodeRepository';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './schema';
 import { createCourse, createLesson } from './repository';
@@ -82,10 +83,13 @@ describe('course files with authored Question Sets', () => {
       100,
     );
     await startQuestionSetAttempt(sourceSet.id, 'paper', 110);
+    const second = await createQuestionSet({ ...sourceSet, id: 'second', title: 'Second' });
+    const third = await createQuestionSet({ ...sourceSet, id: 'third', title: 'Third' });
+    await createQuestionSetPracticeNode(course.id, [third.id, sourceSet.id, second.id], lesson.id);
 
     const file = await decodeCourseFile(await buildCourseFile(course.id));
-    if (file.payload.v !== 5) throw new Error('Expected a v5 course payload.');
-    expect(file.payload.questionSets).toHaveLength(1);
+    if (file.payload.v !== 6) throw new Error('Expected a v6 course payload.');
+    expect(file.payload.questionSets).toHaveLength(3);
     expect(file.assets.map((asset) => asset.hash)).toEqual([image.hash]);
 
     await clearDatabase();
@@ -103,8 +107,13 @@ describe('course files with authored Question Sets', () => {
     )[0];
     const importedSet = (
       await db.questionSets.where('courseId').equals(importedCourse.id).toArray()
-    )[0];
+    ).find((set) => set.title === 'Cell paper')!;
 
+    const importedActivity = (await db.practiceNodes.toArray())[0];
+    const byId = new Map((await db.questionSets.toArray()).map((set) => [set.id, set.title]));
+    expect(importedActivity.questionSetIds?.map((id) => byId.get(id)))
+      .toEqual(['Third', 'Cell paper', 'Second']);
+    expect(importedActivity.afterLessonId).toBe(importedLesson.id);
     expect(importedSet.id).not.toBe(sourceSet.id);
     expect(importedSet.lessonIds).toEqual([importedLesson.id]);
     expect(importedSet.assessmentIds).toEqual([importedAssessment.id]);

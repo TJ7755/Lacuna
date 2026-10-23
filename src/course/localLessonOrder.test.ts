@@ -118,7 +118,7 @@ it('keeps full-course coverage, exam targeting and lesson-anchored Question Sets
   const cards = [await createLessonCard(course.id, a.id, 'front_back', 'A', 'A'), await createLessonCard(course.id, b.id, 'front_back', 'B', 'B')];
   const assessments = await db.courseAssessments.toArray();
   const activity = { id: 'activity', courseId: course.id, type: 'question-set' as const,
-    questionSetId: 'set', afterLessonId: b.id, name: 'Practice Qs', createdAt: 1, updatedAt: 1 };
+    questionSetIds: ['third', 'first', 'second'], afterLessonId: b.id, name: 'Practice Qs', createdAt: 1, updatedAt: 1 };
   const local = { ...course, localLessonOrder: [b.id, a.id] };
   const nodes = buildPath(local, [a, b], assessments, new Map(), [activity]);
   expect(nodes.map((node) => node.id)).toEqual([b.id, activity.id, a.id]);
@@ -148,7 +148,7 @@ it('suspends unsupported shapes without changing their unlock or practice obliga
     { course, assessments: [{ ...assessments[0], coverageMode: 'custom' as const, lessonIds: [a.id] }], practice: [] },
     { course, assessments: [{ ...assessments[0], excludedCardIds: ['excluded'] }], practice: [] },
     { course, assessments: [{ ...assessments[0], needsAuthorConfirmation: true }], practice: [] },
-    { course, assessments, practice: [{ ...manual, type: 'question-set' as const, questionSetId: 'set', afterLessonId: 'missing' }] },
+    { course, assessments, practice: [{ ...manual, type: 'question-set' as const, questionSetIds: ['set'], afterLessonId: 'missing' }] },
     { course, assessments: [], practice: [] },
   ];
   for (const variant of variants) {

@@ -1,3 +1,4 @@
+import { parseQuestionSetPracticeNode, normalisePracticeNodeLineage } from '../db/questionSetPracticeNode';
 import type {
   BackupFile,
   CourseAssessment,
@@ -183,6 +184,12 @@ function migrationTombstones(
  * Current backups are copied unchanged; attempt evidence is never reconstructed twice.
  */
 export function normaliseQuestionBackup(input: BackupFile): QuestionNormalisedBackup {
+  input = {
+    ...input,
+    practiceNodes: input.practiceNodes?.map((node) => node.type === 'question-set'
+      ? parseQuestionSetPracticeNode(node) : node),
+    lineageIdMappings: input.lineageIdMappings?.map(normalisePracticeNodeLineage),
+  };
   const requiresQuestionMigration =
     input.app === 'lacuna' && input.version >= 22 && input.version < 24;
   if (input.version >= 11 && !requiresQuestionMigration) {

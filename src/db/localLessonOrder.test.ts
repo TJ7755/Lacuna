@@ -34,7 +34,7 @@ function payload(revision = 1): SharePayloadV5 {
           dimension: 'knowledge', targetConceptIds: ['concept'] }] } }],
       contentVersion: 1, contentRevisionId: 'set-v1', createdAt: 1000, updatedAt: 1000 }],
     questionSetPracticeNodes: [{ id: 'activity', courseId: 'source', type: 'question-set', name: 'Practice Qs',
-      questionSetId: 'set', afterLessonId: 'B', createdAt: 1000, updatedAt: 1000 }],
+      questionSetIds: ['set'], afterLessonId: 'B', createdAt: 1000, updatedAt: 1000 }],
   };
 }
 

@@ -84,7 +84,7 @@ function activity(
     courseId,
     type: 'question-set',
     name: 'Practice Qs',
-    questionSetId,
+    questionSetIds: [questionSetId],
     afterLessonId,
     createdAt: 1,
     updatedAt: 1,
@@ -275,9 +275,27 @@ describe('QuestionSetPathEditor', () => {
     expect(deleteQuestionSetPracticeNode).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() =>
-      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id, set.id),
+      expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id, set.id, node.updatedAt),
     );
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+  });
+
+  it('keeps the opening revision when live props change beneath a pending selection', async () => {
+    const { course, firstLesson, set } = await fixture();
+    const replacement = await createQuestionSet({ ...set, id: 'set-2' });
+    const node = activity(course.id, set.id, firstLesson.id);
+    const onClose = vi.fn();
+    const { rerender } = render(<QuestionSetPathEditor courseId={course.id} node={node} onClose={onClose} />);
+    await screen.findByRole('button', { name: 'Cell structure' });
+    rerender(<LazyMotion features={domAnimation}>
+      <QuestionSetPathEditor courseId={course.id}
+        node={{ ...node, questionSetIds: [replacement.id], updatedAt: 2 }} onClose={onClose} />
+    </LazyMotion>);
+    vi.mocked(updateQuestionSetPracticeNode).mockRejectedValueOnce(new Error('Reopen this activity.'));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    await screen.findByRole('alert');
+    expect(updateQuestionSetPracticeNode).toHaveBeenCalledWith(node.id, firstLesson.id, set.id, 1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('replaces an existing set by identity despite duplicate titles and keeps the lesson anchor', async () => {
@@ -311,6 +329,7 @@ describe('QuestionSetPathEditor', () => {
       node.id,
       firstLesson.id,
       replacement.id,
+      node.updatedAt,
     );
     expect(createQuestionSetPracticeNode).not.toHaveBeenCalled();
   });

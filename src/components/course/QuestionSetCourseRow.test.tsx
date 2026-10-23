@@ -21,12 +21,12 @@ const node: QuestionSetPathNode = {
     courseId: 'course-1',
     type: 'question-set',
     name: 'Practice Qs',
-    questionSetId: 'set-1',
+    questionSetIds: ['set-1'],
     afterLessonId: 'lesson-1',
     createdAt: 1,
     updatedAt: 1,
   },
-  questionSetId: 'set-1',
+  questionSetIds: ['set-1'],
   afterLessonId: 'lesson-1',
   nodeKey: 'activity-1',
 };
@@ -48,7 +48,7 @@ function Location() {
   return <p data-testid="location">{useLocation().pathname}</p>;
 }
 
-function renderRow(authoring: boolean) {
+function renderRow(authoring: boolean, activity = node) {
   render(
     <MemoryRouter initialEntries={['/course/course-1']}>
       <Routes>
@@ -56,7 +56,7 @@ function renderRow(authoring: boolean) {
           path="/course/course-1"
           element={
             <ToastProvider>
-              <QuestionSetCourseRow node={node} index={0} authoring={authoring} lessons={[]} />
+              <QuestionSetCourseRow node={activity} index={0} authoring={authoring} lessons={[]} />
             </ToastProvider>
           }
         />
@@ -102,6 +102,14 @@ describe('QuestionSetCourseRow', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
 
     expect(screen.getByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
+  });
+
+  it('does not launch the first member of a multiple-set activity', () => {
+    mocks.activityData = { content, attempt: null, exam: undefined };
+    renderRow(false, { ...node, questionSetIds: ['set-1', 'set-2', 'set-3'] });
+    expect(screen.getByRole('button', { name: 'Practice questions: Cell structure' })).toBeDisabled();
+    expect(screen.getByText('Multiple-set practice is not yet supported')).toBeInTheDocument();
+    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
   });
 
   it('disables a set that no longer belongs to the course', () => {

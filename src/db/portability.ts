@@ -922,6 +922,11 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
         }
         if (merged.length > 0) await db.agentMemories.bulkPut(merged);
       }
+      assertQuestionSetPracticeNodeReferences(
+        await db.practiceNodes.toArray(), await db.courses.toArray(),
+        await db.lessons.toArray(), await db.questionSets.toArray(),
+        await db.practiceMilestones.toArray(),
+      );
     },
   );
 }

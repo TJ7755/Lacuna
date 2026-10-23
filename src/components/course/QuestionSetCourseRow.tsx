@@ -34,13 +34,16 @@ export function QuestionSetCourseRow({
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
   const courseId = node.practiceNode.courseId;
-  const unavailable = data !== undefined && !data.content;
+  const multiple = node.questionSetIds.length !== 1;
+  const unavailable = multiple || (data !== undefined && !data.content);
   const name = data?.content?.title ?? node.practiceNode.name;
   const progress = data ? questionSetPathProgress(data.attempt) : null;
   const pct = progress?.totalParts
     ? Math.round((progress.answeredParts / progress.totalParts) * 100)
     : 0;
-  const state = unavailable
+  const state = multiple
+    ? 'Multiple-set practice is not yet supported'
+    : unavailable
     ? 'Unavailable'
     : progress
       ? `${progress.answeredParts}/${progress.totalParts} answered`
@@ -67,7 +70,7 @@ export function QuestionSetCourseRow({
         onClick={() =>
           authoring
             ? setEditing(true)
-            : navigate(`/course/${courseId}/question-sets/${node.questionSetId}`, {
+            : !unavailable && navigate(`/course/${courseId}/question-sets/${node.questionSetIds[0]}`, {
                 state: {
                   questionSetReturnTo: location.pathname + location.search,
                   questionSetReturnLabel: 'Back to path',

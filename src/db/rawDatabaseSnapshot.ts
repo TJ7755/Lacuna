@@ -102,8 +102,8 @@ export async function readAllDataFromVersion(
   const assets = await encodeBackupAssets(assetsRaw);
 
   const payload: BackupFile = {
-    app: schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',
-    version: schemaVersion < 24 ? schemaVersion : schemaVersion < 29 ? 12 : 13,
+    app: schemaVersion >= 31 ? 'lacuna-v15' : schemaVersion < 24 ? 'lacuna' : schemaVersion < 29 ? 'lacuna-v12' : 'lacuna-v13',
+    version: schemaVersion >= 31 ? 15 : schemaVersion < 24 ? schemaVersion : schemaVersion < 29 ? 12 : 13,
     exportedAt: Date.now(),
     decks: (raw.data['decks'] ?? []) as LegacyDeck[],
     cards: (raw.data['cards'] ?? []) as Card[],

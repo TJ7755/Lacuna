@@ -23,7 +23,7 @@ import {
 } from './questionSetRepository';
 import { createQuestionSetDraft, createEmptyQuestionSetDraft, loadQuestionSetDraft, QuestionSetDraftConflictError, saveQuestionSetDraft } from './questionSetDrafts';
 import { startQuestionSetAttempt } from './questionSetAttemptRepository';
-import { createQuestionSetPracticeNode } from '../db/practiceNodeRepository';
+import { createQuestionSetPracticeNode, deleteQuestionSetPracticeNode } from '../db/practiceNodeRepository';
 import type { QuestionSet } from './questionSets';
 
 function content(
@@ -199,6 +199,13 @@ describe('Question-set repository', () => {
     draft.content.questions[0].prompt = `Changed: ![figure](${assetUrl(draftHash)})`;
     const savedDraft = await saveQuestionSetDraft(draft, { expectedDraftRevisionId: null });
 
+    await expect(removeAuthoredQuestionSet(course.id, created.id, {
+      expectedContentRevisionId: created.contentRevisionId,
+      expectedDraftRevisionId: savedDraft.draftRevisionId,
+    })).rejects.toThrow(pathNode.id);
+    expect(await db.practiceNodes.get(pathNode.id)).toEqual(pathNode);
+    expect(await loadQuestionSetDraft(course.id, created.id)).toEqual(savedDraft);
+    await deleteQuestionSetPracticeNode(pathNode.id);
     await removeAuthoredQuestionSet(course.id, created.id, {
       expectedContentRevisionId: created.contentRevisionId,
       expectedDraftRevisionId: savedDraft.draftRevisionId,
@@ -216,7 +223,7 @@ describe('Question-set repository', () => {
     expect(await db.assets.get(draftHash)).toBeUndefined();
   });
 
-  it('rolls back draft and path removal when deleting published content fails', async () => {
+  it('rolls back draft removal when deleting unreferenced published content fails', async () => {
     const { course, lesson, assessment, concept } = await fixture();
     const created = await createQuestionSet(
       content(course.id, lesson.id, assessment.id, concept.id),
@@ -225,7 +232,6 @@ describe('Question-set repository', () => {
       createQuestionSetDraft(created, created.contentRevisionId),
       { expectedDraftRevisionId: null },
     );
-    const pathNode = await createQuestionSetPracticeNode(course.id, created.id, lesson.id);
     const remove = vi.spyOn(db.questionSets, 'delete').mockRejectedValueOnce(new Error('Disk failed'));
 
     try {
@@ -239,8 +245,6 @@ describe('Question-set repository', () => {
 
     expect(await loadQuestionSetDraft(course.id, created.id)).toEqual(draft);
     expect(await getQuestionSet(created.id)).toEqual(created);
-    expect(await db.practiceNodes.get(pathNode.id)).toEqual(pathNode);
-    expect(await db.tombstones.get(['practiceNodes', pathNode.id])).toBeUndefined();
     expect(await db.tombstones.get(['questionSets', created.id])).toBeUndefined();
   });
 

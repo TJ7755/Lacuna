@@ -1,9 +1,9 @@
 import type { Table } from 'dexie';
 import { db } from './schema';
-import type { SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5 } from './share';
+import type { SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type { LineageIdMapping, PendingMergeReview } from './types';
 
-type Payload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5) & {
+type Payload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & {
   li: string;
   rv: number;
 };
@@ -126,7 +126,7 @@ export async function prepareLineageMapping(
       integrityError(`The last imported Question Set revision is missing for ${id}.`);
     }
   }
-  if (payload.v === 5) {
+  if (payload.v === 5 || payload.v === 6) {
     mapping.questionSetPracticeNodeIds = [...new Set([...(mapping.questionSetPracticeNodeIds ?? []),
       ...Object.keys(mapping.questionSetPracticeNodeSnapshots ?? {})])];
     await check(db.practiceNodes, payload.questionSetPracticeNodes.map((row) => row.id),

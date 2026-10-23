@@ -831,7 +831,7 @@ export interface PracticeNode {
   cardCount?: number;
   randomize?: boolean;
   /** Authored Question Set activity only; never used as a Card practice scope. */
-  questionSetId?: string;
+  questionSetIds?: string[];
   /** Exact lesson anchor for a Question Set activity. */
   afterLessonId?: string;
   createdAt: number;
@@ -841,7 +841,7 @@ export interface PracticeNode {
 
 export interface QuestionSetPracticeNode extends PracticeNode {
   type: 'question-set';
-  questionSetId: string;
+  questionSetIds: string[];
   afterLessonId: string;
 }
 
@@ -1216,7 +1216,7 @@ export interface SyncState {
 /** Shape of an exported/imported backup file. */
 export interface BackupFile {
   /** New markers make older readers reject collections they cannot preserve. */
-  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13' | 'lacuna-v14';
+  app: 'lacuna' | 'lacuna-v12' | 'lacuna-v13' | 'lacuna-v14' | 'lacuna-v15';
   version: number;
   exportedAt: number;
   /** Pre-v22 Deck rows. Current exports omit this; a non-empty array is refused. */
@@ -1307,7 +1307,7 @@ export interface LineageIdMapping {
   questionSetPracticeNodeSnapshots?: Record<
     string,
     {
-      questionSetId: string;
+      questionSetIds: string[];
       afterLessonId: string;
       name: string;
     }

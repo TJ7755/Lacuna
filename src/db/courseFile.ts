@@ -8,6 +8,7 @@ import {
   type SharePayloadV3,
   type SharePayloadV4,
   type SharePayloadV5,
+  type SharePayloadV6,
 } from './share';
 import {
   assetsForBackup,
@@ -40,7 +41,7 @@ const CourseFileSchema = z.object({
 export interface CourseFile {
   format: 'lacuna-course';
   version: 1;
-  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5;
+  payload: SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6;
   assets: BackupAsset[];
 }
 

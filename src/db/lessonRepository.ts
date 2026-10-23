@@ -205,7 +205,7 @@ export async function snapshotLesson(id: string): Promise<LessonSnapshot | null>
     questionSets,
     questionSetPracticeNodes: practiceNodes.filter(
       (node): node is QuestionSetPracticeNode =>
-        node.type === 'question-set' && node.afterLessonId === id && !!node.questionSetId,
+        node.type === 'question-set' && node.afterLessonId === id,
     ),
   };
 }

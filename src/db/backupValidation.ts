@@ -18,7 +18,7 @@ const optionalCollections = Object.fromEntries(
 export const backupSchema = z
   .looseObject({
     ...optionalCollections,
-    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14']),
+    app: z.enum(['lacuna', 'lacuna-v12', 'lacuna-v13', 'lacuna-v14', 'lacuna-v15']),
     version: z.number().int().positive(),
     exportedAt: z.number().finite(),
     decks: z.array(z.looseObject({})).optional(),

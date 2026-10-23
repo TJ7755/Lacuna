@@ -1,10 +1,10 @@
 import { db } from '../db/schema';
-import type { SharePayloadV4, SharePayloadV5 } from '../db/share';
+import type { SharePayloadV4, SharePayloadV5, SharePayloadV6 } from '../db/share';
 import type { LineageIdMapping } from '../db/types';
 import { parseQuestionSetRecord } from './questionSetCodec';
-import { parseQuestionSetPracticeNode } from '../db/questionSetPracticeNode';
+import { parseQuestionSetPracticeNode, normalisePracticeNodeLineage, assertQuestionSetPracticeNodeReferences } from '../db/questionSetPracticeNode';
 
-type QuestionSetLineagePayload = (SharePayloadV4 | SharePayloadV5) & { li: string; rv: number };
+type QuestionSetLineagePayload = (SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & { li: string; rv: number };
 
 export async function applyLineageQuestionSets(
   payload: QuestionSetLineagePayload,
@@ -111,7 +111,7 @@ export async function applyLineageQuestionSets(
 
 /** Apply authored path placement with the same adopted IDs and local-edit guard as sets. */
 export async function applyLineageQuestionSetPracticeNodes(
-  payload: SharePayloadV5 & { li: string; rv: number },
+  payload: (SharePayloadV5 | SharePayloadV6) & { li: string; rv: number },
   courseId: string,
   mapping: LineageIdMapping,
 ): Promise<void> {
@@ -119,18 +119,13 @@ export async function applyLineageQuestionSetPracticeNodes(
   const lessonIds = new Set(payload.lessons.flatMap((lesson) => lesson.i ? [lesson.i] : []));
   const setIds = new Set(payload.questionSets.map((set) => set.id));
   const previousIds = new Set(mapping.questionSetPracticeNodeIds ?? []);
-  const previousSnapshots = mapping.questionSetPracticeNodeSnapshots ?? {};
-  const snapshotOf = (node: { questionSetId: string; afterLessonId: string; name: string }) => ({
-    questionSetId: node.questionSetId,
-    afterLessonId: node.afterLessonId,
-    name: node.name,
-  });
-  const unchanged = (node: { questionSetId?: string; afterLessonId?: string; name: string }, id: string) =>
-    JSON.stringify(snapshotOf({
-      questionSetId: node.questionSetId ?? '',
-      afterLessonId: node.afterLessonId ?? '',
-      name: node.name,
-    })) === JSON.stringify(previousSnapshots[id]);
+  const previousSnapshots = normalisePracticeNodeLineage(mapping).questionSetPracticeNodeSnapshots ?? {};
+  const snapshotOf = (node: unknown) => {
+    const { questionSetIds, afterLessonId, name } = parseQuestionSetPracticeNode(node);
+    return { questionSetIds, afterLessonId, name };
+  };
+  const unchanged = (node: unknown, id: string) =>
+    JSON.stringify(snapshotOf(node)) === JSON.stringify(previousSnapshots[id]);
   const incomingIds = new Set(incoming.map((node) => node.id));
   for (const id of previousIds) {
     if (incomingIds.has(id)) continue;
@@ -148,7 +143,7 @@ export async function applyLineageQuestionSetPracticeNodes(
   }
   for (const raw of incoming) {
     const node = parseQuestionSetPracticeNode({ ...raw, courseId });
-    if (!lessonIds.has(node.afterLessonId) || !setIds.has(node.questionSetId)) {
+    if (!lessonIds.has(node.afterLessonId) || node.questionSetIds.some((id) => !setIds.has(id))) {
       throw new Error('A shared Question Set activity has a missing Set or Lesson.');
     }
     const existing = await db.practiceNodes.get(node.id);
@@ -173,4 +168,16 @@ export async function applyLineageQuestionSetPracticeNodes(
   mapping.questionSetPracticeNodeSnapshots = Object.fromEntries(
     incoming.map((node) => [node.id, snapshotOf(node)]),
   );
+}
+
+/** Validate the resulting graph, after published removals and replacements are applied. */
+export async function assertStoredQuestionSetActivities(courseId: string): Promise<void> {
+  const [nodes, courses, lessons, sets, milestones] = await Promise.all([
+    db.practiceNodes.where('courseId').equals(courseId).toArray(),
+    db.courses.where('id').equals(courseId).toArray(),
+    db.lessons.where('courseId').equals(courseId).toArray(),
+    db.questionSets.where('courseId').equals(courseId).toArray(),
+    db.practiceMilestones.where('courseId').equals(courseId).toArray(),
+  ]);
+  assertQuestionSetPracticeNodeReferences(nodes, courses, lessons, sets, milestones);
 }

@@ -1098,7 +1098,7 @@ describe('buildPath progress and manual-node edge cases', () => {
     ];
     const questionActivity = makePracticeNode({
       id: 'question-activity', courseId: 'c1', type: 'question-set',
-      questionSetId: 'set-1', afterLessonId: 'l1',
+      questionSetIds: ['set-3', 'set-1', 'set-2'], afterLessonId: 'l1',
     });
     const nodes = buildPath(course, lessons, [], new Map(), [questionActivity]);
     expect(nodes.map((node) => node.nodeType)).toEqual([
@@ -1106,7 +1106,7 @@ describe('buildPath progress and manual-node edge cases', () => {
     ]);
     expect(nodes[2]).toMatchObject({
       id: 'question-activity', nodeKey: 'question-activity',
-      questionSetId: 'set-1', afterLessonId: 'l1',
+      questionSetIds: ['set-3', 'set-1', 'set-2'], afterLessonId: 'l1',
     });
     expect(practiceGateAfterLesson(lessons, [questionActivity], 'l1')).toBe(false);
     expect(manualPracticeGateOutcomeAfterLesson(
@@ -1119,7 +1119,7 @@ describe('buildPath progress and manual-node edge cases', () => {
     const lessons = [makeLesson({ id: 'l0', courseId: 'c1', orderIndex: 0 })];
     const activity = (id: string, createdAt: number, overrides = {}) =>
       makePracticeNode({
-        id, courseId: 'c1', type: 'question-set', questionSetId: `set-${id}`,
+        id, courseId: 'c1', type: 'question-set', questionSetIds: [`set-${id}`],
         afterLessonId: 'l0', createdAt, ...overrides,
       });
     const nodes = buildPath(course, lessons, [], new Map(), [

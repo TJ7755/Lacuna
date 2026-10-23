@@ -187,7 +187,7 @@ describe('specification backup portability', () => {
     let captured: BackupFile | undefined;
     try {
       await ensurePreMigrationSnapshot(name, undefined, async (targetVersion, snapshot) => {
-        expect(targetVersion).toBe(30);
+        expect(targetVersion).toBe(31);
         captured = snapshot;
       });
       expect(captured).toMatchObject({ app: 'lacuna-v13', version: 13 });

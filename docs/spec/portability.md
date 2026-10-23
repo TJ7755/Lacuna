@@ -43,7 +43,27 @@ When backup merge encounters two versions of the same Question Set path activity
 `updatedAt` wins; equal timestamps use the greater canonical JSON value, matching peer merge.
 Replacing a set preserves activity creation time, so creation time cannot identify that edit.
 This rule retains the entire selected activity record and does not rewrite historical Attempts.
-Card practice activities retain their existing backup merge rule.
+Card practice activities retain their existing backup merge rule. Membership and its explicit order
+are one indivisible authored value: never union, sort or merge individual members. A missing member
+or cross-Course reference after merge fails the transaction rather than trimming the selection.
+
+Question Set path activities retain a non-empty, unique, ordered selection of stable identities.
+Legacy singular selections and last-imported lineage snapshots pass through the same normalisation
+boundary. Migration retains activity IDs, timestamps, anchors and names; historical Attempts and
+presentation receipts are unchanged. New backup/share markers ensure older readers refuse this
+format rather than losing members. Ordinary Course import maps every member to its new identity,
+in order, and rolls back the import if any mapping is missing. Published updates adopt source IDs
+and compare selection, order, anchor and name with the last imported snapshot before replacing them.
+
+Explicit membership edits require the activity timestamp seen by the editor. A stale edit must
+reopen the activity; anchor-only moves retain its latest stored membership. Deleting a Question Set
+still referenced by a live activity is refused with the activity's name and identity. Remove that
+reference first. A published removal is accepted only if the resulting activity graph no longer
+references the removed set. Authoring deletion never rewrites historical Attempts.
+
+Multiple-set storage does not enable multiple-set practice. Until session coordination is available,
+the single-set editor and path launcher show an explicit unsupported state for these activities;
+they must never launch only the first member.
 
 Device-local annotations, authoring drafts and live AI authority have explicit exclusions. Backup,
 peer sync, manual Combine and Course sharing are different formats with different owners; adding

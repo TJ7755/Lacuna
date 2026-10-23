@@ -2,9 +2,12 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import { createCard, createCourse } from './repository';
+import { createCard, createCourse, createLesson } from './repository';
 import { exportDatabase, importBackup } from './portability';
 import { storeImageBlob } from './assets';
+import { createQuestionSetPracticeNode } from './practiceNodeRepository';
+import { importQuestionBank } from '../questions/bank';
+import familyExample from '../../docs/question-bank/examples/numeric-family.json';
 
 beforeEach(async () => {
   await db.delete();
@@ -55,4 +58,25 @@ it('exports one restorable snapshot when deletion queues between record and medi
   } finally {
     await deletion;
   }
+});
+
+it('exports canonical ordered activity membership and its last-imported baseline without changing evidence', async () => {
+  const course = await createCourse('Physics');
+  const lesson = await createLesson(course.id, 'Density');
+  const [set] = await importQuestionBank(familyExample, course.id);
+  const activity = await createQuestionSetPracticeNode(course.id, [set.id], lesson.id);
+  const snapshot = { questionSetIds: activity.questionSetIds, afterLessonId: lesson.id, name: activity.name };
+  const mapping = { id: 'lineage', courseId: course.id,
+    lessonIds: [], noteIds: [], cardIds: [], sequenceIds: [],
+    lessonSnapshots: {}, noteSnapshots: {}, cardSnapshots: {},
+    questionSetPracticeNodeIds: [activity.id], questionSetPracticeNodeSnapshots: { [activity.id]: snapshot },
+  };
+  await db.lineageIdMappings.put(mapping);
+  const backup = await exportDatabase();
+  expect(backup.practiceNodes).toEqual([activity]);
+  expect(backup.lineageIdMappings).toEqual([mapping]);
+  expect(backup.practiceNodes?.[0]).not.toHaveProperty('questionSetId');
+  await importBackup(backup, 'replace');
+  expect(await db.practiceNodes.get(activity.id)).toEqual(activity);
+  expect(await db.lineageIdMappings.get(mapping.id)).toEqual(mapping);
 });

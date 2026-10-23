@@ -9,7 +9,7 @@ import {
   referencedAssetHashesInValues,
 } from './assets';
 
-export const BACKUP_VERSION = 14;
+export const BACKUP_VERSION = 15;
 
 /** Gather the whole database into a single, consistent backup object. */
 export async function exportDatabase(): Promise<BackupFile> {
@@ -128,7 +128,7 @@ export async function exportDatabase(): Promise<BackupFile> {
             .toArray()
         : [];
       return {
-        app: 'lacuna-v14' as const,
+        app: 'lacuna-v15' as const,
         version: BACKUP_VERSION,
         exportedAt: Date.now(),
         cards: projectedCards,

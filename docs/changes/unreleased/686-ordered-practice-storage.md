@@ -1,0 +1,1 @@
+- Preserve ordered multiple-set practice selections through migration, backups, course sharing, published updates and device sync. Reject stale selection edits and deletion of sets used by path activities. Multiple-set editing and practice remain unavailable until session support is added. (#686)

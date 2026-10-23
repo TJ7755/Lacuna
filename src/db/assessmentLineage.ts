@@ -1,9 +1,9 @@
 import { db } from './schema';
-import type { SharePayloadV4, SharePayloadV5 } from './share';
+import type { SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
 import type { CourseAssessment, LineageIdMapping } from './types';
 import { validateAssessmentStructure } from './assessmentRepository';
 
-type Payload = (SharePayloadV4 | SharePayloadV5) & { li: string; rv: number };
+type Payload = (SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & { li: string; rv: number };
 type Snapshot = Omit<CourseAssessment, 'updatedAt'>;
 
 function snapshot(record: CourseAssessment): Snapshot {

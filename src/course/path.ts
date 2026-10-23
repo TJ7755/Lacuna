@@ -102,7 +102,7 @@ export interface QuestionSetPathNode {
   id: string;
   nodeType: 'practice-question-set';
   practiceNode: QuestionSetPracticeNode;
-  questionSetId: string;
+  questionSetIds: string[];
   afterLessonId: string;
   nodeKey: string;
 }
@@ -473,7 +473,7 @@ export function buildPath(
 
   const questionSetPlacements: Placement[] = practiceNodes
     .filter((node): node is QuestionSetPracticeNode =>
-      node.type === 'question-set' && !!node.questionSetId && !!node.afterLessonId)
+      node.type === 'question-set' && !!node.questionSetIds?.length && !!node.afterLessonId)
     .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id))
     .flatMap((node): Placement[] => {
       const afterIndex = sorted.findIndex((lesson) => lesson.id === node.afterLessonId);
@@ -484,7 +484,7 @@ export function buildPath(
           id: node.id,
           nodeType: 'practice-question-set',
           practiceNode: node,
-          questionSetId: node.questionSetId,
+          questionSetIds: node.questionSetIds,
           afterLessonId: node.afterLessonId,
           nodeKey: node.id,
         },
