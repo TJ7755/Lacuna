@@ -7,7 +7,7 @@ import {
   parseQuestionBank,
   sameBankContent,
   type QuestionBank,
-} from './bank';
+} from './bankMaterialisation';
 import { remapQuestionBankMetadata } from './bankMetadata';
 import { bankFingerprint, mapBankQuestions } from './generators/declarative';
 import { parseQuestionSetRecord, type QuestionSetRecord } from './questionSetCodec';
