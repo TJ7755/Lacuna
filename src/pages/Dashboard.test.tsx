@@ -467,7 +467,7 @@ describe('Dashboard', () => {
     expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
   });
 
-  it('shows the week panel with the streak, cards this week and studied days', async () => {
+  it('labels the rolling review count separately from calendar-week study days', async () => {
     setCourseData([mockCourse], {
       streak: 5,
       reviewActivity: new Map([['card-1', [Date.now(), Date.now() - 1000]]]),
@@ -476,12 +476,12 @@ describe('Dashboard', () => {
     render(<Dashboard />);
 
     expect(await screen.findByText('days in a row')).toBeInTheDocument();
-    expect(screen.getByText('cards this week')).toBeInTheDocument();
+    expect(screen.getByText('cards in the last 7 days')).toBeInTheDocument();
     expect(screen.getByText('studied this week')).toBeInTheDocument();
     expect(screen.getByLabelText(/^Studied on \d of \d days this week/)).toBeInTheDocument();
     const streak = screen.getByText('days in a row').parentElement as HTMLElement;
     expect(streak).toHaveTextContent('5');
-    const cards = screen.getByText('cards this week').parentElement as HTMLElement;
+    const cards = screen.getByText('cards in the last 7 days').parentElement as HTMLElement;
     expect(cards).toHaveTextContent('2');
   });
 

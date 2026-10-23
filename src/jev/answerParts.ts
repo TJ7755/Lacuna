@@ -3,31 +3,51 @@ export interface JevExpectedAnswerPart {
   end: number;
 }
 
+function groupedEnds(expected: string): Map<number, number> {
+  const groups = new Map<number, number>();
+  const dollars = [...expected.matchAll(/(?<!\\)\$\$?/g)];
+  const next = new Map<string, number>();
+  for (let index = dollars.length - 1; index >= 0; index--) {
+    const token = dollars[index];
+    const end = next.get(token[0]);
+    if (end !== undefined) groups.set(token.index, end + token[0].length - 1);
+    next.set(token[0], token.index);
+  }
+  const brackets: { close: string; start: number }[] = [];
+  for (let index = 0; index < expected.length; index++) {
+    const character = expected[index];
+    // Only a paired maths delimiter shields punctuation and brackets.
+    const end = groups.get(index);
+    if (end !== undefined) {
+      index = end;
+      continue;
+    }
+    if (character === '(' || character === '{' || character === '[') {
+      brackets.push({ close: { '(': ')', '{': '}', '[': ']' }[character], start: index });
+    } else if (')}]'.includes(character)) {
+      if (brackets.at(-1)?.close === character) {
+        groups.set(brackets.pop()!.start, index);
+      } else {
+        // A mismatched closer invalidates the still-open nesting, not later groups.
+        brackets.length = 0;
+      }
+    }
+  }
+  return groups;
+}
+
 /** Offsets refer to the original string, using the same UTF-16 indices as String.slice. */
 export function splitJevExpectedAnswer(expected: string): JevExpectedAnswerPart[] {
   const separators: JevExpectedAnswerPart[] = [];
   const conjunctions: JevExpectedAnswerPart[] = [];
-  const brackets: string[] = [];
-  let maths: '$' | '$$' | null = null;
+  const groups = groupedEnds(expected);
   for (let index = 0; index < expected.length; index++) {
     const character = expected[index];
-    if (character === '$' && expected[index - 1] !== '\\') {
-      const delimiter = expected.startsWith('$$', index) ? '$$' : '$';
-      if (maths === null) maths = delimiter;
-      else if (maths === delimiter) maths = null;
-      index += delimiter.length - 1;
+    const end = groups.get(index);
+    if (end !== undefined) {
+      index = end;
       continue;
     }
-    if (maths !== null) continue;
-    if (character === '(' || character === '{' || character === '[') {
-      brackets.push({ '(': ')', '{': '}', '[': ']' }[character]);
-      continue;
-    }
-    if (brackets.length && character === brackets[brackets.length - 1]) {
-      brackets.pop();
-      continue;
-    }
-    if (brackets.length) continue;
     if (',;\n\r•'.includes(character)) {
       separators.push({ start: index, end: index + 1 });
       continue;

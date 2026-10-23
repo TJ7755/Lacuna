@@ -115,7 +115,11 @@ export interface ForecastPoint {
   newCards: number;
 }
 
-/** Cards due per day for the next `days` days (forecast). */
+/**
+ * Uncapped card availability over the next `days` days. Overdue cards fold into
+ * today; burial defers both new cards and reviews. Dashboard totals can differ:
+ * they apply source budgets and omit currently buried new cards.
+ */
 export function forecastSeries(cards: Card[], days = 30, now = Date.now()): ForecastPoint[] {
   const today = startOfDay(now);
   const buckets = new Map<number, { due: number; newCards: number }>();
@@ -124,13 +128,13 @@ export function forecastSeries(cards: Card[], days = 30, now = Date.now()): Fore
   }
   for (const card of cards) {
     if (card.suspended) continue;
+    const effectiveDue = Math.max(card.due ?? now, card.buriedUntil ?? 0);
+    const bucket = buckets.get(Math.max(startOfDay(effectiveDue), today));
+    if (!bucket) continue;
     if (card.due === null) {
-      const bucket = buckets.get(today);
-      if (bucket) bucket.newCards++;
+      bucket.newCards++;
     } else {
-      const dueDay = startOfDay(card.due);
-      const bucket = buckets.get(dueDay);
-      if (bucket) bucket.due++;
+      bucket.due++;
     }
   }
   return [...buckets.entries()]

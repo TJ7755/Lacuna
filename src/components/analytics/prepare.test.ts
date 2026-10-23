@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  forecastSeries,
   globalTrajectorySeries,
   leechCountByCourse,
   lessonBreakdown,
@@ -14,6 +15,7 @@ import { defaultFsrsParameters, FSRS_VERSION } from '../../fsrs/params';
 import type { Card, Course, Grade, Lesson, ReviewLog, SessionHistoryEntry } from '../../db/types';
 import type { ReviewHistoryEntry } from '../../db/reviewHistory';
 import { startOfDay } from '../../utils/datetime';
+import { computeStudyStats, FORECAST_DAYS } from '../../fsrs/stats';
 
 // ---------------------------------------------------------------------------
 // Fixture helpers (mirrors src/state/useCourseData.test.ts)
@@ -86,6 +88,81 @@ function makeReview(timestamp: number, grade: Grade): ReviewLog {
     retrievabilityAtReview: null,
   };
 }
+
+describe('forecastSeries', () => {
+  const now = new Date(2026, 9, 23, 12).getTime();
+  const date = (offset: number, hour = 12) => new Date(2026, 9, 23 + offset, hour).getTime();
+  const counts = (cards: Card[], days = 3) =>
+    forecastSeries(cards, days, now).map(({ due, newCards }) => ({ due, newCards }));
+
+  it('folds overdue reviews into today without losing future reviews', () => {
+    const cards = [-2, 0, 1].map((offset) =>
+      makeCard({ id: `due-${offset}`, deckId: 'd1', state: 2, due: date(offset) }),
+    );
+    expect(counts(cards)).toEqual([
+      { due: 2, newCards: 0 },
+      { due: 1, newCards: 0 },
+      { due: 0, newCards: 0 },
+    ]);
+  });
+
+  it('places new and due cards on their first available day', () => {
+    const cards = [
+      makeCard({ id: 'new', deckId: 'd1', buriedUntil: date(1) }),
+      makeCard({ id: 'overdue', deckId: 'd1', due: date(-2), buriedUntil: date(1) }),
+      makeCard({ id: 'later-due', deckId: 'd1', due: date(2), buriedUntil: date(1) }),
+      makeCard({ id: 'expired-burial', deckId: 'd1', buriedUntil: now }),
+      makeCard({ id: 'buried-today', deckId: 'd1', buriedUntil: date(0, 18) }),
+    ];
+    expect(counts(cards)).toEqual([
+      { due: 0, newCards: 2 },
+      { due: 1, newCards: 1 },
+      { due: 1, newCards: 0 },
+    ]);
+  });
+
+  it('excludes suspended cards and availability dates outside the window', () => {
+    const cards = [
+      makeCard({ id: 'suspended-new', deckId: 'd1', suspended: true }),
+      makeCard({ id: 'suspended-due', deckId: 'd1', suspended: true, due: now }),
+      makeCard({ id: 'later-new', deckId: 'd1', buriedUntil: date(3, 0) }),
+      makeCard({ id: 'later-due', deckId: 'd1', due: date(3, 0) }),
+      makeCard({ id: 'buried-due', deckId: 'd1', due: now, buriedUntil: date(3, 0) }),
+    ];
+    expect(counts(cards)).toEqual(Array.from({ length: 3 }, () => ({ due: 0, newCards: 0 })));
+    expect(forecastSeries([], 0, now)).toEqual([]);
+  });
+
+  it('matches dashboard daily counts when budgets and buried new cards do not apply', () => {
+    const cards = [
+      makeCard({ id: 'new', deckId: 'd1' }),
+      makeCard({ id: 'overdue', deckId: 'd1', state: 2, due: date(-2) }),
+      makeCard({ id: 'buried', deckId: 'd2', state: 2, due: now, buriedUntil: date(2) }),
+      makeCard({ id: 'future', deckId: 'd2', state: 2, due: date(6) }),
+    ];
+    const dashboard = computeStudyStats(cards, new Map(), now).forecast;
+    expect(counts(cards, FORECAST_DAYS)).toEqual(
+      dashboard.map(({ dueCount, newCount }) => ({ due: dueCount, newCards: newCount })),
+    );
+  });
+
+  it('retains uncapped workload when the dashboard applies a source budget', () => {
+    const cards = [
+      makeCard({ id: 'due', deckId: 'd1', courseId: 'c1', state: 2, due: now }),
+      makeCard({ id: 'new', deckId: 'd1', courseId: 'c1' }),
+    ];
+    const dashboard = computeStudyStats(
+      cards,
+      new Map(),
+      now,
+      undefined,
+      undefined,
+      new Map([['c1', makeCourse({ id: 'c1', maxReviewsPerDay: 1 })]]),
+    ).forecast;
+    expect(counts(cards)[0]).toEqual({ due: 1, newCards: 1 });
+    expect(dashboard[0]).toMatchObject({ dueCount: 1, newCount: 0 });
+  });
+});
 
 describe('lessonBreakdown', () => {
   it('returns an empty array when there are no lessons', () => {

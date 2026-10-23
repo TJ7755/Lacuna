@@ -103,7 +103,11 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
       {!draft.lessonId && (
         <label>
           {draft.courseId ? 'Lesson title' : 'Course title'}
-          <input value={draft.title} onChange={(event) => draft.setTitle(event.target.value)} />
+          <input
+            data-import-destination-title=""
+            value={draft.title}
+            onChange={(event) => draft.setTitle(event.target.value)}
+          />
         </label>
       )}
       {!draft.courseId && (

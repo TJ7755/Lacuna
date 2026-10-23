@@ -1,14 +1,6 @@
 [
   {
     "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "CardList renders GeneratedCardGroup, which recursively renders CardListBody.",
-    "edges": [
-      "src/components/cards/CardList.tsx -> src/components/cards/GeneratedCardGroup.tsx",
-      "src/components/cards/GeneratedCardGroup.tsx -> src/components/cards/CardList.tsx"
-    ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
     "reason": "Assessment coverage uses lesson membership from studyPools; studyPools uses exam-date and scheduling-horizon helpers, which resolve assessment coverage.",
     "edges": [
       "src/course/assessmentCoverage.ts -> src/course/studyPools.ts",
