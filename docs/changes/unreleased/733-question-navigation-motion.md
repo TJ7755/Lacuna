@@ -1,0 +1,1 @@
+- Give question-set practice navigation a short directional slide with the existing crossfade, preserving motion preferences, answers and focus. (#733)
