@@ -20,7 +20,7 @@ const provenance = { by: 'jev', model: 'jev-test', confidence: 0.97, markedAt: 1
 
 function setup(
   typedAnswer: string,
-  overrides: { paused?: boolean; card?: Card; manual?: boolean } = {},
+  overrides: { paused?: boolean; card?: Card; manual?: boolean; answerStrictness?: 'lenient' | 'standard' | 'exact' } = {},
 ) {
   const onMarked = vi.fn();
   const hook = renderHook(() =>
@@ -29,7 +29,7 @@ function setup(
       phase: 'answer',
       isTypingCard: true,
       typedAnswer,
-      answerStrictness: 'standard',
+      answerStrictness: overrides.answerStrictness ?? 'standard',
       paused: overrides.paused ?? false,
       manual: overrides.manual,
       m: 1,
@@ -109,6 +109,30 @@ describe('useTypedAutoMark', () => {
     expect(jev.marker).toHaveBeenCalledWith(
       expect.objectContaining({ prompt: 'Capital of France?', expected: 'Paris' }),
     );
+  });
+
+  it.each(['lenient', 'standard', 'exact'] as const)('handles semantic matches under %s strictness', async (answerStrictness) => {
+    const feedback = { kind: 'same' as const, parts: [] };
+    jev.marker = vi.fn().mockResolvedValue({ outcome: 'correct', provenance, feedback });
+    const { result, onMarked } = setup('paris, the french capital', { answerStrictness });
+    await act(async () => { vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS); });
+    act(() => { vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS); });
+    expect(result.current).toMatchObject(answerStrictness === 'exact'
+      ? { state: 'unsure', feedback, expected: 'Paris' }
+      : { state: 'marked', correct: true, feedback });
+    act(() => { vi.advanceTimersByTime(5000); });
+    if (answerStrictness === 'exact') expect(onMarked).not.toHaveBeenCalled();
+    else expect(onMarked).toHaveBeenCalledWith(true, provenance);
+  });
+
+  it('retains an incorrect Jev verdict under Exact', async () => {
+    jev.marker = vi.fn().mockResolvedValue({ outcome: 'incorrect', provenance });
+    const { result, onMarked } = setup('Lyon', { answerStrictness: 'exact' });
+    await act(async () => { vi.advanceTimersByTime(TYPED_AUTO_MARK_DELAY_MS); });
+    act(() => { vi.advanceTimersByTime(JEV_JUDGING_MS - TYPED_AUTO_MARK_DELAY_MS); });
+    expect(result.current).toMatchObject({ state: 'marked', correct: false });
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(onMarked).toHaveBeenCalledWith(false, provenance);
   });
 
   it('leaves grading to the learner when the marker is unsure', async () => {
