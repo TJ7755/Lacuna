@@ -166,7 +166,7 @@ it('partitions the complete local Chromium suite across functional shards and is
     expect(cases(local.suites).length).toBeGreaterThan(0);
     expect(allCiCases.sort()).toEqual(cases(local.suites).sort());
     expect(new Set(allCiCases).size).toBe(allCiCases.length);
-    expect(studyCases).toHaveLength(4);
+    expect(studyCases).toHaveLength(5);
     expect(studyCases.every((name) => name.startsWith('study-grade-load.spec.ts:'))).toBe(true);
     expect(imageCases).toHaveLength(1);
     expect(imageCases[0]).toMatch(/^study-image-advance.spec.ts:/);
