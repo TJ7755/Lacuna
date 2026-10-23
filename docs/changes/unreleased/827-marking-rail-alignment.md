@@ -1,0 +1,1 @@
+- Centre question-set marks and the automatic-marking indicator consistently within the marks rail, preserving the pending and verdict animations. (#827)
