@@ -363,6 +363,7 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['docs/README.md', 'gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting', ...web]],
     [['src/fsrs/coefficients/model.json'], workers],
     [['relay/shared/insights/index.ts'], workers],
+    [['library/vercel.json'], workers],
     [['unknown/file'], workers],
   ]) {
     const outputs = Object.fromEntries(Object.entries(classifyPaths(paths)).map(([key, value]) => [key, String(value)]));

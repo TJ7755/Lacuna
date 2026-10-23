@@ -49,7 +49,7 @@ describe('area scope', () => {
     for (const path of ['src/App.tsx', 'src/fsrs/coefficients/model.json', 'src/fsrs/halfLifeLogisticModel.ts',
       'eslint.config.js', 'scripts/relay-imports.mjs', 'scripts/relayImports.test.ts', 'package.json', 'bun.lock',
       '.github/workflows/ci.yml', 'tooling/handwriting-maths/package.json', 'tooling/handwriting-maths/bun.lock',
-      'relay/package.json', 'tooling/short-term-memory/uv.lock', 'relay/shared/insights/index.ts', 'relay/scripts/security-bun.mjs',
+      'relay/package.json', 'gaps/vercel.json', 'library/vercel.json', 'relay/vercel.json', 'tooling/short-term-memory/uv.lock', 'relay/shared/insights/index.ts', 'relay/scripts/security-bun.mjs',
       'tooling/short-term-memory/coefficients/half-life-logistic-v3.json',
       'tooling/short-term-memory/tests/fixtures/model-port-v3.json', 'new-area/file.ts']) {
       expect(Object.values(classifyPaths([path])).slice(1).every(Boolean), path).toBe(true);

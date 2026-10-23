@@ -26,7 +26,7 @@ export function classifyPaths(paths) {
     if (typeof path !== 'string' || !path || /[\0\r\n\\]/.test(path) || path.split('/').some((part) => !part || part === '.' || part === '..')) return fullScope();
     if (isDocsPath(path)) { scope.docs = true; continue; }
     // Shared runtime, bootstrap, protocols and consumed training fixtures must stay full.
-    if (/(^|\/)(package\.json|bun\.lock|uv\.lock)$/.test(path) ||
+    if (/(^|\/)(package\.json|bun\.lock|uv\.lock|vercel\.json)$/.test(path) ||
         path.startsWith('relay/shared/') || path.startsWith('relay/scripts/') ||
         path.startsWith('tooling/short-term-memory/coefficients/') ||
         path.startsWith('tooling/short-term-memory/tests/fixtures/')) return fullScope();

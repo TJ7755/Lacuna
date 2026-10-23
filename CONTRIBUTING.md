@@ -111,7 +111,7 @@ also select app and browser checks and standalone AI MCP tests, because integrat
 relay implementations. AI MCP changes also select app and native checks. Root lint runs for tooling
 and site changes because those paths are covered by its configuration.
 
-Every `src/` change, root configuration, workflow, workspace manifest or lockfile, unknown path,
+Every `src/` change, root configuration, workflow, workspace manifest or lockfile, deployment configuration, unknown path,
 relay shared contract or bootstrap
 script selects the complete matrix. Training coefficients and model-port fixtures remain conservative
 shared inputs until their runtime consumers move under `src/`. Mixed changes combine their scopes.
