@@ -9,6 +9,8 @@ import {
 import type { QuestionBankMetadata } from '../../questions/bankMetadata';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { Button } from '../ui/Button';
+import { Field } from '../ui/Field';
+import { Select } from '../ui/Select';
 
 export function ConceptPracticePanel({
   courseId,
@@ -173,11 +175,10 @@ export function ConceptPracticePanel({
         ))}
       </ul>
       {available.length > 6 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <label className="min-w-0 max-w-full flex-1 basis-64">
-            All skills
-            <select
-              className="mt-1 block w-full min-w-0 max-w-full rounded border border-line bg-surface p-2"
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <Field label="All skills" className="min-w-0 max-w-full flex-1 basis-64">
+            <Select
+              className="mt-2 block w-full min-w-0 max-w-full"
               value={selectedSkill}
               onChange={(event) => setSelectedSkill(event.target.value)}
               disabled={disabled || busy}
@@ -188,8 +189,8 @@ export function ConceptPracticePanel({
                   {skill.name} · {skill.due ? 'due' : 'scheduled'} · {skill.unseenCount} unseen
                 </option>
               ))}
-            </select>
-          </label>
+            </Select>
+          </Field>
           <Button
             disabled={disabled || busy || !selectedSkill}
             onClick={() => void start(selectedSkill)}

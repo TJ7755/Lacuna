@@ -6,7 +6,7 @@ import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useCallback, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
@@ -48,11 +48,17 @@ import { useToast } from '../components/ui/Toast';
 import type { Card, CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
-import { loadLessonView } from '../routes/loaders';
+import { loadLessonView } from '../routes/lessonRoute';
 import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
-import { useIdleRoutePrefetch } from '../routes/useIdleRoutePrefetch';
+import { scheduleIdlePrefetch } from '../routes/idlePrefetch';
 
 const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
+
+function prefetchLessonView(): void {
+  void loadRouteModule(loadLessonView).catch(() => {
+    // Speculative failures must leave navigation free to retry.
+  });
+}
 
 interface PracticeNodeProgress {
   fraction: number;
@@ -92,8 +98,11 @@ export function CoursePath() {
   const records = useCoursePathRecords(courseId);
   const course = records?.course;
   const lessons = records?.lessons;
-  useIdleRoutePrefetch(
-    lessons?.slice(0, 1).map((lesson) => `/course/${courseId}/lesson/${lesson.id}`) ?? [],
+  const lessonPrefetchKey =
+    lessons?.slice(0, 1).map((lesson) => `/course/${courseId}/lesson/${lesson.id}`).join('\n') ?? '';
+  useEffect(
+    () => scheduleIdlePrefetch(lessonPrefetchKey.split('\n').filter(Boolean), prefetchLessonView),
+    [lessonPrefetchKey],
   );
   const courseCards = records?.cards;
   // Match the existing Dexie sort: an undated assessment keeps its relative position.

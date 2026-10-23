@@ -27,16 +27,5 @@
       "src/db/tombstonePrune.ts -> src/db/mutationStamp.ts",
       "src/db/tombstonePrune.ts -> src/db/schema.ts"
     ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "CoursePath loads lessons and prefetches routes; the shared lazy-loader registry includes CoursePath itself.",
-    "edges": [
-      "src/pages/CoursePath.tsx -> src/routes/loaders.ts",
-      "src/pages/CoursePath.tsx -> src/routes/useIdleRoutePrefetch.ts",
-      "src/routes/loaders.ts -> src/pages/CoursePath.tsx",
-      "src/routes/prefetch.ts -> src/routes/loaders.ts",
-      "src/routes/useIdleRoutePrefetch.ts -> src/routes/prefetch.ts"
-    ]
   }
 ]
