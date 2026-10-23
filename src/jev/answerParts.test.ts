@@ -21,7 +21,7 @@ it.each([
   [String.raw`\left\{a, b\right\}; c`, [String.raw`\left\{a, b\right\}`, 'c']],
   ['$a,b$ and $c,d$', ['$a,b$', '$c,d$']],
   ['(one, two and three), four', ['(one, two and three)', 'four']],
-  ['unclosed (one, two', ['unclosed (one, two']],
+  ['unclosed (one, two', ['unclosed (one', 'two']],
   ['single answer.', ['single answer']],
   ['  ', []],
 ])('splits %s without cutting grouped maths', (expected, parts) => {
@@ -34,4 +34,34 @@ it('uses JavaScript string offsets for mathematical symbols outside the BMP', ()
     { start: 0, end: 2 },
     { start: 4, end: 5 },
   ]);
+});
+
+it.each([
+  ['costs $5, then tea', ['costs $5', 'then tea']],
+  ['costs $$5; tea and cake', ['costs $$5', 'tea', 'cake']],
+  ['costs $5\n- tea\n- cake', ['costs $5', 'tea', 'cake']],
+  ['costs $5 • tea or cake', ['costs $5', 'tea', 'cake']],
+  ['(a], tea; cake', ['(a]', 'tea', 'cake']],
+  ['[a}, tea and cake', ['[a}', 'tea', 'cake']],
+  ['{a), tea or cake', ['{a)', 'tea', 'cake']],
+  ['([a), tea], cake', ['([a)', 'tea]', 'cake']],
+  ['costs $5, $$a,b$$ and tea', ['costs $5', '$$a,b$$', 'tea']],
+  ['(unclosed, [a,b], tea', ['(unclosed', '[a,b]', 'tea']],
+])('recovers part coverage from unmatched delimiters in %s', (expected, parts) => {
+  expect(
+    splitJevExpectedAnswer(expected).map(({ start, end }) => expected.slice(start, end)),
+  ).toEqual(parts);
+});
+
+it.each([
+  ['$$a,b$$; tea', ['$$a,b$$', 'tea']],
+  ['$a,$$b$; tea', ['$a,$$b$', 'tea']],
+  ['([a,b], {c,d}), tea', ['([a,b], {c,d})', 'tea']],
+  ['$a,(b$; tea', ['$a,(b$', 'tea']],
+  [String.raw`costs \$5, tea`, [String.raw`costs \$5`, 'tea']],
+  [String.raw`$a,\$b$; tea`, [String.raw`$a,\$b$`, 'tea']],
+])('preserves paired groups and escaped dollars in %s', (expected, parts) => {
+  expect(
+    splitJevExpectedAnswer(expected).map(({ start, end }) => expected.slice(start, end)),
+  ).toEqual(parts);
 });

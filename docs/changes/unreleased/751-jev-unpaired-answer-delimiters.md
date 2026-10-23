@@ -1,0 +1,1 @@
+- Restore Jev typed-answer part coverage after unmatched maths delimiters and unmatched or mismatched brackets, while preserving balanced groups. (#751)
