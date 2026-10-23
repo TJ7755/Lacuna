@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { libraryCourses } from '../../src/library/catalogue';
 
+const biologyCourse = libraryCourses.find((course) => course.id === 'biology4bi1')!;
+
 for (const width of [1440, 390]) {
   test(`course pages render and hydrate at ${width}px`, async ({ page, browser }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
@@ -29,13 +31,16 @@ for (const width of [1440, 390]) {
     await page.goto('/courses/biology4bi1/');
     await expect(page.getByRole('link', { name: 'Start revising', exact: true })).toHaveAttribute(
       'href',
-      libraryCourses[0].shareUrl!,
+      biologyCourse.shareUrl!,
     );
     await page.getByRole('textbox', { name: 'Item reference (optional)' }).fill('card: cells & #3');
     const report = page.getByRole('link', { name: 'Report a mistake' });
     expect([...new URL((await report.getAttribute('href'))!).searchParams]).toEqual([
       ['title', 'Course mistake: biology4bi1'],
-      ['body', 'Course: biology4bi1\nRevision: 20\nItem reference: card: cells & #3'],
+      [
+        'body',
+        `Course: biology4bi1\nRevision: ${biologyCourse.revision}\nItem reference: card: cells & #3`,
+      ],
     ]);
     await page.getByRole('link', { name: 'All courses', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Revision courses');
