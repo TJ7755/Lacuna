@@ -5,6 +5,8 @@ directories:
 files:
   - dist/**/*
   - electron/dist-electron/**/*
+  # Desktop skips Workbox, but sw.js remains the stale-chunk reachability probe.
+  - '!dist/{workbox-*.js,robots.txt,sitemap.xml,llms.txt}'
   - '!**/*.map'
   - '!**/*.{ts,tsx,cts,mts,jsx,tsbuildinfo}'
   - '!**/{__tests__,__mocks__,test,tests,coverage,test-results,storybook}/**/*'
