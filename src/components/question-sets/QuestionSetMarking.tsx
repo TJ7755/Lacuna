@@ -71,11 +71,9 @@ export function QuestionSetMarking({
         : ''
       : jev.state === 'failed'
         ? 'Automatic marking could not be saved. Choose a mark.'
-        : jev.state === 'left'
-          ? 'Automatic marking was not sure enough. Choose a mark.'
-          : jev.state === 'unavailable'
-            ? 'Automatic marking is paused. Choose a mark.'
-            : '';
+        : jev.state === 'unavailable'
+          ? 'Automatic marking is paused. Choose a mark.'
+          : '';
   const annotations = attempt.annotations.filter((row) => row.nodeId === nodeId);
   const boundaries = [
     ...new Set([

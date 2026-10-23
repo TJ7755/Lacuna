@@ -1,0 +1,158 @@
+import { expect, test, type Page } from '@playwright/test';
+import type { QuestionSet } from '../../src/questions/questionSets';
+import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+
+async function openSet(page: Page) {
+  await enterFreshLacuna(page);
+  await createCourse(page, 'Question-set keyboard');
+  const courseId = new URL(page.url()).hash.split('/')[2];
+  const answer = (id: string) => ({
+    maxMarks: 1,
+    response: { kind: 'written' as const },
+    prerequisiteConceptIds: [],
+    allocations: [
+      {
+        id,
+        criterion: 'Controls cell activities.',
+        maxMarks: 1,
+        dimension: 'knowledge' as const,
+        targetConceptIds: [],
+      },
+    ],
+  });
+  const content: QuestionSet = {
+    id: 'keyboard-set',
+    courseId,
+    title: 'Cells',
+    lessonIds: [],
+    assessmentIds: [],
+    questions: [{ id: 'q1', prompt: 'Describe the nucleus.', parts: [], answer: answer('a1') }],
+  };
+  // Seed authored content through the real browser store; all attempt writes use the UI.
+  await page.evaluate(
+    (record) =>
+      new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('questionSets', 'readwrite');
+          transaction.objectStore('questionSets').add(record);
+          transaction.oncomplete = () => {
+            database.close();
+            resolve();
+          };
+          transaction.onerror = () => {
+            database.close();
+            reject(transaction.error);
+          };
+        };
+      }),
+    {
+      ...content,
+      contentVersion: 1,
+      contentRevisionId: 'keyboard-revision',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+  );
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'lacuna.jevSettings',
+      JSON.stringify({ enabled: true, acceptedConsentVersion: 1 }),
+    );
+    localStorage.setItem('lacuna.aiHostedAccess', 'browser-test-only');
+  });
+  await page.goto(`/#/course/${courseId}/question-sets/${content.id}`);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
+}
+
+async function startMarking(page: Page) {
+  await page.route('**/api/ai/session', (route) =>
+    route.fulfill({
+      json: { token: 'browser-test-session', expiresAt: Date.now() + 600_000 },
+    }),
+  );
+  await openSet(page);
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  const answer = page.getByRole('textbox', { name: 'Your answer', exact: true });
+  await answer.fill('It does something in the cell.');
+  await answer.press('Control+Enter');
+}
+
+async function chooseZero(page: Page) {
+  const zero = page.getByRole('radio', { name: '0 / 1', exact: true });
+  await zero.focus();
+  await zero.press('Space');
+  await expect(zero).toBeChecked();
+  await expect(page.getByText('Saving…', { exact: true })).toHaveCount(0);
+}
+
+test('saves automatic Unsure on re-entry and permits a numeric override', async ({
+  page,
+}, testInfo) => {
+  let calls = 0;
+  await page.route('**/api/ai/jev', (route) => {
+    calls++;
+    return route.fulfill({
+      json: {
+        model: 'jev-1.14.0',
+        inputTokens: 20,
+        decisions: [{ value: null, confidence: 0.5, model: 'jev-1.14.0' }],
+      },
+    });
+  });
+  await startMarking(page);
+  await expect(page.getByText('Marking this answer automatically…', { exact: true })).toBeVisible();
+  await expect(page.getByText('Marking this answer automatically…', { exact: true })).toHaveCount(
+    0,
+  );
+  await page.screenshot({
+    path: testInfo.outputPath('low-confidence.png'),
+    animations: 'disabled',
+  });
+  const unsure = page.getByRole('radio', { name: 'Unsure', exact: true });
+  await expect(unsure).toBeChecked();
+  await expect(
+    page.getByText('Automatic marking was not sure enough. Choose a mark.', { exact: true }),
+  ).toHaveCount(0);
+  const attemptUrl = page.url();
+  await page.getByRole('button', { name: 'Save and finish later', exact: true }).click();
+  await page.goto(attemptUrl);
+  await expect(unsure).toBeChecked();
+  await page.reload();
+  await expect(unsure).toBeChecked();
+  expect(calls).toBe(1);
+  await chooseZero(page);
+  await page.reload();
+  await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
+  expect(calls).toBe(1);
+});
+
+test('retains a learner mark chosen while a low-confidence result is in flight', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const response = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/ai/jev', async (route) => {
+    await response;
+    await route.fulfill({
+      json: {
+        model: 'jev-1.14.0',
+        inputTokens: 20,
+        decisions: [{ value: null, confidence: 0.5, model: 'jev-1.14.0' }],
+      },
+    });
+  });
+  await startMarking(page);
+  await expect(page.getByText('Marking this answer automatically…', { exact: true })).toBeVisible();
+  await chooseZero(page);
+  const verdict = page.waitForResponse('**/api/ai/jev');
+  release();
+  await verdict;
+  await page.reload();
+  await expect(page.getByRole('radio', { name: '0 / 1', exact: true })).toBeChecked();
+});

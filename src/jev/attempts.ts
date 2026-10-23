@@ -184,7 +184,6 @@ export function markJevAttempt(
       for (const [index, line] of pending.entries()) {
         const result = results[index];
         const marks = result.value;
-        if (marks === null) continue;
         let applied = false;
         try {
           applied = await serialiseApplication(id, async () => {
@@ -196,8 +195,9 @@ export function markJevAttempt(
               line.nodeId,
               {
                 allocationId: line.allocationId,
-                status: 'awarded',
-                marks,
+                ...(marks === null
+                  ? { status: 'unsure' as const }
+                  : { status: 'awarded' as const, marks }),
                 markedBy: {
                   by: 'jev',
                   model: result.model,
@@ -209,7 +209,7 @@ export function markJevAttempt(
             );
           });
         } finally {
-          // A confident verdict that failed to save may retry on entry; abstentions stay manual.
+          // A verdict that failed to save may retry on entry.
           if (!applied && stillEnabled()) {
             failedApplication = true;
             seen.delete(`${id}:${line.allocationId}`);

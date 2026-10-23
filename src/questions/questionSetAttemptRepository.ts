@@ -369,7 +369,7 @@ export async function applyJevAllocationDecision(
   id: string,
   expectedRevisionId: string,
   nodeId: string,
-  decision: Extract<SelfMarkDecision, { status: 'awarded' }>,
+  decision: SelfMarkDecision,
   stillEnabled: () => boolean,
 ): Promise<boolean> {
   let revision = expectedRevisionId;

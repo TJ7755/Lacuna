@@ -1,0 +1,1 @@
+- Save low-confidence automatic Question Set marks as Unsure, retain learner overrides, and remove the explanatory sentence beneath the mark selector. (#828)
