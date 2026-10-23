@@ -18,7 +18,7 @@ import type {
 import { isAvailable } from '../fsrs/eligibility';
 import { getComponentsInZone } from '../utils/datetime';
 import { resolveAssessmentCoverage } from './assessmentCoverage';
-import { lessonCardMembership } from './studyPools';
+import { lessonCardMembership } from './lessonMembership';
 import { lessonTaught } from './unlock';
 
 export interface RevisionPlanContext {

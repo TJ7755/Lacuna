@@ -1,3 +1,4 @@
+import { lessonCardMembership } from '../course/lessonMembership';
 import type {
   Card,
   Course,
@@ -9,8 +10,7 @@ import type {
 } from '../db/types';
 import { progressValue } from '../fsrs/objective';
 import { makeExamDateContext } from '../fsrs/examDate';
-import { availableCards } from '../fsrs/eligibility';
-import { dueReviewPool, examPracticePool, lessonCardMembership } from '../course/studyPools';
+import { availableCards, dueReviewPool, examPracticePool } from '../fsrs/eligibility';
 import { lessonTaught } from '../course/unlock';
 import { startOfDay } from '../utils/datetime';
 import { cardReviewTimestamps, type ReviewActivity } from '../fsrs/heatmap';
