@@ -13,7 +13,8 @@ FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "model-port-v3.json")
 
 
 def test_frozen_python_candidate_matches_shipped_model_and_shared_predictions():
-    shipped = json.loads((ROOT / "coefficients" / "half-life-logistic-v3.json").read_text())
+    shipped_path = ROOT.parents[1] / "src" / "fsrs" / "coefficients" / "half-life-logistic-v3.json"
+    shipped = json.loads(shipped_path.read_text())
     fitted = candidate.fit_batches([])
     assert FIXTURE["model"] == shipped["candidate"]
     assert fitted.coefficients == tuple(shipped["coefficients"])

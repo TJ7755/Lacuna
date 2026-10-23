@@ -143,9 +143,18 @@ uv run stm-harness select \
   reports/fsrs6.json reports/half-life.json reports/actr.json reports/selection.json
 ```
 
-The selected frozen coefficients are in
+The original selected frozen coefficients are in
 [`coefficients/half-life-logistic-v1.json`](coefficients/half-life-logistic-v1.json). Training and
 evaluation code remains offline; no Python, Arrow or neural dependency enters the browser bundle.
+
+The live v3 artefact is the single runtime-owned
+[`src/fsrs/coefficients/half-life-logistic-v3.json`](../../src/fsrs/coefficients/half-life-logistic-v3.json).
+Its bytes, provenance and loader contract are retained unchanged. Historical v1/v2 artefacts
+remain here for reproducibility; the frozen Python candidates still use the historical v2
+weights. The model-port test reads the live asset and checks those weights and shared
+predictions. Evaluation exports fitted parameters in reports as before; there is no automatic
+promotion or coefficient generation step. Any future promotion must deliberately replace the
+runtime asset and pass the existing loader and Python/TypeScript model-port checks.
 
 ## Metrics and slices
 

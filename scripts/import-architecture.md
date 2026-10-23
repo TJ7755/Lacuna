@@ -67,5 +67,10 @@ re-export module still leaves an imported empty shared chunk. `src/mcp/contractB
 four entry points together, including side-effect imports between shared chunks.
 Type-only exports remain explicit.
 `bun run test -- scripts/appImports.test.ts` probes rejected deep imports and permitted
-entry points through the real configuration. The tooling coefficients import remains a
-later slice of [issue 724](https://github.com/TJ7755/Lacuna/issues/724).
+entry points through the real configuration. `training-contract/no-deep-imports` uses the same resolver to reject imports from `src`,
+`server`, `electron` and `api` into `tooling/short-term-memory`, including tests. The single
+shipped coefficient asset is `src/fsrs/coefficients/half-life-logistic-v3.json`; runtime code
+imports it directly and keeps the existing complete loader validation. Training and evaluation
+remain offline. Two exact integration edges retain the historical v1 artefact and shared
+Python prediction fixture in the runtime model test; no general test exemption applies.
+`bun run test -- scripts/trainingImports.test.ts` probes this rule through the real configuration.

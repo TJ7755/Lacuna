@@ -101,3 +101,10 @@ export const appImportsRule = importsRule(
     ].includes(target);
   },
 );
+
+export const trainingImportsRule = importsRule(
+  'Use the runtime-owned coefficient asset instead of training internals ({{target}}).',
+  (importer, target) =>
+    ['src/', 'server/', 'electron/', 'api/'].some((area) => importer.startsWith(area)) &&
+    target.startsWith('tooling/short-term-memory/'),
+);
