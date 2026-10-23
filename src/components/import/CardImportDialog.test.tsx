@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CardImportDialog } from './CardImportDialog';
+import { ImportDestination, useImportDestination } from './ImportDestination';
 import type { ApkgImportResult } from '../../db/apkgImport';
 
 const mocks = vi.hoisted(() => ({ parseApkg: vi.fn(), duplicates: vi.fn() }));
+vi.mock('../../state/useCourseData', () => ({ useCourses: () => [], useLessons: () => [] }));
 vi.mock('../../db/apkgImport', () => ({ parseApkg: mocks.parseApkg }));
 vi.mock('../../db/cardRepository', () => ({ checkDuplicatesBatch: mocks.duplicates }));
 vi.mock('../../state/motionSpeed', () => ({
@@ -190,5 +192,93 @@ it('supports an inline review with destination validation and preserves input on
   expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Back' }));
   expect(await screen.findByLabelText('Paste your cards')).toHaveValue('bonjour\thello');
+  expect(onImport).not.toHaveBeenCalled();
+});
+
+function DestinationPanel({ onImport }: { onImport: () => Promise<void> }) {
+  const draft = useImportDestination();
+  return (
+    <CardImportDialog
+      presentation="panel"
+      onCancel={vi.fn()}
+      onImport={onImport}
+      canImport={!!draft.destination}
+      reviewOptions={<ImportDestination draft={draft} />}
+    />
+  );
+}
+
+async function chooseDestination(onImport = vi.fn().mockResolvedValue(undefined)) {
+  render(<DestinationPanel onImport={onImport} />);
+  paste('bonjour\thello');
+  await review();
+  fireEvent.click(screen.getByRole('button', { name: 'Choose destination' }));
+  const title = await screen.findByLabelText('Course title');
+  fireEvent.change(title, { target: { value: 'French vocabulary' } });
+  title.focus();
+  return { title, onImport };
+}
+
+it('tabs directly from a valid destination title to Import', async () => {
+  const { title } = await chooseDestination();
+  fireEvent.keyDown(title, { key: 'Tab' });
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toHaveFocus();
+});
+
+it('imports once on plain Enter from the destination title, including repeated keys while busy', async () => {
+  let finish!: () => void;
+  const onImport = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const { title } = await chooseDestination(onImport);
+  fireEvent.keyDown(title, { key: 'Enter' });
+  fireEvent.keyDown(title, { key: 'Enter' });
+  expect(onImport).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole('button', { name: 'Importing…' })).toBeDisabled();
+  finish();
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeEnabled());
+});
+
+it.each([
+  { key: 'Enter', isComposing: true },
+  { key: 'Enter', keyCode: 229 },
+  { key: 'Enter', shiftKey: true },
+  { key: 'Enter', altKey: true },
+  { key: 'Tab', shiftKey: true },
+  { key: 'Tab', isComposing: true },
+])('leaves composition and modified title keys alone: %j', async (key) => {
+  const { title, onImport } = await chooseDestination();
+  expect(fireEvent.keyDown(title, key)).toBe(true);
+  expect(title).toHaveFocus();
+  expect(onImport).not.toHaveBeenCalled();
+});
+
+it('does not shortcut an empty title or an invalid exam date', async () => {
+  const { title, onImport } = await chooseDestination();
+  fireEvent.change(title, { target: { value: '   ' } });
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
+  expect(fireEvent.keyDown(title, { key: 'Tab' })).toBe(true);
+  fireEvent.keyDown(title, { key: 'Enter' });
+  expect(onImport).not.toHaveBeenCalled();
+  fireEvent.change(title, { target: { value: 'French' } });
+  fireEvent.click(screen.getByRole('radio', { name: /Exam date/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Exam date and time' }));
+  fireEvent.change(screen.getByLabelText('Hour'), { target: { value: '99' } });
+  expect(screen.getByRole('button', { name: 'Import 1 card' })).toBeDisabled();
+  title.focus();
+  expect(fireEvent.keyDown(title, { key: 'Tab' })).toBe(true);
+  fireEvent.keyDown(title, { key: 'Enter' });
+  expect(onImport).not.toHaveBeenCalled();
+});
+
+it('leaves plain Enter in the earlier multiline entry alone', () => {
+  const onImport = vi.fn();
+  render(<DestinationPanel onImport={onImport} />);
+  paste('bonjour\thello');
+  expect(fireEvent.keyDown(screen.getByLabelText('Paste your cards'), { key: 'Enter' })).toBe(true);
+  expect(screen.getByRole('button', { name: 'Review cards' })).toBeInTheDocument();
   expect(onImport).not.toHaveBeenCalled();
 });
