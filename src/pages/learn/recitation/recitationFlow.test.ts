@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Card, Sequence, SequenceItem } from '../../../db/types';
 import {
   advanceRecitation,
   initialRecitationState,
   inRecitationOrder,
+  shuffledSimpleQueue,
   isRecitationStateFor,
   presentedLines,
   recitationPlan,
@@ -271,5 +272,35 @@ describe('isRecitationStateFor', () => {
     );
     expect(isRecitationStateFor(plan, { step: { kind: 'done' }, phase: 'recall' })).toBe(false);
     expect(isRecitationStateFor(plan, null)).toBe(false);
+  });
+});
+
+
+describe('shuffledSimpleQueue', () => {
+  const card = (id: string, sequenceItemId?: string) => ({ id, sequenceItemId }) as Card;
+
+  it.each([0, 1])('handles %i cards without drawing randomness', (size) => {
+    const cards = Array.from({ length: size }, (_, index) => card(String(index)));
+    const random = vi.fn();
+    expect(shuffledSimpleQueue(cards, new Map(), random)).toEqual(cards);
+    expect(random).not.toHaveBeenCalled();
+  });
+
+  it('uses controlled draws to shuffle groups without changing their internal order or the input', () => {
+    const first = sequence([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+    const second = sequence([{ id: 'd' }, { id: 'e' }], { id: 's2' });
+    const cards = [card('x'), card('c', 'c'), card('e', 'e'), card('a', 'a'), card('y'), card('d', 'd')];
+    const original = [...cards];
+    const map = new Map([['c', first], ['a', first], ['e', second], ['d', second]]);
+    const random = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(0.5).mockReturnValueOnce(0);
+    const shuffled = shuffledSimpleQueue(cards, map, random);
+    expect(shuffled.map((item) => item.id)).toEqual(['d', 'e', 'y', 'a', 'c', 'x']);
+    expect(random).toHaveBeenCalledTimes(3);
+    expect(shuffled).toHaveLength(cards.length);
+    expect(new Set(shuffled)).toEqual(new Set(cards));
+    expect(cards).toEqual(original);
+    expect(first.items.map((item) => item.id)).toEqual(['a', 'b', 'c']);
+    expect(shuffledSimpleQueue(cards, map, () => 0.999).map((item) => item.id))
+      .toEqual(['x', 'a', 'c', 'd', 'e', 'y']);
   });
 });
