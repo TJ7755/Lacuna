@@ -55,6 +55,8 @@ const HANDBACK = 0.2;
 /** How far drops overshoot their slots as they split, and the pill as they gather. */
 const SPLIT_BOUNCE = 0.5;
 const GATHER_BOUNCE = 0.42;
+/** How far below the bead, in bead heights, the verdict's colour starts its rise. */
+const VERDICT_RISE = 1.15;
 
 /**
  * The pill cut into one segment per grade. Inner ends reach half the height into their
@@ -211,18 +213,50 @@ function FlowSplitLiquid({
   // Retain the verdict's ink while it drains into the next question's accent pill.
   const [verdictNegative, setVerdictNegative] = useState(negative);
   if (waiting && !neutral && verdictNegative !== negative) setVerdictNegative(negative);
-  const verdict = useMotionValue(waiting && !neutral && !departing ? 1 : 0);
+  const landed = waiting && !neutral;
+  // How much of the verdict remains, which drains as the card departs.
+  const verdict = useMotionValue(landed && !departing ? 1 : 0);
   const verdictScale = useTransform(verdict, (value) => Math.max(0, value));
-  const swellScale = useTransform(verdict, (value) => 1 + Math.sin(Math.PI * value) * 0.055);
+  // How far the verdict has risen through the bead from beneath it.
+  const rise = useMotionValue(landed ? 1 : 0);
+  const riseY = useTransform(rise, (value) => (1 - value) * bead.height * VERDICT_RISE);
+  // The whole bead swells as the colour reaches its top, then settles in diminishing bobs.
+  const bob = useMotionValue(1);
   useLayoutEffect(() => {
-    const target = waiting && !neutral && !departing ? 1 : 0;
-    if (m === 0) {
-      verdict.jump(target);
+    if (!landed) {
+      verdict.jump(0);
+      rise.jump(0);
+      bob.jump(1);
       return;
     }
-    const animation = animate(verdict, target, liquidSpring(m, departing));
-    return () => animation.stop();
-  }, [waiting, neutral, departing, m, verdict]);
+    if (m === 0) {
+      verdict.jump(departing ? 0 : 1);
+      rise.jump(1);
+      return;
+    }
+    if (departing) {
+      const animations = [verdict, bob].map((value, index) =>
+        animate(value, index, liquidSpring(m, true)),
+      );
+      return () => animations.forEach((animation) => animation.stop());
+    }
+    const animations = [animate(verdict, 1, liquidSpring(m))];
+    if (rise.get() >= 1) {
+      // A cancelled departure refills without swelling again.
+      animations.push(animate(bob, 1, liquidSpring(m)));
+    } else {
+      animations.push(
+        animate(rise, 1, { duration: 0.42 * m, ease: [0.3, 0.7, 0.4, 1] }),
+        animate(bob, [1, 1.16, 0.94, 1.04, 0.985, 1], {
+          duration: 0.75 * m,
+          delay: 0.26 * m,
+          times: [0, 0.26, 0.5, 0.7, 0.86, 1],
+          ease: 'easeInOut',
+        }),
+      );
+    }
+    return () => animations.forEach((animation) => animation.stop());
+  }, [landed, departing, m, verdict, rise, bob]);
 
   return (
     <svg
@@ -297,7 +331,12 @@ function FlowSplitLiquid({
             : { duration: 0.08 * m }
         }
       >
-        <motion.g style={{ ...centred, scale: swellScale }}>
+        <motion.g
+          style={{
+            scale: bob,
+            transformOrigin: `${centreX(bead)}px ${centreY(bead)}px`,
+          }}
+        >
           <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
             {shells}
           </g>
@@ -364,7 +403,7 @@ function FlowSplitLiquid({
               );
             })}
           </g>
-          {/* Colour wells up from inside the bead, clipped by the same metaball surface. */}
+          {/* Colour rises up through the bead, clipped by the same metaball surface. */}
           <g mask={`url(#${id}-within)`}>
             <g
               data-flow-verdict
@@ -374,11 +413,12 @@ function FlowSplitLiquid({
             >
               <motion.circle
                 cx={centreX(bead)}
-                cy={centreY(bead) + bead.height * 0.18}
-                r={bead.height * 0.85}
+                cy={centreY(bead) + bead.height * 0.45}
+                r={bead.height * 1.05}
                 style={{
+                  y: riseY,
                   scale: verdictScale,
-                  transformOrigin: `${centreX(bead)}px ${centreY(bead) + bead.height * 0.18}px`,
+                  transformOrigin: `${centreX(bead)}px ${centreY(bead) + bead.height * 0.45}px`,
                 }}
               />
             </g>
