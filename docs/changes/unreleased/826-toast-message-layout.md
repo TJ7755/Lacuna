@@ -1,0 +1,1 @@
+- Give wrapped notifications more breathing room, balance their text and align their icons with the first line, with an inset countdown track that stays clear of the rounded border. Keep single-line, action and persistent notifications compact, with controls that retain at least a 44px hit area throughout entrance animation. (#826)

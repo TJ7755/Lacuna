@@ -135,6 +135,7 @@ function ToastBar({
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
   const onDismissRef = useRef(onDismiss);
   const isPersistent = toast.duration === Infinity;
+  const hasControls = isPersistent || Boolean(toast.actionLabel);
 
   // Keep the latest onDismiss without causing re-runs.
   useEffect(() => {
@@ -214,7 +215,8 @@ function ToastBar({
       }
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'relative flex min-h-11 items-center gap-2 rounded-xl px-3 py-1 text-sm bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
+        'relative min-h-11 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
+        hasControls ? 'py-0.5' : 'py-3',
         toneClasses[toast.tone],
       )}
       onMouseEnter={() => {
@@ -235,49 +237,57 @@ function ToastBar({
         resume();
       }}
     >
+      <div className="flex w-full items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span className="mt-0.5 shrink-0" aria-hidden="true">
+            {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
+            {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
+            {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
+          </span>
+          <span className="min-w-0 flex-1 break-words text-balance">{toast.message}</span>
+        </div>
+        {isPersistent && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.onDismiss?.();
+              onDismiss();
+            }}
+            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+            aria-label="Dismiss"
+          >
+            <CloseIcon width={14} height={14} />
+          </button>
+        )}
+        {toast.actionLabel && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.onAction?.();
+              toast.onDismiss?.();
+              onDismiss();
+            }}
+            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+          >
+            {toast.actionLabel}
+          </button>
+        )}
+      </div>
       {/* Dismiss timer progress bar — hidden for persistent toasts */}
       {!isPersistent && (
         <div
-          ref={barRef}
           className={cn(
-            'absolute bottom-0 left-0 h-[2px] w-full origin-left',
-            progressColour[toast.tone],
+            'pointer-events-none absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
+            hasControls ? 'bottom-0.5 h-0.5' : 'bottom-1.5 h-1',
           )}
-          style={{ transform: 'scaleX(1)', opacity: 0.6 }}
-        />
-      )}
-
-      <span className="shrink-0">
-        {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
-        {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
-        {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
-      </span>
-      <span className="min-w-0 flex-1 break-words">{toast.message}</span>
-      {isPersistent && (
-        <button
-          type="button"
-          onClick={() => {
-            toast.onDismiss?.();
-            onDismiss();
-          }}
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
-          aria-label="Dismiss"
+          aria-hidden="true"
         >
-          <CloseIcon width={14} height={14} />
-        </button>
-      )}
-      {toast.actionLabel && (
-        <button
-          type="button"
-          onClick={() => {
-            toast.onAction?.();
-            toast.onDismiss?.();
-            onDismiss();
-          }}
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-        >
-          {toast.actionLabel}
-        </button>
+          <div
+            ref={barRef}
+            className={cn('h-full w-full origin-left rounded-full', progressColour[toast.tone])}
+            style={{ transform: 'scaleX(1)', opacity: 0.6 }}
+          />
+        </div>
       )}
     </motion.div>
   );

@@ -27,6 +27,53 @@ function TestComponent() {
 }
 
 describe('ToastProvider', () => {
+  it('keeps persistent toasts untimed with working action and dismiss buttons', async () => {
+    const onAction = vi.fn();
+    const onDismiss = vi.fn();
+    function PersistentToast() {
+      const { notify } = useToast();
+      return (
+        <button
+          onClick={() =>
+            notify('Keep this change?', 'positive', {
+              persistent: true,
+              duration: 20,
+              actionLabel: 'Undo',
+              onAction,
+              onDismiss,
+            })
+          }
+        >
+          Show persistent toast
+        </button>
+      );
+    }
+    render(
+      <ToastProvider>
+        <PersistentToast />
+      </ToastProvider>,
+    );
+    const show = screen.getByRole('button', { name: 'Show persistent toast' });
+    fireEvent.click(show);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    });
+    expect(screen.getByText('Keep this change?')).toBeInTheDocument();
+    expect(screen.getByLabelText('Notifications').querySelector('.origin-left')).toBeNull();
+    expect(onDismiss).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(onDismiss).toHaveBeenCalledOnce();
+    await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
+
+    fireEvent.click(show);
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(onAction).toHaveBeenCalledOnce();
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(screen.queryByText('Keep this change?')).not.toBeInTheDocument());
+  });
+
   it('keeps an action toast available while keyboard focus is inside it', async () => {
     const onDismiss = vi.fn();
     function ActionToast() {
