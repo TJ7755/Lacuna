@@ -1,0 +1,1 @@
+- Label the dashboard review count as cards in the last seven days, matching its rolling window while keeping the study-day grid on the current calendar week. (#750)
