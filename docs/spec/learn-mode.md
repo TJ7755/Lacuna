@@ -99,15 +99,4 @@ milestones. The short-term model's corpus is external; its benchmark is not evid
 Lacuna learners. See [revisionPlan](../../src/course/revisionPlan.ts) and
 [cramAllocator](../../src/fsrs/cramAllocator.ts).
 
-## Simple Learn and recitation
-
-Simple Learn is algorithm-free: its progress/resumption data does not update FSRS, readiness or
-daily review limits. Leaving or reloading retains an unfinished session; only completion clears it.
-Suspended/buried Cards and archived Courses retain their normal exclusions.
-
-Recitation is explicitly self-marked whether typed or spoken. Typing a matching answer does not
-skip marking. Speaker cues belong to the learner line they introduce. A final joined check grades
-the relevant line through the normal undoable answer path; recitation timing is excluded from
-speed calibration. Content, marks and position must survive chunk changes and narrow layouts.
-
 [Specification index](../SPEC.md)
