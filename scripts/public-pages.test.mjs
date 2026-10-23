@@ -120,18 +120,18 @@ test('course pages ship the complete catalogue content and metadata without Java
     const indexDoc = view.document;
     assert.equal(
       indexDoc.querySelector('title')?.textContent,
-      'Free IGCSE revision courses | Lacuna',
+      'Free GCSE and IGCSE revision courses | Lacuna',
     );
     assert.equal(
       indexDoc.querySelector('link[rel="canonical"]')?.getAttribute('href'),
       'https://getlacuna.app/courses/',
     );
     const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(
-      libraryCourses.map(({ subject }) => subject),
+      [...new Set(libraryCourses.map(({ subject }) => subject))],
     );
     assert.equal(
       indexDoc.querySelector('meta[name="description"]')?.getAttribute('content'),
-      `Free IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
+      `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
     );
     const indexText = view.document.body.textContent;
     for (const course of libraryCourses) {

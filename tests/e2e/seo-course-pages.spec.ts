@@ -14,7 +14,8 @@ for (const width of [1440, 390]) {
     for (const [name, path, heading] of [
       ['index', '/courses/', 'Revision courses'],
       ['biology', '/courses/biology4bi1/', 'Biology 4BI1'],
-      ['physics', '/courses/physics0972/', 'Physics 0972 / 0625'],
+      ['physics-0972', '/courses/physics0972/', 'Physics 0972'],
+      ['physics-0625', '/courses/physics0625/', 'Physics 0625'],
       ['history', '/courses/history0977/', 'History 0977 / 0470'],
     ]) {
       await page.goto(path);

@@ -8,6 +8,27 @@
 - [Chemistry 4CH1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/chemistry4ch1/)
 - [Physics 0972 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/physics0972/)
 - [History 0977 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/history0977/)
+- [Biology 8461 (AQA GCSE)](https://getlacuna.app/courses/biology8461/)
+- [Chemistry 8462 (AQA GCSE)](https://getlacuna.app/courses/chemistry8462/)
+- [Physics 8463 (AQA GCSE)](https://getlacuna.app/courses/physics8463/)
+- [Biology 0610 (Cambridge IGCSE)](https://getlacuna.app/courses/biology0610/)
+- [Chemistry 0620 (Cambridge IGCSE)](https://getlacuna.app/courses/chemistry0620/)
+- [Physics 0625 (Cambridge IGCSE)](https://getlacuna.app/courses/physics0625/)
+- [Biology 0970 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/biology0970/)
+- [Chemistry 0971 (Cambridge IGCSE (9–1))](https://getlacuna.app/courses/chemistry0971/)
+- [Biology 1BI0 (Pearson Edexcel GCSE)](https://getlacuna.app/courses/biology1bi0/)
+- [Chemistry 1CH0 (Pearson Edexcel GCSE)](https://getlacuna.app/courses/chemistry1ch0/)
+- [Physics 1PH0 (Pearson Edexcel GCSE)](https://getlacuna.app/courses/physics1ph0/)
+- [Biology J247 (OCR GCSE)](https://getlacuna.app/courses/biologyj247/)
+- [Chemistry J248 (OCR GCSE)](https://getlacuna.app/courses/chemistryj248/)
+- [Physics J249 (OCR GCSE)](https://getlacuna.app/courses/physicsj249/)
+- [Biology J257 (OCR GCSE)](https://getlacuna.app/courses/biologyj257/)
+- [Chemistry J258 (OCR GCSE)](https://getlacuna.app/courses/chemistryj258/)
+- [Physics J259 (OCR GCSE)](https://getlacuna.app/courses/physicsj259/)
+- [Physics 4PH1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/physics4ph1/)
+- [Combined Science 8464 (AQA GCSE)](https://getlacuna.app/courses/combinedscience8464/)
+
+Science courses cover selected topics. Combined Science 8464 contains seven introductory lessons on cells and microscopy; other Combined Science topics are outside this selection.
 
 ## More
 

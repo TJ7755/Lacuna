@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { libraryCourses } from '../../src/library/catalogue';
 
 /** Waits until the page's layout stops moving, so screenshots show settled motion. */
 async function settle(page: Page) {
@@ -24,14 +25,13 @@ async function settle(page: Page) {
 test.skip(process.env.LACUNA_BROWSER_SITE !== 'library', 'Run verify:browser -- --library');
 
 for (const width of [1280, 390, 320]) {
-  test(`find either Cambridge code and open its existing share at ${width}px`, async ({ page }) => {
+  test(`find Cambridge variants and retained History aliases at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     const search = page.getByRole('searchbox', { name: 'Search courses' });
     const covers = page.getByRole('region', { name: 'Courses' }).getByRole('button');
     for (const [subject, primary, alternative, shareId] of [
-      ['Physics', '0972', '0625', '52fe58acd2fcece40c1d10ffbf08276f'],
       ['History', '0977', '0470', '31178fee8489ffcf1748c1dc5c570be5'],
     ]) {
       for (const code of [primary, alternative]) {
@@ -50,6 +50,17 @@ for (const width of [1280, 390, 320]) {
       await page.keyboard.press('Escape');
       await expect(sheet).toHaveCount(0);
     }
+    for (const code of ['0972', '0625']) {
+      await search.fill(code);
+      await expect(covers).toHaveCount(1);
+      await expect(covers).toContainText(code);
+      await covers.click();
+      const sheet = page.getByRole('dialog', { name: 'Physics' });
+      const course = libraryCourses.find((item) => item.code === code)!;
+      await expect(sheet.getByRole('link', { name: 'Open in Lacuna', exact: true }))
+        .toHaveAttribute('href', course.shareUrl!);
+      await page.keyboard.press('Escape');
+    }
     await search.fill('  cAmBrIdGe 0625  ');
     await expect(covers).toHaveCount(1);
     await page.getByRole('radio', { name: 'Pearson Edexcel', exact: true }).click();
@@ -58,7 +69,7 @@ for (const width of [1280, 390, 320]) {
     await page.getByRole('radio', { name: 'All', exact: true }).click();
     await expect(covers).toHaveCount(1);
     await search.fill('');
-    await expect(covers).toHaveCount(4);
+    await expect(covers).toHaveCount(libraryCourses.length);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
@@ -108,7 +119,7 @@ for (const width of [1280, 390, 320]) {
     await expect(page.getByText(/review/i)).toHaveCount(0);
     await settle(page);
     await page.getByRole('radio', { name: 'Cambridge', exact: true }).click();
-    await expect(covers).toHaveCount(2);
+    await expect(covers).toHaveCount(libraryCourses.filter((course) => course.board === 'Cambridge').length);
     await settle(page);
     await page.getByRole('radio', { name: 'All', exact: true }).click();
     await expect(covers).toHaveCount(courseCount);
@@ -143,7 +154,7 @@ for (const width of [1280, 390, 320]) {
       expect(reportUrl.origin + reportUrl.pathname).toBe('https://github.com/TJ7755/Lacuna/issues/new');
       expect([...reportUrl.searchParams.keys()]).toEqual(['title', 'body']);
       expect(reportUrl.searchParams.get('body')).toMatch(
-        /^Course: [a-z0-9]+\nRevision: \d+\nItem reference: note: cells & tissues #3$/,
+        /^Course: [a-z0-9-]+\nRevision: \d+\nItem reference: note: cells & tissues #3$/,
       );
       await page.keyboard.press('Tab');
       await expect(sheet.getByRole('button', { name: 'Close course' })).toBeFocused();

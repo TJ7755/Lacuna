@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { FileMatcher } from 'app-builder-lib/out/fileMatcher.js';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { coursePaths } from '../src/pages/courses/content';
 
 const root = resolve(import.meta.dirname, '..');
 const config = parse(readFileSync(resolve(root, 'electron/electron-builder.yml'), 'utf8')) as {
@@ -29,6 +30,10 @@ describe('desktop package files', () => {
 
   it('retains the service-worker entry used by desktop stale-chunk recovery', () => {
     expect(included('dist/sw.js')).toBe(true);
+  });
+
+  it.each(coursePaths)('excludes the hosted course page %s', (path) => {
+    expect(included(`dist${path}index.html`)).toBe(false);
   });
 
   it.each([

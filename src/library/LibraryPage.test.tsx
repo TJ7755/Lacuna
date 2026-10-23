@@ -59,10 +59,7 @@ describe('LibraryPage', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it.each([
-    ['Physics', '0972', '0625'],
-    ['History', '0977', '0470'],
-  ])(
+  it.each([['History', '0977', '0470']])(
     'finds %s by either syllabus code and shows both on its cover and sheet',
     async (subject, primary, alternative) => {
       renderLibrary(libraryCourses);
@@ -80,6 +77,34 @@ describe('LibraryPage', () => {
       expect(sheet).toHaveTextContent(alternative);
     },
   );
+
+  it.each(['0972', '0625'])('finds a distinct Physics download for syllabus %s', async (code) => {
+    renderLibrary(libraryCourses);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
+      target: { value: code },
+    });
+    const physics = cover('Physics');
+    expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
+    expect(physics).toHaveTextContent(code);
+    expect(physics).not.toHaveTextContent(code === '0972' ? '0625' : '0972');
+    fireEvent.click(physics);
+    const sheet = await screen.findByRole('dialog', { name: 'Physics' });
+    expect(sheet).toHaveTextContent(code);
+    expect(sheet).not.toHaveTextContent(code === '0972' ? '0625' : '0972');
+  });
+
+  it('shows the seven-lesson Combined Science limit on its cover and sheet', async () => {
+    renderLibrary(libraryCourses);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
+      target: { value: '8464' },
+    });
+    const combined = cover('Combined Science');
+    expect(combined).toHaveTextContent('seven introductory lessons');
+    fireEvent.click(combined);
+    const sheet = await screen.findByRole('dialog', { name: 'Combined Science' });
+    expect(sheet).toHaveTextContent('Other Combined Science topics are outside this selection.');
+    expect(sheet).toHaveTextContent('7 practice sets, 59 marks');
+  });
 
   it('shows every course as a cover with its counts and no link until it is opened', () => {
     renderLibrary();
