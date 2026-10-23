@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { prefetchRoute } from './prefetch';
-import { useIdlePrefetch } from './useIdlePrefetch';
+import { scheduleIdlePrefetch } from './idlePrefetch';
 
-/** Prefetch recognised routes using the shared idle scheduler. */
+/** Hover/focus already prefetches; idle work also covers touch and immediate clicks. */
 export function useIdleRoutePrefetch(paths: readonly string[]) {
-  useIdlePrefetch(paths, prefetchRoute);
+  const key = paths.join('\n');
+  useEffect(() => scheduleIdlePrefetch(key.split('\n').filter(Boolean), prefetchRoute), [key]);
 }

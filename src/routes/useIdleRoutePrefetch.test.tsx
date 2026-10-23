@@ -1,9 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useIdlePrefetch } from './useIdlePrefetch';
+import { useIdleRoutePrefetch } from './useIdleRoutePrefetch';
+import { prefetchRoute } from './prefetch';
+
+vi.mock('./prefetch', () => ({ prefetchRoute: vi.fn() }));
 
 beforeEach(() => {
   vi.useFakeTimers();
+  vi.mocked(prefetchRoute).mockClear();
   vi.stubGlobal('requestIdleCallback', undefined);
   vi.stubGlobal('cancelIdleCallback', undefined);
 });
@@ -14,11 +18,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('useIdlePrefetch', () => {
+describe('useIdleRoutePrefetch', () => {
   it('prefetches one path per fallback timer and cancels stale paths', async () => {
-    const prefetch = vi.fn();
+    const prefetch = vi.mocked(prefetchRoute);
     const { rerender, unmount } = renderHook(
-      ({ paths }) => useIdlePrefetch(paths, prefetch),
+      ({ paths }) => useIdleRoutePrefetch(paths),
       { initialProps: { paths: ['/first', '/stale'] } },
     );
     await act(() => vi.advanceTimersByTime(199));
@@ -34,22 +38,28 @@ describe('useIdlePrefetch', () => {
   });
 
   it('uses the idle timeout and cancels the outstanding callback', () => {
-    const request = vi.fn(() => 42);
+    let next: (() => void) | undefined;
+    const request = vi.fn((callback: () => void) => {
+      next = callback;
+      return 42;
+    });
     const cancel = vi.fn();
     vi.stubGlobal('requestIdleCallback', request);
     vi.stubGlobal('cancelIdleCallback', cancel);
-    const prefetch = vi.fn();
-    const { unmount } = renderHook(() => useIdlePrefetch(['/lesson'], prefetch));
+    const prefetch = vi.mocked(prefetchRoute);
+    const { unmount } = renderHook(() => useIdleRoutePrefetch(['/lesson']));
     expect(request).toHaveBeenCalledWith(expect.any(Function), { timeout: 2000 });
     expect(prefetch).not.toHaveBeenCalled();
     unmount();
     expect(cancel).toHaveBeenCalledWith(42);
+    next?.();
+    expect(prefetch).not.toHaveBeenCalled();
   });
 
   it('does not prefetch while the document is hidden', async () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-    const prefetch = vi.fn();
-    renderHook(() => useIdlePrefetch(['/lesson'], prefetch));
+    const prefetch = vi.mocked(prefetchRoute);
+    renderHook(() => useIdleRoutePrefetch(['/lesson']));
     await act(() => vi.runAllTimers());
     expect(prefetch).not.toHaveBeenCalled();
   });
