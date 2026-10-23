@@ -560,7 +560,7 @@ describe('guarded Jev decisions', () => {
       attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId);
     }
     if (guard === 'undone') {
-      attempt.undoneAt = Date.now();
+      attempt.undoneAt = attempt.updatedAt;
       await db.questionSetAttempts.put(attempt);
     }
     const decision: SelfMarkDecision = {
