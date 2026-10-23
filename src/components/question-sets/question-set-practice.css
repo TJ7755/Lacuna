@@ -367,6 +367,12 @@
     gap: 8px;
     margin-bottom: 12px;
   }
+  .qs-practice-header:has(.qs-header-tools) {
+    flex-wrap: wrap;
+  }
+  .qs-practice-header:has(.qs-header-tools) > .qs-actions {
+    flex-basis: 100%;
+  }
   .qs-practice-header > .qs-actions button {
     padding: 0 4px;
     white-space: nowrap;
