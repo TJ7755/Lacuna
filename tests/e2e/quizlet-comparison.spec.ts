@@ -46,8 +46,30 @@ test('hydrates the real flashcards, scheduling and teacher sharing without start
   await practice.getByLabel('Your answer').fill('active site');
   await practice.getByRole('button', { name: 'Check answer', exact: true }).click();
   await expect(practice.getByRole('button', { name: 'Hide answer' })).toBeVisible();
-  await page.getByRole('button', { name: 'Course updates' }).click();
-  await expect(page.getByText('Republish to the same link')).toBeVisible();
+  const teachers = page.getByRole('region', { name: /^For teachers\b/ });
+  const panel = teachers.locator('[aria-live="polite"]');
+  const firstShare = teachers.getByRole('button', { name: 'First share' });
+  const courseUpdates = teachers.getByRole('button', { name: 'Course updates' });
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(/\S/, { useInnerText: true });
+  const initialContent = await panel.innerText();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+
+  await courseUpdates.click();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'false');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(/\S/, { useInnerText: true });
+  await expect(panel, 'updates must change the announced example').not.toHaveText(initialContent, {
+    useInnerText: true,
+  });
+
+  await firstShare.click();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(initialContent, { useInnerText: true });
   await page.getByRole('button', { name: 'Enlarge your course screenshot' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
@@ -67,10 +89,30 @@ test('keeps the mobile comparison usable with reduced motion', async ({ page }) 
   await page.getByRole('button', { name: 'Moving over', exact: true }).click();
   await page.getByRole('button', { name: 'Bringing your sets', exact: false }).click();
   await expect(page.getByRole('link', { name: 'Quizlet source', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Course updates' }).click();
-  await expect(
-    page.getByText('Existing review history is preserved', { exact: true }),
-  ).toBeVisible();
+  const teachers = page.getByRole('region', { name: /^For teachers\b/ });
+  const panel = teachers.locator('[aria-live="polite"]');
+  const firstShare = teachers.getByRole('button', { name: 'First share' });
+  const courseUpdates = teachers.getByRole('button', { name: 'Course updates' });
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(/\S/, { useInnerText: true });
+  const initialContent = await panel.innerText();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+
+  await courseUpdates.click();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'false');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(/\S/, { useInnerText: true });
+  await expect(panel, 'updates must change the announced example').not.toHaveText(initialContent, {
+    useInnerText: true,
+  });
+
+  await firstShare.click();
+  await expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  await expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveText(initialContent, { useInnerText: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   expect(errors).toEqual([]);
 });

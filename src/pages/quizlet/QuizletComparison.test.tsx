@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal'],
@@ -82,14 +82,38 @@ it('puts exam scheduling first in A’s comparison and keeps evidence available'
   expect(within(table).queryByText('Study direction')).not.toBeInTheDocument();
 });
 
-it('explains account-free course sharing for teachers in A', () => {
+it('switches the teacher sharing example and restores the first share in A', async () => {
   open();
   const teachers = screen.getByRole('region', {
-    name: 'For teachers. A course link, not a class of logins.',
+    name: /^For teachers\b/,
   });
-  fireEvent.click(within(teachers).getByRole('button', { name: 'Course updates' }));
-  expect(within(teachers).getByText('Republish to the same link')).toBeInTheDocument();
-  expect(within(teachers).getByText('Existing review history is preserved')).toBeInTheDocument();
+  const panel = teachers.querySelector('[aria-live="polite"]')!;
+  const firstShare = within(teachers).getByRole('button', { name: 'First share' });
+  const courseUpdates = within(teachers).getByRole('button', { name: 'Course updates' });
+  expect(panel).toBeVisible();
+  const initialContent = panel.textContent!.trim();
+  expect(initialContent).toMatch(/\S/);
+  expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+
+  fireEvent.click(courseUpdates);
+  expect(firstShare).toHaveAttribute('aria-pressed', 'false');
+  expect(courseUpdates).toHaveAttribute('aria-pressed', 'true');
+  await waitFor(() => {
+    expect(panel).toBeVisible();
+    expect(panel).toHaveTextContent(/\S/);
+    expect(panel.textContent!.trim(), 'updates must change the announced example').not.toBe(
+      initialContent,
+    );
+  });
+
+  fireEvent.click(firstShare);
+  expect(firstShare).toHaveAttribute('aria-pressed', 'true');
+  expect(courseUpdates).toHaveAttribute('aria-pressed', 'false');
+  await waitFor(() => {
+    expect(panel).toBeVisible();
+    expect(panel.textContent!.trim()).toBe(initialContent);
+  });
   expect(within(teachers).getByRole('link', { name: 'Open course sharing' })).toHaveAttribute(
     'href',
     '/#/share',
