@@ -1,4 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useMemo } from 'react';
 import { db } from '../db/schema';
 import { hydrateCardsWithHistory } from '../db/reviewHistoryRead';
 import { performanceForCourseBackingDecks } from '../db/backingDecks';
@@ -33,11 +34,33 @@ interface CourseStudyFlowRecords {
 }
 
 /** Shared course reads for the path preview and the active study conductor. */
-export function useCourseStudyFlowRecords(courseId: string | undefined, refreshKey = 0) {
-  return useLiveQuery(
-    () => readCourseStudyFlowRecords(courseId, refreshKey),
-    [courseId, refreshKey],
+export function useCourseStudyFlowRecords(
+  courseId: string | undefined,
+  refreshKey = 0,
+  enabled = true,
+) {
+  const cache = useMemo(
+    () => ({
+      courseId,
+      value: undefined as { courseId: string | undefined; records: CourseStudyFlowRecords } | undefined,
+      version: 0,
+    }),
+    [courseId],
   );
+  // URL-seeded steps still need an initial snapshot. Once committed, stop observing
+  // review writes until the conductor requests fresh planning at the step boundary.
+  const live = enabled || cache.value === undefined;
+  const result = useLiveQuery(async () => {
+    const version = ++cache.version;
+    if (!live) return cache.value;
+    const value = {
+      courseId: cache.courseId,
+      records: await readCourseStudyFlowRecords(cache.courseId, refreshKey),
+    };
+    if (version === cache.version) cache.value = value;
+    return value;
+  }, [cache, refreshKey, live]);
+  return result?.courseId === courseId ? result?.records : undefined;
 }
 
 // Presentation retains results; the study conductor keeps its existing fresh-generation contract.

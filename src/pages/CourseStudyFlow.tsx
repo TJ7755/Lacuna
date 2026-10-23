@@ -55,14 +55,6 @@ function CourseStudyFlowInner() {
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [catchUpFinished, setCatchUpFinished] = useState(false);
-  const plannedFlow = useCourseStudyFlow(courseId, refreshKey);
-  // Reaching a session objective need not empty the broader catch-up pool.
-  const flow = useMemo(
-    () => plannedFlow && catchUpFinished
-      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
-      : plannedFlow,
-    [catchUpFinished, plannedFlow],
-  );
   const entryAssessmentId = searchParams.get('assessmentId');
   const [currentStep, setCurrentStep] = useState<StudyFlowStep | null>(() => {
     if (searchParams.get('review') === 'earlier') return CATCH_UP_STEP;
@@ -86,6 +78,18 @@ function CourseStudyFlowInner() {
     planId: string;
     windowId: string;
   } | null>(null);
+  const plannedFlow = useCourseStudyFlow(
+    courseId,
+    refreshKey,
+    currentStep === null || transition !== null,
+  );
+  // Reaching a session objective need not empty the broader catch-up pool.
+  const flow = useMemo(
+    () => plannedFlow && catchUpFinished
+      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+      : plannedFlow,
+    [catchUpFinished, plannedFlow],
+  );
   const pomodoro = usePomodoroFlowContext();
 
   useEffect(() => {

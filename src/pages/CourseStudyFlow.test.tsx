@@ -22,6 +22,7 @@ const mockFlowListeners = new Set<() => void>();
 const seenLearnRequests: unknown[] = [];
 let learnMounts = 0;
 const seenCompletions: ((summary: SessionSummary) => void)[] = [];
+const planningStates: boolean[] = [];
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
@@ -34,7 +35,8 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../state/useCourseStudyFlow', () => ({
-  useCourseStudyFlow: (_courseId: string | undefined, refreshKey = 0) => {
+  useCourseStudyFlow: (_courseId: string | undefined, refreshKey = 0, enabled = true) => {
+    planningStates.push(enabled);
     const subscribe = (onStoreChange: () => void) => {
       mockFlowListeners.add(onStoreChange);
       return () => {
@@ -253,9 +255,25 @@ beforeEach(() => {
   seenLearnRequests.length = 0;
   seenCompletions.length = 0;
   learnMounts = 0;
+  planningStates.length = 0;
 });
 
 describe('CourseStudyFlow', () => {
+  it('pauses planning during a committed step and resumes for the post-step generation', async () => {
+    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
+    renderFlow();
+    await screen.findByTestId('learn-request');
+    await waitFor(() => expect(planningStates.at(-1)).toBe(false));
+    fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
+    expect(planningStates.at(-1)).toBe(true);
+    expect(screen.getByRole('button', { name: 'Planning next step…' })).toBeDisabled();
+    mockFlows[1] = flow({ kind: 'lesson', lessonId: 'lesson-2', label: 'Bonding' }, 1);
+    act(() => mockFlowListeners.forEach((notify) => notify()));
+    fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
+    await waitFor(() => expect(request().lessonId).toBe('lesson-2'));
+    expect(planningStates.at(-1)).toBe(false);
+  });
+
   it('renders the initial lesson as an embedded LearnMode request', async () => {
     mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
 

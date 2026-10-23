@@ -8,7 +8,9 @@ shortcut bindings and transition timings. The boundaries below explain what chan
 
 Session progress measures completion of admitted work, not predicted recall. A retry falling due
 must not move completed progress backwards. Course continuation recomputes from authoritative
-state after each step instead of persisting an obsolete plan of future steps.
+state after each step instead of persisting an obsolete plan of future steps. During a committed step,
+course-wide planning reads pause so review writes do not rebuild its history in the interactive
+grading window. Cached Path snapshots revalidate on return without keeping idle queries live.
 
 Prepare the current presentation without waiting for later images. Lookahead must not mutate the
 active engine's random state, queue or review evidence. Failed or cancelled preload work cannot

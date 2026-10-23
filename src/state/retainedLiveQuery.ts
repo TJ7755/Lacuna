@@ -1,12 +1,12 @@
 import { liveQuery } from 'dexie';
 import { useMemo, useSyncExternalStore } from 'react';
 
-/** Keep a few recently visited workspaces live, including while a study session is open. */
+/** Retain recent workspace snapshots; only mounted readers keep queries live. */
 export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
   const entries = new Map<string, ReturnType<typeof createEntry>>();
   function createEntry(key: string) {
     let value: T | undefined;
-    let error: unknown;
+    let error: { cause: unknown } | undefined;
     let subscription: { unsubscribe(): void } | undefined;
     let expiry: ReturnType<typeof setTimeout> | undefined;
     const listeners = new Set<() => void>();
@@ -18,7 +18,7 @@ export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
         entries.delete(key);
       },
       snapshot() {
-        if (error) throw error;
+        if (error) throw error.cause;
         return value;
       },
       subscribe(listener: () => void) {
@@ -28,17 +28,23 @@ export function retainedLiveQuery<T>(read: (key: string) => Promise<T>) {
           subscription = liveQuery(() => read(key)).subscribe({
             next(result) {
               value = result;
+              error = undefined;
               listeners.forEach((notify) => notify());
             },
             error(cause: unknown) {
-              error = cause;
+              error = { cause };
               listeners.forEach((notify) => notify());
             },
           });
         }
         return () => {
           listeners.delete(listener);
-          if (listeners.size === 0) expiry = setTimeout(() => entry.dispose(), 5 * 60_000);
+          if (listeners.size === 0) {
+            subscription?.unsubscribe();
+            subscription = undefined;
+            error = undefined;
+            expiry = setTimeout(() => entry.dispose(), 5 * 60_000);
+          }
         };
       },
     };
