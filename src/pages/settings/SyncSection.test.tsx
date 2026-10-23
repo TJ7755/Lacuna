@@ -506,6 +506,40 @@ describe('SyncSection', () => {
     expect(publishUnlockedCredentialsMock).toHaveBeenLastCalledWith(credentials);
   });
 
+  it.each(['Remove', 'Delete channel'])(
+    'returns focus to %s after cancelling or escaping without changing the channel',
+    async (label) => {
+      readSyncStateMock.mockResolvedValue({ ...state, lastError: 'Relay unavailable' });
+      render(<SyncSection />);
+      await screen.findByText('Paired to a sync channel');
+
+      for (const escape of [false, true]) {
+        const trigger = screen.getByRole('button', { name: label });
+        trigger.focus();
+        fireEvent.click(trigger);
+        const cancel = screen.getByRole('button', { name: 'Cancel' });
+        expect(cancel).toHaveFocus();
+        expect(screen.getByRole('status')).toHaveTextContent(
+          label === 'Remove'
+            ? 'Remove sync from this device?'
+            : 'Delete the shared channel everywhere?',
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent('Relay unavailable');
+        expect(
+          screen.queryByRole('button', {
+            name: label === 'Remove' ? 'Delete channel' : 'Remove',
+          }),
+        ).not.toBeInTheDocument();
+        if (escape) fireEvent.keyDown(cancel, { key: 'Escape' });
+        else fireEvent.click(cancel);
+        expect(screen.getByRole('button', { name: label })).toHaveFocus();
+      }
+      expect(unpairMock).not.toHaveBeenCalled();
+      expect(deleteChannelMock).not.toHaveBeenCalled();
+      expect(forgetRememberedCredentialsMock).not.toHaveBeenCalled();
+    },
+  );
+
   it('keeps unpairing local and does not purge the shared channel', async () => {
     readSyncStateMock.mockResolvedValue(state);
     render(<SyncSection />);
@@ -527,6 +561,9 @@ describe('SyncSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete channel' }));
     expect(deleteChannelMock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Delete channel' })).toBeEnabled(),
+    );
 
     fireEvent.change(screen.getByLabelText('Recovery passphrase'), {
       target: { value: 'a long recovery phrase' },
