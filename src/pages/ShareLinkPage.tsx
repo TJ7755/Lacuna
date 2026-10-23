@@ -2,8 +2,8 @@ import { PAGE_FRAME, PAGE_HEADER, PAGE_TITLE } from '../components/course/course
 import { StepSwap } from '../components/ui/StepSwap';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { Skeleton } from '../components/ui/Skeleton';
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
@@ -49,10 +49,12 @@ const INCOMPLETE_MESSAGE =
  */
 export function ShareLinkPage() {
   const { code } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState<ShareLinkState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [joinedCourse, setJoinedCourse] = useState<string | null>(null);
   const [joinError, setJoinError] = useState('');
+  const importGeneration = useRef(0);
 
   async function join(
     shareId: string,
@@ -175,6 +177,7 @@ export function ShareLinkPage() {
     })();
     return () => {
       cancelled = true;
+      importGeneration.current += 1;
       controller.abort();
     };
   }, [code, attempt]);
@@ -213,12 +216,19 @@ export function ShareLinkPage() {
             <SharedCourseImport
               initialFile={state.file}
               onImported={(courseId) => {
-                void join(state.shareId, state.expectedLineageId, courseId, state.recipient).catch(
-                  (error) =>
+                const generation = importGeneration.current;
+                void join(state.shareId, state.expectedLineageId, courseId, state.recipient)
+                  .then(() => {
+                    if (generation !== importGeneration.current || state.recipient) return;
+                    const pathname = `/course/${encodeURIComponent(courseId)}`;
+                    void navigate(pathname);
+                    focusImportedCourseHeading(pathname);
+                  })
+                  .catch((error) =>
                     setJoinError(
                       error instanceof Error ? error.message : 'Could not join this class.',
                     ),
-                );
+                  );
               }}
             />
             {joinedCourse && <CourseInsightsSection key={joinedCourse} courseId={joinedCourse} />}
@@ -270,4 +280,42 @@ function ShareLinkSkeleton() {
       </div>
     </div>
   );
+}
+
+/** The course route can still be loading after the share page has unmounted. */
+function focusImportedCourseHeading(pathname: string) {
+  const previousFocus = document.activeElement;
+  const previousPage = document.querySelector('[data-route-content]:not([inert])');
+  const observer = new MutationObserver(focusHeading);
+  const timeout = window.setTimeout(() => observer.disconnect(), 10_000);
+  function stop() {
+    observer.disconnect();
+    window.clearTimeout(timeout);
+  }
+  function focusHeading() {
+    const page = document.querySelector('[data-route-content]:not([inert])');
+    if (page && page !== previousPage && page.getAttribute('data-route-content') !== pathname) {
+      stop();
+      return;
+    }
+    const heading = document.querySelector<HTMLElement>(
+      `[data-route-content="${CSS.escape(pathname)}"]:not([inert]) h1`,
+    );
+    if (!heading || heading.closest('[inert]')) return;
+    const active = document.activeElement;
+    if (
+      active &&
+      active !== document.body &&
+      active !== previousFocus &&
+      !active.closest('[inert]')
+    ) {
+      stop();
+      return;
+    }
+    stop();
+    heading.tabIndex = -1;
+    heading.focus();
+  }
+  observer.observe(document.body, { childList: true, subtree: true });
+  focusHeading();
 }

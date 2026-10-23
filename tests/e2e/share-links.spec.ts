@@ -8,6 +8,77 @@ import { addLessonCard, editOnlyCard } from './fixtures/syncConvergence';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 
+for (const width of [1280, 390]) {
+  test(`opens the confirmed shared course with heading focus and Study at ${width}px`, async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    const store = new MemoryStore();
+    const handle = createHandler(store);
+    const minted = await handle(new Request(`${RELAY_URL}/shares`, { method: 'POST' }));
+    const { shareId } = (await minted.json()) as { shareId: string };
+    const payload = {
+      v: 2,
+      at: 1000,
+      li: 'share-arrival-biology',
+      rv: 1,
+      course: { n: 'Shared biology', o: 0, c: 1000, um: 'open', sm: 1 },
+      lessons: ['Cells', 'Enzymes'].map((name, index) => ({
+        i: `arrival-lesson-${index}`,
+        n: name,
+        notes: [],
+        cards: [{ id: `arrival-card-${index}`, k: 0, f: `Question about ${name}`, b: 'Answer' }],
+      })),
+    };
+    const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
+    const meta = JSON.stringify({
+      v: 1,
+      lineageId: payload.li,
+      revision: 1,
+      publishedAt: 1000,
+      byteSize: Buffer.byteLength(file),
+      courseName: payload.course.n,
+    });
+    await store.put(`shares/${shareId}/payload`, new TextEncoder().encode(file), {
+      overwrite: true,
+    });
+    await store.put(`shares/${shareId}/meta`, new TextEncoder().encode(meta), { overwrite: true });
+    await installShareRelay(page, handle);
+    await enterFreshLacuna(page);
+    await page.goto(`/#/s/${shareId}`);
+    await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+    await page.getByRole('button', { name: 'Add to my courses' }).press('Enter');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id],
+          shareId,
+        ),
+      )
+      .toBeTruthy();
+    await page.screenshot({
+      path: testInfo.outputPath(`share-import-result-${width}.png`),
+      fullPage: true,
+    });
+    const courseId = await page.evaluate(
+      (id) => JSON.parse(localStorage.getItem('lacuna.shareImports') ?? '{}')[id] as string,
+      shareId,
+    );
+    await expect(page).toHaveURL(`${new URL(page.url()).origin}/#/course/${courseId}`);
+    const heading = page.getByRole('heading', { name: 'Shared biology', exact: true });
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
+    const study = page.getByRole('button', { name: 'Study', exact: true });
+    await expect(study).toBeEnabled();
+    await page.screenshot({
+      path: testInfo.outputPath(`share-course-arrival-${width}.png`),
+      fullPage: true,
+    });
+    await study.click();
+    await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+  });
+}
+
 test('exports a published course connection without putting ownership secrets in the download', async ({
   page,
 }, testInfo) => {

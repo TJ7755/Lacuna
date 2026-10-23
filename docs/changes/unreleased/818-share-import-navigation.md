@@ -1,0 +1,1 @@
+- Open the imported Course with heading focus after a non-class share link is successfully confirmed, so Study is immediately available. Class links retain enrolment and insights controls; failed confirmation stays visible on the share page. (#818)
