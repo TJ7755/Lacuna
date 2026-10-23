@@ -216,7 +216,7 @@ function ToastBar({
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         'relative min-h-11 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
-        hasControls ? 'py-1' : 'py-3',
+        hasControls ? 'py-0.5' : 'py-3',
         toneClasses[toast.tone],
       )}
       onMouseEnter={() => {
@@ -253,7 +253,7 @@ function ToastBar({
               toast.onDismiss?.();
               onDismiss();
             }}
-            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
+            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full p-1 text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink"
             aria-label="Dismiss"
           >
             <CloseIcon width={14} height={14} />
@@ -267,7 +267,7 @@ function ToastBar({
               toast.onDismiss?.();
               onDismiss();
             }}
-            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+            className="flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full px-3 font-semibold text-accent-ink transition-colors hover:bg-ink/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
           >
             {toast.actionLabel}
           </button>
@@ -277,7 +277,7 @@ function ToastBar({
       {!isPersistent && (
         <div
           className={cn(
-            'absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
+            'pointer-events-none absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
             hasControls ? 'bottom-0.5 h-0.5' : 'bottom-1.5 h-1',
           )}
           aria-hidden="true"
