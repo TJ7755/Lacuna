@@ -1,0 +1,1 @@
+- Extract study-session lesson unlocking into a focused module while preserving completion transactions and existing unlock rules. (#725)

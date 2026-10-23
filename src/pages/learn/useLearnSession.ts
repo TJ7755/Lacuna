@@ -8,7 +8,6 @@ import { db, makeId } from '../../db/schema';
 import { pauseAssetGc } from '../../db/assets';
 import {
   getSchedulingUnit,
-  performanceForCourseBackingDecks,
   performanceForReviewUnit,
   performanceForReviewUnits,
 } from '../../db/backingDecks';
@@ -28,7 +27,7 @@ import type {
   UserPerformance,
 } from '../../db/types';
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
-import { ratchetLessonUnlock, upsertLessonCardExposure } from '../../db/lessonRepository';
+import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { listNotes } from '../../db/noteRepository';
 import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
 import { undoReview, type ReviewUndo } from '../../db/reviewRepository';
@@ -37,18 +36,7 @@ import {
   refreshRevisionPlan,
   startRevisionWindow,
 } from '../../db/revisionPlanRepository';
-import { nextLessonUnlockCondition } from '../../course/unlock';
-import {
-  buildPath,
-  isLessonUnlocked,
-  lessonEffectiveReleaseDates,
-  manualPracticeGateKeysAfterLesson,
-  manualPracticeGateOutcomeAfterLesson,
-} from '../../course/path';
-import {
-  buildCourseStudyFlowSnapshot,
-  courseMeanReviewSeconds,
-} from '../../course/studyFlowSnapshot';
+import { isLessonUnlocked, lessonEffectiveReleaseDates } from '../../course/path';
 import {
   eligiblePracticePool,
   dueReviewPool,
@@ -60,10 +48,7 @@ import {
   practiceReadiness,
   practiceScopeVersion,
 } from '../../course/studyPools';
-import {
-  assessmentPracticePool,
-  currentAssessmentPracticeContext,
-} from '../../course/assessmentPractice';
+import { assessmentPracticePool } from '../../course/assessmentPractice';
 import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import { revisionProjection } from '../../course/revisionProjection';
 import { emptyPerformance } from '../../fsrs/grading';
@@ -80,8 +65,7 @@ import {
   sessionServePool,
 } from '../../fsrs/session';
 import type { SessionContext, SessionUnit } from '../../fsrs/session';
-import { availableCards, dueCards, studyPool } from '../../fsrs/eligibility';
-import { buildDeckSecondsMap } from '../../fsrs/stats';
+import { studyPool } from '../../fsrs/eligibility';
 import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
 import { allocateCramReview } from '../../fsrs/cramAllocator';
@@ -120,6 +104,7 @@ import {
 import { inRecitationOrder } from './recitation/recitationFlow';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
 import { resolveLearnSessionScope } from './sessionScope';
+import { ratchetSessionUnlocks } from './sessionUnlocks';
 import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
 import {
   answerCorrect,
@@ -429,9 +414,9 @@ export function useLearnSession({
   // and lesson scope) or a scheduling unit (the global "Today" session).
   const reviewKindRef = useRef<'scheduling-unit' | 'course'>('scheduling-unit');
   // Set for course/lesson-scoped sessions so a completed session can evaluate the
-  // semi-linear unlock ratchet (see ratchetUnlocks below). Null for deck/global sessions.
+  // semi-linear unlock ratchet (see sessionUnlocks.ts). Null for deck/global sessions.
   const ratchetCourseIdRef = useRef<string | null>(null);
-  // Set only for lesson scope, so ratchetUnlocks knows which single lesson to
+  // Set only for lesson scope, so ratchetSessionUnlocks knows which single lesson to
   // evaluate (course/practice-scope completion instead sweeps every lesson).
   const ratchetLessonIdRef = useRef<string | null>(null);
   const cardsRef = useRef<Card[]>([]);
@@ -549,145 +534,6 @@ export function useLearnSession({
     if (singleDeck) return progressHeading(singleDeck);
     return 'Predicted readiness across all courses';
   }, [isSimpleMode, singleDeck]);
-
-  /**
-   * Evaluate and, where satisfied, write the semi-linear unlock ratchet (Course
-   * Architecture Plan Addendum 2, §I) after a course/lesson-scoped session reaches
-   * its objective. No-ops for deck-scoped or global sessions, or when the course
-   * is not under `semi-linear` unlock mode.
-   *
-   *  - Lesson-scoped completion: evaluates only the pair (this lesson, its
-   *    successor). Whether a Practice node gates that pair is determined from
-   *    the course's manual practice nodes via `practiceGateAfterLesson` (only
-   *    manual nodes gate — see that function's doc comment for why auto nodes
-   *    are excluded): `practiceGoalReached` is `undefined` when no manual node
-   *    sits in the slot (condition 1, lessonTaught, gates alone), or `false`
-   *    when one does — the lesson session itself cannot have satisfied a
-   *    practice objective, so the pair stays blocked until a practice session
-   *    over that node reaches its goal (the branch below).
-   *  - Course-scoped completion re-evaluates each slot against the exact active
-   *    manual checkpoints in that slot. Completing one checkpoint can therefore
-   *    never satisfy an unrelated gate elsewhere in the course.
-   */
-  const ratchetUnlocks = useCallback(async (reachedGoal: boolean) => {
-    if (!reachedGoal) return;
-    const cId = ratchetCourseIdRef.current;
-    if (!cId) return;
-    const course = await getCourse(cId);
-    if (!course || course.unlockMode !== 'semi-linear') return;
-    const lessons = await db.lessons.where('courseId').equals(cId).sortBy('orderIndex');
-    const coreLessons = lessons.filter((lesson) => !lesson.isExtension);
-    const lId = ratchetLessonIdRef.current;
-    const now = Date.now();
-    const lessonIds = coreLessons.map((lesson) => lesson.id);
-    const [rawCourseCards, links, exposures, completions, practiceNodes, examDates, milestones] =
-      await Promise.all([
-        db.cards.where('courseId').equals(cId).toArray(),
-        lessonIds.length > 0 ? db.lessonCards.where('lessonId').anyOf(lessonIds).toArray() : [],
-        lessonIds.length > 0
-          ? db.lessonCardExposures.where('lessonId').anyOf(lessonIds).toArray()
-          : [],
-        lessonIds.length > 0
-          ? db.lessonCompletions.where('lessonId').anyOf(lessonIds).toArray()
-          : [],
-        db.practiceNodes.where('courseId').equals(cId).toArray(),
-        listCourseAssessments(cId),
-        db.practiceMilestones.where('courseId').equals(cId).toArray(),
-      ]);
-    const courseCards = await hydrateCardsWithHistory(rawCourseCards);
-    const performance = await performanceForCourseBackingDecks(cId, courseCards);
-    const lessonCardsById = new Map(
-      lessons.map((lesson) => [lesson.id, lessonCardMembership(lesson.id, courseCards, links)]),
-    );
-    const meanReviewSeconds = courseMeanReviewSeconds(
-      courseCards,
-      buildDeckSecondsMap(performance),
-    );
-    const currentPractice = currentAssessmentPracticeContext({
-      course,
-      practiceNodes,
-      assessments: examDates,
-      lessons,
-      cards: courseCards,
-      links,
-      exposures,
-      now,
-    });
-    const currentPracticeScope = currentPractice.scope;
-    const nodes = buildPath(
-      course,
-      lessons,
-      examDates,
-      lessonCardsById,
-      practiceNodes,
-      dueCards(availableCards(currentPracticeScope, now), now).length,
-      meanReviewSeconds,
-      now,
-      {
-        exposures,
-        lessonCompletions: completions,
-        practiceMilestones: milestones,
-      },
-      currentPractice.assessmentOptions[0]?.examDate,
-    );
-    const snapshot = buildCourseStudyFlowSnapshot({
-      course,
-      nodes,
-      cards: courseCards,
-      links,
-      exposures,
-      examDateContext: makeExamDateContext(course, lessons, examDates),
-      meanReviewSeconds,
-      practiceMilestones: milestones,
-      now,
-    });
-    for (let i = 0; i < coreLessons.length - 1; i++) {
-      const lessonN = coreLessons[i];
-      const lessonN1 = coreLessons[i + 1];
-      if (lessonN1.unlockedAt !== undefined) continue;
-      if (lId && lessonN.id !== lId) continue;
-      const lessonNCards = lessonCardMembership(lessonN.id, courseCards, links);
-      const currentPracticeGoalReached = manualPracticeGateOutcomeAfterLesson(
-        coreLessons,
-        practiceNodes,
-        lessonN.id,
-        snapshot.activeManualNodeKeys,
-        snapshot.completedManualNodeKeys,
-      );
-      // Recording the final Simple answer can make a manual checkpoint disappear
-      // from the freshly rebuilt active path before this completion ratchet runs.
-      // Its teacher-authored placement still gates the lesson just completed.
-      const practiceGoalReached =
-        currentPracticeGoalReached === undefined &&
-        lId === lessonN.id &&
-        manualPracticeGateKeysAfterLesson(coreLessons, practiceNodes, lessonN.id).some(
-          (nodeKey) => (snapshot.practiceByKey.get(nodeKey)?.totalCount ?? 0) > 0,
-        )
-          ? false
-          : currentPracticeGoalReached;
-      const lessonComplete =
-        course.learnFirst === false
-          ? lessonNCards.length === 0
-            ? nextLessonUnlockCondition(
-                lessonN.id,
-                lessonNCards,
-                exposures,
-                completions,
-                practiceGoalReached,
-              )
-            : lessonNCards.every((card) => card.state !== 0) && practiceGoalReached !== false
-          : nextLessonUnlockCondition(
-              lessonN.id,
-              lessonNCards,
-              exposures,
-              completions,
-              practiceGoalReached,
-            );
-      if (lessonComplete) {
-        await ratchetLessonUnlock(lessonN1.id, now);
-      }
-    }
-  }, []);
 
   /** Compute sessionProgress with a lightweight dirty-check cache. */
   const cachedSessionProgress = useCallback((cards: Card[], ctx: SessionContext): number => {
@@ -835,7 +681,11 @@ export function useLearnSession({
               await persistPracticeMilestone(cardsRef.current, deliveredSummary.reachedGoal);
             }
             if (!revisionPlan && ratchetCourseIdRef.current) {
-              await ratchetUnlocks(deliveredSummary.reachedGoal);
+              await ratchetSessionUnlocks(
+                deliveredSummary.reachedGoal,
+                ratchetCourseIdRef.current,
+                () => ratchetLessonIdRef.current,
+              );
             }
             return { deliveredSummary, completedPlan };
           },
@@ -870,7 +720,6 @@ export function useLearnSession({
     notify,
     onStepFinished,
     persistPracticeMilestone,
-    ratchetUnlocks,
     requestWindowId,
     simpleSessionScope,
   ]);

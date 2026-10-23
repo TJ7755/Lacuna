@@ -24,6 +24,7 @@ export default defineConfig({
       'src/pages/learn/answerSteps.test.ts',
       'src/pages/learn/simpleSessionPersistence.test.ts',
       'src/pages/learn/sessionScope.test.ts',
+      'src/pages/learn/sessionUnlocks.test.ts',
     ],
     setupFiles: ['./tests/setup.ts'],
     maxWorkers: 1,
@@ -38,6 +39,7 @@ export default defineConfig({
         'src/db/lessonRepository.ts',
         'src/db/noteRepository.ts',
         'src/pages/learn/useLearnSession.ts',
+        'src/pages/learn/sessionUnlocks.ts',
         'src/pages/learn/answerSteps.ts',
         'src/pages/learn/simpleSessionPersistence.ts',
       ],
@@ -54,6 +56,12 @@ export default defineConfig({
         'src/db/lessonRepository.ts': { statements: 87, branches: 77, functions: 81, lines: 89 },
         'src/db/noteRepository.ts': { statements: 100, branches: 100, functions: 100, lines: 100 },
         'src/pages/learn/useLearnSession.ts': {
+          statements: 83,
+          branches: 68,
+          functions: 81,
+          lines: 88,
+        },
+        'src/pages/learn/sessionUnlocks.ts': {
           statements: 83,
           branches: 68,
           functions: 81,
