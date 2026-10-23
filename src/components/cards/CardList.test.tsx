@@ -729,5 +729,92 @@ describe('CardList', () => {
         expect(container.querySelector('[data-card-answer]')).not.toHaveTextContent('Label 1 of 1'),
       );
     });
+
+    it('keeps owner kinds distinct, orders regions and leaves unresolved generated cards read-only', () => {
+      const diagram = {
+        ...occlusion,
+        id: sequence.id,
+        regions: [occlusion.regions[0], { ...occlusion.regions[0], id: 'region-2' }],
+      };
+      const laterRegion = { ...occlusionCard, id: 'later-region', occlusionRegionId: 'region-2' };
+      const orphan = { ...generatedCard, id: 'orphan', sequenceItemId: 'missing-item' };
+      const cards = [mockCard, laterRegion, generatedCard, occlusionCard, orphan];
+      const { container } = render(
+        <CardList
+          cards={cards}
+          context={mockContext}
+          onEditCard={vi.fn()}
+          sequences={[sequence]}
+          occlusions={[diagram]}
+        />,
+      );
+
+      expect(screen.getByText('The heart')).toBeInTheDocument();
+      expect(screen.getByText('The alkali metals')).toBeInTheDocument();
+      expect(
+        [...container.querySelectorAll('[data-card-id]')].map((row) => row.getAttribute('data-card-id')),
+      ).toEqual([occlusionCard.id, laterRegion.id, generatedCard.id, mockCard.id, orphan.id]);
+      expect(cards.map((card) => card.id)).toEqual([
+        mockCard.id, laterRegion.id, generatedCard.id, occlusionCard.id, orphan.id,
+      ]);
+      expect(container.querySelector('[data-card-id="orphan"]')).toHaveTextContent('Sequence');
+      expect(screen.getAllByTitle('Delete card')).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+      fireEvent.click(screen.getByText('Select all'));
+      expect(screen.getByText('1 selected')).toBeInTheDocument();
+    });
+
+    it('renders unresolved sequence and occlusion cards when owner collections are absent', () => {
+      const { container } = render(
+        <CardList
+          cards={[generatedCard, occlusionCard]}
+          context={mockContext}
+          onEditCard={vi.fn()}
+        />,
+      );
+
+      expect(container.querySelectorAll('[data-card-id]')).toHaveLength(2);
+      expect(screen.getByText('Sequence')).toBeInTheDocument();
+      expect(screen.getByText('Occlusion')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Select' })).not.toBeInTheDocument();
+      expect(screen.queryByTitle('Delete card')).not.toBeInTheDocument();
+    });
+
+    it('retains each group expansion when owners reorder and selection mode changes', async () => {
+      const props = {
+        cards: [generatedCard, occlusionCard, mockCard],
+        context: mockContext,
+        onEditCard: vi.fn(),
+        sequences: [sequence],
+        occlusions: [occlusion],
+      };
+      const { rerender } = render(<CardList {...props} />);
+      const sequenceDetails = screen.getByRole('button', {
+        name: 'Card details: **The alkali metals** First item?',
+      });
+      const occlusionDetails = screen.getByRole('button', {
+        name: `Card details: ${occlusionCard.front}`,
+      });
+      const ordinaryDetails = screen.getByRole('button', {
+        name: `Card details: ${mockCard.front}`,
+      });
+      fireEvent.click(sequenceDetails);
+      fireEvent.click(occlusionDetails);
+      fireEvent.click(ordinaryDetails);
+      await waitFor(() => expect(screen.getAllByTestId('card-analytics')).toHaveLength(3));
+
+      rerender(<CardList {...props} cards={[occlusionCard, mockCard, generatedCard]} />);
+      expect(sequenceDetails).toBeInTheDocument();
+      expect(occlusionDetails).toBeInTheDocument();
+      expect(sequenceDetails).toHaveAttribute('aria-expanded', 'true');
+      expect(occlusionDetails).toHaveAttribute('aria-expanded', 'true');
+      expect(ordinaryDetails).toHaveAttribute('aria-expanded', 'true');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Select' }));
+      expect(sequenceDetails).toHaveAttribute('aria-expanded', 'true');
+      expect(occlusionDetails).toHaveAttribute('aria-expanded', 'true');
+      fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+      expect(ordinaryDetails).toHaveAttribute('aria-expanded', 'false');
+    });
   });
 });

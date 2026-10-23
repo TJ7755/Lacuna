@@ -1,0 +1,1 @@
+- Separate generated-card grouping and list rendering from CardList's selection and bulk actions, preserving owner order, unresolved-card fallback and existing row interactions. (#725)
