@@ -364,6 +364,7 @@ export function ForecastChart({
             <g
               key={line.id}
               data-course-id={line.id}
+              fill={stroke}
               style={{
                 opacity: dimmed ? 0.18 : context && !focused ? 0.45 : 1,
                 transition: `opacity ${200 * multiplier}ms`,
@@ -409,14 +410,20 @@ export function ForecastChart({
                       transition={{ duration: 0.9 * multiplier, delay: (delay + 1.05) * multiplier, ease: 'easeOut' }}
                     />
                   )}
+                  {/* Paint the whole halo first: per-glyph strokes can erase neighbouring fills. */}
+                  <use
+                    href={`#${titleId}-label-${index}`}
+                    aria-hidden="true"
+                    fill="none"
+                    className="stroke-surface"
+                    strokeWidth={6}
+                  />
                   <text
+                    id={`${titleId}-label-${index}`}
                     x={last.x + 12}
                     y={labelY.get(line.id) ?? last.y}
                     dominantBaseline="central"
-                    fill={stroke}
-                    className="stroke-surface font-display text-xl font-semibold tabular-nums"
-                    strokeWidth={6}
-                    paintOrder="stroke"
+                    className="font-display text-xl font-semibold tabular-nums"
                   >
                     {Math.round(line.forecast.ifStopped * 100)}%
                   </text>

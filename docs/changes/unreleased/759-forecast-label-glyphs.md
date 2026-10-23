@@ -1,0 +1,1 @@
+- Keep Today forecast percentage glyphs intact by painting their background halo before the complete label, preserving the display font and chart-line separation. (#759)
