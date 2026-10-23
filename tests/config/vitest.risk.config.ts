@@ -9,6 +9,9 @@ export default defineConfig({
     clearMocks: false,
     include: [
       'src/db/migrations.test.ts',
+      'src/db/schemaLifecycle.test.ts',
+      'src/db/rawDatabaseSnapshot.test.ts',
+      'src/db/markdownAssetsColdImport.test.ts',
       'src/db/schemaV*.test.ts',
       'src/db/courseRepository.test.ts',
       'src/db/lessonPrerequisites.test.ts',
@@ -34,6 +37,8 @@ export default defineConfig({
       reportsDirectory: './coverage/risk',
       include: [
         'src/db/schema.ts',
+        'src/db/database.ts',
+        'src/db/rawDatabaseSnapshot.ts',
         'src/db/preMigrationSnapshots.ts',
         'src/db/cardRepository.ts',
         'src/db/lessonRepository.ts',
@@ -46,6 +51,8 @@ export default defineConfig({
       thresholds: {
         perFile: true,
         'src/db/schema.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
+        'src/db/database.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
+        'src/db/rawDatabaseSnapshot.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
         'src/db/preMigrationSnapshots.ts': {
           statements: 100,
           branches: 100,

@@ -517,7 +517,7 @@ describe('pre-migration snapshot ordering', () => {
     // Call the actual production helper: it should skip writing because
     // currentVersion (4) is not less than targetVersion (4).
     const { ensurePreMigrationSnapshot } = await import('./schema');
-    await ensurePreMigrationSnapshot(dbName);
+    await ensurePreMigrationSnapshot(dbName, 4);
 
     const snapshot = await getPreMigrationSnapshot(4);
     expect(snapshot).toBeUndefined();
