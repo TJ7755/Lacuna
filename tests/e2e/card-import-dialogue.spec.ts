@@ -99,3 +99,57 @@ for (const width of [1280, 390]) {
     await expect.poll(async () => (await importedCards(page)).length).toBe(before + 4);
   });
 }
+
+for (const submitFrom of ['title', 'button']) {
+  test(`completes the final import step with Enter from the ${submitFrom}`, async ({ page }) => {
+    await enterFreshLacuna(page);
+    const before = (await importedCards(page)).length;
+    await openImport(page);
+    await page.getByRole('button', { name: /Text or spreadsheet/ }).click();
+    const importer = page.locator('.card-import-panel');
+    const text = importer.getByLabel('Paste your cards');
+    await text.fill('bonjour\thello');
+    await text.press('End');
+    await text.press('Enter');
+    await expect(text).toHaveValue('bonjour\thello\n');
+    await importer.getByRole('button', { name: 'Review cards', exact: true }).click();
+    await importer.getByRole('button', { name: 'Choose destination', exact: true }).click();
+    const title = importer.getByLabel('Course title');
+    const action = importer.getByRole('button', { name: 'Import 1 card' });
+    await title.press('Enter');
+    await expect(action).toBeDisabled();
+    expect((await importedCards(page)).length).toBe(before);
+    await title.fill('French vocabulary');
+    await title.press('Tab');
+    await expect(action).toBeFocused();
+    await action.press('Shift+Tab');
+    const back = importer.getByRole('button', { name: 'Back', exact: true });
+    await expect(back).toBeFocused();
+    await back.press('Shift+Tab');
+    const steady = importer.getByRole('radio', { name: /Steady retention/ });
+    await expect(steady).toBeFocused();
+    await steady.press('ArrowLeft');
+    const exam = importer.getByRole('radio', { name: /Exam date/ });
+    await expect(exam).toBeChecked();
+    await exam.press('Tab');
+    await expect(importer.getByRole('button', { name: 'Exam date and time' })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(exam).toBeFocused();
+    await exam.press('ArrowRight');
+    await expect(steady).toBeChecked();
+    await steady.press('Shift+Tab');
+    await expect(title).toBeFocused();
+    await title.press('Shift+Tab');
+    await expect(
+      importer.getByRole('combobox', { name: 'Destination', exact: true }),
+    ).toBeFocused();
+    await title.focus();
+    if (submitFrom === 'button') {
+      await title.press('Tab');
+      await expect(action).toBeFocused();
+    }
+    await page.keyboard.press('Enter');
+    await expect(importer).toBeHidden();
+    await expect.poll(async () => (await importedCards(page)).length).toBe(before + 1);
+  });
+}

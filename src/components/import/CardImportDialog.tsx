@@ -214,6 +214,25 @@ export function CardImportDialog({
         className="card-import-scroll"
         onKeyDown={(event) => {
           if (
+            event.defaultPrevented ||
+            event.nativeEvent.isComposing ||
+            event.nativeEvent.keyCode === 229
+          )
+            return;
+          const target = event.target as Element;
+          const destinationTitle =
+            finalStep && target.hasAttribute('data-import-destination-title');
+          const plainKey = !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey;
+          if (destinationTitle && plainKey && primaryRef.current && !primaryRef.current.disabled) {
+            if (event.key === 'Tab') {
+              event.preventDefault();
+              primaryRef.current.focus();
+            } else if (event.key === 'Enter') {
+              event.preventDefault();
+              void confirm();
+            }
+          }
+          if (
             event.key === 'Tab' &&
             !event.shiftKey &&
             (event.target as Element).id === 'card-import-text' &&
