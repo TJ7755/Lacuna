@@ -1,0 +1,1 @@
+- Let automatic typed-answer verdicts well into the waiting bead, then drain with the departing card and reform the next answer pill without delaying input. Reduced motion keeps each state immediate.

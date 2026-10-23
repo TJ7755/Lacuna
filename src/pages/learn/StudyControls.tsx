@@ -26,6 +26,7 @@ export function StudyControls({
   onHide,
   onAnswer,
   autoMark,
+  departing = false,
   m,
 }: {
   phase: Phase;
@@ -41,6 +42,7 @@ export function StudyControls({
   onAnswer: (input: boolean | Grade, source?: 'touch' | 'keyboard') => void;
   /** Automatic marking of a typed answer: still judging, or the verdict it reached. */
   autoMark?: AutoMark;
+  departing?: boolean;
   m: number;
 }) {
   const question = phase === 'question';
@@ -139,26 +141,16 @@ export function StudyControls({
   // self-marks only when it is off or leaves the verdict to them.
   return (
     <>
-      {!isTypingCard && !isTouchMode && (
-        <div className="study-controls mt-8 w-full shrink-0">
+      {!isTouchMode && (
+        <div className={`study-controls ${isTypingCard ? 'mt-6' : 'mt-8'} w-full shrink-0`}>
           <FlowGradeControls
             question={question}
+            autoMark={isTypingCard ? autoMark : undefined}
+            departing={departing}
             grades={grades}
             rowClassName={gradeRowClassName}
-            onReveal={onReveal}
-            m={m}
-          />
-        </div>
-      )}
-      {isTypingCard && !isTouchMode && (
-        <div className="study-controls mt-6 w-full shrink-0">
-          <FlowGradeControls
-            question={question}
-            autoMark={autoMark}
-            grades={grades}
-            rowClassName={gradeRowClassName}
-            revealLabel="Check answer"
-            revealLead={<div className="mb-3">{typedField}</div>}
+            revealLabel={isTypingCard ? 'Check answer' : 'Show answer'}
+            revealLead={isTypingCard ? <div className="mb-3">{typedField}</div> : undefined}
             onReveal={onReveal}
             m={m}
           />

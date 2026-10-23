@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { animate, m as motion, useMotionValue, useTransform, type Transition } from 'motion/react';
 import { Button } from '../../components/ui/Button';
-import { MOTION_EASING, motionTransition } from '../../components/ui/motion';
+import { liquidSpring, motionTransition } from '../../components/ui/motion';
 import type { AutoMark } from './types';
 
 interface Rect {
@@ -35,6 +35,7 @@ interface FlowControlsProps {
    * self-marking grades never split off, taking the verdict's colour once it lands.
    */
   autoMark?: AutoMark;
+  departing?: boolean;
   grades: ReactNode[];
   rowClassName: string;
   revealLabel?: ReactNode;
@@ -54,6 +55,8 @@ const HANDBACK = 0.2;
 /** How far drops overshoot their slots as they split, and the pill as they gather. */
 const SPLIT_BOUNCE = 0.5;
 const GATHER_BOUNCE = 0.42;
+/** How far below the bead, in bead heights, the verdict's colour starts its rise. */
+const VERDICT_RISE = 1.15;
 
 /**
  * The pill cut into one segment per grade. Inner ends reach half the height into their
@@ -99,8 +102,14 @@ function FlowShape({ id, to, transition }: { id?: string; to: Rect; transition: 
         [width, w],
         [height, h],
       ] as const
-    ).map(([value, target]) => animate(value, target, transition));
-    return () => running.forEach((controls) => controls.stop());
+    ).map(([value, target]) => {
+      if (transition.duration === 0) {
+        value.jump(target);
+        return;
+      }
+      return animate(value, target, transition);
+    });
+    return () => running.forEach((controls) => controls?.stop());
   }, [cx, cy, width, height, left, top, w, h, transition]);
   return <motion.rect id={id} x={x} y={y} width={width} height={height} rx={radius} />;
 }
@@ -118,6 +127,7 @@ function FlowSplitLiquid({
   neutral,
   holder,
   negative,
+  departing,
   reveal,
   slots,
   visible,
@@ -130,6 +140,7 @@ function FlowSplitLiquid({
   neutral: boolean;
   holder: number;
   negative: boolean;
+  departing: boolean;
   reveal: Rect;
   slots: Rect[];
   visible: boolean;
@@ -143,6 +154,12 @@ function FlowSplitLiquid({
     height: reveal.height,
   };
   const segments = pillSegments(reveal, slots.length);
+  const drained = {
+    left: centreX(bead),
+    top: centreY(bead) + bead.height * 0.2,
+    width: 0,
+    height: 0,
+  };
   const target = slots[holder];
   // Colour enters the holder at its end nearest the drop it comes from.
   const sinkFor = (index: number) => ({
@@ -155,10 +172,14 @@ function FlowSplitLiquid({
     () =>
       m === 0
         ? { duration: 0 }
-        : question
-          ? { type: 'spring', visualDuration: 0.36 * m, bounce: GATHER_BOUNCE }
-          : { type: 'spring', visualDuration: 0.37 * m, bounce: SPLIT_BOUNCE },
-    [m, question],
+        : departing
+          ? liquidSpring(m, true)
+          : waiting
+            ? liquidSpring(m)
+            : question
+              ? { type: 'spring', visualDuration: 0.36 * m, bounce: GATHER_BOUNCE }
+              : { type: 'spring', visualDuration: 0.37 * m, bounce: SPLIT_BOUNCE },
+    [m, question, waiting, departing],
   );
   const drain = useMemo<Transition>(
     () => (m === 0 ? { duration: 0 } : { type: 'spring', visualDuration: 0.22 * m, bounce: 0 }),
@@ -187,19 +208,61 @@ function FlowSplitLiquid({
   );
   const centred = { transformBox: 'fill-box', transformOrigin: 'center' } as const;
   const shells = slots.map((_, index) => <use key={index} href={`#${id}-shell-${index}`} />);
-  const pulsing = waiting && m > 0;
-  const colour = neutral
-    ? 'hsl(from var(--color-ink-faint) h 0% l)'
-    : negative
-      ? 'var(--color-negative)'
-      : waiting
-        ? 'var(--color-positive)'
-        : 'var(--color-accent)';
+  const pulsing = waiting && neutral && !departing && m > 0;
+  const colour = waiting ? 'hsl(from var(--color-ink-faint) h 0% l)' : 'var(--color-accent)';
+  // Retain the verdict's ink while it drains into the next question's accent pill.
+  const [verdictNegative, setVerdictNegative] = useState(negative);
+  if (waiting && !neutral && verdictNegative !== negative) setVerdictNegative(negative);
+  const landed = waiting && !neutral;
+  // How much of the verdict remains, which drains as the card departs.
+  const verdict = useMotionValue(landed && !departing ? 1 : 0);
+  const verdictScale = useTransform(verdict, (value) => Math.max(0, value));
+  // How far the verdict has risen through the bead from beneath it.
+  const rise = useMotionValue(landed ? 1 : 0);
+  const riseY = useTransform(rise, (value) => (1 - value) * bead.height * VERDICT_RISE);
+  // The whole bead swells as the colour reaches its top, then settles in diminishing bobs.
+  const bob = useMotionValue(1);
+  useLayoutEffect(() => {
+    if (!landed) {
+      verdict.jump(0);
+      rise.jump(0);
+      bob.jump(1);
+      return;
+    }
+    if (m === 0) {
+      verdict.jump(departing ? 0 : 1);
+      rise.jump(1);
+      return;
+    }
+    if (departing) {
+      const animations = [verdict, bob].map((value, index) =>
+        animate(value, index, liquidSpring(m, true)),
+      );
+      return () => animations.forEach((animation) => animation.stop());
+    }
+    const animations = [animate(verdict, 1, liquidSpring(m))];
+    if (rise.get() >= 1) {
+      // A cancelled departure refills without swelling again.
+      animations.push(animate(bob, 1, liquidSpring(m)));
+    } else {
+      animations.push(
+        animate(rise, 1, { duration: 0.42 * m, ease: [0.3, 0.7, 0.4, 1] }),
+        animate(bob, [1, 1.16, 0.94, 1.04, 0.985, 1], {
+          duration: 0.75 * m,
+          delay: 0.26 * m,
+          times: [0, 0.26, 0.5, 0.7, 0.86, 1],
+          ease: 'easeInOut',
+        }),
+      );
+    }
+    return () => animations.forEach((animation) => animation.stop());
+  }, [landed, departing, m, verdict, rise, bob]);
 
   return (
     <svg
       aria-hidden
       data-flow-layer
+      data-flow-state={departing ? 'draining' : question ? 'pill' : waiting ? 'bead' : 'split'}
       className={
         // The buttons' own chrome takes over at once, so the liquid leaves at once too.
         'pointer-events-none absolute inset-0 h-full w-full overflow-visible' +
@@ -211,7 +274,7 @@ function FlowSplitLiquid({
           <FlowShape
             key={index}
             id={`${id}-shell-${index}`}
-            to={question ? segments[index] : waiting ? bead : slot}
+            to={question ? segments[index] : departing ? drained : waiting ? bead : slot}
             transition={spring}
           />
         ))}
@@ -268,73 +331,99 @@ function FlowSplitLiquid({
             : { duration: 0.08 * m }
         }
       >
-        <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
-          {shells}
-        </g>
-        <g
-          data-flow-colour
-          mask={`url(#${id}-within)`}
-          filter={`url(#${id}-colour)`}
+        <motion.g
           style={{
-            fill: colour,
-            transition: neutral
-              ? 'none'
-              : `fill ${0.3 * m}s cubic-bezier(${MOTION_EASING.standard.join(',')})`,
+            scale: bob,
+            transformOrigin: `${centreX(bead)}px ${centreY(bead)}px`,
           }}
         >
-          {slots.map((slot, index) => {
-            const keeps = index === holder;
-            const whole = question || waiting || keeps;
-            return (
-              // Each colour drop squashes as it springs, rebounding; those that drain thin as they pour.
-              <motion.g
-                key={index}
-                style={centred}
-                initial={false}
-                animate={{
-                  scaleY:
-                    m === 0
-                      ? 1
-                      : question || waiting
-                        ? [1, 0.9, 1.03, 1]
-                        : keeps
-                          ? [1, 0.82, 1.05, 1]
-                          : [1, 0.7, 0.55, 0.45],
-                }}
-                transition={{ duration: 0.42 * m, times: [0, 0.3, 0.65, 1], ease: 'easeOut' }}
-              >
+          <g filter={`url(#${id}-shell)`} style={{ fill: 'var(--color-surface-raised)' }}>
+            {shells}
+          </g>
+          <g
+            data-flow-colour={!waiting || neutral ? '' : undefined}
+            mask={`url(#${id}-within)`}
+            filter={`url(#${id}-colour)`}
+            style={{
+              fill: colour,
+            }}
+          >
+            {slots.map((slot, index) => {
+              const keeps = index === holder;
+              const whole = question || waiting || keeps;
+              return (
+                // Each colour drop squashes as it springs, rebounding; those that drain thin as they pour.
                 <motion.g
+                  key={index}
                   style={centred}
                   initial={false}
-                  animate={{ scale: whole ? 1 : 0 }}
-                  transition={
-                    question || waiting
-                      ? { duration: 0.08 * m }
-                      : keeps
-                        ? { duration: 0.15 * m }
-                        : { duration: 0.1 * m, delay: 0.17 * m, ease: 'easeIn' }
-                  }
-                >
-                  <FlowShape
-                    to={
-                      // Colour that stays overfills the surface it is clipped to, so the
-                      // surface's outline and rebound never show past it.
-                      question
-                        ? swell(segments[index])
-                        : waiting
-                          ? swell(bead)
+                  animate={{
+                    scaleY:
+                      m === 0 || waiting || departing
+                        ? 1
+                        : question
+                          ? [1, 0.9, 1.03, 1]
                           : keeps
-                            ? // Enough to cover its squash, not to reach a neighbour.
-                              swell(slot, 3)
-                            : sinkFor(index)
+                            ? [1, 0.82, 1.05, 1]
+                            : [1, 0.7, 0.55, 0.45],
+                  }}
+                  transition={{ duration: 0.42 * m, times: [0, 0.3, 0.65, 1], ease: 'easeOut' }}
+                >
+                  <motion.g
+                    style={centred}
+                    initial={false}
+                    animate={{ scale: whole ? 1 : 0 }}
+                    transition={
+                      question || waiting
+                        ? { duration: 0.08 * m }
+                        : keeps
+                          ? { duration: 0.15 * m }
+                          : { duration: 0.1 * m, delay: 0.17 * m, ease: 'easeIn' }
                     }
-                    transition={whole ? spring : drain}
-                  />
+                  >
+                    <FlowShape
+                      to={
+                        // Colour that stays overfills the surface it is clipped to, so the
+                        // surface's outline and rebound never show past it.
+                        question
+                          ? swell(segments[index])
+                          : departing
+                            ? drained
+                            : waiting
+                              ? swell(bead)
+                              : keeps
+                                ? // Enough to cover its squash, not to reach a neighbour.
+                                  swell(slot, 3)
+                                : sinkFor(index)
+                      }
+                      transition={whole ? spring : drain}
+                    />
+                  </motion.g>
                 </motion.g>
-              </motion.g>
-            );
-          })}
-        </g>
+              );
+            })}
+          </g>
+          {/* Colour rises up through the bead, clipped by the same metaball surface. */}
+          <g mask={`url(#${id}-within)`}>
+            <g
+              data-flow-verdict
+              data-flow-colour={waiting && !neutral ? '' : undefined}
+              filter={`url(#${id}-colour)`}
+              style={{ fill: verdictNegative ? 'var(--color-negative)' : 'var(--color-positive)' }}
+            >
+              <motion.circle
+                cx={centreX(bead)}
+                cy={centreY(bead) + bead.height * 0.45}
+                r={bead.height * 1.05}
+                style={{
+                  y: riseY,
+                  scale: verdictScale,
+                  transformOrigin: `${centreX(bead)}px ${centreY(bead) + bead.height * 0.45}px`,
+                }}
+              />
+            </g>
+          </g>
+        </motion.g>
       </motion.g>
     </svg>
   );
@@ -354,6 +443,7 @@ function FlowSplitLiquid({
 export function FlowGradeControls({
   question,
   autoMark,
+  departing = false,
   grades,
   rowClassName,
   revealLabel = 'Show answer',
@@ -367,14 +457,16 @@ export function FlowGradeControls({
   const rowRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [rects, setRects] = useState<{ reveal: Rect; slots: Rect[] }>();
+  const hasRevealLead = revealLead !== undefined;
   const measured = rects !== undefined;
   const judging = autoMark?.pending === true && !question;
   const automatic = autoMark !== undefined && !question;
+  const draining = automatic && departing;
   const gathered = question || automatic;
 
   // The liquid takes over whenever the controls change shape between the pill, the
   // waiting bead and the split grades.
-  const shape = question ? 'pill' : automatic ? 'bead' : 'split';
+  const shape = question ? 'pill' : draining ? 'drain' : automatic ? 'bead' : 'split';
   const [wasShape, setWasShape] = useState(shape);
   const [flow, setFlow] = useState({ started: 0, settled: 0, restored: 0 });
   if (wasShape !== shape) {
@@ -399,8 +491,8 @@ export function FlowGradeControls({
     );
     return () => window.clearTimeout(timer);
   }, [flow.started, flow.settled, flow.restored]);
-  const flowing = measured && (flow.started !== flow.settled || automatic);
-  const still = measured && (flowing || flow.started !== flow.restored);
+  const flowing = measured && ((m > 0 && flow.started !== flow.settled) || automatic);
+  const still = measured && (flowing || (m > 0 && flow.started !== flow.restored));
 
   useLayoutEffect(() => {
     const measure = () => {
@@ -424,7 +516,7 @@ export function FlowGradeControls({
     const observer = new ResizeObserver(measure);
     if (box.current) observer.observe(box.current);
     return () => observer.disconnect();
-  }, [grades.length]);
+  }, [grades.length, hasRevealLead]);
 
   // Where each grade's label rides from: its segment of the pill, or the waiting bead.
   const origins = rects
@@ -458,6 +550,7 @@ export function FlowGradeControls({
           neutral={judging}
           holder={grades.length - 1}
           negative={!question && autoMark !== undefined && !autoMark.pending && !autoMark.correct}
+          departing={draining}
           reveal={rects.reveal}
           slots={rects.slots}
           visible={flowing}
@@ -469,7 +562,8 @@ export function FlowGradeControls({
         data-flow-reveal
         className={'relative col-start-1 row-start-1 mx-auto w-full max-w-md self-start' + chrome}
         initial={false}
-        animate={{ opacity: question ? 1 : 0 }}
+        style={m === 0 ? { opacity: question ? 1 : 0 } : undefined}
+        animate={m > 0 ? { opacity: question ? 1 : 0 } : undefined}
         transition={question ? motionTransition('feedback', m) : { duration: 0.08 * m }}
         inert={!question}
         aria-hidden={!question}
@@ -504,7 +598,8 @@ export function FlowGradeControls({
               data-flow-primary={primary || undefined}
               className={'flex min-w-0 flex-1' + chrome}
               initial={false}
-              animate={{ opacity: gathered ? 0 : 1, x: offset.x, y: offset.y }}
+              style={m === 0 ? { opacity: gathered ? 0 : 1, x: offset.x, y: offset.y } : undefined}
+              animate={m > 0 ? { opacity: gathered ? 0 : 1, x: offset.x, y: offset.y } : undefined}
               transition={{
                 x: spring,
                 y: spring,

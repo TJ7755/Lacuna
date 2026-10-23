@@ -1,7 +1,7 @@
 import { createRef } from 'react';
 import { renderToString } from 'react-dom/server';
 import { LazyMotion, domAnimation } from 'motion/react';
-import { act, fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { StudyControls } from './StudyControls';
 import type { AutoMark } from './types';
@@ -124,6 +124,63 @@ describe('StudyControls automatic marking', () => {
       view.unmount();
     }
   });
+
+  it('drains on accepted departure, retargets on cancellation and reforms an immediately usable question', async () => {
+    const inputRef = createRef<HTMLInputElement>();
+    const controls = (phase: 'answer' | 'question', departing = false, pending = false) => (
+      <LazyMotion features={domAnimation}>
+        <StudyControls
+          {...props}
+          typingInputRef={inputRef}
+          phase={phase}
+          autoMark={pending ? { pending: true } : { pending: false, correct: false }}
+          departing={departing}
+        />
+      </LazyMotion>
+    );
+    const view = render(controls('answer', false, true));
+    try {
+      const liquid = view.container.querySelector('[data-flow-layer]');
+      const verdict = liquid?.querySelector('[data-flow-verdict] circle');
+      expect(liquid).toHaveAttribute('data-flow-state', 'bead');
+      await waitFor(() => expect(verdict).toHaveStyle({ transform: 'scale(0)' }));
+
+      view.rerender(controls('answer'));
+      await waitFor(() => expect(verdict).toHaveStyle({ transform: 'none' }));
+      expect(liquid?.querySelector('[data-flow-colour]')?.getAttribute('style')).toContain(
+        'fill: var(--color-negative)',
+      );
+      view.rerender(controls('answer', true));
+      expect(liquid).toHaveAttribute('data-flow-state', 'draining');
+      await waitFor(() => expect(verdict).toHaveStyle({ transform: 'scale(0)' }));
+
+      view.rerender(controls('answer'));
+      expect(liquid).toHaveAttribute('data-flow-state', 'bead');
+      await waitFor(() => expect(verdict).toHaveStyle({ transform: 'none' }));
+
+      // The next question takes ownership even before the departure callback resets.
+      view.rerender(controls('question', true));
+      expect(view.container.querySelector('[data-flow-layer]')).toBe(liquid);
+      expect(liquid).toHaveAttribute('data-flow-state', 'pill');
+      expect(liquid).toHaveClass('invisible');
+      expect(liquid?.querySelector('[data-flow-verdict]')?.getAttribute('style')).toContain(
+        'fill: var(--color-negative)',
+      );
+      expect(view.getByRole('textbox', { name: 'Your answer' })).toHaveFocus();
+      fireEvent.click(view.getByRole('button', { name: 'Check answer' }));
+      expect(props.onReveal).toHaveBeenCalled();
+
+      view.rerender(
+        <LazyMotion features={domAnimation}>
+          <StudyControls {...props} phase="question" isTypingCard={false} />
+        </LazyMotion>,
+      );
+      expect(view.container.querySelector('[data-flow-layer]')).toBe(liquid);
+      expect(view.getByRole('button', { name: 'Show answer' })).toBeVisible();
+    } finally {
+      view.unmount();
+    }
+  });
 });
 
 describe('StudyControls Flow fill', () => {
@@ -199,6 +256,25 @@ describe('StudyControls Flow fill', () => {
     } finally {
       view.unmount();
       vi.useRealTimers();
+    }
+  });
+
+  it('hands chrome back immediately when reduced motion interrupts a flowing control', () => {
+    const controls = (phase: 'question' | 'answer', m: number) => (
+      <LazyMotion features={domAnimation}>
+        <StudyControls {...props} phase={phase} m={m} />
+      </LazyMotion>
+    );
+    const view = render(controls('question', 1));
+    try {
+      view.rerender(controls('answer', 1));
+      expect(view.container.querySelector('[data-flow-layer]')).not.toHaveClass('invisible');
+      view.rerender(controls('question', 0));
+      expect(view.container.querySelector('[data-flow-layer]')).toHaveClass('invisible');
+      expect(view.getByRole('button', { name: 'Show answer' }).parentElement?.parentElement)
+        .not.toHaveClass('[&_button]:bg-transparent!');
+    } finally {
+      view.unmount();
     }
   });
 });

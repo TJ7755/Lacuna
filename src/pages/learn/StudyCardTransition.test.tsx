@@ -66,6 +66,54 @@ describe('StudyCardTransition', () => {
     expect(commit).not.toHaveBeenCalled();
   });
 
+  it('signals departure before persistence and clears it on cancellation and the next question', () => {
+    vi.useFakeTimers();
+    const ref = createRef<StudyCardTransitionHandle>();
+    const commit = vi.fn();
+    const onDepartureChange = vi.fn();
+    const presentation = (cardId: string, phase: 'answer' | 'question') => (
+      <StudyCardTransition
+        ref={ref}
+        cardId={cardId}
+        phase={phase}
+        multiplier={1}
+        onDepartureChange={onDepartureChange}
+      >
+        Card
+      </StudyCardTransition>
+    );
+    const view = render(presentation('one', 'answer'));
+    try {
+      act(() => {
+        ref.current!.dismiss(true, commit);
+      });
+      expect(onDepartureChange).toHaveBeenLastCalledWith(true);
+      expect(commit).not.toHaveBeenCalled();
+      act(() => {
+        ref.current!.cancel();
+      });
+      expect(onDepartureChange).toHaveBeenLastCalledWith(false);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(commit).not.toHaveBeenCalled();
+
+      act(() => {
+        ref.current!.dismiss(false, commit);
+      });
+      expect(onDepartureChange).toHaveBeenLastCalledWith(true);
+      act(() => {
+        vi.advanceTimersByTime(70);
+      });
+      expect(commit).toHaveBeenCalledOnce();
+      view.rerender(presentation('two', 'question'));
+      expect(onDepartureChange).toHaveBeenLastCalledWith(false);
+    } finally {
+      view.unmount();
+      vi.useRealTimers();
+    }
+  });
+
   it('grades immediately with reduced motion and unlocks a repeated card', () => {
     const ref = createRef<StudyCardTransitionHandle>();
     const commit = vi.fn();
