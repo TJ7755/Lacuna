@@ -27,13 +27,5 @@
       "src/db/tombstonePrune.ts -> src/db/mutationStamp.ts",
       "src/db/tombstonePrune.ts -> src/db/schema.ts"
     ]
-  },
-  {
-    "issue": "https://github.com/TJ7755/Lacuna/issues/765",
-    "reason": "Publishing drafts uses the question-set repository; repository deletion and restoration maintain those drafts.",
-    "edges": [
-      "src/questions/questionSetDrafts.ts -> src/questions/questionSetRepository.ts",
-      "src/questions/questionSetRepository.ts -> src/questions/questionSetDrafts.ts"
-    ]
   }
 ]
