@@ -10,12 +10,12 @@ import {
   type AiInstructionBundle,
   type AiRunState,
   type JsonValue,
-} from '../../src/ai/companionEntry.js';
+} from '../../src/ai/protocol.js';
 import {
   AiCompanionOperationError,
   bridgeOperationError,
   companionErrorDetails,
-} from '../../src/ai/companionEntry.js';
+} from '../../src/ai/companionErrors.js';
 import {
   AI_COMPANION_PROTOCOL_VERSION,
   CompanionLineDecoder,

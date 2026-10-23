@@ -1,7 +1,7 @@
 import type {
   AiBridgeRequest,
   AiBridgeResult,
-} from '../../src/ai/companionEntry.js';
+} from '../../src/ai/protocol.js';
 import type { AiRendererReply, AiRendererRequest } from '../../src/mcp/companionEntry.js';
 
 export const AI_RENDERER_TIMEOUT_MS = 30_000;

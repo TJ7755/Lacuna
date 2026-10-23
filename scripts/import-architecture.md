@@ -55,12 +55,17 @@ configuration.
 `electron/mcp/` and `api/` into the app's `src/`, including tests. Electron MCP uses
 `src/mcp/contractEntry.ts` for handler-free tool schemas and types,
 `src/mcp/companionEntry.ts` for socket messages and client identity types,
-`src/ai/companionEntry.ts` for AI companion contracts and errors, and
+the existing `src/ai/protocol.ts` as the public AI protocol interface,
+`src/ai/companionErrors.ts` as the public companion error interface, and
 `src/mcp/bridgeEntry.ts` for main-process dispatch, grants and connection state.
 The API uses only `src/jev/apiEntry.ts`, exposing the JEV request schema. These named
 exports preserve the existing implementations; they do not expose renderer handlers or UI.
 Keep bridge implementation exports separate from companion contracts so disposable
-companions retain their existing dependency closure. Type-only exports remain explicit.
+companions retain their existing dependency closure. Keep AI protocol and companion errors as separate public modules: combining them in a
+re-export module adds an error-module load to the data server, and a protocol-only
+re-export module still leaves an imported empty shared chunk. `src/mcp/contractBoundary.test.ts` follows the emitted imports of all
+four entry points together, including side-effect imports between shared chunks.
+Type-only exports remain explicit.
 `bun run test -- scripts/appImports.test.ts` probes rejected deep imports and permitted
 entry points through the real configuration. The tooling coefficients import remains a
 later slice of [issue 724](https://github.com/TJ7755/Lacuna/issues/724).

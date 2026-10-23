@@ -10,11 +10,11 @@ import {
   aiToolNameSchema,
   boundedJsonValueSchema,
   type AiClientIdentity,
-} from '../../src/ai/companionEntry.js';
+} from '../../src/ai/protocol.js';
 import {
   AiCompanionOperationError,
   companionErrorDetails,
-} from '../../src/ai/companionEntry.js';
+} from '../../src/ai/companionErrors.js';
 import {
   companionAppVersion,
   companionHostUserDataPath,

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import net, { type Server as NetServer, type Socket } from 'node:net';
 import log from 'electron-log';
-import { LACUNA_AI_PROTOCOL_VERSION } from '../../src/ai/companionEntry.js';
+import { LACUNA_AI_PROTOCOL_VERSION } from '../../src/ai/protocol.js';
 import type { GrantStore } from '../../src/mcp/bridgeEntry.js';
 import type { ToolContract } from '../../src/mcp/contractEntry.js';
 import type { McpClientConnection, McpClientIdentity } from '../../src/mcp/companionEntry.js';

@@ -96,7 +96,8 @@ export const appImportsRule = importsRule(
       'src/mcp/contractEntry.ts',
       'src/mcp/bridgeEntry.ts',
       'src/mcp/companionEntry.ts',
-      'src/ai/companionEntry.ts',
+      'src/ai/protocol.ts',
+      'src/ai/companionErrors.ts',
     ].includes(target);
   },
 );
