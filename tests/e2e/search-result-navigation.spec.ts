@@ -105,6 +105,7 @@ for (const width of [390, 1440]) {
       const scroll = await main.evaluate((element) => element.scrollTop);
       await input.press('Enter');
       await expect(page).toHaveURL(/\/cards\/[^/]+\/edit$/);
+      await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible();
       await page.goBack();
       await expect(input).toHaveValue('Palatine');
       await expect(page.getByRole('button', { name: 'New', exact: true })).toHaveAttribute(
