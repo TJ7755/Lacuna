@@ -27,6 +27,10 @@ trusted-device convenience; Lock removes them without destroying the wrapped rec
 A relay generation provides no authenticated freshness or rollback protection. See
 [engineering notes](../maintenance/engineering-notes.md) for transport pitfalls.
 
+Device and shared-channel removal share one full-width confirmation beneath the encryption
+disclosure. Only one consequence is actionable at a time; opening or cancelling a prompt changes
+no sync data. Cancellation and Escape return focus to the selected action.
+
 ## AI
 
 [AI runtime](../../src/ai/) owns session identity, Stop, leases, call receipts and approvals.

@@ -829,7 +829,7 @@ describe('mergeImport: v4 Question Set lineage', () => {
         contentRevisionId: 'set-revision-2' }],
       at: 2_000, rv: 2,
     }));
-    expect((await db.courseAssessments.get('assessment-origin'))?.examDate).toBe(3_000_000);
+    expect((await db.courseAssessments.get('assessment-origin'))?.examDate).toBe(2_000_000);
     expect((await db.questionSets.get('set-quadratics'))?.assessmentIds).toEqual(['assessment-origin']);
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
     expect(await db.cards.get('card-quadratic-example')).toMatchObject({

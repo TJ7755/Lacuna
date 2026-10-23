@@ -18,6 +18,7 @@ import {
   summariseShare,
   type SharePayload,
   type ShareSummary,
+  type ImportCourseScheduling,
 } from '../../db/share';
 import {
   findCourseForLineage,
@@ -26,12 +27,13 @@ import {
   mergeLineageUpdate,
   type MergeLineageResult,
 } from '../../db/mergeImport';
-import type { CourseRecord } from '../../db/types';
+import type { CourseRecord, CourseSchedulingMode } from '../../db/types';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
-import { formatDate } from '../../utils/datetime';
+import { defaultExamDate, formatDate, formatDateTime, getLocalTimeZone } from '../../utils/datetime';
+import { CourseStudyTarget } from '../course/CourseStudyTarget';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
  *  (Arc 7 §7.5) matches a course already imported locally — routing this to the merge
@@ -40,6 +42,13 @@ interface PendingShareImport {
   summary: ShareSummary;
   raw: string;
   file?: CourseFile;
+  scheduling?: {
+    mode: CourseSchedulingMode | null;
+    examDate: number;
+    timeZone: string;
+    valid: boolean;
+    suggestion?: string;
+  };
   merge?: {
     course: CourseRecord;
     incomingRevision: number;
@@ -64,7 +73,25 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
       };
     }
   }
-  return { summary, raw };
+  if (payload.v === 1) return { summary, raw };
+  const final = payload.exams?.find((exam) => exam.k === 'f');
+  const suggestedDate = (final ? final.sm !== 1 : payload.course?.sm !== 1)
+    ? (final?.e ?? payload.course?.e)
+    : undefined;
+  const timeZone = final?.tz ?? getLocalTimeZone();
+  return {
+    summary,
+    raw,
+    scheduling: payload.course
+      ? {
+          mode: null,
+          examDate: suggestedDate ?? defaultExamDate(),
+          timeZone,
+          valid: true,
+          suggestion: suggestedDate === undefined ? undefined : formatDateTime(suggestedDate, timeZone),
+        }
+      : undefined,
+  };
 }
 
 /** A share-link code (or full link) when the text is one, else null. Text share
@@ -217,25 +244,51 @@ export function SharedCourseImport({
     }
   }
 
+  const schedulingReady =
+    !pending?.scheduling ||
+    (pending.scheduling.mode !== null &&
+      (pending.scheduling.mode === 'steady' ||
+        (pending.scheduling.valid && Number.isFinite(pending.scheduling.examDate))));
+
+  function updateScheduling(changes: Partial<NonNullable<PendingShareImport['scheduling']>>) {
+    setPending((current) => {
+      const scheduling = current?.scheduling;
+      if (!scheduling) return current;
+      if (
+        Object.entries(changes).every(
+          ([key, value]) => scheduling[key as keyof typeof scheduling] === value,
+        )
+      ) return current;
+      return { ...current, scheduling: { ...scheduling, ...changes } };
+    });
+  }
+
   async function handleImport() {
-    if (!pending || pending.merge?.stale || importing) return;
+    if (!pending || pending.merge?.stale || importing || !schedulingReady) return;
     setImporting(true);
     setError('');
     onBusyChange?.(true);
     let importedCourseId: string | undefined;
     try {
       const payload = pending.file?.payload ?? (await decodeShare(pending.raw));
+      const choice = pending.scheduling;
+      const scheduling: ImportCourseScheduling | undefined =
+        choice?.mode === 'exam'
+          ? { schedulingMode: 'exam', examDate: choice.examDate, timeZone: choice.timeZone }
+          : choice?.mode === 'steady'
+            ? { schedulingMode: 'steady' }
+            : undefined;
       const importContent = async () => {
         if (pending.merge) {
           importedCourseId = pending.merge.course.id;
           return describeMergeResult(await mergeLineageUpdate(pending.merge.course.id, payload));
         }
         if (isLineagePayload(payload)) {
-          const result = await importLineageFirstTime(payload);
+          const result = await importLineageFirstTime(payload, scheduling);
           importedCourseId = result?.course?.id;
           return `Added 1 course and ${pending.summary.cardCount} card${pending.summary.cardCount === 1 ? '' : 's'}.`;
         }
-        const { courses, cards: count, courseIds } = await importSharePayload(payload);
+        const { courses, cards: count, courseIds } = await importSharePayload(payload, scheduling);
         importedCourseId = courseIds?.[0];
         return `Added ${courses} course${courses === 1 ? '' : 's'} and ${count} card${count === 1 ? '' : 's'}.`;
       };
@@ -414,12 +467,36 @@ export function SharedCourseImport({
                   as placeholders after import. Use a full backup for an exact transfer.
                 </p>
               )}
+              {pending.scheduling && (
+                <div className="mb-5 space-y-3">
+                  <p className="text-sm text-ink-soft">
+                    {pending.scheduling.suggestion && (
+                      <>Teacher suggests {pending.scheduling.suggestion}. </>
+                    )}
+                    Choose Exam date to confirm or change your date, or Steady retention for no fixed
+                    exam. Your choice stays yours when the teacher updates this course.
+                  </p>
+                  <CourseStudyTarget
+                    schedulingMode={pending.scheduling.mode}
+                    setSchedulingMode={(mode) => updateScheduling({ mode })}
+                    saving={importing}
+                    examDate={pending.scheduling.examDate}
+                    setExamDate={(examDate) => updateScheduling({ examDate })}
+                    setExamDateValid={(valid) => updateScheduling({ valid })}
+                    timeZone={pending.scheduling.timeZone}
+                  />
+                </div>
+              )}
               <div className="flex flex-wrap justify-end gap-2">
                 <Button variant="ghost" onClick={() => setPending(null)}>
                   {pending.merge?.stale ? 'Close' : 'Cancel'}
                 </Button>
                 {!pending.merge?.stale && (
-                  <Button variant="primary" onClick={handleImport} disabled={importing}>
+                  <Button
+                    variant="primary"
+                    onClick={handleImport}
+                    disabled={importing || !schedulingReady}
+                  >
                     {importing
                       ? pending.merge
                         ? 'Updating…'
