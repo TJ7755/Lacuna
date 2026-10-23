@@ -94,6 +94,7 @@ import type {
   QuestionDefinition,
   QuestionScheduleState,
 } from '../questions/types';
+import { assertLineageReviewIntegrity, prepareLineageMapping } from './lineageIntegrity';
 import { emptyQuestionSchedule } from '../questions/scheduler';
 import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
 import { questionGeneratorRegistry } from '../questions/generators';
@@ -260,8 +261,8 @@ function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
  * Which adopted ids the student has edited since the last merge (§7.3's `studentEdits`,
  * populated per §7.10's third risk: compare current local content against the mapping's
  * last-merged snapshot rather than a separate dirty flag that could drift out of sync).
- * Only adopted (mapping-known) ids are ever compared — a freshly created local entity
- * has no snapshot to diverge from and is irrelevant to a lineage merge.
+ * Only adopted (mapping-known) ids are compared. A missing baseline is unknown,
+ * so differing incoming content must go through conflict review.
  */
 /** Exported for `src/mcp/tools/lineage.ts`'s `lacuna.diff_lineage_update` (Arc 7 §7.6,
  *  Task 10) — the read-only MCP preview reuses this classification verbatim rather than
@@ -281,9 +282,8 @@ export function detectStudentEdits(
     const snapshot = mapping.lessonSnapshots[id];
     const current = lessonsById.get(id);
     if (
-      snapshot &&
       current &&
-      !lessonSnapshotsEqual(snapshot, lessonSnapshot(toExistingLesson(current)))
+      (!snapshot || !lessonSnapshotsEqual(snapshot, lessonSnapshot(toExistingLesson(current))))
     ) {
       edited.add(id);
     }
@@ -292,9 +292,8 @@ export function detectStudentEdits(
     const snapshot = mapping.noteSnapshots[id];
     const current = notesById.get(id);
     if (
-      snapshot &&
       current &&
-      !noteSnapshotsEqual(snapshot, noteSnapshot(toExistingNote(current)))
+      (!snapshot || !noteSnapshotsEqual(snapshot, noteSnapshot(toExistingNote(current))))
     ) {
       edited.add(id);
     }
@@ -303,9 +302,8 @@ export function detectStudentEdits(
     const snapshot = mapping.cardSnapshots[id];
     const current = cardsById.get(id);
     if (
-      snapshot &&
       current &&
-      !cardSnapshotsEqual(snapshot, cardSnapshot(toExistingCard(current)))
+      (!snapshot || !cardSnapshotsEqual(snapshot, cardSnapshot(toExistingCard(current))))
     ) {
       edited.add(id);
     }
@@ -1226,6 +1224,7 @@ export async function mergeLineageUpdate(
 
     const existingMapping = await db.lineageIdMappings.get(payload.li);
     const mapping = existingMapping ?? emptyMapping(payload.li, courseId);
+    await prepareLineageMapping(payload, courseId, mapping);
     const previousConceptIds = await upsertLineageConcepts(payload, courseId, mapping);
     const conceptIdByCard = payload.v !== 2 ? incomingCardConceptIds(payload) : undefined;
 
@@ -1706,14 +1705,14 @@ async function resolveMergeReviewItems(
     const review = await db.pendingMergeReviews.get(reviewId);
     if (!review) return;
     const mapping = await db.lineageIdMappings.get(review.lineageId);
-    const workingMapping = mapping ?? emptyMapping(review.lineageId, review.courseId);
+    const workingMapping = await assertLineageReviewIntegrity(review, mapping);
 
     for (const ref of refs) {
       await resolveOne(review.diff, workingMapping, ref, accept);
     }
 
     assertLessonPrerequisites(await db.lessons.where('courseId').equals(review.courseId).toArray());
-    if (mapping) await db.lineageIdMappings.put(workingMapping);
+    await db.lineageIdMappings.put(workingMapping);
 
     if (diffIsEmpty(review.diff)) await db.pendingMergeReviews.delete(reviewId);
     else await db.pendingMergeReviews.put(review);

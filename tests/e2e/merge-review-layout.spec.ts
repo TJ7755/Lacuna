@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Lesson, LineageIdMapping } from '../../src/db/types';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const fontScale of [1, 1.35]) {
@@ -21,7 +22,10 @@ for (const fontScale of [1, 1.35]) {
           open.onerror = () => reject(open.error);
           open.onsuccess = () => {
             const db = open.result;
-            const tx = db.transaction(['lessons', 'pendingMergeReviews'], 'readwrite');
+            const tx = db.transaction(
+              ['courses', 'lessons', 'lineageIdMappings', 'pendingMergeReviews'],
+              'readwrite',
+            );
             tx.oncomplete = () => {
               db.close();
               resolve();
@@ -30,11 +34,51 @@ for (const fontScale of [1, 1.35]) {
               db.close();
               reject(tx.error);
             };
+            const course = tx.objectStore('courses').get(courseId);
             const lessons = tx.objectStore('lessons').getAll();
             lessons.onsuccess = () => {
               const lesson = lessons.result.find(
-                (row: { courseId: string }) => row.courseId === courseId,
-              );
+                (row: Lesson) => row.courseId === courseId,
+              ) as Lesson | undefined;
+              if (!course.result || !lesson) {
+                tx.abort();
+                reject(new Error('Merge layout Course or Lesson was not saved.'));
+                return;
+              }
+              tx.objectStore('courses').put({
+                ...course.result,
+                distributedCopy: {
+                  lineageId: 'merge-layout',
+                  revision: 2,
+                  locked: true,
+                  autoAcceptUpdates: false,
+                },
+              });
+              const mapping: LineageIdMapping = {
+                id: 'merge-layout',
+                courseId,
+                lessonIds: [lesson.id],
+                noteIds: [],
+                cardIds: [],
+                sequenceIds: [],
+                lessonSnapshots: {
+                  [lesson.id]: {
+                    name: lesson.name,
+                    description: lesson.description,
+                    prerequisiteLessonIds: lesson.prerequisiteLessonIds,
+                    isExtension: lesson.isExtension,
+                    releaseDate: lesson.releaseDate,
+                    examDate: lesson.examDate,
+                    timeZone: lesson.timeZone,
+                    sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
+                    answerMode: lesson.answerMode,
+                    orderIndex: lesson.orderIndex,
+                  },
+                },
+                noteSnapshots: {},
+                cardSnapshots: {},
+              };
+              tx.objectStore('lineageIdMappings').put(mapping);
               tx.objectStore('pendingMergeReviews').put({
                 id: 'merge-layout-review',
                 courseId,

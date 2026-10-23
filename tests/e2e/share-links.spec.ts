@@ -344,3 +344,73 @@ test('copies an existing link without the publishing device credentials', async 
     fullPage: true,
   });
 });
+
+// Controlled payloads exercise the reported route; these are not the learner's Biology artefacts.
+test('updates a synthetic library revision 17 through a Gaps class link at revision 22', async ({ page }) => {
+  const relayUrl = 'https://relay.getlacuna.app';
+  const store = new MemoryStore();
+  const handle = createHandler(store);
+  const minted = await handle(new Request(`${relayUrl}/shares`, { method: 'POST' }));
+  const source = (await minted.json()) as { shareId: string };
+  const publish = async (revision: number) => {
+    const payload = { v: 2, at: 1000, li: 'controlled-library-biology', rv: revision,
+      course: { n: 'Controlled biology', o: 0, c: 1000, um: 'open', sm: 1 },
+      lessons: [{ i: 'source-lesson', n: 'Cells', notes: [],
+        cards: [{ id: 'source-card', k: 0, f: 'What is a cell?', b: 'A living unit' }] }],
+    };
+    const file = JSON.stringify({ format: 'lacuna-course', version: 1, assets: [], payload });
+    for (const [slot, text] of Object.entries({ payload: file, meta: JSON.stringify({
+      v: 1, lineageId: payload.li, revision, publishedAt: 1000,
+      byteSize: Buffer.byteLength(file), courseName: payload.course.n,
+    }) })) {
+      await store.put(`shares/${source.shareId}/${slot}`, new TextEncoder().encode(text), { overwrite: true });
+    }
+  };
+  await publish(17);
+  const linked = await handle(new Request(`${relayUrl}/shares`, {
+    method: 'POST', body: JSON.stringify({ sourceShareId: source.shareId }),
+  }));
+  const gaps = (await linked.json()) as { shareId: string };
+  expect(linked.status).toBe(201);
+  await installShareRelay(page, handle);
+  await enterFreshLacuna(page);
+  await page.goto(`/#/s/${source.shareId}`);
+  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await page.getByRole('button', { name: 'Add to my courses' }).click();
+  await expect.poll(() => readStudentRevision(page)).toBe(17);
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const open = indexedDB.open('lacuna');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const database = open.result;
+      const tx = database.transaction('lineageIdMappings', 'readwrite');
+      tx.objectStore('lineageIdMappings').clear();
+      tx.oncomplete = () => { database.close(); resolve(); };
+      tx.onerror = () => reject(tx.error);
+    };
+  }));
+  await publish(22);
+  await page.goto(`/#/s/${gaps.shareId}`);
+  await expect(page.getByRole('heading', { name: 'Course update', exact: true })).toBeVisible();
+  await expect(page.getByText(/17.*22/)).toBeVisible();
+  await page.getByRole('button', { name: 'Update course', exact: true }).click();
+  await expect.poll(() => readStudentRevision(page)).toBe(22);
+  expect(await page.evaluate(() => new Promise((resolve, reject) => {
+    const open = indexedDB.open('lacuna');
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const database = open.result;
+      const tx = database.transaction(['courses', 'lessons', 'cards'], 'readonly');
+      const courses = tx.objectStore('courses').getAll();
+      const lessons = tx.objectStore('lessons').getAll();
+      const cards = tx.objectStore('cards').getAll();
+      tx.oncomplete = () => {
+        database.close();
+        const course = courses.result.find((row) => row.distributedCopy);
+        resolve({ revision: course.distributedCopy.revision,
+          lessons: lessons.result.filter((row) => row.courseId === course.id).length,
+          cards: cards.result.filter((row) => row.courseId === course.id).length });
+      };
+    };
+  }))).toEqual({ revision: 22, lessons: 1, cards: 1 });
+});

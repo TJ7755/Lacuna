@@ -22,6 +22,7 @@
 
 import type { z } from 'zod';
 import { db } from '../../db/schema';
+import { prepareLineageMapping } from '../../db/lineageIntegrity';
 import * as read from '../../db/read';
 import { decodeShare } from '../../db/share';
 import {
@@ -219,6 +220,7 @@ const diffLineageUpdate: ToolDefinition<z.infer<typeof diffLineageUpdateContract
 
     const mapping = (await db.lineageIdMappings.get(payload.li)) ?? emptyMapping(payload.li, courseId);
     assertQuestionSetLineagePreviewSupported(payload, mapping);
+    await prepareLineageMapping(payload, courseId, mapping);
     const studentEdits = detectStudentEdits(mapping, existingLessons, existingNotes, courseCards);
 
     const diffInput: LineageDiffInput = {

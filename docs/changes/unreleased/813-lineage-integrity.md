@@ -1,0 +1,1 @@
+- Repair incomplete shared-course membership before updates, preserving learner edits and evidence; reject inconsistent ownership or missing protected authoring baselines with recovery guidance. (#813)
