@@ -15,21 +15,21 @@ afterEach(() => {
 });
 
 describe('useIdlePrefetch', () => {
-  it('prefetches one path per fallback timer and cancels stale paths', () => {
+  it('prefetches one path per fallback timer and cancels stale paths', async () => {
     const prefetch = vi.fn();
     const { rerender, unmount } = renderHook(
       ({ paths }) => useIdlePrefetch(paths, prefetch),
       { initialProps: { paths: ['/first', '/stale'] } },
     );
-    act(() => vi.advanceTimersByTime(199));
+    await act(() => vi.advanceTimersByTime(199));
     expect(prefetch).not.toHaveBeenCalled();
-    act(() => vi.advanceTimersByTime(1));
+    await act(() => vi.advanceTimersByTime(1));
     expect(prefetch.mock.calls).toEqual([['/first']]);
     rerender({ paths: ['/replacement', '/cancelled'] });
-    act(() => vi.advanceTimersByTime(200));
+    await act(() => vi.advanceTimersByTime(200));
     expect(prefetch.mock.calls).toEqual([['/first'], ['/replacement']]);
     unmount();
-    act(() => vi.runAllTimers());
+    await act(() => vi.runAllTimers());
     expect(prefetch).toHaveBeenCalledTimes(2);
   });
 
@@ -46,11 +46,11 @@ describe('useIdlePrefetch', () => {
     expect(cancel).toHaveBeenCalledWith(42);
   });
 
-  it('does not prefetch while the document is hidden', () => {
+  it('does not prefetch while the document is hidden', async () => {
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
     const prefetch = vi.fn();
     renderHook(() => useIdlePrefetch(['/lesson'], prefetch));
-    act(() => vi.runAllTimers());
+    await act(() => vi.runAllTimers());
     expect(prefetch).not.toHaveBeenCalled();
   });
 });
