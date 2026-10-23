@@ -105,12 +105,14 @@ successful signing or notarisation. Keep the release artefact allowlist intact.
 
 CI classifies pull requests by changed area in `scripts/ci-change-scope.mjs`. Documentation-only
 changes retain the lightweight documentation checks. Handwriting and Python harness changes select
-their existing tooling jobs; static-site changes select production and browser checks. Relay changes
+their existing tooling jobs; static-site changes select production and browser checks, including
+the existing build, hosting-header and asset contract tests. Relay changes
 also select app and browser checks and standalone AI MCP tests, because integration fixtures import
 relay implementations. AI MCP changes also select app and native checks. Root lint runs for tooling
 and site changes because those paths are covered by its configuration.
 
-Every `src/` change, root configuration, workflow, unknown path, relay shared contract or bootstrap
+Every `src/` change, root configuration, workflow, workspace manifest or lockfile, unknown path,
+relay shared contract or bootstrap
 script selects the complete matrix. Training coefficients and model-port fixtures remain conservative
 shared inputs until their runtime consumers move under `src/`. Mixed changes combine their scopes.
 Git rename records include both endpoints; deleted paths still count. Missing or malformed scope

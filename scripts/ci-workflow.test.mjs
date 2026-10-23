@@ -211,7 +211,7 @@ test('documentation-only changes resolve required names without running heavy st
     assert.equal(acknowledgement.shell, 'bash', name);
     assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
     assert.ok(heavySteps.length > 0, name);
-    for (const step of heavySteps) {
+    for (const step of heavySteps.filter((step) => step.name !== 'Verify standalone site contracts')) {
       assert.equal(
         step.if,
         name === 'production' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} != 'false'`,
@@ -373,5 +373,14 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
       return runInNewContext(predicate, context);
     });
     assert.deepEqual(selected.sort(), [...expected].sort(), paths.join(', '));
+  }
+});
+
+
+test('site-only production runs the existing build, hosting and asset contracts', () => {
+  const step = workflow.jobs.production.steps.find((step) => step.name === 'Verify standalone site contracts');
+  assert.equal(step.run, 'bun run test -- src/build src/release/pwaAssets.test.ts');
+  for (const [app, sites, expected] of [['false', 'true', true], ['true', 'true', false], ['false', 'false', false]]) {
+    assert.equal(runInNewContext(step.if, { needs: { changes: { outputs: { app, sites } } } }), expected);
   }
 });

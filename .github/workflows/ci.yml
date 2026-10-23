@@ -397,6 +397,9 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
+      - name: Verify standalone site contracts
+        if: needs.changes.outputs.sites == 'true' && needs.changes.outputs.app == 'false'
+        run: bun run test -- src/build src/release/pwaAssets.test.ts
       - run: node --test scripts/public-pages.test.mjs
         if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')
       - run: bun run perf:check
