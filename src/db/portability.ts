@@ -665,6 +665,8 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           const existing = existingPracticeNodes.get(incoming.id);
           if (!existing) {
             mergedPracticeNodes.push(incoming);
+          } else if (incoming.type === 'question-set' && existing.type === 'question-set') {
+            mergedPracticeNodes.push(updatedRecordWins(incoming, existing) ? incoming : existing);
           } else {
             mergedPracticeNodes.push(incoming.createdAt > existing.createdAt ? incoming : existing);
           }
@@ -907,7 +909,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           if (selected && selected.courseId !== incoming.courseId) {
             throw new Error('A learner memory cannot move between global and Course scope.');
           }
-          if (!selected || memoryWins(incoming, selected)) incomingById.set(incoming.id, incoming);
+          if (!selected || updatedRecordWins(incoming, selected)) incomingById.set(incoming.id, incoming);
         }
         const merged: AgentMemory[] = [];
         for (const incoming of incomingById.values()) {
@@ -916,7 +918,7 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
           if (existing && existing.courseId !== incoming.courseId) {
             throw new Error('A learner memory cannot move between global and Course scope.');
           }
-          if (!existing || memoryWins(incoming, existing)) merged.push(incoming);
+          if (!existing || updatedRecordWins(incoming, existing)) merged.push(incoming);
         }
         if (merged.length > 0) await db.agentMemories.bulkPut(merged);
       }
@@ -924,19 +926,22 @@ export async function importBackup(backup: BackupFile, mode: ImportMode): Promis
   );
 }
 
-function memoryWins(candidate: AgentMemory, current: AgentMemory): boolean {
+function updatedRecordWins(
+  candidate: { updatedAt: number },
+  current: { updatedAt: number },
+): boolean {
   if (candidate.updatedAt !== current.updatedAt) return candidate.updatedAt > current.updatedAt;
-  return canonicalMemory(candidate) > canonicalMemory(current);
+  return canonicalJson(candidate) > canonicalJson(current);
 }
 
-function canonicalMemory(value: unknown): string {
+function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalMemory).join(',')}]`;
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   const object = value as Record<string, unknown>;
   return `{${Object.keys(object)
     .sort()
     .filter((key) => object[key] !== undefined)
-    .map((key) => `${JSON.stringify(key)}:${canonicalMemory(object[key])}`)
+    .map((key) => `${JSON.stringify(key)}:${canonicalJson(object[key])}`)
     .join(',')}}`;
 }
 

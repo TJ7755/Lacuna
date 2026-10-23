@@ -39,6 +39,12 @@ projection data must respect existing merge ownership; a content import is not p
 replace learner evidence. See [storage compatibility](../storage-v22-compatibility.md) for the
 irreversible retired-store boundary.
 
+When backup merge encounters two versions of the same Question Set path activity, the greater
+`updatedAt` wins; equal timestamps use the greater canonical JSON value, matching peer merge.
+Replacing a set preserves activity creation time, so creation time cannot identify that edit.
+This rule retains the entire selected activity record and does not rewrite historical Attempts.
+Card practice activities retain their existing backup merge rule.
+
 Device-local annotations, authoring drafts and live AI authority have explicit exclusions. Backup,
 peer sync, manual Combine and Course sharing are different formats with different owners; adding
 one field everywhere by habit is not a compatibility policy. Follow the actual schemas.

@@ -2,7 +2,12 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createCourse } from './courseRepository';
 import { createLesson } from './lessonRepository';
-import { createQuestionSetPracticeNode } from './practiceNodeRepository';
+import {
+  createPracticeNode,
+  createQuestionSetPracticeNode,
+  updateQuestionSetPracticeNode,
+} from './practiceNodeRepository';
+import { startQuestionSetAttempt } from '../questions/questionSetAttemptRepository';
 import { exportDatabase, importBackup, validateBackup } from './portability';
 import { db } from './schema';
 import { createQuestionSet, deleteQuestionSet } from '../questions/questionSetRepository';
@@ -96,6 +101,76 @@ describe('Question Set path activity portability', () => {
     expect(() =>
       mergeSnapshots(backup, { ...backup, practiceNodes: [{ ...node, afterLessonId: 'missing' }] }),
     ).toThrow('Lesson');
+  });
+
+  it.each([
+    { name: 'incoming newer replacement', incomingWins: true, equalTime: false },
+    { name: 'local newer replacement', incomingWins: false, equalTime: false },
+    { name: 'incoming equal-time winner', incomingWins: true, equalTime: true },
+    { name: 'local equal-time winner', incomingWins: false, equalTime: true },
+  ])('retains $name on backup merge', async ({ incomingWins, equalTime }) => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Cells');
+    const set = await createQuestionSet({
+      id: 'set-a',
+      courseId: course.id,
+      title: 'Cells',
+      lessonIds: [],
+      assessmentIds: [],
+      questions: [
+        {
+          id: 'q1',
+          prompt: 'Name a cell.',
+          parts: [],
+          answer: {
+            maxMarks: 1,
+            response: { kind: 'written' },
+            prerequisiteConceptIds: [],
+            allocations: [
+              {
+                id: 'a1',
+                criterion: 'Names a cell',
+                maxMarks: 1,
+                dimension: 'knowledge',
+                targetConceptIds: [],
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const replacement = await createQuestionSet({ ...set, id: 'set-b', title: 'Tissues' });
+    const node = await createQuestionSetPracticeNode(course.id, set.id, lesson.id);
+    const attempt = await startQuestionSetAttempt(set.id, 'practice');
+    let older = await exportDatabase();
+    const updated = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id);
+    const newer = await exportDatabase();
+    expect(updated.createdAt).toBe(node.createdAt);
+    expect(updated.updatedAt).toBeGreaterThan(node.updatedAt);
+    if (equalTime) {
+      older = { ...older, practiceNodes: [{ ...node, updatedAt: updated.updatedAt }] };
+      expect(mergeSnapshots(older, newer).practiceNodes).toEqual([updated]);
+      expect(mergeSnapshots(newer, older).practiceNodes).toEqual([updated]);
+    }
+    if (incomingWins) {
+      await importBackup(older, 'replace');
+      await importBackup(newer, 'merge');
+    } else {
+      await importBackup(older, 'merge');
+    }
+    expect(await db.practiceNodes.get(node.id)).toEqual(updated);
+    expect(await db.questionSetAttempts.toArray()).toEqual([attempt]);
+    expect((await exportDatabase()).practiceNodes).toEqual([updated]);
+  });
+
+  it('retains the existing creation-time merge rule for Card practice activities', async () => {
+    const course = await createCourse('Biology');
+    const node = await createPracticeNode(course.id, { type: 'manual', name: 'Local' });
+    const backup = await exportDatabase();
+    backup.practiceNodes = [{ ...node, name: 'Incoming', createdAt: node.createdAt + 1 }];
+    await db.practiceNodes.update(node.id, { updatedAt: node.updatedAt + 100 });
+    await importBackup(backup, 'merge');
+    expect(await db.practiceNodes.get(node.id)).toEqual(backup.practiceNodes[0]);
   });
 
   it('preserves published assessment lineage metadata through backup and peer merge', async () => {

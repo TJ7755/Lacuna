@@ -1,1 +1,2 @@
 - Replace the saved question set in a path practice activity using the existing searchable picker, retaining the lesson anchor and historical attempts while showing progress for the selected set. (#686)
+- Preserve the newer saved question-set replacement when merging backups, with deterministic equal-time resolution matching peer merge. (#686)
