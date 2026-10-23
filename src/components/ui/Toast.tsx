@@ -215,7 +215,7 @@ function ToastBar({
       }
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'relative flex min-h-11 flex-col gap-3 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
+        'relative min-h-11 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
         hasControls ? 'py-1' : 'py-3',
         toneClasses[toast.tone],
       )}
@@ -277,8 +277,8 @@ function ToastBar({
       {!isPersistent && (
         <div
           className={cn(
-            'overflow-hidden rounded-full bg-ink/10',
-            hasControls ? 'absolute inset-x-4 bottom-0.5 h-0.5' : 'h-1 w-full',
+            'absolute inset-x-4 overflow-hidden rounded-full bg-ink/10',
+            hasControls ? 'bottom-0.5 h-0.5' : 'bottom-1.5 h-1',
           )}
           aria-hidden="true"
         >

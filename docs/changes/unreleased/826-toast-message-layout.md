@@ -1,1 +1,1 @@
-- Give wrapped notifications more breathing room, balance their text and align their icons with the first line, with an inset countdown track that stays clear of the rounded border. Keep action and persistent notifications compact with full-sized controls. (#826)
+- Give wrapped notifications more breathing room, balance their text and align their icons with the first line, with an inset countdown track that stays clear of the rounded border. Keep single-line, action and persistent notifications compact, with full-sized controls where present. (#826)

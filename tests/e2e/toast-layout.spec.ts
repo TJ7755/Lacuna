@@ -65,6 +65,10 @@ for (const width of [1440, 390, 320]) {
         true,
       );
       await page.screenshot({ path: testInfo.outputPath('short-toast.png') });
+      const shortToast = stack
+        .locator(':scope > div')
+        .filter({ hasText: 'Added 1 course and 63 cards.' });
+      expect((await shortToast.boundingBox())!.height).toBeLessThanOrEqual(56);
       await page.mouse.move(0, 0);
       await expect(short).toBeHidden();
 
