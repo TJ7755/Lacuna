@@ -23,7 +23,9 @@ remains in Git; it is not a current priority list.
    Record the package's identity, host architecture and unsigned/signed state.
 
 The [desktop file selection](../electron/electron-builder.yml) omits the hosted-web Workbox
-runtime and crawler documents. Desktop uses `app://`; the
+runtime, crawler documents and generated course marketing HTML. The course pages remain in
+the hosted-web build; desktop starts from `index.html` and retains shared runtime chunks.
+Desktop uses `app://`; the
 [bootstrap](../src/webBootstrap.ts) only registers a service worker on HTTP(S). Retain
 `sw.js`: [stale-chunk recovery](../src/pwa/staleChunkRecovery.ts) fetches that entry as a
 reachability probe on desktop too. Renderer
