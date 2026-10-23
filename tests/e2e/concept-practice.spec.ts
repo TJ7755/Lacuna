@@ -197,6 +197,18 @@ for (const width of [1280, 390]) {
       const main = await page.locator('main').boundingBox();
       expect(bounds!.x).toBeGreaterThanOrEqual(main!.x);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(main!.x + main!.width);
+      const practise = page.getByRole('button', { name: 'Practise selected skill', exact: true });
+      await capture(page, info, 'skill-chooser-alignment');
+      const actionBounds = await practise.boundingBox();
+      expect(Math.abs(bounds!.height - actionBounds!.height)).toBeLessThanOrEqual(1);
+      if (width === 1280) {
+        expect(Math.abs(bounds!.y - actionBounds!.y)).toBeLessThanOrEqual(1);
+      } else {
+        expect(actionBounds!.y).toBeGreaterThanOrEqual(bounds!.y + bounds!.height);
+        expect(actionBounds!.x + actionBounds!.width).toBeLessThanOrEqual(main!.x + main!.width);
+      }
+      await expect(chooser).toHaveCSS('appearance', 'none');
+      await expect(practise).toBeDisabled();
       await chooser.focus();
       // Native typeahead works without a platform popup in headless macOS Chromium.
       await chooser.press('a');
@@ -204,7 +216,6 @@ for (const width of [1280, 390]) {
       await expect(chooser).toBeFocused();
       await capture(page, info, 'skills-library');
       await chooser.press('Tab');
-      const practise = page.getByRole('button', { name: 'Practise selected skill', exact: true });
       await expect(practise).toBeFocused();
       await practise.press('Enter');
       await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
