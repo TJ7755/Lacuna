@@ -4,6 +4,9 @@ import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
 
 for (const answer of ['manual', 'automatic-continue', 'automatic-undo'] as const) {
   test(`real course flow advances after ${answer}`, async ({ page }, testInfo) => {
+    await page.route('**/api/ai/session', (route) => route.fulfill({
+      json: { token: 'browser-test-session', expiresAt: Date.now() + 600_000 },
+    }));
     await enterFreshLacuna(page);
     const bundle = await build({
       entryPoints: ['tests/e2e/fixtures/reportContinuation.ts'],

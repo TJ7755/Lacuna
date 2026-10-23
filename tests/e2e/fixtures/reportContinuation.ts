@@ -2,6 +2,8 @@ import { createCourse, createLesson, createLessonCard } from '../../../src/db/re
 import { db } from '../../../src/db/schema';
 
 export async function seed(automatic: boolean) {
+  localStorage.setItem('lacuna.jevSettings', JSON.stringify({ enabled: automatic, acceptedConsentVersion: 1 }));
+  localStorage.setItem('lacuna.aiHostedAccess', 'browser-test-only');
   const course = await createCourse('Report continuation', { learnFirst: false });
   const lesson = await createLesson(course.id, 'Due material');
   const card = await createLessonCard(
