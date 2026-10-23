@@ -5,7 +5,7 @@ import type { McpServer, CallToolResult } from '@modelcontextprotocol/server';
 import {
   TOOL_CONTRACT_REGISTRY,
   MCP_TOOL_SURFACE_VERSION,
-} from '../../src/mcp/contracts/registry.js';
+} from '../../src/mcp/contractEntry.js';
 import type {
   McpConsentRequest,
   McpInvokeRequest,
@@ -13,17 +13,17 @@ import type {
   McpScopeResolutionResponse,
   McpScopeTarget,
   McpToolError,
-} from '../../src/mcp/bridge/protocol.js';
-import { InvokeDispatcher } from '../../src/mcp/bridge/dispatcher.js';
-import { ConsentCoordinator } from '../../src/mcp/bridge/consentCoordinator.js';
+} from '../../src/mcp/bridgeEntry.js';
+import { InvokeDispatcher } from '../../src/mcp/bridgeEntry.js';
+import { ConsentCoordinator } from '../../src/mcp/bridgeEntry.js';
 import {
   isMcpConsentResponse,
   isMcpInvokeResponse,
   isMcpScopeResolutionResponse,
-} from '../../src/mcp/bridge/ipcValidation.js';
-import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../src/mcp/grants.js';
-import type { McpGrant, ToolContract } from '../../src/mcp/types.js';
-import type { McpClientIdentity } from '../../src/mcp/connections.js';
+} from '../../src/mcp/bridgeEntry.js';
+import { GrantStore, courseIdOrGlobal, resolveGrant } from '../../src/mcp/bridgeEntry.js';
+import type { McpGrant, ToolContract } from '../../src/mcp/contractEntry.js';
+import type { McpClientIdentity } from '../../src/mcp/companionEntry.js';
 
 const RENDERER_TIMEOUT_MS = 10_000;
 const SERVER_STOPPED_ERROR = { kind: 'internal', message: 'MCP server stopped.' } as const;

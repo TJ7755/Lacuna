@@ -10,8 +10,8 @@ import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server
 import {
   TOOL_CONTRACT_REGISTRY,
   MCP_TOOL_SURFACE_VERSION,
-} from '../../src/mcp/contracts/registry.js';
-import type { McpClientConnection } from '../../src/mcp/connections.js';
+} from '../../src/mcp/contractEntry.js';
+import type { McpClientConnection } from '../../src/mcp/companionEntry.js';
 import {
   companionLaunchCommand,
   companionProcessUserDataPath,

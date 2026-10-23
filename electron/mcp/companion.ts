@@ -5,14 +5,14 @@ import log from 'electron-log';
 import { z } from 'zod';
 import { McpServer, type CallToolResult, type ServerContext } from '@modelcontextprotocol/server';
 import { serveStdio, type StdioServerHandle } from '@modelcontextprotocol/server/stdio';
-import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '../../src/mcp/contracts/registry.js';
-import type { McpClientIdentity } from '../../src/mcp/connections.js';
+import { TOOL_CONTRACT_REGISTRY, MCP_TOOL_SURFACE_VERSION } from '../../src/mcp/contractEntry.js';
+import type { McpClientIdentity } from '../../src/mcp/companionEntry.js';
 import {
   CompanionLineDecoder,
   MCP_COMPANION_PROTOCOL_VERSION,
   encodeCompanionMessage,
   type CompanionResponse,
-} from '../../src/mcp/companionProtocol.js';
+} from '../../src/mcp/companionEntry.js';
 import {
   companionHostUserDataPath,
   readCompanionConnectionFile,

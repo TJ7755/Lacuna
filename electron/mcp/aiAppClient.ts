@@ -24,7 +24,7 @@ import {
   isAiCompanionResponse,
   type AiCompanionProtocolVersion,
   type AiCompanionResponse,
-} from '../../src/mcp/companionProtocol.js';
+} from '../../src/mcp/companionEntry.js';
 import {
   readCompanionConnectionFile,
   type CompanionConnectionFile,

@@ -4,7 +4,7 @@ import {
   isCompanionRequest,
   type AiCompanionRequest,
   type CompanionRequest,
-} from '../../src/mcp/companionProtocol.js';
+} from '../../src/mcp/companionEntry.js';
 
 export type CompanionPurpose = 'data' | 'ai';
 export type CompanionHello = Extract<CompanionRequest, { type: 'hello' }> |

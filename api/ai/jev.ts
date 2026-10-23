@@ -3,7 +3,7 @@ import { loadAccessConfiguration, verifySessionToken } from '../../server/ai/acc
 import { aiHeaders, allowedOrigin, readBoundedBody } from '../../server/ai/http.js';
 import { callJevDecision, callJevAllocationBatch } from '../../server/jev/provider.js';
 import { getJevUsageStore, loadJevLimit } from '../../server/jev/usage.js';
-import { jevMarkRequestSchema } from '../../src/jev/protocol.js';
+import { jevMarkRequestSchema } from '../../src/jev/apiEntry.js';
 
 export default {
   async fetch(request: Request): Promise<Response> {

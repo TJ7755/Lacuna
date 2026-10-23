@@ -141,6 +141,61 @@ describe('Electron MCP contract boundary', () => {
     },
   );
 
+  it('preserves data and AI dependency closures in the combined code-split build', async () => {
+    const metafile = (await build({
+      entryPoints: ['server', 'companion', 'aiCompanion', 'aiCompanionEntry'].map(
+        (name) => path.join(PROJECT_ROOT, `electron/mcp/${name}.ts`),
+      ),
+      outdir: path.join(PROJECT_ROOT, '.mcp-closure-probe'),
+      bundle: true,
+      splitting: true,
+      platform: 'node',
+      format: 'esm',
+      target: 'es2022',
+      packages: 'external',
+      write: false,
+      metafile: true,
+      logLevel: 'silent',
+    })).metafile;
+    const outputs = new Map(
+      Object.entries(metafile.outputs).map(([file, output]) => [path.resolve(file), output]),
+    );
+    for (const [file, output] of outputs) {
+      if (output.entryPoint || !file.endsWith('.js')) continue;
+      expect(
+        output.imports.length > 0 || Object.values(output.inputs).some(
+          (input) => input.bytesInOutput > 0,
+        ),
+        `Shared chunk has no implementation or imports: ${file}`,
+      ).toBe(true);
+    }
+    for (const name of ['server', 'companion', 'aiCompanion', 'aiCompanionEntry']) {
+      const entry = [...outputs].find(([, output]) =>
+        output.entryPoint && normalise(output.entryPoint) === `electron/mcp/${name}.ts`,
+      );
+      if (!entry) throw new Error(`Missing build entry: ${name}`);
+      const inputs = new Set<string>();
+      const visited = new Set<string>();
+      function visit(file: string): void {
+        if (visited.has(file)) return;
+        visited.add(file);
+        const output = outputs.get(file);
+        if (!output) throw new Error(`Missing shared build output: ${file}`);
+        for (const [input, contribution] of Object.entries(output.inputs)) {
+          if (contribution.bytesInOutput > 0) inputs.add(normalise(input));
+        }
+        for (const dependency of output.imports) {
+          if (!dependency.external) visit(path.resolve(dependency.path));
+        }
+      }
+      visit(entry[0]);
+      expect(inputs.has('src/ai/companionErrors.ts'), name).toBe(name.startsWith('ai'));
+      expect([...inputs].filter((input) =>
+        FORBIDDEN_SOURCE_ROOTS.some((root) => input.startsWith(root)),
+      ), name).toEqual([]);
+    }
+  });
+
   it('keeps renderer-only packages out of Electron runtime dependencies', async () => {
     const packageJson = JSON.parse(
       await readFile(path.join(PROJECT_ROOT, 'package.json'), 'utf8'),

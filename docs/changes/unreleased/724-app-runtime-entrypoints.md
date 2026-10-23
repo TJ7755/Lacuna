@@ -1,0 +1,1 @@
+- Declare explicit app entry points for Electron MCP and the JEV API, and reject cross-runtime imports into app internals during lint. (#724)
