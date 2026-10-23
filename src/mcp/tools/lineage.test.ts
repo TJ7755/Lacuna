@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../../db/schema';
-import { encodeShareDirect, type SharePayload } from '../../db/share';
+import { encodeShareDirect, type SharePayload, type SharePayloadV2 } from '../../db/share';
 import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport';
 import type { ToolContext } from '../types';
 import { validateAndRun } from '../registry';
@@ -12,7 +12,7 @@ import * as tools from './lineage';
 // the real wire shape: `li`/`rv` at the payload level, `i` on ShareLesson, `oi` on
 // ShareNote, ShareCard's `id` doubling as the originating card id).
 
-function coursePayload(overrides: Partial<SharePayload & { v: 2 }> = {}): SharePayload {
+function coursePayload(overrides: Partial<SharePayloadV2> = {}): SharePayloadV2 {
   return {
     v: 2,
     by: 'Ms Teacher',
@@ -22,7 +22,7 @@ function coursePayload(overrides: Partial<SharePayload & { v: 2 }> = {}): ShareP
     li: 'lineage-1',
     rv: 1,
     ...overrides,
-  } as SharePayload;
+  } as SharePayloadV2;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixture literal, mirrors mergeImport.test.ts's own untyped lessonOne helper.
@@ -60,11 +60,12 @@ describe('mcp lineage tools', () => {
       expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
     });
 
-    it('rejects authored Question Sets until lineage preview supports them', async () => {
+    it.each([4, 5, 6] as const)('rejects authored Question Sets in v%i until lineage preview supports them', async (version) => {
       const code = await encodeShareDirect(
         {
           ...coursePayload(),
-          v: 4,
+          v: version,
+          ...(version >= 5 ? { questionSetPracticeNodes: [] } : {}),
           concepts: [],
           questions: [],
           questionSets: [
@@ -216,6 +217,32 @@ describe('mcp lineage tools', () => {
       const result = await validateAndRun(tools.diffLineageUpdate, { courseId, shareCode: code }, ctx);
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.kind).toBe('validation');
+    });
+
+    it('keeps v6 baseline-less recovery read-only and matches explicit MCP review acceptance', async () => {
+      await db.lineageIdMappings.delete('lineage-1');
+      const lesson = lessonOne({ n: 'Publisher cells' });
+      const code = await encodeShareDirect({
+        ...coursePayload({ rv: 22 }), v: 6,
+        lessons: [{ ...lesson, cards: lesson.cards.map((card) => ({
+          ...card, co: 'concept:lineage-card:card-1',
+        })) }],
+        concepts: [{ id: 'concept:lineage-card:card-1', n: 'Cell' }],
+        questions: [], questionSets: [], questionSetPracticeNodes: [],
+      });
+      const preview = await tools.diffLineageUpdate.handler({ courseId, shareCode: code }, ctx);
+      expect(preview.data.counts).toMatchObject({ createLessons: 0, createNotes: 0, createCards: 0, conflicts: 1 });
+      expect(await db.lineageIdMappings.get('lineage-1')).toBeUndefined();
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Cells');
+      const result = await tools.applyLineageUpdate.handler({ courseId, shareCode: code,
+        decisions: { accept: [{ kind: 'lesson', entityId: 'lesson-1' }] },
+      }, ctx);
+      expect(result.data.merge).toMatchObject({ createdLessons: 0, createdNotes: 0, createdCards: 0, conflictCount: 1 });
+      expect(result.data.queuedForReview).toBe(false);
+      expect(await db.lessons.where('courseId').equals(courseId).count()).toBe(1);
+      expect((await db.lessons.get('lesson-1'))?.name).toBe('Publisher cells');
+      expect((await db.lineageIdMappings.get('lineage-1'))?.lessonSnapshots['lesson-1'].name)
+        .toBe('Publisher cells');
     });
 
     it('is declared read-tier', () => {

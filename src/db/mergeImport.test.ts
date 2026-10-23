@@ -977,6 +977,69 @@ describe('mergeImport: ordered Question Set activity lineage', () => {
     expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
   });
 
+  it('recovers v6 membership only from retained baselines without duplicating adopted content', async () => {
+    const first = payload();
+    const { course } = await importLineageFirstTime(first);
+    const attempt = await startQuestionSetAttempt('set-quadratics', 'practice');
+    await db.lineageIdMappings.update(first.li!, {
+      lessonIds: [], cardIds: [], questionSetIds: [], questionSetPracticeNodeIds: [],
+    });
+    const retained = (await db.lineageIdMappings.get(first.li!))!;
+    const next = { ...first, at: 2000, rv: 2,
+      lessons: first.lessons.map((lesson) => ({ ...lesson, n: 'Publisher lesson' })),
+      questionSetPracticeNodes: [{ ...first.questionSetPracticeNodes[0], questionSetIds: ['set-b', 'set-c', 'set-quadratics'] }],
+    };
+    expect(await mergeLineageUpdate(course.id, next)).toMatchObject({
+      createdLessons: 0, createdCards: 0, conflictCount: 0,
+    });
+    expect(await db.lessons.where('courseId').equals(course.id).count()).toBe(first.lessons.length);
+    const recovered = (await db.lineageIdMappings.get(first.li!))!;
+    const activity = next.questionSetPracticeNodes[0];
+    expect(recovered.questionSetPracticeNodeIds).toEqual([activity.id]);
+    expect(retained.questionSetPracticeNodeSnapshots?.[activity.id].questionSetIds)
+      .toEqual(['set-c', 'set-quadratics', 'set-b']);
+    expect(recovered.questionSetPracticeNodeSnapshots?.[activity.id]).toEqual({
+      questionSetIds: activity.questionSetIds, afterLessonId: activity.afterLessonId, name: activity.name,
+    });
+    expect((await db.practiceNodes.get(activity.id))?.questionSetIds).toEqual(activity.questionSetIds);
+    expect(await db.questionSetAttempts.get(attempt.id)).toEqual(attempt);
+  });
+
+  it('rejects a v6 activity claimed by another lineage before applying publisher changes', async () => {
+    const first = payload();
+    const { course } = await importLineageFirstTime(first);
+    await db.lineageIdMappings.add({ id: 'other-lineage', courseId: course.id,
+      lessonIds: [], noteIds: [], cardIds: [], sequenceIds: [],
+      lessonSnapshots: {}, noteSnapshots: {}, cardSnapshots: {},
+      questionSetPracticeNodeIds: [first.questionSetPracticeNodes[0].id],
+    });
+    const before = await exportDatabase();
+    await expect(mergeLineageUpdate(course.id, { ...first, rv: 2,
+      lessons: first.lessons.map((lesson) => ({ ...lesson, n: 'Publisher lesson' })),
+    })).rejects.toThrow(/integrity check failed.*claimed by another lineage/);
+    expect({ ...await exportDatabase(), exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
+  });
+
+  it.each(['missing activity baseline', 'missing assessment baseline', 'edited assessment'])(
+    'retains protected v6 failures and rolls back recovery with %s', async (damage) => {
+      const first: SharePayloadV6 = { ...payload(),
+        exams: [{ id: 'published-final', n: 'Final', k: 'f', a: 0, m: 'p', e: 2_000_000, c: 1000 }],
+      };
+      const { course } = await importLineageFirstTime(first);
+      await db.lineageIdMappings.update(first.li!, { lessonIds: [], cardIds: [],
+        questionSetPracticeNodeIds: [],
+        ...(damage === 'missing activity baseline' ? { questionSetPracticeNodeSnapshots: {} } : {}),
+        ...(damage === 'missing assessment baseline' ? { assessmentSnapshots: {} } : {}),
+      });
+      if (damage === 'edited assessment') await db.courseAssessments.update('published-final', { name: 'Local final' });
+      const before = await exportDatabase();
+      await expect(mergeLineageUpdate(course.id, { ...first, rv: 2,
+        lessons: first.lessons.map((lesson) => ({ ...lesson, n: 'Publisher lesson' })),
+      })).rejects.toThrow(damage === 'missing activity baseline' ? 'Question Set activity' : 'Assessment');
+      expect({ ...await exportDatabase(), exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
+    },
+  );
+
   it.each(['membership', 'order', 'anchor', 'name', 'deletion race'])('rejects %s conflicts without partial published changes', async (conflict) => {
     const first = payload();
     const { course } = await importLineageFirstTime(first);
@@ -1670,12 +1733,12 @@ describe('mergeImport: bank cards, lesson links and lesson moves', () => {
   });
 });
 
-describe('lineage recovery preserves protected V5 authoring baselines', () => {
+describe.each([5, 6] as const)('lineage recovery preserves protected V%i authoring baselines', (version) => {
   beforeEach(async () => { await db.delete(); await db.open(); });
 
   it.each(['missing registry', 'missing set revision', 'edited set'])(
     'rejects %s atomically instead of bypassing Question Set guards', async (damage) => {
-      const payload = questionPayloadV5();
+      const payload = { ...questionPayloadV5(), v: version };
       const { course } = await importLineageFirstTime(payload);
       if (damage === 'missing registry') await db.lineageIdMappings.delete(payload.li!);
       else await db.lineageIdMappings.update(payload.li!, { lessonIds: [],
@@ -1684,19 +1747,19 @@ describe('lineage recovery preserves protected V5 authoring baselines', () => {
         title: 'Learner paper', contentRevisionId: 'learner-revision',
       });
       const before = await exportDatabase();
-      const next = questionPayloadV5({ rv: 22 });
+      const next = { ...questionPayloadV5({ rv: 22 }), v: version };
       next.questionSets[0].title = 'Publisher paper';
       await expect(mergeLineageUpdate(course.id, next)).rejects.toThrow(/Question Set/);
       expect({ ...await exportDatabase(), exportedAt: 0 }).toEqual({ ...before, exportedAt: 0 });
     },
   );
 
-  it('restores Lesson membership without changing V5 Question evidence or path activities', async () => {
-    const payload = questionPayloadV5();
+  it('restores Lesson membership without changing Question evidence or path activities', async () => {
+    const payload = { ...questionPayloadV5(), v: version };
     const { course } = await importLineageFirstTime(payload);
     await db.lineageIdMappings.update(payload.li!, { lessonIds: [], cardIds: [] });
     const before = await exportDatabase();
-    await mergeLineageUpdate(course.id, questionPayloadV5({ rv: 22 }));
+    await mergeLineageUpdate(course.id, { ...questionPayloadV5({ rv: 22 }), v: version });
     const after = await exportDatabase();
     expect(after.questionSetAttempts).toEqual(before.questionSetAttempts);
     expect(after.questions?.map(({ authoringRevisionId: _revision, ...row }) => row))
