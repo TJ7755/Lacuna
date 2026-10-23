@@ -135,6 +135,7 @@ function ToastBar({
   const remainingRef = useRef<number>(toast.duration === Infinity ? 1 : toast.duration);
   const onDismissRef = useRef(onDismiss);
   const isPersistent = toast.duration === Infinity;
+  const hasControls = isPersistent || Boolean(toast.actionLabel);
 
   // Keep the latest onDismiss without causing re-runs.
   useEffect(() => {
@@ -214,7 +215,8 @@ function ToastBar({
       }
       transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        'relative flex min-h-11 flex-col gap-3 rounded-xl px-4 py-3 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
+        'relative flex min-h-11 flex-col gap-3 rounded-xl px-4 text-sm leading-5 bg-surface card-surface max-w-[min(24rem,calc(100vw-2rem))] overflow-hidden',
+        hasControls ? 'py-1' : 'py-3',
         toneClasses[toast.tone],
       )}
       onMouseEnter={() => {
@@ -235,13 +237,15 @@ function ToastBar({
         resume();
       }}
     >
-      <div className="flex w-full items-start gap-3">
-        <span className="mt-0.5 shrink-0" aria-hidden="true">
-          {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
-          {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
-          {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
-        </span>
-        <span className="min-w-0 flex-1 break-words text-balance">{toast.message}</span>
+      <div className="flex w-full items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <span className="mt-0.5 shrink-0" aria-hidden="true">
+            {toast.tone === 'positive' && <CheckIcon width={16} height={16} />}
+            {toast.tone === 'negative' && <CloseIcon width={16} height={16} />}
+            {toast.tone === 'neutral' && <InfoIcon width={16} height={16} />}
+          </span>
+          <span className="min-w-0 flex-1 break-words text-balance">{toast.message}</span>
+        </div>
         {isPersistent && (
           <button
             type="button"
@@ -271,7 +275,13 @@ function ToastBar({
       </div>
       {/* Dismiss timer progress bar — hidden for persistent toasts */}
       {!isPersistent && (
-        <div className="h-1 w-full overflow-hidden rounded-full bg-ink/10" aria-hidden="true">
+        <div
+          className={cn(
+            'overflow-hidden rounded-full bg-ink/10',
+            hasControls ? 'absolute inset-x-4 bottom-0.5 h-0.5' : 'h-1 w-full',
+          )}
+          aria-hidden="true"
+        >
           <div
             ref={barRef}
             className={cn('h-full w-full origin-left rounded-full', progressColour[toast.tone])}
