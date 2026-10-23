@@ -2,7 +2,9 @@
   "pending": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -10,7 +12,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -18,7 +22,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -26,7 +32,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -36,7 +44,9 @@
   "verdict": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -44,7 +54,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -52,7 +64,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 80.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -61,7 +75,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -71,7 +87,9 @@
   "settled": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -79,7 +97,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -87,7 +107,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 80.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -96,7 +118,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -106,7 +130,9 @@
   "manual-zero": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -114,7 +140,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -122,7 +150,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -130,7 +160,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -140,7 +172,9 @@
   "manual-unsure": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -148,7 +182,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -156,7 +192,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -164,7 +202,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -174,7 +214,9 @@
   "manual-one": [
     {
       "value": "",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 109.140625,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -182,7 +224,9 @@
     },
     {
       "value": "0",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -190,7 +234,9 @@
     },
     {
       "value": "1",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 60.4375,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,
@@ -198,7 +244,9 @@
     },
     {
       "value": "unsure",
-      "height": 40,
+      "height": 44,
+      "hitWidth": 79.125,
+      "hitHeight": 44,
       "railOffset": 0,
       "verticalOffset": 0,
       "horizontalOffset": 0,

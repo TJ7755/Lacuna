@@ -1,0 +1,2 @@
+git diff --check HEAD~1 HEAD
+Exit code: 0
