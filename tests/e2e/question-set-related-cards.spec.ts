@@ -149,6 +149,7 @@ for (const width of [1280, 320]) {
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
     await page.getByRole('radio', { name: '1 / 1', exact: true }).click();
+    await expect(page.locator('[data-attempt-primary]')).toBeEnabled();
     await page.getByRole('radio', { name: '1 / 1', exact: true }).press('Control+Enter');
     await expect(page.getByRole('button', { name: /criterion 2 of 2/ })).toBeVisible();
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
