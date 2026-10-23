@@ -120,7 +120,7 @@ it('confident marks carry provenance and feed summaries, grading and concept sch
   const complete = await completeQuestionSetAttempt(marked.id, marked.revisionId);
   expect(deriveConceptApplicationSchedules([complete]).get(concept.id)?.reps).toBe(1);
 });
-it('leaves unsure lines undecided and applies explicit zero marks', async () => {
+it('persists unsure lines with provenance and applies explicit zero marks', async () => {
   const { attempt } = await fixture();
   const { engine } = engineWith(async (request) => result(request.maxMarks === 1 ? 0 : null));
   await markJevAttempt(attempt.id, engine);
@@ -131,29 +131,37 @@ it('leaves unsure lines undecided and applies explicit zero marks', async () => 
       marks: 0,
       markedBy: expect.any(Object),
     }),
+    expect.objectContaining({
+      allocationId: 'a2',
+      status: 'unsure',
+      markedBy: { by: 'jev', model: 'jev-1.14.0', confidence: 0.5, markedAt: expect.any(Number) },
+    }),
   ]);
 });
-it('never replaces a learner decision made before or during marking, and clears provenance on override', async () => {
-  const { attempt } = await fixture();
-  const initial = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
-    ...attempt,
-    decisions: [{ allocationId: 'a1', status: 'unsure' }],
-  });
-  const { engine, fetcher } = engineWith(async () => {
-    const current = (await getQuestionSetAttempt(initial.id))!;
-    await saveQuestionSetMarking(current.id, current.revisionId, {
-      ...current,
-      decisions: [...current.decisions, { allocationId: 'a2', status: 'awarded', marks: 0 }],
+it.each([2, null])(
+  'never replaces a learner decision made before or during marking, and clears provenance on override (%s)',
+  async (value) => {
+    const { attempt } = await fixture();
+    const initial = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+      ...attempt,
+      decisions: [{ allocationId: 'a1', status: 'unsure' }],
     });
-    return result(2);
-  });
-  await markJevAttempt(attempt.id, engine);
-  expect(fetcher).toHaveBeenCalledTimes(2);
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
-    { allocationId: 'a1', status: 'unsure' },
-    { allocationId: 'a2', status: 'awarded', marks: 0 },
-  ]);
-});
+    const { engine, fetcher } = engineWith(async () => {
+      const current = (await getQuestionSetAttempt(initial.id))!;
+      await saveQuestionSetMarking(current.id, current.revisionId, {
+        ...current,
+        decisions: [...current.decisions, { allocationId: 'a2', status: 'awarded', marks: 0 }],
+      });
+      return result(value);
+    });
+    await markJevAttempt(attempt.id, engine);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+      { allocationId: 'a1', status: 'unsure' },
+      { allocationId: 'a2', status: 'awarded', marks: 0 },
+    ]);
+  },
+);
 it('does not mark when off, without consent or without a code', async () => {
   const { attempt } = await fixture();
   const fetcher = vi.fn();
@@ -179,27 +187,30 @@ it('drops model provenance when the learner changes an award, including stale UI
   });
   expect(changed.decisions[0]).toEqual({ allocationId: 'a1', status: 'awarded', marks: 0 });
 });
-it('keeps a learner override when a newer peer revision contains a Jev award', async () => {
-  const { attempt } = await fixture();
-  const { engine } = engineWith(async (request) => result(request.maxMarks!));
-  await markJevAttempt(attempt.id, engine);
-  const model = (await getQuestionSetAttempt(attempt.id))!;
-  const learner = {
-    ...structuredClone(model),
-    revisionId: 'learner',
-    decisions: [{ allocationId: 'a1', status: 'awarded' as const, marks: 0 }, model.decisions[1]],
-  };
-  const newerModel = { ...model, revisionId: 'newer-model', updatedAt: model.updatedAt + 1 };
-  const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
-  expect(mergeQuestionSetAttemptPair(learner, newerModel).decisions[0]).toEqual({
-    allocationId: 'a1',
-    status: 'awarded',
-    marks: 0,
-  });
-  expect(mergeQuestionSetAttemptPair(newerModel, learner)).toEqual(
-    mergeQuestionSetAttemptPair(learner, newerModel),
-  );
-});
+it.each([1, null])(
+  'keeps a learner override when a newer peer revision contains a Jev decision (%s)',
+  async (value) => {
+    const { attempt } = await fixture();
+    const { engine } = engineWith(async () => result(value));
+    await markJevAttempt(attempt.id, engine);
+    const model = (await getQuestionSetAttempt(attempt.id))!;
+    const learner = {
+      ...structuredClone(model),
+      revisionId: 'learner',
+      decisions: [{ allocationId: 'a1', status: 'awarded' as const, marks: 0 }, model.decisions[1]],
+    };
+    const newerModel = { ...model, revisionId: 'newer-model', updatedAt: model.updatedAt + 1 };
+    const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
+    expect(mergeQuestionSetAttemptPair(learner, newerModel).decisions[0]).toEqual({
+      allocationId: 'a1',
+      status: 'awarded',
+      marks: 0,
+    });
+    expect(mergeQuestionSetAttemptPair(newerModel, learner)).toEqual(
+      mergeQuestionSetAttemptPair(learner, newerModel),
+    );
+  },
+);
 it.each(['calculation', 'multiple-choice'] as const)(
   'leaves %s responses on their existing paths',
   async (kind) => {
@@ -210,14 +221,37 @@ it.each(['calculation', 'multiple-choice'] as const)(
     expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
   },
 );
-it('resumes safely after abandoning a low-confidence run with no persisted work queue', async () => {
-  const { attempt } = await fixture();
-  const abandoned = engineWith(async () => result(null));
-  await markJevAttempt(attempt.id, abandoned.engine);
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+it('retains unsure decisions on re-entry, keeps summaries provisional and allows a numeric override', async () => {
+  const { attempt, concept } = await fixture();
+  const { engine } = engineWith(async () => result(null));
+  await markJevAttempt(attempt.id, engine);
+  const saved = (await getQuestionSetAttempt(attempt.id))!;
+  expect(saved.decisions).toHaveLength(2);
+  expect(
+    saved.decisions.every((row) => row.status === 'unsure' && row.markedBy?.by === 'jev'),
+  ).toBe(true);
+  expect(summariseSelfMarking(saved.receipt, saved.decisions)).toMatchObject({
+    status: 'provisional',
+    unsureCount: 2,
+    unmarkedCount: 0,
+    resolvedCount: 0,
+  });
+  expect(deriveConceptApplicationSchedules([saved]).get(concept.id)).toBeUndefined();
+  await expect(completeQuestionSetAttempt(saved.id, saved.revisionId)).rejects.toThrow(
+    'Resolve every marking decision',
+  );
   const resumed = engineWith(async (request) => result(request.maxMarks!));
   await markJevAttempt(attempt.id, resumed.engine);
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toHaveLength(2);
+  expect(resumed.fetcher).not.toHaveBeenCalled();
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual(saved.decisions);
+  const overridden = await saveQuestionSetMarking(saved.id, saved.revisionId, {
+    ...saved,
+    decisions: saved.decisions.map((row) => ({ ...row, status: 'awarded' as const, marks: 0 })),
+  });
+  expect(overridden.decisions).toEqual([
+    { allocationId: 'a1', status: 'awarded', marks: 0 },
+    { allocationId: 'a2', status: 'awarded', marks: 0 },
+  ]);
 });
 it('retries a stale model write through the repository without touching learner state', async () => {
   const { attempt } = await fixture();
@@ -253,38 +287,42 @@ it('retries a stale model write through the repository without touching learner 
     saveQuestionSetMarking(attempt.id, attempt.revisionId, { ...attempt, decisions: [] }),
   ).rejects.toBeInstanceOf(QuestionSetAttemptRevisionConflictError);
 });
-it('keeps a peer learner line when a later model revision adds a different allocation', async () => {
-  const { attempt } = await fixture();
-  const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
-  const learner = {
-    ...structuredClone(attempt),
-    revisionId: 'learner',
-    decisions: [{ allocationId: 'a1', status: 'awarded' as const, marks: 0 }],
-  };
-  const model = {
-    ...structuredClone(attempt),
-    revisionId: 'model',
-    updatedAt: attempt.updatedAt + 1,
-    decisions: [
-      {
-        allocationId: 'a2',
-        status: 'awarded' as const,
-        marks: 2,
-        markedBy: {
-          by: 'jev' as const,
-          model: 'jev-1.14.0',
-          confidence: 0.98,
-          markedAt: Date.now(),
+it.each([2, null])(
+  'keeps a peer learner line when a later model revision adds a different allocation (%s)',
+  async (value) => {
+    const { attempt } = await fixture();
+    const { mergeQuestionSetAttemptPair } = await import('../questions/questionSetAttemptMerge');
+    const learner = {
+      ...structuredClone(attempt),
+      revisionId: 'learner',
+      decisions: [{ allocationId: 'a1', status: 'awarded' as const, marks: 0 }],
+    };
+    const model = {
+      ...structuredClone(attempt),
+      revisionId: 'model',
+      updatedAt: attempt.updatedAt + 1,
+      decisions: [
+        {
+          allocationId: 'a2',
+          ...(value === null
+            ? { status: 'unsure' as const }
+            : { status: 'awarded' as const, marks: value }),
+          markedBy: {
+            by: 'jev' as const,
+            model: 'jev-1.14.0',
+            confidence: 0.98,
+            markedAt: Date.now(),
+          },
         },
-      },
-    ],
-  };
-  const merged = mergeQuestionSetAttemptPair(learner, model);
-  expect(merged.decisions).toEqual(
-    expect.arrayContaining([...learner.decisions, ...model.decisions]),
-  );
-  expect(mergeQuestionSetAttemptPair(model, learner)).toEqual(merged);
-});
+      ],
+    };
+    const merged = mergeQuestionSetAttemptPair(learner, model);
+    expect(merged.decisions).toEqual(
+      expect.arrayContaining([...learner.decisions, ...model.decisions]),
+    );
+    expect(mergeQuestionSetAttemptPair(model, learner)).toEqual(merged);
+  },
+);
 it('does not dispute equal first-marking outcomes solely because their model provenance differs', async () => {
   const { attempt } = await fixture();
   const { engine } = engineWith(async (request) => result(request.maxMarks!));
@@ -428,7 +466,9 @@ it('sends an opened criterion once however often it is revisited', async () => {
   ]);
   await markJevAttempt(attempt.id, engine, 'a1');
   expect(fetcher).toHaveBeenCalledTimes(2);
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+  expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+    expect.objectContaining({ allocationId: 'a1', status: 'unsure' }),
+  ]);
 });
 
 it('does not mark criteria when an attempt is submitted', async () => {
@@ -485,11 +525,16 @@ it('persists all six criterion verdicts arriving together while requests stay in
   expect(marked.decisions.every((row) => row.markedBy?.by === 'jev')).toBe(true);
 });
 
-it.each(['conflict', 'storage error'] as const)(
-  'allows a confident verdict that could not be applied (%s) to recover on a revisit',
-  async (failure) => {
+it.each([
+  [1, 'conflict'],
+  [1, 'storage error'],
+  [null, 'conflict'],
+  [null, 'storage error'],
+] as const)(
+  'allows a verdict (%s) that could not be applied (%s) to recover on a revisit',
+  async (value, failure) => {
     const { attempt } = await fixture();
-    const { engine } = engineWith(async (request) => result(request.maxMarks!));
+    const { engine } = engineWith(async () => result(value));
     const repository = await import('../questions/questionSetAttemptRepository');
     const apply = vi.spyOn(repository, 'applyJevAllocationDecision');
     if (failure === 'conflict') apply.mockResolvedValueOnce(false);
@@ -499,7 +544,11 @@ it.each(['conflict', 'storage error'] as const)(
       expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
       await markJevAttempt(attempt.id, engine, 'a1');
       expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
-        expect.objectContaining({ allocationId: 'a1', marks: 1 }),
+        expect.objectContaining(
+          value === null
+            ? { allocationId: 'a1', status: 'unsure' }
+            : { allocationId: 'a1', status: 'awarded', marks: value },
+        ),
       ]);
     } finally {
       apply.mockRestore();
@@ -507,35 +556,40 @@ it.each(['conflict', 'storage error'] as const)(
   },
 );
 
-it('discards a held verdict after disabling and re-enabling Jev, while fresh work remains valid', async () => {
-  const { attempt } = await fixture();
-  const { engine, fetcher } = engineWith(async (request) => result(request.maxMarks!));
-  const schedule = globalThis.setTimeout;
-  let release!: () => void;
-  const timer = vi
-    .spyOn(globalThis, 'setTimeout')
-    .mockImplementation((callback, delay, ...args) => {
-      if (delay !== undefined && delay > 9_000 && delay <= 10_000) {
-        release = () => callback(...args);
-        return schedule(() => {}, 0);
-      }
-      return schedule(callback, delay, ...args);
-    });
-  try {
-    const marking = markJevAttempt(attempt.id, engine, 'a1', 10_000);
-    await vi.waitFor(() => expect(release).toBeTypeOf('function'));
-    engine.disable();
-    engine.enable(1);
-    release();
-    await marking;
-    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
-    await markJevAttempt(attempt.id, engine, 'a1');
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    await markJevAttempt(attempt.id, engine, 'a2');
-    expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
-      expect.objectContaining({ allocationId: 'a2', marks: 2 }),
-    ]);
-  } finally {
-    timer.mockRestore();
-  }
-});
+it.each([1, null])(
+  'discards a held verdict (%s) after disabling and re-enabling Jev, while fresh work remains valid',
+  async (value) => {
+    const { attempt } = await fixture();
+    const { engine, fetcher } = engineWith(async (request) =>
+      result(request.maxMarks === 1 ? value : request.maxMarks!),
+    );
+    const schedule = globalThis.setTimeout;
+    let release!: () => void;
+    const timer = vi
+      .spyOn(globalThis, 'setTimeout')
+      .mockImplementation((callback, delay, ...args) => {
+        if (delay !== undefined && delay > 9_000 && delay <= 10_000) {
+          release = () => callback(...args);
+          return schedule(() => {}, 0);
+        }
+        return schedule(callback, delay, ...args);
+      });
+    try {
+      const marking = markJevAttempt(attempt.id, engine, 'a1', 10_000);
+      await vi.waitFor(() => expect(release).toBeTypeOf('function'));
+      engine.disable();
+      engine.enable(1);
+      release();
+      await marking;
+      expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([]);
+      await markJevAttempt(attempt.id, engine, 'a1');
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      await markJevAttempt(attempt.id, engine, 'a2');
+      expect((await getQuestionSetAttempt(attempt.id))!.decisions).toEqual([
+        expect.objectContaining({ allocationId: 'a2', marks: 2 }),
+      ]);
+    } finally {
+      timer.mockRestore();
+    }
+  },
+);

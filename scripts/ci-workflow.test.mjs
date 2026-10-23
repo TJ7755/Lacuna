@@ -212,7 +212,7 @@ test('documentation-only changes resolve required names without running heavy st
     assert.equal(acknowledgement.shell, 'bash', name);
     assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
     assert.ok(heavySteps.length > 0, name);
-    for (const step of heavySteps.filter((step) => step.name !== 'Verify standalone site contracts')) {
+    for (const step of heavySteps.filter((step) => step.name !== 'Verify standalone site contracts' && !(name === 'electron-ai' && step.name === 'Preserve Electron AI test evidence'))) {
       assert.equal(
         step.if,
         name === 'production' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} != 'false'`,
@@ -385,4 +385,18 @@ test('site-only production runs the existing build, hosting and asset contracts'
   for (const [app, sites, expected] of [['false', 'true', true], ['true', 'true', false], ['false', 'false', false]]) {
     assert.equal(runInNewContext(step.if, { needs: { changes: { outputs: { app, sites } } } }), expected);
   }
+});
+
+
+test('Electron AI evidence survives native failures without widening execution scope', () => {
+  const steps = workflow.jobs['electron-ai'].steps;
+  const evidence = steps.find((step) => step.name === 'Preserve Electron AI test evidence');
+  assert.equal(evidence.if, "always() && needs.changes.outputs.electron != 'false'");
+  assert.equal(evidence.uses, 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9');
+  assert.deepEqual(evidence.with, {
+    name: 'electron-ai-results', path: 'test-results/', 'if-no-files-found': 'ignore',
+  });
+  const nativeTest = steps.findIndex((step) => step.run === 'bun run test:e2e:electron-ai');
+  assert.notEqual(nativeTest, -1);
+  assert.ok(steps.indexOf(evidence) > nativeTest);
 });

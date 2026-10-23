@@ -1,0 +1,2 @@
+- Save low-confidence automatic Question Set marks as Unsure, retain learner overrides, and remove the explanatory sentence beneath the mark selector. (#828)
+- Retain bounded renderer errors, the current URL, screenshots and an explicit Electron context trace when the native AI companion scenario fails, so Windows CI failures can be investigated without weakening its assertions. (#831)

@@ -192,12 +192,15 @@ allocations retain 0.85. Their provenance confidence is the chosen outcome proba
 since TypeSafe returns no separate noul confidence.
 Multi-mark allocations require both provider confidence and probability at the rounded expected score of at least 0.85.
 TypeSafe accepts at most ten score levels, so allocations above nine marks remain manual.
-Low-confidence lines remain undecided; learner decisions, including explicit unsure decisions,
-are never overwritten. Submission sends nothing: each line is marked only when the learner
+Low-confidence lines save the existing Unsure decision with model provenance and no explanatory
+sentence beneath the selector. Learners can replace it with a numeric mark; summaries stay
+provisional and no schedule evidence is created until every decision is resolved. Learner
+decisions, including ones made while marking is running, are never overwritten. Submission sends nothing: each line is marked only when the learner
 opens its criterion, and is shown being judged for at least `JEV_JUDGING_MS` (motion-scaled).
 Unopened lines stay undecided; abandoning the page leaves them available for self-marking. Confident verdicts
 have a bounded device-only cache in a separate IndexedDB database, storing hashes and results,
-without the submitted text. Repeated uncertain lines are attempted once per mounted runtime.
+without the submitted text. Saved Unsure decisions survive re-entry without another request;
+failed saves can retry on a revisit.
 
 Mark provenance is additive on review events and self-mark decisions, including frozen first
 marking snapshots. No application schema/index or backup version changes: old records need no

@@ -636,6 +636,13 @@ jobs:
         if: needs.changes.outputs.electron != 'false'
       - run: bun run test:e2e:electron-ai
         if: needs.changes.outputs.electron != 'false'
+      - name: Preserve Electron AI test evidence
+        if: always() && needs.changes.outputs.electron != 'false'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: electron-ai-results
+          path: test-results/
+          if-no-files-found: ignore
 
   electron-macos-smoke:
     needs: changes

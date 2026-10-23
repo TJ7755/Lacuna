@@ -22,7 +22,7 @@ import {
 } from './questionSetAttemptRepository';
 import { feedbackAvailable } from './questionSetAttempts';
 import { parseQuestionSetAttemptRecord } from './questionSetAttemptCodec';
-import type { QuestionSet } from './questionSets';
+import type { QuestionSet, SelfMarkDecision } from './questionSets';
 
 /** A sweep after the grace period, so fresh test assets are eligible for collection. */
 const afterGrace = () => Date.now() + ASSET_GC_GRACE_MS;
@@ -455,27 +455,132 @@ describe('first application evidence', () => {
   });
 });
 
-it('round-trips Jev provenance through the attempt codec, backup, import and sync', async () => {
-  await Promise.all(db.tables.map((table) => table.clear()));
-  const set = await setFixture();
-  let attempt = await startQuestionSetAttempt(set.id, 'paper');
-  attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
-  const markedBy = {
-    by: 'jev' as const,
-    model: 'jev-1.14.0',
-    confidence: 0.96,
-    markedAt: Date.now(),
-  };
-  attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
-    ...attempt,
-    decisions: [{ allocationId: 'a1', status: 'awarded', marks: 1, markedBy }],
+it.each(['awarded', 'unsure'] as const)(
+  'round-trips Jev %s provenance through the attempt codec, backup, import and sync',
+  async (status) => {
+    await Promise.all(db.tables.map((table) => table.clear()));
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper');
+    attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+    const markedBy = {
+      by: 'jev' as const,
+      model: 'jev-1.14.0',
+      confidence: 0.96,
+      markedAt: Date.now(),
+    };
+    attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+      ...attempt,
+      decisions: [
+        {
+          allocationId: 'a1',
+          markedBy,
+          ...(status === 'unsure' ? { status } : { status, marks: 1 }),
+        },
+      ],
+    });
+    expect(parseQuestionSetAttemptRecord(attempt).decisions[0]).toMatchObject({ markedBy });
+    const backup = await exportDatabase();
+    const { mergeSnapshots } = await import('../sync/mergeSnapshots');
+    const synced = mergeSnapshots(backup, structuredClone(backup));
+    await importBackup(synced, 'replace');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
+    await importBackup(backup, 'merge');
+    expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
+  },
+);
+
+describe('guarded Jev decisions', () => {
+  beforeEach(async () => {
+    await Promise.all(db.tables.map((table) => table.clear()));
   });
-  expect(parseQuestionSetAttemptRecord(attempt).decisions[0]).toMatchObject({ markedBy });
-  const backup = await exportDatabase();
-  const { mergeSnapshots } = await import('../sync/mergeSnapshots');
-  const synced = mergeSnapshots(backup, structuredClone(backup));
-  await importBackup(synced, 'replace');
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
-  await importBackup(backup, 'merge');
-  expect((await getQuestionSetAttempt(attempt.id))!.decisions[0]).toMatchObject({ markedBy });
+
+  it.each(['awarded', 'unsure'] as const)(
+    'retries a stale %s write without replacing a learner decision',
+    async (status) => {
+      const { applyJevAllocationDecision } = await import('./questionSetAttemptRepository');
+      const set = await setFixture();
+      let attempt = await startQuestionSetAttempt(set.id, 'paper');
+      attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+      const decision: SelfMarkDecision = {
+        allocationId: 'a1',
+        ...(status === 'unsure' ? { status } : { status, marks: 1 }),
+        markedBy: { by: 'jev', model: 'jev-1.14.0', confidence: 0.5, markedAt: 123 },
+      };
+      const positioned = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+        ...attempt,
+        activeNodeId: 'q2',
+        activeAllocationId: 'a2',
+      });
+      expect(
+        await applyJevAllocationDecision(
+          attempt.id,
+          attempt.revisionId,
+          'q1',
+          decision,
+          () => true,
+        ),
+      ).toBe(true);
+      const saved = (await getQuestionSetAttempt(attempt.id))!;
+      expect(saved.decisions).toEqual([decision]);
+      expect(saved.activeNodeId).toBe(positioned.activeNodeId);
+      expect(saved.activeAllocationId).toBe(positioned.activeAllocationId);
+      const learner = await saveQuestionSetMarking(saved.id, saved.revisionId, {
+        ...saved,
+        decisions: [{ allocationId: 'a1', status: 'awarded', marks: 0 }],
+      });
+      expect(
+        await applyJevAllocationDecision(saved.id, saved.revisionId, 'q1', decision, () => true),
+      ).toBe(false);
+      expect(await getQuestionSetAttempt(saved.id)).toEqual(learner);
+    },
+  );
+
+  it.each([
+    'disabled',
+    'no provenance',
+    'unsubmitted',
+    'wrong node',
+    'complete',
+    'undone',
+  ] as const)('rejects an unsure write when %s without changing the record', async (guard) => {
+    const { applyJevAllocationDecision } = await import('./questionSetAttemptRepository');
+    const set = await setFixture();
+    let attempt = await startQuestionSetAttempt(set.id, 'paper');
+    if (guard !== 'unsubmitted')
+      attempt = await submitQuestionSetPaper(attempt.id, attempt.revisionId);
+    if (guard === 'complete') {
+      attempt = await saveQuestionSetMarking(attempt.id, attempt.revisionId, {
+        ...attempt,
+        decisions: ['a1', 'a2'].map((allocationId) => ({
+          allocationId,
+          status: 'awarded',
+          marks: 1,
+        })),
+      });
+      attempt = await completeQuestionSetAttempt(attempt.id, attempt.revisionId);
+    }
+    if (guard === 'undone') {
+      attempt.undoneAt = attempt.updatedAt;
+      await db.questionSetAttempts.put(attempt);
+    }
+    const decision: SelfMarkDecision = {
+      allocationId: 'a1',
+      status: 'unsure',
+      ...(guard === 'no provenance'
+        ? {}
+        : {
+            markedBy: { by: 'jev' as const, model: 'jev-1.14.0', confidence: 0.5, markedAt: 123 },
+          }),
+    };
+    expect(
+      await applyJevAllocationDecision(
+        attempt.id,
+        attempt.revisionId,
+        guard === 'wrong node' ? 'q2' : 'q1',
+        decision,
+        () => guard !== 'disabled',
+      ),
+    ).toBe(false);
+    expect(await getQuestionSetAttempt(attempt.id)).toEqual(attempt);
+  });
 });
