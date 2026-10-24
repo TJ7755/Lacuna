@@ -414,6 +414,8 @@ test('narrow web specs remain registered with the selected browser projects and 
   try {
     mkdirSync(join(directory, 'tests/config'), { recursive: true });
     mkdirSync(join(directory, 'tests/e2e'));
+    mkdirSync(join(directory, 'scripts'));
+    copyFileSync('scripts/browser-ci-summary.mjs', join(directory, 'scripts/browser-ci-summary.mjs'));
     writeFileSync(join(directory, 'package.json'), '{"type":"module"}');
     symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
     // Register the real entry-point names without executing their build/fixture side effects.
@@ -423,6 +425,7 @@ test('narrow web specs remain registered with the selected browser projects and 
     for (const config of ['playwright.web.config.ts', 'playwright.web.ci.config.ts']) {
       copyFileSync(join('tests/config', config), join(directory, 'tests/config', config));
       const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', '-c', join(directory, 'tests/config', config), '--list', '--reporter=json', ...(config === 'playwright.web.config.ts' ? ['--project=webkit-mobile'] : [])], {
+        env: { ...process.env, CI: 'true' },
         encoding: 'utf8', timeout: 30_000, maxBuffer: 10 * 1024 * 1024,
       });
       assert.equal(result.status, 0, result.stderr || result.stdout);
