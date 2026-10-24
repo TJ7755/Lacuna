@@ -1,4 +1,15 @@
 import { answerableNodes, type QuestionSetAttemptRecord } from './questionSetAttempts';
+import type { QuestionSetRecord } from './questionSetCodec';
+
+/** New answerable parts are current work, separate from the attempt's historical progress. */
+export function questionSetAddedParts(
+  content: QuestionSetRecord,
+  attempt: QuestionSetAttemptRecord | null,
+): number {
+  if (!attempt) return 0;
+  const previous = new Set(answerableNodes(attempt.receipt).map((part) => part.nodeId));
+  return answerableNodes(content).filter((part) => !previous.has(part.nodeId)).length;
+}
 
 export interface QuestionSetPathProgress {
   totalParts: number;
@@ -6,7 +17,9 @@ export interface QuestionSetPathProgress {
   markedParts: number;
 }
 
-function hasResponse(value: NonNullable<QuestionSetAttemptRecord['responses'][number]['submitted']>) {
+function hasResponse(
+  value: NonNullable<QuestionSetAttemptRecord['responses'][number]['submitted']>,
+) {
   return value.kind === 'multiple-choice'
     ? value.selectedOptionIds.length > 0
     : value.text.trim().length > 0;

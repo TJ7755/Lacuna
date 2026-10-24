@@ -91,22 +91,25 @@ vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: (querier: () => unknown) => {
     const source = Function.prototype.toString.call(querier);
     if (source.includes('listQuestionSetAttempts')) {
-      return {
-        content: {
+      return [
+        {
           id: 'question-set-1',
-          courseId: 'course-1',
-          title: 'Question set',
-          lessonIds: [],
-          assessmentIds: [],
-          contentVersion: 1,
-          contentRevisionId: 'content-1',
-          createdAt: 1,
-          updatedAt: 1,
-          questions: [],
+          content: {
+            id: 'question-set-1',
+            courseId: 'course-1',
+            title: 'Question set',
+            lessonIds: [],
+            assessmentIds: [],
+            contentVersion: 1,
+            contentRevisionId: 'content-1',
+            createdAt: 1,
+            updatedAt: 1,
+            questions: [],
+          },
+          attempt: null,
+          exam: undefined,
         },
-        attempt: null,
-        exam: undefined,
-      };
+      ];
     }
     if (source.includes('lessonCardExposures')) return live.exposures;
     if (source.includes('lessonCompletions')) return live.completions;
@@ -1080,9 +1083,15 @@ describe('CoursePath overview', () => {
 });
 
 it('explains a suspended saved order on the path without enabling locked authoring', () => {
-  mockCourse = { ...course, localLessonOrder: [lesson2.id, lesson1.id], autoPractice: true,
-    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false } };
+  mockCourse = {
+    ...course,
+    localLessonOrder: [lesson2.id, lesson1.id],
+    autoPractice: true,
+    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false },
+  };
   renderPage();
-  expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent('Turn off automatic Card practice');
+  expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent(
+    'Turn off automatic Card practice',
+  );
   expect(screen.queryByRole('button', { name: /Add lesson/i })).not.toBeInTheDocument();
 });

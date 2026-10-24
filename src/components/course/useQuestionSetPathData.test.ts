@@ -76,8 +76,8 @@ it('switches progress to the selected identity while retaining completed and res
       }),
     { initialProps: { activity: node } },
   );
-  await waitFor(() => expect(result.current?.attempt).toEqual(complete));
-  expect(questionSetPathProgress(result.current!.attempt)).toEqual({
+  await waitFor(() => expect(result.current?.[0].attempt).toEqual(complete));
+  expect(questionSetPathProgress(result.current![0].attempt)).toEqual({
     totalParts: 1,
     answeredParts: 1,
     markedParts: 1,
@@ -85,9 +85,9 @@ it('switches progress to the selected identity while retaining completed and res
   const open = await startQuestionSetAttempt(set.id, 'practice', 200);
   node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt);
   rerender({ activity: node });
-  await waitFor(() => expect(result.current?.content?.id).toBe(replacement.id));
-  expect(result.current?.attempt).toBeNull();
-  expect(questionSetPathProgress(result.current!.attempt)).toBeNull();
+  await waitFor(() => expect(result.current?.[0].content?.id).toBe(replacement.id));
+  expect(result.current?.[0].attempt).toBeNull();
+  expect(questionSetPathProgress(result.current![0].attempt)).toBeNull();
   expect(await db.questionSetAttempts.get(complete.id)).toEqual(complete);
   expect(await db.questionSetAttempts.get(open.id)).toEqual(open);
   const resumed = await saveQuestionSetResponseDraft(
@@ -100,12 +100,12 @@ it('switches progress to the selected identity while retaining completed and res
   );
   expect(resumed.receipt).toEqual(open.receipt);
   const next = await startQuestionSetAttempt(replacement.id, 'practice', 300);
-  await waitFor(() => expect(result.current?.attempt).toEqual(next));
-  expect(questionSetPathProgress(result.current!.attempt)?.answeredParts).toBe(0);
+  await waitFor(() => expect(result.current?.[0].attempt).toEqual(next));
+  expect(questionSetPathProgress(result.current![0].attempt)?.answeredParts).toBe(0);
   node = await updateQuestionSetPracticeNode(node.id, lesson.id, set.id, node.updatedAt);
   rerender({ activity: node });
-  await waitFor(() => expect(result.current?.attempt).toEqual(resumed));
+  await waitFor(() => expect(result.current?.[0].attempt).toEqual(resumed));
   node = await updateQuestionSetPracticeNode(node.id, lesson.id, replacement.id, node.updatedAt);
   rerender({ activity: node });
-  await waitFor(() => expect(result.current?.attempt).toEqual(next));
+  await waitFor(() => expect(result.current?.[0].attempt).toEqual(next));
 });
