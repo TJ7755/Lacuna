@@ -139,10 +139,12 @@ Every pull request must state:
 - the web, Windows, Linux and macOS platform matrix that was or was not exercised;
 - unresolved review conversations, if any (there should be none before merge).
 
-Use the pull request template. Screenshots are required for material UI changes. Resolve all review
-conversations and obtain one approving independent review from an agent or human before merging
-risk-bearing work. Human review is optional. Branch protection, required checks and CODEOWNERS are
-repository controls; a green local run does not replace them.
+Use the pull request template. Screenshots are required for material UI changes. Upload screenshots,
+recordings and change notes to the pull request itself; `bun run docs:check` rejects them under
+`docs/review/` or `docs/changes/`. Resolve all review conversations and obtain one approving
+independent review from an agent or human before merging risk-bearing work. Human review is
+optional. Branch protection, required checks and CODEOWNERS are repository controls; a green local
+run does not replace them.
 
 ## Security maintenance
 
