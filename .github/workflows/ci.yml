@@ -57,6 +57,7 @@ jobs:
       python: ${{ steps.metadata.outputs.python || steps.scope.outputs.python }}
       ai_mcp: ${{ steps.metadata.outputs.ai_mcp || steps.scope.outputs.ai_mcp }}
       lint: ${{ steps.metadata.outputs.lint || steps.scope.outputs.lint }}
+      web_tests: ${{ steps.metadata.outputs.web_tests || steps.scope.outputs.web_tests }}
     steps:
       - id: metadata
         if: ${{ github.event.action == 'edited' && !github.event.changes.base && (github.event.changes.title != null || github.event.changes.body != null) }}
@@ -78,7 +79,7 @@ jobs:
           [ "$conclusion" = success ]
           echo "Reused successful validation: https://github.com/$GH_REPO/actions/runs/$run_id" >> "$GITHUB_STEP_SUMMARY"
           echo "docs_only=true" >> "$GITHUB_OUTPUT"
-          for area in app electron relay tooling sites docs handwriting python ai_mcp lint; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
+          for area in app electron relay tooling sites docs handwriting python ai_mcp lint web_tests; do echo "$area=false" >> "$GITHUB_OUTPUT"; done
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: ${{ github.event.action != 'edited' || github.event.changes.base != null || !(github.event.changes.title || github.event.changes.body) }}
         with:
@@ -105,27 +106,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Report unaffected scope
-        if: needs.changes.outputs.app == 'false'
+        if: (needs.changes.outputs.app == 'false' && needs.changes.outputs.web_tests == 'false')
         shell: bash
         run: echo 'Area unaffected or validation reused; heavy checks are not needed.' >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
         with:
           node-version: '24.22.1'
           package-manager-cache: false
       - uses: ./.github/actions/setup-bun
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
       - run: bun install --frozen-lockfile
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
         working-directory: relay
       - run: bun run typecheck
-        if: needs.changes.outputs.app != 'false'
+        if: (needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')
 
   lint:
     name: lint

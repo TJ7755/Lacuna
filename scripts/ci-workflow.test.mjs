@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { parse } from 'yaml';
@@ -208,14 +208,14 @@ test('documentation-only changes resolve required names without running heavy st
     const job = workflow.jobs[name];
     assert.equal(job.if, "needs.changes.result == 'success'", name);
     const [acknowledgement, ...heavySteps] = job.steps;
-    assert.equal(acknowledgement.if, name === 'production' ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} == 'false'`, name);
+    assert.equal(acknowledgement.if, name === 'typecheck' ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.web_tests == 'false')" : name === 'production' ? "(needs.changes.outputs.app == 'false' && needs.changes.outputs.sites == 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} == 'false'`, name);
     assert.equal(acknowledgement.shell, 'bash', name);
     assert.ok(acknowledgement.run.includes('GITHUB_STEP_SUMMARY'), name);
     assert.ok(heavySteps.length > 0, name);
     for (const step of heavySteps.filter((step) => step.name !== 'Verify standalone site contracts' && !(name === 'electron-ai' && step.name === 'Preserve Electron AI test evidence'))) {
       assert.equal(
         step.if,
-        name === 'production' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} != 'false'`,
+        name === 'typecheck' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.web_tests != 'false')" : name === 'production' ? "(needs.changes.outputs.app != 'false' || needs.changes.outputs.sites != 'false')" : `needs.changes.outputs.${({ 'ai-mcp': 'ai_mcp', 'electron-ai': 'electron', typecheck: 'app' })[name] ?? name} != 'false'`,
         `${name}: ${step.uses ?? step.run}`,
       );
     }
@@ -361,6 +361,12 @@ test('controlled path fixtures select the expected existing worker jobs', () => 
     [['tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting']],
     [['tooling/short-term-memory/stm_harness/contract.py'], ['lint', 'python-tools']],
     [['library/index.html'], ['lint', ...web]],
+    [['tests/e2e/study-flip.spec.ts'], ['typecheck', 'lint', ...web]],
+    [['tests/e2e/mobile-pwa-smoke.spec.ts'], ['typecheck', 'lint', ...web]],
+    [['tests/e2e/gaps-standalone.spec.ts'], ['typecheck', 'lint', ...web]],
+    [['tests/e2e/fixtures/videoEmbeds.ts'], workers],
+    [['tests/config/playwright.web.config.ts'], workers],
+    [['tests/e2e/study-flip.spec.ts', 'src/App.tsx'], workers],
     [['docs/README.md', 'gaps/sw.js', 'tooling/handwriting-maths/src/main.ts'], ['lint', 'handwriting', ...web]],
     [['src/fsrs/coefficients/model.json'], workers],
     [['relay/shared/insights/index.ts'], workers],
@@ -399,4 +405,114 @@ test('Electron AI evidence survives native failures without widening execution s
   const nativeTest = steps.findIndex((step) => step.run === 'bun run test:e2e:electron-ai');
   assert.notEqual(nativeTest, -1);
   assert.ok(steps.indexOf(evidence) > nativeTest);
+});
+
+
+test('narrow web specs remain registered with the selected browser projects and typecheck', () => {
+  const specs = readdirSync('tests/e2e').filter((file) => file.endsWith('.spec.ts'));
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-registration-'));
+  try {
+    mkdirSync(join(directory, 'tests/config'), { recursive: true });
+    mkdirSync(join(directory, 'tests/e2e'));
+    mkdirSync(join(directory, 'scripts'));
+    copyFileSync('scripts/browser-ci-summary.mjs', join(directory, 'scripts/browser-ci-summary.mjs'));
+    writeFileSync(join(directory, 'package.json'), '{"type":"module"}');
+    symlinkSync(resolve('node_modules'), join(directory, 'node_modules'), 'dir');
+    // Register the real entry-point names without executing their build/fixture side effects.
+    for (const spec of specs) writeFileSync(join(directory, 'tests/e2e', spec),
+      "import { test } from '@playwright/test'; test('registration', () => {});\n");
+    const registered = new Set();
+    for (const config of ['playwright.web.config.ts', 'playwright.web.ci.config.ts']) {
+      copyFileSync(join('tests/config', config), join(directory, 'tests/config', config));
+      const result = spawnSync(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', '-c', join(directory, 'tests/config', config), '--list', '--reporter=json', ...(config === 'playwright.web.config.ts' ? ['--project=webkit-mobile'] : [])], {
+        env: { ...process.env, CI: 'true' },
+        encoding: 'utf8', timeout: 30_000, maxBuffer: 10 * 1024 * 1024,
+      });
+      assert.equal(result.status, 0, result.stderr || result.stdout);
+      const report = JSON.parse(result.stdout);
+      assert.deepEqual(report.errors, []);
+      for (const suite of report.suites) registered.add(suite.file);
+    }
+    for (const spec of specs) assert.ok(registered.has(spec), spec);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+  const typecheck = JSON.parse(readFileSync('tsconfig.release-tooling.json', 'utf8'));
+  assert.ok(typecheck.include.includes('tests/e2e/**/*.ts'));
+  const projects = JSON.parse(readFileSync('tsconfig.json', 'utf8'));
+  assert.ok(projects.references.some((project) => project.path === './tsconfig.release-tooling.json'));
+});
+
+test('web spec scope is wired through metadata and fails closed for missing typecheck flags', () => {
+  assert.equal(workflow.jobs.changes.outputs.web_tests, '${{ steps.metadata.outputs.web_tests || steps.scope.outputs.web_tests }}');
+  const metadata = workflow.jobs.changes.steps.find((step) => step.id === 'metadata');
+  assert.match(metadata.run, /for area in .* web_tests; do/);
+  const steps = workflow.jobs.typecheck.steps;
+  for (const flag of ['false', 'true', '', 'unknown']) {
+    const context = { needs: { changes: { outputs: { app: 'false', web_tests: flag } } } };
+    assert.equal(runInNewContext(steps[0].if, context), flag === 'false');
+    for (const step of steps.slice(1)) assert.equal(runInNewContext(step.if, context), flag !== 'false');
+  }
+});
+
+test('web spec aggregate gates retain every browser result and allow only unaffected unit/native jobs to skip', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-web-gates-'));
+  try {
+    const scope = classifyPaths(['tests/e2e/study-flip.spec.ts']);
+    for (const name of ['test', 'browser-smoke']) {
+      const step = workflow.jobs[name].steps[0];
+      const results = Object.keys(step.env).filter((key) => key.endsWith('RESULT'));
+      const env = {
+        ...process.env,
+        ...Object.fromEntries(Object.entries(scope).map(([key, value]) => [key.toUpperCase(), String(value)])),
+        ...Object.fromEntries(results.map((key) => [key, 'success'])),
+        GITHUB_STEP_SUMMARY: join(directory, 'summary'),
+      };
+      if (name === 'test') Object.assign(env, {
+        UNIT_RESULT: 'skipped', COVERAGE_RESULT: 'skipped', HANDWRITING_RESULT: 'skipped',
+        PYTHON_RESULT: 'skipped', MACOS_ELECTRON_RESULT: 'skipped',
+      });
+      const run = (overrides = {}) => spawnSync('bash', ['-e', '-c', step.run], { encoding: 'utf8', env: { ...env, ...overrides } });
+      assert.equal(run().status, 0, name);
+      for (const key of results) {
+        for (const status of ['failure', 'cancelled', '']) assert.equal(run({ [key]: status }).status, 1, `${name} ${key} ${status}`);
+        if (env[key] === 'success') assert.equal(run({ [key]: 'skipped' }).status, 1, `${name} ${key} skipped`);
+      }
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('push scope still selects the full matrix regardless of changed web specs', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lacuna-ci-push-scope-'));
+  try {
+    const step = workflow.jobs.changes.steps.find((step) => step.id === 'scope');
+    const output = join(directory, 'output');
+    const result = spawnSync('bash', ['-e', '-o', 'pipefail', '-c', step.run], {
+      encoding: 'utf8', env: { ...process.env, EVENT_NAME: 'push', GITHUB_OUTPUT: output },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const outputs = Object.fromEntries(readFileSync(output, 'utf8').trim().split('\n').map((line) => line.split('=')));
+    assert.equal(outputs.docs_only, 'false');
+    for (const [area, value] of Object.entries(outputs)) if (area !== 'docs_only') assert.equal(value, 'true', area);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+
+test('web spec-only changes reduce heavy matrix instances from 33 to 18', () => {
+  const count = (scope) => {
+    const outputs = Object.fromEntries(Object.entries(scope).map(([key, value]) => [key, String(value)]));
+    const context = { needs: { changes: { result: 'success', outputs } } };
+    let heavy = 0;
+    let runners = 0;
+    for (const [name, job] of Object.entries(workflow.jobs)) {
+      if (['changes', 'documentation', 'test', 'browser-smoke'].includes(name)) { runners++; continue; }
+      const matrix = job.strategy?.matrix;
+      const instances = !matrix ? 1 : matrix.include?.length ?? Object.values(matrix).reduce((total, values) => total * values.length, 1);
+      const acknowledgement = required.includes(name);
+      const selected = runInNewContext(acknowledgement ? job.steps[1].if : job.if, context);
+      if (selected) heavy += instances;
+      if (acknowledgement || selected) runners += instances;
+    }
+    return { heavy, runners };
+  };
+  assert.deepEqual(count(classifyPaths(['unknown/file'])), { heavy: 33, runners: 37 });
+  assert.deepEqual(count(classifyPaths(['tests/e2e/study-flip.spec.ts'])), { heavy: 18, runners: 25 });
 });

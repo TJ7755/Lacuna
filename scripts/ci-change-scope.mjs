@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 const DOCS_PREFIXES = ['docs/', '.github/ISSUE_TEMPLATE/'];
 const DOCS_FILES = new Set(['.github/PULL_REQUEST_TEMPLATE.md']);
-const AREAS = ['app', 'electron', 'relay', 'tooling', 'sites', 'docs', 'handwriting', 'python', 'ai_mcp', 'lint'];
+const AREAS = ['app', 'electron', 'relay', 'tooling', 'sites', 'docs', 'handwriting', 'python', 'ai_mcp', 'lint', 'web_tests'];
 
 export function isDocsPath(path) {
   if (DOCS_FILES.has(path)) return true;
@@ -40,6 +40,9 @@ export function classifyPaths(paths) {
     } else if (path.startsWith('tooling/lacuna-ai-mcp/')) {
       // Browser and native integration fixtures use the terminal client.
       Object.assign(scope, { tooling: true, ai_mcp: true, app: true, electron: true, sites: true, lint: true });
+    } else if (/^tests\/e2e\/[^/]+\.spec\.ts$/.test(path)) {
+      // Fixtures can be shared with Electron; only web spec entry points are isolated.
+      Object.assign(scope, { web_tests: true, sites: true, lint: true });
     } else if (['gaps/', 'library/', 'courses/', 'compare/'].some((prefix) => path.startsWith(prefix))) {
       Object.assign(scope, { sites: true, lint: true });
     } else {
