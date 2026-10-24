@@ -8,7 +8,7 @@ work. Keep changes narrow, prove behaviour, and make the risk legible to a revie
 
 Use the exact Bun release in `.bun-version`, matching CI. The verified bootstrap checks its
 archive checksum and full revision; use it when installing Bun for a fresh checkout.
-Use Node 22.23.4, 24.22.1 or 26.12.1 or a newer supported patch release. Check before installing:
+Check before installing:
 
 ```bash
 bun --revision
@@ -103,53 +103,8 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
-CI classifies pull requests by changed area in `scripts/ci-change-scope.mjs`. Documentation-only
-changes retain the lightweight documentation checks. Handwriting and Python harness changes select
-their existing tooling jobs; static-site changes select production and browser checks, including
-the existing build, hosting-header and asset contract tests. Relay changes
-also select app and browser checks and standalone AI MCP tests, because integration fixtures import
-relay implementations. AI MCP changes also select app and native checks. Root lint runs for tooling
-and site changes because those paths are covered by its configuration.
-
-Every `src/` change, root configuration, workflow, workspace manifest or lockfile, deployment configuration, unknown path,
-relay shared contract or bootstrap
-script selects the complete matrix. Training coefficients and model-port fixtures remain conservative
-shared inputs until their runtime consumers move under `src/`. Mixed changes combine their scopes.
-Git rename records include both endpoints; deleted paths still count. Missing or malformed scope
-cannot acknowledge skipped dependencies. Pushes to master always run everything.
-
-Documentation means paths under `docs/` or `.github/ISSUE_TEMPLATE/`,
-`.github/PULL_REQUEST_TEMPLATE.md`, or Markdown in the repository root. Markdown under `src/`,
-`tooling/` or `public/` is consumed by code and follows its owning area. Run `bun run docs:check` and
+Run `bun run docs:check` and
 `bun run changelog:check` locally after documentation changes.
-
-Required worker jobs acknowledge unaffected scope on a runner so GitHub resolves their existing
-required check names. The existing test and browser aggregate gates require successful selected
-jobs and accept skipped jobs only for explicit unaffected flags. No branch-protection changes are
-needed. A measured baseline is retained in [CI timings](docs/performance/ci-726-baseline.md).
-
-Title/body-only PR edits do not repeat validation or cancel its current run. They reuse the latest
-successful CI validation run for the exact test merge commit and PR head, waiting if necessary.
-The validation run identity is recorded in the changes job summary. Metadata waits poll once per
-minute: independent metadata runs must not exhaust the repository Actions API allowance. Keep their
-concurrency groups separate; deduplicating by cancelling or replacing a run can leave required checks
-unresolved. This reduces polling frequency twentyfold, but does not eliminate concurrent waiters.
-On API rate limits, wait for `Retry-After` or the `x-ratelimit-reset` time before retrying a failed job;
-do not repeatedly rerun it against an exhausted allowance. See [GitHub rate limits](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api). Missing, failed or cancelled
-validation fails closed; reopen the PR or push a commit to establish validation after adopting this
-workflow. The test and browser gates reject failed reuse even when their other dependencies skip.
-
-Metadata runs retain the ordinary required names because a newer suite with separate names can
-block a checked head despite successful older contexts. Reuse is allowed only after actual validation;
-metadata acknowledgements alone cannot approve untested code. Base changes, mixed and unknown edits
-run validation against the new merge commit. Keep event predicates, run names, check names and
-concurrency together when editing `.github/workflows/ci.yml`.
-
-The aggregate test and browser jobs report dependency results in their job summaries. Browser test
-summaries also include each failed attempt's deepest failing step and source location, including
-prerequisite navigation and labelled setup stages. Retries and expected failures are labelled;
-HTML reports, JSON and retained failure traces remain the detailed evidence. The narrow CI predicate,
-gate and no-browser reporter probes run in the first unit shard.
 
 ## Behaviour and review policy
 

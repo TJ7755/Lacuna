@@ -41,14 +41,6 @@ for pairing and mailbox behaviour.
 Enable the Gaps mailbox with `RELAY_INSIGHTS_ENABLED=1`; the reporting boundaries and operator
 procedures are in [Gaps](../docs/gaps.md).
 
-Vercel calls `GET /api/ai/maintenance` once daily at 03:00 UTC. Cleanup is bounded and uses
-stored cursors, so physical deletion can require several invocations. Read the maintenance
-handlers for expiry and deletion rules rather than treating this README as a second protocol spec.
-
-The route requires `Authorization: Bearer <CRON_SECRET>`. Vercel adds that header automatically to
-configured Cron invocations. If `CRON_SECRET` is missing or blank, the route returns `401` and
-deletes nothing.
-
 ## Environment
 
 On Vercel, connect a **private** Blob store to the project. The platform
@@ -150,30 +142,7 @@ Use the production host. Vercel preview deployments are behind Deployment
 Protection and redirect unauthenticated requests to SSO, so they cannot be
 smoke-tested this way.
 
-## Delete a channel
-
-`DELETE /c/:id` with the bearer token removes the token hash and both slots.
-There is no undelete. Unpairing a device in the app is a local action and is
-not this; this is the panic button for every device on the channel.
-
-A channel with no write for 90 days is treated as gone, matching the app's
-tombstone window. A device offline longer than that will find its channel
-gone. The daily maintenance job also reclaims expired channel objects after a 24-hour grace;
-it does not need a request for each channel id.
-
 ## Concurrency
-
-`ETag` is the opaque value Vercel Blob returns. It is not a counter.
-
-- Overwrite of an existing slot uses Blob's native `ifMatch`. A stale ETag
-  becomes `412`. That compare-and-swap is what the later sync cycle's retry
-  needs.
-- The first write into an empty slot still uses `If-Match: "0"` and
-  `allowOverwrite: false`, with no `ifMatch`. Vercel does not document
-  whether that create is an atomic if-none-match or a check-then-write.
-  Two devices that both see an empty slot and both PUT could, on a
-  check-then-write platform, last-body-wins. The in-memory tests prove the
-  handler's intended 204/412 split, not the platform's create atomicity.
 
 On 15 August 2026 this was measured against the production relay
 (`lacuna-relay.vercel.app`, private Blob store `lacuna-sync`, region
@@ -203,43 +172,8 @@ Vercel Functions still reject inbound request bodies above 4.5 MB at the
 platform. A real snapshot that large cannot transit this `PUT`. That ceiling
 is accepted. Do not add client-direct Blob upload here.
 
-## Checks
-
-```sh
-bun install --frozen-lockfile
-bun run typecheck
-bun run lint
-bun run test
-```
-
-Relative imports must end in `.js`. The package is ESM, Vercel emits
-extensionless TypeScript as `.js`, and Node will not resolve
-`'../src/relay'`. `typecheck` is on `NodeNext` so a missing specifier
-fails the build rather than the deployment.
-
 ## Official library publication retention
-
-`src/officialPublications.ts` is the relay operator's reviewed allow-list of public share IDs.
-An entry is exempt from share TTL only while its auth and payload objects both exist. Requests,
-share owners and the public catalogue cannot add entries. No bytes, ETags, identities or upload
-timestamps are rewritten; no new endpoint or stored metadata is introduced. Deploying this relay
-change activates the policy for the listed IDs, including existing untouched objects.
-
-Ordinary shares/channels retain their existing TTL, cleanup grace and bounded scans. Classroom
-links retain their existing dependency on their publisher's availability; a retained publisher
-remains available without extending Gaps report retention. Authorised DELETE still removes the
-share and its reports, and orphan objects remain eligible for cleanup. Removing an ID restores
-the existing age-based policy, so an old publication may expire immediately.
 
 The operator procedure, withdrawal and expired-link recovery are in
 [the library procedure](../docs/library.md#official-publication-retention). Catalogue changes do
 not silently change the relay's retention authority.
-
-## Shared insights contract
-
-The app and relay import the reporting-day helpers and wire protocol through
-`shared/insights/index.ts`. This explicit surface stays inside the relay project root so
-Vercel can bundle `api/index.ts` without including files outside its configured directory.
-`src/insightsProtocol.ts` and `src/insightsDay.ts` retain compatibility re-exports for existing
-relay tests. Root consumers must use the shared entry point; ESLint rejects deep imports
-except the exact integration-test fixture edges declared in the root configuration.

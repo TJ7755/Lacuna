@@ -1,9 +1,8 @@
-// Drawing surface for the occlusion editor (Task 10, D1 adapted — design/arc6/plan.md
-// §6.5). Wraps the shared OcclusionMaskLayer (never a second mask renderer) with pointer
+// Drawing surface for the occlusion editor. Wraps the shared OcclusionMaskLayer (never a second mask renderer) with pointer
 // handling that turns a drag into a rectangle, converted to fractions of the image on
 // capture — never pixels — so masks hold their position under FlipCard's responsive
-// sizing (§6.2). Pointer events unify mouse and touch, so drawing works on a touch
-// screen without any dedicated optimisation (§6.10.5).
+// sizing. Pointer events unify mouse and touch, so drawing works on a touch
+// screen without any dedicated optimisation.
 
 import {
   useId,

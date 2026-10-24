@@ -288,7 +288,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
 
   // Classic FlipCard grading (self-graded controls, keyboard shortcuts) never
   // applies to a machine-marked item, nor to one whose payload this client
-  // can't render at all — see UnknownItemFace and docs/spec/learn-mode.md.
+  // can't render at all — see UnknownItemFace.
   const suppressClassicGrading =
     isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
 

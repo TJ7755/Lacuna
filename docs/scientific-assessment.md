@@ -6,8 +6,7 @@
 
 This document records the current scientific judgement about what Lacuna is trying to
 optimise, which parts are well supported, which are plausible but unvalidated, and where
-previous literature summaries overstated the evidence. It should be read alongside
-[`SPEC.md`](SPEC.md), which indexes retained product constraints; source and tests establish current behaviour.
+previous literature summaries overstated the evidence.
 
 The purpose is not to claim that Lacuna has established a new learning algorithm. Its more
 defensible contribution is the integration of exam-date-aware scheduling, structured

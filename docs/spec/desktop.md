@@ -38,5 +38,3 @@ During Windows upgrades, relaunching companions must honour the live installer m
 Provenance and hashes establish artefact identity, not application signing or native behaviour.
 Use exact-release, isolated-profile tests; never install over the maintainer's working profile to
 obtain upgrade evidence.
-
-[Specification index](../SPEC.md)

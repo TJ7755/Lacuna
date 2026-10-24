@@ -22,19 +22,6 @@ remains in Git; it is not a current priority list.
    `LACUNA_ELECTRON_APP_DIR=<path> bun run test:e2e:electron-package` against the intended package.
    Record the package's identity, host architecture and unsigned/signed state.
 
-The [desktop file selection](../electron/electron-builder.yml) omits the hosted-web Workbox
-runtime, crawler documents and generated course marketing HTML. The course pages remain in
-the hosted-web build; desktop starts from `index.html` and retains shared runtime chunks.
-Desktop uses `app://`; the
-[bootstrap](../src/webBootstrap.ts) only registers a service worker on HTTP(S). Retain
-`sw.js`: [stale-chunk recovery](../src/pwa/staleChunkRecovery.ts) fetches that entry as a
-reachability probe on desktop too. Renderer
-workers, lazy JavaScript modules, assets and licences remain packaged. The
-[selection probes](../scripts/electronPackageFiles.test.ts) exercise the packager's real
-filter; compare actual ASAR manifests when a file-count regression appears. Entry-point
-closure checks must follow the shared chunks of the combined build, including side-effect
-imports, rather than checking each entry in isolation.
-
 ## Interpret
 
 Compare equivalent workloads on named before/after commits. Count retries and failures separately

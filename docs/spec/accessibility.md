@@ -26,5 +26,3 @@ corrections and unfinished answers preserves their recovery choices.
 Physical touch, native IME, assistive technology and actual zoom require the
 [manual checklist](../WEBSITE_TEST_CHECKLIST.md); viewport screenshots and synthetic events do not
 prove those capabilities. Use British English throughout product copy.
-
-[Specification index](../SPEC.md)

@@ -120,13 +120,9 @@ export interface ReviewLog {
    */
   fsrsWeightsFingerprint?: string;
   /**
-   * Marks earned/available for a machine-verified `numeric`/`working` item response
-   * (docs/spec/learn-mode.md, Recording a review). Optional and additive, matching the `hintUsed`/
+   * Marks earned/available for a machine-verified `numeric`/`working` item response. Optional and additive, matching the `hintUsed`/
    * `retrievabilityAtReview` precedent above — absent for classic-type reviews and
-   * for history written before this field existed. The grade mapping that derives
-   * `grade` from these figures, and their test coverage, is Arc 11 slice-1 Task 4's
-   * to build; this field is declared here only so Task 4 does not need to reopen
-   * this interface.
+   * for history written before this field existed.
    */
   marksEarned?: number;
   /** Total marks available for the response this log entry records. See `marksEarned`. */
@@ -145,7 +141,7 @@ export interface ReviewLog {
 /**
  * The verdict for one student-written line within a `working` item, as produced by
  * `verifyWorkingLines` (Arc 11 slice-1 Task 2, `src/items/verify.ts`) and persisted
- * verbatim on `ReviewLog.lineVerdicts` (docs/spec/learn-mode.md, Recording a review). Declared here, ahead of
+ * verbatim on `ReviewLog.lineVerdicts`. Declared here, ahead of
  * `verify.ts`'s implementation, so `ReviewLog`'s shape is frozen from Task 1 onward;
  * `verify.ts` is expected to produce values of this exact shape rather than a second,
  * incompatible one.
@@ -314,7 +310,6 @@ export interface LegacyFolder {
 // Folder stores. LegacyDeckRecord and LegacyFolder remain as the Dexie
 // upgrade, snapshot-builder and test-fixture shape; they are not live stores
 // and are no longer an import boundary.
-// The current domain contract lives in docs/spec/data-model.md.
 // ---------------------------------------------------------------------------
 
 /**
@@ -866,19 +861,18 @@ export interface PracticeMilestone {
  * than inventing a second grammar (see the deferral note on `ItemPayload`).
  * `kind: 'waypoint'` checks equivalence of a checkpoint expression (order-tolerant:
  * a student's lines are matched against outstanding waypoints, not lockstep);
- * `kind: 'predicate'` checks a named predicate against the student's line. See
- * docs/spec/learn-mode.md, Structured-item verification.
+ * `kind: 'predicate'` checks a named predicate against the student's line.
  */
 export type MarkSchemeLine = SharedMarkSchemeLine;
 
 /**
  * A numeric answer specification for `ItemPayload` kind `'numeric'`: exact value,
- * value-with-tolerance, or match-one-of. See docs/spec/learn-mode.md, Numeric Question face.
+ * value-with-tolerance, or match-one-of.
  */
 export type NumericAnswerSpec = SharedNumericAnswerSpec;
 
 /**
- * A pinned sample answer used by the tutor's test harness (docs/spec/learn-mode.md) to
+ * A pinned sample answer used by the tutor's test harness to
  * regression-test a mark scheme or numeric spec on every edit. Fixtures travel in
  * the payload so a shared item carries its own tests.
  */
@@ -887,7 +881,7 @@ export type ItemFixture = SharedItemFixture;
 /**
  * The current `ItemPayload.v`. Single source of truth for "known version" checks at
  * study time (`useLearnSession`'s `hasMachineMarkedPayload`) and at share/backup
- * validation time (`db/share.ts`'s `KnownItemPayloadSchema`); see docs/spec/learn-mode.md.
+ * validation time (`db/share.ts`'s `KnownItemPayloadSchema`).
  */
 export { CURRENT_ITEM_PAYLOAD_VERSION } from '../items/types';
 
@@ -899,8 +893,7 @@ export { CURRENT_ITEM_PAYLOAD_VERSION } from '../items/types';
  * every pre-Arc-11 card and on the four classic `CardType`s. Versioned independently
  * of the Dexie schema (`v`) so share codes and backups can validate
  * forward-compatibly: an unknown `v` or `kind` must render read-only with the
- * `front` fallback, never crash and never mis-mark (docs/spec/learn-mode.md; the
- * fallback itself is `UnknownItemFace`).
+ * `front` fallback, never crash and never mis-mark.
  *
  * `scaffold` is declared but not built in Arc 11 slice 1. Its eventual payload
  * is expected to reuse `MarkSchemeLine` per hole rather than invent a second
@@ -936,7 +929,7 @@ export interface Card {
    * Per-type structured content for practice item kinds (numeric/scaffold/working;
    * Arc 11). Absent on every pre-Arc-11 card and on the four classic `CardType`s.
    * Unindexed and optional, so no Dexie schema version bump is needed to add it —
-   * see `ItemPayload`'s doc comment and docs/spec/learn-mode.md.
+   * see `ItemPayload`'s doc comment.
    */
   payload?: ItemPayload;
   /** FSRS stability in days (interval at which R = 0.90). Null until first review. */

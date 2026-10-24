@@ -9,12 +9,6 @@ Bun uses a stable release containing both the
 [eMudhra distrust fix](https://github.com/oven-sh/bun/pull/46159) and the
 [Brotli decoder fix](https://github.com/oven-sh/bun/pull/46392).
 
-`relay/scripts/security-bun.mjs` installs the reviewed binary for CI and Vercel builds. It checks the
-download against the SHA-256 digest in the adjacent JSON manifest before executing it, then checks
-the exact revision. It creates a local cache under the relay's ignored `node_modules` directory.
-CI adds that directory to `PATH`; Vercel invokes the same bootstrap for installation and builds.
-The script lives inside the relay so the relay project does not need source outside its root.
-
 Downloads use versioned stable release URLs. A changed download fails the checksum check rather
 than silently changing the runtime. When updating Bun, review its certificate and Brotli decoder
 behaviour, update all manifests and platform checksums together, and regenerate lockfiles only
