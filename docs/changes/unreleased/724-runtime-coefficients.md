@@ -1,1 +1,0 @@
-- Give the frozen short-term memory coefficients a single runtime-owned asset and reject runtime imports into training internals, preserving the model and offline reproducibility. (#724)

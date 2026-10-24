@@ -1,1 +1,0 @@
-- Add crawlable revision course pages generated from the public catalogue, with course metadata, structured data, sitemap entries and an LLM-readable course index.

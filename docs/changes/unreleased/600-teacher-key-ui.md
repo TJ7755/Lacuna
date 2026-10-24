@@ -1,1 +1,0 @@
-- Add explicit teacher-key preparation, encrypted recovery-file download and restore to standalone Gaps, loading key storage only on request and preserving the unconnected trial state. New keys use the existing 16-character recovery-passphrase minimum; no pupil delivery or public-key publication is activated. (#600)

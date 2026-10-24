@@ -1,1 +1,0 @@
-- Leave a restored typed answer revealed for manual marking after Undo, preserving the submitted answer and its original response time without another automatic swipe. (#715)

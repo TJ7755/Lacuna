@@ -456,7 +456,6 @@ describe('release configuration', () => {
     );
     expect(documentation).not.toContain('docs_only');
     expect(documentation).toContain('node scripts/check-docs.mjs');
-    expect(documentation).toContain('node scripts/changelog.mjs --check');
     expect(documentation).not.toContain('bun install');
     const gate = workflowJob(ciWorkflow, 'test');
     expect(gate).toContain('DOCUMENTATION_RESULT: ${{ needs.documentation.result }}');

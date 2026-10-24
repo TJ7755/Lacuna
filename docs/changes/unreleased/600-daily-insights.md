@@ -1,1 +1,0 @@
-- Change the experimental encrypted insights format and device-local send planner to one report per completed UTC day. Keep delivery disconnected and reject the unactivated weekly envelope format. (#600)

@@ -1,1 +1,0 @@
-- Preserve Concepts referenced by Question Sets during published-course updates, and recover their original records from intact peer snapshots or backups when a deletion would otherwise block sync. (#660)

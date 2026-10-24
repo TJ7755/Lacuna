@@ -1,1 +1,0 @@
-- Connect published courses to Gaps through encrypted connection files, verify ownership before saving, and manage separate course connections without migrating learner data or enabling pupil results. (#600)

@@ -1,1 +1,0 @@
-- Use Bun for server, Electron, relay and tooling typechecks as well as the web checks, retaining TypeScript where builds emit JavaScript.

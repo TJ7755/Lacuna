@@ -1,1 +1,0 @@
-- Update the development server readiness tool’s redirect dependency to fix cross-origin credential-header handling advisories.

@@ -1,1 +1,0 @@
-- Pin the distributed-copy identity contract behind class insights: lineage adoption keeps the teacher's Concept and Question ids, revision updates remap nothing, only the untracked collision fallback changes ids (#594).

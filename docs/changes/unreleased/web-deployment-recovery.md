@@ -1,1 +1,0 @@
-- Recover missing website files after an update with one coordinated cache cleanup and reload, avoiding the race that could reload an old application shell and leave an error requiring a forced refresh.

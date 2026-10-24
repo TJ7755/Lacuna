@@ -1,1 +1,0 @@
-- Separate pure lesson membership and study eligibility from lesson/practice pool construction to remove the assessment coverage import cycle without changing study behaviour or retaining practice construction in the initial bundle. (#765)

@@ -1,1 +1,0 @@
-- Make the phone landing-page layout check measure copy and illustration together, avoiding false overlap failures while smooth scrolling moves the viewport.

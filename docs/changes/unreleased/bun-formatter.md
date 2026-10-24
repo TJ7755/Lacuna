@@ -1,1 +1,0 @@
-- Use Bun’s built-in formatter with the existing Prettier settings and file scope, reducing formatting time without changing source formatting.

@@ -1,1 +1,0 @@
-- Keep question-set search visible, focused and stable while typing, filtering and clearing, preserving query-specific return positions. (#737)

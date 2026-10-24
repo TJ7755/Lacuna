@@ -1,1 +1,0 @@
-- Mark typed answers automatically at 75% confidence in either direction, retaining the separate 85% threshold for question-bank allocations. (#755)

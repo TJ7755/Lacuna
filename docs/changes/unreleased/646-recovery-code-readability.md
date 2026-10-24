@@ -1,1 +1,0 @@
-- Make new-class recovery codes larger and easier to read while keeping complete groups on two lines at phone and desktop widths. (#646)

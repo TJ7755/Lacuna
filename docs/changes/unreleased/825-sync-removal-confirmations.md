@@ -1,1 +1,0 @@
-- Keep device and shared-channel removal confirmations readable across desktop and narrow screens, with focus returning to the selected action on cancellation or Escape. (#825)

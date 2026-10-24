@@ -1,1 +1,0 @@
-- Keep Redis off the automatic marking response path using an eventually consistent monthly bug fuse and background usage recording. (#715)

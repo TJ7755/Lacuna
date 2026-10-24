@@ -53,8 +53,6 @@
     "release:scenario": "node scripts/release-scenario.mjs",
     "release": "node scripts/release.mjs",
     "release:prepare": "node scripts/release-prepare.mjs",
-    "changelog:release": "node scripts/changelog.mjs",
-    "changelog:check": "node scripts/changelog.mjs --check",
     "icons:generate": "bun scripts/generate-icons.ts",
     "electron:prepare": "node scripts/prepare-electron-build.mjs",
     "electron:dev": "bun run electron:prepare && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",

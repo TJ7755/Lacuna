@@ -1,1 +1,0 @@
-- Gaps labels pupil invitations and private class recovery material by purpose, with older passphrase options kept secondary. (#668)

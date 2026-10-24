@@ -1,1 +1,0 @@
-- Added the owner-authored class insights privacy rules: aggregates from fewer than five contributing devices are suppressed, visible cells publish coarse secure/developing/weak bands and rounded device counts rather than rates, and differencing across adjacent weeks or overlapping cells is covered by tests (#588).

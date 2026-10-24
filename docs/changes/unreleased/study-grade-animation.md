@@ -1,1 +1,0 @@
-- Reduce layout work during the liquid study-control transition and let the browser composite departing Cards, preserving their liquid geometry and motion.

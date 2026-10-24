@@ -1,1 +1,0 @@
-- Retain explicitly approved official library publications beyond the ordinary share expiry window, preserving owner deletion, ordinary share cleanup and Gaps report retention. (#630)

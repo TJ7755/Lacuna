@@ -1,1 +1,0 @@
-- Display standalone numeric Card answers ending in a full stop as text, preserving the full answer instead of rendering an empty numbered list.

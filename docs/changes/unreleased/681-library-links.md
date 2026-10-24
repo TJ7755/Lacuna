@@ -1,1 +1,0 @@
-- Link to the course library from the homepage, course creation and import, and public course pages. (#681)

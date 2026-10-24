@@ -1,1 +1,0 @@
-- Remove the paragraph restriction notice when selecting note text across paragraphs; unsupported selections still do not create highlights.

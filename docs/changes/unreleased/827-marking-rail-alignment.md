@@ -1,1 +1,0 @@
-- Centre question-set marks and the automatic-marking indicator consistently within the marks rail, preserving the pending and verdict animations and a 44px minimum label hit area. (#827)

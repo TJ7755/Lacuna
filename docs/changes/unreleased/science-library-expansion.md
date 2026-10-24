@@ -1,2 +1,0 @@
-- Expand the library to 22 limited-scope science selections plus unchanged History, including 18 board variants and seven introductory AQA Combined Science lessons on cells and microscopy. Refresh native science revision/count snapshots, retain stable native links and separate Cambridge Physics 0625 from 0972. Extend the existing official-retention policy to the 19 verified new share links; activation requires relay deployment.
-- Keep generated hosted course HTML out of desktop packages while retaining application assets and the existing package budgets. (#836)

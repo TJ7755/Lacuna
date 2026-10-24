@@ -1,1 +1,0 @@
-- Open Gaps class set-up from a published course’s Share panel, with the course link filled in and no automatic submission.

@@ -1,1 +1,0 @@
-- Smoothly scale the Study label and icon as the session preview opens and closes, and avoid leaving the Study button highlighted after pointer dismissal while retaining keyboard focus feedback.

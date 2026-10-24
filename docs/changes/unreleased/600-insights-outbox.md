@@ -1,1 +1,0 @@
-- Add an experimental daily insights outbox that commits encrypted packets before upload, reuses immutable slots after lost replies or reloads, and retains an acknowledgement without ciphertext after acceptance. Delivery remains disconnected pending the teacher-key and evidence workflows. (#600)
