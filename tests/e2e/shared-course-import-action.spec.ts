@@ -31,7 +31,8 @@ for (const width of [1280, 390]) {
     const preview = page.getByRole('heading', { name: 'Ready to import' });
     await expect(preview).toBeVisible();
     await preview.scrollIntoViewIfNeeded();
-    await page.getByRole('radio', { name: /Steady retention/ }).press('Space');
+    await page.getByText('Steady retention', { exact: true }).click();
+    await expect(page.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
     const add = page.getByRole('button', { name: 'Add to my courses' });
     await expect(add).toBeInViewport();
     const first = page.getByText('Biology lesson 1', { exact: true });
