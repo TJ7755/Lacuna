@@ -17,10 +17,16 @@ betas are supported; macOS packages are a separate local step, not an implicit p
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
 The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
-[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases. Its GitHub App needs Contents and Pull requests write permissions, installation
-on this repository, and `RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` Actions secrets. Enable Allow
-auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace the App token
-without accounting for that boundary. The weekly run fails while either secret is missing.
+[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases, which
+publish Windows and Linux only; weekly releases need no macOS build. It prefers a GitHub App with
+Contents and Pull requests write permissions, installed on this repository, through the
+`RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` secrets. Without them it uses `RELEASE_TOKEN`,
+currently the maintainer's `gh` token (maintainer decision, 24 October 2026), so release pull
+requests appear as the maintainer's. That token stops working if it is revoked, including when
+signing in to `gh` on many devices displaces it. Keep these secrets in the `release` environment,
+which admits only `master`, never as repository secrets. Enable Allow
+auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace these tokens
+without accounting for that boundary. The weekly run fails while neither credential is set.
 
 ## Inspect and publish
 
