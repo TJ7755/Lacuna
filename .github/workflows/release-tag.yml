@@ -44,11 +44,12 @@ jobs:
           workflow_runs="$(
             gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&status=completed&per_page=100"
           )"
-          for workflow in CI Security; do
-            if ! jq -e --arg workflow "$workflow" '
+          # Match the workflow file, not the run name: run names include the commit.
+          for workflow in ci security; do
+            if ! jq -e --arg path ".github/workflows/${workflow}.yml" '
               .workflow_runs
               | any(
-                  .name == $workflow
+                  .path == $path
                   and .event == "push"
                   and (.head_branch == "master" or .head_branch == "main")
                   and .conclusion == "success"

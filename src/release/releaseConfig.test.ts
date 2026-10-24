@@ -240,7 +240,8 @@ describe('release configuration', () => {
     expect(verifyJob).toContain('if [[ "$tag_commit" != "$GITHUB_SHA" ]]');
     const exactCommitChecks = workflowStep(verifyJob, 'Require successful CI for this commit');
     expect(exactCommitChecks).toContain('GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}');
-    expect(exactCommitChecks).toContain('required_workflows=(CI Security)');
+    expect(exactCommitChecks).toContain('for workflow in ci security; do');
+    expect(exactCommitChecks).toContain('.path == $path');
     expect(exactCommitChecks).toContain('head_sha=${GITHUB_SHA}');
     expect(exactCommitChecks).toContain('.event == "push"');
     expect(exactCommitChecks).toContain('.head_branch == "master"');
