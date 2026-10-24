@@ -26,3 +26,16 @@ installations, regression tests and review policy.
 - [Release maintenance](docs/maintenance/release.md), [security](SECURITY.md) and
   [governance](docs/maintenance/governance.md): operating and contribution boundaries.
 - [Scientific assessment](docs/scientific-assessment.md): evidence and limits of learning claims.
+
+## Contributors
+
+- [TJ7755](https://github.com/TJ7755)
+- [nc-3388](https://github.com/nc-3388)
+- [Jay (jay23606)](https://github.com/jay23606)
+
+Automated contributions: [Claude](https://github.com/claude),
+[Dependabot](https://github.com/apps/dependabot), [Vercel](https://github.com/apps/vercel) and
+[Cloudflare Workers and Pages](https://github.com/apps/cloudflare-workers-and-pages).
+
+See the [contribution history](https://github.com/TJ7755/Lacuna/graphs/contributors) for the
+current list and individual contributions.
