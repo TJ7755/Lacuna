@@ -3,7 +3,7 @@ name: Build & Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
   # The Release tag workflow dispatches this on the tag it creates, because a tag pushed
   # with GITHUB_TOKEN does not start push workflows.
   workflow_dispatch:
@@ -52,18 +52,18 @@ jobs:
             gh api \
               "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GITHUB_SHA}&status=completed&per_page=100"
           )"
-          required_workflows=(CI Security)
-          for workflow in "${required_workflows[@]}"; do
-            if ! jq -e --arg workflow "$workflow" '
+          # Match the workflow file, not the run name: run names include the commit.
+          for workflow in ci security; do
+            if ! jq -e --arg path ".github/workflows/${workflow}.yml" '
               .workflow_runs
               | any(
-                  .name == $workflow
+                  .path == $path
                   and .event == "push"
                   and (.head_branch == "master" or .head_branch == "main")
                   and .conclusion == "success"
                 )
             ' <<<"$workflow_runs" > /dev/null; then
-              echo "$workflow has not succeeded for $GITHUB_SHA on master or main."
+              echo "${workflow}.yml has not succeeded for $GITHUB_SHA on master or main."
               exit 1
             fi
           done

@@ -44,7 +44,7 @@ jobs:
           workflow_runs="$(
             gh api "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SHA}&status=completed&per_page=100"
           )"
-          # Match the workflow file: run names carry the commit, e.g. "CI validation <sha>".
+          # Match the workflow file, not the run name: run names include the commit.
           for workflow in ci security; do
             if ! jq -e --arg path ".github/workflows/${workflow}.yml" '
               .workflow_runs
