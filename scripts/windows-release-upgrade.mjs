@@ -12,8 +12,15 @@ assert.equal(process.platform, 'win32', 'Run this probe on an isolated Windows r
 const version = JSON.parse(await readFile('package.json', 'utf8')).version;
 const baseline = path.resolve(process.argv[2]);
 // Pinned by `bun run release:prepare`, which records the previous release's installer digest.
-const pinned = JSON.parse(await readFile(new URL('./windows-release-baseline.json', import.meta.url), 'utf8'));
-assert.equal(createHash('sha256').update(await readFile(baseline)).digest('hex'), pinned.sha256);
+const pinned = JSON.parse(
+  await readFile(new URL('./windows-release-baseline.json', import.meta.url), 'utf8'),
+);
+assert.equal(
+  createHash('sha256')
+    .update(await readFile(baseline))
+    .digest('hex'),
+  pinned.sha256,
+);
 const root = await mkdtemp(path.join(tmpdir(), 'lacuna-release-upgrade-'));
 const directory = path.join(root, 'application');
 const profile = path.join(root, 'profile');
@@ -22,23 +29,40 @@ const report = { baseline: pinned.version, target: version, stages: [] };
 let application;
 const server = createServer(async (request, response) => {
   const name = decodeURIComponent(new URL(request.url, 'http://localhost').pathname.slice(1));
-  if (![ 'latest.yml', `Lacuna-Setup-${version}.exe`, `Lacuna-Setup-${version}.exe.blockmap` ].includes(name)) {
-    response.writeHead(404).end(); return;
+  if (
+    !['latest.yml', `Lacuna-Setup-${version}.exe`, `Lacuna-Setup-${version}.exe.blockmap`].includes(
+      name,
+    )
+  ) {
+    response.writeHead(404).end();
+    return;
   }
   try {
     const data = await readFile(path.join('release', name));
-    response.writeHead(200, { 'Content-Length': data.length }); response.end(data);
-  } catch { response.writeHead(404).end(); }
+    response.writeHead(200, { 'Content-Length': data.length });
+    response.end(data);
+  } catch {
+    response.writeHead(404).end();
+  }
 });
-await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const feed = `http://127.0.0.1:${server.address().port}`;
 
 async function install(installer) {
   const child = spawn(installer, ['/S', `/D=${directory}`], { stdio: 'inherit' });
   const code = await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => { child.kill(); reject(new Error('Installer timed out')); }, 180_000);
-    child.once('error', error => { clearTimeout(timer); reject(error); });
-    child.once('exit', code => { clearTimeout(timer); resolve(code); });
+    const timer = setTimeout(() => {
+      child.kill();
+      reject(new Error('Installer timed out'));
+    }, 180_000);
+    child.once('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once('exit', (code) => {
+      clearTimeout(timer);
+      resolve(code);
+    });
   });
   assert.equal(code, 0);
 }
@@ -48,27 +72,40 @@ async function install(installer) {
 async function pointInstalledUpdaterAtFeed() {
   const file = path.join(directory, 'resources', 'app-update.yml');
   const cache = (await readFile(file, 'utf8')).match(/^updaterCacheDirName:.*$/m)?.[0];
-  await writeFile(file, ['provider: generic', `url: ${feed}`, cache].filter(Boolean).join('\n') + '\n');
+  await writeFile(
+    file,
+    ['provider: generic', `url: ${feed}`, cache].filter(Boolean).join('\n') + '\n',
+  );
 }
 
 async function open(expectedVersion) {
   application = await launchInstalledElectron(executablePath, profile);
   assert.equal(await application.evaluate(({ app }) => app.getVersion()), expectedVersion);
-  assert.equal(path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))), path.resolve(profile));
+  assert.equal(
+    path.resolve(await application.evaluate(({ app }) => app.getPath('userData'))),
+    path.resolve(profile),
+  );
   if (expectedVersion === pinned.version) {
     await application.evaluate(({ app }, url) => {
       const { createRequire } = process.getBuiltinModule('node:module');
-      const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
+      const updater = createRequire(`${app.getAppPath()}/package.json`)(
+        'electron-updater',
+      ).autoUpdater;
       updater.setFeedURL({ provider: 'generic', url });
     }, feed);
   }
   const page = await application.firstWindow();
   // The startup check can finish downloading at any point and raise this
   // modal over whatever the probe is clicking.
-  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Update ready' }), async dialog => {
-    await dialog.getByRole('button', { name: 'Later' }).click();
-  });
-  const start = page.getByRole('region', { name: 'Revision around your exam', exact: true }).getByRole('link', { name: 'Start revising', exact: true });
+  await page.addLocatorHandler(
+    page.getByRole('dialog', { name: 'Update ready' }),
+    async (dialog) => {
+      await dialog.getByRole('button', { name: 'Later' }).click();
+    },
+  );
+  const start = page
+    .getByRole('region', { name: 'Revision around your exam', exact: true })
+    .getByRole('link', { name: 'Start revising', exact: true });
   const courses = page.getByRole('navigation', { name: 'Courses' });
   await start.or(courses).waitFor({ state: 'visible', timeout: 60_000 });
   if (await start.isVisible()) await start.click();
@@ -77,22 +114,35 @@ async function open(expectedVersion) {
 }
 
 async function snapshot(page) {
-  return page.evaluate(() => new Promise((resolve, reject) => {
-    const request = indexedDB.open('lacuna');
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const db = request.result;
-      const names = ['courses', 'lessons', 'cards', 'reviewHistory', 'schedulingUnits'].filter(name => db.objectStoreNames.contains(name));
-      const tx = db.transaction(names);
-      const result = {};
-      for (const name of names) {
-        const read = tx.objectStore(name).getAll();
-        read.onsuccess = () => { result[name] = read.result; };
-      }
-      tx.oncomplete = () => { db.close(); resolve(result); };
-      tx.onerror = () => { db.close(); reject(tx.error); };
-    };
-  }));
+  return page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('lacuna');
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const names = ['courses', 'lessons', 'cards', 'reviewHistory', 'schedulingUnits'].filter(
+            (name) => db.objectStoreNames.contains(name),
+          );
+          const tx = db.transaction(names);
+          const result = {};
+          for (const name of names) {
+            const read = tx.objectStore(name).getAll();
+            read.onsuccess = () => {
+              result[name] = read.result;
+            };
+          }
+          tx.oncomplete = () => {
+            db.close();
+            resolve(result);
+          };
+          tx.onerror = () => {
+            db.close();
+            reject(tx.error);
+          };
+        };
+      }),
+  );
 }
 
 try {
@@ -100,56 +150,105 @@ try {
   await pointInstalledUpdaterAtFeed();
   let page = await open(pinned.version);
   await page.evaluate(() => window.electronAPI.updater.checkForUpdates());
-  await expect.poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase,
-    { timeout: 180_000 }).toBe('downloaded');
-  assert.equal((await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion, version);
+  await expect
+    .poll(async () => (await page.evaluate(() => window.electronAPI.updater.getState())).phase, {
+      timeout: 180_000,
+    })
+    .toBe('downloaded');
+  assert.equal(
+    (await page.evaluate(() => window.electronAPI.updater.getState())).availableVersion,
+    version,
+  );
   await expect.poll(async () => (await snapshot(page)).cards?.length ?? 0).toBeGreaterThan(0);
-  await page.getByRole('navigation', { name: 'Courses' }).getByRole('link', { name: 'Welcome to Lacuna' }).click();
+  await page
+    .getByRole('navigation', { name: 'Courses' })
+    .getByRole('link', { name: 'Welcome to Lacuna' })
+    .click();
   await page.getByRole('button', { name: 'Study', exact: true }).last().click();
-  await page.getByRole('dialog', { name: 'Choose what to study' }).getByRole('button', { name: /^(Start|Continue):/ }).first().click();
+  // These steps drive the baseline release's interface, so they follow the version being replaced.
+  await page
+    .getByRole('region', { name: 'Session preview' })
+    .getByRole('button', { name: 'Start session' })
+    .first()
+    .click();
   await page.getByRole('button', { name: 'Continue', exact: true }).click();
-  await page.getByRole('button', { name: /Show answer/i }).last().click();
+  await page
+    .getByRole('button', { name: /Show answer/i })
+    .last()
+    .click();
   await page.getByRole('button', { name: 'Yes', exact: true }).click();
-  await expect.poll(async () => (await snapshot(page)).reviewHistory?.length ?? 0).toBeGreaterThan(0);
+  await expect
+    .poll(async () => (await snapshot(page)).reviewHistory?.length ?? 0)
+    .toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Exit', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Leave this session?' }).getByRole('button', { name: 'Leave', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Leave this session?' })
+    .getByRole('button', { name: 'Leave', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: 'Study', exact: true }).last()).toBeVisible();
   const before = await snapshot(page);
   assert(before.courses.length > 0);
   report.stages.push('baseline installed and study database populated');
   await application.evaluate(({ app }) => {
     const { createRequire } = process.getBuiltinModule('node:module');
-    const updater = createRequire(`${app.getAppPath()}/package.json`)('electron-updater').autoUpdater;
+    const updater = createRequire(`${app.getAppPath()}/package.json`)(
+      'electron-updater',
+    ).autoUpdater;
     updater.quitAndInstall(true, false);
   });
-  await application.waitForExit(); application = undefined;
-  await expect.poll(async () => {
-    try {
-      try {
-        await readFile(path.join(process.env.LOCALAPPDATA, 'Lacuna', 'installation-in-progress'));
-        return null;
-      } catch (error) { if (error.code !== 'ENOENT') throw error; }
-      const { createRequire } = await import('node:module');
-      const { extractFile, uncacheAll } = createRequire(import.meta.url)('@electron/asar');
-      uncacheAll();
-      return JSON.parse(extractFile(path.join(directory, 'resources', 'app.asar'), 'package.json')).version;
-    } catch { return null; }
-  }, { timeout: 180_000 }).toBe(version);
+  await application.waitForExit();
+  application = undefined;
+  await expect
+    .poll(
+      async () => {
+        try {
+          try {
+            await readFile(
+              path.join(process.env.LOCALAPPDATA, 'Lacuna', 'installation-in-progress'),
+            );
+            return null;
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+          const { createRequire } = await import('node:module');
+          const { extractFile, uncacheAll } = createRequire(import.meta.url)('@electron/asar');
+          uncacheAll();
+          return JSON.parse(
+            extractFile(path.join(directory, 'resources', 'app.asar'), 'package.json'),
+          ).version;
+        } catch {
+          return null;
+        }
+      },
+      { timeout: 180_000 },
+    )
+    .toBe(version);
   report.stages.push('installed baseline updater downloaded and silently installed the release');
   page = await open(version);
   const after = await snapshot(page);
-  assert.deepEqual(after, before, 'Upgrade changed existing course, lesson, card or review records');
+  assert.deepEqual(
+    after,
+    before,
+    'Upgrade changed existing course, lesson, card or review records',
+  );
   const updateState = await page.evaluate(() => window.electronAPI.updater.getState());
   assert.equal(updateState.mode, 'automatic');
   report.stages.push('upgraded installation launched with all study records preserved');
-  report.records = Object.fromEntries(Object.entries(after).map(([name, rows]) => [name, rows.length]));
+  report.records = Object.fromEntries(
+    Object.entries(after).map(([name, rows]) => [name, rows.length]),
+  );
   report.result = 'passed';
 } catch (error) {
-  report.result = 'failed'; report.error = String(error); throw error;
+  report.result = 'failed';
+  report.error = String(error);
+  throw error;
 } finally {
   server.close();
   if (application) await application.close();
   await mkdir('test-results/windows-release-upgrade', { recursive: true });
-  await writeFile('test-results/windows-release-upgrade/report.json', JSON.stringify(report, null, 2));
+  await writeFile(
+    'test-results/windows-release-upgrade/report.json',
+    JSON.stringify(report, null, 2),
+  );
   await rm(root, { recursive: true, force: true, maxRetries: 3 });
 }
