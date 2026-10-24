@@ -6,7 +6,6 @@
       // Invoked by filename in Electron preparation; Tailwind is loaded through CSS.
       "ignoreDependencies": ["@typescript/native", "tailwindcss"],
       "entry": [
-        "src/main.tsx",
         "src/pages/{quizlet,courses}/entry-client.tsx",
         "src/{teacher,library}/main.tsx",
         "src/pages/{landing,quizlet,courses}/entry-server.tsx",
@@ -23,14 +22,13 @@
         "scripts/performance-heavy/{summarise,trace-summary}.mjs",
         "tooling/semantic-answer-match/scripts/compare_answer_baseline.ts",
         "scripts/**/*.test.mjs",
-        "tests/config/playwright.web.isolated.config.ts",
+        "tests/config/{playwright.*,vitest.recovery,vitest.risk}.config.ts",
         "tests/e2e/**/*.spec.ts",
         "tests/e2e-electron/**/*.spec.ts",
       ],
       "project": [
         "*.{js,mjs,cjs,ts,mts,cts}",
-        "{src,server,api,electron,scripts,tests}/**/*.{js,mjs,cjs,ts,tsx,mts,cts}",
-        "gaps/sw.js",
+        "{src,server,api,electron,scripts,tests}/**/*.{js,mjs,cjs,ts,tsx,mts,cts,css}",
         "tooling/semantic-answer-match/scripts/*.ts",
         "!electron/dist-electron/**",
       ],
@@ -39,11 +37,11 @@
       },
     },
     "relay": {
-      "entry": ["api/index.ts", "scripts/security-bun.mjs", "tests/**/*.test.ts"],
+      "entry": ["api/index.ts", "tests/**/*.test.ts"],
       "project": ["{src,api,shared,tests,scripts}/**/*.{ts,mjs}", "*.{ts,mjs}"],
     },
     "tooling/handwriting-maths": {
-      "entry": ["src/main.ts", "src/**/*.test.ts"],
+      "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts", "*.ts"],
     },
     "tooling/lacuna-ai-mcp": {
