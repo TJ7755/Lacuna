@@ -27,6 +27,7 @@
 - [Physics J259 (OCR GCSE)](https://getlacuna.app/courses/physicsj259/)
 - [Physics 4PH1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/physics4ph1/)
 - [Combined Science 8464 (AQA GCSE)](https://getlacuna.app/courses/combinedscience8464/)
+- [Religious Studies 8062 (AQA GCSE)](https://getlacuna.app/courses/religiousstudies8062/)
 
 Science courses cover selected topics. Combined Science 8464 contains seven introductory lessons on cells and microscopy; other Combined Science topics are outside this selection.
 

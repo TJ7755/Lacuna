@@ -106,6 +106,26 @@ describe('LibraryPage', () => {
     expect(sheet).toHaveTextContent('7 practice sets, 59 marks');
   });
 
+  it('finds Religious Studies by code and shows its published scope, counts and link', async () => {
+    renderLibrary(libraryCourses);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
+      target: { value: '8062' },
+    });
+    expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
+    fireEvent.click(cover('Religious Studies'));
+    const sheet = await screen.findByRole('dialog', { name: 'Religious Studies' });
+    expect(sheet).toHaveTextContent('AQA GCSE · 8062');
+    expect(sheet).toHaveTextContent('optional Themes A–F modules to choose from');
+    expect(sheet).toHaveTextContent('1, 1, 4 and 6-mark question styles');
+    expect(sheet).toHaveTextContent('1,218 cards');
+    expect(sheet).toHaveTextContent('115 lesson notes');
+    expect(sheet).toHaveTextContent('115 practice sets, 1,380 marks');
+    expect(within(sheet).getByRole('link', { name: /Open in Lacuna/ })).toHaveAttribute(
+      'href',
+      'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
+    );
+  });
+
   it('shows every course as a cover with its counts and no link until it is opened', () => {
     renderLibrary();
     expect(cover('Biology')).toHaveAttribute('aria-expanded', 'false');

@@ -1,0 +1,1 @@
+- Add AQA GCSE Religious Studies A (8062) revision 11 to the course library and public course pages, with verified counts, optional Themes A–F and short lesson-level practice; retain its verified share through the relay official-publication policy after deployment.
