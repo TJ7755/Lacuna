@@ -58,18 +58,34 @@ export function checkFileLinks(directory, files) {
   return problems;
 }
 
+// Pull requests and Git already retain review captures and change notes.
+const RETIRED_DIRECTORIES = ['docs/changes/', 'docs/review/', 'docs/review-evidence/'];
+
+/** Reject files under directories whose content belongs in a pull request, not the repository. */
+export function checkRetiredPaths(files) {
+  return files
+    .filter((file) => RETIRED_DIRECTORIES.some((directory) => file.startsWith(directory)))
+    .map((file) => `${file}: attach PR evidence and change notes to the pull request instead`);
+}
+
 export function checkDocs(directory = root) {
   const files = execFileSync(
     'git',
-    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '*.md'],
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', 'docs', '*.md'],
     {
       cwd: directory,
       encoding: 'utf8',
     },
   )
     .split('\0')
-    .filter((file) => file && (file.startsWith('docs/') || !file.includes('/')));
-  const problems = checkFileLinks(directory, [...new Set(files)]);
+    .filter((file) => file && existsSync(resolve(directory, file)));
+  const documents = files.filter(
+    (file) => file.endsWith('.md') && (file.startsWith('docs/') || !file.includes('/')),
+  );
+  const problems = [
+    ...checkRetiredPaths(files),
+    ...checkFileLinks(directory, [...new Set(documents)]),
+  ];
   if (problems.length) throw new Error(problems.join('\n'));
   console.log('Documentation file links pass');
 }

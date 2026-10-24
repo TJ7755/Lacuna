@@ -22,7 +22,8 @@ Record the candidate commit or local state checked, exact commands and their res
 changes, describe the regression evidence and what fails before the fix and passes afterwards.
 
 Include runtime observations, screenshots or recordings where they help establish the result.
-Link supporting evidence and state precisely what it proves.
+Upload supporting evidence to this pull request rather than committing it, and state precisely what
+it proves.
 
 Identify relevant platforms and scenarios that remain unverified, why checks stopped or could not
 run, and what is needed to complete them. Do not claim a passing result for checks that did not run.

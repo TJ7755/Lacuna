@@ -3,7 +3,7 @@ import { afterEach, test } from 'node:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkFileLinks } from './check-docs.mjs';
+import { checkFileLinks, checkRetiredPaths } from './check-docs.mjs';
 
 const directories = [];
 afterEach(() => {
@@ -51,4 +51,21 @@ test('supports angle paths and repository-root links; rejects escapes and malfor
 test('skips deleted documents', () => {
   const directory = fixture('');
   assert.deepEqual(checkFileLinks(directory, ['docs/deleted.md']), []);
+});
+
+test('rejects review captures and change fragments committed under docs', () => {
+  assert.deepEqual(
+    checkRetiredPaths([
+      'docs/review/853-question-progress/before.png',
+      'docs/changes/unreleased/838.md',
+      'docs/review-evidence/trial/README.md',
+      'docs/reviewing.md',
+      'docs/images/logo.png',
+    ]),
+    [
+      'docs/review/853-question-progress/before.png: attach PR evidence and change notes to the pull request instead',
+      'docs/changes/unreleased/838.md: attach PR evidence and change notes to the pull request instead',
+      'docs/review-evidence/trial/README.md: attach PR evidence and change notes to the pull request instead',
+    ],
+  );
 });
