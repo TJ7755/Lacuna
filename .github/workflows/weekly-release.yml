@@ -2,8 +2,8 @@ name: Weekly release
 
 # Every Thursday, when shipped code on master has changed since the last release,
 # bump the patch version and open the release pull request. It uses the release bot app's
-# token because pushes and pull requests made with GITHUB_TOKEN start no workflows, so CI
-# could never pass. Auto-merge lands it once the required checks pass, and the Release tag
+# token, or failing that the maintainer token in RELEASE_TOKEN, because pushes and pull
+# requests made with GITHUB_TOKEN start no workflows, so CI could never pass. Auto-merge lands it once the required checks pass, and the Release tag
 # workflow then tags, builds and publishes. Only master is ever read or released.
 on:
   schedule:
@@ -20,18 +20,23 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     steps:
-      # Fail rather than skip: a green run without the app would hide that no release was made.
-      - name: Check the release bot app is configured
+      # Fail rather than skip: a green run without credentials would hide that no release was made.
+      - name: Choose the release credentials
+        id: credentials
         env:
           APP_ID: ${{ secrets.RELEASE_APP_ID }}
           APP_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
-            echo "::error::RELEASE_APP_ID or RELEASE_APP_PRIVATE_KEY is not set; see docs/maintenance/release.md."
+          if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
+            echo "app=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$TOKEN" ]; then
+            echo "::error::Set RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY, or RELEASE_TOKEN; see docs/maintenance/release.md."
             exit 1
           fi
 
       - id: app
+        if: steps.credentials.outputs.app
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
@@ -41,7 +46,7 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
-          token: ${{ steps.app.outputs.token }}
+          token: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -56,7 +61,7 @@ jobs:
       - name: Prepare the release
         id: prepare
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
         run: |
           open="$(
             gh pr list --repo "$GITHUB_REPOSITORY" --state open --json headRefName \
@@ -71,13 +76,19 @@ jobs:
       - name: Open the release pull request
         if: steps.prepare.outputs.version
         env:
-          GH_TOKEN: ${{ steps.app.outputs.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || secrets.RELEASE_TOKEN }}
           SLUG: ${{ steps.app.outputs.app-slug }}
           VERSION: ${{ steps.prepare.outputs.version }}
         run: |
-          user_id="$(gh api "/users/${SLUG}[bot]" --jq .id)"
-          git config user.name "${SLUG}[bot]"
-          git config user.email "${user_id}+${SLUG}[bot]@users.noreply.github.com"
+          # Commit as whoever owns the token: the app's bot account, or the maintainer.
+          if [ -n "$SLUG" ]; then
+            name="${SLUG}[bot]"
+          else
+            name="$(gh api user --jq .login)"
+          fi
+          user_id="$(gh api "/users/${name}" --jq .id)"
+          git config user.name "$name"
+          git config user.email "${user_id}+${name}@users.noreply.github.com"
           branch="release/${VERSION}"
           git switch -c "$branch"
           git add -A
