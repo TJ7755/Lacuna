@@ -1,1 +1,0 @@
-- Fix Analytics workload forecasts to include overdue reviews today and defer buried cards to their availability day. The chart remains an uncapped workload view; dashboard forecasts retain their existing source budgets. (#748)

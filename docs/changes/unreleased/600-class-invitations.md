@@ -1,1 +1,0 @@
-- Add teacher-key-bound class invitation codes and owner-authenticated public key publication for the pupil reporting flow. Ordinary course links do not enable reporting. (#600)

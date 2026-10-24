@@ -1,1 +1,0 @@
-- Retain risk and recovery coverage gates on extracted database implementations, with regression checks for opening failures, interrupted snapshots and legacy asset recovery. (#765)

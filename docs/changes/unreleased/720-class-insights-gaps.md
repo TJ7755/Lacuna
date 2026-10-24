@@ -1,1 +1,0 @@
-- Open Class insights from Share directly in Gaps, prefilling the selected course when it has a share link. (#720)

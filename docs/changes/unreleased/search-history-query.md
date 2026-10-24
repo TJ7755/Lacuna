@@ -1,1 +1,0 @@
-- Keep search results aligned with the restored query on Back and Forward so unrelated rows cannot shift the remembered scroll position.

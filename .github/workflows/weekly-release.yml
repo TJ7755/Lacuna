@@ -1,6 +1,6 @@
 name: Weekly release
 
-# Every Thursday, when shipped code on master has changelog entries since the last release,
+# Every Thursday, when shipped code on master has changed since the last release,
 # bump the patch version and open the release pull request. It uses the release bot app's
 # token because pushes and pull requests made with GITHUB_TOKEN start no workflows, so CI
 # could never pass. Auto-merge lands it once the required checks pass, and the Release tag

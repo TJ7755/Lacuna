@@ -1,1 +1,0 @@
-- Avoid downloading course payloads during relay share metadata and ownership checks, and check share expiry and cleanup using current storage metadata while preserving retained Gaps reports. (#628)

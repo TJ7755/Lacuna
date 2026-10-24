@@ -1,1 +1,0 @@
-- Hold a submitted typed answer for about half a second before automatic marking marks it, so verdicts land at a natural pace.

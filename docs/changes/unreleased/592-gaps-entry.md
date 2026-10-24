@@ -1,1 +1,0 @@
-- Add the Gaps teacher entry for `gaps.getlacuna.app` and `#/teach`, with published-course ownership checks and explicit separate-storage and disconnected-delivery states. Correct the opt-in disclosure for teacher visibility, metadata and the agreed 12-week relay retention (#592).

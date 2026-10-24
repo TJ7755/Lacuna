@@ -1,1 +1,0 @@
-- Keep automatic typed answers reversible with Undo in Simple introductions and on the final card, confirming session completion only after the final answer is accepted.

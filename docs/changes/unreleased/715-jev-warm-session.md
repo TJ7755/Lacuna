@@ -1,1 +1,0 @@
-- Warm the optional automatic marking session before the first typed answer, keep slow typed answers available for manual marking, and use marking-specific access-code errors. (#715)

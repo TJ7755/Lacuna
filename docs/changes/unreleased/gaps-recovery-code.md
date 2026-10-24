@@ -1,2 +1,0 @@
-- New Gaps classes generate one recovery code and download one class recovery file, with remembered access enabled by default. Creation continues unlocked after the download is requested; the combined file restores access on another device. Existing classes keep their passphrases and separate files.
-- Roll back unfinished Gaps class creation after key or remembered-access failures, and correct recovery-code and form spacing. (#645)

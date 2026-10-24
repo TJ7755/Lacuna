@@ -1,1 +1,0 @@
-- Complete a valid card import directly from the destination title with Tab to Import or Enter, while preserving study-target controls and reverse keyboard navigation. (#757)

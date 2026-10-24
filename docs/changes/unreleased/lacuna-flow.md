@@ -1,1 +1,0 @@
-- Name Lacuna’s interaction language Lacuna Flow, governed by Continuity, Control, Responsiveness and Restraint. Rename the live study controls and their selectors to Flow, and show actionable grade labels without waiting for the fill animation, retaining solid button fills for readable labels throughout.

@@ -1,1 +1,0 @@
-- Enable automatic updates for newly imported shared courses, preserving saved opt-outs and review for conflicting learner edits. (#784)

@@ -1,1 +1,0 @@
-- Ask learners to confirm or change the suggested exam date, or choose no fixed exam, when first importing a shared course. Later teacher updates retain the learner’s final study target. (#819)

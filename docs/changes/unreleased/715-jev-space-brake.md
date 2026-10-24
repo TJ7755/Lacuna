@@ -1,1 +1,0 @@
-- Hold Space to keep an automatically marked answer on screen; releasing it resumes the swipe without adding another delay. (#715)

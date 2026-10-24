@@ -1,1 +1,0 @@
-- Show course authorship, publisher and recorded revision on library sheets and public course pages, with a GitHub mistake report containing only course identity and an optional typed item reference. Unknown publication dates remain omitted. (#670)

@@ -1,1 +1,0 @@
-- Retry temporary Jev marking and session connection failures while the browser remains online, pausing after three failures and recovering on later requests with increasing delays. Actual offline failures still wait for an online event. (#715)

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { installerDigest, main } from './release-prepare.mjs';
@@ -18,35 +18,24 @@ const published = {
 function repository() {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-prepare-test-'));
   directories.push(directory);
-  for (const folder of ['scripts', 'docs/changes/unreleased']) {
-    mkdirSync(join(directory, folder), { recursive: true });
-  }
+  mkdirSync(join(directory, 'scripts'));
   writeFileSync(
     join(directory, 'package.json'),
     '{\n  "name": "lacuna",\n  "version": "0.2.13"\n}\n',
   );
-  writeFileSync(
-    join(directory, 'docs/CHANGES.md'),
-    '# Lacuna — version 0.2.13\n\n## Unreleased\n\n## 0.2.13 beta\n\n- Older.\n',
-  );
-  writeFileSync(join(directory, 'docs/changes/unreleased/fix.md'), '- A fix.\n');
   return directory;
 }
 
 describe('release preparation', () => {
-  it('bumps the version, folds fragments and pins the replaced release as upgrade baseline', async () => {
+  it('prepares a release without a changelog and pins the replaced installer', async () => {
     const directory = repository();
     const tags: string[] = [];
-    await main(['0.2.14', 'Title'], {
+    await main(['0.2.14'], {
       directory,
       fetchRelease: async (tag: string) => (tags.push(tag), published),
     });
     expect(tags).toEqual(['v0.2.13']);
     expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"version": "0.2.14"');
-    expect(readFileSync(join(directory, 'docs/CHANGES.md'), 'utf8')).toContain(
-      '## 0.2.14 beta — Title\n\n- A fix.',
-    );
-    expect(existsSync(join(directory, 'docs/changes/unreleased/fix.md'))).toBe(false);
     expect(
       JSON.parse(readFileSync(join(directory, 'scripts/windows-release-baseline.json'), 'utf8')),
     ).toEqual({ version: '0.2.13', sha256: hash });
@@ -58,7 +47,6 @@ describe('release preparation', () => {
       main(['0.2.14'], { directory, fetchRelease: async () => ({ ...published, draft: true }) }),
     ).rejects.toThrow(/draft/);
     expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"version": "0.2.13"');
-    expect(existsSync(join(directory, 'docs/changes/unreleased/fix.md'))).toBe(true);
   });
 
   it('requires a SHA-256 digest for the replaced Windows installer', () => {

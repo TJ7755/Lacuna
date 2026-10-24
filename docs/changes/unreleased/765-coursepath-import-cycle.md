@@ -1,1 +1,0 @@
-- Remove the CoursePath route-loader import cycle while retaining lazy lesson loading and idle prefetch behaviour. (#765)

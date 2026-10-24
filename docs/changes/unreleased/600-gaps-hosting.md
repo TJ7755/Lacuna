@@ -1,1 +1,0 @@
-- Gaps now runs as a separate teacher-only site at gaps.getlacuna.app, with production-only automatic builds and the existing teach hostname redirect. Pupil reporting remains disabled pending independent security review by another agent or a human.

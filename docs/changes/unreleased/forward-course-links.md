@@ -1,2 +1,0 @@
-- Copy existing course links and QR codes from Share without republishing, including links managed on another device. Imported links keep following their publisher’s updates.
-- Create an independent Gaps class from any published course link, with separate teacher keys and results whilst retaining the original publisher’s course updates. Save and restore its encrypted connection file from Gaps.

@@ -1,1 +1,0 @@
-- Question-set practice no longer shows a routine “Saving…” status or shifts the header while answers autosave; save failures remain visible with Retry. (#732)

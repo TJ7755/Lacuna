@@ -1,1 +1,0 @@
-- Pause course-wide history refreshes during an active Study step and stop idle Path queries, keeping rapid grading responsive while preserving Card motion and fresh continuation planning.

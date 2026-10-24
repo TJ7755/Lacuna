@@ -1,1 +1,0 @@
-- Prevent a Gaps report started across UTC midnight from mixing one day's evidence with another day's encrypted envelope and permanently acknowledging an unreadable report.

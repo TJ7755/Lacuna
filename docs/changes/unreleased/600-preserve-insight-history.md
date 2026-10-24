@@ -1,1 +1,0 @@
-- Preserve experimental insight history by retaining owner mailbox access through each report's expiry even after a public course link expires, and reject recovery files whose private key does not match the advertised teacher key before replacing saved recovery material. Explicit owner deletion still removes the mailbox. (#600)

@@ -1,1 +1,0 @@
-- Start Study from a chosen lesson when joining a course part-way through, including locked imports. Keep earlier lessons for catch-up, review their cards independently through FSRS, and include prior knowledge in whole-course exam revision without marking it completed or mastered.

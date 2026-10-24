@@ -1,1 +1,0 @@
-- Simplify course lesson settings and class insights, align settings controls, and keep lesson names and rename fields usable with enlarged text. (#711)

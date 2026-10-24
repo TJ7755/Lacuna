@@ -1,1 +1,0 @@
-- Enforce domain-to-UI import boundaries and source import-cycle detection during lint, retaining exact tracked exceptions for existing cycles and shared session types in the domain layer. (#723)

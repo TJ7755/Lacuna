@@ -1,3 +1,0 @@
-- Added zero-priced Nemotron and Cat Jam fallbacks for built-in AI through Vercel AI Gateway, replacing Ling in the pinned allowlist. Each route still requires live zero pricing for every price field; missing or paid pricing excludes it.
-- Added a dismissible personal-information notice to built-in AI. Dismissal is remembered on the device.
-- Excluded private AI access-code batches, local credentials and validation artefacts from Vercel source uploads.

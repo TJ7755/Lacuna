@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { main, nextPatch, pendingBullets, shipsChanges } from './weekly-release.mjs';
+import { main, nextPatch, shipsChanges } from './weekly-release.mjs';
 
 const directories: string[] = [];
 afterEach(() => {
@@ -14,47 +14,52 @@ const published = {
   assets: [{ name: 'Lacuna-Setup-0.2.14.exe', digest: `sha256:${'b'.repeat(64)}` }],
 };
 
-function repository(fragment?: string) {
+function repository() {
   const directory = mkdtempSync(join(tmpdir(), 'lacuna-weekly-test-'));
   directories.push(directory);
-  for (const folder of ['scripts', 'docs/changes/unreleased']) {
-    mkdirSync(join(directory, folder), { recursive: true });
-  }
+  mkdirSync(join(directory, 'scripts'));
   writeFileSync(join(directory, 'package.json'), '{\n  "version": "0.2.14"\n}\n');
-  writeFileSync(
-    join(directory, 'docs/CHANGES.md'),
-    '# Lacuna — version 0.2.14\n\n## Unreleased\n\n## 0.2.14 beta\n\n- Older.\n',
-  );
-  writeFileSync(join(directory, 'docs/changes/unreleased/README.md'), 'Not a fragment.\n');
-  if (fragment) writeFileSync(join(directory, 'docs/changes/unreleased/fix.md'), fragment);
   return directory;
 }
 
 function git(tags: string, changed: string) {
-  return (args: string[]) => (args[0] === 'tag' ? tags : changed);
+  return (args: string[]) => {
+    if (args[0] === 'tag') return tags;
+    if (args[0] === 'rev-parse') return 'c'.repeat(40);
+    return changed;
+  };
 }
 
 const quiet = () => {};
 
 describe('weekly release', () => {
-  it('bumps the patch and writes notes when shipped code has changelog entries', async () => {
-    const directory = repository('- Fixed a crash (#600)\n');
+  it('prepares shipped changes using notes generated between the release tag and exact head', async () => {
+    const directory = repository();
+    const requests: unknown[] = [];
     const version = await main({
       directory,
       git: git('v0.2.14', 'src/app.tsx\ndocs/x.md'),
       fetchRelease: async () => published,
+      generateNotes: async (input: unknown) => {
+        requests.push(input);
+        return "## What's Changed\n* Fixed a crash by @tester in https://github.com/TJ7755/Lacuna/pull/600\n";
+      },
       log: quiet,
     });
     expect(version).toBe('0.2.15');
     expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"0.2.15"');
     expect(readFileSync(join(directory, 'docs/releases/0.2.15.md'), 'utf8')).toBe(
-      '## Lacuna 0.2.15 Beta\n\n- Fixed a crash (#600)\n',
+      "## Lacuna 0.2.15 Beta\n\n## What's Changed\n* Fixed a crash by @tester in https://github.com/TJ7755/Lacuna/pull/600\n",
     );
-    expect(existsSync(join(directory, 'docs/changes/unreleased/fix.md'))).toBe(false);
+    expect(requests).toEqual([{
+      tag_name: 'v0.2.15',
+      previous_tag_name: 'v0.2.14',
+      target_commitish: 'c'.repeat(40),
+    }]);
   });
 
   it('skips when only unshipped paths changed', async () => {
-    const directory = repository('- CI tweak\n');
+    const directory = repository();
     const version = await main({
       directory,
       git: git('v0.2.14', '.github/workflows/ci.yml\nrelay/index.ts'),
@@ -64,19 +69,22 @@ describe('weekly release', () => {
     expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"0.2.14"');
   });
 
-  it('skips when shipped code changed without a changelog entry', async () => {
+  it('leaves the checkout unchanged when generating notes fails', async () => {
     const directory = repository();
-    expect(await main({ directory, git: git('v0.2.14', 'src/app.tsx'), log: quiet })).toBeNull();
+    await expect(main({
+      directory,
+      git: git('v0.2.14', 'src/app.tsx'),
+      generateNotes: async () => { throw new Error('GitHub unavailable'); },
+      log: quiet,
+    })).rejects.toThrow('GitHub unavailable');
+    expect(readFileSync(join(directory, 'package.json'), 'utf8')).toContain('"0.2.14"');
+    expect(existsSync(join(directory, 'scripts/windows-release-baseline.json'))).toBe(false);
+    expect(existsSync(join(directory, 'docs/releases/0.2.15.md'))).toBe(false);
   });
 
   it('skips while the current version is still awaiting its tag', async () => {
-    const directory = repository('- Fixed a crash\n');
+    const directory = repository();
     expect(await main({ directory, git: git('', 'src/app.tsx'), log: quiet })).toBeNull();
-  });
-
-  it('reads bullets from fragments and the Unreleased section', () => {
-    const changes = '# T\n\n## Unreleased\n\n- Left over\n\n## 0.2.14 beta\n\n- Older.\n';
-    expect(pendingBullets(changes, ['- New\n'])).toEqual(['- New', '- Left over']);
   });
 
   it('bumps only the patch number', () => {

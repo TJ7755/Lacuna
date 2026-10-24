@@ -38,7 +38,6 @@ jobs:
           package-manager-cache: false
       - run: node --test scripts/check-docs.test.mjs scripts/check-browser.test.mjs scripts/check-gaps-browser-registration.test.mjs
       - run: node scripts/check-docs.mjs
-      - run: node scripts/changelog.mjs --check
 
   # Documentation-only pull requests skip heavy work, never the entire workflow.
   # Metadata edits skip heavy work only after the exact merge commit passes validation.

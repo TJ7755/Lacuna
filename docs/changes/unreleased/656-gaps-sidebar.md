@@ -1,1 +1,0 @@
-- Show a Gaps section automatically after joining a class, with persistent links to each active class’s existing pupil consent and reporting controls. (#656)

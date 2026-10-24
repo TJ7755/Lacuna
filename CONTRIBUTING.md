@@ -103,17 +103,12 @@ bun run electron:build:mac
 On macOS and Linux, record which package targets were built. Unsigned macOS output is not evidence of
 successful signing or notarisation. Keep the release artefact allowlist intact.
 
-Run `bun run docs:check` and
-`bun run changelog:check` locally after documentation changes.
+Run `bun run docs:check` locally after documentation changes.
 
 ## Behaviour and review policy
 
 Pure refactors retain relevant coverage. Documentation, dependency and CI-only changes need
 proportionate validation and a note explaining what was checked.
-
-Record each user- or maintainer-visible change as a fragment file in `docs/changes/unreleased/`
-(see its README) rather than editing `docs/CHANGES.md`, which is assembled at release time.
-`bun run changelog:check` validates fragments.
 
 Prefer one invariant or one user workflow per pull request. Agent-produced changes follow the same
 rule. State the permitted files or module ownership, and require an independent agent to review data,

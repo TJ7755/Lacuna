@@ -35,11 +35,10 @@ not the entire documentation tree.
 
 [Issues](https://github.com/TJ7755/Lacuna/issues) own unfinished work, including
 [redesign acceptance](https://github.com/TJ7755/Lacuna/issues/456#issuecomment-6246871342).
-[Release history](CHANGES.md), [earlier releases](https://github.com/TJ7755/Lacuna/blob/b7995873874bbf4d5074430b34481491cc59588c/docs/archive/changes-through-0.2.7.md) and
+[earlier releases](https://github.com/TJ7755/Lacuna/blob/b7995873874bbf4d5074430b34481491cc59588c/docs/archive/changes-through-0.2.7.md) and
 [dated measurements](https://github.com/TJ7755/Lacuna/tree/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance)
 are historical records. Old measurements and review captures live in Git history.
 
-Change behaviour in code and meaningful tests. Update a retained decision or procedure when that
-changes, and add an [unreleased fragment](changes/unreleased/README.md). Avoid copying record
+Change behaviour in code and meaningful tests. Avoid copying record
 shapes, dependency versions, commands already listed in the manifest or transient PR/check status.
 `bun run docs:check` checks relative file links; it does not prove the prose true.

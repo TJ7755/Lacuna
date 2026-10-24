@@ -1,1 +1,0 @@
-- Remove brittle design and copy assertions, duplicate component checks and redundant browser combinations to reduce CI work while retaining learner workflows, recovery and accessibility coverage.

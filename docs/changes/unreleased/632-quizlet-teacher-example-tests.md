@@ -1,1 +1,0 @@
-- Test the comparison page’s teacher sharing example through visible panel changes, selection states and restoration, without freezing promotional wording or implying persisted review-history coverage. (#632)

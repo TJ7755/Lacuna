@@ -1,1 +1,0 @@
-- Allow cancelling the course-path practice editor with Cancel, Escape or a backdrop click, including after validation fails, without saving an activity. (#709)

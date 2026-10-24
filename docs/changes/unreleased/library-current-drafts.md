@@ -1,2 +1,0 @@
-- Refresh the library links and published content counts for the latest four cumulative course drafts.
-- Keep library browser tests focused on interaction, navigation and startup isolation; remove copy and publication snapshots that break on routine content updates.

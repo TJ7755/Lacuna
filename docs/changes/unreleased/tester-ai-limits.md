@@ -1,1 +1,0 @@
-- Raise built-in AI admission to twenty inference steps per minute, 200 per day and 3,000 per month per access code, allowing complete tool audits without hitting the old six-step burst limit. Set shared ceilings of 400 daily steps, 6,000 monthly steps and four concurrent requests for the two-tester beta.

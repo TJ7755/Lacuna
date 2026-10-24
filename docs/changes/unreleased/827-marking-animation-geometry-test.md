@@ -1,1 +1,0 @@
-- Check question-set marking alignment against the reserved indicator slot throughout its reveal, retaining settled visual centring and 44px hit-target checks without rejecting the intended scaling animation. (#827)

@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { main as foldChangelog } from './changelog.mjs';
 import { releaseAssets } from './release-assets.mjs';
 
 const repository = 'TJ7755/Lacuna';
@@ -18,12 +17,12 @@ export function installerDigest(release, version) {
 }
 
 /**
- * Bumps package.json, folds the changelog fragments and pins the Windows upgrade gate to
+ * Bumps package.json and pins the Windows upgrade gate to
  * the release being replaced. Release notes in docs/releases/<version>.md stay hand-written.
  */
 export async function main(args, { directory = root, fetchRelease } = {}) {
-  const [version, ...title] = args;
-  assert(version, 'Usage: release:prepare <x.y.z> [title]');
+  const [version] = args;
+  assert(version, 'Usage: release:prepare <x.y.z>');
   releaseAssets(version);
   const packagePath = join(directory, 'package.json');
   const packageText = readFileSync(packagePath, 'utf8');
@@ -32,10 +31,6 @@ export async function main(args, { directory = root, fetchRelease } = {}) {
   const release = await (fetchRelease ?? fetchGitHubRelease)(`v${previous}`);
   const baseline = { version: previous, sha256: installerDigest(release, previous) };
 
-  foldChangelog([version, ...title], {
-    changes: join(directory, 'docs', 'CHANGES.md'),
-    fragments: join(directory, 'docs', 'changes', 'unreleased'),
-  });
   writeFileSync(
     packagePath,
     packageText.replace(`"version": "${previous}"`, `"version": "${version}"`),

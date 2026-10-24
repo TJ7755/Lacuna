@@ -8,9 +8,8 @@ betas are supported; macOS packages are a separate local step, not an implicit p
 
 ## Routine release
 
-1. On a preparation branch, run `bun run release:prepare <version> "short release title"`.
-   Edit only the root package version through this helper; it folds pending changelog entries
-   and pins the previous Windows installer/digest for the upgrade gate.
+1. On a preparation branch, run `bun run release:prepare <version>`.
+   Edit only the root package version through this helper.
 2. Write `docs/releases/<version>.md` with the learner-facing notes and known limitations.
 3. Check the actual PR and exact-commit CI/Security results, native upgrade evidence and applicable
    human gates. Merge through normal protection. An existing tag must never be moved.
@@ -18,8 +17,7 @@ betas are supported; macOS packages are a separate local step, not an implicit p
    `gh workflow run release.yml --ref v<version>` restarts the existing tag's build.
 
 The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
-[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases. An open release
-PR is edited in place. Its GitHub App needs Contents and Pull requests write permissions, installation
+[weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases. Its GitHub App needs Contents and Pull requests write permissions, installation
 on this repository, and `RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` Actions secrets. Enable Allow
 auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace the App token
 without accounting for that boundary. Missing secrets do not constitute a successful release run.

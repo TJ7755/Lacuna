@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { fragmentNames } from './changelog.mjs';
 import { main as prepareRelease } from './release-prepare.mjs';
 
 const root = resolve(import.meta.dirname, '..');
@@ -28,29 +28,15 @@ export function shipsChanges(paths) {
   return paths.some((path) => shippedPaths.some((pattern) => pattern.test(path)));
 }
 
-/** Changelog bullets awaiting release: fragments first, then any under "## Unreleased". */
-export function pendingBullets(changes, fragments) {
-  const lines = changes.split('\n');
-  const start = lines.indexOf('## Unreleased');
-  const end = lines.findIndex((line, index) => index > start && line.startsWith('## '));
-  const unreleased = start < 0 ? [] : lines.slice(start + 1, end < 0 ? undefined : end);
-  return [...fragments.flatMap((text) => text.split('\n')), ...unreleased]
-    .map((line) => line.trimEnd())
-    .filter((line) => line.startsWith('- '));
-}
-
-export function releaseNotes(version, bullets) {
-  return `## Lacuna ${version} Beta\n\n${bullets.join('\n')}\n`;
-}
-
 /**
  * Prepares the weekly patch release on master: returns the new version, or null when the
- * previous release is still in flight or nothing shipped has a changelog entry since it.
+ * previous release is still in flight or nothing shipped has changed since it.
  */
 export async function main({
   directory = root,
   git = runGit,
   fetchRelease,
+  generateNotes = generateGitHubNotes,
   log = console.log,
 } = {}) {
   const version = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8')).version;
@@ -62,23 +48,33 @@ export async function main({
   const changed = git(['diff', '--name-only', `${tag}..HEAD`])
     .split('\n')
     .filter(Boolean);
-  const fragmentsDirectory = join(directory, 'docs', 'changes', 'unreleased');
-  const fragments = fragmentNames(readdirSync(fragmentsDirectory)).map((name) =>
-    readFileSync(join(fragmentsDirectory, name), 'utf8'),
-  );
-  const bullets = pendingBullets(
-    readFileSync(join(directory, 'docs', 'CHANGES.md'), 'utf8'),
-    fragments,
-  );
-  if (!bullets.length || !shipsChanges(changed)) {
-    log(`Nothing shipped with a changelog entry since ${tag}; no release this week.`);
+  if (!shipsChanges(changed)) {
+    log(`Nothing shipped since ${tag}; no release this week.`);
     return null;
   }
   const next = nextPatch(version);
+  const notes = await generateNotes({
+    tag_name: `v${next}`,
+    previous_tag_name: tag,
+    target_commitish: git(['rev-parse', 'HEAD']),
+  });
+  assert(typeof notes === 'string' && notes.trim(), 'GitHub returned empty release notes');
   await prepareRelease([next], { directory, fetchRelease });
   mkdirSync(join(directory, 'docs', 'releases'), { recursive: true });
-  writeFileSync(join(directory, 'docs', 'releases', `${next}.md`), releaseNotes(next, bullets));
+  writeFileSync(
+    join(directory, 'docs', 'releases', `${next}.md`),
+    `## Lacuna ${next} Beta\n\n${notes.trim()}\n`,
+  );
   return next;
+}
+
+function generateGitHubNotes(input) {
+  const response = execFileSync(
+    'gh',
+    ['api', '--method', 'POST', 'repos/TJ7755/Lacuna/releases/generate-notes', '--input', '-'],
+    { input: JSON.stringify(input), encoding: 'utf8' },
+  );
+  return JSON.parse(response).body;
 }
 
 function runGit(args) {
