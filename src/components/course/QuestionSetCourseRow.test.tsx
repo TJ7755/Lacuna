@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import type { QuestionSetPathNode } from '../../course/path';
 import { ToastProvider } from '../ui/Toast';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
@@ -44,6 +45,65 @@ const content: QuestionSetRecord = {
   questions: [],
 };
 
+const secondSet: QuestionSetRecord = {
+  ...content,
+  id: 'set-2',
+  title: 'Ecology',
+  contentRevisionId: 'content-2',
+};
+
+const completedAttempt: QuestionSetAttemptRecord = {
+  id: 'attempt-1',
+  courseId: 'course-1',
+  questionSetId: 'set-1',
+  receipt: {
+    ...content,
+    questions: [
+      {
+        id: 'question-1',
+        prompt: 'Name one structure.',
+        answer: {
+          maxMarks: 1,
+          response: { kind: 'written' },
+          prerequisiteConceptIds: [],
+          allocations: [
+            {
+              id: 'allocation-1',
+              criterion: 'Names the structure',
+              maxMarks: 1,
+              dimension: 'knowledge',
+              targetConceptIds: [],
+            },
+          ],
+        },
+        parts: [],
+      },
+    ],
+  },
+  mode: 'practice',
+  status: 'complete',
+  responses: [
+    {
+      nodeId: 'question-1',
+      draft: { kind: 'written', text: 'A structure' },
+      submitted: { kind: 'written', text: 'A structure' },
+      submittedAt: 2,
+    },
+  ],
+  decisions: [{ allocationId: 'allocation-1', status: 'awarded', marks: 1 }],
+  annotations: [],
+  corrections: [],
+  reflection: { reasons: [], note: '' },
+  assistance: [],
+  revealedQuestionIds: ['question-1'],
+  activeNodeId: 'question-1',
+  activeAllocationId: null,
+  revisionId: 'revision-1',
+  createdAt: 1,
+  updatedAt: 2,
+  completedAt: 2,
+};
+
 function Location() {
   return <p data-testid="location">{useLocation().pathname}</p>;
 }
@@ -68,7 +128,7 @@ function renderRow(authoring: boolean, activity = node) {
 
 describe('QuestionSetCourseRow', () => {
   it('names the set and opens it directly', () => {
-    mocks.activityData = { content, attempt: null, exam: undefined };
+    mocks.activityData = [{ id: 'set-1', content, attempt: null, exam: undefined }];
     renderRow(false);
 
     fireEvent.click(screen.getByRole('button', { name: 'Practice questions: Cell structure' }));
@@ -79,7 +139,7 @@ describe('QuestionSetCourseRow', () => {
   });
 
   it.each([true, false])('uses morph feedback only in authoring mode (%s)', (authoring) => {
-    mocks.activityData = { content, attempt: null, exam: undefined };
+    mocks.activityData = [{ id: 'set-1', content, attempt: null, exam: undefined }];
     renderRow(authoring);
     expect(
       screen.getByRole('button', { name: 'Practice questions: Cell structure' }),
@@ -87,7 +147,7 @@ describe('QuestionSetCourseRow', () => {
   });
 
   it('offers editing only while authoring', () => {
-    mocks.activityData = { content, attempt: null, exam: undefined };
+    mocks.activityData = [{ id: 'set-1', content, attempt: null, exam: undefined }];
     renderRow(false);
     expect(
       screen.queryByRole('button', { name: 'Question set actions: Practice Qs' }),
@@ -95,7 +155,7 @@ describe('QuestionSetCourseRow', () => {
   });
 
   it('opens the activity editor from Edit while authoring', () => {
-    mocks.activityData = { content, attempt: null, exam: undefined };
+    mocks.activityData = [{ id: 'set-1', content, attempt: null, exam: undefined }];
     renderRow(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Question set actions: Practice Qs' }));
@@ -104,16 +164,26 @@ describe('QuestionSetCourseRow', () => {
     expect(screen.getByRole('dialog', { name: 'Edit practice questions' })).toBeInTheDocument();
   });
 
-  it('does not launch the first member of a multiple-set activity', () => {
-    mocks.activityData = { content, attempt: null, exam: undefined };
-    renderRow(false, { ...node, questionSetIds: ['set-1', 'set-2', 'set-3'] });
-    expect(screen.getByRole('button', { name: 'Practice questions: Cell structure' })).toBeDisabled();
-    expect(screen.getByText('Multiple-set practice is not yet supported')).toBeInTheDocument();
-    expect(screen.queryByTestId('location')).not.toBeInTheDocument();
+  it('opens every member of a multiple-set activity with its own progress', () => {
+    mocks.activityData = [
+      { id: 'set-1', content, attempt: completedAttempt, exam: undefined },
+      { id: 'set-2', content: secondSet, attempt: null, exam: undefined },
+    ];
+    renderRow(false, { ...node, questionSetIds: ['set-1', 'set-2'] });
+
+    const completed = screen.getByRole('button', { name: 'Practice questions: Cell structure' });
+    const added = screen.getByRole('button', { name: 'Practice questions: Ecology' });
+    expect(completed).toBeEnabled();
+    expect(added).toBeEnabled();
+    expect(completed).toHaveTextContent('1/1 answered');
+    expect(added).toHaveTextContent('Practice questions');
+
+    fireEvent.click(added);
+    expect(screen.getByTestId('location')).toHaveTextContent('/course/course-1/question-sets/set-2');
   });
 
   it('disables a set that no longer belongs to the course', () => {
-    mocks.activityData = { content: undefined, attempt: null, exam: undefined };
+    mocks.activityData = [{ id: 'set-1', content: undefined, attempt: null, exam: undefined }];
     renderRow(false);
 
     expect(screen.getByRole('button', { name: 'Practice questions: Practice Qs' })).toBeDisabled();

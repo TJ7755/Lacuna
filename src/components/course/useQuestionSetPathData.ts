@@ -1,32 +1,50 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/schema';
 import type { QuestionSetPathNode } from '../../course/path';
+import type { CourseAssessment } from '../../db/types';
+import type { QuestionSetRecord } from '../../questions/questionSetCodec';
+import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { getQuestionSet } from '../../questions/questionSetRepository';
 import { listQuestionSetAttempts } from '../../questions/questionSetAttemptRepository';
 
-/** The set, this course's latest attempt and its linked exam for one path activity. */
-export function useQuestionSetPathData(node: QuestionSetPathNode) {
+export interface QuestionSetPathEntry {
+  id: string;
+  content: QuestionSetRecord | undefined;
+  attempt: QuestionSetAttemptRecord | null;
+  exam: CourseAssessment | undefined;
+}
+
+/** Each set of this course's activity, in authored order, with this course's latest
+ *  attempt and its linked exam. A published update can grow an activity's ordered set
+ *  selection, so every member keeps its own progress instead of the activity dropping
+ *  its completed work and its new sets together. */
+export function useQuestionSetPathData(
+  node: QuestionSetPathNode,
+): QuestionSetPathEntry[] | undefined {
   const courseId = node.practiceNode.courseId;
-  const setId = node.questionSetIds.length === 1 ? node.questionSetIds[0] : undefined;
+  const setIds = node.questionSetIds;
   return useLiveQuery(
     () =>
       db.transaction(
         'r',
         [db.questionSets, db.questionSetAttempts, db.courseAssessments],
-        async () => {
-          if (!setId) return { content: undefined, attempt: null, exam: undefined };
-          const content = await getQuestionSet(setId);
-          const attempts = await listQuestionSetAttempts(setId);
-          const exam = content?.assessmentIds[0]
-            ? await db.courseAssessments.get(content.assessmentIds[0])
-            : undefined;
-          return {
-            content: content?.courseId === courseId ? content : undefined,
-            attempt: attempts.find((attempt) => attempt.courseId === courseId) ?? null,
-            exam: exam?.courseId === courseId ? exam : undefined,
-          };
-        },
+        async () =>
+          Promise.all(
+            setIds.map(async (setId): Promise<QuestionSetPathEntry> => {
+              const content = await getQuestionSet(setId);
+              const attempts = await listQuestionSetAttempts(setId);
+              const exam = content?.assessmentIds[0]
+                ? await db.courseAssessments.get(content.assessmentIds[0])
+                : undefined;
+              return {
+                id: setId,
+                content: content?.courseId === courseId ? content : undefined,
+                attempt: attempts.find((attempt) => attempt.courseId === courseId) ?? null,
+                exam: exam?.courseId === courseId ? exam : undefined,
+              };
+            }),
+          ),
       ),
-    [setId, courseId],
+    [setIds, courseId],
   );
 }
