@@ -11,6 +11,7 @@ import { getCourseIdForShare } from '../shareLinks/linkStore';
 import * as linkStore from '../shareLinks/linkStore';
 import { ShareLinkPage } from './ShareLinkPage';
 import { formatClassCode } from '../insights/classCode';
+import { encodeSharePayload } from '../shareLinks/payloadCodec';
 import { createEnrolmentSetting } from '../insights/enrolment';
 
 const SHARE_ID = 'a'.repeat(32);
@@ -520,4 +521,20 @@ it.each([
   fireEvent.click(screen.getByRole('link', { name: 'Enter another class code' }));
   expect(screen.getByText('Class code entry: ?import=1&join=1')).toBeVisible();
   expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+});
+
+it('shows an update instruction for an unsupported compressed share without importing', async () => {
+  stubFetch(new Response('LACUNA-SHARE:\u0002future', { headers: { ETag: '"1"' } }));
+  open(SHARE_ID);
+  expect(await screen.findByText('Update Lacuna to read this compressed share link.')).toBeInTheDocument();
+  expect(mocks.decodeFile).not.toHaveBeenCalled();
+  expect(mocks.importShare).not.toHaveBeenCalled();
+});
+
+it('decompresses the shared course before passing it to course-file inspection', async () => {
+  const original = `${JSON.stringify({ format: 'lacuna-course' })}${' '.repeat(4_300_000)}`;
+  const encoded = await encodeSharePayload(new TextEncoder().encode(original));
+  stubFetch(new Response(encoded as Uint8Array<ArrayBuffer>, { headers: { ETag: '"1"' } }));
+  open(SHARE_ID);
+  await waitFor(() => expect(mocks.decodeFile).toHaveBeenCalledWith(original));
 });

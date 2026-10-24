@@ -211,8 +211,13 @@ it.each(['payload', 'meta'] as const)(
   },
 );
 
-it('does not report success when re-downloaded bytes have changed after the manifest write', async () => {
+it.each([false, true])('rejects changed verification bytes after the manifest write (compressed: %s)', async (compressed) => {
   const f = await fixture();
+  if (compressed) {
+    f.text += ' '.repeat(4_300_000);
+    f.hash = createHash('sha256').update(f.text).digest('hex');
+    await writeFile(f.input, f.text);
+  }
   let published = false;
   const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
     const response = await f.fetchImpl(url, init);
@@ -408,4 +413,33 @@ it('derives practice counts from validated Question sets without inventing legac
   expect(
     (await runPublication([...f.args, '--dry-run'], {}, f.fetchImpl)).counts,
   ).not.toHaveProperty('practiceMarks');
+});
+
+it('approves the original hash, uploads compressed bytes and verifies decoded bytes on retries', async () => {
+  const f = await fixture();
+  const original = `${f.text}${' '.repeat(4_300_000)}`;
+  const sha256 = createHash('sha256').update(original).digest('hex');
+  await writeFile(f.input, original);
+  const writes: number[] = [];
+  const fetchImpl = (async (url, init) => {
+    if (init?.method === 'PUT' && String(url).endsWith('/payload'))
+      writes.push((init.body as Blob).size);
+    return f.fetchImpl(url, init);
+  }) as typeof fetch;
+  expect(await runPublication([...f.args, '--dry-run'], {}, fetchImpl)).toMatchObject({
+    status: 'dry-run', sha256, byteSize: Buffer.byteLength(original),
+  });
+  expect(writes).toEqual([]);
+  await expect(runPublication([...f.args, '--approved-sha256', f.hash], {}, fetchImpl)).rejects.toThrow(/matching the exact frozen bytes/);
+  const args = [...f.args, '--approved-sha256', sha256];
+  const result = await runPublication(args, {}, fetchImpl);
+  expect(result).toMatchObject({ status: 'published', sha256, byteSize: Buffer.byteLength(original), compressedByteSize: writes[0] });
+  expect(writes[0]).toBeLessThan(4 * 1024 * 1024);
+  const payload = await getShareBytes({ ...f, slot: 'payload' });
+  expect(Buffer.from(payload!.bytes).toString()).toBe(original);
+  const meta = await getShareBytes({ ...f, slot: 'meta' });
+  expect(parseShareManifest(meta!.bytes)).toMatchObject({ payloadEncoding: 'deflate-raw-v1', byteSize: writes[0] });
+  expect(await runPublication(args, {}, fetchImpl)).toMatchObject({ status: 'skipped', sha256 });
+  expect(await runPublication([...f.args, '--dry-run'], {}, fetchImpl)).toMatchObject({ currentSha256: sha256, changes: { payload: false, manifest: false } });
+  expect(writes).toHaveLength(1);
 });

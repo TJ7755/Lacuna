@@ -224,3 +224,26 @@ integrity error with backup/recovery guidance, including after an accepted backu
 lineage bookkeeping. Recovery never treats current learner content as a confirmed old publisher
 baseline. Preview uses the same membership classification without persisting it; pending review
 application validates tracking and target ownership again before applying decisions.
+
+## Share-link transport
+
+[The payload codec](../../src/shareLinks/payloadCodec.ts) wraps only relay share-link payloads;
+manual `.lacuna` files and text/QR share codes keep their existing formats. Payloads at or below
+4 MiB are uploaded unchanged so stale installed clients still read them. Above that threshold,
+the wire bytes are ASCII `LACUNA-SHARE:`, one binary version byte `0x01`, then a raw DEFLATE
+stream of the exact original course-file bytes. The prefix cannot be mistaken for a JSON course
+file. The manifest optionally declares `payloadEncoding: "deflate-raw-v1"`; absent means plain
+course bytes. Its `byteSize` remains the uploaded size, including the envelope. Detection uses
+the bytes, independently of the manifest, because the slots are not written atomically.
+
+The relay retains its 4 MiB body cap and stores opaque bytes. No relay deployment is needed.
+The shared client download boundary decodes before course inspection, import or subscriber
+updates, including the Electron renderer. It caps wire bytes at 4 MiB and decoded output at
+64 MiB while streaming, before parsing or database writes. Unsupported envelope versions or
+unavailable decompression support report “Update Lacuna to read this compressed share link.”
+
+Deploy updated clients before publishing large compressed courses where possible. Already
+installed old clients cannot be taught a new error message by this wire format: they reject the
+envelope as an invalid course file (subscriber updates fail without applying it). Learners must
+update Lacuna to import those courses or receive their updates. Courses that still fit within
+4 MiB keep working on old clients.

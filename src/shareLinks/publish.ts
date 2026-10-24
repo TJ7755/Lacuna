@@ -12,14 +12,9 @@ import {
   type ShareManifest,
 } from './client';
 import { forgetShareCredentials, readShareCredentials, writeShareCredentials } from './credentials';
+import { encodeSharePayload } from './payloadCodec';
 
-/**
- * Mirror of the relay's `SHARE_PAYLOAD_MAX_BYTES`: payloads transit the relay
- * function body, which rejects inbound bodies above ~4.5 MB. Checked locally
- * so an oversized course fails fast without burning a revision bump or a
- * network round trip; those courses keep the manual `.lacuna` file path.
- */
-export const SHARE_PAYLOAD_MAX_BYTES = 4 * 1024 * 1024;
+export { SHARE_PAYLOAD_MAX_BYTES, assertSharePayloadSize } from './payloadCodec';
 
 export interface PublishShareLinkOptions {
   relayUrl?: string;
@@ -48,15 +43,6 @@ export interface PublishShareLinkResult {
   shareId: string;
   revision: number;
   byteSize: number;
-}
-
-/** Fail fast for courses the relay cannot carry; those keep the manual file path. */
-export function assertSharePayloadSize(byteLength: number): void {
-  if (byteLength > SHARE_PAYLOAD_MAX_BYTES) {
-    throw new Error(
-      'This course is too large for a share link (over 4 MB with media). Send the course file instead.',
-    );
-  }
 }
 
 export interface UnpublishShareLinkOptions {
@@ -120,7 +106,7 @@ export async function publishShareLink(
   const relayUrl = options.relayUrl ?? DEFAULT_RELAY_URL;
   const preflight = await db.courses.get(courseId);
   if (!preflight) throw new Error('The course could not be found.');
-  assertSharePayloadSize(new TextEncoder().encode(await buildCourseFile(courseId)).byteLength);
+  await encodeSharePayload(new TextEncoder().encode(await buildCourseFile(courseId)));
 
   const distribution = await publishCourse(courseId);
   const course = await db.courses.get(courseId);
@@ -138,7 +124,8 @@ export async function publishShareLink(
   }
 
   const text = await buildCourseFile(courseId);
-  const bytes = new TextEncoder().encode(text);
+  const rawBytes = new TextEncoder().encode(text);
+  const bytes = await encodeSharePayload(rawBytes);
   const putOptions = {
     relayUrl: credentials.relayUrl,
     shareId,
@@ -154,6 +141,7 @@ export async function publishShareLink(
     publishedAt: distribution.publishedAt,
     byteSize: bytes.byteLength,
     courseName: course.name,
+    ...(bytes !== rawBytes ? { payloadEncoding: 'deflate-raw-v1' as const } : {}),
   };
   const metaGeneration = await putSlot(
     putOptions,
