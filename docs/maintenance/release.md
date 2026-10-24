@@ -20,7 +20,7 @@ The [weekly workflow](../../.github/workflows/weekly-release.yml) uses
 [weekly-release](../../scripts/weekly-release.mjs) to propose eligible patch releases. Its GitHub App needs Contents and Pull requests write permissions, installation
 on this repository, and `RELEASE_APP_ID`/`RELEASE_APP_PRIVATE_KEY` Actions secrets. Enable Allow
 auto-merge. A regular `GITHUB_TOKEN` PR does not start the CI chain; do not replace the App token
-without accounting for that boundary. Missing secrets do not constitute a successful release run.
+without accounting for that boundary. The weekly run fails while either secret is missing.
 
 ## Inspect and publish
 

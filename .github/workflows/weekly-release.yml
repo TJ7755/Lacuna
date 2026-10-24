@@ -20,47 +20,41 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     steps:
+      # Fail rather than skip: a green run without the app would hide that no release was made.
       - name: Check the release bot app is configured
-        id: configured
         env:
           APP_ID: ${{ secrets.RELEASE_APP_ID }}
+          APP_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
         run: |
-          if [ -z "$APP_ID" ]; then
-            echo "::warning::RELEASE_APP_ID is not set; see docs/maintenance/release.md."
-          else
-            echo "ok=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
+            echo "::error::RELEASE_APP_ID or RELEASE_APP_PRIVATE_KEY is not set; see docs/maintenance/release.md."
+            exit 1
           fi
 
       - id: app
-        if: steps.configured.outputs.ok
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - if: steps.configured.outputs.ok
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: master
           fetch-depth: 0
           token: ${{ steps.app.outputs.token }}
 
-      - if: steps.configured.outputs.ok
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24.22.1'
           package-manager-cache: false
 
-      - if: steps.configured.outputs.ok
-        uses: ./.github/actions/setup-bun
+      - uses: ./.github/actions/setup-bun
 
       # release-assets.mjs reads updater metadata with electron-updater's YAML parser.
-      - if: steps.configured.outputs.ok
-        run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Prepare the release
         id: prepare
-        if: steps.configured.outputs.ok
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
