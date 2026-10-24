@@ -37,6 +37,18 @@ describe('installTypingFeedback', () => {
     expect(animate).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the focus ring beneath the glow', () => {
+    const input = document.createElement('input');
+    input.style.boxShadow = 'rgb(0, 0, 0) 0px 0px 0px 2px';
+    document.body.append(input);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    const frames = animate.mock.calls[0][0] as Keyframe[];
+    expect(frames).toHaveLength(2);
+    for (const frame of frames) {
+      expect(frame.boxShadow).toMatch(/, rgb\(0, 0, 0\) 0px 0px 0px 2px$/);
+    }
+  });
+
   it('leaves choices and opted-out fields alone', () => {
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
