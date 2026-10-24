@@ -28,9 +28,10 @@
 - [Physics 4PH1 (Pearson Edexcel International GCSE)](https://getlacuna.app/courses/physics4ph1/)
 - [Combined Science 8464 (AQA GCSE)](https://getlacuna.app/courses/combinedscience8464/)
 - [Combined Science 1SC0 (Pearson Edexcel GCSE)](https://getlacuna.app/courses/combinedscience1sc0/)
+- [Combined Science J250 (OCR GCSE)](https://getlacuna.app/courses/combinedsciencej250/)
 - [Religious Studies 8062 (AQA GCSE)](https://getlacuna.app/courses/religiousstudies8062/)
 
-Science courses cover selected topics. Combined Science 8464 and 1SC0 are Higher-tier selections that include shared Foundation content.
+Science courses cover selected topics. Combined Science 8464, 1SC0 and J250 are Higher-tier selections that include shared Foundation content.
 
 ## More
 

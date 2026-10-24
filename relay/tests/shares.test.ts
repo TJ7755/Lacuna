@@ -47,6 +47,7 @@ describe('course share links', () => {
     '91edc6fda3742ffe8ce963c3ae848e41',
     'e85fc39e709074d58669c2d8bfd723bb',
     '5459ed1b6b0ca5ac7e646b68f17d1732',
+    '3fa2fa48f570b5bfdd6e859a9df25e47',
   ])('keeps unchanged official publication %s beyond 90 days without writes', async (shareId) => {
     let now = 0;
     const store = new MemoryStore(() => now);
