@@ -3,8 +3,9 @@ name: Weekly release
 # Every Thursday, when shipped code on master has changed since the last release,
 # bump the patch version and open the release pull request. It uses the release bot app's
 # token, or failing that the maintainer token in RELEASE_TOKEN, because pushes and pull
-# requests made with GITHUB_TOKEN start no workflows, so CI could never pass. Auto-merge lands it once the required checks pass, and the Release tag
-# workflow then tags, builds and publishes. Only master is ever read or released.
+# requests made with GITHUB_TOKEN start no workflows, so CI could never pass. Auto-merge
+# lands it once the required checks pass, and the Release tag workflow then tags, builds
+# and publishes. Only master is ever read or released.
 on:
   schedule:
     - cron: '53 7 * * 4'
@@ -19,6 +20,8 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    # The release environment holds the credentials and only admits master.
+    environment: release
     steps:
       # Fail rather than skip: a green run without credentials would hide that no release was made.
       - name: Choose the release credentials
@@ -30,7 +33,12 @@ jobs:
         run: |
           if [ -n "$APP_ID" ] && [ -n "$APP_KEY" ]; then
             echo "app=true" >> "$GITHUB_OUTPUT"
-          elif [ -z "$TOKEN" ]; then
+            exit 0
+          fi
+          if [ -n "$APP_ID" ] || [ -n "$APP_KEY" ]; then
+            echo "::warning::Only one of RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY is set; the app is not used."
+          fi
+          if [ -z "$TOKEN" ]; then
             echo "::error::Set RELEASE_APP_ID and RELEASE_APP_PRIVATE_KEY, or RELEASE_TOKEN; see docs/maintenance/release.md."
             exit 1
           fi
