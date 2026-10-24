@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
 import {
   createBasicReversedPair,
@@ -82,11 +82,9 @@ async function reset() {
 }
 
 async function waitForSessionHistory(eventId: string): Promise<void> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    if (await db.sessionHistory.where('eventId').equals(eventId).count()) return;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  }
-  throw new Error(`Timed out waiting for session history ${eventId}.`);
+  await vi.waitFor(async () => {
+    expect(await db.sessionHistory.where('eventId').equals(eventId).count()).toBeGreaterThan(0);
+  });
 }
 
 describe('createCourse', () => {
@@ -579,6 +577,7 @@ describe('snapshotCourse / restoreCourse', () => {
       distracted: false,
       correct: true,
     });
+    await waitForSessionHistory('event-course-snapshot');
     // Give a lesson some unlock state so restore fidelity can be asserted on it.
     const unlockedAt = Date.now();
     await db.lessons.update(lesson1.id, { unlockedAt });
