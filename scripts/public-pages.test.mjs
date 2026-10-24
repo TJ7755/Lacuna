@@ -219,3 +219,12 @@ test('course pages ship the complete catalogue content and metadata without Java
     await view.happyDOM.close();
   }
 });
+
+test('Religious Studies ships its published scope and revision in crawlable HTML', () => {
+  const html = readFileSync('dist/courses/religiousstudies8062/index.html', 'utf8');
+  assert.match(html, /Christianity and Islam: beliefs, teachings and practices/);
+  assert.match(html, /optional Themes A–F modules to choose from/);
+  assert.match(html, /1, 1, 4 and 6-mark question styles/);
+  assert.match(html, /e85fc39e709074d58669c2d8bfd723bb/);
+  assert.match(html, /<dd>11<\/dd>/);
+});

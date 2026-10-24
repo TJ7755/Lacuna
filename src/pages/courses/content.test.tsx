@@ -67,6 +67,24 @@ describe('public course catalogue', () => {
     }
   });
 
+  it('publishes the Religious Studies scope, counts and stable destination', () => {
+    const course = libraryCourses.find(({ id }) => id === 'religiousstudies8062')!;
+    const metadata = courseMetadata(course);
+    expect(metadata.title).toBe('Religious Studies 8062 revision — AQA GCSE | Lacuna');
+    expect(metadata.canonical).toBe('https://getlacuna.app/courses/religiousstudies8062/');
+    expect(metadata.description).toContain(
+      '1,218 flashcards, 115 notes and 115 exam-style practice sets',
+    );
+    render(<CoursePage course={course} />);
+    expect(screen.getByText(course.summary)).toHaveTextContent('optional Themes A–F');
+    expect(screen.getByText(course.summary)).toHaveTextContent('1, 1, 4 and 6-mark');
+    expect(screen.getByText('1,380 marks of practice')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Start revising' })).toHaveAttribute(
+      'href',
+      'https://getlacuna.app/#/s/e85fc39e709074d58669c2d8bfd723bb',
+    );
+  });
+
   it('advertises every course in both source crawl files', () => {
     for (const path of ['public/sitemap.xml', 'public/llms.txt']) {
       const source = readFileSync(path, 'utf8');
