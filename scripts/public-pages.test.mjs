@@ -126,9 +126,9 @@ test('course pages ship the complete catalogue content and metadata without Java
       indexDoc.querySelector('link[rel="canonical"]')?.getAttribute('href'),
       'https://getlacuna.app/courses/',
     );
-    const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format(
-      [...new Set(libraryCourses.map(({ subject }) => subject))],
-    );
+    const subjects = new Intl.ListFormat('en-GB', { type: 'conjunction' }).format([
+      ...new Set(libraryCourses.map(({ subject }) => subject)),
+    ]);
     assert.equal(
       indexDoc.querySelector('meta[name="description"]')?.getAttribute('content'),
       `Free GCSE and IGCSE revision courses for ${subjects}, with flashcards, notes and exam-style practice planned to your exam date.`,
@@ -226,5 +226,5 @@ test('Religious Studies ships its published scope and revision in crawlable HTML
   assert.match(html, /optional Themes A–F modules to choose from/);
   assert.match(html, /1, 1, 4 and 6-mark question styles/);
   assert.match(html, /e85fc39e709074d58669c2d8bfd723bb/);
-  assert.match(html, /<dd>11<\/dd>/);
+  assert.match(html, /<dd>12<\/dd>/);
 });

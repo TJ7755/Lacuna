@@ -4,22 +4,24 @@ Counts are publication snapshots. Refresh them when republishing a course, using
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
 therefore shows no review or progress status. The science courses are Higher-tier selections
-alongside unchanged History revision 13. Native Biology is revision 28, Chemistry revision 21 and
-Physics revision 19; the 18 board variants were republished on 24 October 2026 with reviewed
-labelled image Cards, image practice and shared corrections. Combined Science AQA 8464 revision 9,
-Pearson Edexcel 1SC0 revision 3 and OCR Gateway J250 revision 2 cover Higher tier with shared
+alongside History revision 15. Native Biology is revision 29, Chemistry revision 22 and
+Physics revision 20; the 18 board variants were republished on 24 October 2026 with reviewed
+labelled image Cards, image practice and shared corrections. The latest update removes authoring
+caveats and repeated mark totals while preserving scientific conditions, stable identities and
+learner progress. Combined Science AQA 8464 revision 10, Pearson Edexcel 1SC0 revision 4 and OCR
+Gateway J250 revision 3 cover Higher tier with shared
 Foundation content; full specification coverage is not independently certified. All three Combined
 Science payloads exceed 4 MiB and are published compressed (`deflate-raw-v1`). All science share
 URLs and counts were filled from verified exact-byte publication records.
 
-AQA GCSE Religious Studies A (8062) revision 11 is also published. It covers Christianity and
+AQA GCSE Religious Studies A (8062) revision 12 is also published. It covers Christianity and
 Islam beliefs, teachings and practices for Component 1, with Themes A–F included as optional
 Component 2 modules for learners to choose. Its snapshot records 115 lessons, 115 notes,
 1,218 Cards, 115 practice sets, 1,380 practice marks and one asset. Practice uses short
 lesson-level questions in the 1, 1, 4 and 6-mark styles; this is not full-paper or 12-mark
 evaluation practice and does not include SPaG marking. It carries no AQA endorsement or
 exam-board review claim. The catalogue counts and stable link come from the verified
-revision 11 publication record.
+revision 12 publication record.
 
 These links retain the source files' lineage and entity identities. Earlier library links used
 a separate publisher lineage; importing a current link therefore does not migrate an earlier
@@ -28,12 +30,11 @@ been designed and verified. Use the same current link for later revisions.
 
 ## Publish a frozen artefact
 
-The command itself grants no publishing authority. The science expansion has explicit
-requester approval conditional on final independent review of the exact frozen hashes. This
-approval does not extend to later rebuilds or unreviewed content. The separately verified
-Religious Studies revision 11 publication is now listed; the science approval does not grant
-authority to publish further Religious Studies revisions. Historical draft approval
-fields remain unchanged; requester approval is not trusted builder approval.
+The command itself grants no publishing authority. The requester explicitly authorised the
+24 October wording corrections and republication of all 26 existing courses after saved review
+findings, bounded corrections, builds and import/update checks. This is publication authority for
+these exact candidates, not approval for arbitrary later changes. Historical draft approval fields
+remain unchanged; requester approval is not trusted builder approval.
 
 Supply ownership through `LACUNA_RELAY_URL` and `LACUNA_WRITE_TOKEN` in the process environment,
 or `--credentials "$LACUNA_OWNER_FILE"`. The latter is a JSON file outside the repository,
