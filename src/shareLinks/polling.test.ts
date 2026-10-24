@@ -7,6 +7,7 @@ import type { ShareLesson, SharePayloadV2, SharePayloadV5 } from '../db/share';
 import type { BackupAsset } from '../db/types';
 import { importLineageFirstTime } from '../db/mergeImport';
 import { recordShareImport } from './linkStore';
+import { encodeSharePayload } from './payloadCodec';
 import { pollShareUpdates } from './polling';
 
 const SHARE_ID = 'a'.repeat(32);
@@ -59,7 +60,7 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 /** Route share-slot GETs to canned slot bodies, recording which slots were read. */
-function shareFetch(meta: Uint8Array | null, payloadText: string | null) {
+function shareFetch(meta: Uint8Array | null, payloadText: string | Uint8Array | null) {
   const seen: string[] = [];
   const fetchImpl = vi.fn(async (input: string | URL | Request) => {
     const href = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
@@ -75,7 +76,7 @@ function shareFetch(meta: Uint8Array | null, payloadText: string | null) {
       if (payloadText === null) {
         return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
       }
-      return new Response(toArrayBuffer(new TextEncoder().encode(payloadText)), {
+      return new Response(toArrayBuffer(typeof payloadText === 'string' ? new TextEncoder().encode(payloadText) : payloadText), {
         status: 200,
         headers: { ETag: '"p1"' },
       });
@@ -92,6 +93,17 @@ beforeEach(async () => {
 });
 
 describe('pollShareUpdates', () => {
+  it('applies a compressed subscriber update through the existing course-file importer', async () => {
+    const { course } = await importLineageFirstTime(coursePayload());
+    recordShareImport(SHARE_ID, course.id);
+    const updated = coursePayload({ rv: 2, course: { ...coursePayload().course, n: 'Updated biology' } });
+    const bytes = new TextEncoder().encode(`${courseFileText(updated)}${' '.repeat(4_300_000)}`);
+    const { fetchImpl } = shareFetch(manifestBytes(2), await encodeSharePayload(bytes));
+    const results = await pollShareUpdates({ throttleMs: 0, fetchImpl: fetchImpl as typeof fetch });
+    expect(results).toContainEqual(expect.objectContaining({ courseId: course.id, status: 'updated', revision: 2 }));
+    expect((await db.courses.get(course.id))?.name).toBe('Updated biology');
+  });
+
   it('applies published specification corrections through the course-file parser', async () => {
     const first: SharePayloadV5 = {
       ...coursePayload(),

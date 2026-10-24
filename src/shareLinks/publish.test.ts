@@ -10,6 +10,7 @@ import {
   ShareLinkNeedsReplacementError,
   unpublishShareLink,
 } from './publish';
+import { decodeSharePayload, MAX_DECOMPRESSED_SHARE_BYTES } from './payloadCodec';
 import { forgetShareCredentials, readShareCredentials } from './credentials';
 
 const RELAY_URL = 'https://relay.example';
@@ -85,10 +86,25 @@ describe('publishShareLink', () => {
     expect((await db.courses.get(course.id))?.distribution?.shareRevision).toBe(2);
   });
 
+  it('compresses a course above the relay limit and keeps its course file readable', async () => {
+    const course = await createCourse('Biology');
+    const lesson = await createLesson(course.id, 'Heavy');
+    await createNote(lesson.id, 'Big note', 'y'.repeat(4_300_000));
+    const relay = relayFetch();
+    const result = await publishShareLink(course.id, { relayUrl: RELAY_URL, fetchImpl: relay.fetchImpl as typeof fetch });
+    expect(result.byteSize).toBeLessThan(SHARE_PAYLOAD_MAX_BYTES);
+    const body = relay.fetchImpl.mock.calls.find(([url]) => String(url).endsWith('/payload'))![1]!.body as Blob;
+    const decoded = await decodeSharePayload(new Uint8Array(await body.arrayBuffer()));
+    expect(decoded.byteLength).toBeGreaterThan(SHARE_PAYLOAD_MAX_BYTES);
+    expect(JSON.parse(new TextDecoder().decode(decoded)).payload.rv).toBe(1);
+    const meta = relay.fetchImpl.mock.calls.find(([url]) => String(url).endsWith('/meta'))![1]!.body as Blob;
+    expect(JSON.parse(await meta.text()).payloadEncoding).toBe('deflate-raw-v1');
+  });
+
   it('refuses an oversized course without consuming a revision', async () => {
     const course = await createCourse('Biology');
     const lesson = await createLesson(course.id, 'Heavy');
-    await createNote(lesson.id, 'Big note', `x${'y'.repeat(4_300_000)}`);
+    await createNote(lesson.id, 'Big note', 'y'.repeat(MAX_DECOMPRESSED_SHARE_BYTES));
     const relay = relayFetch();
 
     await expect(

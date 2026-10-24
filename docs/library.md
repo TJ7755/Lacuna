@@ -60,8 +60,9 @@ been designed and verified. Use the same current link for later revisions.
 
 [The publication command](../scripts/library-publish.ts) accepts an existing stable share and an
 explicit `.lacuna` course file. It validates through the existing course/media validators, hashes
-and uploads the original bytes, then downloads both slots to verify the payload SHA-256 and
-manifest before reporting `published`. It never imports, rebuilds, increments revisions, rewrites
+and approves the original bytes. Files above 4 MiB are compressed for upload; smaller files
+remain byte-for-byte compatible with installed clients. It downloads both slots, decompresses
+the payload and verifies the original SHA-256, size and manifest before reporting `published`. It never imports, rebuilds, increments revisions, rewrites
 identities, mints links or updates the catalogue. Keep source artefacts in the private content
 repository. The command itself grants no publishing authority. The science expansion has explicit
 requester approval conditional on final independent review of the exact frozen hashes. This
@@ -102,6 +103,12 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" \
   --approved-sha256 "$APPROVED_SHA256" > "$PUBLICATION_RECORD"
 ```
+
+The stdout JSON includes `compressedByteSize` (the uploaded byte count, including the envelope;
+equal to `byteSize` for uncompressed files). Approval and `sha256` always refer to the original
+uncompressed frozen file. The 4 MiB relay cap applies to uploaded bytes; the decoded file is
+limited to 64 MiB. See the [share transport contract](spec/portability.md#share-link-transport)
+for compatibility and deployment behaviour.
 
 The stdout JSON is public-safe: course id, payload format version, frozen revision, SHA-256,
 byte size and derived card/note/lesson/Question/media counts. Question set formats also supply

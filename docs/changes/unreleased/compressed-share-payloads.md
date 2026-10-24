@@ -1,0 +1,1 @@
+- Compress share-link course files above 4 MiB, allowing larger courses and media within the relay upload limit. Keep smaller files compatible with installed clients, bound decompression to 64 MiB, and verify library publications against the approved original file hash.

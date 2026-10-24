@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { decodeSharePayload, SHARE_PAYLOAD_MAX_BYTES } from './payloadCodec';
 import { normaliseRelayUrl } from '../sync/relay';
 import { DEFAULT_RELAY_URL } from '../sync/pairingConfig';
 
@@ -39,6 +40,7 @@ const ShareManifestSchema = z.object({
   publishedAt: z.number().finite().nonnegative(),
   byteSize: z.number().int().nonnegative(),
   courseName: z.string().min(1),
+  payloadEncoding: z.literal('deflate-raw-v1').optional(),
 });
 
 /** Small polling document the teacher publishes beside the course file. */
@@ -284,7 +286,7 @@ export interface GetShareBytesOptions {
   signal?: AbortSignal;
 }
 
-/** Fetch one slot of a share; null when the slot has never been published. */
+/** Fetch a slot, decoding payload transport bytes; null when never published. */
 export async function getShareBytes(
   options: GetShareBytesOptions,
 ): Promise<{ bytes: Uint8Array; generation: string } | null> {
@@ -312,7 +314,7 @@ export async function getShareBytes(
       status: response.status,
     });
   }
-  const limit = options.slot === 'payload' ? 4 * 1024 * 1024 : 8 * 1024;
+  const limit = options.slot === 'payload' ? SHARE_PAYLOAD_MAX_BYTES : 8 * 1024;
   const reader = response.body?.getReader();
   if (!reader)
     throw new ShareLinkError('The share link service gave an empty response.', {
@@ -339,6 +341,16 @@ export async function getShareBytes(
   for (const chunk of chunks) {
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
+  }
+  if (options.slot === 'payload') {
+    try {
+      return { bytes: await decodeSharePayload(bytes), generation };
+    } catch (error) {
+      throw new ShareLinkError(
+        error instanceof Error ? error.message : 'The share payload could not be read.',
+        { operation: 'fetch' },
+      );
+    }
   }
   return { bytes, generation };
 }

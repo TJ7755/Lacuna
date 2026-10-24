@@ -15,6 +15,11 @@ import {
   verifyShareOwner,
   type ShareManifest,
 } from '../src/shareLinks/client';
+import {
+  encodeSharePayload,
+  MAX_DECOMPRESSED_SHARE_BYTES,
+  SharePayloadError,
+} from '../src/shareLinks/payloadCodec';
 import { normaliseRelayUrl } from '../src/sync/relay';
 
 const hash = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -139,7 +144,8 @@ function sameManifest(a: ShareManifest | null, b: ShareManifest) {
     a.revision === b.revision &&
     a.publishedAt === b.publishedAt &&
     a.byteSize === b.byteSize &&
-    a.courseName === b.courseName
+    a.courseName === b.courseName &&
+    a.payloadEncoding === b.payloadEncoding
   );
 }
 
@@ -155,13 +161,17 @@ export async function runPublication(
     const credentials = await credentialsFor(values['--credentials'], env);
     const options = { ...credentials, shareId, fetchImpl, signal: AbortSignal.timeout(60_000) };
     const path = values['--artefact'];
-    if ((await stat(path)).size > 4 * 1024 * 1024)
-      throw new PublicationError('The frozen artefact exceeds the relay 4 MB limit.');
+    if ((await stat(path)).size > MAX_DECOMPRESSED_SHARE_BYTES)
+      throw new PublicationError('The frozen artefact exceeds the safe 64 MB decompressed limit.');
     const bytes = new Uint8Array(await readFile(path));
-    if (bytes.byteLength > 4 * 1024 * 1024)
-      throw new PublicationError('The frozen artefact exceeds the relay 4 MB limit.');
+    const uploadBytes = await encodeSharePayload(bytes);
     const sha256 = hash(bytes);
-    const { file, manifest } = await validated(bytes);
+    const { file, manifest: originalManifest } = await validated(bytes);
+    const manifest: ShareManifest = {
+      ...originalManifest,
+      byteSize: uploadBytes.byteLength,
+      ...(uploadBytes !== bytes ? { payloadEncoding: 'deflate-raw-v1' as const } : {}),
+    };
     const approval = values['--approved-sha256'];
     if ((approval !== undefined && approval !== sha256) || (!dryRun && approval !== sha256)) {
       throw new PublicationError(
@@ -200,6 +210,7 @@ export async function runPublication(
       revision: manifest.revision,
       sha256,
       byteSize: bytes.byteLength,
+      compressedByteSize: uploadBytes.byteLength,
       review: approval === sha256 ? 'operator-approved' : 'unreviewed',
       counts: {
         cards: summary.cardCount,
@@ -234,7 +245,7 @@ export async function runPublication(
         await putShareBytes({
           ...options,
           slot: 'payload',
-          bytes,
+          bytes: uploadBytes,
           ifMatch: payload?.generation ?? '"0"',
         })
       ).generation;
@@ -245,6 +256,7 @@ export async function runPublication(
     if (
       !latestPayload ||
       latestPayload.generation !== payloadGeneration ||
+      latestPayload.bytes.byteLength !== bytes.byteLength ||
       hash(latestPayload.bytes) !== sha256
     )
       throw new StaleShareGenerationError();
@@ -263,6 +275,7 @@ export async function runPublication(
     ]);
     if (
       !verifiedPayload ||
+      verifiedPayload.bytes.byteLength !== bytes.byteLength ||
       hash(verifiedPayload.bytes) !== sha256 ||
       !verifiedMeta ||
       !sameManifest(parseShareManifest(verifiedMeta.bytes), manifest)
@@ -274,7 +287,7 @@ export async function runPublication(
     return { ...record, status: 'published' };
   } catch (error) {
     const detail =
-      error instanceof PublicationError
+      error instanceof PublicationError || error instanceof SharePayloadError
         ? error.message
         : error instanceof StaleShareGenerationError
           ? 'Concurrent publication conflict (HTTP 412); no automatic overwrite.'
