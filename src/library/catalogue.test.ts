@@ -6,8 +6,8 @@ describe('libraryCourses', () => {
     expect(new Set(libraryCourses.map(({ id }) => id)).size).toBe(libraryCourses.length);
   });
 
-  it('retains the 22 approved science snapshots and unchanged History snapshot', () => {
-    expect(libraryCourses).toHaveLength(23);
+  it('retains the published science, History and Religious Studies snapshots', () => {
+    expect(libraryCourses).toHaveLength(24);
     const snapshots = libraryCourses.map(({ id, revision, stats }) => [
       id,
       revision,
@@ -41,6 +41,7 @@ describe('libraryCourses', () => {
         ['physics0972', 17, 1036, 152, 153, 1790],
         ['combinedscience8464', 1, 69, 7, 7, 59],
         ['history0977', 13, 708, 111, 112, 1738],
+        ['religiousstudies8062', 11, 1218, 115, 115, 1380],
       ]),
     );
     for (const course of libraryCourses) {
@@ -86,7 +87,10 @@ describe('libraryCourses', () => {
           .map(({ board }) => board),
       ),
     ]).toEqual(['Cambridge']);
-    for (const course of libraryCourses.filter(({ subject }) => subject !== 'History')) {
+    const scienceCourses = libraryCourses.filter(({ subject }) =>
+      ['Biology', 'Chemistry', 'Physics', 'Combined Science'].includes(subject),
+    );
+    for (const course of scienceCourses) {
       expect(course.summary).toMatch(/selected|selection/);
     }
     const combined = libraryCourses.find(({ code }) => code === '8464');
@@ -99,7 +103,6 @@ describe('libraryCourses', () => {
       'Microscopic quantities',
       'Microscopy',
     ]);
-    expect(libraryCourses.some(({ subject }) => /religious/i.test(subject))).toBe(false);
   });
 });
 

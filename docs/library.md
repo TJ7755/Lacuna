@@ -22,8 +22,17 @@ limited-scope selections alongside unchanged
 History revision 13. Native Biology is revision 25, Chemistry revision 18 and Physics revision 17.
 The other science entries comprise 18 board variants and AQA Combined Science 8464 revision 1.
 Combined Science contains only seven introductory lessons on cells and microscopy; the
-351-lesson research union is not published. RS is excluded. All science share URLs and counts were filled from verified exact-byte
-publication records.
+351-lesson research union is not published. All science share URLs and counts were filled from
+verified exact-byte publication records.
+
+AQA GCSE Religious Studies A (8062) revision 11 is also published. It covers Christianity and
+Islam beliefs, teachings and practices for Component 1, with Themes A–F included as optional
+Component 2 modules for learners to choose. Its snapshot records 115 lessons, 115 notes,
+1,218 Cards, 115 practice sets, 1,380 practice marks and one asset. Practice uses short
+lesson-level questions in the 1, 1, 4 and 6-mark styles; this is not full-paper or 12-mark
+evaluation practice and does not include SPaG marking. It carries no AQA endorsement or
+exam-board review claim. The catalogue counts and stable link come from the verified
+revision 11 publication record.
 
 The catalogue also records `author`, `publisher`, `revision` and an optional `revisionDate`
 (YYYY-MM-DD) for the published revision. Use Lacuna for authorship and publishing unless a
@@ -56,7 +65,9 @@ manifest before reporting `published`. It never imports, rebuilds, increments re
 identities, mints links or updates the catalogue. Keep source artefacts in the private content
 repository. The command itself grants no publishing authority. The science expansion has explicit
 requester approval conditional on final independent review of the exact frozen hashes. This
-approval does not extend to RS, later rebuilds or unreviewed content. Historical draft approval
+approval does not extend to later rebuilds or unreviewed content. The separately verified
+Religious Studies revision 11 publication is now listed; the science approval does not grant
+authority to publish further Religious Studies revisions. Historical draft approval
 fields remain unchanged; requester approval is not trusted builder approval.
 
 Supply ownership through `LACUNA_RELAY_URL` and `LACUNA_WRITE_TOKEN` in the process environment,
@@ -230,7 +241,8 @@ the built HTML after the main-site build.
 
 ## Official publication retention
 
-The policy includes the 23 official catalogue publications, including the 19 new science links.
+The policy includes the 24 official catalogue publications, including Religious Studies 8062
+and the 19 new science links.
 The relay keeps these publications readable while their ownership and payload
 objects exist, using the reviewed allow-list in `relay/src/officialPublications.ts`. The public
 catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
