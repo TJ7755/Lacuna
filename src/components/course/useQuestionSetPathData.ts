@@ -15,7 +15,7 @@ export interface QuestionSetPathEntry {
 }
 
 /** Each set of this course's activity, in authored order, with this course's latest
- *  attempt and its linked exam. A published update can grow an activity's ordered set
+ *  whole-set attempt and its linked exam. A published update can grow an activity's ordered set
  *  selection, so every member keeps its own progress instead of the activity dropping
  *  its completed work and its new sets together. */
 export function useQuestionSetPathData(
@@ -39,7 +39,11 @@ export function useQuestionSetPathData(
               return {
                 id: setId,
                 content: content?.courseId === courseId ? content : undefined,
-                attempt: attempts.find((attempt) => attempt.courseId === courseId) ?? null,
+                // Concept practice pins only one question, so it cannot describe the whole set.
+                attempt:
+                  attempts.find(
+                    (attempt) => attempt.courseId === courseId && !attempt.conceptPractice,
+                  ) ?? null,
                 exam: exam?.courseId === courseId ? exam : undefined,
               };
             }),

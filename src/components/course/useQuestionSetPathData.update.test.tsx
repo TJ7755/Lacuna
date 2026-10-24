@@ -7,12 +7,14 @@ import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport
 import type { SharePayloadV6 } from '../../db/share';
 import {
   completeQuestionSetAttempt,
+  saveQuestionSetAttemptPosition,
   saveQuestionSetMarking,
   saveQuestionSetResponseDraft,
   startQuestionSetAttempt,
   submitPracticeQuestion,
 } from '../../questions/questionSetAttemptRepository';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
+import type { ConceptPracticeSelection } from '../../questions/questionSetAttempts';
 import { useQuestionSetPathData } from './useQuestionSetPathData';
 import type { QuestionSetPathNode } from '../../course/path';
 import { QuestionSetCourseRow } from './QuestionSetCourseRow';
@@ -108,40 +110,52 @@ function pathNode(courseId: string, questionSetIds: string[]): QuestionSetPathNo
   };
 }
 
-async function completeOne(setId: string, questionId: string, allocationId: string) {
-  let attempt = await startQuestionSetAttempt(setId, 'practice', 2_000);
-  attempt = await saveQuestionSetResponseDraft(
-    attempt.id,
-    attempt.revisionId,
-    questionId,
-    {
-      kind: 'written',
-      text: 'x = 2 or x = -2',
-    },
-    questionId,
-    2_050,
-  );
-  attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, questionId, 2_100);
+async function completeSet(setId: string, now = 2_000, selection?: ConceptPracticeSelection) {
+  let attempt = await startQuestionSetAttempt(setId, 'practice', now++, selection);
+  for (const question of attempt.receipt.questions) {
+    attempt = await saveQuestionSetAttemptPosition(
+      attempt.id,
+      attempt.revisionId,
+      question.id,
+      null,
+      now++,
+    );
+    attempt = await saveQuestionSetResponseDraft(
+      attempt.id,
+      attempt.revisionId,
+      question.id,
+      { kind: 'written', text: 'x = 2 or x = -2' },
+      question.id,
+      now++,
+    );
+    attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, question.id, now++);
+  }
   attempt = await saveQuestionSetMarking(
     attempt.id,
     attempt.revisionId,
     {
-      decisions: [{ allocationId, status: 'awarded', marks: 1 }],
+      decisions: attempt.receipt.questions.flatMap((question) =>
+        question.answer!.allocations.map((allocation) => ({
+          allocationId: allocation.id,
+          status: 'awarded' as const,
+          marks: allocation.maxMarks,
+        })),
+      ),
       annotations: [],
       corrections: [],
       reflection: { reasons: [], note: '' },
       activeNodeId: attempt.activeNodeId,
       activeAllocationId: null,
     },
-    2_200,
+    now++,
   );
-  return completeQuestionSetAttempt(attempt.id, attempt.revisionId, 2_300);
+  return completeQuestionSetAttempt(attempt.id, attempt.revisionId, now);
 }
 
 it('keeps each member of an activity legible when a course update adds question sets', async () => {
   const first = payload();
   const { course } = await importLineageFirstTime(first);
-  const completed = await completeOne('set-a', 'question-a', 'allocation-a');
+  const completed = await completeSet('set-a');
 
   const { result, rerender } = renderHook(
     ({ ids }: { ids: string[] }) => useQuestionSetPathData(pathNode(course.id, ids)),
@@ -173,7 +187,7 @@ it('keeps each member of an activity legible when a course update adds question 
 it('shows new parts after a real update extends a completed set, including a repeated update', async () => {
   const first = payload();
   const { course } = await importLineageFirstTime(first);
-  const completed = await completeOne('set-a', 'question-a', 'allocation-a');
+  const completed = await completeSet('set-a');
   render(
     <MemoryRouter>
       <ToastProvider>
@@ -211,4 +225,59 @@ it('shows new parts after a real update extends a completed set, including a rep
   await mergeLineageUpdate(course.id, { ...extended, rv: 3 });
   await waitFor(() => expect(row).toHaveTextContent('1/1 answered · 1 new part'));
   expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
+});
+
+it('keeps full-set completion after newer partial Concept practice and detects only genuinely added parts', async () => {
+  const first = payload();
+  first.questionSets[0].questions.push(
+    ...setRecord('set-b', 'question-b', 'allocation-b').questions,
+  );
+  const { course } = await importLineageFirstTime(first);
+  const completed = await completeSet('set-a');
+  const partial = await completeSet('set-a', 3_000, {
+    conceptId: 'concept-quadratic',
+    questionSetId: 'set-a',
+    questionId: 'question-a',
+    novelty: 'familiar',
+    fingerprint: 'question-a-original',
+  });
+  expect(partial.receipt.questions).toHaveLength(1);
+  render(
+    <MemoryRouter>
+      <ToastProvider>
+        <QuestionSetCourseRow
+          node={pathNode(course.id, ['set-a'])}
+          index={0}
+          authoring={false}
+          lessons={[]}
+        />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  const row = await screen.findByRole('button', { name: 'Practice questions: Paper set-a' });
+  await waitFor(() => expect(row).toHaveTextContent('2/2 answered'));
+  expect(row).not.toHaveTextContent('new part');
+  expect(row.querySelector('.origin-left')).toHaveStyle({ width: '100%' });
+
+  await mergeLineageUpdate(
+    course.id,
+    payload({
+      at: 4_000,
+      rv: 2,
+      questionSets: [
+        {
+          ...first.questionSets[0],
+          contentRevisionId: 'set-a-revision-2',
+          questions: [
+            ...first.questionSets[0].questions,
+            ...setRecord('set-c', 'question-c', 'allocation-c').questions,
+          ],
+        },
+      ],
+    }),
+  );
+  await waitFor(() => expect(row).toHaveTextContent('2/2 answered · 1 new part'));
+  expect(row.querySelector('.origin-left')).toHaveStyle({ width: '67%' });
+  expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
+  expect(await db.questionSetAttempts.get(partial.id)).toEqual(partial);
 });
