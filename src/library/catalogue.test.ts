@@ -7,7 +7,7 @@ describe('libraryCourses', () => {
   });
 
   it('retains the published science, History and Religious Studies snapshots', () => {
-    expect(libraryCourses).toHaveLength(24);
+    expect(libraryCourses).toHaveLength(25);
     const snapshots = libraryCourses.map(({ id, revision, stats }) => [
       id,
       revision,
@@ -18,30 +18,31 @@ describe('libraryCourses', () => {
     ]);
     expect(snapshots).toEqual(
       expect.arrayContaining([
-        ['biology8461', 3, 1171, 152, 152, 1298],
-        ['chemistry8462', 2, 879, 139, 145, 1236],
-        ['physics8463', 2, 983, 140, 141, 1587],
-        ['biology0610', 3, 1219, 155, 155, 1335],
-        ['chemistry0620', 2, 889, 137, 143, 1221],
-        ['physics0625', 2, 1036, 150, 151, 1710],
-        ['biology0970', 3, 1219, 155, 155, 1335],
-        ['chemistry0971', 2, 889, 137, 143, 1221],
-        ['biology1bi0', 3, 1135, 147, 148, 1275],
-        ['chemistry1ch0', 2, 884, 140, 146, 1248],
-        ['physics1ph0', 2, 979, 140, 141, 1591],
-        ['biologyj247', 3, 1142, 149, 149, 1269],
-        ['chemistryj248', 2, 871, 136, 142, 1219],
-        ['physicsj249', 2, 983, 141, 142, 1594],
-        ['biologyj257', 3, 1130, 147, 147, 1253],
-        ['chemistryj258', 2, 871, 136, 142, 1219],
-        ['physicsj259', 2, 970, 140, 141, 1587],
-        ['physics4ph1', 2, 942, 132, 133, 1516],
-        ['biology4bi1', 25, 1264, 164, 165, 1424],
-        ['chemistry4ch1', 18, 911, 147, 153, 1338],
-        ['physics0972', 17, 1036, 152, 153, 1790],
-        ['combinedscience8464', 1, 69, 7, 7, 59],
+        ['biology8461', 5, 1328, 152, 152, 1371],
+        ['chemistry8462', 3, 980, 139, 145, 1293],
+        ['physics8463', 3, 1164, 140, 141, 1698],
+        ['biology0610', 4, 1398, 155, 155, 1414],
+        ['chemistry0620', 3, 990, 137, 143, 1278],
+        ['physics0625', 3, 1228, 150, 151, 1827],
+        ['biology0970', 4, 1398, 155, 155, 1414],
+        ['chemistry0971', 3, 990, 137, 143, 1278],
+        ['biology1bi0', 5, 1304, 147, 148, 1350],
+        ['chemistry1ch0', 3, 985, 140, 146, 1305],
+        ['physics1ph0', 3, 1160, 140, 141, 1702],
+        ['biologyj247', 5, 1311, 149, 149, 1344],
+        ['chemistryj248', 3, 972, 136, 142, 1276],
+        ['physicsj249', 3, 1170, 141, 142, 1709],
+        ['biologyj257', 5, 1287, 147, 147, 1326],
+        ['chemistryj258', 3, 972, 136, 142, 1276],
+        ['physicsj259', 3, 1154, 140, 141, 1700],
+        ['physics4ph1', 3, 1118, 132, 133, 1623],
+        ['biology4bi1', 27, 1441, 164, 165, 1502],
+        ['chemistry4ch1', 20, 1012, 147, 153, 1395],
+        ['physics0972', 18, 1228, 152, 153, 1907],
+        ['combinedscience8464', 8, 3760, 447, 429, 4192],
         ['history0977', 13, 708, 111, 112, 1738],
         ['religiousstudies8062', 11, 1218, 115, 115, 1380],
+        ['combinedscience1sc0', 2, 4310, 445, 449, 4634],
       ]),
     );
     for (const course of libraryCourses) {
@@ -93,16 +94,12 @@ describe('libraryCourses', () => {
     for (const course of scienceCourses) {
       expect(course.summary).toMatch(/selected|selection/);
     }
-    const combined = libraryCourses.find(({ code }) => code === '8464');
-    expect(combined?.summary).toBe(
-      'Cells and microscopy: seven introductory lessons for AQA Trilogy. Other Combined Science topics are outside this selection.',
-    );
-    expect(combined?.topics).toEqual([
-      'Animal cells',
-      'Plant cells',
-      'Microscopic quantities',
-      'Microscopy',
-    ]);
+    const combined = libraryCourses.filter(({ subject }) => subject === 'Combined Science');
+    expect(combined.map(({ code }) => code)).toEqual(['8464', '1SC0']);
+    for (const course of combined) {
+      expect(course.summary).toMatch(/^A Higher-tier selection of biology, chemistry and physics/);
+      expect(course.topics.length).toBeGreaterThan(8);
+    }
   });
 });
 
