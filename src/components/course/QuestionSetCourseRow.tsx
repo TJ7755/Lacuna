@@ -6,7 +6,10 @@ import type { QuestionSetPathNode } from '../../course/path';
 import type { Lesson } from '../../db/types';
 import { cn } from '../ui/cn';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
-import { questionSetPathProgress } from '../../questions/questionSetPathProgress';
+import {
+  questionSetAddedParts,
+  questionSetPathProgress,
+} from '../../questions/questionSetPathProgress';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { MOTION_EASING } from '../ui/motion';
 import { ChevronRightIcon, HelpIcon } from '../ui/icons';
@@ -35,6 +38,8 @@ export function QuestionSetCourseRow({
   const m = speedMultiplier(speed);
   const courseId = node.practiceNode.courseId;
   const multiple = node.questionSetIds.length !== 1;
+  const activityRow = authoring && multiple;
+  const rows = activityRow ? [undefined] : (entries ?? [undefined]);
   const open = (setId: string) =>
     navigate(`/course/${courseId}/question-sets/${setId}`, {
       state: {
@@ -45,43 +50,42 @@ export function QuestionSetCourseRow({
 
   return (
     <>
-      {multiple && (
+      {multiple && !authoring && (
         <p className="px-3 pb-1 pt-2 text-sm text-ink-faint">{node.practiceNode.name}</p>
       )}
-      {(entries ?? [undefined]).map((entry, entryIndex) => {
+      {rows.map((entry) => {
         const name = entry?.content?.title ?? node.practiceNode.name;
         const unavailable = entry !== undefined && !entry.content;
         const progress = entry ? questionSetPathProgress(entry.attempt) : null;
+        const addedParts = entry?.content ? questionSetAddedParts(entry.content, entry.attempt) : 0;
         const pct = progress?.totalParts
-          ? Math.round((progress.answeredParts / progress.totalParts) * 100)
+          ? Math.round((progress.answeredParts / (progress.totalParts + addedParts)) * 100)
           : 0;
-        const state = unavailable
-          ? 'Unavailable'
-          : progress
-            ? `${progress.answeredParts}/${progress.totalParts} answered`
-            : 'Practice questions';
+        const state = activityRow
+          ? `${node.questionSetIds.length} question sets`
+          : unavailable
+            ? 'Unavailable'
+            : progress
+              ? `${progress.answeredParts}/${progress.totalParts} answered${addedParts ? ` · ${addedParts} new ${addedParts === 1 ? 'part' : 'parts'}` : ''}`
+              : 'Practice questions';
         return (
           <motion.button
             key={`${entry?.id ?? 'loading'}:${authoring ? 'author' : 'study'}`}
             data-path-row=""
-            ref={entryIndex === 0 ? reorder?.registerElement : undefined}
-            onPointerDown={entryIndex === 0 ? reorder?.onPointerDown : undefined}
-            onPointerMove={entryIndex === 0 ? reorder?.onPointerMove : undefined}
-            onPointerUp={entryIndex === 0 ? reorder?.onPointerUp : undefined}
-            onPointerCancel={entryIndex === 0 ? reorder?.onPointerCancel : undefined}
-            onClickCapture={entryIndex === 0 ? reorder?.onClickCapture : undefined}
-            onKeyDown={entryIndex === 0 ? reorder?.onKeyDown : undefined}
+            ref={reorder?.registerElement}
+            onPointerDown={reorder?.onPointerDown}
+            onPointerMove={reorder?.onPointerMove}
+            onPointerUp={reorder?.onPointerUp}
+            onPointerCancel={reorder?.onPointerCancel}
+            onClickCapture={reorder?.onClickCapture}
+            onKeyDown={reorder?.onKeyDown}
             aria-describedby={reorder?.enabled ? 'lesson-path-reorder-instructions' : undefined}
             aria-roledescription={reorder?.enabled ? 'sortable path row' : undefined}
             aria-keyshortcuts={reorder?.enabled ? 'Alt+ArrowUp Alt+ArrowDown' : undefined}
             type="button"
             aria-label={`Practice questions: ${name}`}
             disabled={unavailable && !authoring}
-            onClick={() =>
-              authoring
-                ? setEditing(true)
-                : entry && !unavailable && open(entry.id)
-            }
+            onClick={() => (authoring ? setEditing(true) : entry && !unavailable && open(entry.id))}
             data-press={authoring ? 'none' : ''}
             whileTap={m && !reorder?.lifted && !authoring ? { scale: 0.99 } : undefined}
             className={cn(
@@ -104,19 +108,21 @@ export function QuestionSetCourseRow({
                 </span>
                 <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">{state}</span>
               </span>
-              <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
-                <motion.span
-                  className="block h-1 origin-left rounded-full bg-ink"
-                  style={{ width: `${pct}%` }}
-                  initial={m > 0 ? { scaleX: 0 } : false}
-                  animate={{ scaleX: 1 }}
-                  transition={{
-                    duration: 0.7 * m,
-                    delay: (0.15 + Math.min(index, 8) * 0.04) * m,
-                    ease: MOTION_EASING.emphasised,
-                  }}
-                />
-              </span>
+              {!activityRow && (
+                <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
+                  <motion.span
+                    className="block h-1 origin-left rounded-full bg-ink"
+                    style={{ width: `${pct}%` }}
+                    initial={m > 0 ? { scaleX: 0 } : false}
+                    animate={{ scaleX: 1 }}
+                    transition={{
+                      duration: 0.7 * m,
+                      delay: (0.15 + Math.min(index, 8) * 0.04) * m,
+                      ease: MOTION_EASING.emphasised,
+                    }}
+                  />
+                </span>
+              )}
             </span>
             {!authoring && (
               <ChevronRightIcon

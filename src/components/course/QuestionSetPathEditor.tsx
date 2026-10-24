@@ -97,9 +97,12 @@ export function QuestionSetPathEditor({
         </button>
         .
       </p>
-      {multiple && <p className="mt-3 text-sm text-ink-faint">
-        This activity contains {node.questionSetIds.length} question sets. Editing and practising multiple sets is not yet supported.
-      </p>}
+      {multiple && (
+        <p className="mt-3 text-sm text-ink-faint">
+          This activity contains {node.questionSetIds.length} question sets. Editing this selection
+          is not yet supported. Open each set separately from the course path to practise.
+        </p>
+      )}
       {pickerOpen && data && trigger.current && (
         <QuestionSetPicker
           sets={data.sets}

@@ -7,6 +7,7 @@ import {
   completeQuestionSetAttempt,
   listQuestionSetAttempts,
   saveQuestionSetMarking,
+  saveQuestionSetResponseDraft,
   startQuestionSetAttempt,
   submitPracticeQuestion,
 } from '../questions/questionSetAttemptRepository';
@@ -83,13 +84,19 @@ function payload(overrides: Partial<SharePayloadV6> = {}): SharePayloadV6 {
   };
 }
 
-async function completeOne(
-  setId: string,
-  questionId: string,
-  allocationId: string,
-  at = 2_000,
-) {
+async function completeOne(setId: string, questionId: string, allocationId: string, at = 2_000) {
   let attempt = await startQuestionSetAttempt(setId, 'practice', at);
+  attempt = await saveQuestionSetResponseDraft(
+    attempt.id,
+    attempt.revisionId,
+    questionId,
+    {
+      kind: 'written',
+      text: 'x = 2 or x = -2',
+    },
+    questionId,
+    at + 50,
+  );
   attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, questionId, at + 100);
   attempt = await saveQuestionSetMarking(
     attempt.id,
@@ -136,14 +143,14 @@ describe('course updates keep completed exam-style question progress', () => {
     await mergeLineageUpdate(course.id, additive);
 
     const after = await listQuestionSetAttempts('set-a');
-    expect(after.map((attempt) => attempt.id)).toEqual([completed.id]);
+    expect(after).toEqual([completed]);
     expect(questionSetProgress(after).latest).toBe(100);
     expect(await listQuestionSetAttempts('set-b')).toEqual([]);
     expect(questionSetProgress(await listQuestionSetAttempts('set-b')).latest).toBeUndefined();
 
     await mergeLineageUpdate(course.id, { ...additive, rv: 3 });
     const repeated = await listQuestionSetAttempts('set-a');
-    expect(repeated.map((attempt) => attempt.id)).toEqual([completed.id]);
+    expect(repeated).toEqual([completed]);
     expect(questionSetProgress(repeated).latest).toBe(100);
     expect(await listQuestionSetAttempts('set-b')).toEqual([]);
   });

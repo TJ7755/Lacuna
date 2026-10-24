@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { cleanup, render, renderHook, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { db } from '../../db/schema';
 import { importLineageFirstTime, mergeLineageUpdate } from '../../db/mergeImport';
@@ -7,12 +8,15 @@ import type { SharePayloadV6 } from '../../db/share';
 import {
   completeQuestionSetAttempt,
   saveQuestionSetMarking,
+  saveQuestionSetResponseDraft,
   startQuestionSetAttempt,
   submitPracticeQuestion,
 } from '../../questions/questionSetAttemptRepository';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import { useQuestionSetPathData } from './useQuestionSetPathData';
 import type { QuestionSetPathNode } from '../../course/path';
+import { QuestionSetCourseRow } from './QuestionSetCourseRow';
+import { ToastProvider } from '../ui/Toast';
 
 beforeEach(async () => {
   db.close();
@@ -106,6 +110,17 @@ function pathNode(courseId: string, questionSetIds: string[]): QuestionSetPathNo
 
 async function completeOne(setId: string, questionId: string, allocationId: string) {
   let attempt = await startQuestionSetAttempt(setId, 'practice', 2_000);
+  attempt = await saveQuestionSetResponseDraft(
+    attempt.id,
+    attempt.revisionId,
+    questionId,
+    {
+      kind: 'written',
+      text: 'x = 2 or x = -2',
+    },
+    questionId,
+    2_050,
+  );
   attempt = await submitPracticeQuestion(attempt.id, attempt.revisionId, questionId, 2_100);
   attempt = await saveQuestionSetMarking(
     attempt.id,
@@ -134,14 +149,17 @@ it('keeps each member of an activity legible when a course update adds question 
   );
   await waitFor(() => expect(result.current?.[0].attempt).toEqual(completed));
 
-  await mergeLineageUpdate(course.id, payload({
-    at: 3_000,
-    rv: 2,
-    questionSets: [first.questionSets[0], setRecord('set-b', 'question-b', 'allocation-b')],
-    questionSetPracticeNodes: [
-      { ...first.questionSetPracticeNodes[0], questionSetIds: ['set-a', 'set-b'] },
-    ],
-  }));
+  await mergeLineageUpdate(
+    course.id,
+    payload({
+      at: 3_000,
+      rv: 2,
+      questionSets: [first.questionSets[0], setRecord('set-b', 'question-b', 'allocation-b')],
+      questionSetPracticeNodes: [
+        { ...first.questionSetPracticeNodes[0], questionSetIds: ['set-a', 'set-b'] },
+      ],
+    }),
+  );
   rerender({ ids: ['set-a', 'set-b'] });
 
   await waitFor(() => expect(result.current).toHaveLength(2));
@@ -150,4 +168,47 @@ it('keeps each member of an activity legible when a course update adds question 
   expect(kept.attempt).toEqual(completed);
   expect(added.content?.id).toBe('set-b');
   expect(added.attempt).toBeNull();
+});
+
+it('shows new parts after a real update extends a completed set, including a repeated update', async () => {
+  const first = payload();
+  const { course } = await importLineageFirstTime(first);
+  const completed = await completeOne('set-a', 'question-a', 'allocation-a');
+  render(
+    <MemoryRouter>
+      <ToastProvider>
+        <QuestionSetCourseRow
+          node={pathNode(course.id, ['set-a'])}
+          index={0}
+          authoring={false}
+          lessons={[]}
+        />
+      </ToastProvider>
+    </MemoryRouter>,
+  );
+  const row = await screen.findByRole('button', { name: 'Practice questions: Paper set-a' });
+  await waitFor(() => expect(row).toHaveTextContent('1/1 answered'));
+  expect(row).not.toHaveTextContent('new part');
+
+  const extended = payload({
+    at: 3_000,
+    rv: 2,
+    questionSets: [
+      {
+        ...first.questionSets[0],
+        contentRevisionId: 'set-a-revision-2',
+        questions: [
+          ...first.questionSets[0].questions,
+          ...setRecord('set-new', 'question-new', 'allocation-new').questions,
+        ],
+      },
+    ],
+  });
+  await mergeLineageUpdate(course.id, extended);
+  await waitFor(() => expect(row).toHaveTextContent('1/1 answered · 1 new part'));
+  expect(row.querySelector('.origin-left')).toHaveStyle({ width: '50%' });
+
+  await mergeLineageUpdate(course.id, { ...extended, rv: 3 });
+  await waitFor(() => expect(row).toHaveTextContent('1/1 answered · 1 new part'));
+  expect(await db.questionSetAttempts.get(completed.id)).toEqual(completed);
 });

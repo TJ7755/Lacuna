@@ -1,1 +1,1 @@
-- Keep completed exam-style question progress visible and new question sets reachable when a course update grows a path activity's ordered sets. (#838)
+- Keep completed exam-style question progress visible and new question sets reachable when a course update grows a path activity's ordered sets; identify new parts when an existing set grows without rewriting historical attempts. (#838)

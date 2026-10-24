@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { QuestionSetAttemptRecord } from './questionSetAttempts';
-import { questionSetPathProgress } from './questionSetPathProgress';
+import { questionSetAddedParts, questionSetPathProgress } from './questionSetPathProgress';
 
 function attempt(): QuestionSetAttemptRecord {
   return {
@@ -141,6 +141,27 @@ function attempt(): QuestionSetAttemptRecord {
 }
 
 describe('questionSetPathProgress', () => {
+  it('counts added answerable parts without treating old or removed parts as new', () => {
+    const historical = attempt();
+    const content = structuredClone(historical.receipt);
+    content.questions.shift();
+    content.questions[0].parts.push({
+      id: 'new-context',
+      prompt: 'Added context',
+      subparts: [
+        {
+          id: 'new-subpart',
+          prompt: 'Added answer',
+          answer: historical.receipt.questions[0].answer,
+        },
+      ],
+    });
+    expect(questionSetAddedParts(content, historical)).toBe(1);
+    expect(questionSetAddedParts(historical.receipt, historical)).toBe(0);
+    expect(questionSetAddedParts(content, null)).toBe(0);
+    expect(historical.receipt.questions).toHaveLength(3);
+  });
+
   it('returns null when there is no attempt', () => {
     expect(questionSetPathProgress(null)).toBeNull();
   });
