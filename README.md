@@ -10,73 +10,18 @@ Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is loca
 origin: moving from the previous Vercel address requires exporting a full backup there
 and importing it at the new address. The previous address remains available.
 
-Device sync, published course links and external web AI use
-`https://relay.getlacuna.app`. Desktop share links open `https://getlacuna.app`;
-share codes are unchanged. Saved sync pairings using `https://lacuna-relay.vercel.app` migrate
-automatically to `https://relay.getlacuna.app` without re-pairing; private relay addresses stay unchanged.
-
 Study data lives in IndexedDB without an account. Optional device sync and external web AI use
 encrypted relay payloads; external desktop AI connects through a local companion. Built-in AI sends
 selected conversation and tool content to a hosted model. Export a full JSON backup from
 **Settings → Full backup & recovery** before moving devices or replacing data.
 
-## Features
-
-- Exam-aware revision plans, daily limits, inferred Yes/No grading and manual FSRS grades.
-- Basic, Reversed and Cloze Cards, sequences and image occlusions; optional typed recall.
-- Algorithm-free Simple Learn alongside scheduled revision.
-- Fixed Questions and generated families with worked explanations and separate schedules.
-- Markdown notes, maths, images, Mermaid diagrams, note links, course search and learning analytics.
-- Offline use after the application assets are available, full backups and optional device sync.
-- Windows, Linux and macOS desktop beta packages, with optional AI and permission-scoped MCP tools.
-
-## Development
-
-Use Node.js 24 and Bun 1.4.3, matching CI. The checked-in lockfiles are authoritative.
-
-Web typechecking uses `bun check -b` for the app, build configuration and release-tooling
-projects. Server and Electron checks, and desktop JavaScript emission, retain native TypeScript.
-Vercel explicitly selects Bun 1.4.3 for installation and builds through `vercel.json`, because
-its default Bun may predate `bun check`.
-
-```bash
-git clone https://github.com/TJ7755/Lacuna.git
-cd Lacuna
-bun install --frozen-lockfile
-bun run dev
-```
-
-Open the printed URL. A removable example course is seeded on first run.
-
-```bash
-bun run typecheck    # web and Electron compiler projects
-bun run lint
-bun run test         # unit and component tests
-bun run build        # typecheck and production assets
-bun run preview      # build and serve locally
-bun run electron:dev # Vite and the desktop app
-```
-
 The [contributor guide](CONTRIBUTING.md) covers the complete validation matrix, relay and companion
-installations, regression tests and review policy. React 19, TypeScript 7, Vite 8, Tailwind CSS v4
-and Dexie form the application stack; package manifests define exact versions.
-
-## Desktop and AI
-
-The web app's `#/download` page selects packages for the current platform. Windows NSIS and Linux
-AppImage update through the beta channel; Windows portable, Linux DEB and unsigned macOS update
-manually. See [desktop setup](docs/desktop.md) for packaging, MCP access and optional AI chat.
-
-AI is disabled by default. Settings offers built-in AI with an issued beta access code, or the
-existing external MCP client connection. For the latter, copy the complete generated setup into
-your MCP client and keep its model task running. Writes and destructive actions require the
-relevant in-app approval in either mode. Built-in AI availability requires server configuration;
-see [desktop and AI setup](docs/desktop.md).
+installations, regression tests and review policy.
 
 ## Documentation
 
 - [Documentation index](docs/README.md): source entry points, constraints, procedures and measurements.
-- [Specification](docs/SPEC.md) and [domain language](docs/domain-language.md): intent and boundaries; source and tests own behaviour.
+- [domain language](docs/domain-language.md): intent and boundaries; source and tests own behaviour.
 - [GitHub issues](https://github.com/TJ7755/Lacuna/issues): active work.
 - [Changes](docs/CHANGES.md): release history and unreleased work.
 - [Release maintenance](docs/maintenance/release.md), [security](SECURITY.md) and

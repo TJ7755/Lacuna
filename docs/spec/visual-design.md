@@ -51,5 +51,3 @@ announced context, accessible names and explicit error/recovery choices.
 Use [manual release verification](../WEBSITE_TEST_CHECKLIST.md) for physical input, screen readers,
 visual quality and novice tasks. Passing style assertions or screenshots alone does not establish
 smooth motion or usability.
-
-[Specification index](../SPEC.md)

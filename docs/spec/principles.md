@@ -12,5 +12,3 @@
 
 See the [domain language](../domain-language.md), [scientific limits](../scientific-assessment.md)
 and [implementation entry points](../README.md). Details and examples belong in the owning tests.
-
-[Specification index](../SPEC.md)

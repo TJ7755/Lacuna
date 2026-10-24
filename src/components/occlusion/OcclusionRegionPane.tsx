@@ -2,7 +2,7 @@ import { PillToggleGroup } from '../cards/PillToggleGroup';
 import { Select } from '../ui/Select';
 import { fieldLabelClassName, inputFrameClassName } from '../ui/Field';
 // Region list and detail pane for the occlusion editor (Task 10, D1 adapted —
-// design/arc6/plan.md §6.5): role chips, inline pairing, and a detail pane for
+// design/arc6/plan.md): role chips, inline pairing, and a detail pane for
 // role/answer text/back note. Region names default to "Box 1…n" (labels) and
 // "Region 1…n" (features) so the list stays navigable without typing.
 

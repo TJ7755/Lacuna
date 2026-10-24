@@ -1,19 +1,5 @@
 # Course library
 
-The library is a separate static entry at `library.getlacuna.app`. It displays course
-metadata and opens the existing `getlacuna.app/#/s/<code>` share page. It does not
-import courses, fetch course payloads, open the learner database or register a worker.
-Lacuna handles course imports and subsequent publisher updates on its existing origin.
-
-## Add or update a course
-
-Edit [catalogue.ts](../src/library/catalogue.ts). Each entry has a subject, awarding body,
-qualification, code, short summary, topic preview, content counts and an existing Lacuna share
-URL. The awarding body filters the library when courses come from more than one. Use `null`
-for an unpublished course; its sheet remains available with an unavailable action. The URL
-boundary accepts only canonical HTTPS links on `getlacuna.app` using the share route.
-Do not add private teaching files or owner credentials to this public catalogue.
-
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
@@ -35,23 +21,6 @@ evaluation practice and does not include SPaG marking. It carries no AQA endorse
 exam-board review claim. The catalogue counts and stable link come from the verified
 revision 11 publication record.
 
-The catalogue also records `author`, `publisher`, `revision` and an optional `revisionDate`
-(YYYY-MM-DD) for the published revision. Use Lacuna for authorship and publishing unless a
-course has a recorded author or publisher. Derive revision numbers and dates from publication
-records; omit unknown fields. The science revision/count snapshots match the exact candidates
-accepted in the final review on 23 October 2026. Revision dates are optional and omitted from this catalogue snapshot; exact publication
-timestamps are retained in operator records. These fields appear on both
-the library course sheet and the public course page. They do not imply external review or
-awarding-body endorsement.
-
-**Report a mistake** opens a prefilled issue at
-`https://github.com/TJ7755/Lacuna/issues/new`. The title and body contain only the course id,
-known revision and, if entered, an optional card, note or practice set reference. The reference
-is typed by the reporter, not read from their local course. The route never reads or attaches
-learner data, scheduling information or study history. The reporter can describe the mistake
-and review the public issue on GitHub before submitting it. Local **Flag card** remains a
-mark on the learner's own copy and does not contact the publisher.
-
 These links retain the source files' lineage and entity identities. Earlier library links used
 a separate publisher lineage; importing a current link therefore does not migrate an earlier
 subscriber's course or learner evidence. Keep old links available until that migration has
@@ -59,13 +28,7 @@ been designed and verified. Use the same current link for later revisions.
 
 ## Publish a frozen artefact
 
-[The publication command](../scripts/library-publish.ts) accepts an existing stable share and an
-explicit `.lacuna` course file. It validates through the existing course/media validators, hashes
-and approves the original bytes. Files above 4 MiB are compressed for upload; smaller files
-remain byte-for-byte compatible with installed clients. It downloads both slots, decompresses
-the payload and verifies the original SHA-256, size and manifest before reporting `published`. It never imports, rebuilds, increments revisions, rewrites
-identities, mints links or updates the catalogue. Keep source artefacts in the private content
-repository. The command itself grants no publishing authority. The science expansion has explicit
+The command itself grants no publishing authority. The science expansion has explicit
 requester approval conditional on final independent review of the exact frozen hashes. This
 approval does not extend to later rebuilds or unreviewed content. The separately verified
 Religious Studies revision 11 publication is now listed; the science approval does not grant
@@ -104,27 +67,6 @@ bun scripts/library-publish.ts --artefact "$FROZEN_ARTEFACT" --course-id synthet
   --share "$STABLE_SHARE_URL" --credentials "$LACUNA_OWNER_FILE" \
   --approved-sha256 "$APPROVED_SHA256" > "$PUBLICATION_RECORD"
 ```
-
-The stdout JSON includes `compressedByteSize` (the uploaded byte count, including the envelope;
-equal to `byteSize` for uncompressed files). Approval and `sha256` always refer to the original
-uncompressed frozen file. The 4 MiB relay cap applies to uploaded bytes; the decoded file is
-limited to 64 MiB. See the [share transport contract](spec/portability.md#share-link-transport)
-for compatibility and deployment behaviour.
-
-The stdout JSON is public-safe: course id, payload format version, frozen revision, SHA-256,
-byte size and derived card/note/lesson/Question/media counts. Question set formats also supply
-`practiceSets` and `practiceMarks` through the existing marking calculation; older formats omit
-those unknown statistics. `operator-approved` records only the operator's assertion for this
-exact hash, not independent review or endorsement. Dry-run without an approval hash says
-`unreviewed`; approval never transfers to changed bytes. Retain successful records outside the
-repository, then manually update catalogue snapshots from the verified publication. A failed
-run returns non-zero, writes its error to stderr and emits no success record.
-
-Repeated identical payload and manifest return `skipped` without a write. Higher revisions must
-already exist in a separately reviewed frozen file. Reusing a revision for different bytes,
-rolling back either slot's revision or changing lineage is refused. The manifest uses the frozen
-payload's exported-at timestamp so retries remain deterministic. Identity migration for old live
-links remains separate, risk-bearing work; this command cannot repair identity mismatches.
 
 Serialise publishers for each share. The existing protocol writes payload then manifest, with
 separate generation/compare-and-swap checks; it is not a two-slot transaction. A failure can leave
@@ -206,20 +148,6 @@ The expanded catalogue uses the existing fields, course sheets and public-page g
 Distinct board lineages remain distinct. Keep the native links stable when updating their
 approved revisions and use verified publication records for new links.
 
-## Develop and check
-
-```bash
-bun run dev:library
-bun run build:library
-PLAYWRIGHT_WEB_PORT=4347 bun run verify:browser -- --library --project=chromium library-standalone.spec.ts
-```
-
-The build check caps all JavaScript together at 125 kB gzipped, including the library entry
-and the shared Motion feature chunk. This replaces the previous single-bundle 80 kB budget
-to support the app's shared cover expansion and filter motion. The feature chunk loads when
-the library mounts; it is included in the cap even though its import is asynchronous. The
-complete module graph must still exclude learner startup, storage, synchronisation and AI.
-
 ## Hosting
 
 Create a separate Vercel project named `lacuna-library`, connected to this repository.
@@ -232,20 +160,6 @@ allows the entry to reuse Lacuna's fonts, styles and React components
 `dist` output directory. Assign `library.getlacuna.app` to that project's Production
 environment. Keep the main Lacuna and Gaps projects, domains and build settings unchanged.
 The code prepares hosting; it does not create the project or publish a deployment.
-
-## Public course pages
-
-The main site also serves `/courses/` and `/courses/<id>/` from the same catalogue.
-The [public-page prerender plugin](../scripts/public-page-prerender.ts) renders the
-same React tree used for browser hydration, using one [HTML template](../courses/index.html)
-for the index and every course. The built HTML includes course content, canonical metadata
-and Course JSON-LD without requiring JavaScript. Public routes stay outside the PWA app-shell
-fallback and precache. No course payload or learner database is opened by these pages.
-
-Adding a catalogue entry generates its page automatically. Also update
-[sitemap.xml](../public/sitemap.xml) and [llms.txt](../public/llms.txt); catalogue coverage tests
-reject missing course URLs. [Public-page tests](../scripts/public-pages.test.mjs) inspect
-the built HTML after the main-site build.
 
 ## Official publication retention
 

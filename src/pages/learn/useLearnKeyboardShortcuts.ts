@@ -21,7 +21,7 @@ export interface UseLearnKeyboardShortcutsParams {
   isTypingCard: boolean;
   /** Suppresses the classic reveal/grade shortcuts — true for a machine-marked
    *  item (its own study face owns submission) and for one whose payload this
-   *  client can't render at all (UnknownItemFace; docs/spec/learn-mode.md). */
+   *  client can't render at all (UnknownItemFace). */
   suppressClassicGrading: boolean;
   openEdit: () => void;
   hintsOpen: boolean;
@@ -36,7 +36,7 @@ export interface UseLearnKeyboardShortcutsParams {
 
 /**
  * Learn mode's global keyboard shortcuts (see the effect body below for the exact
- * key -> action map). The study contract lives in docs/spec/learn-mode.md.
+ * key -> action map).
  *
  * Keyboard shortcuts:
  *   question - Space or ArrowUp reveals the answer.

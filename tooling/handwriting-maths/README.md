@@ -39,17 +39,6 @@ per-symbol template set") describes only stage 3.
 Stages 2 and 4 are hand-written regardless of how stage 3 is solved, and are where
 prototypes of this kind usually stall. They are not the afterthought.
 
-All four stages now exist as pure modules (`group.ts`, `dollarP.ts`, `layout.ts`, joined
-by `interpret.ts`). Grouping is horizontal: strokes merge when their x-ranges overlap
-substantially or one sits inside the other — the containment rule is what keeps `+` and
-`÷` in one piece, since a `+`'s vertical stroke has no width to take a ratio of. A
-horizontal rule beats a temporal one because it survives a writer going back to add a
-missing symbol, which children do constantly. Layout covers baseline and superscript
-only; fractions remain out of scope.
-
-The remaining gap is accuracy, not capability: none of it has been measured against
-CROHME's segmentation and layout ground truth yet, which is the next piece of work.
-
 ### Two arms for stage 3
 
 - **$P point-cloud recogniser** (`src/dollarP.ts`) — template matching, no ML, no
@@ -148,18 +137,6 @@ stages 2 and 4 exist and the retained ink can be scored.
 
 n = 1, one session, no repetition, no counterbalancing across participants. Treat every
 number above as a direction to test, not a result.
-
-## Running it
-
-```
-bun install
-bun run dev     # canvas harness
-bun run test    # unit tests for the pure modules
-```
-
-Standalone project with its own `package.json`, following the precedent of
-`tooling/short-term-memory` and `tooling/semantic-answer-match`. Not part of the root
-build; `bun run build` at the repository root does not see it.
 
 ## Failure mode
 

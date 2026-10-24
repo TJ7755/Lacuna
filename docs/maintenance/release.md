@@ -55,16 +55,6 @@ a private draft is not an update-feed test. Use a disposable installation, never
 working profile. Electron AI verification needs its configured port free so another server cannot
 stand in for the intended build. Companion relaunch during Windows installation is a separate risk.
 
-## Browser CI gate
-
-Four functional Chromium shards use two workers each. The unchanged image-advance measurement
-and frame-sensitive sidebar checks run serially in one timing job with one worker; mobile WebKit
-has its own job. CI selects `chromium-functional` for shards and `chromium-image-performance` plus
-`chromium-sidebar-motion` for timing from `tests/config/playwright.web.ci.config.ts`. Together these
-cover ordinary Chromium tests exactly once. Each job retains evidence; `browser-smoke` fails if
-any functional shard, timing job or mobile job fails. Isolation removes competing test work; it
-does not establish that a product performance regression is fixed.
-
 ## macOS manual packages
 
 On Apple Silicon at the exact release commit:

@@ -2,7 +2,7 @@
 
 Use source, tests and configuration to establish current behaviour. These pages retain decisions,
 non-obvious boundaries and operator procedures. [CONTRIBUTING](../CONTRIBUTING.md) owns validation
-and review policy; [SPEC](SPEC.md) indexes the remaining constraints. Read the relevant section,
+and review policy. Read the relevant section,
 not the entire documentation tree.
 
 ## Difficult entry points
@@ -38,7 +38,6 @@ not the entire documentation tree.
 [Release history](CHANGES.md), [earlier releases](https://github.com/TJ7755/Lacuna/blob/b7995873874bbf4d5074430b34481491cc59588c/docs/archive/changes-through-0.2.7.md) and
 [dated measurements](https://github.com/TJ7755/Lacuna/tree/30d7e808f9b056afcfd61702c6de7d4ee204e759/docs/performance)
 are historical records. Old measurements and review captures live in Git history.
-Completed plans and superseded captures remain in Git history.
 
 Change behaviour in code and meaningful tests. Update a retained decision or procedure when that
 changes, and add an [unreleased fragment](changes/unreleased/README.md). Avoid copying record
