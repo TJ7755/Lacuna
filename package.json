@@ -13,6 +13,8 @@
     "url": "git+https://github.com/TJ7755/Lacuna.git"
   },
   "scripts": {
+    "knip": "knip",
+    "knip:files": "knip --files",
     "start": "vite",
     "dev": "vite",
     "build": "bun run typecheck && vite build",
@@ -107,8 +109,8 @@
     "@typescript-eslint/parser": "^8.71.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/functions": "^3.10.2",
     "@vercel/blob": "^2.8.2",
+    "@vercel/functions": "^3.10.2",
     "@vitejs/plugin-react-swc": "^4.3.1",
     "@vitest/coverage-v8": "5.0.5",
     "ai": "^7.0.143",
@@ -130,6 +132,7 @@
     "highlight.js": "^11.10.0",
     "html5-qrcode": "^2.3.8",
     "katex": "^0.19.0",
+    "knip": "6.34.0",
     "mathjs": "^15.2.0",
     "mermaid": "^12.2.0",
     "motion": "14.1.0",
