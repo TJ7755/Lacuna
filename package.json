@@ -15,6 +15,9 @@
   "scripts": {
     "knip": "knip",
     "knip:files": "knip --files",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "hooks:install": "node scripts/install-git-hooks.mjs",
+    "format:staged": "bun fmt --staged \"**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts,json,jsonc,css,scss,html,yml,yaml}\"",
     "start": "vite",
     "dev": "vite",
     "build": "bun run typecheck && vite build",
