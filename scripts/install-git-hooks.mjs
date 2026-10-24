@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -11,7 +12,7 @@ if (!process.env.CI && existsSync(new URL('../.git', import.meta.url))) {
   const defaultHook = git('rev-parse', '--git-path', 'hooks/pre-commit').stdout?.trim();
   if (
     (current && current !== '.githooks') ||
-    (!current && defaultHook && existsSync(new URL(defaultHook, new URL('../', import.meta.url))))
+    (!current && defaultHook && existsSync(resolve(root, defaultHook)))
   ) {
     process.stderr.write(
       'Existing Git hooks retained; run bun run format:staged before committing.\n',

@@ -25,7 +25,7 @@ const write = (file: string, content: string) => writeFileSync(join(directory, f
 const read = (file: string) => readFileSync(join(directory, file), 'utf8');
 
 beforeEach(() => {
-  directory = mkdtempSync(join(tmpdir(), 'lacuna-hooks-'));
+  directory = mkdtempSync(join(tmpdir(), 'lacuna-hooks-#'));
   mkdirSync(join(directory, '.githooks'));
   mkdirSync(join(directory, 'scripts'));
   copyFileSync('.githooks/pre-commit', join(directory, '.githooks/pre-commit'));
@@ -119,4 +119,21 @@ it('installs from a linked worktree where .git is a file', () => {
   });
   expect(result.status, result.stderr).toBe(0);
   expect(git('config', '--get', 'core.hooksPath').stdout.trim()).toBe('.githooks');
+});
+
+it('preserves an absolute default hook path in a linked worktree', () => {
+  git('add', '.');
+  expect(git('commit', '-qm', 'Bootstrap').status).toBe(0);
+  const linked = join(directory, 'linked');
+  expect(git('worktree', 'add', '-qb', 'linked', linked).status).toBe(0);
+  git('config', '--local', '--unset', 'core.hooksPath');
+  write('.git/hooks/pre-commit', '#!/bin/sh\nexit 0\n');
+  const result = spawnSync('node', ['scripts/install-git-hooks.mjs'], {
+    cwd: linked,
+    encoding: 'utf8',
+    env: { ...process.env, CI: '' },
+  });
+  expect(result.status, result.stderr).toBe(0);
+  expect(git('config', '--local', '--get', 'core.hooksPath').status).toBe(1);
+  expect(read('.git/hooks/pre-commit')).toBe('#!/bin/sh\nexit 0\n');
 });
