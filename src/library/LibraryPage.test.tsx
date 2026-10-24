@@ -93,17 +93,22 @@ describe('LibraryPage', () => {
     expect(sheet).not.toHaveTextContent(code === '0972' ? '0625' : '0972');
   });
 
-  it('shows the seven-lesson Combined Science limit on its cover and sheet', async () => {
+  it('finds Edexcel Combined Science by code and shows its counts and link', async () => {
     renderLibrary(libraryCourses);
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search courses' }), {
-      target: { value: '8464' },
+      target: { value: '1SC0' },
     });
-    const combined = cover('Combined Science');
-    expect(combined).toHaveTextContent('seven introductory lessons');
-    fireEvent.click(combined);
+    expect(screen.getAllByRole('button', { expanded: false })).toHaveLength(1);
+    fireEvent.click(cover('Combined Science'));
     const sheet = await screen.findByRole('dialog', { name: 'Combined Science' });
-    expect(sheet).toHaveTextContent('Other Combined Science topics are outside this selection.');
-    expect(sheet).toHaveTextContent('7 practice sets, 59 marks');
+    expect(sheet).toHaveTextContent('Pearson Edexcel GCSE · 1SC0');
+    expect(sheet).toHaveTextContent('4,310 cards');
+    expect(sheet).toHaveTextContent('445 lesson notes');
+    expect(sheet).toHaveTextContent('449 practice sets, 4,634 marks');
+    expect(within(sheet).getByRole('link', { name: /Open in Lacuna/ })).toHaveAttribute(
+      'href',
+      'https://getlacuna.app/#/s/5459ed1b6b0ca5ac7e646b68f17d1732',
+    );
   });
 
   it('finds Religious Studies by code and shows its published scope, counts and link', async () => {

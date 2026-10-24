@@ -24,6 +24,7 @@ const officialShareIds = new Set([
   'b01c1050191588212cff4cc28131fa10', // pearson-4ph1
   '91edc6fda3742ffe8ce963c3ae848e41', // aqa-8464
   'e85fc39e709074d58669c2d8bfd723bb', // aqa-8062
+  '5459ed1b6b0ca5ac7e646b68f17d1732', // edexcel-1sc0
 ]);
 
 export function isOfficialPublication(id: string): boolean {

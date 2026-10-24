@@ -17,13 +17,14 @@ Do not add private teaching files or owner credentials to this public catalogue.
 Counts are publication snapshots. Refresh them when republishing a course, using the
 actual published payload or its matching build report. Omit unknown statistics instead
 of inventing them. Publish a course or revision only after its review is complete; the library
-therefore shows no review or progress status. The science expansion records 22 approved,
-limited-scope selections alongside unchanged
-History revision 13. Native Biology is revision 25, Chemistry revision 18 and Physics revision 17.
-The other science entries comprise 18 board variants and AQA Combined Science 8464 revision 1.
-Combined Science contains only seven introductory lessons on cells and microscopy; the
-351-lesson research union is not published. All science share URLs and counts were filled from
-verified exact-byte publication records.
+therefore shows no review or progress status. The science courses are Higher-tier selections
+alongside unchanged History revision 13. Native Biology is revision 27, Chemistry revision 20 and
+Physics revision 18; the 18 board variants were republished on 24 October 2026 with reviewed
+labelled image Cards and image practice. Combined Science AQA 8464 revision 8 and Pearson Edexcel
+1SC0 revision 2 cover Higher tier with shared Foundation content; full specification coverage is
+not independently certified. Both Combined Science payloads exceed 4 MiB and are published compressed
+(`deflate-raw-v1`). All science share URLs and counts were filled from verified exact-byte
+publication records.
 
 AQA GCSE Religious Studies A (8062) revision 11 is also published. It covers Christianity and
 Islam beliefs, teachings and practices for Component 1, with Themes A–F included as optional
@@ -248,8 +249,8 @@ the built HTML after the main-site build.
 
 ## Official publication retention
 
-The policy includes the 24 official catalogue publications, including Religious Studies 8062
-and the 19 new science links.
+The policy includes the 25 official catalogue publications, including Religious Studies 8062,
+Combined Science 1SC0 and the 19 new science links.
 The relay keeps these publications readable while their ownership and payload
 objects exist, using the reviewed allow-list in `relay/src/officialPublications.ts`. The public
 catalogue does not grant retention, and ordinary shares still expire after 90 days without a write.
