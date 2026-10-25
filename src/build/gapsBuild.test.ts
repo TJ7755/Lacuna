@@ -84,6 +84,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/teacher/gapsUi.tsx',
             'src/teacher/GapsSidebar.tsx',
             'src/teacher/classInsights.ts',
+            'src/teacher/demoClass.ts',
             'src/teacher/StandaloneTeacherHome.tsx',
             'src/teacher/classSessions.ts',
             'src/teacher/TeacherKeySetup.tsx',
