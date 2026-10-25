@@ -40,6 +40,8 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode>(
     () => chosenStudyTarget()?.mode ?? 'steady',
   );
+  // Onboarding has just asked about the exam, so the course takes that answer as it is.
+  const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (present && inline) nameInputRef.current?.focus();
@@ -144,16 +146,18 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
           )}
         </div>
 
-        <CourseStudyTarget
-          schedulingMode={schedulingMode}
-          setSchedulingMode={setSchedulingMode}
-          saving={saving}
-          datePickerRef={datePickerRef}
-          examDate={examDate}
-          setExamDate={setExamDate}
-          setExamDateValid={setExamDateValid}
-          timeZone={timeZone}
-        />
+        {!targetChosen && (
+          <CourseStudyTarget
+            schedulingMode={schedulingMode}
+            setSchedulingMode={setSchedulingMode}
+            saving={saving}
+            datePickerRef={datePickerRef}
+            examDate={examDate}
+            setExamDate={setExamDate}
+            setExamDateValid={setExamDateValid}
+            timeZone={timeZone}
+          />
+        )}
       </div>
 
       <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">

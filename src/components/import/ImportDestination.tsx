@@ -19,6 +19,8 @@ export function useImportDestination() {
     () => chosenStudyTarget()?.examDate ?? defaultExamDate(),
   );
   const [validDate, setValidDate] = useState(true);
+  // Onboarding has just asked about the exam, so a new course takes that answer as it is.
+  const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [timeZone] = useState(getLocalTimeZone);
   const courses = useCourses();
   const lessons = useLessons(courseId || undefined);
@@ -54,6 +56,7 @@ export function useImportDestination() {
     title,
     setTitle,
     mode,
+    targetChosen,
     setMode,
     examDate,
     setExamDate,
@@ -115,7 +118,7 @@ export function ImportDestination({ draft }: { draft: ReturnType<typeof useImpor
           />
         </label>
       )}
-      {!draft.courseId && (
+      {!draft.courseId && !draft.targetChosen && (
         <CourseStudyTarget
           schedulingMode={draft.mode}
           setSchedulingMode={draft.setMode}
