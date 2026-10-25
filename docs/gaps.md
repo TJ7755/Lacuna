@@ -60,6 +60,11 @@ preparing an update. Replacements reuse the original daily slot and do not exten
 the reporting day's expiry. Legacy immutable reports remain readable and cannot
 be replaced through the new update route.
 
+A backwards-readable claim reserves each snapshot's slot for older clients too.
+An older client skips an accepted snapshot and cannot upload a pending snapshot
+without its update credentials. Return to a compatible client to retry or finalise
+those snapshots; rolling back the pupil app does not convert them into legacy reports.
+
 Deploy the compatible relay before the updated pupil and teacher applications.
 An older relay rejects current-day publication; the pupil must see a failed send,
 not a successful publication. Keep the compatible relay when rolling back clients:

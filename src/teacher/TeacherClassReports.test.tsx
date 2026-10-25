@@ -5,6 +5,7 @@ import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';
+import { dayLabel } from './classInsights';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 
 const mocks = vi.hoisted(() => ({
@@ -304,8 +305,8 @@ it('opens today’s UTC day and explains explicit partial snapshots and refreshi
     expect.objectContaining({ isoDay: isoDayLabel(Date.now()) }),
   );
   expect(screen.getByText('Today (UTC)')).toBeVisible();
-  expect(screen.getByText(/Today’s results are partial snapshots/)).toHaveTextContent(
-    /Pupils must choose Send latest progress.*Refresh results/,
+  expect(screen.getByText(/Partial UTC results/)).toHaveTextContent(
+    /Ask pupils to Send latest progress.*Refresh results/,
   );
   expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
   expect(screen.getByRole('button', { name: 'Refresh results' })).toBeVisible();
@@ -399,7 +400,9 @@ it('aborts a pending refresh when navigating and ignores its late result', async
   );
   expect(cache.sessions.get(course.shareId)?.days.has(latest)).toBe(false);
   expect(screen.queryByRole('button', { name: 'Late pupil' })).not.toBeInTheDocument();
-  expect(screen.getByText('Yesterday (UTC)')).toBeVisible();
+  expect(
+    screen.getByText(dayLabel(isoDayLabel(isoDayStartMs(latest) - DAY_MS), 'short')),
+  ).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'Next day' }));
   await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(4));
   await screen.findByText(/No report does not mean no study/);

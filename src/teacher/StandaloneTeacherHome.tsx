@@ -333,14 +333,10 @@ function Page({ title, children }: { title: string; children: ReactNode }) {
 function AboutGaps() {
   return (
     <div className="space-y-3 text-sm leading-relaxed text-ink-soft">
-      <p>Pupils choose whether to share results. Connecting a class does not turn it on.</p>
+      <p>Pupils opt in to sharing. Send latest progress shares today’s partial UTC results.</p>
       <p>
-        Pupils can choose Send latest progress to share a partial snapshot of today’s UTC day.
-        Refresh results in the class view to read their latest accepted update.
-      </p>
-      <p>
-        Automatic reports cover the latest completed UTC day and arrive when a pupil next opens
-        Lacuna online. Missed days are not backfilled, so no report does not mean no study.
+        Automatic reports cover yesterday (UTC) when pupils next open Lacuna online. No backfill; no
+        report does not mean no study.
       </p>
       <p>
         Names are typed by pupils and anyone with the class code can send results: treat them as

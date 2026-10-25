@@ -118,14 +118,6 @@ export function TodayPage({
         )}
       </div>
 
-      {courses.length > 0 && (
-        <p className="mb-6 max-w-2xl text-sm text-ink-soft">
-          Today’s results are partial snapshots pupils choose to send. Open a class and Refresh
-          results to read its latest accepted updates. Summaries show only results already loaded
-          for this UTC day.
-        </p>
-      )}
-
       {courses.length === 0 ? (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-16 text-center md:py-20">
           {!classCreated && (

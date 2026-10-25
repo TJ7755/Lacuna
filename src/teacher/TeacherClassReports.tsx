@@ -313,9 +313,7 @@ export function ClassPage({
 
           {tab !== 'invite' && day === latest && (
             <p className="mb-6 max-w-2xl text-sm text-ink-soft">
-              Today’s results are partial snapshots of this UTC day. Pupils must choose Send latest
-              progress to share today’s work, then you must Refresh results to read their latest
-              accepted update.
+              Partial UTC results. Ask pupils to Send latest progress, then Refresh results.
             </p>
           )}
 
@@ -363,9 +361,7 @@ export function ClassPage({
               <p role="status" className="mt-3 max-w-sm text-ink-soft">
                 {data.unreadable > 0
                   ? 'Reports arrived but could not be decrypted with this key. Check the class recovery key and try again.'
-                  : data.day === latest
-                    ? 'No report does not mean no study. Ask pupils to choose Send latest progress, then Refresh results.'
-                    : 'No report does not mean no study. Automatic reports arrive when pupils next open Lacuna online.'}
+                  : 'No report does not mean no study.'}
               </p>
               <button
                 type="button"
@@ -579,11 +575,7 @@ function DayStepper({
           className="flex min-w-48 items-center justify-center gap-2.5 px-1 text-sm tabular-nums"
         >
           <span className="font-semibold">
-            {day === latest
-              ? 'Today (UTC)'
-              : day === isoDayLabel(isoDayStartMs(latest) - DAY_MS)
-                ? 'Yesterday (UTC)'
-                : dayLabel(day, 'short')}
+            {day === latest ? 'Today (UTC)' : dayLabel(day, 'short')}
           </span>
           {loading ? (
             <>
@@ -609,7 +601,7 @@ function DayStepper({
         type="button"
         disabled={!onReload || loading}
         onClick={onReload}
-        className={`${buttonClassName('ghost', 'sm')} gap-2`}
+        className={buttonClassName('ghost', 'sm')}
       >
         <RefreshIcon width={17} height={17} />
         Refresh results

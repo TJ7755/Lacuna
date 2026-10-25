@@ -3,8 +3,21 @@ import Dexie from 'dexie';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
-import { createInsightsOwner, openInsightEnvelope, type InsightsOwner } from './envelope';
-import { getInsightMailboxPage } from './mailbox';
+import {
+  createInsightsOwner,
+  openInsightEnvelope,
+  sealInsightEnvelope,
+  type InsightsOwner,
+  type InsightsRecipient,
+} from './envelope';
+import { getInsightMailboxPage, putInsightEnvelope } from './mailbox';
+import {
+  completedIsoDayLabel,
+  INSIGHT_ID_RE,
+  parseInsightEnvelope,
+  type InsightEnvelope,
+} from '../../relay/shared/insights/index';
+import { normaliseRelayUrl } from '../sync/relay';
 import { createInsightsOutbox } from './outbox';
 
 const shareId = 'a'.repeat(32);
@@ -292,7 +305,9 @@ describe('current-progress snapshots', () => {
     expect(second.get('Authorization')).toBe(first.get('Authorization'));
     expect(first.get('X-Insights-Revision')).toBe('1');
     expect(second.get('X-Insights-Revision')).toBe('2');
-    expect(await inspect()).toEqual([]);
+    expect(await inspect()).toMatchObject([
+      { status: 'sent', slotId: (await inspectSnapshots())[0].slotId },
+    ]);
     expect(await inspectSnapshots()).toMatchObject([{ status: 'sent', revision: 2 }]);
   });
 
@@ -393,7 +408,9 @@ describe('current-progress snapshots', () => {
     input.evidence.mockResolvedValue(new TextEncoder().encode('final completed-day work'));
     expect(await outbox.send(input)).toBe('sent');
     expect(input.fetchImpl.mock.calls[1][0]).toBe(input.fetchImpl.mock.calls[0][0]);
-    expect(await inspect()).toEqual([]);
+    expect(await inspect()).toMatchObject([
+      { status: 'sent', slotId: (await inspectSnapshots())[0].slotId },
+    ]);
     expect(await inspectSnapshots()).toMatchObject([{ isoDay: '2026-10-19', revision: 2 }]);
     input.evidence.mockImplementationOnce(async () => {
       clock += 86_400_000;
@@ -428,3 +445,213 @@ describe('current-progress snapshots', () => {
     expect(input.fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+it.each([false, true])(
+  'keeps prior-version daily delivery in the snapshot slot (lost first ACK: %s)',
+  async (loseReply) => {
+    vi.stubEnv('RELAY_INSIGHTS_ENABLED', '1');
+    const store = new MemoryStore(() => clock);
+    const handler = createHandler(store, { now: () => clock });
+    const created = await handler(new Request(`${relayUrl}/shares`, { method: 'POST' }));
+    const credentials = (await created.json()) as { shareId: string; writeToken: string };
+    const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
+      const request = new Request(url, init);
+      if (typeof init?.body === 'string')
+        request.headers.set(
+          'Content-Length',
+          String(new TextEncoder().encode(init.body).byteLength),
+        );
+      const response = await handler(request);
+      if (loseReply && response.status === 204) {
+        loseReply = false;
+        throw new TypeError('Acknowledgement lost');
+      }
+      return response;
+    });
+    const input = { ...options(), shareId: credentials.shareId, fetchImpl };
+    const current = openOutbox();
+    if (loseReply) await expect(current.publish(input)).rejects.toThrow('Could not reach');
+    else expect(await current.publish(input)).toBe('sent');
+    const initial = (await inspectSnapshots())[0];
+    expect((await inspect())[0]).toMatchObject({ slotId: initial.slotId, status: initial.status });
+    clock += 86_400_000;
+    // This is the complete base-commit implementation below, including strict saved-row parsing.
+    const prior = createPriorInsightsOutbox(databaseName, () => clock);
+    try {
+      const calls = fetchImpl.mock.calls.length;
+      if (initial.status === 'pending') {
+        await expect(prior.send(input)).rejects.toMatchObject({ status: 401 });
+        const retry = fetchImpl.mock.calls[calls];
+        expect(retry[0]).toBe(fetchImpl.mock.calls[0][0]);
+        expect(retry[1]?.body).toBe(fetchImpl.mock.calls[0][1]?.body);
+        expect(new Headers(retry[1]?.headers).has('Authorization')).toBe(false);
+      } else {
+        expect(await prior.send(input)).toBe('idle');
+        expect(fetchImpl.mock.calls).toHaveLength(calls);
+      }
+      expect(await current.send(input)).toBe(initial.status === 'pending' ? 'sent' : 'unchanged');
+      const page = await getInsightMailboxPage({
+        ...input,
+        isoDay: '2026-10-19',
+        writeToken: credentials.writeToken,
+      });
+      expect(page.envelopes).toHaveLength(1);
+      expect(page.envelopes[0].slotId).toBe(initial.slotId);
+    } finally {
+      prior.close();
+    }
+  },
+);
+
+it.each([false, true])(
+  'reconciles newer pending evidence after an older ACK (retry fails: %s)',
+  async (retryFails) => {
+    const input = options();
+    let started!: () => void, release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const delayed = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    input.fetchImpl.mockImplementationOnce(async () => {
+      started();
+      await delayed;
+      return new Response(null, { status: 204 });
+    });
+    const first = openOutbox().publish(input);
+    const outcome = first.then(
+      (result) => ({ result }),
+      (error: unknown) => ({ error }),
+    );
+    await ready;
+    input.evidence.mockResolvedValue(new TextEncoder().encode('newer unaccepted work'));
+    input.fetchImpl.mockImplementationOnce(async () => new Response(null, { status: 204 }));
+    input.fetchImpl.mockImplementationOnce(async () => new Response(null, { status: 503 }));
+    await expect(openOutbox().publish(input)).rejects.toMatchObject({ status: 503 });
+    expect(await inspectSnapshots()).toMatchObject([{ status: 'pending', revision: 2 }]);
+    if (retryFails)
+      input.fetchImpl.mockImplementationOnce(async () => new Response(null, { status: 503 }));
+    release();
+    const finished = await outcome;
+    expect(input.fetchImpl.mock.calls[3][1]?.body).toBe(input.fetchImpl.mock.calls[2][1]?.body);
+    if (retryFails) {
+      expect(finished).toMatchObject({ error: { status: 503 } });
+      expect(await inspectSnapshots()).toMatchObject([{ status: 'pending', revision: 2 }]);
+    } else {
+      expect(finished).toEqual({ result: 'sent' });
+      expect(await inspectSnapshots()).toMatchObject([{ status: 'sent', revision: 2 }]);
+    }
+  },
+);
+
+// Frozen outbox from e9d32ea4321226427ca847e881557b35d055fd03. Only the factory name differs.
+interface PacketIdentity {
+  shareId: string;
+  isoDay: string;
+  relayUrl: string;
+  keyId: string;
+  slotId: string;
+}
+type SavedPacket = PacketIdentity &
+  ({ status: 'pending'; envelope: InsightEnvelope } | { status: 'sent' });
+
+interface DailyDelivery {
+  shareId: string;
+  relayUrl: string;
+  recipient: InsightsRecipient;
+  evidence(): Promise<Uint8Array>;
+  isOptedIn(): boolean;
+  fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
+}
+
+/** Explicit pupil-side delivery seam; opening it does not install a scheduler. */
+function createPriorInsightsOutbox(
+  databaseName = 'lacuna.insights.outbox',
+  now: () => number = Date.now,
+) {
+  const database = new Dexie(databaseName);
+  database.version(1).stores({ packets: '[shareId+isoDay], isoDay' });
+  const packets = database.table<SavedPacket, [string, string]>('packets');
+
+  return {
+    async send(options: DailyDelivery): Promise<'idle' | 'sent'> {
+      if (!options.isOptedIn() || options.signal?.aborted) return 'idle';
+      if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
+      const isoDay = completedIsoDayLabel(now());
+      const context = {
+        shareId: options.shareId,
+        isoDay,
+        relayUrl: normaliseRelayUrl(options.relayUrl),
+        keyId: options.recipient.keyId,
+      };
+      const key: [string, string] = [context.shareId, isoDay];
+      const stillAllowed = () =>
+        options.isOptedIn() && !options.signal?.aborted && completedIsoDayLabel(now()) === isoDay;
+
+      let packet = await packets.get(key);
+      if (packet) {
+        packet = checkSavedPacket(packet, context);
+      } else {
+        if (!stillAllowed()) return 'idle';
+        const evidence = await options.evidence();
+        if (!stillAllowed()) return 'idle';
+        const envelope = await sealInsightEnvelope(options.recipient, evidence, context);
+        if (!stillAllowed()) return 'idle';
+        const candidate: SavedPacket = {
+          ...context,
+          slotId: crypto.randomUUID().replaceAll('-', ''),
+          status: 'pending',
+          envelope,
+        };
+        // Seal before the transaction. Concurrent tabs must use the committed winner.
+        packet = await database.transaction('rw', packets, async () => {
+          await packets.where('isoDay').below(isoDay).delete();
+          const existing = await packets.get(key);
+          if (existing) return checkSavedPacket(existing, context);
+          await packets.add(candidate);
+          return candidate;
+        });
+      }
+      if (packet.status === 'sent' || !stillAllowed()) return 'idle';
+
+      // A failed upload or failed acknowledgement commit leaves these exact bytes retryable.
+      await putInsightEnvelope({ ...packet, fetchImpl: options.fetchImpl, signal: options.signal });
+      await database.transaction('rw', packets, async () => {
+        const saved = await packets.get(key);
+        if (!saved) return; // A newer day may already have pruned this packet.
+        const current = checkSavedPacket(saved, context);
+        if (current.slotId !== packet.slotId) throw new Error('The insights retry slot changed.');
+        await packets.put({ ...context, slotId: packet.slotId, status: 'sent' });
+      });
+      return 'sent';
+    },
+
+    close(): void {
+      database.close();
+    },
+  };
+}
+
+function checkSavedPacket(raw: SavedPacket, context: Omit<PacketIdentity, 'slotId'>): SavedPacket {
+  if (
+    !raw ||
+    !['pending', 'sent'].includes(raw.status) ||
+    Object.keys(raw).length !== (raw.status === 'pending' ? 7 : 6) ||
+    !INSIGHT_ID_RE.test(raw.slotId) ||
+    !/^[0-9a-f]{64}$/.test(raw.keyId) ||
+    raw.shareId !== context.shareId ||
+    raw.isoDay !== context.isoDay ||
+    raw.relayUrl !== context.relayUrl ||
+    raw.keyId !== context.keyId
+  ) {
+    throw new Error('The saved insights packet does not match this course, relay or teacher key.');
+  }
+  if (raw.status === 'pending') {
+    const envelope = parseInsightEnvelope(raw.envelope, context);
+    if (envelope.k !== context.keyId) throw new Error('The saved insights recipient changed.');
+    return { ...raw, envelope };
+  }
+  return raw;
+}

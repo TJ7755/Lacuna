@@ -141,9 +141,6 @@ it('makes the first locked class the default next step and summarises unlocked o
   expect(screen.getByText('1 reports · 1 to revisit')).toBeVisible();
   expect(screen.getByRole('heading', { name: 'Today’s loaded results' })).toBeVisible();
   expect(screen.queryByRole('heading', { name: 'Yesterday' })).not.toBeInTheDocument();
-  expect(screen.getByText(/Today’s results are partial snapshots/)).toHaveTextContent(
-    /Refresh results.*only results already loaded/,
-  );
   const unlock = screen.getByRole('button', { name: 'Unlock GCSE Chemistry' });
   expect(unlock.className).toContain('bg-accent');
   expect(screen.getByRole('button', { name: 'Open GCSE Biology' }).className).not.toContain(

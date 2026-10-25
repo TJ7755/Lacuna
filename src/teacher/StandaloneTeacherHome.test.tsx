@@ -192,10 +192,10 @@ it('opens recovery and the explanation of Gaps as pages from the sidebar', async
   fireEvent.click(within(more).getByRole('button', { name: 'About Gaps' }));
   await screen.findByRole('heading', { name: 'About Gaps' });
   expect(screen.getByText(/no report does not mean no study/)).toBeInTheDocument();
-  expect(screen.getByText(/Pupils can choose Send latest progress/)).toHaveTextContent(
-    /partial snapshot.*Refresh results/,
-  );
-  expect(screen.getByText(/Automatic reports cover the latest completed UTC day/)).toBeVisible();
+  expect(
+    screen.getByText(/Send latest progress shares today’s partial UTC results/),
+  ).toHaveTextContent(/Send latest progress/);
+  expect(screen.getByText(/Automatic reports cover yesterday \(UTC\)/)).toBeVisible();
   expect(screen.getByRole('link', { name: 'School data notice' })).toBeVisible();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });

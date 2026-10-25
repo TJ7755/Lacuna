@@ -67,13 +67,11 @@ export function createInsightsOutbox(
       const stillAllowed = () =>
         options.isOptedIn() && !options.signal?.aborted && completedIsoDayLabel(now()) === isoDay;
 
+      if (await snapshots.get(key)) return this.publish(options, true);
       let packet = await packets.get(key);
       if (packet) {
         packet = checkSavedPacket(packet, context);
       } else {
-        if (await snapshots.get(key)) {
-          return this.publish(options, true);
-        }
         if (!stillAllowed()) return 'idle';
         const evidence = await options.evidence();
         if (!stillAllowed()) return 'idle';
@@ -86,7 +84,8 @@ export function createInsightsOutbox(
           envelope,
         };
         // Seal before the transaction. Concurrent tabs must use the committed winner.
-        packet = await database.transaction('rw', packets, async () => {
+        packet = await database.transaction('rw', [packets, snapshots], async () => {
+          if (await snapshots.get(key)) return undefined;
           await packets.where('isoDay').below(isoDay).delete();
           const existing = await packets.get(key);
           if (existing) return checkSavedPacket(existing, context);
@@ -94,6 +93,7 @@ export function createInsightsOutbox(
           return candidate;
         });
       }
+      if (!packet) return this.publish(options, true);
       if (packet.status === 'sent' || !stillAllowed()) return 'idle';
 
       // A failed upload or failed acknowledgement commit leaves these exact bytes retryable.
@@ -131,12 +131,19 @@ export function createInsightsOutbox(
         keyId: options.recipient.keyId,
       };
       const key: [string, string] = [context.shareId, isoDay];
-      const read = async () => {
-        const raw = await snapshots.get(key);
-        return raw ? checkSnapshot(raw, context) : undefined;
-      };
+      const read = () =>
+        database.transaction('rw', [snapshots, packets], async () => {
+          const raw = await snapshots.get(key);
+          if (!raw) return undefined;
+          const packet = checkSnapshot(raw, context);
+          const claim = await packets.get(key);
+          if (claim) checkSnapshotClaim(claim, packet);
+          else await packets.add(snapshotClaim(packet));
+          return packet;
+        });
+      const initial = await read();
       const legacy = await packets.get(key);
-      if (legacy) {
+      if (legacy && !initial) {
         const saved = checkSavedPacket(legacy, context);
         if (saved.status === 'sent') return 'unchanged';
         return this.send(options);
@@ -153,7 +160,13 @@ export function createInsightsOutbox(
             new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array(evidence))),
             (byte) => byte.toString(16).padStart(2, '0'),
           ).join('');
-          if (packet?.evidenceHash === evidenceHash) return sent ? 'sent' : 'unchanged';
+          if (packet?.evidenceHash === evidenceHash) {
+            const current = await read();
+            if (!(await allowed())) return 'idle';
+            if (current?.status === 'sent' && sameSnapshot(current, packet))
+              return sent ? 'sent' : 'unchanged';
+            continue;
+          }
           if (packet?.revision === Number.MAX_SAFE_INTEGER)
             throw new Error('The insights revision limit has been reached.');
           const envelope = await sealInsightEnvelope(options.recipient, evidence, context);
@@ -173,12 +186,18 @@ export function createInsightsOutbox(
             status: 'pending',
           };
           // Commit before fetch. A racing tab must use the winner, never its own resealed bytes.
-          packet = await database.transaction('rw', snapshots, async () => {
+          packet = await database.transaction('rw', [snapshots, packets], async () => {
             if (!stillAllowed()) return undefined;
             const raw = await snapshots.get(key);
             const current = raw ? checkSnapshot(raw, context) : undefined;
             if (current && (!previous || !sameSnapshot(current, previous))) return current;
             if (previous && !current) throw new Error('The insights snapshot disappeared.');
+            const claim = await packets.get(key);
+            if (claim) {
+              if (!current)
+                throw new Error('The daily insights slot was claimed in another tab. Try again.');
+              checkSnapshotClaim(claim, current);
+            } else await packets.add(snapshotClaim(candidate));
             await snapshots.put(candidate);
             return candidate;
           });
@@ -202,17 +221,26 @@ export function createInsightsOutbox(
           throw error;
         }
         if (!(await allowed())) return 'idle';
-        const acknowledged = await database.transaction('rw', snapshots, async () => {
+        const acknowledged = await database.transaction('rw', [snapshots, packets], async () => {
           if (!stillAllowed()) return false;
           const raw = await snapshots.get(key);
           if (!raw) throw new Error('The insights snapshot disappeared.');
           const current = checkSnapshot(raw, context);
           if (!sameSnapshot(current, packet) || current.status !== 'pending') return false;
+          const claim = await packets.get(key);
+          if (!claim) throw new Error('The daily insights claim disappeared.');
+          checkSnapshotClaim(claim, current);
           await snapshots.put({ ...current, status: 'sent' });
+          await packets.put(snapshotClaim({ ...current, status: 'sent' }));
           return true;
         });
         sent ||= acknowledged;
-        if (fresh) return sent ? 'sent' : 'unchanged';
+        if (fresh) {
+          const current = await read();
+          if (!(await allowed())) return 'idle';
+          if (current?.status === 'sent') return sent ? 'sent' : 'unchanged';
+          // A newer revision can still be pending after our stale acknowledgement. Reconcile it.
+        }
         // Pending evidence may predate this action. Retry it, then publish one fresh snapshot.
       }
       throw new Error('Progress changed in another tab. Try sending again.');
@@ -281,4 +309,23 @@ function checkSnapshot(
   const envelope = parseInsightEnvelope(raw.envelope, context);
   if (envelope.k !== context.keyId) throw new Error('The saved insights recipient changed.');
   return { ...raw, envelope };
+}
+
+function snapshotClaim(packet: SnapshotPacket): SavedPacket {
+  const { shareId, isoDay, relayUrl, keyId, slotId } = packet;
+  const identity = { shareId, isoDay, relayUrl, keyId, slotId };
+  // Old tabs understand this row. Before ACK they can only retry the same protected slot.
+  return packet.status === 'sent'
+    ? { ...identity, status: 'sent' }
+    : { ...identity, status: 'pending', envelope: packet.envelope };
+}
+
+function checkSnapshotClaim(raw: SavedPacket, packet: SnapshotPacket): void {
+  const claim = checkSavedPacket(raw, packet);
+  if (
+    claim.slotId !== packet.slotId ||
+    (claim.status === 'pending' &&
+      JSON.stringify(claim.envelope) !== JSON.stringify(packet.envelope))
+  )
+    throw new Error('The daily insights slot belongs to a different packet.');
 }

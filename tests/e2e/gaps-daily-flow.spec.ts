@@ -91,6 +91,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       pupil = await pupilContext.newPage();
     await wire(teacher);
     await wire(pupil);
+    await pupil.emulateMedia({ reducedMotion: 'reduce' });
+    pupil.on('pageerror', (error) => {
+      throw error;
+    });
     // A second production build on its own origin, with no learner bundle or database.
     await teacher.emulateMedia({ reducedMotion: 'reduce' });
     await teacher.route('https://gaps.getlacuna.app/**', async (route) => {
@@ -349,16 +353,17 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await teacher.getByRole('button', { name: 'Next day', exact: true }).click();
     await expect(teacher.getByRole('table')).toHaveCount(0);
     const practise = async () => {
+      await pupil.bringToFront();
       const count = (await readAll(pupil, 'reviewHistory')).length;
       await pupil.goto(`/#/course/${importedId}`);
       await pupil.getByRole('button', { name: 'Other ways to study' }).click();
       await pupil.getByRole('menuitem', { name: 'Practise until all correct' }).click();
       await pupil.getByRole('button', { name: 'Start practising' }).click();
-      await pupil
-        .getByRole('button', { name: /Show answer/i })
-        .last()
-        .click();
-      await pupil.getByRole('button', { name: 'Yes', exact: true }).click();
+      await expect(pupil).toHaveURL(new RegExp(`#/course/${importedId}/learn\\?mode=simple$`));
+      await expect(pupil.locator('[data-study-card-id]')).toBeVisible();
+      await pupil.keyboard.press('Space');
+      await expect(pupil.getByRole('button', { name: 'Yes', exact: true })).toBeVisible();
+      await pupil.keyboard.press('Y');
       await expect(pupil.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
       await expect
         .poll(async () => (await readAll(pupil, 'reviewHistory')).length)
