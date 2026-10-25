@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -14,8 +14,15 @@ import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { BookIcon } from '../ui/icons';
-import { CourseLibraryImport } from '../import/CourseLibraryImport';
+import { DelayedFallback } from '../ui/DelayedFallback';
 import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
+
+// New course is eager; the library importer must stay behind the learner's choice.
+const CourseLibraryImport = lazy(() =>
+  import('../import/CourseLibraryImport').then((module) => ({
+    default: module.CourseLibraryImport,
+  })),
+);
 
 interface NewCourseFormProps {
   onClose: () => void;
@@ -201,18 +208,26 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
 
   // Outside the form, so Enter in the library search never submits it.
   const libraryView = (
-    <CourseLibraryImport
-      backLabel="New course"
-      onBack={() => {
-        returnToLibraryButton.current = true;
-        setBrowsing(false);
-      }}
-      onBusyChange={setLibraryBusy}
-      onOpenCourse={(courseId) => {
-        onClose();
-        void navigate(onboardingDestination(`/course/${courseId}`));
-      }}
-    />
+    <Suspense
+      fallback={
+        <DelayedFallback>
+          <p role="status">Loading the course library…</p>
+        </DelayedFallback>
+      }
+    >
+      <CourseLibraryImport
+        backLabel="New course"
+        onBack={() => {
+          returnToLibraryButton.current = true;
+          setBrowsing(false);
+        }}
+        onBusyChange={setLibraryBusy}
+        onOpenCourse={(courseId) => {
+          onClose();
+          void navigate(onboardingDestination(`/course/${courseId}`));
+        }}
+      />
+    </Suspense>
   );
 
   if (inline) {

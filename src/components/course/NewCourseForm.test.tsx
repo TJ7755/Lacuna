@@ -44,7 +44,7 @@ describe('NewCourseForm', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
 
-    const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
     expect(search).toHaveFocus();
     // Enter in the search never creates a course from the hidden form.
     fireEvent.keyDown(search, { key: 'Enter' });
@@ -63,13 +63,13 @@ describe('NewCourseForm', () => {
     const onClose = vi.fn();
     render(<NewCourseForm onClose={onClose} inline />);
     fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Search the course library' }), {
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search the course library' }), {
       target: { value: '8461' },
     });
     fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
     const back = screen.getByRole('button', { name: 'Back to the course library' });
     fireEvent.keyDown(back, { key: 'Escape' });
-    const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
     fireEvent.keyDown(search, { key: 'Escape' });
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus(),
@@ -78,12 +78,12 @@ describe('NewCourseForm', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('keeps the dialog open while a library course is written, and never creates one there', () => {
+  it('keeps the dialog open while a library course is written, and never creates one there', async () => {
     const onClose = vi.fn();
     render(<NewCourseForm onClose={onClose} />);
     fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Biology' } });
     fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
-    const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
     fireEvent.keyDown(search, { key: 'Enter', ctrlKey: true });
     expect(mocks.createCourse).not.toHaveBeenCalled();
 
