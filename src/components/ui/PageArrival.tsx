@@ -8,14 +8,37 @@ export const PageArrivalReady = createContext(true);
 /** Reveal reading surfaces in visual order, once their loading cover has released them. */
 export function PageArrival({ children, className }: { children: ReactNode; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
+  const arrived = useRef(false);
   const ready = useContext(PageArrivalReady);
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
 
   useLayoutEffect(() => {
-    if (!ready || multiplier === 0 || !root.current) return;
-    const parts = [...root.current.querySelectorAll<HTMLElement>('[data-page-part]')];
-    const surfaces = (parts.length ? parts : [root.current])
+    if (!ready) {
+      arrived.current = false;
+      return;
+    }
+    if (arrived.current || !root.current) return;
+    arrived.current = true;
+    if (multiplier === 0) return;
+    const parts = [...root.current.querySelectorAll<HTMLElement>('[data-page-part]')].filter(
+      (part) => part.closest('[data-page-arrival]') === root.current,
+    );
+    let content: HTMLElement = root.current;
+    while (
+      content.children.length === 1 &&
+      content.firstElementChild instanceof HTMLDivElement &&
+      !content.firstElementChild.hasAttribute('data-page-arrival')
+    ) {
+      content = content.firstElementChild;
+    }
+    const defaults = [...content.children].filter(
+      (part): part is HTMLElement =>
+        part instanceof HTMLElement &&
+        part.getBoundingClientRect().height > 0 &&
+        !part.hasAttribute('data-page-arrival'),
+    );
+    const surfaces = (parts.length ? parts : defaults.length ? defaults : [content])
       .map((element) => ({ element, top: element.getBoundingClientRect().top }))
       .sort((a, b) => a.top - b.top);
     const rows = [...new Set(surfaces.map(({ top }) => Math.round(top)))];

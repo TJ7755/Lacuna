@@ -16,7 +16,7 @@ it('uses one delay and minimum lifetime across guard, chunk and page data', asyn
     return (
       <>
         <header>Course navigation and View/Edit</header>
-        <PageLoadingBoundary fallback={<p>Shared skeleton</p>}>
+        <PageLoadingBoundary minimumMs={200} fallback={<p>Shared skeleton</p>}>
           {stage === 'ready' ? <p>Course content</p> : <PageLoading key={stage} />}
         </PageLoadingBoundary>
       </>

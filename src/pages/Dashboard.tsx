@@ -276,7 +276,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <PageLoadingBoundary fallback={<CourseSkeleton />}>
+      <PageLoadingBoundary minimumMs={200} fallback={<CourseSkeleton />}>
         {!rows || !ready ? (
           <PageLoading />
         ) : rows.length === 0 || (creatingCourse && createInEmptyState) ? (

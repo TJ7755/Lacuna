@@ -184,14 +184,13 @@ describe('LessonView arrival', () => {
     mockNotes = undefined;
     const view = renderPage();
     expect(screen.queryByRole('heading', { name: lesson.name })).not.toBeInTheDocument();
-    expect(view.container.querySelector('[data-page-arrival]')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Cards in this lesson' })).not.toBeInTheDocument();
 
     mockNotes = [];
     view.refresh();
-    const arrival = view.container.querySelector('[data-page-arrival]');
-    expect(arrival).toContainElement(screen.getByRole('heading', { name: lesson.name }));
-    expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Notes' }));
-    expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Cards in this lesson' }));
+    expect(screen.getByRole('heading', { name: lesson.name })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Cards in this lesson' })).toBeVisible();
     // Backing scheduling configuration remains undefined in this fixture: it must not block arrival.
     expect(screen.getByRole('button', { name: 'New card' })).toBeEnabled();
   });

@@ -17,7 +17,6 @@ import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useLessonViewData } from '../state/useLessonViewData';
-import { PageArrival } from '../components/ui/PageArrival';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
 import { LessonCardsList } from '../components/cards/LessonCardsList';
@@ -153,7 +152,7 @@ export function LessonView() {
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
   return (
-    <PageArrival key={lesson.id} className={`${COURSE_PAGE_FRAME} py-8`}>
+    <div key={lesson.id} className={`${COURSE_PAGE_FRAME} py-8`}>
       <div className="flex flex-col gap-6">
         <div data-page-part="">
           <LessonHeader
@@ -287,6 +286,6 @@ export function LessonView() {
           {courseId && lessonId && <RelatedQuestionSets courseId={courseId} lessonId={lessonId} />}
         </div>
       </div>
-    </PageArrival>
+    </div>
   );
 }
