@@ -10,7 +10,26 @@ import {
   pathState,
 } from './CoursePath.testFixtures';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { ToastProvider } from '../components/ui/Toast';
+import { CoursePath } from './CoursePath';
+
+function coursePathSubject() {
+  return (
+    <MemoryRouter initialEntries={['/course/course-1']}>
+      <ToastProvider>
+        <LazyMotion features={domAnimation}>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </LazyMotion>
+      </ToastProvider>
+    </MemoryRouter>
+  );
+}
+
 describe('CoursePath overview', () => {
   beforeEach(resetCoursePathFixtures);
   it('opens a lesson straight from its row', () => {
@@ -44,6 +63,29 @@ describe('CoursePath overview', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
     },
   );
+  it('keeps the open first-lesson draft and selection when live lessons arrive', () => {
+    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+    pathState.mockLessons = [];
+    const view = render(coursePathSubject());
+    fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
+    const input = screen.getByRole('textbox', { name: 'Lesson name' }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Fieldwork draft' } });
+    input.focus();
+    input.setSelectionRange(3, 9);
+
+    for (const lessons of [[lesson1], [lesson1, lesson2]]) {
+      pathState.mockLessons = lessons;
+      view.rerender(coursePathSubject());
+      expect(screen.getByRole('textbox', { name: 'Lesson name' })).toBe(input);
+      expect(input).toHaveValue('Fieldwork draft');
+      expect(input).toHaveFocus();
+      expect([input.selectionStart, input.selectionEnd]).toEqual([3, 9]);
+    }
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+    expect(screen.getByRole('button', { name: 'Dynamics' })).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it('shows the lock reason without opening an unreached lesson in View mode', () => {
     pathState.mockCourse = { ...course, unlockMode: 'semi-linear' };
     renderPage();
@@ -55,10 +97,15 @@ describe('CoursePath overview', () => {
   });
 
   it('retains keyboard lesson reordering in Edit mode', async () => {
-    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
     mockReorderLessons.mockResolvedValue(undefined);
-    renderPage();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), {
+    const view = render(coursePathSubject());
+    const row = screen.getByRole('button', { name: 'Dynamics' });
+    row.focus();
+    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+    view.rerender(coursePathSubject());
+    expect(screen.getByRole('button', { name: 'Dynamics' })).toBe(row);
+    expect(row).toHaveFocus();
+    fireEvent.keyDown(row, {
       key: 'ArrowUp',
       altKey: true,
     });

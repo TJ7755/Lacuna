@@ -63,6 +63,7 @@ export function CoursePath() {
     node?: PracticeNode;
     defaultPosition?: number;
   } | null>(null);
+  const [addingLesson, setAddingLesson] = useState(false);
   const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
@@ -125,8 +126,11 @@ export function CoursePath() {
   );
 
   // A one-lesson course renders LessonView inline, which owns S for its own Study action.
+  // A live first lesson must not replace an open creation form with LessonView.
   const inlineLesson =
-    lessons?.length === 1 && !nodes.some((node) => node.nodeType === 'practice-question-set');
+    !addingLesson &&
+    lessons?.length === 1 &&
+    !nodes.some((node) => node.nodeType === 'practice-question-set');
   usePageShortcuts({
     s:
       dataLoaded && course && !archived && !inlineLesson
@@ -349,6 +353,7 @@ export function CoursePath() {
       )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
+        onCreationOpenChange={setAddingLesson}
         summary={(cardClassName) =>
           hasStudyContent && (
             <CourseSummaryCard

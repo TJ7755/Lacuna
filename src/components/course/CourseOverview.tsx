@@ -20,14 +20,25 @@ const CARD = 'rounded-3xl bg-surface card-surface';
  * they fall, beside the course's assessments. Each lesson shows its number, state and a
  * progress bar; in Edit mode lessons can be dragged or moved with Alt and the arrows.
  */
-export function CourseOverview(props: CourseOverviewProps) {
+export function CourseOverview(
+  props: CourseOverviewProps & { onCreationOpenChange?: (open: boolean) => void },
+) {
   const { nodes, authoring, archived } = props;
   const [addingLesson, setAddingLesson] = useState(false);
+  const [creationAtEmpty, setCreationAtEmpty] = useState(nodes.length === 0);
+  const changeAddingLesson = (open: boolean) => {
+    setAddingLesson(open);
+    props.onCreationOpenChange?.(open);
+  };
+  const startAddingLesson = () => {
+    setCreationAtEmpty(nodes.length === 0);
+    changeAddingLesson(true);
+  };
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
   const addRef = useRef<HTMLDivElement>(null);
   const restoreAdd = () => {
-    setAddingLesson(false);
+    changeAddingLesson(false);
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
   const lessonMenus = useRef(new Map<string, MenuHandle>());
@@ -50,14 +61,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                 <AddCourseControl
                   kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
                   onAdd={(kind) => {
-                    if (kind === 'lesson') setAddingLesson(true);
+                    if (kind === 'lesson') startAddingLesson();
                     else props.onAdd(kind);
                   }}
                 />
               </div>
             )}
           </div>
-          {authoring && nodes.length > 0 && (
+          {authoring && !creationAtEmpty && (
             <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
               <AddLessonControl
                 initiallyOpen
@@ -75,29 +86,39 @@ export function CourseOverview(props: CourseOverviewProps) {
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {props.announcement}
           </div>
-          {nodes.length === 0 ? (
+          {/* Keep the creation origin and form mounted when live nodes arrive. */}
+          <AnimatedDisclosure open={nodes.length === 0 || (creationAtEmpty && addingLesson)}>
             <div className="flex flex-col items-center gap-4 py-10 text-center">
-              <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
-              {authoring && (
+              <p
+                className={cn('text-sm text-ink-soft', nodes.length > 0 && 'invisible')}
+                aria-hidden={nodes.length > 0 || undefined}
+              >
+                This course has no lessons yet.
+              </p>
+              {authoring && (creationAtEmpty || !addingLesson) && (
                 <ExpandingCreateControl
                   label="Add first lesson"
                   prominent
                   align="centre"
                   closedWidth={176}
                   open={addingLesson}
-                  onOpenChange={setAddingLesson}
+                  onOpenChange={(open) => {
+                    if (open) setCreationAtEmpty(true);
+                    changeAddingLesson(open);
+                  }}
                 >
                   <AddLessonControl
                     initiallyOpen
                     courseId={props.courseId}
                     lessonCount={props.lessonCount}
-                    onCancel={() => setAddingLesson(false)}
+                    onCancel={() => changeAddingLesson(false)}
                     onCreated={props.onLessonCreated}
                   />
                 </ExpandingCreateControl>
               )}
             </div>
-          ) : (
+          </AnimatedDisclosure>
+          {nodes.length > 0 && (
             <ol className="m-0 list-none p-0" aria-label="Course path">
               {renderCoursePathRows(props, m, lessonMenus, lessons)}
             </ol>

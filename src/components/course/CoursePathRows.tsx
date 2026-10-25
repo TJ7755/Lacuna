@@ -1,8 +1,8 @@
-import type { RefObject } from 'react';
-import { m as motion } from 'motion/react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { m as motion, type HTMLMotionProps } from 'motion/react';
 import { formatShortDate } from '../../utils/datetime';
 import { countOf } from '../../utils/plural';
-import { MOTION_EASING, scaledSpring } from '../ui/motion';
+import { MOTION_EASING, expandingActionSpring, scaledSpring } from '../ui/motion';
 import { cn } from '../ui/cn';
 import { CardsIcon, CheckIcon, ChevronRightIcon, FlagIcon } from '../ui/icons';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
@@ -213,11 +213,8 @@ export function renderCoursePathRows(
           ? lessonContextMenu(() => lessonMenus.current.get(lessonId))
           : {})}
       >
-        <motion.button
-          // Motion keeps the first ref it is given, so remount when authoring
-          // starts or the reorder hook never sees this row.
-          key={authoring ? 'author' : 'study'}
-          ref={reorder?.registerElement}
+        <PathRowButton
+          registerElement={reorder?.registerElement}
           data-path-row=""
           type="button"
           aria-label={label}
@@ -275,14 +272,10 @@ export function renderCoursePathRows(
                     'block h-1 origin-left rounded-full',
                     done ? 'bg-positive' : 'bg-ink',
                   )}
-                  style={{ width: `${locked ? 0 : pct}%` }}
-                  initial={m > 0 ? { scaleX: 0 } : false}
-                  animate={{ scaleX: 1 }}
-                  transition={{
-                    duration: 0.7 * m,
-                    delay: (0.15 + Math.min(index, 8) * 0.04) * m,
-                    ease: MOTION_EASING.emphasised,
-                  }}
+                  style={{ width: '100%' }}
+                  initial={false}
+                  animate={{ scaleX: pct / 100 }}
+                  transition={expandingActionSpring(m)}
                 />
               </span>
             )}
@@ -294,7 +287,7 @@ export function renderCoursePathRows(
               className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
             />
           )}
-        </motion.button>
+        </PathRowButton>
         {authoring && lesson && (
           <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
             <LessonActionsMenu
@@ -345,4 +338,19 @@ export function renderCoursePathRows(
       </motion.li>
     );
   });
+}
+
+function PathRowButton({
+  registerElement,
+  ...props
+}: HTMLMotionProps<'button'> & {
+  registerElement?: (element: HTMLButtonElement | null) => void;
+}) {
+  const element = useRef<HTMLButtonElement>(null);
+  // Motion retains its initial ref. Register later authoring handlers without replacing the row.
+  useLayoutEffect(() => {
+    registerElement?.(element.current);
+    return () => registerElement?.(null);
+  }, [registerElement]);
+  return <motion.button {...props} ref={element} />;
 }
