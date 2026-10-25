@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PillToggleGroup, type PillToggleOption } from './PillToggleGroup';
+import { Button } from '../ui/Button';
 import type { CardType } from '../../db/types';
 
 /** Authoring types: the stored card types plus the structured and audio variants. */
@@ -60,21 +61,27 @@ export function CardTypePicker({
   const [more, setMore] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   // More leaves as the further types arrive, so its focus passes to the first of them.
-  const focusRevealed = useRef(false);
+  const focusToggle = useRef(false);
   useEffect(() => {
-    if (!more || !focusRevealed.current) return;
-    focusRevealed.current = false;
-    rootRef.current
-      ?.querySelectorAll<HTMLElement>('[aria-pressed]')
-      [EVERYDAY_TYPES.length]?.focus();
+    if (!focusToggle.current) return;
+    focusToggle.current = false;
+    if (more) {
+      rootRef.current
+        ?.querySelectorAll<HTMLElement>('[aria-pressed]')
+        [EVERYDAY_TYPES.length]?.focus();
+    } else {
+      rootRef.current?.querySelector<HTMLElement>('[aria-label="More card types"]')?.focus();
+    }
   }, [more]);
-  // A card already of a rarer type shows its type rather than hiding it behind More.
-  const revealed = more || !isEveryday(value);
+  // Collapsing the further types must never conceal the current choice.
   const options: PillToggleOption<PickerValue>[] = [...EVERYDAY_TYPES];
-  if (revealed) {
+  if (more) {
     options.push(...MORE_TYPES);
     if (onNewSequence) options.push({ value: 'sequence', label: 'Sequence' });
     if (onNewOcclusion) options.push({ value: 'occlusion', label: 'Image occlusion' });
+  } else if (!isEveryday(value)) {
+    const selected = MORE_TYPES.find((option) => option.value === value);
+    if (selected) options.push(selected);
   }
 
   return (
@@ -90,16 +97,34 @@ export function CardTypePicker({
           else onChange(next);
         }}
         onMore={
-          revealed
+          more
             ? undefined
             : () => {
-                focusRevealed.current = true;
+                focusToggle.current = true;
                 setMore(true);
               }
         }
         moreLabel="More card types"
       />
-      {sources?.(revealed)}
+      {(more || sources) && (
+        <div className={`flex flex-wrap items-center gap-2 ${more ? 'basis-full' : ''}`}>
+          {more && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Fewer card types"
+              aria-expanded={true}
+              onClick={() => {
+                focusToggle.current = true;
+                setMore(false);
+              }}
+            >
+              Fewer types
+            </Button>
+          )}
+          {sources?.(more)}
+        </div>
+      )}
       {TYPE_HELP[value] && <p className="basis-full text-sm text-ink-soft">{TYPE_HELP[value]}</p>}
     </div>
   );

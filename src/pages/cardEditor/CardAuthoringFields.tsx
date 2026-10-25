@@ -217,7 +217,7 @@ export function CardAuthoringFields({
                   label="Front"
                   value={front}
                   onChange={(value) => modifyDraftField(setFront, value)}
-                  minRows={6}
+                  minRows={4}
                   placeholder="Question or prompt"
                   onError={(m) => notify(m, 'negative')}
                   onTabForward={() => backRef.current?.focus()}
@@ -231,7 +231,7 @@ export function CardAuthoringFields({
                   label="Back"
                   value={back}
                   onChange={(value) => modifyDraftField(setBack, value)}
-                  minRows={6}
+                  minRows={4}
                   placeholder="Answer"
                   onError={(m) => notify(m, 'negative')}
                   onTabForward={focusSaveButton}

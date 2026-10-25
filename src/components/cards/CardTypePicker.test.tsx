@@ -43,13 +43,18 @@ describe('CardTypePicker', () => {
     expect(onChange).toHaveBeenCalledWith('audio');
   });
 
-  it('shows a rarer type that is already chosen without asking for More', () => {
-    render(<CardTypePicker value="working" onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(screen.queryByRole('button', { name: 'More card types' })).not.toBeInTheDocument();
+  it('keeps the selected further type visible when the rest are collapsed', () => {
+    const onChange = vi.fn();
+    render(<CardTypePicker value="working" onChange={onChange} />);
+    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Numeric answer' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'More card types' }));
+    expect(screen.getByRole('button', { name: 'Basic (reversed)' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Fewer card types' }));
+    expect(screen.getByRole('button', { name: 'More card types' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Working' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('button', { name: 'Numeric answer' })).not.toBeInTheDocument();
+    expect(onChange).not.toHaveBeenCalled();
     // Editing an existing card offers no other editors.
     expect(screen.queryByRole('button', { name: 'Sequence' })).not.toBeInTheDocument();
   });
