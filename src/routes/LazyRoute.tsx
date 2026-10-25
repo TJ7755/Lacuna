@@ -1,65 +1,35 @@
 import { PAGE_FRAME, PAGE_HEADER } from '../components/course/coursePageLayout';
-import { Suspense, type ReactNode } from 'react';
-import { m as motion } from 'motion/react';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import type { ReactNode } from 'react';
+import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { Skeleton } from '../components/ui/Skeleton';
-
-/**
- * Short enough to overlap the shell's own route transition without reading as a
- * second, slower animation stacked on top of it.
- */
-const CONTENT_FADE_S = 0.14;
 
 function RouteFallback() {
   return (
-    <DelayedFallback>
-      <div className={`${PAGE_FRAME} pb-10`}>
-        <header className={PAGE_HEADER}>
-          <Skeleton className="h-11 w-64 max-w-full" />
-        </header>
-        <div className="space-y-4 rounded-3xl bg-surface p-6 card-surface">
-          <Skeleton className="h-6 w-48 max-w-full" />
-          <Skeleton className="h-4 w-full" />
-          <Skeleton className="h-4 w-5/6" />
-          <Skeleton className="h-32 w-full rounded-3xl" />
-        </div>
+    <div className={`${PAGE_FRAME} pb-10`}>
+      <header className={PAGE_HEADER}>
+        <Skeleton className="h-11 w-64 max-w-full" />
+      </header>
+      <div className="space-y-4 rounded-3xl bg-surface p-6 card-surface">
+        <Skeleton className="h-6 w-48 max-w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+        <Skeleton className="h-32 w-full rounded-3xl" />
       </div>
-    </DelayedFallback>
+    </div>
   );
 }
 
-/**
- * Fades route content in as it mounts. `AppShell` already crossfades navigation, but
- * it animates whatever the boundary is showing at the time — on a cold chunk fetch
- * that is the placeholder, and the real content then replaced it with no transition
- * at all. An instant swap reads as a flicker rather than as speed, so making loading
- * faster made the seam more obvious rather than less.
- */
-function RouteContent({ children }: { children: ReactNode }) {
-  const [motionSpeed] = useMotionSpeed();
-  const m = speedMultiplier(motionSpeed);
-
+/** Guard, chunk and page data share one loading surface and one reveal. */
+export function LazyRoute({
+  children,
+  animateArrival = true,
+}: {
+  children: ReactNode;
+  animateArrival?: boolean;
+}) {
   return (
-    <motion.div
-      initial={m > 0 ? { opacity: 0 } : false}
-      animate={{ opacity: 1 }}
-      transition={{ duration: CONTENT_FADE_S * m, ease: 'easeOut' }}
-    >
+    <PageLoadingBoundary fallback={<RouteFallback />} animateArrival={animateArrival}>
       {children}
-    </motion.div>
-  );
-}
-
-/**
- * A lazily loaded route: a placeholder that will not flash, and content that settles
- * in rather than snapping. Replaces the repeated Suspense-plus-fallback pairs that
- * every lazy route in `App.tsx` previously spelled out.
- */
-export function LazyRoute({ children }: { children: ReactNode }) {
-  return (
-    <Suspense fallback={<RouteFallback />}>
-      <RouteContent>{children}</RouteContent>
-    </Suspense>
+    </PageLoadingBoundary>
   );
 }

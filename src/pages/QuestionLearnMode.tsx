@@ -1,5 +1,6 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { Skeleton } from '../components/ui/Skeleton';
+import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -31,6 +32,14 @@ import { MOTION_EASING } from '../components/ui/motion';
 import { ResultMark } from '../components/questions/ResultMark';
 
 export function QuestionLearnMode() {
+  return (
+    <PageLoadingBoundary fallback={<QuestionSessionSkeleton />} animateArrival={false}>
+      <QuestionSession />
+    </PageLoadingBoundary>
+  );
+}
+
+function QuestionSession() {
   const { courseId } = useParams<{ courseId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -231,7 +240,7 @@ export function QuestionLearnMode() {
   const exit = () => exitGuardRef.current?.requestLeave();
 
   if (course === undefined || data === undefined || questionIds === null) {
-    return <QuestionSessionSkeleton />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -294,61 +303,65 @@ export function QuestionLearnMode() {
           onExit={exit}
         />
 
-        {startError ? (
-          <section
-            role="alert"
-            className="grid min-h-[24rem] place-items-center rounded-[28px] bg-surface px-6 py-12 text-center card-surface"
-          >
-            <div className="max-w-md">
-              <h1 className="font-display text-3xl font-semibold tracking-tight">
-                Could not start practice
-              </h1>
-              <p className="mt-3 text-sm leading-6 text-ink-soft">{startError}</p>
-              <div className="mt-7 grid grid-cols-2 gap-3">
-                <Button variant="secondary" onClick={exit}>
-                  Exit
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setStartError(null);
-                    setStartVersion((version) => version + 1);
-                  }}
-                >
-                  Retry
-                </Button>
+        <PageLoadingBoundary
+          pending={!attempt && !startError}
+          fallback={<Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />}
+          animateArrival={false}
+        >
+          {startError ? (
+            <section
+              role="alert"
+              className="grid min-h-[24rem] place-items-center rounded-[28px] bg-surface px-6 py-12 text-center card-surface"
+            >
+              <div className="max-w-md">
+                <h1 className="font-display text-3xl font-semibold tracking-tight">
+                  Could not start practice
+                </h1>
+                <p className="mt-3 text-sm leading-6 text-ink-soft">{startError}</p>
+                <div className="mt-7 grid grid-cols-2 gap-3">
+                  <Button variant="secondary" onClick={exit}>
+                    Exit
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setStartError(null);
+                      setStartVersion((version) => version + 1);
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
               </div>
-            </div>
-          </section>
-        ) : !attempt ? (
-          <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
-        ) : (
-          <motion.div
-            key={`${attempt.id}:${attempt.status}`}
-            initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.985 } : false}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.4 * multiplier, ease: MOTION_EASING.emphasised }}
-          >
-            {attempt.status === 'answered' ? (
-              <QuestionFeedback
-                attempt={attempt}
-                busy={busy}
-                onCorrection={(answer) => void correct({ ...answer, attemptId: attempt.id })}
-                onUndo={() => void undo()}
-                onNext={() => {
-                  setAttempt(null);
-                  setIndex((current) => current + 1);
-                }}
-              />
-            ) : (
-              <QuestionResponsePanel
-                attempt={attempt}
-                onSubmit={(answer) => void submit(answer)}
-                onReroll={question?.kind === 'generated' ? () => void reroll() : undefined}
-              />
-            )}
-          </motion.div>
-        )}
+            </section>
+          ) : attempt ? (
+            <motion.div
+              key={`${attempt.id}:${attempt.status}`}
+              initial={multiplier > 0 ? { opacity: 0, y: 14, scale: 0.985 } : false}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.4 * multiplier, ease: MOTION_EASING.emphasised }}
+            >
+              {attempt.status === 'answered' ? (
+                <QuestionFeedback
+                  attempt={attempt}
+                  busy={busy}
+                  onCorrection={(answer) => void correct({ ...answer, attemptId: attempt.id })}
+                  onUndo={() => void undo()}
+                  onNext={() => {
+                    setAttempt(null);
+                    setIndex((current) => current + 1);
+                  }}
+                />
+              ) : (
+                <QuestionResponsePanel
+                  attempt={attempt}
+                  onSubmit={(answer) => void submit(answer)}
+                  onReroll={question?.kind === 'generated' ? () => void reroll() : undefined}
+                />
+              )}
+            </motion.div>
+          ) : null}
+        </PageLoadingBoundary>
       </div>
     </main>
   );

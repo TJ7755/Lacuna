@@ -1,6 +1,6 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useMemo, useState } from 'react';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { useAllCards, useAllReviewHistory, useAllSessionHistory } from '../state/useData';
@@ -164,9 +164,7 @@ export function Analytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading analytics">
-        <DelayedFallback>
-          <AnalyticsSkeleton />
-        </DelayedFallback>
+        <PageLoading fallback={<AnalyticsSkeleton />} />
       </div>
     );
   }

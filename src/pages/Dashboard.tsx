@@ -291,10 +291,15 @@ export function Dashboard() {
         ) : (
           <div className="flex flex-col gap-6">
             {/* The forecast arrives whole, fading in place, and holds its room while late. */}
-            {!forecastSettled ? (
-              <ForecastPlaceholder />
-            ) : (
-              showForecast && (
+            <PageLoadingBoundary
+              pending={!forecastSettled}
+              fallback={<ForecastPlaceholder />}
+              animateArrival={false}
+              className={
+                !forecastSettled ? 'min-h-[540px] sm:min-h-[520px] lg:min-h-[480px]' : undefined
+              }
+            >
+              {forecastSettled && showForecast && (
                 <motion.section
                   aria-label="Forecast and this week"
                   className="flex flex-col gap-5 rounded-3xl bg-surface p-5 card-surface md:p-6"
@@ -316,8 +321,8 @@ export function Dashboard() {
                   )}
                   {week && stats && <WeekPanel week={week} streak={stats.streak} multiplier={m} />}
                 </motion.section>
-              )
-            )}
+              )}
+            </PageLoadingBoundary>
             {/* The queue follows the forecast that explains it, starting as the forecast settles. */}
             <TodayQueue
               rows={rows}

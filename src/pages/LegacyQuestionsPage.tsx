@@ -9,7 +9,7 @@ import { BatchAuthoringPromptDialog } from '../components/items/BatchAuthoringPr
 import { QuestionBankCard } from '../components/questions/QuestionBankCard';
 import { useCourseQuestionData } from '../components/questions/useQuestionData';
 import { Button } from '../components/ui/Button';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon, SparklesIcon } from '../components/ui/icons';
 import { MOTION_EASING } from '../components/ui/motion';
 import { summariseQuestion } from '../questions/bankSummary';
@@ -83,11 +83,7 @@ export function LegacyQuestionsPage() {
   );
 
   if (course === undefined || lessons === undefined || data === undefined) {
-    return (
-      <DelayedFallback>
-        <QuestionsPageSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<QuestionsPageSkeleton />} />;
   }
   if (course === null) {
     return (

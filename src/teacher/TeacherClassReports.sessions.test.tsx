@@ -42,7 +42,9 @@ it('locks the class and removes the connection only after confirmation', async (
   render(<Harness />);
   await unlock();
   fireEvent.click(await screen.findByRole('button', { name: 'Lock' }));
-  expect(await screen.findByRole('heading', { name: 'Unlock to see results' })).toBeVisible();
+  await waitFor(() =>
+    expect(screen.getByRole('heading', { name: 'Unlock to see results' })).toBeVisible(),
+  );
   fireEvent.click(screen.getByRole('button', { name: /^Class settings/ }));
   fireEvent.click(await screen.findByRole('button', { name: 'Remove connection' }));
   fireEvent.click(screen.getByRole('button', { name: 'Keep connection' }));

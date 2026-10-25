@@ -1,7 +1,7 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
@@ -46,7 +46,15 @@ interface LearnModeProps {
   sessionId?: string;
 }
 
-export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
+export function LearnMode(props: LearnModeProps = {}) {
+  return (
+    <PageLoadingBoundary fallback={<LearnSkeleton />} animateArrival={false}>
+      <LearnSession {...props} />
+    </PageLoadingBoundary>
+  );
+}
+
+function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps) {
   const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
@@ -308,11 +316,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   }, [phase, summary]);
 
   if (!sessionReady || phase === 'loading') {
-    return (
-      <DelayedFallback>
-        <LearnSkeleton mode={mode} />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<LearnSkeleton mode={mode} />} />;
   }
 
   if (phase === 'notes' && lessonNotesScreen) {

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
+import { lazy, useEffect, useId, useRef, useState } from 'react';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { BookIcon, ChevronLeftIcon } from '../ui/icons';
 import { Skeleton } from '../ui/Skeleton';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { StepSwap } from '../ui/StepSwap';
 import { MeasuredHeight } from '../ui/MeasuredHeight';
 import type { LibraryBrowseState } from '../import/CourseLibraryPicker';
@@ -57,6 +58,15 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  const [libraryReady, setLibraryReady] = useState(false);
+  useEffect(() => {
+    if (!browsing || libraryReady) return;
+    // The live way back sits outside the loader while its chunk is downloaded.
+    // Rejections still reach the lazy component's existing error boundary.
+    void loadCourseLibrary()
+      .finally(() => setLibraryReady(true))
+      .catch(() => {});
+  }, [browsing, libraryReady]);
   const [libraryBrowse, setLibraryBrowse] = useState<LibraryBrowseState>({
     query: '',
     subject: null,
@@ -221,35 +231,37 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
 
   // Outside the form, so Enter in the library search never submits it.
   const libraryView = (
-    <Suspense
-      fallback={
-        <div
-          className="px-6 pb-6 pt-2"
-          onKeyDown={(event) => {
-            if (event.key !== 'Escape') return;
-            event.preventDefault();
-            event.stopPropagation();
-            backToForm();
-          }}
-        >
-          <header className="mb-3 flex items-center justify-start">
-            <Button
-              type="button"
-              variant="ghost"
-              hoverScale={false}
-              style={{ paddingInline: 12, gap: 6 }}
-              autoFocus
-              aria-label="Back to New course"
-              onClick={backToForm}
-            >
-              <ChevronLeftIcon width={16} height={16} aria-hidden="true" />
-              New course
-            </Button>
-          </header>
+    <div
+      onKeyDown={(event) => {
+        if (libraryReady || event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        backToForm();
+      }}
+    >
+      {!libraryReady && (
+        <header className="mb-3 flex items-center justify-start px-6 pt-2">
+          <Button
+            type="button"
+            variant="ghost"
+            hoverScale={false}
+            style={{ paddingInline: 12, gap: 6 }}
+            autoFocus
+            aria-label="Back to New course"
+            onClick={backToForm}
+          >
+            <ChevronLeftIcon width={16} height={16} aria-hidden="true" />
+            New course
+          </Button>
+        </header>
+      )}
+      <PageLoadingBoundary
+        pending={!libraryReady}
+        fallback={
           <div
             aria-busy="true"
             aria-label="Loading the course library"
-            className="flex flex-col gap-3"
+            className="flex flex-col gap-3 px-6 pb-6"
           >
             <Skeleton className="h-[46px] rounded-2xl" />
             <div className="grid gap-1.5">
@@ -258,21 +270,23 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
               ))}
             </div>
           </div>
-        </div>
-      }
-    >
-      <CourseLibraryImport
-        backLabel="New course"
-        browse={libraryBrowse}
-        onBrowseChange={setLibraryBrowse}
-        onBack={backToForm}
-        onBusyChange={setLibraryBusy}
-        onOpenCourse={(courseId) => {
-          onClose();
-          void navigate(onboardingDestination(`/course/${courseId}`));
-        }}
-      />
-    </Suspense>
+        }
+      >
+        {libraryReady && (
+          <CourseLibraryImport
+            backLabel="New course"
+            browse={libraryBrowse}
+            onBrowseChange={setLibraryBrowse}
+            onBack={backToForm}
+            onBusyChange={setLibraryBusy}
+            onOpenCourse={(courseId) => {
+              onClose();
+              void navigate(onboardingDestination(`/course/${courseId}`));
+            }}
+          />
+        )}
+      </PageLoadingBoundary>
+    </div>
   );
 
   const form = (

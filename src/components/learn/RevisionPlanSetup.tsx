@@ -12,12 +12,13 @@ import {
 import type { CourseAssessment, RevisionPlan } from '../../db/types';
 import { formatDateTime } from '../../utils/datetime';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
-import { DelayedFallback } from '../ui/DelayedFallback';
+import { PageLoading, PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { Button } from '../ui/Button';
 import { Field, Input, inputFrameClassName } from '../ui/Field';
 import { Skeleton } from '../ui/Skeleton';
 import { cn } from '../ui/cn';
 import { SectionCard } from '../ui/SectionCard';
+import { StudyEntrance } from './StudyEntrance';
 
 const PRESETS = [10, 20, 30] as const;
 
@@ -30,15 +31,23 @@ function formatPlanDay(day: string): string {
   });
 }
 
-export function RevisionPlanSetup({
-  assessmentId,
-  onStart,
-  onExit,
-}: {
+interface RevisionPlanSetupProps {
   assessmentId: string;
   onStart: (planId: string, windowId: string) => void;
   onExit: () => void;
-}) {
+}
+
+export function RevisionPlanSetup(props: RevisionPlanSetupProps) {
+  return (
+    <PageLoadingBoundary fallback={<RevisionPlanSkeleton />} animateArrival={false}>
+      <StudyEntrance>
+        <RevisionPlanContent {...props} />
+      </StudyEntrance>
+    </PageLoadingBoundary>
+  );
+}
+
+function RevisionPlanContent({ assessmentId, onStart, onExit }: RevisionPlanSetupProps) {
   const [assessment, setAssessment] = useState<CourseAssessment | null>(null);
   const [plan, setPlan] = useState<RevisionPlan | null>(null);
   const [budget, setBudget] = useState(20);
@@ -131,28 +140,7 @@ export function RevisionPlanSetup({
     }
   };
 
-  if (loading)
-    return (
-      // The pending treatment of the neighbouring study screens: a withheld skeleton column.
-      <div
-        role="status"
-        aria-busy="true"
-        className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-        aria-label="Loading revision plan"
-      >
-        <DelayedFallback>
-          <div className="w-full max-w-xl space-y-4">
-            <Skeleton className="h-4 w-32 bg-ink/5" />
-            <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
-            <Skeleton className="h-5 w-full bg-ink/5" />
-            <div className="mt-8 flex gap-3">
-              <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
-              <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
-            </div>
-          </div>
-        </DelayedFallback>
-      </div>
-    );
+  if (loading) return <PageLoading />;
   if (!assessment) {
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
@@ -321,6 +309,26 @@ export function RevisionPlanSetup({
         </>
       )}
     </PlanShell>
+  );
+}
+
+function RevisionPlanSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+      aria-label="Loading revision plan"
+    >
+      <div className="w-full max-w-xl space-y-4">
+        <Skeleton className="h-4 w-32 bg-ink/5" />
+        <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
+        <Skeleton className="h-5 w-full bg-ink/5" />
+        <div className="mt-8 flex gap-3">
+          <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
+          <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
+        </div>
+      </div>
+    </div>
   );
 }
 

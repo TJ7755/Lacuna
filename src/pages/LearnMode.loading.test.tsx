@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { expect, it, vi } from 'vitest';
 import { ThemeProvider } from '../state/ThemeContext';
@@ -21,21 +21,26 @@ it('waits for the lesson course before initialising the study session', async ()
     return held ? undefined : result;
   });
   const view = () => (
-    <ThemeProvider><ToastProvider>
-      <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-        <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
-      </MemoryRouter>
-    </ToastProvider></ThemeProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+          <Routes>
+            <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+          </Routes>
+        </MemoryRouter>
+      </ToastProvider>
+    </ThemeProvider>
   );
   const rendered = render(view());
   try {
     await waitFor(() => expect(courseLoaded).toBe(true));
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 100)); });
+    expect(await screen.findByRole('status', { name: 'Loading page' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Delayed lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
     held = false;
     rendered.rerender(view());
     expect(await screen.findByRole('heading', { name: 'Delayed lesson' })).toBeInTheDocument();
+    expect(screen.queryByRole('status', { name: 'Loading page' })).not.toBeInTheDocument();
   } finally {
     rendered.unmount();
     courseSpy.mockRestore();

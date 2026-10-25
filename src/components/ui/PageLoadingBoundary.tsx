@@ -21,6 +21,7 @@ const LoadingContext = createContext<
 >(null);
 
 function LoadingSurface({ children }: { children: ReactNode }) {
+  const [placeholder] = useState(children);
   const present = useIsPresent();
   const [speed] = useMotionSpeed();
   return (
@@ -29,12 +30,12 @@ function LoadingSurface({ children }: { children: ReactNode }) {
       aria-label={present ? 'Loading page' : undefined}
       aria-hidden={!present || undefined}
       inert={!present}
-      className="left-0 top-0 w-full [&_.animate-pulse]:animate-none"
+      className="left-0 top-0 w-full [&_.animate-pulse]:animate-none [&_.gaps-skeleton]:animate-none"
       style={{ position: present ? 'relative' : 'absolute', pointerEvents: 'none' }}
       exit={{ opacity: 0 }}
       transition={liquidSpring(speedMultiplier(speed))}
     >
-      <PageArrival>{children}</PageArrival>
+      <PageArrival>{placeholder}</PageArrival>
     </motion.div>
   );
 }
@@ -46,12 +47,14 @@ export function PageLoadingBoundary({
   pending = false,
   minimumMs = 0,
   className,
+  animateArrival = true,
 }: {
   children: ReactNode;
   fallback: ReactNode;
   pending?: boolean;
   minimumMs?: number;
   className?: string;
+  animateArrival?: boolean;
 }) {
   const [loading, setLoading] = useState<{
     tokens: ReadonlyMap<object, ReactNode>;
@@ -72,17 +75,22 @@ export function PageLoadingBoundary({
   }, []);
   const waiting = pending || loading.tokens.size > 0;
   const visible = useLoadingVisibility(waiting, 200, minimumMs);
+  const showing = visible && (waiting || minimumMs > 0);
   return (
     <LoadingContext.Provider value={report}>
       <div className={className ? `relative ${className}` : 'relative'}>
         <AnimatePresence>
-          {visible && <LoadingSurface key="loading">{loading.fallback ?? fallback}</LoadingSurface>}
+          {showing && <LoadingSurface key="loading">{loading.fallback ?? fallback}</LoadingSurface>}
         </AnimatePresence>
-        <div hidden={visible}>
-          <PageArrivalReady value={!visible && !waiting}>
-            <PageArrival>
+        <div hidden={showing}>
+          <PageArrivalReady value={!showing && !waiting}>
+            {animateArrival ? (
+              <PageArrival>
+                <Suspense fallback={<PageLoading />}>{children}</Suspense>
+              </PageArrival>
+            ) : (
               <Suspense fallback={<PageLoading />}>{children}</Suspense>
-            </PageArrival>
+            )}
           </PageArrivalReady>
         </div>
       </div>

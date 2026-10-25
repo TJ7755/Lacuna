@@ -8,7 +8,7 @@ import { fieldLabelClassName, inputFrameClassName } from '../components/ui/Field
 // Route: course/:courseId/occlusion/new, course/:courseId/occlusion/:occlusionId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/occlusion/new variant.
 
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useEditorKeys } from '../hooks/dialogKeys';
 import { useParams } from 'react-router-dom';
@@ -142,11 +142,7 @@ export function OcclusionEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && occlusion === undefined && !loaded)
   ) {
-    return (
-      <DelayedFallback>
-        <OcclusionEditorSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<OcclusionEditorSkeleton />} />;
   }
   if (course === null) {
     return (

@@ -1,6 +1,6 @@
-import { StudyEntrance } from '../components/learn/StudyEntrance';
 import { useLeaveFlow } from '../utils/editorOrigin';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PomodoroProvider, usePomodoroFlowContext } from '../hooks/PomodoroContext';
@@ -85,9 +85,10 @@ function CourseStudyFlowInner() {
   );
   // Reaching a session objective need not empty the broader catch-up pool.
   const flow = useMemo(
-    () => plannedFlow && catchUpFinished
-      ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
-      : plannedFlow,
+    () =>
+      plannedFlow && catchUpFinished
+        ? { ...plannedFlow, decision: planNextStudyStep(plannedFlow.snapshot, false) }
+        : plannedFlow,
     [catchUpFinished, plannedFlow],
   );
   const pomodoro = usePomodoroFlowContext();
@@ -295,11 +296,7 @@ function CourseStudyFlowInner() {
   }
 
   if (!transition && flow === undefined) {
-    return (
-      <DelayedFallback>
-        <CourseStudyFlowSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CourseStudyFlowSkeleton />} />;
   }
 
   let scene: string;
@@ -313,8 +310,10 @@ function CourseStudyFlowInner() {
     );
   } else if (transition) {
     const planningNextStep = transition.summary.reachedGoal && flow?.generation !== refreshKey;
-    const catchUpIsNext = flow?.decision.kind === 'step' &&
-      flow.decision.step.kind === 'practice' && flow.decision.step.mode === 'catch-up';
+    const catchUpIsNext =
+      flow?.decision.kind === 'step' &&
+      flow.decision.step.kind === 'practice' &&
+      flow.decision.step.mode === 'catch-up';
     const nextLabel =
       !planningNextStep && (flow?.decision.kind === 'step' || flow?.decision.kind === 'choice')
         ? flow.decision.step.label
@@ -355,13 +354,11 @@ function CourseStudyFlowInner() {
   ) {
     scene = 'revision';
     body = (
-      <StudyEntrance>
-        <RevisionPlanSetup
-          assessmentId={displayStep.assessmentId}
-          onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
-          onExit={finishFlow}
-        />
-      </StudyEntrance>
+      <RevisionPlanSetup
+        assessmentId={displayStep.assessmentId}
+        onStart={(planId, windowId) => setRevisionSession({ planId, windowId })}
+        onExit={finishFlow}
+      />
     );
   } else if (request && displayStep && flowIdentity) {
     // One scene per committed step. A finished session never serves another card,

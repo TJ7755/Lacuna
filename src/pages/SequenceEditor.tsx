@@ -21,7 +21,7 @@ import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { compactSections, type Outline } from '../components/sequences/sequenceOutline';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { Button } from '../components/ui/Button';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useToast } from '../components/ui/Toast';
 import { ChevronLeftIcon } from '../components/ui/icons';
 import { canEditLessons } from '../course/lessonViewMode';
@@ -205,11 +205,7 @@ export function SequenceEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && sequence === undefined && !loaded)
   ) {
-    return (
-      <DelayedFallback>
-        <SequenceEditorSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<SequenceEditorSkeleton />} />;
   }
   if (course === null) {
     return (

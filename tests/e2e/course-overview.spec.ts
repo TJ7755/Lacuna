@@ -178,6 +178,17 @@ test.describe('course loading motion', () => {
           .arrivalFrames;
         return frames.some(({ content }) => content && content.every((v) => v > 0.99));
       });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const preferenceStart = await page.evaluate(
+        () => (window as typeof window & { arrivalFrames: unknown[] }).arrivalFrames.length,
+      );
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          ),
+      );
       const frames = await page.evaluate(() => {
         const capture = window as typeof window & {
           arrivalFrames: { loading: number[] | null; content: number[] | null }[];
@@ -186,6 +197,12 @@ test.describe('course loading motion', () => {
         capture.stopArrival = true;
         return capture.arrivalFrames;
       });
+      expect(
+        frames
+          .slice(preferenceStart)
+          .every(({ content }) => !content || content.every((opacity) => opacity === 1)),
+        'changing motion preferences must not blank a settled page',
+      ).toBe(true);
       if (reduced) {
         expect(frames.filter((f) => f.loading).every((f) => f.loading!.every((v) => v === 1))).toBe(
           true,

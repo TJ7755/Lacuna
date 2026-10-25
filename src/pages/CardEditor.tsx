@@ -1,7 +1,7 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { Skeleton } from '../components/ui/Skeleton';
-import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -146,11 +146,7 @@ export function CardEditor() {
     // Hold the form until a card's type is seeded, so it does not arrive as a type change.
     (editing && card !== null && !loaded)
   ) {
-    return (
-      <DelayedFallback>
-        <CardEditorSkeleton />
-      </DelayedFallback>
-    );
+    return <PageLoading fallback={<CardEditorSkeleton />} />;
   }
   if (course === null) {
     return (

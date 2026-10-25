@@ -1,11 +1,12 @@
 // One card in a card list: question, answer and schedule, with swipe and hover actions and
 // an expandable analytics panel. Rendered by CardListBody, for ordinary and generated cards.
 
-import React, { lazy, Suspense } from 'react';
+import React, { lazy } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { RelatedQuestionSets } from '../question-sets/RelatedQuestionSets';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
+import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { CheckIcon, CloseIcon, EditIcon, FlagIcon, TagIcon, TrashIcon } from '../ui/icons';
 import { cn } from '../ui/cn';
 import { scaledSpring } from '../ui/motion';
@@ -240,25 +241,29 @@ export const CardRow = React.memo(function CardRow({
 
           <div className="min-w-0 flex-1">
             {/* Two lines of question and one of answer, clamped by line so maths keeps its height. */}
-            <div className="card-row-clamp line-clamp-2 max-h-[3.75rem] text-[15px] font-semibold text-ink">
-              <Suspense
-                fallback={<Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />}
-              >
-                <CardContent card={card} side="front" />
-              </Suspense>
-            </div>
-            <div
-              data-card-answer
-              className="card-row-clamp mt-0.5 line-clamp-1 max-h-8 text-[13px] text-ink-soft"
+            <PageLoadingBoundary
+              fallback={
+                <div className="text-[15px] font-semibold">
+                  <Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />
+                </div>
+              }
             >
-              {occlusionAnswer !== undefined ? (
-                occlusionAnswer
-              ) : (
-                <Suspense fallback={null}>
+              <div className="card-row-clamp line-clamp-2 max-h-[3.75rem] text-[15px] font-semibold text-ink">
+                <CardContent card={card} side="front" />
+              </div>
+            </PageLoadingBoundary>
+            <PageLoadingBoundary fallback={null}>
+              <div
+                data-card-answer
+                className="card-row-clamp mt-0.5 line-clamp-1 max-h-8 text-[13px] text-ink-soft"
+              >
+                {occlusionAnswer !== undefined ? (
+                  occlusionAnswer
+                ) : (
                   <CardContent card={card} side="back" />
-                </Suspense>
-              )}
-            </div>
+                )}
+              </div>
+            </PageLoadingBoundary>
             {tags.length > 0 && (
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <TagIcon width={13} height={13} className="text-ink-faint" />
