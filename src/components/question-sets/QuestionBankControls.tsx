@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { exportQuestionBank, importQuestionBank } from '../../questions/bank';
 import { Button } from '../ui/Button';
+import { DownloadIcon, UploadIcon } from '../ui/icons';
 
 export function QuestionBankControls({
   courseId,
@@ -52,9 +53,10 @@ export function QuestionBankControls({
     }
   };
   return (
-    <section aria-label="Question banks" className="mb-5 min-w-0" aria-busy={busy}>
-      <div className="flex flex-wrap gap-2">
-        <Button disabled={disabled || busy} onClick={() => input.current?.click()}>
+    <section aria-label="Question banks" className="ml-auto min-w-0 max-w-full" aria-busy={busy}>
+      <div className="flex min-h-12 flex-wrap items-center gap-2">
+        <Button variant="ghost" disabled={disabled || busy} onClick={() => input.current?.click()}>
+          <UploadIcon width={16} height={16} />
           {busy ? 'Working…' : 'Import question bank'}
         </Button>
         <input
@@ -70,12 +72,22 @@ export function QuestionBankControls({
           }}
         />
         {bankIds.map((id) => (
-          <Button key={id} disabled={disabled || busy} onClick={() => void exportBank(id)}>
+          <Button
+            key={id}
+            variant="ghost"
+            disabled={disabled || busy}
+            onClick={() => void exportBank(id)}
+          >
+            <DownloadIcon width={16} height={16} />
             Export {id}
           </Button>
         ))}
       </div>
-      {message && <p role="status">{message}</p>}
+      {message && (
+        <p role="status" className="mt-2 text-sm text-ink-soft">
+          {message}
+        </p>
+      )}
       {error && (
         <div className="mt-3 min-w-0">
           <p role="alert" className="qs-error">

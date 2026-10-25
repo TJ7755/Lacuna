@@ -1,4 +1,6 @@
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
+import { SearchIcon } from '../components/ui/icons';
+import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { ConceptPracticePanel } from '../components/question-sets/ConceptPracticePanel';
 import { QuestionBankControls } from '../components/question-sets/QuestionBankControls';
 import { listConceptPractice } from '../questions/conceptPractice';
@@ -168,7 +170,7 @@ export function QuestionsPage() {
   if (params.get('view') === 'individual') return <LegacyQuestionsPage />;
   return (
     <div ref={root} className={`${COURSE_PAGE_FRAME} qs-library pb-8`}>
-      <header className={COURSE_PAGE_HEADER}>
+      <header className={`${COURSE_PAGE_HEADER} [&>*]:self-center`}>
         <div>
           <h1 tabIndex={-1} className={COURSE_PAGE_TITLE}>
             Questions
@@ -246,29 +248,37 @@ export function QuestionsPage() {
             .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0]
         }
       />
-      {showBankControls && (
-        <QuestionBankControls
-          courseId={course.id}
-          disabled={!!course.archived}
-          bankIds={[...new Set(data.sets.flatMap((set) => (set.bank ? [set.bank.bankId] : [])))]}
-        />
-      )}
       {(error || data.error) && (
         <p role="alert" className="qs-error">
           {error || data.error}
         </p>
       )}
-      {(data.sets.length > 0 || (author && data.drafts.length > 0)) && (
-        <label className="qs-search">
-          Search sets
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Find a question set"
+      <div className="mb-6 flex flex-wrap items-start gap-3">
+        {(data.sets.length > 0 || (author && data.drafts.length > 0)) && (
+          <label className="relative min-w-0 flex-1 basis-64 md:max-w-sm">
+            <span className="sr-only">Search sets</span>
+            <SearchIcon
+              width={18}
+              height={18}
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint"
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Find a question set"
+              className="h-12 w-full rounded-full bg-surface pl-11 pr-4 text-ink card-surface card-surface-control outline-none placeholder:text-ink-faint focus-visible:ring-2 focus-visible:ring-accent-ink"
+            />
+          </label>
+        )}
+        {showBankControls && (
+          <QuestionBankControls
+            courseId={course.id}
+            disabled={!!course.archived}
+            bankIds={[...new Set(data.sets.flatMap((set) => (set.bank ? [set.bank.bankId] : [])))]}
           />
-        </label>
-      )}
+        )}
+      </div>
       <section className="qs-set-list" aria-label="Question sets">
         {rows.map(({ content, draft, location: matchLocation, excerpt }) => (
           <div className="qs-library-row" key={content.id}>
@@ -278,7 +288,9 @@ export function QuestionsPage() {
                 state={origin}
                 to={`/course/${course.id}/question-sets/${content.id}${author ? '/edit' : ''}`}
               >
-                <h2>{content.title || 'Untitled set'}</h2>
+                <h2 className="font-display font-semibold tracking-tight">
+                  {content.title || 'Untitled set'}
+                </h2>
                 <p>
                   {countOf(content.questions.length, 'question')} ·{' '}
                   {countOf(questionSetMarks(content), 'mark')}
@@ -296,7 +308,7 @@ export function QuestionsPage() {
               </Link>
               {!draft && <QuestionSetScore progress={progress.get(content.id) ?? NO_PROGRESS} />}
               {author ? (
-                <span className="qs-scored-hint">{draft ? 'Draft' : 'Edit →'}</span>
+                !draft && <span className="qs-scored-hint">Edit</span>
               ) : progress.get(content.id)?.open ? (
                 <Button
                   variant="secondary"
@@ -344,13 +356,24 @@ export function QuestionsPage() {
         ))}
         {rows.length === 0 && (
           <div className="qs-empty">
-            <h2>{search ? 'No matching sets' : 'No question sets yet'}</h2>
+            <StudyDrawing kind={search ? 'search' : 'activity'} className="mx-auto mb-5" />
+            <h2 className="font-display font-semibold tracking-tight">
+              {search ? 'No matching sets' : 'No question sets yet'}
+            </h2>
             {search ? (
               <p>Try a different search.</p>
             ) : (
-              <p>Exam-style questions with mark schemes.</p>
+              <p>
+                {!course.archived && canEditLessons(course)
+                  ? 'Choose New question set to add exam-style questions.'
+                  : 'Question sets will appear here when they are added to this course.'}
+              </p>
             )}
-            {search && <button onClick={() => setSearch('')}>Clear search</button>}
+            {search && (
+              <Button variant="ghost" className="mt-3" onClick={() => setSearch('')}>
+                Clear search
+              </Button>
+            )}
           </div>
         )}
       </section>

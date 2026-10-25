@@ -324,8 +324,6 @@ describe('Paper question set authoring', () => {
     await db.courses.update(course.id, { lessonViewMode: 'study' });
     const view = open(course.id, 'questions');
     expect(await screen.findByText('No question sets yet')).toBeInTheDocument();
-    // Says what a question set is to someone who has never made one.
-    expect(screen.getByText('Exam-style questions with mark schemes.')).toBeInTheDocument();
     expect(screen.queryByText('Untitled set')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'New question set' }));
     expect(await screen.findByLabelText('Name')).toHaveFocus();
