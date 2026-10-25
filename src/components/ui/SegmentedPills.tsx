@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { AnimatePresence, LayoutGroup, m as motion } from 'motion/react';
 import { cn } from './cn';
-import { scaledSpring } from './motion';
+import { expandingActionSpring, scaledSpring } from './motion';
 import { ChevronDownIcon } from './icons';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 
@@ -34,6 +34,7 @@ export function SegmentedPills<T extends string>({
   describedBy,
   className,
   animateSelection = true,
+  animateLayout = false,
   semantics = 'radio',
   size = 'md',
   onMore,
@@ -47,6 +48,8 @@ export function SegmentedPills<T extends string>({
   className?: string;
   /** Text-size changes reflow immediately, including their selection indicator. */
   animateSelection?: boolean;
+  /** Reflow dynamic options while their labels keep their natural size. */
+  animateLayout?: boolean;
   semantics?: 'radio' | 'pressed';
   size?: 'sm' | 'md';
   onMore?: () => void;
@@ -101,18 +104,30 @@ export function SegmentedPills<T extends string>({
       ref={track}
       data-stacked={stacked || undefined}
       className={cn(
-        'max-w-full bg-ink/[0.06] px-1',
+        'max-w-full px-1',
+        animateLayout ? 'relative' : 'bg-ink/[0.06]',
         stacked ? 'flex w-full flex-col rounded-[1.375rem]' : 'inline-flex rounded-full',
         className,
       )}
     >
       <LayoutGroup id={groupId}>
+        {animateLayout && (
+          <motion.div
+            key="track"
+            layout={multiplier > 0}
+            aria-hidden="true"
+            transition={expandingActionSpring(multiplier)}
+            style={{ borderRadius: stacked ? 22 : 9999 }}
+            className="pointer-events-none absolute inset-0 bg-ink/[0.06]"
+          />
+        )}
         <AnimatePresence initial={false} mode="popLayout">
           {options.map((option, index) => {
             const active = index === selected;
             return (
               <motion.button
                 {...reveal}
+                layout={animateLayout && multiplier > 0 ? 'position' : false}
                 key={option.value}
                 ref={(node) => {
                   buttons.current[index] = node;
@@ -150,6 +165,7 @@ export function SegmentedPills<T extends string>({
           {onMore && (
             <motion.button
               {...reveal}
+              layout={animateLayout && multiplier > 0 ? 'position' : false}
               key="segmented-more"
               ref={(node) => {
                 buttons.current[options.length] = node;
