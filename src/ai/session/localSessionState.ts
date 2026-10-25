@@ -1,6 +1,8 @@
 import type { AiBridgeResult, AiInstructionBundle, AiRunState, AiUserMessage } from '../protocol';
 import type { AiSessionSnapshot } from './types';
 
+export const DEFAULT_CLAIM_LEASE_MS = 5 * 60_000;
+
 export interface LocalMessage extends AiUserMessage {
   instructions: AiInstructionBundle;
   delivery: 'queued' | 'claimed';

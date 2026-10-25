@@ -9,10 +9,14 @@ import type { AiToolSession, AiToolInvokeResult } from '../toolSession';
 import type { LocalAiSessionTimers } from './local';
 import type { LocalSessionState } from './localSessionState';
 import type { AiSessionSnapshot } from './types';
-import { stoppedOrConflict, unavailableBridge, conflictBridge } from './localSessionState';
+import {
+  DEFAULT_CLAIM_LEASE_MS,
+  stoppedOrConflict,
+  unavailableBridge,
+  conflictBridge,
+} from './localSessionState';
 import { appendConversationItems } from './relayEvents';
 
-const DEFAULT_CLAIM_LEASE_MS = 5 * 60_000;
 interface LocalRequestOperations {
   timers: LocalAiSessionTimers;
   now(): number;

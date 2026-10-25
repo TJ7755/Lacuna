@@ -1,8 +1,6 @@
 import { MAX_AI_WAIT_MS, type AiBridgeRequest, type AiBridgeResult } from '../protocol';
 import type { LocalAiSessionTimers } from './local';
-import type { LocalSessionState } from './localSessionState';
-
-const DEFAULT_CLAIM_LEASE_MS = 5 * 60_000;
+import { DEFAULT_CLAIM_LEASE_MS, type LocalSessionState } from './localSessionState';
 
 /** Resolves or cancels the one pending claim stored by the current local session. */
 export function createLocalPendingClaims(
