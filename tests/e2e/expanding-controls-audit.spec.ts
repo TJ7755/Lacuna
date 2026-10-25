@@ -197,7 +197,7 @@ test('reopening a visibly collapsing creation surface keeps its input, selection
           const height = element.getBoundingClientRect().height;
           if (
             height > closedHeight + 1 &&
-            height < closedHeight + (openHeight - closedHeight) / 4
+            height < closedHeight + (openHeight - closedHeight) / 16
           ) {
             trigger.click();
             resolve(true);
