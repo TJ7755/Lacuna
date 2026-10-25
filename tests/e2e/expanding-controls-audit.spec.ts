@@ -1,9 +1,9 @@
 import { expect, test, type Locator } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('Tab leaves Other ways from its trigger in both directions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -37,7 +37,7 @@ for (const width of [390, 1440]) {
   test(`Add and Other ways share accessible expanding surfaces at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

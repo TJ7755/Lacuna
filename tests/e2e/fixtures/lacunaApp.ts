@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, type Page } from '@playwright/test';
 
 export async function chooseScheduledStudy(page: Page) {
@@ -16,7 +17,9 @@ export async function enterFreshLacuna(page: Page) {
 
 /** Exercises Today import on desktop and the navigation-drawer entry on phones. */
 export async function openImport(page: Page) {
-  if (page.viewportSize()!.width >= 640) {
+  // Packaged Electron has no emulated viewport, so read the window's own width there.
+  const width = page.viewportSize()?.width ?? (await page.evaluate(() => window.innerWidth));
+  if (width >= 640) {
     await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
   } else {
     await page.getByRole('button', { name: 'Open navigation' }).click();
@@ -25,6 +28,43 @@ export async function openImport(page: Page) {
       .getByRole('link', { name: 'Import' })
       .click();
   }
+}
+
+const WELCOME_COURSE = readFileSync(new URL('./welcome-course.lacuna', import.meta.url), 'utf8');
+const DAY_MS = 86_400_000;
+
+/** Imports the retired Welcome to Lacuna course, which many specs use as a populated course. */
+export async function importWelcomeCourse(page: Page) {
+  const file = JSON.parse(WELCOME_COURSE);
+  file.payload.at = Date.now();
+  file.payload.course.c = Date.now();
+  file.payload.course.e = Date.now() + 60 * DAY_MS;
+  for (const exam of file.payload.exams) exam.e = file.payload.course.e;
+  await openImport(page);
+  await page.getByLabel('Import file', { exact: true }).setInputFiles({
+    name: 'Welcome to Lacuna.lacuna',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(file)),
+  });
+  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeVisible();
+  await page.getByRole('radio', { name: /Exam date/ }).press('Space');
+  await page.getByRole('button', { name: 'Add to my courses' }).click();
+  await expect(page.getByRole('heading', { name: 'Ready to import' })).toBeHidden();
+  // Let the import's toast expire so it cannot cover or stack with the spec's own. Hovering
+  // pauses it, and the pointer is still where the Add button was.
+  await page.mouse.move(0, 0);
+  await expect(page.getByText(/^Added 1 course and \d+ cards\.$/)).toBeHidden({ timeout: 10_000 });
+  // Set the hash rather than navigating, so packaged Electron's app: origin works too.
+  await page.evaluate(() => {
+    window.location.hash = '#/';
+  });
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+}
+
+/** A fresh browser holding only the Welcome to Lacuna course, as new installs once had. */
+export async function enterWithWelcomeCourse(page: Page) {
+  await enterFreshLacuna(page);
+  await importWelcomeCourse(page);
 }
 
 export async function createCourse(page: Page, courseName: string) {

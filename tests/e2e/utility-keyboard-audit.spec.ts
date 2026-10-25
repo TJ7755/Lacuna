@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 const browserErrors = new WeakMap<Page, string[]>();
 test.beforeEach(async ({ page }) => {
@@ -26,7 +26,7 @@ async function tabTo(page: Page, target: Locator) {
 }
 
 test('Search centres its reading column inside the shared page frame', async ({ page }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/share');
   const share = page.getByRole('heading', { level: 1, name: 'Share', exact: true });
   await expect(share).toBeVisible({ timeout: 15000 });
@@ -45,7 +45,7 @@ test('Search centres its reading column inside the shared page frame', async ({ 
 test('Search names its field, provides full-size keyboard filters and keeps Clear focus', async ({
   page,
 }, testInfo) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/search');
   const search = page.getByRole('combobox', { name: 'Search content', exact: true });
   await expect(search).toBeFocused();
@@ -84,7 +84,7 @@ test('Search names its field, provides full-size keyboard filters and keeps Clea
 test('Import keeps its heading still and returns keyboard focus to the chosen source', async ({
   page,
 }, testInfo) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/import');
   const heading = page.locator('main span[aria-hidden="true"]').filter({ hasText: /^Import$/ });
   await expect(heading).toBeVisible();
@@ -124,7 +124,7 @@ test('Import keeps its heading still and returns keyboard focus to the chosen so
 test('restoring the last archived course returns keyboard focus to Archived', async ({
   page,
 }, testInfo) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const more = page.getByRole('button', { name: 'More for Welcome to Lacuna', exact: true });
   await more.focus();
   await more.press('Enter');
@@ -150,7 +150,7 @@ test('Share course choices and local share-code output work entirely from the ke
   page,
 }, testInfo) => {
   await page.route('https://**/*', (route) => route.abort());
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const newCourse = page.locator('main').getByRole('button', { name: 'New course', exact: true });
   await newCourse.focus();
   await newCourse.press('Enter');

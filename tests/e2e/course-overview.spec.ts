@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('a listed lesson opens its real workspace; Add creates a real lesson', async ({ page }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -30,7 +30,7 @@ test('a listed lesson opens its real workspace; Add creates a real lesson', asyn
 
 test('narrow-screen keyboard activation opens the focused lesson', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -48,7 +48,7 @@ test('practice editing keeps an unobstructed 44px touch target with a long name'
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 800 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

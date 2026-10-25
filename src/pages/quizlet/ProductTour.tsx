@@ -29,7 +29,7 @@ export const screens = [
     key: 'recall',
     label: 'Your practice',
     image: recall,
-    alt: 'Actual Lacuna Simple Learn screen showing a card from the built-in example course',
+    alt: 'Actual Lacuna Simple Learn screen showing a card from the Welcome to Lacuna example course',
   },
   {
     key: 'settings',

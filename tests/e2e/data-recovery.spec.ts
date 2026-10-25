@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 const IMAGE_FIXTURE = resolve('public/icons/icon-192.png');
 
@@ -43,7 +43,7 @@ test('replaces a clean browser context with a media-bearing full backup', async 
   page,
 }) => {
   test.setTimeout(120_000);
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const source = await openCourseCards(page);
   const sourceFront = `Recovery source ${Date.now()}`;
   await addCard(page, sourceFront, 'Source backup answer', true);
@@ -59,7 +59,7 @@ test('replaces a clean browser context with a media-bearing full backup', async 
   const targetContext = await browser.newContext();
   try {
     const target = await targetContext.newPage();
-    await enterFreshLacuna(target);
+    await enterWithWelcomeCourse(target);
     await openCourseCards(target);
     const targetOnlyFront = `Recovery target only ${Date.now()}`;
     await addCard(target, targetOnlyFront, 'Target-only answer');

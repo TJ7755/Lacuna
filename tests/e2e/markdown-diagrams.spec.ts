@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('renders Mermaid notes with safe fallback and theme updates', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await enterWithWelcomeCourse(page);
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();
   await page.getByRole('button', { name: 'Edit mode' }).click();

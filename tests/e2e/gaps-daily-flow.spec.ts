@@ -65,8 +65,13 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   const courseId = /#\/course\/([^/]+)/.exec(author.url())![1];
   await addLessonCard(author, courseId, 'Membrane recall');
   await author.goto('/#/share');
-  await author.getByRole('button', { name: 'Course to share' }).click();
-  await author.getByRole('menuitem', { name: /^Class biology/ }).click();
+  // Class biology is the only course, so the page opens on it without a picker.
+  await expect(
+    author
+      .getByRole('main')
+      .getByText(/^Class biology/)
+      .first(),
+  ).toBeVisible();
   await author.getByRole('button', { name: 'Create share link' }).click();
   await expect(author.getByRole('textbox', { name: 'Share link', exact: true })).toBeVisible();
   const sourceLink = await author

@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('a keyboard-only learner moves from notes through a finished step without the mouse', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.locator('main').getByRole('button', { name: 'Study' }).first().click();
   await chooseScheduledStudy(page);
 

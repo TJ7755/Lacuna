@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const width of [390, 1440]) {
   test(`quick search keeps its drawing and remembers first-visit hints at ${width}px`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 1000 });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const shortcut = await page.evaluate(() =>
       navigator.platform.startsWith('Mac') ? 'Meta+K' : 'Control+K',
     );

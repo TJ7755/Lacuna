@@ -19,7 +19,7 @@ const dependencies = vi.hoisted(() => ({
   requestPersistentStorage: vi.fn(),
   stampMissingLessonViewModes: vi.fn(),
   isFirstRun: vi.fn(),
-  seedIfFirstRun: vi.fn(),
+  settleFirstRun: vi.fn(),
 }));
 
 vi.mock('./db/schema', async (importOriginal) => ({
@@ -36,7 +36,7 @@ vi.mock('./db/lessonViewModeMigration', async (importOriginal) => ({
 }));
 vi.mock('./db/seed', () => ({
   isFirstRun: dependencies.isFirstRun,
-  seedIfFirstRun: dependencies.seedIfFirstRun,
+  settleFirstRun: dependencies.settleFirstRun,
 }));
 vi.mock('./db/assetCache', () => ({ revokeAllCachedUrls: vi.fn() }));
 vi.mock('./sync/triggers', () => ({ installSyncTriggers: vi.fn(() => vi.fn()) }));
@@ -64,7 +64,7 @@ describe('App initialisation', () => {
       granted: true,
     });
     dependencies.isFirstRun.mockResolvedValue(false);
-    dependencies.seedIfFirstRun.mockResolvedValue(undefined);
+    dependencies.settleFirstRun.mockResolvedValue(undefined);
   });
 
   it('requests persistence after opening the database without blocking readiness', async () => {
@@ -87,14 +87,14 @@ describe('App initialisation', () => {
     persistence.reject(new Error('denied'));
   });
 
-  it('skips the welcome-course seed once seeding and its asset repair are done', async () => {
+  it('skips first-run checks once they and the asset repair are done', async () => {
     localStorage.setItem('lacuna-seeded', '1');
     localStorage.setItem('lacuna-seed-assets-v3', '1');
     try {
       render(<App />);
       await waitFor(() => expect(screen.queryByText('Lacuna')).not.toBeInTheDocument());
       expect(dependencies.isFirstRun).not.toHaveBeenCalled();
-      expect(dependencies.seedIfFirstRun).not.toHaveBeenCalled();
+      expect(dependencies.settleFirstRun).not.toHaveBeenCalled();
     } finally {
       localStorage.removeItem('lacuna-seeded');
       localStorage.removeItem('lacuna-seed-assets-v3');
@@ -109,7 +109,7 @@ describe('App initialisation', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
     expect(dependencies.requestPersistentStorage).not.toHaveBeenCalled();
   });
 
@@ -145,7 +145,7 @@ describe('App initialisation', () => {
     try {
       render(<App />);
 
-      await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+      await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
       expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('v7_startTransition'));
     } finally {
       warn.mockRestore();
@@ -165,33 +165,33 @@ describe('App initialisation', () => {
   it('does not redirect a first-time visitor away from the public download page', async () => {
     window.location.hash = '#/download';
     dependencies.isFirstRun.mockResolvedValue(true);
-    dependencies.seedIfFirstRun.mockClear();
+    dependencies.settleFirstRun.mockClear();
 
     render(<App />);
 
-    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download');
   });
 
   it('does not redirect a first-time visitor away from a teacher share link', async () => {
     window.location.hash = '#/s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     dependencies.isFirstRun.mockResolvedValue(true);
-    dependencies.seedIfFirstRun.mockClear();
+    dependencies.settleFirstRun.mockClear();
 
     render(<App />);
 
-    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   });
 
   it('does not redirect a first-time visitor away from a trailing-slash public route', async () => {
     window.location.hash = '#/download/';
     dependencies.isFirstRun.mockResolvedValue(true);
-    dependencies.seedIfFirstRun.mockClear();
+    dependencies.settleFirstRun.mockClear();
 
     render(<App />);
 
-    await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+    await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
     expect(window.location.hash).toBe('#/download/');
   });
   it.each(['share', 'import', 'teach'])(
@@ -200,7 +200,7 @@ describe('App initialisation', () => {
       dependencies.isFirstRun.mockResolvedValue(true);
       window.location.hash = `#/${route}`;
       render(<App />);
-      await waitFor(() => expect(dependencies.seedIfFirstRun).toHaveBeenCalledOnce());
+      await waitFor(() => expect(dependencies.settleFirstRun).toHaveBeenCalledOnce());
       expect(window.location.hash).toBe(`#/${route}`);
     },
   );

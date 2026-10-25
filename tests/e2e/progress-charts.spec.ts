@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function chartCard(page: Page, title: string) {
   const heading = page.getByText(title, { exact: true }).first();
@@ -10,7 +10,7 @@ async function chartCard(page: Page, title: string) {
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
 });
 
 test('Workload ahead draws each day as a bar', async ({ page }) => {

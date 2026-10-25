@@ -12,7 +12,7 @@ const dependencies = vi.hoisted(() => ({
   requestPersistentStorage: vi.fn(),
   stampMissingLessonViewModes: vi.fn(),
   isFirstRun: vi.fn(),
-  seedIfFirstRun: vi.fn(),
+  settleFirstRun: vi.fn(),
 }));
 const runtime = vi.hoisted(() => ({ mount: vi.fn() }));
 
@@ -45,7 +45,7 @@ vi.mock('./db/lessonViewModeMigration', async (importOriginal) => ({
 }));
 vi.mock('./db/seed', () => ({
   isFirstRun: dependencies.isFirstRun,
-  seedIfFirstRun: dependencies.seedIfFirstRun,
+  settleFirstRun: dependencies.settleFirstRun,
 }));
 vi.mock('./db/assetCache', () => ({ revokeAllCachedUrls: vi.fn() }));
 vi.mock('./sync/triggers', () => ({ installSyncTriggers: vi.fn(() => vi.fn()) }));
@@ -72,7 +72,7 @@ describe('optional AI runtime', () => {
       granted: true,
     });
     dependencies.isFirstRun.mockResolvedValue(false);
-    dependencies.seedIfFirstRun.mockResolvedValue(undefined);
+    dependencies.settleFirstRun.mockResolvedValue(undefined);
   });
 
   it.each(['external', 'hosted'] as const)(

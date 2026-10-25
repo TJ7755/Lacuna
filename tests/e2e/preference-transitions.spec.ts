@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('input mode round trips preserve text size and persist', async ({ page }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/settings');
   const input = page.getByRole('radiogroup', { name: 'Input mode', exact: true });
   await expect(input).toBeVisible();
@@ -28,7 +28,7 @@ test('input mode round trips preserve text size and persist', async ({ page }) =
 test('editor presentation follows explicit modes and Auto follows physical activity', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

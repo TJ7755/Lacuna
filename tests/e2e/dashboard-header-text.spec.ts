@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function expectLabelContained(trigger: Locator) {
   await expect
@@ -56,7 +56,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
   test(`dashboard header actions contain enlarged labels (${reducedMotion})`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
     const main = page.locator('main');
     const create = main.getByRole('button', { name: 'New course', exact: true });

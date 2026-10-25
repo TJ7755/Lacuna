@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const width of [390, 1440]) {
   test(`lesson settings targets and rename remain usable at ${width}px with enlarged text`, async ({
@@ -7,7 +7,7 @@ for (const width of [390, 1440]) {
   }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

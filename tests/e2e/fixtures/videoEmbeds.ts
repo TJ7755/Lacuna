@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { importWelcomeCourse } from './lacunaApp';
 
 export const YOUTUBE_EMBED_URL = 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ';
 export const VIMEO_EMBED_URL = 'https://player.vimeo.com/video/123456789';
@@ -55,6 +56,7 @@ export async function authorVideoEmbedNote(page: Page, navigateToApp = true): Pr
   await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await importWelcomeCourse(page);
 
   await page.getByRole('button', { name: 'Expand Welcome to Lacuna' }).click();
   await page.getByRole('link', { name: 'Core concepts & rendering' }).click();

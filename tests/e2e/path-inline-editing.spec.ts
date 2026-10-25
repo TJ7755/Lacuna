@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('edits a checkpoint in place, excludes a card and persists a dragged anchor', async ({
   page,
 }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('navigation', { name: 'Courses' })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true })

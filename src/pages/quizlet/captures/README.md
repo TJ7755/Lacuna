@@ -7,8 +7,8 @@ reduced motion. They replace the downsampled 1280 × 853 browser-preview exports
 Images retain their aspect ratio and can be expanded; no interface elements,
 review outcomes or progress figures were composited or upscaled.
 
-A fresh, isolated browser context at `127.0.0.1:5174` contains the built-in
-Welcome to Lacuna example course. The announcement was dismissed using its normal
+A fresh, isolated browser context at `127.0.0.1:5174` contained the then built-in
+Welcome to Lacuna example course (now `tests/e2e/fixtures/welcome-course.lacuna`). The announcement was dismissed using its normal
 control. No existing browser profile or learner data was used.
 
 - `course.png`: course path and selected lesson.

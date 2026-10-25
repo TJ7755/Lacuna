@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 const COURSE_SECTIONS = [
   { label: 'Path', heading: 'Welcome to Lacuna' },
@@ -39,9 +40,7 @@ test('workspace mode is shared by every course section', async ({ page }) => {
 });
 
 async function openSeededCourse(page: Page): Promise<void> {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

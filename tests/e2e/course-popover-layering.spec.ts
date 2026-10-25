@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 type LayerSample = { frame: number; overlap: boolean; top?: string; x?: number; y?: number };
 type LayerWindow = Window & {
@@ -98,9 +99,7 @@ test('the opening course action stays above the closing surface in both directio
 }) => {
   // Keep animation samples at a consistent cadence when the CI compositor drops frames.
   await page.clock.install();
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('navigation', { name: 'Courses', exact: true })
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true })

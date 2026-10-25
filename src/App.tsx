@@ -100,18 +100,18 @@ export function App() {
 
         // A genuinely fresh browser opens on the landing page; anyone with
         // existing data goes straight to the app they know. Decided before
-        // seeding, because the seed itself creates a course. Visitors arriving
-        // from the prerendered landing page explicitly chose to enter, so the
-        // handover skips the bounce back to the welcome route.
+        // settling, which records that the first run has happened. Visitors
+        // arriving from the prerendered landing page explicitly chose to enter,
+        // so the handover skips the bounce back to the welcome route.
         const enteredFromLanding = consumeLandingHandover();
-        // The welcome course's content loads only while seeding work remains.
+        // The first-run checks load only while that work remains.
         if (seedWorkPending()) {
-          const { isFirstRun, seedIfFirstRun } = await import('./db/seed');
+          const { isFirstRun, settleFirstRun } = await import('./db/seed');
           if ((await isFirstRun()) && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
             window.location.hash = '#/welcome';
           }
 
-          await seedIfFirstRun();
+          await settleFirstRun();
         }
       } catch (error) {
         if (import.meta.env.DEV) {

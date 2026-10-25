@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna, openImport } from './fixtures/lacunaApp';
+import { enterFreshLacuna, enterWithWelcomeCourse, openImport } from './fixtures/lacunaApp';
 
 for (const width of [1280, 390]) {
   test(`dashboard class action is separate from statistics and keyboard accessible at ${width}px`, async ({
     page,
   }, testInfo) => {
     await page.setViewportSize({ width, height: 844 });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const join = page.getByRole('link', { name: 'Join a class', exact: true });
     await expect(join).toBeVisible();
     await expect(page.getByRole('region', { name: 'Today, most urgent first' })).toBeVisible();
