@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AppLink, AppNavLink } from './AppLink';
+import { RoutePrefetchContext } from '../../routes/RoutePrefetchContext';
 
 function Location() {
   const location = useLocation();
@@ -82,4 +83,48 @@ describe('app navigation', () => {
     );
     expect(screen.getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/backup');
   });
+});
+
+it('warms resolved internal destinations on pointer, focus and press without overriding cancelled intent', () => {
+  const prefetchRoute = vi.fn();
+  const entered = vi.fn();
+  render(
+    <MemoryRouter initialEntries={['/course/biology/cards']}>
+      <RoutePrefetchContext value={prefetchRoute}>
+        <Routes>
+          <Route
+            path="/course/:courseId/cards"
+            element={
+              <>
+                <AppLink to="../questions" relative="path" onPointerEnter={entered}>
+                  Questions
+                </AppLink>
+                <AppLink to="/settings" onFocus={(event) => event.preventDefault()}>
+                  Cancelled
+                </AppLink>
+                <AppLink to="https://example.com">External</AppLink>
+                <AppLink to="/backup" download>
+                  Backup
+                </AppLink>
+              </>
+            }
+          />
+        </Routes>
+      </RoutePrefetchContext>
+    </MemoryRouter>,
+  );
+  const questions = screen.getByRole('link', { name: 'Questions' });
+  fireEvent.pointerEnter(questions);
+  fireEvent.focus(questions);
+  fireEvent.pointerDown(questions, { button: 0 });
+  expect(entered).toHaveBeenCalledOnce();
+  expect(vi.mocked(prefetchRoute).mock.calls).toEqual([
+    ['/course/biology/questions'],
+    ['/course/biology/questions'],
+    ['/course/biology/questions'],
+  ]);
+  fireEvent.focus(screen.getByRole('link', { name: 'Cancelled' }));
+  fireEvent.pointerEnter(screen.getByRole('link', { name: 'External' }));
+  fireEvent.focus(screen.getByRole('link', { name: 'Backup' }));
+  expect(prefetchRoute).toHaveBeenCalledTimes(3);
 });

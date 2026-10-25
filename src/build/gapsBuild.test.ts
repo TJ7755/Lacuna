@@ -126,7 +126,6 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
             'src/components/ui/icons.tsx',
             'src/components/ui/StudyDrawing.tsx',
             'src/hooks/useFocusTrap.ts',
-            'src/hooks/useLoadingVisibility.ts',
           ].includes(id),
       ),
     ).toEqual([]);

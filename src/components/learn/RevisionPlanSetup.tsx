@@ -1,3 +1,4 @@
+import { StudyExitHeader } from './StudyExitHeader';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { revisionPlanDays } from '../../course/revisionPlan';
 import { revisionProjection } from '../../course/revisionProjection';
@@ -15,7 +16,6 @@ import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { PageLoading, PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { Button } from '../ui/Button';
 import { Field, Input, inputFrameClassName } from '../ui/Field';
-import { Skeleton } from '../ui/Skeleton';
 import { cn } from '../ui/cn';
 import { SectionCard } from '../ui/SectionCard';
 import { StudyEntrance } from './StudyEntrance';
@@ -39,7 +39,7 @@ interface RevisionPlanSetupProps {
 
 export function RevisionPlanSetup(props: RevisionPlanSetupProps) {
   return (
-    <PageLoadingBoundary fallback={<RevisionPlanSkeleton />} animateArrival={false}>
+    <PageLoadingBoundary animateArrival={false}>
       <StudyEntrance>
         <RevisionPlanContent {...props} />
       </StudyEntrance>
@@ -140,7 +140,14 @@ function RevisionPlanContent({ assessmentId, onStart, onExit }: RevisionPlanSetu
     }
   };
 
-  if (loading) return <PageLoading />;
+  if (loading) {
+    return (
+      <div className="min-h-dvh bg-paper">
+        <StudyExitHeader onExit={onExit} />
+        <PageLoading />
+      </div>
+    );
+  }
   if (!assessment) {
     return (
       <PlanShell title="Revision unavailable" onExit={onExit}>
@@ -309,26 +316,6 @@ function RevisionPlanContent({ assessmentId, onStart, onExit }: RevisionPlanSetu
         </>
       )}
     </PlanShell>
-  );
-}
-
-function RevisionPlanSkeleton() {
-  return (
-    <div
-      aria-busy="true"
-      className="flex min-h-screen items-center justify-center bg-paper pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
-      aria-label="Loading revision plan"
-    >
-      <div className="w-full max-w-xl space-y-4">
-        <Skeleton className="h-4 w-32 bg-ink/5" />
-        <Skeleton className="h-12 w-3/4 rounded-xl bg-ink/5" />
-        <Skeleton className="h-5 w-full bg-ink/5" />
-        <div className="mt-8 flex gap-3">
-          <Skeleton as="span" className="h-11 w-32 rounded-xl bg-ink/5" />
-          <Skeleton as="span" className="h-11 w-24 rounded-xl bg-ink/5" />
-        </div>
-      </div>
-    </div>
   );
 }
 

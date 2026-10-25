@@ -60,25 +60,6 @@ describe('Dashboard Today queue', () => {
     expect(screen.queryByRole('link', { name: /Explore sharing/ })).not.toBeInTheDocument();
   });
 
-  it('renders skeleton when data is loading', async () => {
-    vi.useFakeTimers();
-    try {
-      render(<Dashboard />);
-      // Verify the actual delay, independently of load on the machine running the suite.
-      await act(() => vi.advanceTimersByTime(199));
-      expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
-      await act(() => vi.advanceTimersByTime(1));
-      expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('withholds the loading skeleton while a load could still finish instantly', () => {
-    render(<Dashboard />);
-    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
-  });
-
   it('renders empty state when no courses exist', () => {
     setCourseData([]);
     render(<Dashboard />);

@@ -14,7 +14,7 @@ import { forgetRememberedClass } from './rememberedClass';
 import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import { createDemoReports } from './demoClass';
-import { ResultsSkeleton, Results } from './ClassResults';
+import { Results } from './ClassResults';
 import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 import { Pupils } from './ClassPupils';
 import { LockedClass } from './ClassAccess';
@@ -333,10 +333,7 @@ export function ClassPage({
             </p>
           )}
 
-          <GapsLoadingBoundary
-            pending={tab !== 'invite' && !error && !data}
-            fallback={<ResultsSkeleton />}
-          >
+          <GapsLoadingBoundary pending={tab !== 'invite' && !error && !data}>
             {tab === 'invite' ? (
               <Invite course={course} session={session} onChanged={onChanged} />
             ) : error ? (

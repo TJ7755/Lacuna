@@ -5,7 +5,7 @@ import { liquidSpring } from './motion';
 
 export const PageArrivalReady = createContext(true);
 
-/** Reveal reading surfaces in visual order, once their loading cover has released them. */
+/** Reveal reading surfaces in visual order, once their dependencies are ready. */
 export function PageArrival({ children, className }: { children: ReactNode; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
   const arrived = useRef(false);
@@ -82,7 +82,8 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
     element.style.opacity = '0';
     return animate(0, target, {
       ...liquidSpring(multiplier),
-      delay: Math.min(rows.indexOf(Math.round(top)) * 0.04, 0.12) * multiplier,
+      visualDuration: 0.18 * multiplier,
+      delay: Math.min(rows.indexOf(Math.round(top)) * 0.025, 0.075) * multiplier,
       onUpdate: (opacity) => {
         element.style.opacity = String(opacity);
       },

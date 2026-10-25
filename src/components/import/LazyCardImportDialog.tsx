@@ -9,7 +9,7 @@ const Dialog = lazy(() =>
 /** Keep file parsers and card previews off the dashboard's initial loading path. */
 export function LazyCardImportDialog(props: CardImportDialogProps) {
   return (
-    <PageLoadingBoundary fallback={<p role="status">Loading importer…</p>}>
+    <PageLoadingBoundary>
       <Dialog {...props} />
     </PageLoadingBoundary>
   );

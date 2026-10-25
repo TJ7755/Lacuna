@@ -54,7 +54,7 @@ it('never returns another course snapshot when the route ID changes', async () =
 
 it('shares live updates until the final subscriber leaves, including in StrictMode', async () => {
   const course = await createCourse('Biology');
-  const read = vi.fn((id: string) => db.courses.get(id));
+  const read = vi.fn(async (id: string) => db.courses.get(id));
   const useRecords = retainedLiveQuery(read);
   const first = renderHook(() => useRecords(course.id), { wrapper: StrictMode });
   const second = renderHook(() => useRecords(course.id), { wrapper: StrictMode });
@@ -96,7 +96,7 @@ class QueryErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 it('reports failed revalidation and retries the cached snapshot on a later visit', async () => {
   const course = await createCourse('Biology');
   const failure = new Error('Read failed');
-  const read = vi.fn((id: string) => db.courses.get(id));
+  const read = vi.fn(async (id: string) => db.courses.get(id));
   const useRecords = retainedLiveQuery(read);
   const first = renderHook(() => useRecords(course.id));
   await waitFor(() => expect(first.result.current?.name).toBe('Biology'));
@@ -186,4 +186,54 @@ it('expires idle snapshots after five minutes', async () => {
   const revisit = renderHook(() => useRecords('course'));
   expect(revisit.result.current).toBeUndefined();
   await waitFor(() => expect(revisit.result.current).toBe('course'));
+});
+
+it('warms the real course path read before mount and refreshes it on later intent', async () => {
+  const { useCoursePathRecords } = await import('./useCourseStudyFlowRecords');
+  const course = await createCourse('Biology');
+  await useCoursePathRecords.preload(course.id);
+  const first = renderHook(() => useCoursePathRecords(course.id));
+  expect(first.result.current?.course?.name).toBe('Biology');
+  first.unmount();
+
+  await db.courses.update(course.id, { name: 'Cells' });
+  await useCoursePathRecords.preload(course.id);
+  const revisit = renderHook(() => useCoursePathRecords(course.id));
+  expect(revisit.result.current?.course?.name).toBe('Cells');
+  await db.courses.update(course.id, { name: 'Genetics' });
+  await waitFor(() => expect(revisit.result.current?.course?.name).toBe('Genetics'));
+});
+
+it('retries failed speculative reads and does not revive an evicted pending snapshot', async () => {
+  const course = await createCourse('Biology');
+  const read = vi.fn(async (id: string) => db.courses.get(id));
+  const useRecords = retainedLiveQuery(read);
+  read.mockRejectedValueOnce(new Error('Offline'));
+  await expect(useRecords.preload(course.id)).rejects.toThrow('Offline');
+  await useRecords.preload(course.id);
+  const recovered = renderHook(() => useRecords(course.id));
+  expect(recovered.result.current?.name).toBe('Biology');
+  recovered.unmount();
+
+  let finish!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  let started = false;
+  read.mockImplementationOnce(async (id) => {
+    const record = await db.courses.get(id);
+    started = true;
+    await pending;
+    return record;
+  });
+  const abandoned = useRecords.preload(course.id);
+  await waitFor(() => expect(started).toBe(true));
+  for (let index = 0; index < 5; index++) await useRecords.preload(`other-${index}`);
+  await abandoned;
+  await db.courses.update(course.id, { name: 'Cells' });
+  await useRecords.preload(course.id);
+  finish();
+  await pending;
+  const current = renderHook(() => useRecords(course.id));
+  expect(current.result.current?.name).toBe('Cells');
 });

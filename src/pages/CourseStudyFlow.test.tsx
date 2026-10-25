@@ -274,10 +274,13 @@ describe('CourseStudyFlow', () => {
     expect(planningStates.at(-1)).toBe(false);
   });
 
-  it('renders the initial lesson as an embedded LearnMode request', async () => {
-    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0)];
-
+  it('keeps Exit available until the initial embedded LearnMode request is ready', async () => {
     renderFlow();
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1', { state: { returning: true } });
+
+    mockFlows[0] = flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Atomic structure' }, 0);
+    act(() => mockFlowListeners.forEach((listener) => listener()));
 
     // No entry screen here: these flows offer a single way in, so the study flow
     // opens the only session directly. The planned step must be on the first
@@ -325,60 +328,82 @@ describe('CourseStudyFlow', () => {
     renderFlow();
     await screen.findByTestId('learn-request');
     const outgoing = seenCompletions[seenCompletions.length - 1];
-    act(() => { outgoing(summary(true)); outgoing(summary(true)); });
+    act(() => {
+      outgoing(summary(true));
+      outgoing(summary(true));
+    });
     fireEvent.click(await screen.findByRole('button', { name: /^Continue$/ }));
     await waitFor(() => expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' }));
     act(() => outgoing(summary(true)));
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-2' });
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
-    expect(await screen.findByRole('heading', { name: 'Third lesson', level: 2 })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Third lesson', level: 2 }),
+    ).toBeInTheDocument();
   });
 
-  it('continues contiguous Practice without a hand-off screen', async () => {
+  it('keeps the current Practice mounted until contiguous Practice is ready', async () => {
     mockFlows = [
       flow({ kind: 'practice', nodeKey: 'auto-1', mode: 'curricular', label: 'Practice' }, 0, [
         practiceState('auto-1', 'Practice', ['lesson-1']),
       ]),
-      flow({ kind: 'practice', nodeKey: 'auto-2', mode: 'curricular', label: 'Practice' }, 1, [
-        practiceState('auto-2', 'Practice', ['lesson-2']),
-      ]),
     ];
     renderFlow();
-    await screen.findByTestId('learn-request');
+    const current = await screen.findByTestId('learn-request');
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear step' }));
 
+    expect(screen.getByTestId('learn-request')).toBe(current);
+    expect(learnMounts).toBe(1);
+    expect(screen.getByRole('button', { name: 'Exit flow' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+
+    mockFlows[1] = flow(
+      { kind: 'practice', nodeKey: 'auto-2', mode: 'curricular', label: 'Practice' },
+      1,
+      [practiceState('auto-2', 'Practice', ['lesson-2'])],
+    );
+    act(() => mockFlowListeners.forEach((listener) => listener()));
+
     await waitFor(() => expect(request()).toMatchObject({ nodeKey: 'auto-2' }));
+    expect(learnMounts).toBe(2);
     expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
   });
 
   it.each(['Clear step', 'Reach review goal', 'Pause step'])(
-    'keeps catch-up explicit after %s while cards remain eligible', async (stop) => {
-    const after = flow(CATCH_UP_STEP, 1);
-    after.snapshot.catchUpEligibleCount = 1;
-    after.snapshot.cardCount = 1;
-    mockFlows = [flow(CATCH_UP_STEP, 0), after];
-    renderFlow('/course/course-1/study?review=earlier');
-    await screen.findByTestId('learn-request');
-    fireEvent.click(screen.getByRole('button', { name: stop }));
-    const review = await screen.findByRole('button', { name: 'Review earlier material' });
-    expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
-    expect(learnMounts).toBe(1);
-    expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
-    fireEvent.click(review);
-    await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
-    expect(learnMounts).toBe(2);
-  });
+    'keeps catch-up explicit after %s while cards remain eligible',
+    async (stop) => {
+      const after = flow(CATCH_UP_STEP, 1);
+      after.snapshot.catchUpEligibleCount = 1;
+      after.snapshot.cardCount = 1;
+      mockFlows = [flow(CATCH_UP_STEP, 0), after];
+      renderFlow('/course/course-1/study?review=earlier');
+      await screen.findByTestId('learn-request');
+      fireEvent.click(screen.getByRole('button', { name: stop }));
+      const review = await screen.findByRole('button', { name: 'Review earlier material' });
+      expect(screen.queryByTestId('learn-request')).not.toBeInTheDocument();
+      expect(learnMounts).toBe(1);
+      expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument();
+      fireEvent.click(review);
+      await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
+      expect(learnMounts).toBe(2);
+    },
+  );
 
   it('offers one way to continue when catch-up is already the next planned step', async () => {
     const nextCatchUp = flow(CATCH_UP_STEP, 1);
     nextCatchUp.snapshot.catchUpEligibleCount = 2;
-    mockFlows = [flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Current lesson' }, 0), nextCatchUp];
+    mockFlows = [
+      flow({ kind: 'lesson', lessonId: 'lesson-1', label: 'Current lesson' }, 0),
+      nextCatchUp,
+    ];
     renderFlow();
     await screen.findByTestId('learn-request');
     fireEvent.click(screen.getByRole('button', { name: 'Complete step' }));
     const next = await screen.findByRole('button', { name: /^Continue$/ });
-    expect(screen.queryByRole('button', { name: 'Review earlier material' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Review earlier material' }),
+    ).not.toBeInTheDocument();
     fireEvent.click(next);
     await waitFor(() => expect(request()).toMatchObject({ mode: 'catch-up' }));
   });

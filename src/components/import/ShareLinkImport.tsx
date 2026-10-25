@@ -1,7 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { StepSwap } from '../ui/StepSwap';
-import { Skeleton } from '../ui/Skeleton';
-import { DelayedFallback } from '../ui/DelayedFallback';
 import { Button } from '../ui/Button';
 import { SharedCourseImport } from './SharedCourseImport';
 import {
@@ -199,11 +197,7 @@ export function ShareLinkImport({
 
   return (
     <StepSwap stepKey={state.status}>
-      {state.status === 'loading' ? (
-        <DelayedFallback>
-          <ShareLinkSkeleton />
-        </DelayedFallback>
-      ) : state.status === 'unavailable' ? (
+      {state.status === 'loading' ? null : state.status === 'unavailable' ? (
         retry(
           chosen ? 'This course is unavailable' : 'This link is unavailable',
           chosen && state.message === UNAVAILABLE_MESSAGE
@@ -248,17 +242,4 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   const buffer = new ArrayBuffer(bytes.byteLength);
   new Uint8Array(buffer).set(bytes);
   return buffer;
-}
-
-function ShareLinkSkeleton() {
-  return (
-    <div className="rounded-3xl bg-surface card-surface p-6">
-      <Skeleton className="mb-2 h-6 w-48 rounded-lg bg-ink/10" />
-      <Skeleton className="mb-5 h-4 w-full rounded-lg bg-ink/10" />
-      <div className="flex gap-2">
-        <Skeleton className="h-11 w-28 rounded-full" />
-        <Skeleton className="h-11 w-32 rounded-full" />
-      </div>
-    </div>
-  );
 }

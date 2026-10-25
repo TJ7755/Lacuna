@@ -14,9 +14,6 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { formatRelativeTime } from '../../utils/datetime';
 import { Button } from '../ui/Button';
 import { buttonClassName } from '../ui/buttonStyles';
-import { useDelayedPending } from '../../hooks/useDelayedPending';
-import { PageArrival } from '../ui/PageArrival';
-import { Skeleton } from '../ui/Skeleton';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { ConfirmInlineSwap } from '../ui/ConfirmInline';
 import { ShareIcon } from '../ui/icons';
@@ -225,7 +222,6 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
 
   const forwarded = link !== null && !course.distribution?.shareId && !!course.distributedCopy;
   const pending = link !== null && !forwarded && managed === null;
-  const showPending = useDelayedPending(pending);
   const state = pending
     ? 'pending'
     : forwarded
@@ -255,11 +251,6 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
           exit={m > 0 ? { opacity: 0 } : undefined}
           transition={liquidSpring(m)}
         >
-          {state === 'pending' && showPending && (
-            <PageArrival className="[&_.animate-pulse]:animate-none">
-              <Skeleton className="mt-4 h-12 w-48 rounded-full bg-ink/10" />
-            </PageArrival>
-          )}
           {state === 'none' && (
             <Button
               ref={actionFocus.restore}
@@ -391,9 +382,7 @@ function ShareLinkContent({ course, highlight }: { course: Course; highlight: bo
                 </div>
                 {state === 'live' && (
                   <div className="mt-4">
-                    <PageLoadingBoundary
-                      fallback={<p className="text-sm text-ink-soft">Opening Gaps connection…</p>}
-                    >
+                    <PageLoadingBoundary>
                       <GapsConnectionExport
                         key={link.shareId}
                         shareId={link.shareId}

@@ -1,5 +1,4 @@
 import { MissingRecord } from '../components/course/MissingRecord';
-import { Skeleton } from '../components/ui/Skeleton';
 // Course-scoped analytics page.
 // Route: /course/:courseId/analytics
 
@@ -23,24 +22,6 @@ import { KpiRow } from '../components/analytics/KpiRow';
 import { CourseForecastCard } from '../components/analytics/CourseForecastCard';
 import { reviewVolume, studyTimeSeries, totalStudyMinutes } from '../components/analytics/prepare';
 import { masteryFraction } from '../fsrs/progress';
-
-function CourseAnalyticsSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-8`}>
-      <div className="mb-8 pt-6 md:pt-8">
-        <Skeleton className="h-11 w-56 rounded-lg bg-ink/10" />
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className={`h-64 animate-pulse rounded-3xl bg-ink/5 ${i < 2 ? 'lg:col-span-2' : ''}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function CourseAnalytics() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -79,7 +60,7 @@ export function CourseAnalytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading course analytics">
-        <PageLoading fallback={<CourseAnalyticsSkeleton />} />
+        <PageLoading />
       </div>
     );
   }

@@ -1,5 +1,5 @@
+import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { MissingRecord } from '../components/course/MissingRecord';
-import { Skeleton } from '../components/ui/Skeleton';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
@@ -33,7 +33,7 @@ import { ResultMark } from '../components/questions/ResultMark';
 
 export function QuestionLearnMode() {
   return (
-    <PageLoadingBoundary fallback={<QuestionSessionSkeleton />}>
+    <PageLoadingBoundary>
       <QuestionSession />
     </PageLoadingBoundary>
   );
@@ -240,7 +240,14 @@ function QuestionSession() {
   const exit = () => exitGuardRef.current?.requestLeave();
 
   if (course === undefined || data === undefined || questionIds === null) {
-    return <PageLoading />;
+    return (
+      <div className="min-h-dvh bg-paper">
+        <StudyExitHeader
+          onExit={() => void navigate(courseId ? `/course/${courseId}/questions` : '/')}
+        />
+        <PageLoading />
+      </div>
+    );
   }
   if (course === null) {
     return (
@@ -303,11 +310,7 @@ function QuestionSession() {
           onExit={exit}
         />
 
-        <PageLoadingBoundary
-          pending={!attempt && !startError}
-          fallback={<Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />}
-          animateArrival={false}
-        >
+        <PageLoadingBoundary pending={!attempt && !startError} animateArrival={false}>
           {startError ? (
             <section
               role="alert"
@@ -362,17 +365,6 @@ function QuestionSession() {
             </motion.div>
           ) : null}
         </PageLoadingBoundary>
-      </div>
-    </main>
-  );
-}
-
-function QuestionSessionSkeleton() {
-  return (
-    <main className="min-h-screen bg-paper px-4 py-7 md:px-8">
-      <div className="mx-auto max-w-[1000px]">
-        <Skeleton className="mb-6 h-11 w-full rounded-xl bg-ink/10" />
-        <Skeleton className="h-[24rem] rounded-[28px] bg-ink/10" />
       </div>
     </main>
   );

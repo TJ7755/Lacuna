@@ -1,6 +1,5 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { Skeleton } from '../components/ui/Skeleton';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -146,7 +145,7 @@ export function CardEditor() {
     // Hold the form until a card's type is seeded, so it does not arrive as a type change.
     (editing && card !== null && !loaded)
   ) {
-    return <PageLoading fallback={<CardEditorSkeleton />} />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -343,19 +342,6 @@ export function CardEditor() {
             onCancel={returnTo.goBack}
           />
         </motion.div>
-      </div>
-    </div>
-  );
-}
-function CardEditorSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
-      <Skeleton className="mb-2 h-11 w-24 rounded-full bg-ink/10" />
-      <Skeleton className="mb-6 h-11 w-56 rounded-xl bg-ink/10" />
-      <Skeleton className="mb-6 h-11 w-96 max-w-full rounded-full bg-ink/[0.06]" />
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Skeleton className="h-96 rounded-3xl bg-ink/[0.06] lg:col-span-3" />
-        <Skeleton className="h-72 rounded-3xl bg-ink/[0.06] lg:col-span-2" />
       </div>
     </div>
   );

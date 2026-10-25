@@ -11,7 +11,6 @@ import { normaliseRecoveryCode } from './recoveryCode';
 import { forgetRememberedClass, readRememberedClass, rememberClass } from './rememberedClass';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import type * as KeysExports from './TeacherKeySetup';
-import { ResultsSkeleton } from './ClassResults';
 import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 
 /** Loads the key set-up form when it is first needed, as the shell loads each screen. */
@@ -32,14 +31,7 @@ export function KeySetupSlot({
   children(Keys: typeof KeysExports): ReactNode;
 }) {
   return (
-    <GapsLoadingBoundary
-      pending={!keys.Keys && !keys.failed}
-      fallback={
-        <p role="status" className="flex items-center gap-3 py-6 text-ink-soft">
-          <Spinner /> Opening key set-up…
-        </p>
-      }
-    >
+    <GapsLoadingBoundary pending={!keys.Keys && !keys.failed}>
       {keys.Keys ? (
         children(keys.Keys)
       ) : keys.failed ? (
@@ -106,7 +98,7 @@ export function LockedClass({
   }
 
   return (
-    <GapsLoadingBoundary pending={checking} fallback={<ResultsSkeleton />}>
+    <GapsLoadingBoundary pending={checking}>
       {!checking && (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-14 text-center md:py-16">
           <ClassGlyph locked size={64} />

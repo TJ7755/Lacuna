@@ -29,6 +29,7 @@ vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
   useHref: (to: string) => to,
+  useResolvedPath: (to: string) => ({ pathname: to }),
   useLinkClickHandler: (to: string) => (event: React.MouseEvent) => {
     event.preventDefault();
     mockNavigate(to);

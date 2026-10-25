@@ -1,5 +1,4 @@
 import { SectionCard } from '../ui/SectionCard';
-import { Skeleton } from '../ui/Skeleton';
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { parseShareCode } from '../../shareLinks/client';
@@ -429,9 +428,7 @@ export function SharedCourseImport({
                 id={scannerId}
                 ref={scannerRef}
                 className="relative mx-auto aspect-square max-w-sm overflow-hidden rounded-lg bg-black"
-              >
-                {!scanError && <Skeleton className="absolute inset-0 bg-ink/10" />}
-              </div>
+              />
               {scanError && <p className="mt-2 text-sm text-negative">{scanError}</p>}
             </div>
           </motion.div>

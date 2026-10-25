@@ -34,13 +34,12 @@ it('waits for the lesson course before initialising the study session', async ()
   const rendered = render(view());
   try {
     await waitFor(() => expect(courseLoaded).toBe(true));
-    expect(await screen.findByRole('status', { name: 'Loading page' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /exit/i })).toBeEnabled();
     expect(screen.queryByRole('heading', { name: 'Delayed lesson' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
     held = false;
     rendered.rerender(view());
     expect(await screen.findByRole('heading', { name: 'Delayed lesson' })).toBeInTheDocument();
-    expect(screen.queryByRole('status', { name: 'Loading page' })).not.toBeInTheDocument();
   } finally {
     rendered.unmount();
     courseSpy.mockRestore();

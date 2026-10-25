@@ -2,7 +2,6 @@ import { AppLink } from '../components/ui/AppLink';
 import { buttonClassName } from '../components/ui/buttonStyles';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { Skeleton } from '../components/ui/Skeleton';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDelayedPending } from '../hooks/useDelayedPending';
@@ -38,7 +37,7 @@ import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/Cou
 
 /**
  * The forecast leads Today, so the queue waits for it to arrive as one piece. A forecast
- * still pending after this long gives way: the queue appears beneath a placeholder.
+ * still pending after this long gives way so the queue remains available.
  */
 const FORECAST_WAIT_MS = 600;
 
@@ -178,7 +177,7 @@ export function Dashboard() {
     rows !== undefined && !forecastSettled,
     FORECAST_WAIT_MS,
   );
-  // Once Today has arrived it stays: live updates never send it back to the skeleton.
+  // Once Today has arrived it stays through live updates.
   const [arrived, setArrived] = useState(false);
   const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
   useEffect(() => {
@@ -267,7 +266,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <PageLoadingBoundary fallback={<CourseSkeleton />}>
+      <PageLoadingBoundary>
         {!rows || !ready ? (
           <PageLoading />
         ) : rows.length === 0 ? (
@@ -277,15 +276,8 @@ export function Dashboard() {
           />
         ) : (
           <div className="flex flex-col gap-6">
-            {/* The forecast arrives whole, fading in place, and holds its room while late. */}
-            <PageLoadingBoundary
-              pending={!forecastSettled}
-              fallback={<ForecastPlaceholder />}
-              animateArrival={false}
-              className={
-                !forecastSettled ? 'min-h-[540px] sm:min-h-[520px] lg:min-h-[480px]' : undefined
-              }
-            >
+            {/* The forecast arrives whole before the queue. */}
+            <PageLoadingBoundary pending={!forecastSettled} animateArrival={false}>
               {forecastSettled && showForecast && (
                 <motion.section
                   aria-label="Forecast and this week"
@@ -380,25 +372,6 @@ export function Dashboard() {
           </Suspense>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-/** Holds about the room the forecast surface takes, so its arrival barely moves the queue. */
-function ForecastPlaceholder() {
-  return <Skeleton className="h-[540px] rounded-3xl bg-surface sm:h-[520px] lg:h-[480px]" />;
-}
-
-function CourseSkeleton() {
-  return (
-    <div className="flex flex-col gap-6">
-      <ForecastPlaceholder />
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="flex h-[68px] items-center gap-4 rounded-[18px] bg-surface px-5">
-          <div className="h-2.5 w-2.5 rounded-full bg-ink/10" />
-          <Skeleton className="h-5 w-40 rounded bg-ink/10" />
-        </div>
-      ))}
     </div>
   );
 }

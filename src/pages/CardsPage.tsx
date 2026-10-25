@@ -2,7 +2,6 @@ import { StudyDrawing } from '../components/ui/StudyDrawing';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { CreateButton } from '../components/ui/CreateButton';
 import { useScopedFindShortcut } from '../hooks/useScopedFindShortcut';
-import { Skeleton } from '../components/ui/Skeleton';
 // Course Cards — all cards in a course, organised by lesson, with an
 // "Unassigned" bucket for cards not yet assigned to a lesson. A toolbar searches and
 // filters across every bucket; selecting cards raises the floating bulk bar (CardList).
@@ -171,7 +170,7 @@ export function CardsPage() {
     sequences === undefined ||
     occlusions === undefined
   ) {
-    return <PageLoading fallback={<CardsPageSkeleton />} />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -431,22 +430,5 @@ function UnassignedBucket({
         <div className="mb-3">{heading}</div>
       )}
     </section>
-  );
-}
-
-function CardsPageSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <div className="mb-6 mt-6 flex items-center justify-between md:mt-8">
-        <Skeleton className="h-10 w-40 rounded-full bg-ink/10" />
-        <Skeleton className="h-11 w-40 rounded-full bg-ink/10" />
-      </div>
-      <Skeleton className="mb-6 h-12 w-full max-w-sm rounded-full bg-ink/10" />
-      <div className="space-y-2 rounded-3xl bg-surface p-5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 rounded-2xl bg-ink/5" />
-        ))}
-      </div>
-    </div>
   );
 }

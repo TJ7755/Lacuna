@@ -13,7 +13,6 @@ import {
 import { cn } from '../components/ui/cn';
 import { SearchIcon } from '../components/ui/icons';
 import { useMotionSpeed, speedMultiplier } from '../state/motionSpeed';
-import { Skeleton } from '../components/ui/Skeleton';
 import { SECTION_CARD_SURFACE_CLASS } from '../components/ui/SectionCard';
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
 import { SearchResultOption } from '../components/search/SearchResultOption';
@@ -243,7 +242,7 @@ export function SearchPage() {
             </motion.button>
           )}
         </div>
-        <PageLoadingBoundary pending={!searchData} fallback={<SearchSkeleton />}>
+        <PageLoadingBoundary pending={!searchData}>
           {!searchData ? null : !searching ? (
             <div className="flex justify-center py-8">
               <StudyDrawing kind="search" className="h-20 w-20 opacity-60" />
@@ -296,20 +295,6 @@ export function SearchPage() {
           )}
         </PageLoadingBoundary>
       </div>
-    </div>
-  );
-}
-
-function SearchSkeleton() {
-  return (
-    <div className={`${SECTION_CARD_SURFACE_CLASS} space-y-2 p-1.5`}>
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex flex-col gap-1 px-2.5 py-2.5">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-          <Skeleton className="mt-1 h-3 w-24" />
-        </div>
-      ))}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { lazy, useState, type ComponentType } from 'react';
 import { recoverFromChunkFailure } from '../pwa/staleChunkRecovery';
 
-type RouteModule = { default: ComponentType };
+type RouteModule = { default: ComponentType; preload?: (key: string) => Promise<void> };
 export type RouteLoader = () => Promise<RouteModule>;
 
 const pendingModules = new WeakMap<RouteLoader, Promise<RouteModule>>();

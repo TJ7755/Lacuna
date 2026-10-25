@@ -1,7 +1,6 @@
 import { lazy } from 'react';
 import { useCard } from '../../state/useData';
 import type { Card, SchedulerConfig } from '../../db/types';
-import { Skeleton } from '../ui/Skeleton';
 import { PageLoading, PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 const CardAnalytics = lazy(() =>
@@ -41,7 +40,7 @@ export function ExpandedCardAnalytics({
   motionMultiplier: number;
 }) {
   return (
-    <PageLoadingBoundary fallback={<Skeleton className="h-32 rounded-xl bg-ink/[0.03]" />}>
+    <PageLoadingBoundary>
       {card.history.length > 0 ? (
         <CardAnalytics
           card={card}

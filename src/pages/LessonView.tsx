@@ -1,6 +1,5 @@
 import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
@@ -96,7 +95,7 @@ export function LessonView() {
     lessonCards === undefined ||
     !studyReady
   ) {
-    return <PageLoading fallback={<LessonViewSkeleton />} />;
+    return <PageLoading />;
   }
 
   // Not found.

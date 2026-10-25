@@ -1,7 +1,6 @@
 import { MissingRecord } from '../components/course/MissingRecord';
 import { PillToggleGroup } from '../components/cards/PillToggleGroup';
 import { Input, fieldLabelClassName } from '../components/ui/Field';
-import { Skeleton } from '../components/ui/Skeleton';
 import {
   COURSE_PAGE_FRAME,
   COURSE_PAGE_HEADER,
@@ -90,7 +89,7 @@ export function CourseSettings() {
   } = useCourseSettingsForm(course, courseId);
 
   if (course === undefined) {
-    return <PageLoading fallback={<CourseSettingsSkeleton />} />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -346,30 +345,6 @@ export function CourseSettings() {
           </div>
         </div>
       </SettingsArrivalProvider>
-    </div>
-  );
-}
-
-function CourseSettingsSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <Skeleton className="mb-8 mt-6 h-10 w-64 rounded-full bg-ink/10 md:mt-8" />
-      <div className="grid gap-5 min-[1100px]:grid-cols-[1.15fr_1fr]">
-        {[0, 1, 2].map((key) => (
-          <div
-            key={key}
-            className={`space-y-5 rounded-3xl bg-surface p-6 card-surface ${key === 0 ? 'min-[1100px]:row-span-2' : ''}`}
-          >
-            <Skeleton className="h-7 w-48 max-w-full" />
-            {Array.from({ length: key === 0 ? 4 : 2 }, (_, index) => (
-              <div key={index}>
-                <Skeleton className="mb-3 h-4 w-32" />
-                <Skeleton className="h-11 w-full rounded-full" />
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

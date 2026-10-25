@@ -1,3 +1,4 @@
+import { StudyExitHeader } from '../components/learn/StudyExitHeader';
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
@@ -26,14 +27,12 @@ import { LearnSessionReport } from './learn/LearnSessionReport';
 import { LearnStudyPhase } from './learn/LearnStudyPhase';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
 import { useStudyFocus } from './learn/useStudyFocus';
-import { LearnSkeleton } from './learn/LearnSkeleton';
 import type { ReviewSessionKind } from '../db/types';
 import type { LearnModeType, LearnSessionRequest } from './learn/types';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
 export type { LearnSessionRequest } from './learn/types';
-export { LearnSkeleton } from './learn/LearnSkeleton';
 
 interface LearnModeProps {
   /** Supplied by CourseStudyFlow; omitted for the existing route-driven sessions. */
@@ -48,7 +47,7 @@ interface LearnModeProps {
 
 export function LearnMode(props: LearnModeProps = {}) {
   return (
-    <PageLoadingBoundary fallback={<LearnSkeleton />} animateArrival={false}>
+    <PageLoadingBoundary animateArrival={false}>
       <LearnSession {...props} />
     </PageLoadingBoundary>
   );
@@ -316,7 +315,12 @@ function LearnSession({ request, onStepFinished, onFlowExit, sessionId }: LearnM
   }, [phase, summary]);
 
   if (!sessionReady || phase === 'loading') {
-    return <PageLoading fallback={<LearnSkeleton mode={mode} />} />;
+    return (
+      <div className="min-h-dvh bg-paper">
+        <StudyExitHeader onExit={backOut} />
+        <PageLoading />
+      </div>
+    );
   }
 
   if (phase === 'notes' && lessonNotesScreen) {

@@ -1,5 +1,4 @@
 import { PAGE_FRAME } from '../components/course/coursePageLayout';
-import { Skeleton } from '../components/ui/Skeleton';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useMemo, useState } from 'react';
 import { AppLink as Link } from '../components/ui/AppLink';
@@ -45,25 +44,6 @@ const PERIODS = [
 
 /** Label spacing that keeps the date axis to a handful of ticks at every period. */
 const X_INTERVAL: Record<Period, number> = { '7': 0, '30': 6, '90': 14 };
-
-function AnalyticsSkeleton() {
-  return (
-    <div className={`${PAGE_FRAME} space-y-4 py-10`}>
-      <Skeleton className="h-11 w-48 rounded-lg bg-ink/5" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 rounded-3xl bg-ink/5" />
-        ))}
-      </div>
-      <Skeleton className="h-56 rounded-3xl bg-ink/5" />
-      <div className="grid gap-4 lg:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-72 rounded-3xl bg-ink/5" />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function Analytics() {
   const [motionSpeed] = useMotionSpeed();
@@ -164,7 +144,7 @@ export function Analytics() {
   ) {
     return (
       <div role="status" aria-busy="true" aria-label="Loading analytics">
-        <PageLoading fallback={<AnalyticsSkeleton />} />
+        <PageLoading />
       </div>
     );
   }

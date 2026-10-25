@@ -9,7 +9,6 @@
 
 import {
   Disclosure,
-  SequenceEditorSkeleton,
   SequenceOptions,
   SequenceIdentity,
   SequenceItems,
@@ -205,7 +204,7 @@ export function SequenceEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && sequence === undefined && !loaded)
   ) {
-    return <PageLoading fallback={<SequenceEditorSkeleton />} />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (

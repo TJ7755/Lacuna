@@ -4,7 +4,6 @@ import type { SequencePresetId } from '../db/types';
 import { SequenceOutlineEditor } from '../components/sequences/SequenceOutlineEditor';
 import type { generateCards } from '../db/sequenceGeneration';
 import type { ReactNode } from 'react';
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import type { Outline } from '../components/sequences/sequenceOutline';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
 import {
@@ -15,7 +14,6 @@ import {
 } from '../components/ui/Field';
 import { SectionCard } from '../components/ui/SectionCard';
 import { Select } from '../components/ui/Select';
-import { Skeleton } from '../components/ui/Skeleton';
 import { Toggle } from '../components/ui/Toggle';
 import { choiceChipClass } from '../components/ui/choiceChip';
 import { cn } from '../components/ui/cn';
@@ -214,28 +212,6 @@ export function Disclosure({
         {children}
       </AnimatedDisclosure>
     </SectionCard>
-  );
-}
-
-export function SequenceEditorSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
-      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
-      <Skeleton className="mb-8 h-10 w-48" />
-      <div className="space-y-5">
-        <SectionCard className="space-y-5">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-11 w-full rounded-xl" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-11 w-72 max-w-full rounded-full" />
-        </SectionCard>
-        <SectionCard>
-          <Skeleton className="mb-5 h-6 w-48" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </SectionCard>
-      </div>
-    </div>
   );
 }
 

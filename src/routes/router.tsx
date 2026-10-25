@@ -1,5 +1,7 @@
 import { type ComponentType, type ReactNode } from 'react';
-import { lazyRouteModule as lazy } from './routeModule';
+import { lazyRouteModule as lazy, loadRouteModule } from './routeModule';
+import { prefetchRoute, prepareRoute } from './prefetch';
+import { RoutePrefetchContext } from './RoutePrefetchContext';
 import { createHashRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '../components/layout/AppShell';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
@@ -8,8 +10,6 @@ import { Dashboard } from '../pages/Dashboard';
 import { NotFound } from '../pages/NotFound';
 import { LazyRoute } from './LazyRoute';
 import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
-import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
-import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
 import { LegacyBankRedirect } from './LegacyBankRedirect';
 import { ArchivedCourseAccessGuard } from './ArchivedCourseAccessGuard';
 import {
@@ -75,9 +75,9 @@ const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
 // Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
-const Onboarding = lazy(() =>
-  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding })),
-);
+const loadOnboarding = () =>
+  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding }));
+const Onboarding = lazy(loadOnboarding);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
@@ -93,9 +93,9 @@ function isolatedRoute(label: string, child: ReactNode) {
   return <ErrorBoundary label={label}>{child}</ErrorBoundary>;
 }
 
-function workspaceRoute(Component: ComponentType, lesson = false) {
+function workspaceRoute(Component: ComponentType) {
   return (
-    <PageLoadingBoundary fallback={lesson ? <LessonViewSkeleton /> : <CoursePathSkeleton />}>
+    <PageLoadingBoundary>
       <ArchivedCourseAccessGuard>
         <Component />
       </ArchivedCourseAccessGuard>
@@ -114,7 +114,21 @@ function courseAccessRoute(child: ReactNode, study = false) {
 // Hash routing keeps the app deployable as plain static files with no server rewrites.
 export const router = createHashRouter([
   {
-    element: <RouteTransition />,
+    loader: async ({ request }) => {
+      const path = new URL(request.url).pathname;
+      if (path === '/start') {
+        await loadRouteModule(loadOnboarding).catch(() => undefined);
+        return null;
+      }
+      return prepareRoute(path, request.signal);
+    },
+    shouldRevalidate: () => true,
+    hydrateFallbackElement: null,
+    element: (
+      <RoutePrefetchContext value={prefetchRoute}>
+        <RouteTransition />
+      </RoutePrefetchContext>
+    ),
     children: [
       {
         path: '/teach',
@@ -139,7 +153,7 @@ export const router = createHashRouter([
           { path: 'course/:courseId', element: workspaceRoute(CoursePath) },
           {
             path: 'course/:courseId/lesson/:lessonId',
-            element: workspaceRoute(LessonView, true),
+            element: workspaceRoute(LessonView),
           },
           {
             path: 'course/:courseId/bank',

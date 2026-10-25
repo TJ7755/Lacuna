@@ -23,7 +23,6 @@ import { AssessmentDetailSheet } from '../components/course/AssessmentDetailShee
 import { lockHintFor } from '../components/course/lockHint';
 import { CourseHeader } from '../components/course/CourseHeader';
 import { useStudySheet } from '../components/learn/StudySheetContext';
-import { CoursePathSkeleton } from '../components/course/CoursePathSkeleton';
 import { CourseOverview } from '../components/course/CourseOverview';
 import { useCoursePathData } from '../components/course/useCoursePathData';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
@@ -49,6 +48,8 @@ function prefetchLessonView(): void {
 
 // The course page's Other ways menu sits beside Study, so its session plan leaves them out.
 const PAGE_OFFERS_OTHER_WAYS = { otherWays: false };
+
+export const preloadCoursePath = useCoursePathRecords.preload;
 
 export function CoursePath() {
   const { courseId } = useParams<{ courseId: string }>();
@@ -128,9 +129,9 @@ export function CoursePath() {
         : undefined,
   });
 
-  // Loading state — a skeleton while course/lesson data resolves.
+  // Wait for course and lesson data before showing access-dependent actions.
   if (!dataLoaded) {
-    return <PageLoading fallback={<CoursePathSkeleton />} />;
+    return <PageLoading />;
   }
 
   // Course not found.

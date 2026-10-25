@@ -14,7 +14,6 @@ import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { BookIcon, ChevronLeftIcon } from '../ui/icons';
-import { Skeleton } from '../ui/Skeleton';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { StepSwap } from '../ui/StepSwap';
 import { MeasuredHeight } from '../ui/MeasuredHeight';
@@ -22,11 +21,13 @@ import type { LibraryBrowseState } from '../import/CourseLibraryPicker';
 import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
 
 // Keep the importer lazy, warming it only when the learner points to or focuses its action.
+let loadedLibrary: typeof import('../import/CourseLibraryImport').CourseLibraryImport | undefined;
 const loadCourseLibrary = () =>
-  import('../import/CourseLibraryImport').then((module) => ({
-    default: module.CourseLibraryImport,
-  }));
-const CourseLibraryImport = lazy(loadCourseLibrary);
+  import('../import/CourseLibraryImport').then((module) => {
+    loadedLibrary = module.CourseLibraryImport;
+    return { default: module.CourseLibraryImport };
+  });
+const LazyCourseLibraryImport = lazy(loadCourseLibrary);
 
 interface NewCourseFormProps {
   onClose: () => void;
@@ -58,7 +59,8 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   const [browsing, setBrowsing] = useState(false);
-  const [libraryReady, setLibraryReady] = useState(false);
+  const [libraryReady, setLibraryReady] = useState(() => loadedLibrary !== undefined);
+  const CourseLibraryImport = loadedLibrary ?? LazyCourseLibraryImport;
   useEffect(() => {
     if (!browsing || libraryReady) return;
     // The live way back sits outside the loader while its chunk is downloaded.
@@ -91,6 +93,15 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     prefetchRoute('/course/new');
     prefetchRoute('/course/new/lesson/new');
   }, []);
+
+  async function warmLibrary() {
+    try {
+      await loadCourseLibrary();
+      setLibraryReady(true);
+    } catch {
+      // The live Back action and existing error boundary own a failed cold open.
+    }
+  }
 
   const canCreate = !saving;
 
@@ -155,8 +166,8 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             style={{ borderRadius: '1rem', paddingInline: '0.875rem', borderWidth: '1.5px' }}
             hoverScale={false}
             disabled={saving}
-            onPointerEnter={() => void loadCourseLibrary().catch(() => {})}
-            onFocus={() => void loadCourseLibrary().catch(() => {})}
+            onPointerEnter={() => void warmLibrary()}
+            onFocus={() => void warmLibrary()}
             onClick={() => setBrowsing(true)}
           >
             <BookIcon width={18} height={18} aria-hidden="true" />
@@ -255,25 +266,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
           </Button>
         </header>
       )}
-      <PageLoadingBoundary
-        pending={!libraryReady}
-        fallback={
-          <div className="px-6 pb-6">
-            <div
-              aria-busy="true"
-              aria-label="Loading the course library"
-              className="flex flex-col gap-3"
-            >
-              <Skeleton className="h-[46px] rounded-2xl" />
-              <div className="grid gap-1.5">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <Skeleton key={index} className="h-14 rounded-2xl" />
-                ))}
-              </div>
-            </div>
-          </div>
-        }
-      >
+      <PageLoadingBoundary pending={!libraryReady}>
         {libraryReady && (
           <CourseLibraryImport
             backLabel="New course"

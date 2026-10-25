@@ -39,7 +39,6 @@ import {
 } from '../db/occlusionRepository';
 import { useReturn } from '../utils/editorOrigin';
 import type { Occlusion, OcclusionRegion } from '../db/types';
-import { Skeleton } from '../components/ui/Skeleton';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 
 export function OcclusionEditor() {
@@ -142,7 +141,7 @@ export function OcclusionEditor() {
     (lessonMode ? course === undefined || lesson === undefined : course === undefined) ||
     (editing && occlusion === undefined && !loaded)
   ) {
-    return <PageLoading fallback={<OcclusionEditorSkeleton />} />;
+    return <PageLoading />;
   }
   if (course === null) {
     return (
@@ -397,31 +396,6 @@ export function OcclusionEditor() {
           >
             {editing ? 'Save changes' : 'Add occlusion'}
           </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OcclusionEditorSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
-      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
-      <Skeleton className="mb-8 h-10 w-48" />
-      <div className="space-y-5">
-        <Skeleton className="h-4 w-16" />
-        <Skeleton className="h-11 w-full rounded-xl" />
-        <div className="grid min-h-80 grid-cols-1 overflow-hidden rounded-3xl bg-surface card-surface min-[760px]:grid-cols-[minmax(0,1fr)_260px]">
-          <div className="flex min-h-64 items-center justify-center p-6">
-            <Skeleton className="h-32 w-40 rounded-3xl" />
-          </div>
-          <div className="space-y-4 border-t border-line p-6 min-[760px]:border-l min-[760px]:border-t-0">
-            <Skeleton className="h-6 w-24" />
-            <Skeleton className="h-11 w-full rounded-full" />
-          </div>
-        </div>
-        <div className="rounded-3xl bg-surface p-5 card-surface">
-          <Skeleton className="h-5 w-48 max-w-full" />
         </div>
       </div>
     </div>

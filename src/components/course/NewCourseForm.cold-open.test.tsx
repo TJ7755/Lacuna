@@ -15,12 +15,14 @@ vi.mock('../import/CourseLibraryImport', () => new Promise(() => {}));
 it.each([true, false])('keeps a way back while the library loads (inline=%s)', async (inline) => {
   const onClose = vi.fn();
   render(<NewCourseForm inline={inline} onClose={onClose} />);
+  fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Biology' } });
   fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
 
   const back = screen.getByRole('button', { name: 'Back to New course' });
   expect(back).toHaveFocus();
   fireEvent.keyDown(back, { key: 'Escape' });
   await waitFor(() => expect(screen.getByLabelText('Course name')).toBeVisible());
+  expect(screen.getByLabelText('Course name')).toHaveValue('Biology');
   expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus();
   expect(onClose).not.toHaveBeenCalled();
 

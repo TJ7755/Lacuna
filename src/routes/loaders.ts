@@ -41,7 +41,10 @@ export const loadCourseAnalytics = () =>
   import('../pages/CourseAnalytics').then((module) => ({ default: module.CourseAnalytics }));
 
 export const loadCoursePath = () =>
-  import('../pages/CoursePath').then((module) => ({ default: module.CoursePath }));
+  import('../pages/CoursePath').then((module) => ({
+    default: module.CoursePath,
+    preload: module.preloadCoursePath,
+  }));
 
 export { loadLessonView } from './lessonRoute';
 

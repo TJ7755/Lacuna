@@ -1,5 +1,5 @@
 // Card-management section for LessonView's Edit mode, shown beneath the compact
-// LessonCardsList — heading, answer mode, the card list and the resolving-deck skeleton.
+// LessonCardsList — heading, answer mode, the card list and membership readiness.
 // Adding cards of every kind starts from the panel's New card (see CardTypePicker), so
 // an empty lesson has nothing to manage here. Extracted from LessonView.tsx alongside
 // LessonNotesSection so the page component stays a thin layout/data shell.
@@ -14,7 +14,6 @@ import { useLessonCardLinks, useOcclusions, useSequences } from '../../state/use
 import { db } from '../../db/schema';
 import { unlinkCardFromLesson } from '../../db/lessonRepository';
 import type { Card, SchedulerConfig } from '../../db/types';
-import { Skeleton } from '../ui/Skeleton';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 
 interface LessonCardsSectionProps {
@@ -102,16 +101,7 @@ export function LessonCardsSection({
           {controls}
         </>
       )}
-      <PageLoadingBoundary
-        pending={pending}
-        fallback={
-          <div className="space-y-3">
-            {Array.from({ length: Math.min(lessonCards.length, 3) }).map((_, i) => (
-              <Skeleton key={i} className="h-14 rounded-xl border border-line bg-ink/5" />
-            ))}
-          </div>
-        }
-      >
+      <PageLoadingBoundary pending={pending}>
         {/* Membership decides whether a row may delete the underlying card. */}
         {pending ? null : (
           <CardList
