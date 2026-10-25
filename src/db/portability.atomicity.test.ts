@@ -58,6 +58,7 @@ describe('backup application atomicity', () => {
     },
   );
 
+  // fake-indexeddb scans index entries while undoing each of the 2,000 inserted rows.
   it.each(['replace', 'merge'] as const)(
     'rolls back every table when a later history batch fails in %s mode',
     async (mode) => {
@@ -77,5 +78,6 @@ describe('backup application atomicity', () => {
       expect(writes.mock.calls.map(([rows]) => rows.length)).toEqual([2_000, 1]);
       expect(await Promise.all(db.tables.map((table) => table.toArray()))).toEqual(before);
     },
+    30_000,
   );
 });
