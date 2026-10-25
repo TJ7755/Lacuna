@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { SyncState } from '../../src/db/types';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function setSyncState(page: Page, state: SyncState) {
   await page.evaluate(async (value) => {
@@ -31,7 +31,7 @@ for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.addInitScript((value) => localStorage.setItem('lacuna-theme', value), theme);
-      await enterFreshLacuna(page);
+      await enterWithWelcomeCourse(page);
       const paired = { channelId: 'channel', lastSuccessfulSyncAt: Date.now() };
 
       for (const state of [

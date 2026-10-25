@@ -17,7 +17,9 @@ export async function enterFreshLacuna(page: Page) {
 
 /** Exercises Today import on desktop and the navigation-drawer entry on phones. */
 export async function openImport(page: Page) {
-  if (page.viewportSize()!.width >= 640) {
+  // Packaged Electron has no emulated viewport, so read the window's own width there.
+  const width = page.viewportSize()?.width ?? (await page.evaluate(() => window.innerWidth));
+  if (width >= 640) {
     await page.locator('main').getByRole('button', { name: 'Import', exact: true }).click();
   } else {
     await page.getByRole('button', { name: 'Open navigation' }).click();

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const state of ['non-persistent', 'persisted', 'unsupported'] as const) {
   test(`${state} storage keeps startup clear and offers guidance only in Settings`, async ({
@@ -20,7 +20,7 @@ for (const state of ['non-persistent', 'persisted', 'unsupported'] as const) {
               },
       });
     }, state);
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const notifications = page.getByLabel('Notifications', { exact: true });
     await expect(notifications.getByRole('link')).toHaveCount(0);
     await expect(page.getByRole('note', { name: 'Browser storage' })).toHaveCount(0);
