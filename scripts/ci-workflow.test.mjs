@@ -387,6 +387,11 @@ test('browser consumers use the same pinned browser image and shared production 
       (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/8',
     ),
   );
+  const functionalEvidence = jobs['browser-tests'].steps.find(
+    (step) => step.name === 'Preserve browser test evidence',
+  );
+  assert.equal(functionalEvidence.if, 'always()');
+  assert.ok(functionalEvidence.with.path.split('\n').includes('artifacts/ci-browser-shards/'));
 });
 
 test('Windows skips the slow package cache while retaining verified runtime installation', () => {

@@ -150,13 +150,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     const discovered = inventory(listTests());
     const shards = planShards(discovered, JSON.parse(readFileSync(timingPath, 'utf8')), total);
     const selected = shards[current - 1];
-    mkdirSync('test-results', { recursive: true });
-    const list = resolve('test-results/functional-shard.txt');
+    // Playwright clears outputDir before reading --test-list, so keep inputs outside it.
+    const evidence = resolve('artifacts/ci-browser-shards');
+    mkdirSync(evidence, { recursive: true });
+    const list = resolve(evidence, 'functional-shard.txt');
     writeFileSync(list, selected.files.map((file) => `[${project}] > ${file}`).join('\n'));
     // Ask Playwright itself to prove that its selector retained exactly the planned identities.
     verifyInventory(selected.tests, inventory(listTests(['--test-list', list])));
     writeFileSync(
-      'test-results/functional-shard-plan.json',
+      resolve(evidence, 'functional-shard-plan.json'),
       JSON.stringify(
         {
           shard: current,

@@ -460,6 +460,7 @@ jobs:
             playwright-report/
             test-results/
             artifacts/browser-checks/
+            artifacts/ci-browser-shards/
           if-no-files-found: ignore
 
   # These sites and feature flags require their own isolated builds.
