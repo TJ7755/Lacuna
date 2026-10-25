@@ -134,7 +134,9 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             ref={libraryButtonRef}
             type="button"
             variant="secondary"
-            className="w-full justify-start"
+            className="w-full justify-start py-3"
+            style={{ borderRadius: '1rem', paddingInline: '0.875rem', borderWidth: '1.5px' }}
+            hoverScale={false}
             disabled={saving}
             onClick={() => setBrowsing(true)}
           >
@@ -160,10 +162,9 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             aria-invalid={nameError ? 'true' : undefined}
             aria-describedby={nameError ? 'new-course-name-error' : undefined}
             className={cn(
-              // The text input's frame (Field's inputFrameClassName), red while invalid.
-              'w-full rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-ink',
+              'w-full rounded-2xl border-[1.5px] bg-surface px-3.5 py-2.5 text-ink',
               nameError ? 'border-negative' : 'border-line focus:border-accent',
-              'placeholder:text-ink-faint focus:outline-none',
+              'placeholder:text-ink-faint focus:outline-none focus-visible:shadow-[inset_0_0_0_1px_hsl(var(--accent-ink))]',
               'disabled:opacity-40',
             )}
           />
