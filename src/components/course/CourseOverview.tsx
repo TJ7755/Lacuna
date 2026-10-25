@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { AddCourseControl } from './AddCourseControl';
@@ -23,12 +23,17 @@ const CARD = 'rounded-3xl bg-surface card-surface';
 export function CourseOverview(
   props: CourseOverviewProps & { onCreationOpenChange?: (open: boolean) => void },
 ) {
-  const { nodes, authoring, archived } = props;
+  const { nodes, authoring, archived, onCreationOpenChange } = props;
   const [addingLesson, setAddingLesson] = useState(false);
   const [creationAtEmpty, setCreationAtEmpty] = useState(nodes.length === 0);
+  useLayoutEffect(() => {
+    if (authoring || !addingLesson) return;
+    setAddingLesson(false);
+    onCreationOpenChange?.(false);
+  }, [authoring, addingLesson, onCreationOpenChange]);
   const changeAddingLesson = (open: boolean) => {
     setAddingLesson(open);
-    props.onCreationOpenChange?.(open);
+    onCreationOpenChange?.(open);
   };
   const startAddingLesson = () => {
     setCreationAtEmpty(nodes.length === 0);

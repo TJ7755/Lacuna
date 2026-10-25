@@ -1,5 +1,6 @@
 import {
   mockNavigate,
+  mockLessonViewProps,
   mockCreateLesson,
   mockReorderLessons,
   course,
@@ -63,28 +64,43 @@ describe('CoursePath overview', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
     },
   );
-  it('keeps the open first-lesson draft and selection when live lessons arrive', () => {
-    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
-    pathState.mockLessons = [];
-    const view = render(coursePathSubject());
-    fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
-    const input = screen.getByRole('textbox', { name: 'Lesson name' }) as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'Fieldwork draft' } });
-    input.focus();
-    input.setSelectionRange(3, 9);
+  it.each(['cancel', 'view'] as const)(
+    'keeps the first-lesson draft during live arrivals, then closes through %s',
+    async (ending) => {
+      pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+      pathState.mockLessons = [];
+      const view = render(coursePathSubject());
+      fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
+      const input = screen.getByRole('textbox', { name: 'Lesson name' }) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'Fieldwork draft' } });
+      input.focus();
+      input.setSelectionRange(3, 9);
 
-    for (const lessons of [[lesson1], [lesson1, lesson2]]) {
-      pathState.mockLessons = lessons;
-      view.rerender(coursePathSubject());
-      expect(screen.getByRole('textbox', { name: 'Lesson name' })).toBe(input);
-      expect(input).toHaveValue('Fieldwork draft');
-      expect(input).toHaveFocus();
-      expect([input.selectionStart, input.selectionEnd]).toEqual([3, 9]);
-    }
-    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
-    expect(screen.getByRole('button', { name: 'Dynamics' })).toBeInTheDocument();
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
+      for (const lessons of [[lesson1], [lesson1, lesson2]]) {
+        pathState.mockLessons = lessons;
+        view.rerender(coursePathSubject());
+        expect(screen.getByRole('textbox', { name: 'Lesson name' })).toBe(input);
+        expect(input).toHaveValue('Fieldwork draft');
+        expect(input).toHaveFocus();
+        expect([input.selectionStart, input.selectionEnd]).toEqual([3, 9]);
+      }
+      if (ending === 'cancel') {
+        fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+        expect(screen.getByRole('button', { name: 'Dynamics' })).toBeInTheDocument();
+      } else {
+        pathState.mockLessons = [lesson1];
+        pathState.mockCourse = { ...course, lessonViewMode: 'study' };
+        view.rerender(coursePathSubject());
+        await waitFor(() =>
+          expect(mockLessonViewProps).toHaveBeenCalledWith(
+            expect.objectContaining({ lessonId: lesson1.id }),
+          ),
+        );
+        expect(screen.queryByRole('textbox', { name: 'Lesson name' })).not.toBeInTheDocument();
+      }
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
 
   it('shows the lock reason without opening an unreached lesson in View mode', () => {
     pathState.mockCourse = { ...course, unlockMode: 'semi-linear' };
