@@ -1,108 +1,49 @@
 import 'fake-indexeddb/auto';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router-dom';
+import {
+  answerYes,
+  answerYesAndWaitForExposure,
+  continueFromNotes,
+  findStudyFaceText,
+  queryStudyFaceText,
+  storedReviewsForCard,
+  resetLearnModeFixtures,
+} from './LearnMode.testFixtures';
 import { LearnMode } from './LearnMode';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { db } from '../db/schema';
 import {
-  cardsForSequence,
-  createCard,
   createCourse,
-  createCourseAssessment,
   createLesson,
   createLessonCard,
   createPracticeNode,
-  createSequence,
   linkCardToLesson,
   upsertLessonCardExposure,
 } from '../db/repository';
-import { createOrResumeRevisionPlan } from '../db/revisionPlanRepository';
-import * as linesModeCards from '../db/linesModeCards';
-import { makeSessionContext, sessionProgress } from '../fsrs/session';
 import { ToastProvider } from '../components/ui/Toast';
 import { ThemeProvider } from '../state/ThemeContext';
 import { AccentProvider } from '../state/AccentContext';
-import { writeStartInFocusMode } from '../state/focusModePreference';
-import { loadSimpleSession } from './learn/simpleSessionPersistence';
-import type * as MotionSpeedModule from '../state/motionSpeed';
+describe('LearnMode scope', () => {
+  beforeEach(resetLearnModeFixtures);
 
-// These session tests freeze response-time clocks; motion itself is covered by
-// StudyCardTransition and the browser interaction regressions.
-vi.mock('../state/motionSpeed', async (importOriginal) => ({
-  ...(await importOriginal<typeof MotionSpeedModule>()),
-  speedMultiplier: () => 0,
-}));
-
-/**
- * Reveal and answer "Yes" via the silent-mode buttons (the default grading mode).
- * The FlipCard wrapper itself also carries an aria-label of "Show answer" (for
- * tap-to-flip), so the actual <button> element is picked out explicitly.
- */
-async function answerYes() {
-  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
-  fireEvent.click(await screen.findByRole('button', { name: /^yes$/i }));
-}
-
-async function answerNo() {
-  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
-  fireEvent.click(await screen.findByRole('button', { name: /^no$/i }));
-}
-
-async function answerYesAndWaitForExposure(lessonId: string) {
-  fireEvent.click(await screen.findByText(/^show answer$/i, { selector: 'button' }));
-  const yes = await screen.findByRole('button', { name: /^yes$/i });
-  await act(async () => {
-    fireEvent.click(yes);
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      if ((await db.lessonCardExposures.where('lessonId').equals(lessonId).count()) === 1) return;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
-  });
-}
-
-/** Leaves the notes screen; a lesson without notes opens on its first card instead. */
-async function continueFromNotes() {
-  const next = await screen.findAllByRole('button', { name: /^(continue|show answer|recite)$/i });
-  const notesContinue = next.find((button) => /^continue$/i.test(button.textContent ?? ''));
-  if (notesContinue) fireEvent.click(notesContinue);
-}
-
-function studyFaceText(text: string | RegExp) {
-  const matches = [...document.querySelectorAll<HTMLElement>('[data-study-face]')].flatMap((face) =>
-    within(face).queryAllByText(text),
-  );
-  if (matches.length !== 1) {
-    throw new Error(`Expected one visible study-face match, found ${matches.length}`);
-  }
-  return matches[0];
-}
-
-async function findStudyFaceText(text: string | RegExp) {
-  return waitFor(() => studyFaceText(text));
-}
-
-function queryStudyFaceText(text: string | RegExp) {
-  return [...document.querySelectorAll<HTMLElement>('[data-study-face]')].find((face) =>
-    within(face).queryByText(text),
-  );
-}
-
-async function storedReviewsForCard(cardId: string) {
-  return db.reviewHistory.where('cardId').equals(cardId).sortBy('timestamp');
-}
-
-describe('LearnMode course/lesson scope', () => {
   it('honours explicit Simple Learn for a lesson with Learn first disabled', async () => {
     const course = await createCourse('Optional passes');
     await db.courses.update(course.id, { learnFirst: false });
     const lesson = await createLesson(course.id, 'Any time');
     await createLessonCard(course.id, lesson.id, 'front_back', 'Optional question', 'Answer');
     render(
-      <ThemeProvider><AccentProvider><ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
-          <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
-        </MemoryRouter>
-      </ToastProvider></AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
     expect(await findStudyFaceText('Optional question')).toBeInTheDocument();
     // The header names the lesson; Simple Learn's own Yes/No grading shows the mode.
@@ -111,98 +52,28 @@ describe('LearnMode course/lesson scope', () => {
     expect(await screen.findByRole('button', { name: /^yes$/i })).toBeInTheDocument();
   });
 
-  it('shuffles the fresh Keep studying pass and saves that queue order', async () => {
-    const course = await createCourse('Repeat pass');
-    const lesson = await createLesson(course.id, 'Facts');
-    for (const front of ['First fact', 'Second fact', 'Third fact']) {
-      await createLessonCard(course.id, lesson.id, 'front_back', front, 'Answer');
-    }
-    const cards = await db.cards.where('courseId').equals(course.id).toArray();
-    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
-    try {
-      render(
-        <ThemeProvider><AccentProvider><ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
-            <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
-          </MemoryRouter>
-        </ToastProvider></AccentProvider></ThemeProvider>,
-      );
-      for (const card of cards) {
-        await findStudyFaceText(card.front);
-        await answerYes();
-      }
-      const keepStudying = await screen.findByRole('button', { name: 'Keep studying' });
-      random.mockReturnValue(0);
-      fireEvent.click(keepStudying);
-      const expected = [cards[1].id, cards[2].id, cards[0].id];
-      await waitFor(() => expect(loadSimpleSession(
-        { kind: 'lesson', lessonId: lesson.id, standalone: true }, expected,
-      )).toMatchObject({ queueCardIds: expected, masteredCardIds: [], outcomes: new Map(), events: [] }));
-      await findStudyFaceText(cards[1].front);
-      await answerYes();
-      await findStudyFaceText(cards[2].front);
-      await answerYes();
-      await findStudyFaceText(cards[0].front);
-    } finally {
-      random.mockRestore();
-    }
-  }, 15_000);
-
-  it('does not paint a focus ring on the programmatic study container', async () => {
-    const course = await createCourse('Focus ring');
-    const lesson = await createLesson(course.id, 'Focus lesson');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Focus question', 'Answer');
-    render(
-      <ThemeProvider><AccentProvider><ToastProvider>
-        <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn?mode=simple`]}>
-          <Routes><Route path="/lesson/:lessonId/learn" element={<LearnMode />} /></Routes>
-        </MemoryRouter>
-      </ToastProvider></AccentProvider></ThemeProvider>,
-    );
-    expect(await findStudyFaceText('Focus question')).toBeInTheDocument();
-    // The study container is focused programmatically as a return point after
-    // overlays close, so it must suppress the global :focus-visible indicator.
-    // Otherwise an orange frame appears around the whole study column.
-    expect(screen.getByRole('main', { name: 'Study card' })).toHaveClass(
-      'focus-visible:shadow-none',
-    );
-  });
-
-  beforeEach(async () => {
-    await Promise.all([
-      db.courses.clear(),
-      db.lessons.clear(),
-      db.cards.clear(),
-      db.schedulingUnits.clear(),
-      db.sessionHistory.clear(),
-      db.userPerformance.clear(),
-      db.lessonCards.clear(),
-      db.lessonCardExposures.clear(),
-      db.lessonCompletions.clear(),
-      db.practiceNodes.clear(),
-      db.practiceMilestones.clear(),
-      db.courseAssessments.clear(),
-      db.revisionPlans.clear(),
-      db.noteAnnotations.clear(),
-      db.sequences.clear(),
-      db.reviewHistory.clear(),
-    ]);
-    localStorage.clear();
-  });
-
   it.each(['recurring'] as const)(
     'finishes %s due review after a slow Yes instead of repeating tomorrow’s card',
     async (mode) => {
       const course = await createCourse('Biology');
       const lesson = await createLesson(course.id, 'Cells');
-      const due = await createLessonCard(course.id, lesson.id, 'front_back', 'Pathogen?', 'Causes disease');
+      const due = await createLessonCard(
+        course.id,
+        lesson.id,
+        'front_back',
+        'Pathogen?',
+        'Causes disease',
+      );
       const future = await createLessonCard(course.id, lesson.id, 'front_back', 'Future?', 'Later');
       const unseen = await createLessonCard(course.id, lesson.id, 'front_back', 'Unseen?', 'New');
       const now = Date.now();
       for (const card of [due, future, unseen]) await upsertLessonCardExposure(lesson.id, card.id);
       for (const card of [due, future]) {
         await db.cards.update(card.id, {
-          state: 2, stability: 0.1, difficulty: 5, reps: 5,
+          state: 2,
+          stability: 0.1,
+          difficulty: 5,
+          reps: 5,
           lastReviewed: now - 10_000,
           due: card.id === due.id ? now - 1 : now + 86_400_000,
         });
@@ -213,7 +84,10 @@ describe('LearnMode course/lesson scope', () => {
         render(
           <MemoryRouter>
             <ToastProvider>
-              <LearnMode request={{ kind: 'practice', courseId: course.id, mode }} onStepFinished={finished} />
+              <LearnMode
+                request={{ kind: 'practice', courseId: course.id, mode }}
+                onStepFinished={finished}
+              />
             </ToastProvider>
           </MemoryRouter>,
         );
@@ -234,38 +108,14 @@ describe('LearnMode course/lesson scope', () => {
     },
   );
 
-  it('waits for line-sequence classification before serving a recitation', async () => {
-    const course = await createCourse('Drama');
-    const lesson = await createLesson(course.id, 'Scene one');
-    const sequence = await createSequence(
-      course.id,
-      lesson.id,
-      'Scene one',
-      [
-        { id: 'line-1', value: 'Where are you?' },
-        { id: 'line-2', value: 'I am here.' },
-      ],
-      { mode: 'lines' },
-    );
-    const sequenceCards = await cardsForSequence(sequence);
-    const firstCard = sequenceCards.find((card) => card.sequenceItemId === 'line-1');
-    expect(firstCard).toBeDefined();
-    await db.cards.delete(firstCard!.id);
+  it('teaches a lesson in Simple mode and records its lesson-scoped FSRS review', async () => {
+    const course = await createCourse('Chemistry');
+    const lesson = await createLesson(course.id, 'Atomic structure');
+    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
 
-    const lineMap = await linesModeCards.linesModeSequencesByCard(
-      sequenceCards.filter((card) => card.id !== firstCard!.id),
-    );
-    let resolveLineMap!: (map: Map<string, typeof sequence>) => void;
-    const delayedLineMap = new Promise<Map<string, typeof sequence>>((resolve) => {
-      resolveLineMap = resolve;
-    });
-    const lookup = vi
-      .spyOn(linesModeCards, 'linesModeSequencesByCard')
-      .mockReturnValue(delayedLineMap);
-
-    try {
-      render(
-        <ThemeProvider><AccentProvider>
+    render(
+      <ThemeProvider>
+        <AccentProvider>
           <ToastProvider>
             <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
               <Routes>
@@ -273,187 +123,8 @@ describe('LearnMode course/lesson scope', () => {
               </Routes>
             </MemoryRouter>
           </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-
-      expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
-      await act(async () => resolveLineMap(lineMap));
-      await continueFromNotes();
-      // Lesson teaching learns lines-mode sequences by cumulative recitation.
-      expect(await screen.findByRole('button', { name: /^recite$/i })).toBeInTheDocument();
-      expect(screen.getByText('Where are you?')).toBeInTheDocument();
-      expect(queryStudyFaceText('Next item?')).toBeUndefined();
-    } finally {
-      lookup.mockRestore();
-    }
-  });
-
-  it('learns a lines-mode sequence by cumulative recitation with one review per line', async () => {
-    const course = await createCourse('Drama Simple');
-    const lesson = await createLesson(course.id, 'Scene two');
-    const sequence = await createSequence(
-      course.id,
-      lesson.id,
-      'Scene two',
-      [
-        { id: 'line-1', value: 'Where are you?' },
-        { id: 'line-2', value: 'I am here.' },
-      ],
-      { mode: 'lines' },
-    );
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    fireEvent.click(await screen.findByRole('button', { name: /^recite$/i }));
-    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
-      target: { value: 'Where is it?' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    // Revealing never marks a line wrong; the learner decides.
-    expect(screen.getByRole('button', { name: 'line 1: correct' })).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(screen.getByRole('button', { name: 'line 1: correct' }));
-    expect(screen.getByRole('button', { name: 'line 1: marked wrong' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    // Try again sends the chunk back to recall with line 1 still unlocked.
-    fireEvent.click(screen.getByRole('button', { name: /^try again$/i }));
-    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
-      target: { value: 'Where are you?' },
-    });
-    // A matching recitation still waits for the learner's mark.
-    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
-
-    // Line 2 is presented only once line 1 has passed, and the bar follows it.
-    expect(await screen.findByText('I am here.')).toBeInTheDocument();
-    const pips = () =>
-      [...document.querySelectorAll('[data-session-card-status]')].map((pip) =>
-        pip.getAttribute('data-session-card-status'),
-      );
-    await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
-    fireEvent.click(screen.getByRole('button', { name: /^recite$/i }));
-    await waitFor(() => expect(pips()).toEqual(['correct', 'current']));
-    expect(document.querySelector('[data-session-card-status=correct]')).toHaveClass(
-      'border-accent',
-    );
-    expect(
-      document.querySelector('[data-session-card-status=correct]')?.firstElementChild,
-    ).toHaveClass('bg-positive');
-    expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute('aria-valuenow', '50');
-    fireEvent.change(screen.getByRole('textbox', { name: 'line 1' }), {
-      target: { value: 'Where are you?' },
-    });
-    fireEvent.change(screen.getByRole('textbox', { name: 'line 2' }), {
-      target: { value: 'I am here.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-
-    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
-    await screen.findByRole('heading', {
-      name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
-    });
-    const cards = await cardsForSequence(sequence);
-    expect(cards).toHaveLength(2);
-    const reviews = await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray();
-    expect(reviews).toHaveLength(2);
-    expect(reviews.every((review) => review.input === undefined)).toBe(true);
-    const gradeFor = (itemId: string) => {
-      const card = cards.find((candidate) => candidate.sequenceItemId === itemId)!;
-      return reviews.find((review) => review.cardId === card.id)?.grade;
-    };
-    expect(gradeFor('line-1')).toBe(1);
-    expect(gradeFor('line-2')).toBe(3);
-  });
-
-  it('reviews a due lines-mode line by reciting its chunk', async () => {
-    const course = await createCourse('Drama FSRS');
-    const lesson = await createLesson(course.id, 'Scene three');
-    const sequence = await createSequence(
-      course.id,
-      lesson.id,
-      'Scene three',
-      [
-        { id: 'line-1', value: 'Where are you?' },
-        { id: 'line-2', value: 'I am here.' },
-      ],
-      { mode: 'lines' },
-    );
-    const cards = await cardsForSequence(sequence);
-    const now = Date.now();
-    for (const card of cards) {
-      await upsertLessonCardExposure(lesson.id, card.id);
-      await db.cards.update(card.id, {
-        state: 2,
-        stability: 2,
-        difficulty: 5,
-        reps: 1,
-        lastReviewed: now - 24 * 60 * 60 * 1000,
-        due: now - 1,
-      });
-    }
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
-            <Routes>
-              <Route path="/course/:courseId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText(/^Review from the start/)).toBeInTheDocument();
-    // The served line is the last recitation box: its chunk is recited down to it.
-    const boxes = [...document.querySelectorAll<HTMLTextAreaElement>('textarea[data-line]')];
-    const dueBox = boxes.at(-1)!;
-    const dueItemId = dueBox.dataset.line!;
-    const dueLabel = dueBox.getAttribute('aria-label')!;
-    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    // Even a blank answer is marked manually.
-    expect(screen.getByRole('button', { name: `${dueLabel}: correct` })).toHaveAttribute('aria-pressed', 'false');
-    fireEvent.click(screen.getByRole('button', { name: `${dueLabel}: correct` }));
-    expect(screen.getByRole('button', { name: `${dueLabel}: marked wrong` })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    fireEvent.click(screen.getByRole('button', { name: /^continue$/i }));
-
-    const dueCard = cards.find((card) => card.sequenceItemId === dueItemId)!;
-    await waitFor(async () => {
-      const [review] = await storedReviewsForCard(dueCard.id);
-      expect(review).toMatchObject({ grade: 1, correct: false });
-    });
-  });
-
-  it('teaches a lesson in Simple mode and records its lesson-scoped FSRS review', async () => {
-    const course = await createCourse('Chemistry');
-    const lesson = await createLesson(course.id, 'Atomic structure');
-    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Q1', 'A1');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     // Header shows the lesson's own name (not the course name).
@@ -501,15 +172,17 @@ describe('LearnMode course/lesson scope', () => {
     expect((await db.lessons.get(lesson2.id))?.unlockedAt).toBeUndefined();
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await screen.findByRole('heading', { name: 'Cells' });
@@ -538,15 +211,17 @@ describe('LearnMode course/lesson scope', () => {
     });
 
     const { unmount } = render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await screen.findByRole('heading', { name: 'Kinematics' });
@@ -575,15 +250,17 @@ describe('LearnMode course/lesson scope', () => {
     await linkCardToLesson(lessonB.id, card.id);
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lessonB.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     const notesUnload = new Event('beforeunload', { cancelable: true });
@@ -608,15 +285,17 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -640,15 +319,17 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -677,15 +358,17 @@ describe('LearnMode course/lesson scope', () => {
     await createLessonCard(course.id, lesson.id, 'front_back', 'New Q', 'A');
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
+              <Routes>
+                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await continueFromNotes();
@@ -718,15 +401,17 @@ describe('LearnMode course/lesson scope', () => {
     expect((await db.lessons.get(lesson4.id))?.unlockedAt).toBeUndefined();
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
-            <Routes>
-              <Route path="/course/:courseId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+              <Routes>
+                <Route path="/course/:courseId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     await answerYes();
@@ -751,15 +436,17 @@ describe('LearnMode course/lesson scope', () => {
       await createLessonCard(course.id, lesson1.id, 'front_back', 'Q1', 'A1');
 
       const { unmount } = render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
-              <Routes>
-                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
+        <ThemeProvider>
+          <AccentProvider>
+            <ToastProvider>
+              <MemoryRouter initialEntries={[`/lesson/${lesson1.id}/learn`]}>
+                <Routes>
+                  <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
+                </Routes>
+              </MemoryRouter>
+            </ToastProvider>
+          </AccentProvider>
+        </ThemeProvider>,
       );
 
       await screen.findByRole('heading', { name: 'First' });
@@ -781,15 +468,17 @@ describe('LearnMode course/lesson scope', () => {
     await upsertLessonCardExposure(lesson.id, card.id);
 
     render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
-            <Routes>
-              <Route path="/course/:courseId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
+      <ThemeProvider>
+        <AccentProvider>
+          <ToastProvider>
+            <MemoryRouter initialEntries={[`/course/${course.id}/learn`]}>
+              <Routes>
+                <Route path="/course/:courseId/learn" element={<LearnMode />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </AccentProvider>
+      </ThemeProvider>,
     );
 
     // Header shows the course's own name.
@@ -801,1241 +490,5 @@ describe('LearnMode course/lesson scope', () => {
       const updatedCourse = await db.courses.get(course.id);
       expect(updatedCourse?.lastInteractedAt).toBeDefined();
     });
-  });
-
-  it('ignores the retired mode=cram query entry', async () => {
-    const course = await createCourse('Classics');
-    const lesson = await createLesson(course.id, 'Athens');
-    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'Agora', 'Market');
-    await upsertLessonCardExposure(lesson.id, card.id);
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/course/${course.id}/learn?mode=cram`]}>
-            <Routes>
-              <Route path="/course/:courseId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText(/Classics/)).toBeInTheDocument();
-    expect(screen.queryByText(/Cram mode|Weakest cards first/)).not.toBeInTheDocument();
-  });
-
-  it('uses the selected assessment scope in the ordinary Practice player', async () => {
-    const course = await createCourse('History');
-    const includedLesson = await createLesson(course.id, 'Revolutions');
-    const unrelatedLesson = await createLesson(course.id, 'Empires');
-    const included = await createLessonCard(
-      course.id,
-      includedLesson.id,
-      'front_back',
-      'Assessment question',
-      'Answer',
-    );
-    const unrelated = await createLessonCard(
-      course.id,
-      unrelatedLesson.id,
-      'front_back',
-      'Unrelated question',
-      'Answer',
-    );
-    await Promise.all([
-      upsertLessonCardExposure(includedLesson.id, included.id),
-      upsertLessonCardExposure(unrelatedLesson.id, unrelated.id),
-    ]);
-    const assessment = await createCourseAssessment(
-      course.id,
-      'Revolutions paper',
-      Date.now() + 86_400_000,
-      {
-        afterLessonId: unrelatedLesson.id,
-        coverageMode: 'custom',
-        lessonIds: [includedLesson.id],
-      },
-    );
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter>
-            <LearnMode
-              sessionId="flow-session-1"
-              request={{
-                kind: 'practice',
-                courseId: course.id,
-                mode: 'assessment',
-                assessmentId: assessment.id,
-              }}
-            />
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText('Revolutions paper')).toBeInTheDocument();
-    expect(await findStudyFaceText(/Assessment question/)).toBeInTheDocument();
-    expect(queryStudyFaceText(/Unrelated question/)).toBeUndefined();
-
-    await answerYes();
-    await waitFor(async () => {
-      const [review] = await storedReviewsForCard(included.id);
-      expect(review).toEqual(
-        expect.objectContaining({
-          eventId: expect.any(String),
-          sessionId: 'flow-session-1',
-          sessionKind: 'assessment-revision',
-          correct: true,
-        }),
-      );
-      expect(await db.sessionHistory.toArray()).toEqual([
-        expect.objectContaining({
-          eventId: review?.eventId,
-          sessionId: 'flow-session-1',
-        }),
-      ]);
-    });
-  });
-
-  it('runs a persisted assessment window through the existing player with provenance and a factual summary', async () => {
-    const course = await createCourse('Geography');
-    const lesson = await createLesson(course.id, 'Rivers');
-    const card = await createLessonCard(
-      course.id,
-      lesson.id,
-      'front_back',
-      'What is erosion?',
-      'Wear',
-    );
-    await upsertLessonCardExposure(lesson.id, card.id);
-    const assessment = await createCourseAssessment(
-      course.id,
-      'Physical geography',
-      Date.now() + 86_400_000,
-      { afterLessonId: lesson.id, coverageMode: 'prefix' },
-    );
-    const plan = await createOrResumeRevisionPlan(assessment.id, 20, {
-      projectionMode: 'fsrs-6-practice-fallback',
-      memoryModelVersion: 'fsrs-6',
-      fallbackReason: 'missing',
-    });
-    const onStepFinished = vi.fn();
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter>
-            <LearnMode
-              sessionId="revision-session-1"
-              request={{
-                kind: 'practice',
-                courseId: course.id,
-                mode: 'assessment',
-                assessmentId: assessment.id,
-                planId: plan.id,
-                windowId: plan.windows[0].id,
-              }}
-              onStepFinished={onStepFinished}
-            />
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByRole('heading', { name: /Revision plan/ })).toBeInTheDocument();
-    expect(screen.queryByText(/Ordinary Practice ordering/)).not.toBeInTheDocument();
-    expect(await findStudyFaceText(/What is erosion/)).toBeInTheDocument();
-    await answerYes();
-
-    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
-    expect(onStepFinished.mock.calls[0][0]).toEqual(
-      expect.objectContaining({
-        reachedGoal: true,
-        revision: expect.objectContaining({
-          cardsCovered: 1,
-          cardsImproved: 1,
-          workNotReached: 0,
-        }),
-      }),
-    );
-    const reviews = await storedReviewsForCard(card.id);
-    expect(reviews).toHaveLength(1);
-    expect(reviews[0]).toEqual(
-      expect.objectContaining({
-        sessionId: 'revision-session-1',
-        revisionPlanId: plan.id,
-        revisionWindowId: plan.windows[0].id,
-      }),
-    );
-    const storedPlan = await db.revisionPlans.get(plan.id);
-    expect(storedPlan?.completedSessions[0]).toEqual(
-      expect.objectContaining({
-        cardIds: [card.id],
-        improvedCardIds: [card.id],
-        reviewEventIds: [reviews[0].eventId],
-      }),
-    );
-    expect(await db.practiceMilestones.count()).toBe(0);
-  });
-
-  it('parks a failed card when its productive FSRS retry falls outside the active window', async () => {
-    const course = await createCourse('French');
-    const lesson = await createLesson(course.id, 'Vocabulary');
-    const card = await createLessonCard(course.id, lesson.id, 'front_back', 'bonjour', 'hello');
-    await upsertLessonCardExposure(lesson.id, card.id);
-    const assessment = await createCourseAssessment(
-      course.id,
-      'Speaking',
-      Date.now() + 86_400_000,
-      {
-        afterLessonId: lesson.id,
-        coverageMode: 'prefix',
-      },
-    );
-    const plan = await createOrResumeRevisionPlan(assessment.id, 0.1, {
-      projectionMode: 'fsrs-6-practice-fallback',
-      memoryModelVersion: 'fsrs-6',
-      fallbackReason: 'missing',
-    });
-    const onStepFinished = vi.fn();
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter>
-            <LearnMode
-              request={{
-                kind: 'practice',
-                courseId: course.id,
-                mode: 'assessment',
-                assessmentId: assessment.id,
-                planId: plan.id,
-                windowId: plan.windows[0].id,
-              }}
-              onStepFinished={onStepFinished}
-            />
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
-    fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
-    expect(await findStudyFaceText('hello')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^no$/i }));
-
-    await waitFor(() => expect(onStepFinished).toHaveBeenCalledOnce());
-    expect(onStepFinished.mock.calls[0][0].revision).toEqual(
-      expect.objectContaining({ cardsCovered: 1, cardsImproved: 0, cardsParked: 1 }),
-    );
-    expect((await db.revisionPlans.get(plan.id))?.completedSessions[0].parkedCardIds).toEqual([
-      card.id,
-    ]);
-  });
-
-  it('starts in Focus Mode from the persisted preference and Esc leaves it for this session', async () => {
-    localStorage.setItem('lacuna.startInFocusMode', 'on');
-    const course = await createCourse('Physics');
-    const lesson = await createLesson(course.id, 'Forces');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Question', 'Answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    expect(await screen.findByRole('button', { name: 'Show study controls' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Leave focus mode' })).not.toBeInTheDocument();
-
-    fireEvent.keyDown(window, { key: 'Escape' });
-
-    // Entering focus mode now lives in the card-actions menu, so leaving it is observed
-    // by the study chrome becoming permanently visible rather than by a header toggle.
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: 'Show study controls' })).not.toBeInTheDocument();
-    });
-    expect(localStorage.getItem('lacuna.startInFocusMode')).toBe('on');
-  });
-
-  it('tracks current, wrong and correct cards as in-session progress', async () => {
-    const course = await createCourse('Computing');
-    const lesson = await createLesson(course.id, 'Rendering');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Question one', 'Answer one');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Question two', 'Answer two');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    expect(await screen.findByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
-      'aria-valuenow',
-      '0',
-    );
-    expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
-    const progressAnnouncement = document.querySelector('header [aria-live="polite"]');
-    expect(progressAnnouncement).toHaveTextContent('Card 1 of 2');
-    expect(progressAnnouncement).not.toHaveTextContent(/correct|wrong|current|unseen/i);
-
-    await answerNo();
-    await waitFor(() => {
-      expect(document.querySelectorAll('[data-session-card-status="wrong"]')).toHaveLength(1);
-      expect(document.querySelectorAll('[data-session-card-status="current"]')).toHaveLength(1);
-      expect(progressAnnouncement).toHaveTextContent('Card 2 of 2');
-    });
-
-    await answerYes();
-    await waitFor(() => {
-      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toHaveAttribute(
-        'aria-valuenow',
-        '50',
-      );
-      expect(document.querySelectorAll('[data-session-card-status="correct"]')).toHaveLength(1);
-    });
-  });
-
-  it('separates session completion from predicted recall in a global objective session', async () => {
-    const now = Date.now();
-    const deck = await createCourse('Objective deck');
-    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
-    const configuredDeck = (await db.schedulingUnits.get(deck.id))!;
-    const card = await createCard(deck.id, 'front_back', 'Objective question', 'Answer');
-    await db.cards.update(card.id, {
-      stability: 2,
-      difficulty: 5,
-      lastReviewed: now - 24 * 60 * 60 * 1000,
-      reps: 1,
-      state: 2,
-      due: now - 1,
-    });
-    const configuredCard = (await db.cards.get(card.id))!;
-    const expected = Math.round(
-      sessionProgress([configuredCard], makeSessionContext([configuredDeck]), now) * 100,
-    );
-    expect(expected).toBeGreaterThan(0);
-    expect(expected).toBeLessThan(100);
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(
-      await screen.findByRole('progressbar', { name: 'Session progress' }),
-    ).toHaveAttribute('aria-valuenow', '0');
-    // The recall forecast lives in the card actions menu.
-    fireEvent.click(screen.getByRole('button', { name: 'Card actions' }));
-    expect(screen.getByText(`${expected}% predicted readiness`)).toBeInTheDocument();
-    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
-  });
-
-  it('keeps practice-session chrome and grading controls mounted while Yes and No replace the card surface', async () => {
-    const now = Date.now();
-    const deck = await createCourse('Continuous practice');
-    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
-    for (const question of ['First question', 'Second question', 'Third question']) {
-      const card = await createCard(deck.id, 'front_back', question, 'Answer');
-      await db.cards.update(card.id, {
-        stability: 2,
-        difficulty: 5,
-        lastReviewed: now - 24 * 60 * 60 * 1000,
-        reps: 1,
-        state: 2,
-        due: now - 1,
-      });
-    }
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    const progress = await screen.findByRole('progressbar', { name: 'Session progress' });
-    const header = progress.closest('header');
-    const firstSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
-    expect(header).not.toBeNull();
-    expect(firstSurface).not.toBeNull();
-    // The grades flow back into the next card's reveal, so the controls must persist.
-    const reveal = () => screen.getByText(/^show answer$/i, { selector: 'button' });
-    const firstReveal = reveal();
-
-    await answerNo();
-    await waitFor(() => {
-      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
-      expect(next?.dataset.studyCardId).not.toBe(firstSurface?.dataset.studyCardId);
-      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBe(progress);
-      expect(progress.closest('header')).toBe(header);
-      expect(reveal()).toBe(firstReveal);
-    });
-
-    const secondSurface = document.querySelector<HTMLElement>('[data-study-card-id]');
-    await answerYes();
-    await waitFor(() => {
-      const next = document.querySelector<HTMLElement>('[data-study-card-id]');
-      expect(next?.dataset.studyCardId).not.toBe(secondSurface?.dataset.studyCardId);
-      expect(screen.getByRole('progressbar', { name: 'Session progress' })).toBe(progress);
-      expect(progress.closest('header')).toBe(header);
-    });
-    await waitFor(async () => expect(await db.sessionHistory.count()).toBe(1));
-  });
-
-  it('offers Undo after an ordinary button answer and reverses that review', async () => {
-    const deck = await createCourse('Undo controls');
-    await createCard(deck.id, 'front_back', 'First undo question', 'Answer');
-    await createCard(deck.id, 'front_back', 'Second undo question', 'Answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    const firstQuestion = (await findStudyFaceText(/undo question/i)).textContent;
-    await answerYes();
-    expect(await screen.findByText(/^(Easy|Good|Hard) · \d+% recall at exam$/)).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
-
-    await waitFor(async () => expect(await db.reviewHistory.count()).toBe(0));
-    expect(await findStudyFaceText(firstQuestion ?? '')).toBeInTheDocument();
-  });
-
-  it('does not offer Undo after the answer has finished the session', async () => {
-    const deck = await createCourse('Terminal answer');
-    await createCard(deck.id, 'front_back', 'Only question', 'Answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await findStudyFaceText('Only question');
-    await answerYes();
-
-    expect(
-      await screen.findByRole('heading', {
-        name: /Nice work|Goal reached|Time.s up|hit your daily limit/i,
-      }),
-    ).toBeInTheDocument();
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    });
-    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
-    expect(await db.reviewHistory.count()).toBe(1);
-  });
-
-  it('checks a numeric answer and records full marks without self-grading', async () => {
-    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
-    const deck = await createCourse('Numeric deck');
-    const card = await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
-      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '4' } },
-    });
-
-    try {
-      render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={['/learn']}>
-              <Routes>
-                <Route path="/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-
-      fireEvent.change(await screen.findByLabelText('Your answer'), {
-        target: { value: '8 / 2' },
-      });
-      expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-      fireEvent.click(screen.getByRole('button', { name: 'The checker got this wrong' }));
-      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-      await waitFor(async () => {
-        expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
-          grade: 4,
-          correct: true,
-          marksEarned: 1,
-          marksAvailable: 1,
-          checkerDisputes: [
-            {
-              question: 'What is 8 / 2?',
-              studentLine: '8 / 2',
-              verdict: { correct: true, marksEarned: 1 },
-              checkerSeeds: [],
-            },
-          ],
-        });
-      });
-      expect((await storedReviewsForCard(card.id))[0]).not.toHaveProperty('input');
-    } finally {
-      performanceNow.mockRestore();
-    }
-  });
-
-  it('grades an incorrect numeric answer as Again and clears it for the next card', async () => {
-    const deck = await createCourse('Numeric retry deck');
-    const card = await createCard(deck.id, 'front_back', 'What is 3 squared?', '', [], {
-      payload: { v: 1, kind: 'numeric', answer: { kind: 'exact', value: '9' } },
-    });
-
-    await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    const input = await screen.findByLabelText('Your answer');
-    const reviewedId = document.querySelector('[data-study-card-id]')!.getAttribute('data-study-card-id')!;
-    fireEvent.change(input, { target: { value: '6' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check answer' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    await waitFor(async () => {
-      expect((await storedReviewsForCard(reviewedId))[0]).toMatchObject({
-        grade: 1,
-        correct: false,
-        marksEarned: 0,
-        marksAvailable: 1,
-      });
-    });
-    expect(await screen.findByLabelText('Your answer')).toHaveValue('');
-    expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
-  });
-
-  it('checks working lines and persists full marks with their verdicts', async () => {
-    const performanceNow = vi.spyOn(performance, 'now').mockReturnValue(0);
-    const deck = await createCourse('Working deck');
-    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
-      payload: {
-        v: 1,
-        kind: 'working',
-        scheme: [
-          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
-          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
-        ],
-      },
-    });
-    try {
-      render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={['/learn']}>
-              <Routes>
-                <Route path="/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-      const working = await screen.findByLabelText('Your working');
-      await waitFor(() => expect(working).toHaveFocus());
-      fireEvent.change(working, {
-        target: { value: '2x = 8\n4' },
-      });
-      fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
-      fireEvent.click(
-        screen.getByRole('button', { name: 'The checker got this wrong for line 1' }),
-      );
-      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-      await waitFor(async () => {
-        expect((await storedReviewsForCard(card.id))[0]).toMatchObject({
-          grade: 4,
-          correct: true,
-          marksEarned: 3,
-          marksAvailable: 3,
-          lineVerdicts: [
-            { studentLine: '2x = 8', matchedLineIndex: 0, marksEarned: 1 },
-            { studentLine: '4', matchedLineIndex: 1, marksEarned: 2 },
-          ],
-          checkerDisputes: [
-            {
-              question: 'Solve 2x = 8.',
-              studentLine: '2x = 8',
-              verdict: { correct: true, marksEarned: 1, matchedLineIndex: 0 },
-              checkerSeeds: [`${card.id}:0:0`],
-            },
-          ],
-        });
-      });
-    } finally {
-      performanceNow.mockRestore();
-    }
-  });
-
-  it('grades partial working as Again and clears it for the next card', async () => {
-    const deck = await createCourse('Working retry deck');
-    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8.', '', [], {
-      payload: {
-        v: 1,
-        kind: 'working',
-        scheme: [
-          { marks: 1, label: 'substitution', kind: 'waypoint', expression: '2x = 8' },
-          { marks: 2, label: 'answer', kind: 'predicate', predicate: 'equals', args: ['4'] },
-        ],
-      },
-    });
-    await createCard(deck.id, 'front_back', 'Next question', '', [], { payload: card.payload });
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-    await screen.findByLabelText('Your working');
-    const reviewedId = document.querySelector('[data-study-card-id]')!.getAttribute('data-study-card-id')!;
-    fireEvent.change(await screen.findByLabelText('Your working'), { target: { value: '2x = 8' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Check working' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await waitFor(async () => {
-      expect((await storedReviewsForCard(reviewedId))[0]).toMatchObject({
-        grade: 1,
-        correct: false,
-        marksEarned: 1,
-        marksAvailable: 3,
-      });
-    });
-    expect(await screen.findByLabelText('Your working')).toHaveValue('');
-    await waitFor(() => expect(screen.getByLabelText('Your working')).toHaveFocus());
-    expect(document.querySelector('[data-study-card-id]')).not.toHaveAttribute('data-study-card-id', reviewedId);
-  });
-
-  it('renders a scaffold-kind item read-only, with no grading affordance and an empty history', async () => {
-    const deck = await createCourse('Scaffold deck');
-    const card = await createCard(deck.id, 'front_back', 'Solve 2x = 8 by scaffold.', '', [], {
-      payload: { v: 1, kind: 'scaffold' },
-    });
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText('Solve 2x = 8 by scaffold.')).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        /can’t study this item yet — this version doesn’t support its format\./,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^yes$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^no$/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Show answer' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-
-    expect(await storedReviewsForCard(card.id)).toHaveLength(0);
-  });
-
-  it('falls back to the read-only face for an unknown payload version, not just an unknown kind', async () => {
-    const deck = await createCourse('Unknown version deck');
-    await createCard(deck.id, 'front_back', 'What is 8 / 2?', '', [], {
-      // A hypothetical future `v: 2` numeric payload — the version guard, not the
-      // kind check, is what must catch this.
-      payload: { v: 2, kind: 'numeric', answer: { kind: 'exact', value: '4' } } as never,
-    });
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText('What is 8 / 2?')).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        /can’t study this item yet — this version doesn’t support its format\./,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText('Your answer')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Check answer' })).not.toBeInTheDocument();
-  });
-
-  it('buries a scaffold-kind item from its read-only face and advances the session', async () => {
-    const deck = await createCourse('Scaffold bury deck');
-    const card = await createCard(deck.id, 'front_back', 'Scaffold question', '', [], {
-      payload: { v: 1, kind: 'scaffold' },
-    });
-
-    const { unmount } = render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await screen.findByText('Scaffold question')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
-    const bury = await screen.findByRole('button', { name: 'Bury until tomorrow' });
-    await act(async () => {
-      fireEvent.click(bury);
-      for (let attempt = 0; attempt < 50; attempt += 1) {
-        if (screen.queryByText('Session complete')) break;
-        await new Promise((resolve) => setTimeout(resolve, 10));
-      }
-    });
-
-    expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
-    expect(await storedReviewsForCard(card.id)).toHaveLength(0);
-    await act(async () => unmount());
-  });
-
-  it('does not create rigid progress slots from unavailable cards outside Simple mode', async () => {
-    const now = Date.now();
-    const deck = await createCourse('Eligibility deck');
-    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
-    const available = await createCard(deck.id, 'front_back', 'Available question', 'Answer');
-    const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
-    await db.cards.update(available.id, {
-      stability: 2,
-      difficulty: 5,
-      lastReviewed: now - 24 * 60 * 60 * 1000,
-      reps: 1,
-      state: 2,
-      due: now - 1,
-    });
-    await db.cards.update(suspended.id, { suspended: true });
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await findStudyFaceText('Available question')).toBeInTheDocument();
-    expect(queryStudyFaceText('Suspended question')).toBeUndefined();
-    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
-    expect(document.querySelectorAll('[data-session-card-status]')).toHaveLength(0);
-  });
-
-  it('uses the filtered card pool for scheduler-driven sessions', async () => {
-    const now = Date.now();
-    const deck = await createCourse('Filtered deck');
-    await db.schedulingUnits.update(deck.id, { examDate: now + 7 * 24 * 60 * 60 * 1000 });
-    const flagged = await createCard(deck.id, 'front_back', 'Flagged question', 'Answer');
-    const unflagged = await createCard(deck.id, 'front_back', 'Unflagged question', 'Answer');
-    const reviewState = {
-      stability: 2,
-      difficulty: 5,
-      lastReviewed: now - 24 * 60 * 60 * 1000,
-      reps: 1,
-      state: 2 as const,
-      due: now - 1,
-    };
-    await db.cards.update(flagged.id, { ...reviewState, flagged: true });
-    await db.cards.update(unflagged.id, reviewState);
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn?filter=flagged']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await findStudyFaceText('Flagged question')).toBeInTheDocument();
-    expect(queryStudyFaceText('Unflagged question')).toBeUndefined();
-    expect(screen.queryByLabelText('Card progress')).not.toBeInTheDocument();
-  });
-
-  it('does not report a suspended-only filtered pool as completed', async () => {
-    const deck = await createCourse('Suspended deck');
-    const suspended = await createCard(deck.id, 'front_back', 'Suspended question', 'Answer');
-    await db.cards.update(suspended.id, { suspended: true });
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn?filter=suspended']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(
-      await screen.findByText('No eligible cards matching suspended cards to study'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('progressbar', { name: 'No eligible cards matching suspended cards to study' })).toHaveAttribute(
-      'aria-valuenow',
-      '0',
-    );
-    expect(screen.queryByText('Suspended question')).not.toBeInTheDocument();
-  });
-
-  it.each(['Bury until tomorrow', 'Suspend card'])(
-    'does not reach the goal or unlock the next lesson when the final card is removed with %s',
-    async (actionLabel) => {
-      const course = await createCourse('Removal course', { unlockMode: 'semi-linear' });
-      const lesson = await createLesson(course.id, 'Current lesson');
-      const nextLesson = await createLesson(course.id, 'Locked lesson');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'Only question', 'Answer');
-
-      render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-              <Routes>
-                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-
-      await continueFromNotes();
-      fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
-      fireEvent.click(await screen.findByRole('button', { name: actionLabel }));
-
-      expect(await screen.findByRole('heading', { name: 'Nice work' })).toBeInTheDocument();
-      expect(screen.queryByText('Goal reached.')).not.toBeInTheDocument();
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      });
-      expect((await db.lessons.get(nextLesson.id))?.unlockedAt).toBeUndefined();
-    },
-  );
-
-  it('reports 100% loop progress after every Simple card is learned', async () => {
-    const course = await createCourse('Complete course');
-    const lesson = await createLesson(course.id, 'Complete lesson');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Final question', 'Final answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    await answerYes();
-
-    expect(await screen.findByText('Goal reached.')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByRole('progressbar', { name: 'Cards correct in this pass' })).toHaveAttribute(
-        'aria-valuenow',
-        '100',
-      );
-    });
-  });
-
-  it('reveals an operable Focus Mode exit control on touch-sized screens', async () => {
-    localStorage.setItem('lacuna.startInFocusMode', 'on');
-    localStorage.setItem('lacuna.inputMode', 'touch');
-    const originalWidth = window.innerWidth;
-    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
-    const course = await createCourse('Mobile focus');
-    const lesson = await createLesson(course.id, 'Touch lesson');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Touch question', 'Answer');
-
-    try {
-      render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-              <Routes>
-                <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-              </Routes>
-            </MemoryRouter>
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-
-      await continueFromNotes();
-      fireEvent.click(await screen.findByRole('button', { name: 'Show study controls' }));
-      const exitFocus = await screen.findByRole('button', { name: 'Leave focus mode' });
-      expect(exitFocus).not.toHaveClass('hidden');
-
-      fireEvent.click(exitFocus);
-      await waitFor(() => {
-        expect(
-          screen.queryByRole('button', { name: 'Show study controls' }),
-        ).not.toBeInTheDocument();
-      });
-    } finally {
-      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
-    }
-  });
-
-  it('portals touch card actions outside the sticky study header', async () => {
-    localStorage.setItem('lacuna.inputMode', 'touch');
-    const deck = await createCourse('Touch actions');
-    await createCard(deck.id, 'front_back', 'Touch question', 'Touch answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await findStudyFaceText('Touch question')).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: 'Card actions' }));
-    const dialog = await screen.findByRole('dialog', { name: 'Card actions' });
-    expect(dialog.parentElement).toBe(document.body);
-  });
-
-  it('anchors touch grading controls to the bottom of the viewport', async () => {
-    // The thumb rests at the bottom of a phone, so grading must live there rather than
-    // in the middle of the screen. Nothing else asserted this, and the redesign plan
-    // wrongly recorded the controls as mid-screen after measuring a resized desktop
-    // browser, which reports no touch points and so renders the pointer layout.
-    localStorage.setItem('lacuna.inputMode', 'touch');
-    const deck = await createCourse('Thumb zone');
-    await createCard(deck.id, 'front_back', 'Thumb question', 'Thumb answer');
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={['/learn']}>
-            <Routes>
-              <Route path="/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    expect(await findStudyFaceText('Thumb question')).toBeInTheDocument();
-    // The card surface is itself a button labelled "Show answer"; the grading control is
-    // the real <button> element.
-    const candidates = await screen.findAllByRole('button', { name: /show answer/i });
-    const reveal = candidates.find((element) => element.tagName === 'BUTTON')!;
-    const sheet = reveal.closest('.fixed');
-    expect(sheet).not.toBeNull();
-    expect(sheet).toHaveClass('bottom-0');
-  });
-
-  it('does not reset an active session when the default Focus Mode preference changes', async () => {
-    const course = await createCourse('Focus preferences');
-    const lesson = await createLesson(course.id, 'Stable session');
-    await createLessonCard(
-      course.id,
-      lesson.id,
-      'front_back',
-      'Keep this question',
-      'Visible answer',
-    );
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    const revealCandidates = await screen.findAllByRole('button', { name: /show answer/i });
-    fireEvent.click(revealCandidates.find((element) => element.tagName === 'BUTTON')!);
-    expect(await findStudyFaceText('Visible answer')).toBeInTheDocument();
-
-    await act(async () => {
-      writeStartInFocusMode(true);
-      // Allow the preference event and any accidentally-triggered async reload to settle.
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    });
-
-    await waitFor(() => {
-      expect(studyFaceText('Visible answer')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /^yes$/i })).toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: /^continue$/i })).not.toBeInTheDocument();
-  });
-
-  it('resumes an interrupted Simple lesson from its reconciled card queue', async () => {
-    const course = await createCourse('History');
-    const lesson = await createLesson(course.id, 'Industrial change');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'First cause', 'Steam power');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Second cause', 'Urbanisation');
-
-    const firstRender = render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    await findStudyFaceText(/cause$/);
-    expect(screen.queryByText('Loop until every card is correct')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Industrial change' })).toBeInTheDocument();
-    const firstServedId = document
-      .querySelector('[data-study-card-id]')
-      ?.getAttribute('data-study-card-id');
-    await answerYesAndWaitForExposure(lesson.id);
-    await waitFor(() => {
-      expect(
-        document.querySelector('[data-study-card-id]')?.getAttribute('data-study-card-id'),
-      ).not.toBe(firstServedId);
-    });
-    const secondServedId = document
-      .querySelector('[data-study-card-id]')
-      ?.getAttribute('data-study-card-id');
-    firstRender.unmount();
-
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    await waitFor(() => {
-      expect(
-        document.querySelector('[data-study-card-id]')?.getAttribute('data-study-card-id'),
-      ).toBe(secondServedId);
-    });
-  });
-
-  it('does not restore outcomes from a completed Simple pass after restarting', async () => {
-    const course = await createCourse('Biology');
-    const lesson = await createLesson(course.id, 'Cell structure');
-    const card = await createLessonCard(
-      course.id,
-      lesson.id,
-      'front_back',
-      'Cell control centre',
-      'Nucleus',
-    );
-
-    const firstRender = render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <MemoryRouter initialEntries={[`/lesson/${lesson.id}/learn`]}>
-            <Routes>
-              <Route path="/lesson/:lessonId/learn" element={<LearnMode />} />
-            </Routes>
-          </MemoryRouter>
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    await answerYesAndWaitForExposure(lesson.id);
-    fireEvent.click(await screen.findByRole('button', { name: 'Keep studying' }));
-    await waitFor(() => {
-      const storageKey = [...Array(localStorage.length)]
-        .map((_, index) => localStorage.key(index))
-        .find((key) => key?.startsWith('lacuna.simpleSession.v1:'));
-      expect(storageKey).toBeDefined();
-      expect(JSON.parse(localStorage.getItem(storageKey!)!).outcomes).toEqual([]);
-    });
-    firstRender.unmount();
-
-    expect(loadSimpleSession({ kind: 'lesson', lessonId: lesson.id }, [card.id])?.outcomes).toEqual(
-      new Map(),
-    );
-  });
-
-  it('guards an outstanding Card, keeps it mounted on Stay and keeps resume on Leave', async () => {
-    const course = await createCourse('Geography');
-    const lesson = await createLesson(course.id, 'River processes');
-    await createLessonCard(course.id, lesson.id, 'front_back', 'Define erosion', 'Wearing away');
-    const router = createMemoryRouter(
-      [
-        { path: '/lesson/:lessonId/learn', element: <LearnMode /> },
-        {
-          path: '/course/:courseId/lesson/:lessonId',
-          element: <p>Lesson destination</p>,
-        },
-      ],
-      { initialEntries: [`/lesson/${lesson.id}/learn`] },
-    );
-    render(
-      <ThemeProvider><AccentProvider>
-        <ToastProvider>
-          <RouterProvider router={router} />
-        </ToastProvider>
-      </AccentProvider></ThemeProvider>,
-    );
-
-    await continueFromNotes();
-    expect(await findStudyFaceText('Define erosion')).toBeInTheDocument();
-    expect(
-      [...Array(localStorage.length)].some((_, index) =>
-        localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
-      ),
-    ).toBe(true);
-
-    const unload = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(unload);
-    expect(unload.defaultPrevented).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
-    expect(await screen.findByRole('dialog', { name: 'Leave this session?' })).toHaveTextContent(
-      '0 of 1 Card answered. Your progress is saved, so you can pick up where you left off.',
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
-    expect(studyFaceText('Define erosion')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
-    expect(await screen.findByText('Lesson destination')).toBeInTheDocument();
-    expect(
-      [...Array(localStorage.length)].some((_, index) =>
-        localStorage.key(index)?.startsWith('lacuna.simpleSession.v1:'),
-      ),
-    ).toBe(true);
-  });
-
-  it('resumes a recitation at the line reached after leaving', async () => {
-    const course = await createCourse('Poems');
-    const lesson = await createLesson(course.id, 'Dickinson');
-    await createSequence(
-      course.id,
-      lesson.id,
-      'Because I could not stop',
-      [
-        { id: 'line-1', value: 'Because I could not stop for Death' },
-        { id: 'line-2', value: 'He kindly stopped for me' },
-      ],
-      { mode: 'lines' },
-    );
-    const study = () => {
-      const router = createMemoryRouter(
-        [
-          { path: '/lesson/:lessonId/learn', element: <LearnMode /> },
-          { path: '/course/:courseId/lesson/:lessonId', element: <p>Lesson destination</p> },
-        ],
-        { initialEntries: [`/lesson/${lesson.id}/learn`] },
-      );
-      return render(
-        <ThemeProvider><AccentProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </AccentProvider></ThemeProvider>,
-      );
-    };
-
-    const first = study();
-    await continueFromNotes();
-    fireEvent.click(await screen.findByRole('button', { name: /^recite$/i }));
-    fireEvent.change(await screen.findByRole('textbox', { name: 'line 1' }), {
-      target: { value: 'Because I could not stop for Death' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^check$/i }));
-    fireEvent.click(screen.getByRole('button', { name: /^all correct$/i }));
-    expect(await screen.findByText('He kindly stopped for me')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
-    expect(await screen.findByText('Lesson destination')).toBeInTheDocument();
-    first.unmount();
-
-    study();
-    await continueFromNotes();
-    expect(await screen.findByText('He kindly stopped for me')).toBeInTheDocument();
-    expect(screen.queryByText('Because I could not stop for Death')).not.toBeInTheDocument();
   });
 });

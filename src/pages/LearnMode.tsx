@@ -1,19 +1,12 @@
 import { StudyEntrance } from '../components/learn/StudyEntrance';
 import './learn/studyLayout.css';
-import { StudyControls } from './learn/StudyControls';
 import { typedAnswerJudgement, useTypedAutoMark } from './learn/useTypedAutoMark';
-import type { JevMarkProvenance } from '../jev';
-import type { StudyGradeFeedback } from './learn/StudyGradeButton';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
-import type { Card, Grade, ItemPayload, ReviewSessionKind } from '../db/types';
 import { markLessonComplete } from '../db/lessonRepository';
 import { LessonNotesIntro } from '../components/learn/LessonNotesIntro';
-import { CardEditOverlay } from '../components/cards/CardEditOverlay';
-import { KeyHints } from '../components/ui/KeyHints';
-import { SessionReport } from '../components/learn/SessionReport';
 import { useDistraction } from '../components/learn/useDistraction';
 import type { SessionSummary } from '../components/learn/types';
 import { useGradingMode } from '../state/gradingMode';
@@ -28,19 +21,14 @@ import { useToast } from '../components/ui/Toast';
 import type { CardFilter } from '../db/search';
 import { useLearnSession } from './learn/useLearnSession';
 import { useLearnView } from './learn/useLearnView';
+import { useLearnAnswerFeedback } from './learn/useLearnAnswerFeedback';
+import { LearnSessionReport } from './learn/LearnSessionReport';
+import { LearnStudyPhase } from './learn/LearnStudyPhase';
 import { useLearnKeyboardShortcuts } from './learn/useLearnKeyboardShortcuts';
-import { LearnHeader } from './learn/LearnHeader';
-import { FlipCard } from './learn/FlipCard';
-import { StudyCardTransition, type StudyCardTransitionHandle } from './learn/StudyCardTransition';
-import { StreakCelebration, type StreakMoment } from './learn/StreakCelebration';
-import { isStreakMilestone, nextRun } from './learn/answerStreak';
 import { useStudyFocus } from './learn/useStudyFocus';
-import { NumericStudyFace } from '../components/items/NumericStudyFace';
-import { WorkingStudyFace } from '../components/items/WorkingStudyFace';
-import { UnknownItemFace } from '../components/items/UnknownItemFace';
 import { LearnSkeleton } from './learn/LearnSkeleton';
-import { SequenceRecitation } from './learn/recitation/SequenceRecitation';
-import type { LearnModeType, LearnSessionRequest, MachineMarkedAnswer } from './learn/types';
+import type { ReviewSessionKind } from '../db/types';
+import type { LearnModeType, LearnSessionRequest } from './learn/types';
 import { SessionExitGuard } from '../components/learn/SessionExitGuard';
 import type { NavigationGuardHandle } from '../components/ui/NavigationGuard';
 
@@ -59,18 +47,7 @@ interface LearnModeProps {
 }
 
 export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: LearnModeProps = {}) {
-  const [gradeFeedback, setGradeFeedback] = useState<StudyGradeFeedback>();
-  const cardTransitionRef = useRef<StudyCardTransitionHandle>(null);
-  // Consecutive correct answers, self-graded or machine-marked, for the milestone celebration.
-  const runRef = useRef(0);
-  const [streakMoment, setStreakMoment] = useState<StreakMoment | null>(null);
-  const clearStreakMoment = useCallback(() => setStreakMoment(null), []);
-  const undoInFlightRef = useRef(false);
-  const completionInFlightRef = useRef(false);
-  const lastTypedAnswerRef = useRef<{ cardId: string; answer: string } | null>(null);
-  const [manualRestoredCardId, setManualRestoredCardId] = useState<string | null>(null);
   const [leaveConfirmationOpen, setLeaveConfirmationOpen] = useState(false);
-  const [confirmingCompletion, setConfirmingCompletion] = useState(false);
   const exitGuardRef = useRef<NavigationGuardHandle>(null);
   const leavingSessionRef = useRef(false);
   const completionDeliveriesRef = useRef(0);
@@ -163,93 +140,22 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     return 'fsrs';
   }, [isSimpleMode, filterParams, plannedRevision]);
 
+  const view = useLearnView(startInFocusMode, notify);
   const {
     menuOpen,
     setMenuOpen,
     focusMode,
     setFocusMode,
-    focusChromeVisible,
     setFocusChromeVisible,
-    isFullscreen,
-    toggleFullscreen,
     hintsOpen,
     setHintsOpen,
     typedAnswer,
     setTypedAnswer,
-    typingInputRef,
     resetForCard,
     resetForSession,
-    closingMenu,
-  } = useLearnView(startInFocusMode, notify);
+  } = view;
 
-  const {
-    phase,
-    singleDeck,
-    unitDisplayName,
-    lessonNotesScreen,
-    setLessonNotesScreen,
-    current,
-    hintStep,
-    setHintStep,
-    isTypingCard: isTypingQuestion,
-    presentedAnswerInput,
-    isMachineMarkedCard,
-    hasUnrenderableItemPayload,
-    isLinesModeCard,
-    recitationSequence,
-    recitationMasteredItemIds,
-    savedRecitationStep,
-    saveRecitationStep,
-    currentCardIds,
-    setRecitationFocus,
-    answerRecitation,
-    revealRecitation,
-    occlusion,
-    occlusionAnswerText,
-    summary,
-    setSummary,
-    canUndo,
-    editing,
-    sessionCardIds,
-    setSessionCardIds,
-    sessionCardOutcomes,
-    schedulerProgress,
-    predictedRecall,
-    simpleProgress,
-    revisionSecondsRemaining,
-    revisionWindowBudgetSeconds,
-    revisionNextWindowDay,
-    setLimitOverride,
-    setTimeLimitOverride,
-    backOut,
-    finish,
-    confirmCompletion,
-    serveNext,
-    serveNextRef,
-    reveal,
-    hide,
-    answer,
-    undoLast,
-    openEdit,
-    cancelEdit,
-    handleEdited,
-    toggleFlagCurrent,
-    suspendCurrent,
-    buryCurrent,
-    cachedSessionProgress,
-    cardsRef,
-    ctxRef,
-    events,
-    progressBefore,
-    sessionStartMs,
-    simpleQueue,
-    createSimpleQueue,
-    simpleMastered,
-    simpleWrong,
-    lessonHasMembersRef,
-    persistSimpleResume,
-    resetSimpleSessionOutcomes,
-  } = useLearnSession({
+  const session = useLearnSession({
     enabled: sessionReady,
     courseId,
     lessonId,
@@ -278,6 +184,39 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
     onSessionReset: resetForSession,
   });
 
+  const {
+    phase,
+    lessonNotesScreen,
+    setLessonNotesScreen,
+    current,
+    hintStep,
+    setHintStep,
+    isTypingCard: isTypingQuestion,
+    presentedAnswerInput,
+    isMachineMarkedCard,
+    hasUnrenderableItemPayload,
+    isLinesModeCard,
+    recitationSequence,
+    occlusionAnswerText,
+    summary,
+    canUndo,
+    editing,
+    sessionCardIds,
+    sessionCardOutcomes,
+    backOut,
+    finish,
+    confirmCompletion,
+    serveNextRef,
+    reveal,
+    hide,
+    answer,
+    undoLast,
+    openEdit,
+    cardsRef,
+    lessonHasMembersRef,
+    persistSimpleResume,
+  } = session;
+
   const isTypingCard = phase === 'answer' ? presentedAnswerInput === 'typed' : isTypingQuestion;
 
   useEffect(() => {
@@ -292,82 +231,26 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   const suppressClassicGrading =
     isMachineMarkedCard || hasUnrenderableItemPayload || recitationSequence !== null;
 
-  const undoWithTransitionCancel = useCallback(async () => {
-    if (undoInFlightRef.current || completionInFlightRef.current) return;
-    undoInFlightRef.current = true;
-    setMenuOpen(false);
-    try {
-      cardTransitionRef.current?.cancel();
-      runRef.current = 0;
-      setStreakMoment(null);
-      const typed = lastTypedAnswerRef.current;
-      if (typed) setManualRestoredCardId(typed.cardId);
-      const restored = await undoLast({ reveal: typed !== null });
-      if (restored && typed?.cardId === restored.id) {
-        setTypedAnswer(typed.answer);
-        lastTypedAnswerRef.current = null;
-      }
-    } finally {
-      undoInFlightRef.current = false;
-    }
-  }, [undoLast, setMenuOpen, setTypedAnswer]);
-
-  const confirmReport = async (then: () => void, leaving = false) => {
-    if (completionInFlightRef.current || undoInFlightRef.current) return;
-    completionInFlightRef.current = true;
-    setConfirmingCompletion(true);
-    if (leaving) leavingSessionRef.current = true;
-    try {
-      if (await confirmCompletion()) then();
-      else leavingSessionRef.current = false;
-    } finally {
-      completionInFlightRef.current = false;
-      setConfirmingCompletion(false);
-    }
-  };
-
-  const answerWithUndo = useCallback(
-    (
-      input: boolean | Grade | MachineMarkedAnswer,
-      source: 'touch' | 'keyboard' = 'keyboard',
-      velocity = 0,
-      markedBy?: JevMarkProvenance,
-      automatic = false,
-    ) => {
-      if (undoInFlightRef.current) return;
-      const commit = () =>
-        void (async () => {
-          const result = await answer(
-            input,
-            automatic ? { markedBy, retainUndo: true } : undefined,
-          );
-          lastTypedAnswerRef.current =
-            result.undoAvailable && presentedAnswerInput === 'typed' && current
-              ? { cardId: current.id, answer: typedAnswer }
-              : null;
-          if (result.undoAvailable) {
-            notify(result.feedbackMessage ?? 'Answer recorded', 'neutral', {
-              actionLabel: 'Undo',
-              onAction: () => void undoWithTransitionCancel(),
-              replaceKey: 'learn-answer',
-            });
-          }
-        })();
-      const correct =
-        typeof input === 'object' ? input.correct : typeof input === 'number' ? input > 1 : input;
-      // Machine-marked cards measure response time at submission, so keep that path immediate.
-      if (typeof input === 'object' || !cardTransitionRef.current) commit();
-      else if (!cardTransitionRef.current.dismiss(correct, commit, source, velocity)) return;
-      if (typeof input !== 'object') {
-        setGradeFeedback((previous) => ({ input, serial: (previous?.serial ?? 0) + 1 }));
-      }
-      runRef.current = nextRun(runRef.current, correct);
-      if (isStreakMilestone(runRef.current)) {
-        setStreakMoment({ run: runRef.current, key: Date.now() });
-      }
-    },
-    [answer, notify, undoWithTransitionCancel, presentedAnswerInput, current, typedAnswer],
-  );
+  const feedback = useLearnAnswerFeedback({
+    answer,
+    undoLast,
+    confirmCompletion,
+    setMenuOpen,
+    setTypedAnswer,
+    leavingSessionRef,
+    notify,
+    presentedAnswerInput,
+    current,
+    typedAnswer,
+  });
+  const {
+    cardTransitionRef,
+    manualRestoredCardId,
+    confirmingCompletion,
+    undoWithTransitionCancel,
+    confirmReport,
+    answerWithUndo,
+  } = feedback;
 
   const typedAutoMark = useTypedAutoMark({
     card: current,
@@ -389,7 +272,7 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
   useEffect(() => {
     if (editing || menuOpen || hintsOpen || leaveConfirmationOpen)
       cardTransitionRef.current?.cancel();
-  }, [editing, menuOpen, hintsOpen, leaveConfirmationOpen]);
+  }, [editing, menuOpen, hintsOpen, leaveConfirmationOpen, cardTransitionRef]);
 
   useLearnKeyboardShortcuts({
     phase,
@@ -494,58 +377,15 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
             transition={{ duration: 0.24 * m, ease: [0.16, 1, 0.3, 1] }}
             className="min-h-screen"
           >
-            <SessionReport
+            <LearnSessionReport
+              session={session}
               summary={summary}
-              returnLabel={onStepFinished ? 'Continue' : 'Done'}
-              actionsDisabled={confirmingCompletion}
-              onUndo={canUndo ? () => void undoWithTransitionCancel() : undefined}
-              onReturn={() => {
-                const deliveriesBefore = completionDeliveriesRef.current;
-                void confirmReport(() => {
-                  if (!onStepFinished) backOut();
-                  // A new confirmation delivers automatically. An already-confirmed
-                  // report still needs an explicit request to advance its parent.
-                  else if (completionDeliveriesRef.current === deliveriesBefore) stepFinished(summary);
-                }, !onStepFinished);
-              }}
-              onContinue={
-                onStepFinished ||
-                (summary.reachedGoal &&
-                  !summary.limitReached &&
-                  !summary.timeLimitReached &&
-                  !summary.simpleMode)
-                  ? undefined
-                  : summary.simpleMode
-                    ? () =>
-                        void confirmReport(() => {
-                          // Restart simple mode: reset all simple state and begin again.
-                          simpleMastered.current = new Set();
-                          simpleWrong.current = new Set();
-                          simpleQueue.current = createSimpleQueue(
-                            cardsRef.current.filter(
-                              (c) => !c.suspended && !(c.buriedUntil && c.buriedUntil > Date.now()),
-                            ),
-                          );
-                          events.current = [];
-                          progressBefore.current = 0;
-                          sessionStartMs.current = Date.now();
-                          setSummary(null);
-                          setSessionCardIds(simpleQueue.current.map((card) => card.id));
-                          resetSimpleSessionOutcomes();
-                          serveNext();
-                        })
-                    : () =>
-                        void confirmReport(() => {
-                          const ctx = ctxRef.current;
-                          if (!ctx) return;
-                          events.current = [];
-                          progressBefore.current = cachedSessionProgress(cardsRef.current, ctx);
-                          setSummary(null);
-                          setLimitOverride(true);
-                          setTimeLimitOverride(true);
-                          serveNext();
-                        })
-              }
+              onStepFinished={onStepFinished}
+              confirmingCompletion={confirmingCompletion}
+              undoWithTransitionCancel={undoWithTransitionCancel}
+              completionDeliveriesRef={completionDeliveriesRef}
+              confirmReport={confirmReport}
+              stepFinished={stepFinished}
             />
           </motion.div>
         ) : (
@@ -560,226 +400,31 @@ export function LearnMode({ request, onStepFinished, onFlowExit, sessionId }: Le
               (focusMode ? ' pt-[calc(84px+env(safe-area-inset-top))]' : '')
             }
           >
-            {/* In-session card editor: fixes a card without leaving the session (timer paused). */}
-            <AnimatePresence>
-              {editing && current && (
-                <CardEditOverlay
-                  card={current}
-                  draftScope={lessonId ?? (courseId ? `bank:${courseId}` : undefined)}
-                  tagSuggestions={[
-                    ...new Set(
-                      cardsRef.current
-                        .filter((c) => c.schedulingUnitId === current.schedulingUnitId)
-                        .flatMap((c) => c.tags ?? []),
-                    ),
-                  ].sort()}
-                  onSaved={handleEdited}
-                  onCancel={cancelEdit}
-                />
-              )}
-            </AnimatePresence>
-            {/* Help overlay (opened with ?) */}
-            <KeyHints open={hintsOpen} onClose={() => setHintsOpen(false)} />
-            {focusMode && !focusChromeVisible && !menuOpen && (
-              <button
-                type="button"
-                aria-label="Show study controls"
-                onPointerEnter={() => setFocusChromeVisible(true)}
-                onClick={() => setFocusChromeVisible(true)}
-                className="fixed inset-x-0 top-0 z-20 h-[max(0.75rem,env(safe-area-inset-top))] text-transparent focus:h-11 focus:text-ink-faint"
-              >
-                Show study controls
-              </button>
-            )}
-            {/* Shared top bar: hidden in Focus Mode until the top edge is reached. */}
-            <AnimatePresence>
-              {(!focusMode || focusChromeVisible || menuOpen) && (
-                <LearnHeader
-                  canUndo={canUndo}
-                  onUndo={() => void undoWithTransitionCancel()}
-                  key="learn-header"
-                  mode={mode}
-                  plannedRevision={plannedRevision}
-                  revisionSecondsRemaining={revisionSecondsRemaining}
-                  revisionWindowBudgetSeconds={revisionWindowBudgetSeconds}
-                  revisionNextWindowDay={revisionNextWindowDay}
-                  singleDeck={singleDeck}
-                  unitDisplayName={unitDisplayName}
-                  sessionProgress={isSimpleMode ? simpleProgress : schedulerProgress}
-                  predictedRecall={predictedRecall}
-                  sessionCardIds={sessionCardIds}
-                  sessionCardOutcomes={sessionCardOutcomes}
-                  filterParams={filterParams}
-                  tagFilter={tagFilter}
-                  onExit={() => exitGuardRef.current?.requestLeave()}
-                  focusMode={focusMode}
-                  onToggleFocus={() => {
-                    setFocusMode((value) => !value);
-                    setFocusChromeVisible(false);
-                  }}
-                  onToggleFullscreen={() => void toggleFullscreen()}
-                  isFullscreen={isFullscreen}
-                  onPointerLeave={() => {
-                    if (focusMode && !menuOpen) setFocusChromeVisible(false);
-                  }}
-                  menuOpen={menuOpen}
-                  setMenuOpen={setMenuOpen}
-                  current={current}
-                  isTouchMode={isTouchMode}
-                  onEdit={closingMenu(openEdit)}
-                  onToggleFlag={closingMenu(toggleFlagCurrent)}
-                  onBury={closingMenu(buryCurrent)}
-                  onSuspend={closingMenu(suspendCurrent)}
-                  onShowShortcuts={() => {
-                    setMenuOpen(false);
-                    setHintsOpen(true);
-                  }}
-                  m={m}
-                  currentCardIds={currentCardIds}
-                />
-              )}
-            </AnimatePresence>
-            {/* Reserve the controls first; only the card body may scroll. */}
-            <main
-              ref={studyFocusRef}
-              tabIndex={-1}
-              aria-label="Study card"
-              className={
-                'mx-auto flex min-h-0 w-full max-w-4xl flex-1 flex-col outline-none focus-visible:shadow-none ' +
-                'pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] ' +
-                'pt-4 md:pt-6 ' +
-                (isTouchMode && !suppressClassicGrading
-                  ? gradingMode === 'manual'
-                    ? 'pb-[calc(14rem+env(safe-area-inset-bottom))]'
-                    : 'pb-[calc(10rem+env(safe-area-inset-bottom))]'
-                  : 'pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-6')
-              }
-            >
-              <StreakCelebration moment={streakMoment} multiplier={m} onDone={clearStreakMoment} />
-              {current && recitationSequence ? (
-                <SequenceRecitation
-                  key={isSimpleMode ? recitationSequence.id : current.id}
-                  sequence={recitationSequence}
-                  masteredItemIds={recitationMasteredItemIds(recitationSequence.id)}
-                  onCheck={({ results, responseTimeSec, masteredItemIds, done }) =>
-                    answerRecitation(results, responseTimeSec, done ? 'all' : masteredItemIds)
-                  }
-                  onFocusLines={setRecitationFocus}
-                  savedState={savedRecitationStep(recitationSequence.id)}
-                  onStateChange={(state) => saveRecitationStep(recitationSequence.id, state)}
-                  review={
-                    isSimpleMode || !current.sequenceItemId
-                      ? undefined
-                      : {
-                          itemId: current.sequenceItemId,
-                          onReveal: revealRecitation,
-                          onGrade: (correct) => answerWithUndo(correct ? 3 : 1),
-                        }
-                  }
-                />
-              ) : (
-                current && (
-                  <div className="study-card-slot min-h-0 flex-1">
-                    <StudyCardTransition
-                      ref={cardTransitionRef}
-                      cardId={current.id}
-                      phase={phase}
-                      multiplier={m}
-                      onDepartureChange={setCardDeparting}
-                    >
-                      {isMachineMarkedCard && current.payload?.kind === 'numeric' ? (
-                        <NumericStudyFace
-                          card={
-                            current as Card & {
-                              payload: Extract<ItemPayload, { kind: 'numeric' }>;
-                            }
-                          }
-                          allowCheckerDisputes={!isSimpleMode}
-                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                        />
-                      ) : isMachineMarkedCard && current.payload?.kind === 'working' ? (
-                        <WorkingStudyFace
-                          card={
-                            current as Card & {
-                              payload: Extract<ItemPayload, { kind: 'working' }>;
-                            }
-                          }
-                          allowCheckerDisputes={!isSimpleMode}
-                          onAnswer={(result) => answerWithUndo(result, 'keyboard')}
-                        />
-                      ) : hasUnrenderableItemPayload ? (
-                        <UnknownItemFace card={current} />
-                      ) : (
-                        <FlipCard
-                          card={current}
-                          revealed={phase === 'answer'}
-                          motionSpeed={motionSpeed}
-                          phase={phase}
-                          isTouchMode={isTouchMode}
-                          menuOpen={menuOpen}
-                          editing={editing}
-                          hintsOpen={hintsOpen}
-                          onReveal={reveal}
-                          onHide={hide}
-                          onAnswer={(input, source, velocity) =>
-                            answerWithUndo(input, source, velocity)
-                          }
-                          typedAnswer={typedAnswer}
-                          typedJudgement={typedJudgement}
-                          isTypingCard={isTypingCard}
-                          mode={mode}
-                          isLinesModeCard={isLinesModeCard}
-                          hintStep={hintStep}
-                          onRevealHint={() => setHintStep((s) => (s < 2 ? ((s + 1) as 1 | 2) : s))}
-                          hintAffectsScheduling={!isSimpleMode && gradingMode === 'silent'}
-                          answerStrictness={answerStrictness}
-                          occlusion={occlusion}
-                          occlusionAnswerText={occlusionAnswerText}
-                        />
-                      )}
-                    </StudyCardTransition>
-                  </div>
-                )
-              )}
-
-              {isTypingCard && (
-                // The Flow fill and the card carry the verdict visually; this says it aloud.
-                <div aria-live="polite" className="sr-only">
-                  {typedAutoMark.state === 'checking'
-                    ? 'Checking your answer.'
-                    : typedAutoMark.state === 'marked'
-                      ? typedAutoMark.correct
-                        ? 'Marked correct.'
-                        : 'Marked incorrect.'
-                      : ''}
-                </div>
-              )}
-              {!suppressClassicGrading && (
-                <StudyControls
-                  // Keep the liquid mounted so its draining bead can reform the next pill.
-                  phase={phase}
-                  departing={cardDeparting}
-                  feedback={gradeFeedback}
-                  isTypingCard={isTypingCard}
-                  isTouchMode={isTouchMode}
-                  autoMark={
-                    typedAutoMark.state === 'checking'
-                      ? { pending: true }
-                      : typedAutoMark.state === 'marked'
-                        ? { pending: false, correct: typedAutoMark.correct }
-                        : undefined
-                  }
-                  gradingMode={gradingMode}
-                  typedAnswer={typedAnswer}
-                  typingInputRef={typingInputRef}
-                  onTypedAnswer={setTypedAnswer}
-                  onReveal={reveal}
-                  onHide={hide}
-                  onAnswer={answerWithUndo}
-                  m={m}
-                />
-              )}
-            </main>
+            <LearnStudyPhase
+              session={session}
+              view={view}
+              feedback={feedback}
+              mode={mode}
+              motionSpeed={motionSpeed}
+              isSimpleMode={isSimpleMode}
+              isTouchMode={isTouchMode}
+              suppressClassicGrading={suppressClassicGrading}
+              isTypingCard={isTypingCard}
+              gradingMode={gradingMode}
+              answerStrictness={answerStrictness}
+              typedAutoMark={typedAutoMark}
+              typedJudgement={typedJudgement}
+              studyFocusRef={studyFocusRef}
+              exitGuardRef={exitGuardRef}
+              lessonId={lessonId}
+              courseId={courseId}
+              plannedRevision={plannedRevision}
+              filterParams={filterParams}
+              tagFilter={tagFilter}
+              cardDeparting={cardDeparting}
+              setCardDeparting={setCardDeparting}
+              m={m}
+            />
           </motion.div>
         )}
       </AnimatePresence>
