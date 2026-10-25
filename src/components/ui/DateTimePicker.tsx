@@ -1,16 +1,30 @@
-import { scaledSpring } from './motion';
-import { calendarKeyboardDate } from './calendarKeyboardDate';
-import { buttonClassName } from './buttonStyles';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, m as motion } from 'motion/react';
-import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, CalendarIcon } from './icons';
-import { fieldLabelClassName } from './Field';
-import { cn } from './cn';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
-import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useAnchoredPopoverPosition } from '../../hooks/useAnchoredPopoverPosition';
-import { getComponentsInZone, fromDateTimeLocalValue } from '../../utils/datetime';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { fromDateTimeLocalValue, getComponentsInZone } from '../../utils/datetime';
+import {
+  renderDaysCalendar,
+  renderMonthsCalendar,
+  renderYearsCalendar,
+} from './DateTimeCalendarViews';
+import { fieldLabelClassName } from './Field';
+import { buttonClassName } from './buttonStyles';
+import { calendarKeyboardDate } from './calendarKeyboardDate';
+import { cn } from './cn';
+import {
+  MONTHS,
+  buildMonth,
+  pad,
+  resolveAdjacentMonth,
+  shiftMonth,
+  type CalendarView,
+} from './dateTimeCalendar';
+import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon, ClockIcon } from './icons';
+import { scaledSpring } from './motion';
+import { useDateTimeDraft } from './useDateTimeDraft';
 
 interface DateTimePickerProps {
   value: number;
@@ -21,80 +35,11 @@ interface DateTimePickerProps {
   appearance?: 'field' | 'chip';
 }
 
-interface CalendarView {
-  year: number;
-  month: number;
-}
-
 type PickerMode = 'days' | 'months' | 'years';
 
 interface PendingGridFocus {
   mode: PickerMode;
   index: number | null;
-}
-
-const DAYS: string[] = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const MONTHS: string[] = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-function pad(n: number) {
-  return String(n).padStart(2, '0');
-}
-
-function shiftMonth(view: CalendarView, offset: number): CalendarView {
-  const shifted = new Date(Date.UTC(view.year, view.month + offset, 1));
-  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() };
-}
-
-/** Build a calendar month grid: { day: number, currentMonth: boolean }[]. */
-function buildMonth(year: number, month: number) {
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const prevDays = new Date(year, month, 0).getDate();
-
-  const cells: { day: number; currentMonth: boolean }[] = [];
-  // Leading days from previous month
-  for (let i = firstDay - 1; i >= 0; i--) {
-    cells.push({ day: prevDays - i, currentMonth: false });
-  }
-  // Current month
-  for (let i = 1; i <= daysInMonth; i++) {
-    cells.push({ day: i, currentMonth: true });
-  }
-  // Trailing days from next month (pad to 6 rows = 42 cells max)
-  const remaining = 42 - cells.length;
-  for (let i = 1; i <= remaining; i++) {
-    cells.push({ day: i, currentMonth: false });
-  }
-  return cells;
-}
-
-/** Determine which month an adjacent cell belongs to. */
-function resolveAdjacentMonth(
-  day: number,
-  currentMonth: boolean,
-  year: number,
-  month: number,
-): { y: number; m: number } {
-  if (currentMonth) return { y: year, m: month };
-  if (day > 20) {
-    const m = month - 1;
-    return m < 0 ? { y: year - 1, m: 11 } : { y: year, m };
-  }
-  const m = month + 1;
-  return m > 11 ? { y: year + 1, m: 0 } : { y: year, m };
 }
 
 export function DateTimePicker({
@@ -140,9 +85,16 @@ export function DateTimePicker({
   const [focusIndex, setFocusIndex] = useState<number | null>(null);
   const [monthFocusIndex, setMonthFocusIndex] = useState(0);
   const [yearFocusIndex, setYearFocusIndex] = useState(4);
-  const [hourDraft, setHourDraft] = useState(() => pad(selected.hours));
-  const [minuteDraft, setMinuteDraft] = useState(() => pad(selected.minutes));
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const {
+    hourDraft,
+    setHourDraft,
+    minuteDraft,
+    setMinuteDraft,
+    validationError,
+    setValidationError,
+    reportValidity,
+    commitTimeDrafts,
+  } = useDateTimeDraft(selected, latestValueRef, onChange, onValidityChange, timeZone);
   useFocusTrap(open, { autoFocusSelector: '[aria-current="date"], [tabindex="0"]' }, dropdownRef);
 
   useLayoutEffect(() => {
@@ -151,14 +103,6 @@ export function DateTimePicker({
       ?.querySelector<HTMLElement>('[aria-current="date"], [tabindex="0"]')
       ?.focus();
   }, [open, popoverReady]);
-
-  const reportValidity = useCallback(
-    (error: string | null) => {
-      setValidationError(error);
-      onValidityChange?.(error === null);
-    },
-    [onValidityChange],
-  );
 
   // Extract selected-date components in the target time zone
   const selectedDay = selected.day;
@@ -272,41 +216,6 @@ export function DateTimePicker({
     },
     [cells, focusIndex, initialFocusIndex, month, selectDay, year],
   );
-
-  const setTime = useCallback(
-    (h: number, m: number) => {
-      const ms = fromDateTimeLocalValue(
-        `${selectedYear}-${pad(selectedMonth + 1)}-${pad(selectedDay)}T${pad(h)}:${pad(m)}`,
-        timeZone,
-      );
-      if (!Number.isFinite(ms)) {
-        reportValidity('That local date and time does not exist. Choose another time.');
-        return false;
-      }
-      reportValidity(null);
-      if (ms !== latestValueRef.current) {
-        latestValueRef.current = ms;
-        onChange(ms);
-      }
-      return true;
-    },
-    [selectedYear, selectedMonth, selectedDay, onChange, reportValidity, timeZone],
-  );
-
-  const commitTimeDrafts = useCallback(() => {
-    const h = /^\d{1,2}$/.test(hourDraft) ? Number(hourDraft) : Number.NaN;
-    const min = /^\d{1,2}$/.test(minuteDraft) ? Number(minuteDraft) : Number.NaN;
-    if (!Number.isInteger(h) || h < 0 || h > 23 || !Number.isInteger(min) || min < 0 || min > 59) {
-      reportValidity('Enter a valid 24-hour time.');
-      return false;
-    }
-    const committed = setTime(h, min);
-    if (committed) {
-      setHourDraft(pad(h));
-      setMinuteDraft(pad(min));
-    }
-    return committed;
-  }, [hourDraft, minuteDraft, reportValidity, setTime]);
 
   // Outside dismissal commits a valid in-progress time. Invalid drafts keep the
   // picker open so the error is visible instead of being silently discarded.
@@ -444,7 +353,7 @@ export function DateTimePicker({
     latestValueRef.current = value;
     setHourDraft(pad(selected.hours));
     setMinuteDraft(pad(selected.minutes));
-  }, [selected.hours, selected.minutes, value]);
+  }, [selected.hours, selected.minutes, value, setHourDraft, setMinuteDraft]);
 
   useLayoutEffect(() => {
     if (!open || pickerMode !== 'days' || pendingGridFocusRef.current?.mode !== 'days') return;
@@ -591,13 +500,21 @@ export function DateTimePicker({
                   left: popoverPosition?.left ?? 0,
                   visibility: popoverPosition ? 'visible' : 'hidden',
                 }}
-                initial={m > 0 ? {
-                  opacity: 0,
-                  y: appearance === 'chip' ? 0 : placement === 'bottom' ? -6 : 6,
-                  scale: appearance === 'chip' ? 0.94 : 0.97,
-                } : false}
+                initial={
+                  m > 0
+                    ? {
+                        opacity: 0,
+                        y: appearance === 'chip' ? 0 : placement === 'bottom' ? -6 : 6,
+                        scale: appearance === 'chip' ? 0.94 : 0.97,
+                      }
+                    : false
+                }
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={m > 0 ? { opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 } : undefined}
+                exit={
+                  m > 0
+                    ? { opacity: 0, y: placement === 'bottom' ? -6 : 6, scale: 0.97 }
+                    : undefined
+                }
                 transition={
                   appearance === 'chip'
                     ? scaledSpring(m, 520, 34)
@@ -646,175 +563,52 @@ export function DateTimePicker({
                 </div>
 
                 <AnimatePresence mode="wait">
-                  {pickerMode === 'days' && (
-                    <motion.div
-                      key={`days-${year}-${month}`}
-                      initial={
-                        slideDir !== 0 ? { x: slideDir * 40, opacity: 0 } : { x: 0, opacity: 1 }
-                      }
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: slideDir * -40, opacity: 0 }}
-                      transition={{ duration: 0.12 * m, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      {/* Day-of-week headers */}
-                      <div className="grid grid-cols-7 px-3 pb-1">
-                        {DAYS.map((d) => (
-                          <div
-                            key={d}
-                            className="py-1 text-center text-sm font-medium text-ink-faint"
-                          >
-                            {d}
-                          </div>
-                        ))}
-                      </div>
+                  {pickerMode === 'days' &&
+                    renderDaysCalendar({
+                      year,
+                      month,
+                      slideDir,
+                      m,
+                      handleDayKeyDown,
+                      cells,
+                      selectedDay,
+                      selectedMonth,
+                      selectedYear,
+                      todayDay,
+                      todayMonth,
+                      todayYear,
+                      focusIndex,
+                      dayRefs,
+                      setFocusIndex,
+                      selectDay,
+                    })}
 
-                      {/* Calendar grid */}
-                      <div
-                        role="group"
-                        aria-label={`${MONTHS[month]} ${year}`}
-                        className="grid grid-cols-7 px-3 pb-3"
-                        onKeyDown={handleDayKeyDown}
-                      >
-                        {cells.map((cell, i) => {
-                          const isSelected =
-                            cell.currentMonth &&
-                            cell.day === selectedDay &&
-                            month === selectedMonth &&
-                            year === selectedYear;
-                          const isToday =
-                            cell.currentMonth &&
-                            cell.day === todayDay &&
-                            month === todayMonth &&
-                            year === todayYear;
-                          const isFocused = focusIndex === i;
+                  {pickerMode === 'months' &&
+                    renderMonthsCalendar({
+                      m,
+                      year,
+                      handleMonthKeyDown,
+                      month,
+                      selectedMonth,
+                      selectedYear,
+                      monthRefs,
+                      monthFocusIndex,
+                      setMonthFocusIndex,
+                      selectMonth,
+                    })}
 
-                          return (
-                            <button
-                              key={i}
-                              ref={(element) => {
-                                dayRefs.current[i] = element;
-                              }}
-                              type="button"
-                              tabIndex={isFocused ? 0 : -1}
-                              aria-label={`${cell.day} ${MONTHS[resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).m]} ${resolveAdjacentMonth(cell.day, cell.currentMonth, year, month).y}`}
-                              aria-current={isSelected ? 'date' : undefined}
-                              onFocus={() => setFocusIndex(i)}
-                              onClick={() => selectDay(cell.day, cell.currentMonth)}
-                              className={cn(
-                                'relative mx-auto my-0.5 flex h-11 w-11 items-center justify-center rounded-full text-sm outline-none transition-colors',
-                                cell.currentMonth ? 'text-ink' : 'text-ink-faint/60',
-                                isSelected &&
-                                  'bg-accent font-medium text-accent-fg hover:bg-accent',
-                                !isSelected && isToday && 'ring-1 ring-inset ring-accent/40',
-                                !isSelected &&
-                                  !isToday &&
-                                  cell.currentMonth &&
-                                  'hover:bg-ink/5 active:bg-ink/5',
-                                isFocused && !isSelected && 'ring-2 ring-inset ring-accent/50',
-                              )}
-                            >
-                              {cell.day}
-                              {isToday && !isSelected && (
-                                <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-accent" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {pickerMode === 'months' && (
-                    <motion.div
-                      key="months"
-                      initial={{ opacity: 0, scale: 0.97 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.97 }}
-                      transition={{ duration: 0.12 * m }}
-                      className="px-3 pb-3"
-                    >
-                      <div
-                        role="group"
-                        aria-label={`Choose month in ${year}`}
-                        className="grid grid-cols-3 gap-2"
-                        onKeyDown={handleMonthKeyDown}
-                      >
-                        {MONTHS.map((m, i) => {
-                          const isCurrent = i === month;
-                          const isSelected = i === selectedMonth && year === selectedYear;
-                          return (
-                            <button
-                              key={m}
-                              ref={(element) => {
-                                monthRefs.current[i] = element;
-                              }}
-                              type="button"
-                              tabIndex={monthFocusIndex === i ? 0 : -1}
-                              aria-label={m}
-                              onFocus={() => setMonthFocusIndex(i)}
-                              onClick={() => selectMonth(i)}
-                              className={cn(
-                                'rounded-xl px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
-                                isSelected
-                                  ? 'bg-accent text-accent-fg'
-                                  : isCurrent
-                                    ? 'bg-accent-soft text-accent-ink'
-                                    : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
-                              )}
-                            >
-                              {m.slice(0, 3)}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {pickerMode === 'years' && (
-                    <motion.div
-                      key="years"
-                      initial={{ opacity: 0, scale: 0.97 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.97 }}
-                      transition={{ duration: 0.12 * m }}
-                      className="px-3 pb-3"
-                    >
-                      <div
-                        role="group"
-                        aria-label={`Choose year from ${yearRange[0]} to ${yearRange[yearRange.length - 1]}`}
-                        className="grid grid-cols-3 gap-2"
-                        onKeyDown={handleYearKeyDown}
-                      >
-                        {yearRange.map((y, i) => {
-                          const isCurrent = y === year;
-                          const isSelected = y === selectedYear;
-                          return (
-                            <button
-                              key={y}
-                              ref={(element) => {
-                                yearRefs.current[i] = element;
-                              }}
-                              type="button"
-                              tabIndex={yearFocusIndex === i ? 0 : -1}
-                              aria-label={String(y)}
-                              onFocus={() => setYearFocusIndex(i)}
-                              onClick={() => selectYear(i)}
-                              className={cn(
-                                'rounded-xl px-2 py-2.5 text-xs font-medium transition-colors min-h-11',
-                                isSelected
-                                  ? 'bg-accent text-accent-fg'
-                                  : isCurrent
-                                    ? 'bg-accent-soft text-accent-ink'
-                                    : 'text-ink-soft hover:bg-ink/5 hover:text-ink active:bg-ink/5 active:text-ink',
-                              )}
-                            >
-                              {y}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  )}
+                  {pickerMode === 'years' &&
+                    renderYearsCalendar({
+                      m,
+                      yearRange,
+                      handleYearKeyDown,
+                      year,
+                      selectedYear,
+                      yearRefs,
+                      yearFocusIndex,
+                      setYearFocusIndex,
+                      selectYear,
+                    })}
                 </AnimatePresence>
 
                 {/* Time selector */}

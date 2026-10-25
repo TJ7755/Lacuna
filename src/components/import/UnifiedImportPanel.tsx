@@ -4,39 +4,25 @@
 // CardImportDialog with the same parsing engine. SharedCourseImport handles course
 // files, codes and QR scanning for the Import and Share pages.
 
+import { ShareCodeImport } from './ShareCodeImport';
+import { useShareCodeImport } from './useShareCodeImport';
+import { AnimatePresence, m as motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { m as motion, AnimatePresence } from 'motion/react';
-import { Button } from '../ui/Button';
-import { UploadIcon, DownloadIcon } from '../ui/icons';
-import { cn } from '../ui/cn';
-import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
+import { parseApkg, type ApkgImportResult } from '../../db/apkgImport';
+import { checkDuplicatesBatch } from '../../db/cardRepository';
 import { type ParsedCard } from '../../db/import';
 import {
-  detectFormat,
   FORMAT_LABELS,
-  type ImportFormat,
+  detectFormat,
   parseImportAuto,
+  type ImportFormat,
   type UnifiedImportOptions,
 } from '../../db/importEngine';
-import { checkDuplicatesBatch } from '../../db/cardRepository';
-import { parseApkg, type ApkgImportResult } from '../../db/apkgImport';
-import {
-  decodeShare,
-  importSharePayload,
-  summariseShare,
-  type SharePayload,
-  type ShareSummary,
-} from '../../db/share';
-import {
-  findCourseForLineage,
-  importLineageFirstTime,
-  isLineagePayload,
-  mergeLineageUpdate,
-  type MergeLineageResult,
-} from '../../db/mergeImport';
-import type { CourseRecord } from '../../db/types';
-import { formatDate } from '../../utils/datetime';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
+import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
+import { cn } from '../ui/cn';
+import { DownloadIcon, UploadIcon } from '../ui/icons';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -107,72 +93,6 @@ const FORMAT_HELP: Record<ImportFormat, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Merge routing (Arc 7 §7.5 decode-time branch)
-// ---------------------------------------------------------------------------
-
-/** A decoded, not-yet-confirmed share-code import. `merge` is present when the
- *  payload's lineage matches a course already imported locally — routing the confirm
- *  step to the merge importer instead of a plain new-course import. */
-interface PendingShareImport {
-  summary: ShareSummary;
-  raw: string;
-  merge?: {
-    course: CourseRecord;
-    incomingRevision: number;
-    /** True when `incomingRevision` is not newer than the local copy — nothing to merge. */
-    stale: boolean;
-  };
-}
-
-/** Does this payload's lineage match a course already tracked locally? If so, route
- *  the confirm step to the merge importer instead of the plain `importSharePayload`
- *  path. */
-async function resolvePending(payload: SharePayload, raw: string): Promise<PendingShareImport> {
-  const summary = summariseShare(payload);
-  if (isLineagePayload(payload)) {
-    const course = await findCourseForLineage(payload.li);
-    if (course) {
-      const localRevision = course.distributedCopy?.revision ?? 0;
-      return {
-        summary,
-        raw,
-        merge: { course, incomingRevision: payload.rv, stale: payload.rv <= localRevision },
-      };
-    }
-  }
-  return { summary, raw };
-}
-
-/** Turn a merge result into a single sentence for the confirm surface. */
-function describeMergeResult(result: MergeLineageResult): string {
-  const parts: string[] = [];
-  if (result.createdLessons || result.createdNotes || result.createdCards) {
-    parts.push(
-      `added ${result.createdLessons} lesson${result.createdLessons === 1 ? '' : 's'}, ` +
-        `${result.createdNotes} note${result.createdNotes === 1 ? '' : 's'} and ` +
-        `${result.createdCards} card${result.createdCards === 1 ? '' : 's'}`,
-    );
-  }
-  if (result.appliedUpdates || result.appliedRemovals) {
-    parts.push(
-      `applied ${result.appliedUpdates} update${result.appliedUpdates === 1 ? '' : 's'} and ` +
-        `${result.appliedRemovals} removal${result.appliedRemovals === 1 ? '' : 's'}`,
-    );
-  }
-  let message =
-    parts.length > 0
-      ? `Updated the course — ${parts.join('; ')}.`
-      : 'The course is already up to date.';
-  if (result.queuedForReview) {
-    message +=
-      result.conflictCount > 0
-        ? ` ${result.conflictCount} change${result.conflictCount === 1 ? '' : 's'} ${result.conflictCount === 1 ? 'is' : 'are'} waiting for your review.`
-        : ' Some changes are waiting for your review.';
-  }
-  return message;
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -197,13 +117,18 @@ export function UnifiedImportPanel({
 
   // Share code state.
   const [shareMode, setShareMode] = useState(shareOnly);
-  const [sharePending, setSharePending] = useState<PendingShareImport | null>(null);
-  const [shareImporting, setShareImporting] = useState(false);
-  const [shareError, setShareError] = useState<string | null>(null);
-  /** Outcome sentence for a completed merge (Arc 7 §7.5) — a merge updates an existing
-   *  course rather than adding a new one, so it is shown here instead of via
-   *  `onShareImport`'s new-import notification path. */
-  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const {
+    setSharePending,
+    setShareError,
+    setShareNotice,
+    sharePending,
+    shareImporting,
+    shareError,
+    shareNotice,
+    handleShareInspect,
+    handleShareImport,
+    clearSharePending,
+  } = useShareCodeImport(text, setText, onShareImport);
 
   // APKG state.
   const [apkgPending, setApkgPending] = useState<ApkgImportResult | null>(null);
@@ -376,64 +301,6 @@ export function UnifiedImportPanel({
 
   // ---- Share code handling ----
 
-  async function handleShareInspect() {
-    const raw = text.trim();
-    if (!raw) return;
-    setShareError(null);
-    try {
-      const payload = await decodeShare(raw);
-      setSharePending(await resolvePending(payload, raw));
-    } catch (err) {
-      setShareError(err instanceof Error ? err.message : 'Invalid share code.');
-    }
-  }
-
-  async function handleShareImport() {
-    if (!sharePending || sharePending.merge?.stale) return;
-    setShareImporting(true);
-    setShareError(null);
-    setShareNotice(null);
-    try {
-      const payload = await decodeShare(sharePending.raw);
-      if (sharePending.merge) {
-        const result = await mergeLineageUpdate(sharePending.merge.course.id, payload);
-        setSharePending(null);
-        setText('');
-        // A merge updates an existing course rather than creating one, so it does not
-        // fit onShareImport's (courses, cards) "new import" contract — show the
-        // outcome inline instead.
-        setShareNotice(describeMergeResult(result));
-      } else if (isLineagePayload(payload)) {
-        const { course } = await importLineageFirstTime(payload);
-        setSharePending(null);
-        setShareError(null);
-        setText('');
-        if (onShareImport) {
-          await onShareImport(1, sharePending.summary.cardCount, [course.id]);
-        }
-      } else {
-        const result = await importSharePayload(payload);
-        setSharePending(null);
-        setShareError(null);
-        setText('');
-        if (onShareImport) {
-          await onShareImport(result.courses, result.cards, result.courseIds);
-        }
-      }
-    } catch (err) {
-      setShareError(err instanceof Error ? err.message : 'Import failed.');
-    } finally {
-      setShareImporting(false);
-    }
-  }
-
-  function clearSharePending() {
-    setText('');
-    setSharePending(null);
-    setShareError(null);
-    setShareNotice(null);
-  }
-
   // ---- Import handler ----
 
   async function handleImport() {
@@ -551,9 +418,7 @@ export function UnifiedImportPanel({
             className="relative"
           >
             <div className="mb-2.5 flex items-center justify-between">
-              <label className="text-sm text-ink-soft">
-                Paste your cards
-              </label>
+              <label className="text-sm text-ink-soft">Paste your cards</label>
               <div className="flex items-center gap-2">
                 <input
                   ref={fileInput}
@@ -625,7 +490,10 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.15 * m }}
                 className="flex items-center gap-2.5 rounded-2xl bg-accent-soft/60 px-3.5 py-2 text-xs text-accent-ink"
               >
-                <Skeleton as="span" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                <Skeleton
+                  as="span"
+                  className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+                />
                 {pasteNotification}
               </motion.div>
             )}
@@ -642,9 +510,7 @@ export function UnifiedImportPanel({
                 transition={{ duration: 0.12 * m }}
                 className="flex items-center gap-3"
               >
-                <span className="text-sm text-ink-soft">
-                  Detected
-                </span>
+                <span className="text-sm text-ink-soft">Detected</span>
                 <FormatBadge format={effectiveFormat} confidence={detection.confidence} />
                 {detection.confidence < 0.7 && effectiveFormat !== 'unknown' && (
                   <span className="text-xs text-ink-faint">
@@ -885,154 +751,6 @@ export function ShareCodeImportPanel({
 }
 
 // ---------------------------------------------------------------------------
-// Share code sub-panel
-// ---------------------------------------------------------------------------
-
-function ShareCodeImport({
-  text,
-  setText,
-  pending,
-  notice,
-  onImport,
-  onClear,
-  importing,
-  m,
-}: {
-  text: string;
-  setText: (v: string) => void;
-  pending: PendingShareImport | null;
-  notice: string | null;
-  onImport: () => void;
-  onClear: () => void;
-  importing: boolean;
-  m: number;
-}) {
-  return (
-    <>
-      <div className="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 transition-all focus-within:border-accent/60">
-        <label className="mb-2.5 block text-sm text-ink-soft">
-          Share code
-        </label>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={4}
-          autoFocus
-          placeholder="Paste a Lacuna share code here (it starts with LAC)..."
-          className="w-full resize-none break-all rounded-xl border border-line bg-surface-raised/30 px-4 py-3 font-mono text-xs text-ink outline-none transition-all focus:border-accent/40 placeholder:text-ink-faint"
-        />
-      </div>
-
-      <AnimatePresence>
-        {notice && (
-          <motion.div
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={m > 0 ? { opacity: 0 } : undefined}
-            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-4"
-          >
-            <div className="rounded-3xl bg-accent-soft/40 p-5 text-sm leading-relaxed text-ink-soft">
-              {notice}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {pending && (
-          <motion.div
-            initial={m > 0 ? { opacity: 0 } : false}
-            animate={{ opacity: 1 }}
-            exit={m > 0 ? { opacity: 0 } : undefined}
-            transition={{ duration: 0.16 * m, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-4"
-          >
-            <div className="rounded-3xl bg-accent-soft/40 p-5">
-              <h3 className="mb-2 font-display text-lg font-medium text-ink">
-                {pending.merge ? 'Course update' : 'Ready to import'}
-              </h3>
-              {pending.merge ? (
-                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
-                  {pending.merge.stale ? (
-                    <>
-                      You already have the latest version of{' '}
-                      <strong className="text-ink">{pending.merge.course.name}</strong> (revision{' '}
-                      {pending.merge.course.distributedCopy?.revision ?? 0}).
-                    </>
-                  ) : (
-                    <>
-                      This updates <strong className="text-ink">{pending.merge.course.name}</strong>{' '}
-                      (revision {pending.merge.course.distributedCopy?.revision ?? 0} →{' '}
-                      {pending.merge.incomingRevision}).
-                    </>
-                  )}
-                </p>
-              ) : pending.summary.kind === 'course' ? (
-                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
-                  <strong className="text-ink">{pending.summary.courseName}</strong> —{' '}
-                  <strong className="text-ink">{pending.summary.lessonCount}</strong> lesson
-                  {pending.summary.lessonCount === 1 ? '' : 's'},{' '}
-                  <strong className="text-ink">{pending.summary.noteCount ?? 0}</strong> note
-                  {pending.summary.noteCount === 1 ? '' : 's'} and{' '}
-                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}.
-                </p>
-              ) : (
-                <p className="mb-3 text-sm leading-relaxed text-ink-soft">
-                  This code contains{' '}
-                  <strong className="text-ink">{pending.summary.deckCount}</strong> deck
-                  {pending.summary.deckCount === 1 ? '' : 's'} and{' '}
-                  <strong className="text-ink">{pending.summary.cardCount}</strong> card
-                  {pending.summary.cardCount === 1 ? '' : 's'}, shared on{' '}
-                  {formatDate(pending.summary.exportedAt)}. It will be added as a single imported
-                  course.
-                </p>
-              )}
-              {!pending.merge && pending.summary.omittedImages && (
-                <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm leading-relaxed text-ink-soft">
-                  This share code omitted media to keep the code small. Images and audio will appear
-                  as placeholders after import.
-                </p>
-              )}
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={onClear}>
-                  {pending.merge?.stale ? 'Close' : 'Cancel'}
-                </Button>
-                {!pending.merge?.stale && (
-                  <Button variant="primary" onClick={() => void onImport()} disabled={importing}>
-                    {importing
-                      ? pending.merge
-                        ? 'Updating…'
-                        : 'Importing…'
-                      : pending.merge
-                        ? 'Update course'
-                        : 'Add to my courses'}
-                  </Button>
-                )}
-              </div>
-              {!pending.merge && pending.summary.deckNames.length > 0 && (
-                <ul className="mt-4 flex flex-wrap gap-1.5">
-                  {pending.summary.deckNames.map((name, i) => (
-                    <li
-                      key={`${name}-${i}`}
-                      className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent-ink"
-                    >
-                      {name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Format badge
 // ---------------------------------------------------------------------------
 
@@ -1045,12 +763,7 @@ function FormatBadge({ format, confidence }: { format: ImportFormat; confidence:
         : 'border-line bg-ink/5 text-ink-faint';
 
   return (
-    <span
-      className={cn(
-        'rounded-lg border px-2.5 py-0.5 text-xs font-medium',
-        colour,
-      )}
-    >
+    <span className={cn('rounded-lg border px-2.5 py-0.5 text-xs font-medium', colour)}>
       {FORMAT_LABELS[format]}
     </span>
   );

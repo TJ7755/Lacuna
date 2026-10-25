@@ -7,41 +7,27 @@
 // Route: course/:courseId/sequence/new, course/:courseId/sequence/:sequenceId/edit,
 // and the lesson-scoped course/:courseId/lesson/:lessonId/sequence/new variant.
 
-import { DelayedFallback } from '../components/ui/DelayedFallback';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useEditorKeys } from '../hooks/dialogKeys';
+import {
+  Disclosure,
+  SequenceEditorSkeleton,
+  SequenceOptions,
+  SequenceIdentity,
+  SequenceItems,
+  SequencePreview,
+} from './SequenceEditorViews';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
-import { useCourse, useLesson, useSequence } from '../state/useCourseData';
-import { canEditLessons } from '../course/lessonViewMode';
-import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
-import { SectionCard } from '../components/ui/SectionCard';
-import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
-import { Toggle } from '../components/ui/Toggle';
-import {
-  Input,
-  fieldHintClassName,
-  fieldLabelClassName,
-  inputFrameClassName,
-} from '../components/ui/Field';
-import { choiceChipClass } from '../components/ui/choiceChip';
-import {
-  DEFAULT_RECITATION_CHUNK_SIZE,
-  MAX_RECITATION_CHUNK_SIZE,
-  MIN_RECITATION_CHUNK_SIZE,
-  hasStanzas,
-} from './learn/recitation/recitationFlow';
-import { useToast } from '../components/ui/Toast';
-import { DangerZoneSection } from './settings/DangerZoneSection';
-import { SequenceOutlineEditor } from '../components/sequences/SequenceOutlineEditor';
+import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { compactSections, type Outline } from '../components/sequences/sequenceOutline';
-import { ChevronDownIcon, ChevronLeftIcon } from '../components/ui/icons';
-import { cn } from '../components/ui/cn';
-import { useIsTouchMode } from '../state/inputMode';
+import { AppLink as Link } from '../components/ui/AppLink';
+import { Button } from '../components/ui/Button';
+import { DelayedFallback } from '../components/ui/DelayedFallback';
+import { useToast } from '../components/ui/Toast';
+import { ChevronLeftIcon } from '../components/ui/icons';
+import { canEditLessons } from '../course/lessonViewMode';
 import { makeId } from '../db/schema';
 import { generateCards } from '../db/sequenceGeneration';
-import { SEQUENCE_PRESETS, getPreset, presetForSequence } from '../db/sequencePresets';
+import { getPreset, presetForSequence } from '../db/sequencePresets';
 import {
   createSequence,
   deleteSequence,
@@ -50,10 +36,13 @@ import {
   updateSequence,
   type SequenceSnapshot,
 } from '../db/sequenceRepository';
-import { useReturn } from '../utils/editorOrigin';
 import type { SequencePresetId } from '../db/types';
-import { Skeleton } from '../components/ui/Skeleton';
-import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
+import { useEditorKeys } from '../hooks/dialogKeys';
+import { useIsTouchMode } from '../state/inputMode';
+import { useCourse, useLesson, useSequence } from '../state/useCourseData';
+import { useReturn } from '../utils/editorOrigin';
+import { DEFAULT_RECITATION_CHUNK_SIZE, hasStanzas } from './learn/recitation/recitationFlow';
+import { DangerZoneSection } from './settings/DangerZoneSection';
 
 /** Empty items are scaffolding, never content: they are not previewed or saved. */
 function withoutEmptyItems(outline: Outline): Outline {
@@ -342,104 +331,37 @@ export function SequenceEditor() {
       </header>
 
       <div className="flex flex-col gap-5">
-        <SectionCard className="flex flex-col gap-5">
-          <label className={fieldLabelClassName}>
-            Name
-            <Input
-              id="sequence-name"
-              aria-label="Sequence name"
-              autoFocus
-              type="text"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (e.target.value.trim()) setNameError(null);
-              }}
-              aria-invalid={nameError ? 'true' : undefined}
-              aria-describedby={nameError ? 'sequence-name-error' : undefined}
-              placeholder="e.g. The Krebs cycle"
-            />
-            {nameError && (
-              <span
-                id="sequence-name-error"
-                role="alert"
-                className="mt-1 block text-xs font-normal text-negative"
-              >
-                {nameError}
-              </span>
-            )}
-          </label>
+        <SequenceIdentity
+          preset={preset}
+          presetId={presetId}
+          selectPreset={selectPreset}
+          editing={editing}
+          name={name}
+          setName={setName}
+          nameError={nameError}
+          setNameError={setNameError}
+        />
 
-          {!editing ? (
-            <ChipChoice
-              legend="Type"
-              name="sequence-type"
-              value={presetId}
-              options={SEQUENCE_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
-              onChange={(id) => selectPreset(id as SequencePresetId)}
-              hint={preset.description}
-            />
-          ) : (
-            <div>
-              <div className={fieldLabelClassName}>Type</div>
-              <p className="mt-1 text-sm text-ink-soft">{preset.name}</p>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard aria-labelledby="sequence-items-heading">
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2
-              id="sequence-items-heading"
-              className="font-display text-xl font-semibold tracking-tight"
-            >
-              {itemPlural}{' '}
-              <span className="font-body text-sm font-normal tabular-nums text-ink-faint">
-                {saved.items.length}
-              </span>
-            </h2>
-            {!touch && (
-              <p className="text-xs text-ink-faint">
-                Enter for the next {itemTerm}, twice for a new {chunkLabel.toLowerCase()}.
-                Shift+Enter breaks a {itemTerm}.
-              </p>
-            )}
-          </div>
-
-          {usesSpeakers && (
-            <div ref={partRef} className="mb-4">
-              {speakers.length > 0 ? (
-                <ChipChoice
-                  legend="Your part"
-                  name="sequence-part"
-                  value={mySpeaker}
-                  options={speakers.map((speaker) => ({ value: speaker, label: speaker }))}
-                  onChange={(speaker) => {
-                    setMySpeaker(speaker);
-                    setSpeakerError(false);
-                    setSaveError(null);
-                  }}
-                  hint="Only your lines become cards; the others cue them."
-                  invalid={speakerError}
-                />
-              ) : (
-                <p className={fieldHintClassName}>
-                  Type “NAME: line”, or paste a script, and choose your part here.
-                </p>
-              )}
-            </div>
-          )}
-
-          <SequenceOutlineEditor
-            outline={outline}
-            onChange={setOutline}
-            preset={preset}
-            mySpeaker={usesSpeakers ? mySpeaker : undefined}
-            speakers={speakers}
-            showLabels={generateLabelCards}
-            onTabForward={() => saveRef.current?.focus()}
-          />
-        </SectionCard>
+        <SequenceItems
+          itemPlural={itemPlural}
+          itemTerm={itemTerm}
+          chunkLabel={chunkLabel}
+          saved={saved}
+          touch={touch}
+          usesSpeakers={usesSpeakers}
+          partRef={partRef}
+          speakers={speakers}
+          mySpeaker={mySpeaker}
+          setMySpeaker={setMySpeaker}
+          setSpeakerError={setSpeakerError}
+          setSaveError={setSaveError}
+          speakerError={speakerError}
+          outline={outline}
+          setOutline={setOutline}
+          preset={preset}
+          generateLabelCards={generateLabelCards}
+          saveRef={saveRef}
+        />
 
         <Disclosure
           title="Options"
@@ -447,77 +369,21 @@ export function SequenceEditor() {
           open={optionsOpen}
           onToggle={() => setOptionsOpen((open) => !open)}
         >
-          <div className="flex flex-col gap-5">
-            <label className={fieldLabelClassName}>
-              Description
-              <Input
-                aria-label="Sequence description"
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What this sequence covers"
-              />
-            </label>
-            <label className={fieldLabelClassName}>
-              Cue
-              <span className="mt-2 flex flex-wrap items-center gap-2 font-normal text-ink-soft">
-                Show the previous
-                <input
-                  type="number"
-                  aria-label="Cue window"
-                  min={1}
-                  max={Math.max(1, saved.items.length - 1)}
-                  value={cueWindow}
-                  onChange={(e) => setCueWindow(Math.max(1, Number(e.target.value) || 1))}
-                  className={cn(inputFrameClassName, 'min-h-11 w-20 text-center tabular-nums')}
-                />
-                {cueWindow === 1 ? itemTerm : itemPlural.toLowerCase()} before each card
-              </span>
-            </label>
-            {mode === 'lines' && (
-              <label className={fieldLabelClassName}>
-                Learn in
-                <Select
-                  aria-label="Learn in"
-                  aria-describedby="sequence-learn-in-hint"
-                  value={chunkChoice}
-                  onChange={(e) =>
-                    setRecitationChunkSize(
-                      e.target.value === 'stanza' ? undefined : Number(e.target.value),
-                    )
-                  }
-                  className="mt-2 block font-normal"
-                >
-                  {hasStanzas(saved) && <option value="stanza">{chunkLabel.toLowerCase()}s</option>}
-                  {Array.from(
-                    { length: MAX_RECITATION_CHUNK_SIZE - MIN_RECITATION_CHUNK_SIZE + 1 },
-                    (_, i) => MIN_RECITATION_CHUNK_SIZE + i,
-                  ).map((size) => (
-                    <option key={size} value={size}>
-                      {size} {itemPlural.toLowerCase()}
-                    </option>
-                  ))}
-                </Select>
-                <span id="sequence-learn-in-hint" className={fieldHintClassName}>
-                  How many lines to practise together, or your named sections.
-                </span>
-              </label>
-            )}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className={fieldLabelClassName}>Label cards</div>
-                <p className={fieldHintClassName}>
-                  Give {itemPlural.toLowerCase()} a label, such as 11 for sodium, and recall each
-                  from its label too.
-                </p>
-              </div>
-              <Toggle
-                checked={generateLabelCards}
-                onChange={setGenerateLabelCards}
-                ariaLabel="Also generate label to value cards"
-              />
-            </div>
-          </div>
+          <SequenceOptions
+            description={description}
+            setDescription={setDescription}
+            cueWindow={cueWindow}
+            setCueWindow={setCueWindow}
+            saved={saved}
+            itemTerm={itemTerm}
+            itemPlural={itemPlural}
+            mode={mode}
+            chunkChoice={chunkChoice}
+            setRecitationChunkSize={setRecitationChunkSize}
+            chunkLabel={chunkLabel}
+            generateLabelCards={generateLabelCards}
+            setGenerateLabelCards={setGenerateLabelCards}
+          />
         </Disclosure>
 
         <Disclosure
@@ -526,20 +392,7 @@ export function SequenceEditor() {
           open={previewOpen}
           onToggle={() => setPreviewOpen((open) => !open)}
         >
-          {preview.length === 0 ? (
-            <p className="text-sm text-ink-faint">
-              Cards appear here as you add {itemPlural.toLowerCase()}.
-            </p>
-          ) : (
-            <ol className="flex flex-col gap-2">
-              {preview.map((payload, i) => (
-                <li key={i} className="rounded-2xl bg-ink/[0.04] px-4 py-3 text-sm">
-                  <div className="whitespace-pre-wrap text-ink-soft">{payload.front}</div>
-                  <div className="mt-2 font-medium text-ink">{payload.back}</div>
-                </li>
-              ))}
-            </ol>
-          )}
+          <SequencePreview preview={preview} itemPlural={itemPlural} />
         </Disclosure>
 
         {editable && editing && sequence && (
@@ -586,115 +439,6 @@ export function SequenceEditor() {
             {editing ? 'Save changes' : 'Add sequence'}
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/** A labelled row of chips backed by native radios, so arrow keys choose. */
-function ChipChoice({
-  legend,
-  name,
-  value,
-  options,
-  onChange,
-  hint,
-  invalid,
-}: {
-  legend: string;
-  name: string;
-  value: string;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-  hint?: ReactNode;
-  invalid?: boolean;
-}) {
-  return (
-    <fieldset aria-invalid={invalid || undefined}>
-      <legend className={fieldLabelClassName}>{legend}</legend>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {options.map((option) => (
-          <label
-            key={option.value}
-            className={cn(
-              choiceChipClass(option.value === value),
-              'cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent-ink',
-              invalid && 'ring-1 ring-negative/60',
-            )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              checked={option.value === value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-      {hint && <p className={fieldHintClassName}>{hint}</p>}
-    </fieldset>
-  );
-}
-
-/** A compact card whose heading opens its body, with a one-line summary when shut. */
-function Disclosure({
-  title,
-  summary,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  summary: string;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <SectionCard compact className="py-2">
-      <h2>
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={onToggle}
-          className="flex min-h-11 w-full items-center gap-3 text-left"
-        >
-          <span className="font-display text-lg font-semibold tracking-tight">{title}</span>
-          <span className="text-sm tabular-nums text-ink-faint">{summary}</span>
-          <ChevronDownIcon
-            width={16}
-            height={16}
-            className={cn('ml-auto text-ink-faint transition-transform', open && 'rotate-180')}
-          />
-        </button>
-      </h2>
-      <AnimatedDisclosure open={open} innerClassName="pb-4 pt-3">
-        {children}
-      </AnimatedDisclosure>
-    </SectionCard>
-  );
-}
-
-function SequenceEditorSkeleton() {
-  return (
-    <div className={`${COURSE_PAGE_FRAME} pb-10 pt-8`}>
-      <Skeleton className="mb-3 h-11 w-28 rounded-full" />
-      <Skeleton className="mb-8 h-10 w-48" />
-      <div className="space-y-5">
-        <SectionCard className="space-y-5">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-11 w-full rounded-xl" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-11 w-72 max-w-full rounded-full" />
-        </SectionCard>
-        <SectionCard>
-          <Skeleton className="mb-5 h-6 w-48" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </SectionCard>
       </div>
     </div>
   );

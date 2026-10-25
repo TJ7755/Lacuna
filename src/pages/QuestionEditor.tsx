@@ -1,40 +1,31 @@
+import { AnimatePresence, m as motion } from 'motion/react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MissingRecord } from '../components/course/MissingRecord';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
-import { Skeleton } from '../components/ui/Skeleton';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { AppLink as Link } from '../components/ui/AppLink';
-import { MarkSchemeEditor } from '../components/items/MarkSchemeEditor';
-import {
-  NumericAnswerEditor,
-  numericAnswerSpecIsValid,
-} from '../components/items/NumericAnswerEditor';
-import { MarkdownEditor } from '../components/markdown/MarkdownEditor';
-import { QuestionSegmented } from '../components/questions/QuestionSegmented';
 import { GeneratedQuestionConfiguration } from '../components/questions/GeneratedQuestionConfiguration';
+import {
+  QuestionMetadataFields,
+  questionLabelClass as labelClass,
+} from '../components/questions/QuestionMetadataFields';
+import { QuestionSegmented } from '../components/questions/QuestionSegmented';
 import { useCourseQuestionData, useQuestionRecord } from '../components/questions/useQuestionData';
+import { AppLink as Link } from '../components/ui/AppLink';
 import { Button } from '../components/ui/Button';
 import { ConfirmInlineSwap } from '../components/ui/ConfirmInline';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { NavigationGuard } from '../components/ui/NavigationGuard';
-import { TagInput } from '../components/ui/TagInput';
-import { Toggle } from '../components/ui/Toggle';
+import { Skeleton } from '../components/ui/Skeleton';
 import { StepSwap } from '../components/ui/StepSwap';
+import { TagInput } from '../components/ui/TagInput';
 import { useToast } from '../components/ui/Toast';
-import { motionTransition } from '../components/ui/motion';
+import { Toggle } from '../components/ui/Toggle';
 import { ChevronLeftIcon, TrashIcon } from '../components/ui/icons';
-import {
-  FieldError,
-  QuestionMetadataFields,
-  questionLabelClass as labelClass,
-} from '../components/questions/QuestionMetadataFields';
+import { motionTransition } from '../components/ui/motion';
+import { canEditLessons } from '../course/lessonViewMode';
 import { useEditorKeys } from '../hooks/dialogKeys';
-import type { ItemFixture, NumericAnswerSpec } from '../db/types';
 import { compileMarkScheme } from '../items/markSchemeCompiler';
 import { questionGeneratorRegistry } from '../questions/generators';
-import type { GeneratorDescription } from '../questions/generators/contracts';
-import { INTEGER_ROOT_QUADRATIC_GENERATOR_KEY } from '../questions/generators/integerRootQuadratic';
 import {
   createConcept,
   createFixedQuestion,
@@ -43,17 +34,16 @@ import {
   updateFixedQuestion,
   updateGeneratedQuestion,
 } from '../questions/repository';
-import type { QuestionPayload } from '../questions/types';
-import { useCourse, useLessons } from '../state/useCourseData';
-import { canEditLessons } from '../course/lessonViewMode';
 import { speedMultiplier, useMotionSpeed } from '../state/motionSpeed';
+import { useCourse, useLessons } from '../state/useCourseData';
+import { FixedQuestionFields } from './FixedQuestionFields';
 import {
   newQuestionState,
   questionDraftKey,
   questionStateFromRecord,
-  type QuestionAnswerKind,
   useQuestionDraft,
 } from './questionDraft';
+import { fixedPayload, generatedConfigurationErrors } from './questionValidation';
 
 export function QuestionEditor() {
   const { courseId, questionId } = useParams<{ courseId: string; questionId?: string }>();
@@ -355,68 +345,21 @@ export function QuestionEditor() {
 
         <StepSwap stepKey={kind} direction={kind === 'generated' ? 1 : -1} className="space-y-8">
           {kind === 'fixed' ? (
-            <>
-              <div>
-                <MarkdownEditor
-                  label="Prompt"
-                  value={prompt}
-                  onChange={(value) => draft.update({ prompt: value })}
-                  minRows={7}
-                  placeholder="Apply the idea in a concrete problem."
-                  onError={(message) => notify(message, 'negative')}
-                  inputRef={promptRef}
-                  ariaInvalid={errors.prompt ? true : undefined}
-                  ariaDescribedBy={errors.prompt ? 'question-prompt-error' : undefined}
-                />
-                <FieldError id="question-prompt-error" message={errors.prompt} />
-              </div>
-              <div>
-                <div className={labelClass}>Answer type</div>
-                <QuestionSegmented
-                  label="Answer type"
-                  value={answerKind}
-                  onChange={(option) => draft.update({ answerKind: option })}
-                  options={[
-                    { value: 'numeric', label: 'Numeric answer' },
-                    { value: 'working', label: 'Show working' },
-                  ]}
-                />
-              </div>
-              <div ref={answerRef}>
-                <StepSwap stepKey={answerKind} direction={answerKind === 'working' ? 1 : -1}>
-                  {answerKind === 'numeric' ? (
-                    <NumericAnswerEditor
-                      inputRef={numericAnswerRef}
-                      value={numericAnswer}
-                      invalid={Boolean(errors.answer)}
-                      onChange={(value) => draft.update({ numericAnswer: value })}
-                    />
-                  ) : (
-                    <MarkSchemeEditor
-                      value={workingSource}
-                      onChange={(value) => draft.update({ workingSource: value })}
-                      fixtures={workingFixtures}
-                      onFixturesChange={(value) => draft.update({ workingFixtures: value })}
-                    />
-                  )}
-                </StepSwap>
-                <FieldError id="question-answer-error" message={errors.answer} />
-              </div>
-              <div>
-                <MarkdownEditor
-                  label="Worked explanation"
-                  value={explanation}
-                  onChange={(value) => draft.update({ explanation: value })}
-                  minRows={7}
-                  placeholder="Show why the answer follows, not merely what it is."
-                  onError={(message) => notify(message, 'negative')}
-                  inputRef={explanationRef}
-                  ariaInvalid={errors.explanation ? true : undefined}
-                  ariaDescribedBy={errors.explanation ? 'question-explanation-error' : undefined}
-                />
-                <FieldError id="question-explanation-error" message={errors.explanation} />
-              </div>
-            </>
+            <FixedQuestionFields
+              prompt={prompt}
+              explanation={explanation}
+              answerKind={answerKind}
+              numericAnswer={numericAnswer}
+              workingSource={workingSource}
+              workingFixtures={workingFixtures}
+              draft={draft}
+              notify={notify}
+              promptRef={promptRef}
+              answerRef={answerRef}
+              numericAnswerRef={numericAnswerRef}
+              explanationRef={explanationRef}
+              errors={errors}
+            />
           ) : generator ? (
             <GeneratedQuestionConfiguration
               ref={configurationRef}
@@ -512,61 +455,4 @@ export function QuestionEditor() {
       </div>
     </div>
   );
-}
-
-function fixedPayload(
-  answerKind: QuestionAnswerKind,
-  numericAnswer: NumericAnswerSpec,
-  workingCompilation: ReturnType<typeof compileMarkScheme>,
-  fixtures: ItemFixture[],
-): QuestionPayload | null {
-  if (answerKind === 'numeric') {
-    if (!numericAnswerSpecIsValid(numericAnswer)) return null;
-    return { v: 1, kind: 'numeric', answer: numericAnswer };
-  }
-  if (
-    workingCompilation.lines.length === 0 ||
-    workingCompilation.lines.some((line) => line.kind === 'error')
-  )
-    return null;
-  return {
-    v: 1,
-    kind: 'working',
-    scheme: workingCompilation.lines.map((line) => {
-      if (line.kind === 'error') throw new Error('Invalid mark scheme.');
-      return line.value;
-    }),
-    fixtures,
-  };
-}
-
-function generatedConfigurationErrors(
-  generator: GeneratorDescription,
-  configuration: Record<string, string | number | boolean>,
-): Record<string, string> {
-  const errors: Record<string, string> = {};
-  for (const field of generator.configurationFields) {
-    if (field.kind !== 'integer') continue;
-    const value = configuration[field.key];
-    if (
-      typeof value !== 'number' ||
-      !Number.isInteger(value) ||
-      (field.minimum !== undefined && value < field.minimum) ||
-      (field.maximum !== undefined && value > field.maximum)
-    ) {
-      errors[field.key] =
-        field.minimum !== undefined && field.maximum !== undefined
-          ? `Enter a whole number from ${field.minimum} to ${field.maximum}.`
-          : 'Enter a valid whole number.';
-    }
-  }
-  if (
-    generator.key === INTEGER_ROOT_QUADRATIC_GENERATOR_KEY &&
-    !errors.minimumRootMagnitude &&
-    !errors.maximumRootMagnitude &&
-    Number(configuration.minimumRootMagnitude) > Number(configuration.maximumRootMagnitude)
-  ) {
-    errors.minimumRootMagnitude = 'Use a minimum root magnitude no greater than the maximum.';
-  }
-  return errors;
 }
