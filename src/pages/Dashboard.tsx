@@ -5,7 +5,7 @@ import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { PageLoading, PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useDelayedPending } from '../hooks/useDelayedPending';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigation } from 'react-router-dom';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useCourseDashboardData, usePendingUpdateCourseIds } from '../state/useCourseData';
 import { SyncStatus } from '../components/dashboard/SyncStatus';
@@ -65,6 +65,8 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { openStudySheet } = useStudySheet();
   const location = useLocation();
+  const navigation = useNavigation();
+  const destination = navigation.location?.pathname ?? location.pathname;
   const importing = new URLSearchParams(location.search).has('import');
   const [creatingCourse, setCreatingCourse] = useState(false);
   useEffect(() => {
@@ -73,11 +75,13 @@ export function Dashboard() {
       void navigate('/', { replace: true, state: null });
     }
   }, [location.state, navigate]);
-  // Reaching Today ends onboarding, however the learner left it, so a later course never
-  // detours through its last step.
+  // A retained source or exiting Today is not an arrival: first-run navigation may
+  // still be opening onboarding, whose chosen target must survive that hand-off.
   useEffect(() => {
-    if (onboardingPending()) finishOnboarding();
-  }, []);
+    if (location.pathname === '/' && destination === '/' && onboardingPending()) {
+      finishOnboarding();
+    }
+  }, [location.pathname, destination]);
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);

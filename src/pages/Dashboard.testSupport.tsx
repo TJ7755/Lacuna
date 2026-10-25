@@ -4,6 +4,8 @@ import { screen, within } from '@testing-library/react';
 import type { Course } from '../db/types';
 
 export const dashboardState = {
+  mockPathname: '/',
+  mockNavigationPathname: undefined as string | undefined,
   mockCourseDashboardData: undefined as unknown,
   mockPendingUpdateIds: new Set<string>(),
   // The chart's past line needs graded review history; tests supply one per forecast.
@@ -34,7 +36,12 @@ vi.mock('react-router-dom', () => ({
     event.preventDefault();
     mockNavigate(to);
   },
-  useLocation: () => ({ state: null, search: '' }),
+  useLocation: () => ({ pathname: dashboardState.mockPathname, state: null, search: '' }),
+  useNavigation: () => ({
+    location: dashboardState.mockNavigationPathname
+      ? { pathname: dashboardState.mockNavigationPathname }
+      : undefined,
+  }),
   useSearchParams: () => [new URLSearchParams(), vi.fn()],
   Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
     <a href={to}>{children}</a>
@@ -189,6 +196,8 @@ export function setCourseData(courses: Course[] = [mockCourse], options: DataOpt
 }
 
 beforeEach(() => {
+  dashboardState.mockPathname = '/';
+  dashboardState.mockNavigationPathname = undefined;
   mockNavigate.mockClear();
   mockOpenStudySheet.mockClear();
   mockUpdateCourse.mockReset();

@@ -31,7 +31,7 @@ import {
   loadPupilClassPage,
 } from './loaders';
 
-import { loadRouteModule, type RouteLoader } from './routeModule';
+import { loadRouteModule, loadRouteModuleForNavigation, type RouteLoader } from './routeModule';
 
 const PREFETCH_LOADERS: Partial<Record<string, RouteLoader>> = {
   '/analytics': loadAnalytics,
@@ -117,11 +117,17 @@ function prefetchTarget(path: string): { loader: RouteLoader; dataKey?: string }
 }
 
 /** Keep the existing outlet until its destination chunk and supported local reads are ready. */
-export async function prepareRoute(path: string, signal?: AbortSignal): Promise<null> {
+async function prepareTarget(
+  path: string,
+  source: 'intent' | 'navigation',
+  signal?: AbortSignal,
+): Promise<null> {
   try {
     const target = prefetchTarget(path);
     if (!target || signal?.aborted) return null;
-    const module = await loadRouteModule(target.loader);
+    const module = await (source === 'navigation'
+      ? loadRouteModuleForNavigation(target.loader, signal)
+      : loadRouteModule(target.loader));
     if (!signal?.aborted && target.dataKey) await module.preload?.(target.dataKey);
   } catch {
     // Speculation must be retryable. Navigation leaves import recovery and query
@@ -130,7 +136,11 @@ export async function prepareRoute(path: string, signal?: AbortSignal): Promise<
   return null;
 }
 
+export function prepareRoute(path: string, signal?: AbortSignal): Promise<null> {
+  return prepareTarget(path, 'navigation', signal);
+}
+
 /** Start bounded route work while the user is hovering, focusing or pressing its link. */
 export function prefetchRoute(path: string): void {
-  void prepareRoute(path);
+  void prepareTarget(path, 'intent');
 }

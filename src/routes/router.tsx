@@ -1,5 +1,5 @@
 import { type ComponentType, type ReactNode } from 'react';
-import { lazyRouteModule as lazy, loadRouteModule } from './routeModule';
+import { lazyRouteModule as lazy, loadRouteModuleForNavigation } from './routeModule';
 import { prefetchRoute, prepareRoute } from './prefetch';
 import { RoutePrefetchContext } from './RoutePrefetchContext';
 import { createHashRouter, Navigate } from 'react-router-dom';
@@ -117,12 +117,13 @@ export const router = createHashRouter([
     loader: async ({ request }) => {
       const path = new URL(request.url).pathname;
       if (path === '/start') {
-        await loadRouteModule(loadOnboarding).catch(() => undefined);
+        await loadRouteModuleForNavigation(loadOnboarding, request.signal).catch(() => undefined);
         return null;
       }
       return prepareRoute(path, request.signal);
     },
-    shouldRevalidate: () => true,
+    // Query changes belong to the mounted controls; awaiting the same module rolls back typing.
+    shouldRevalidate: ({ currentUrl, nextUrl }) => currentUrl.pathname !== nextUrl.pathname,
     hydrateFallbackElement: null,
     element: (
       <RoutePrefetchContext value={prefetchRoute}>

@@ -12,6 +12,12 @@ import {
 import { describe, expect, it, vi } from 'vitest';
 import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
+import {
+  chooseStudyTarget,
+  chosenStudyTarget,
+  markOnboardingPending,
+  onboardingPending,
+} from '../onboarding/onboardingState';
 
 describe('Dashboard Today queue', () => {
   it('ends a pending onboarding once the learner reaches Today', () => {
@@ -20,6 +26,26 @@ describe('Dashboard Today queue', () => {
     render(<Dashboard />);
     expect(localStorage.getItem('lacuna-onboarding')).toBe('done');
     localStorage.removeItem('lacuna-onboarding');
+  });
+
+  it('keeps the chosen study target while Today is retained behind onboarding navigation', () => {
+    markOnboardingPending();
+    chooseStudyTarget({ mode: 'exam', examDate: 1_000 });
+    dashboardState.mockNavigationPathname = '/start';
+    setCourseData();
+    const view = render(<Dashboard />);
+    expect(onboardingPending()).toBe(true);
+    expect(chosenStudyTarget()).toEqual({ mode: 'exam', examDate: 1_000 });
+
+    // The outgoing page can remain mounted after its destination has committed.
+    dashboardState.mockPathname = '/start';
+    dashboardState.mockNavigationPathname = undefined;
+    view.rerender(<Dashboard />);
+    expect(onboardingPending()).toBe(true);
+    expect(chosenStudyTarget()).toEqual({ mode: 'exam', examDate: 1_000 });
+    view.unmount();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('opens class-code entry from Today', () => {

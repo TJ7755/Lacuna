@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Suspense, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
-import { lazyRouteModule, loadRouteModule } from './routeModule';
+import { lazyRouteModule, loadRouteModule, loadRouteModuleForNavigation } from './routeModule';
 
 const recoverFromChunkFailure = vi.hoisted(() => vi.fn());
 vi.mock('../pwa/staleChunkRecovery', () => ({ recoverFromChunkFailure }));
@@ -55,15 +55,43 @@ describe('route module prefetch', () => {
     expect(loader).toHaveBeenCalledOnce();
   });
 
-  it('allows a failed prefetch to be retried before navigation', async () => {
-    const module = { default: () => <h1>Retried route</h1> };
+  it.each(['intent', 'navigation'] as const)(
+    'allows a later intent prefetch to replace a failed %s import',
+    async (source) => {
+      const module = { default: () => <h1>Retried route</h1> };
+      const loader = vi
+        .fn<() => Promise<typeof module>>()
+        .mockRejectedValueOnce(new Error('Offline'))
+        .mockResolvedValueOnce(module);
+      const failed =
+        source === 'navigation' ? loadRouteModuleForNavigation(loader) : loadRouteModule(loader);
+      await expect(failed).rejects.toThrow('Offline');
+      await loadRouteModule(loader);
+      const Route = lazyRouteModule(loader);
+      render(
+        <Suspense fallback={<p>Loading route</p>}>
+          <Route />
+        </Suspense>,
+      );
+      expect(screen.getByRole('heading', { name: 'Retried route' })).toBeInTheDocument();
+    },
+  );
+  it('discards an import failure delivered after its navigation was aborted', async () => {
     const loader = vi
-      .fn<() => Promise<typeof module>>()
-      .mockRejectedValueOnce(new Error('Offline'))
-      .mockResolvedValueOnce(module);
-    await expect(loadRouteModule(loader)).rejects.toThrow('Offline');
-    await expect(loadRouteModule(loader)).resolves.toBe(module);
-    expect(loader).toHaveBeenCalledTimes(2);
+      .fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module: /page.js'))
+      .mockResolvedValue({ default: () => <h1>Later visit</h1> });
+    const controller = new AbortController();
+    const obsolete = loadRouteModuleForNavigation(loader, controller.signal);
+    controller.abort();
+    await expect(obsolete).rejects.toThrow('Failed to fetch');
+    const Route = lazyRouteModule(loader);
+    render(
+      <Suspense fallback={<p>Loading route</p>}>
+        <Route />
+      </Suspense>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Later visit' })).toBeInTheDocument();
   });
 });
 

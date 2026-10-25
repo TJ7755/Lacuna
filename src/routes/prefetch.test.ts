@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement, Suspense } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom';
 import type { RouteLoader } from './routeModule';
 import { ErrorBoundary } from '../components/layout/ErrorBoundary';
@@ -50,7 +50,8 @@ beforeEach(() => {
     loader.mockReset();
     loader.mockResolvedValue({ default: () => null });
   }
-  recoverFromChunkFailure.mockClear();
+  recoverFromChunkFailure.mockReset();
+  recoverFromChunkFailure.mockResolvedValue(false);
 });
 
 describe('prefetchRoute', () => {
@@ -209,13 +210,54 @@ it('waits for the course path presentation read before replacing the current out
   router.dispose();
 });
 
-it('leaves failed speculative imports with lazy route recovery rather than a fatal router error', async () => {
+it('hands a failed navigation import to recovery without retrying it under the stale shell', async () => {
   const { prepareRoute } = await import('./prefetch');
+  const { lazyRouteModule } = await import('./routeModule');
+  loaders.loadHelpPage
+    .mockRejectedValueOnce(new TypeError('Failed to fetch dynamically imported module: /help.js'))
+    .mockResolvedValue({ default: () => createElement('h1', null, 'Help ready') });
+  recoverFromChunkFailure.mockResolvedValue(true);
+  const Help = lazyRouteModule(loaders.loadHelpPage);
+  const router = createMemoryRouter([
+    {
+      loader: ({ request }) => prepareRoute(new URL(request.url).pathname, request.signal),
+      shouldRevalidate: () => true,
+      hydrateFallbackElement: null,
+      element: createElement(Outlet),
+      children: [
+        { path: '/', element: createElement('button', null, 'Current route') },
+        {
+          path: '/help',
+          element: createElement(
+            Suspense,
+            { fallback: 'Loading destination' },
+            createElement(Help),
+          ),
+        },
+      ],
+    },
+  ]);
+  try {
+    render(createElement(RouterProvider, { router }));
+    await screen.findByRole('button', { name: 'Current route' });
+    await act(async () => {
+      void router.navigate('/help');
+    });
+    await waitFor(() => expect(recoverFromChunkFailure).toHaveBeenCalled());
+    expect(screen.getByText('Loading destination')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Help ready' })).not.toBeInTheDocument();
+  } finally {
+    router.dispose();
+  }
+});
+
+it('leaves failed speculative imports with lazy route recovery rather than a fatal router error', async () => {
+  const { prepareRoute, prefetchRoute } = await import('./prefetch');
   const { lazyRouteModule } = await import('./routeModule');
   loaders.loadHelpPage.mockRejectedValue(
     new TypeError('Failed to fetch dynamically imported module: /help.js'),
   );
-  await prepareRoute('/help');
+  await act(async () => prefetchRoute('/help'));
   expect(recoverFromChunkFailure).not.toHaveBeenCalled();
   const Help = lazyRouteModule(loaders.loadHelpPage);
   const router = createMemoryRouter(
