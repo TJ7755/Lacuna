@@ -82,6 +82,7 @@ async function expectEqualResultWidths(table: Locator, expectedWidth?: number) {
     .evaluateAll((cells) => cells.map((cell) => cell.clientWidth));
   expect(widths.length).toBeGreaterThan(0);
   expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
+  expect(Math.max(...widths)).toBeLessThanOrEqual(120);
   if (expectedWidth !== undefined)
     for (const width of widths) expect(Math.abs(width - expectedWidth)).toBeLessThanOrEqual(1);
   return widths[0];
@@ -92,6 +93,7 @@ for (const viewport of [
   { width: 390, height: 844, theme: 'dark' },
   { width: 1280, height: 900, theme: 'light' },
   { width: 390, height: 844, theme: 'light' },
+  { width: 1920, height: 1080, theme: 'light' },
 ]) {
   test(`explores fictional class evidence without setup, relay or persistence at ${viewport.width}px in ${viewport.theme} mode`, async ({
     page,
