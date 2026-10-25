@@ -58,7 +58,10 @@ export function QuestionSetOverview() {
             <h1 className="font-display text-4xl font-semibold tracking-tight">
               {retainedAttempts[0].receipt.title}
             </h1>
-            <p className="mt-2 text-sm text-ink-faint">Set removed</p>
+            <p className="mt-2 text-sm text-ink-soft">
+              This set was removed. Your saved attempts and their original questions are still
+              available below.
+            </p>
           </div>
         </header>
         <SectionCard className="px-5 pb-6 pt-6 md:px-7 md:pt-7" aria-labelledby="attempts-heading">
@@ -95,52 +98,56 @@ export function QuestionSetOverview() {
             {marks} {marks === 1 ? 'mark' : 'marks'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <PillToggleGroup
-            label="Attempt mode"
-            size="sm"
-            options={MODE_OPTIONS}
-            value={mode}
-            onChange={setMode}
-          />
-          <Button
-            variant="primary"
-            size="lg"
-            hoverScale={false}
-            disabled={starting || course.archived}
-            onClick={() => {
-              if (unfinished) {
-                void openAttempt(unfinished.id);
-                return;
-              }
-              setStarting(true);
-              setError('');
-              void startQuestionSetAttempt(setId!, mode)
-                .then((attempt) => openAttempt(attempt.id))
-                .catch((cause) => {
-                  setError(
-                    cause instanceof Error ? cause.message : 'Could not start this attempt.',
-                  );
-                  setStarting(false);
-                });
-            }}
+        {canEditLessons(course) && resolveLessonViewMode(course) === 'edit' && !course.archived && (
+          <Link
+            className={buttonClassName('ghost', 'md')}
+            state={origin}
+            to={`/course/${courseId}/question-sets/${setId}/edit`}
           >
-            {unfinished ? 'Resume' : starting ? 'Starting…' : 'Start'}
-            <ArrowRightIcon aria-hidden="true" />
-          </Button>
-          {canEditLessons(course) &&
-            resolveLessonViewMode(course) === 'edit' &&
-            !course.archived && (
-              <Link
-                className={buttonClassName('secondary', 'lg')}
-                state={origin}
-                to={`/course/${courseId}/question-sets/${setId}/edit`}
-              >
-                Edit
-              </Link>
-            )}
-        </div>
+            Edit
+          </Link>
+        )}
       </header>
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {unfinished ? (
+            <p className="text-sm text-ink-soft">
+              {unfinished.mode === 'paper' ? 'Paper attempt' : 'Practice attempt'}
+            </p>
+          ) : (
+            <PillToggleGroup
+              label="Attempt mode"
+              size="sm"
+              options={MODE_OPTIONS}
+              value={mode}
+              onChange={setMode}
+            />
+          )}
+        </div>
+        <Button
+          variant="primary"
+          size="lg"
+          hoverScale={false}
+          disabled={starting || course.archived}
+          onClick={() => {
+            if (unfinished) {
+              void openAttempt(unfinished.id);
+              return;
+            }
+            setStarting(true);
+            setError('');
+            void startQuestionSetAttempt(setId!, mode)
+              .then((attempt) => openAttempt(attempt.id))
+              .catch((cause) => {
+                setError(cause instanceof Error ? cause.message : 'Could not start this attempt.');
+                setStarting(false);
+              });
+          }}
+        >
+          {unfinished ? 'Resume' : starting ? 'Starting…' : 'Start'}
+          <ArrowRightIcon aria-hidden="true" />
+        </Button>
+      </div>
       {error && (
         <p className="qs-error" role="alert">
           {error}
@@ -161,13 +168,13 @@ export function QuestionSetOverview() {
                 return (
                   <li
                     key={row.id}
-                    className="flex min-w-0 items-center gap-[18px] rounded-2xl border border-transparent px-3 py-3.5"
+                    className="flex min-w-0 items-center gap-3 px-0 py-3.5"
                     style={{ marginLeft: row.depth * 20 }}
                   >
                     <span
                       className={
                         row.depth === 0
-                          ? 'grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink text-sm font-bold tabular-nums'
+                          ? 'w-9 shrink-0 text-center text-sm font-semibold text-ink-soft tabular-nums'
                           : 'w-9 shrink-0 text-center text-sm text-ink-soft'
                       }
                     >
@@ -175,7 +182,7 @@ export function QuestionSetOverview() {
                     </span>
                     <MarkdownView
                       source={row.node.prompt}
-                      className={`qs-question-line min-w-0 flex-1 ${row.depth ? 'text-sm' : 'font-bold'}`}
+                      className={`qs-question-line min-w-0 flex-1 ${row.depth ? 'text-sm' : 'font-medium'}`}
                     />
                     <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint tabular-nums">
                       {marks} {marks === 1 ? 'mark' : 'marks'}

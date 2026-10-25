@@ -1,4 +1,5 @@
 import 'fake-indexeddb/auto';
+import { domAnimation, LazyMotion } from 'motion/react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -61,7 +62,14 @@ function open(courseId: string) {
     ],
     { initialEntries: [`/course/${courseId}/question-sets/cells`] },
   );
-  return { ...render(<RouterProvider router={router} />), router };
+  return {
+    ...render(
+      <LazyMotion features={domAnimation}>
+        <RouterProvider router={router} />
+      </LazyMotion>,
+    ),
+    router,
+  };
 }
 beforeEach(async () => {
   db.close();
@@ -87,7 +95,7 @@ describe('QuestionSetOverview', () => {
   });
 
   it.each(['practice', 'paper'] as const)(
-    'starts the chosen %s mode and preserves the feedback descriptions',
+    'starts the chosen %s mode without redundant visible feedback copy',
     async (mode) => {
       const { course } = await fixture();
       const { router } = open(course.id);
@@ -96,6 +104,9 @@ describe('QuestionSetOverview', () => {
       const paper = within(group).getByRole('button', { name: 'Paper' });
       expect(practice).toHaveAccessibleDescription('Feedback after each question');
       expect(paper).toHaveAccessibleDescription('Feedback at the end');
+      expect(
+        screen.queryByText(/^Feedback (after each question|at the end)$/),
+      ).not.toBeInTheDocument();
       fireEvent.click(mode === 'paper' ? paper : practice);
       expect(mode === 'paper' ? paper : practice).toHaveAttribute('aria-pressed', 'true');
       fireEvent.click(screen.getByRole('button', { name: 'Start' }));
@@ -149,6 +160,8 @@ describe('QuestionSetOverview', () => {
       const { router } = open(course.id);
       const resume = await screen.findByRole('button', { name: 'Resume' });
       expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: 'Attempt mode' })).not.toBeInTheDocument();
+      expect(screen.getByText('Paper attempt')).toBeVisible();
       fireEvent.click(resume);
       await waitFor(() =>
         expect(router.state.location.pathname).toContain(`/attempts/${latest.id}`),
@@ -179,8 +192,11 @@ describe('QuestionSetOverview', () => {
     });
     open(course.id);
     const attempts = await screen.findByRole('region', { name: 'Attempts' });
-    expect(within(attempts).getAllByText('2 / 4')).toHaveLength(3);
-    expect(within(attempts).getByText('Knowledge')).toBeVisible();
+    expect(within(attempts).getByText('1 Jan 1970')).toBeVisible();
+    fireEvent.click(within(attempts).getByRole('button', { name: 'Evidence details' }));
+    expect(within(attempts).getAllByText('2 / 4')).toHaveLength(2);
+    expect(within(attempts).getByText('2 / 4 marks')).toBeVisible();
+    await waitFor(() => expect(within(attempts).getByText('Knowledge')).toBeVisible());
     expect(within(attempts).getByRole('heading', { name: 'Recorded marks' })).toBeVisible();
     expect(
       within(attempts).queryByRole('group', { name: 'Evidence attempts' }),

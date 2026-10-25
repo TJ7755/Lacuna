@@ -1,8 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { domAnimation, LazyMotion } from 'motion/react';
+import type { ReactNode } from 'react';
+import { fireEvent, render as renderView, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { QuestionSetRecord } from '../../questions/questionSetCodec';
 import type { QuestionSetAttemptRecord } from '../../questions/questionSetAttempts';
 import { QuestionSetEvidencePanel } from './QuestionSetEvidencePanel';
+
+function render(children: ReactNode) {
+  return renderView(<LazyMotion features={domAnimation}>{children}</LazyMotion>);
+}
 
 function content(): QuestionSetRecord {
   return {
@@ -98,7 +104,7 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.queryByText('0 / 4')).not.toBeInTheDocument();
   });
 
-  it('shows resolved totals, unresolved marks and available dimensions inline', () => {
+  it('shows resolved totals and discloses unresolved marks and available dimensions', async () => {
     const first = attempt(
       'attempt-1',
       10,
@@ -123,7 +129,9 @@ describe('QuestionSetEvidencePanel', () => {
     expect(
       screen.queryByText(/Self-marked|assisted|Submitted answers only|Coverage records/),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('2 of 2 concepts assessed')).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Evidence details' }));
+    await waitFor(() => expect(screen.getByText('2 of 2 concepts assessed')).toBeVisible());
     expect(screen.getByText('4 / 6')).toBeInTheDocument();
     const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
     expect(recordedMarks).not.toBeNull();
@@ -134,7 +142,7 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.queryByText('Mixed')).not.toBeInTheDocument();
   });
 
-  it('filters first-recorded and repeated partitions accessibly', () => {
+  it('filters first-recorded and repeated partitions accessibly', async () => {
     const first = attempt('attempt-1', 10, [
       { allocationId: 'knowledge', status: 'awarded', marks: 0 },
       { allocationId: 'application', status: 'unsure' },
@@ -147,26 +155,48 @@ describe('QuestionSetEvidencePanel', () => {
     ]);
     render(<QuestionSetEvidencePanel content={content()} attempts={[repeated, first]} />);
 
+    const disclosure = screen.getByRole('button', { name: 'Evidence details' });
+    expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
+    fireEvent.click(disclosure);
     expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'First recorded' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Repeated' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'First recorded' }));
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
-    expect(screen.getByText('0 / 1')).toBeInTheDocument();
-    const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
-    expect(recordedMarks).not.toBeNull();
-    expect(within(recordedMarks!).getByText(/2 marks unresolved/i)).toBeInTheDocument();
+    const recordedMarks = screen.getByRole('region', { name: 'Recorded marks' });
+    expect(within(recordedMarks).getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getAllByRole('definition').map((element) => element.textContent)).toEqual([
+      '0 / 1',
+      'Not marked yet2 marks unresolved',
+      '1 / 1',
+    ]);
+    expect(recordedMarks).toHaveTextContent('2 marks unresolved');
 
     fireEvent.click(screen.getByRole('button', { name: 'Repeated' }));
     expect(screen.getByText('3 / 4')).toBeInTheDocument();
-    expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('definition').map((element) => element.textContent)).toEqual([
+      '1 / 1',
+      '2 / 2',
+      '0 / 1',
+    ]);
+    await waitFor(() => expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument());
+    fireEvent.click(disclosure);
+    expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
+    expect(screen.getByText('Repeated attempts')).toBeVisible();
+    fireEvent.click(disclosure);
+    expect(screen.getByRole('button', { name: 'Repeated' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('3 / 4')).toBeVisible();
   });
 });
 
 it('shows unresolved marks without recording them as zero and hides filters for one attempt', () => {
   const row = attempt('mark-me', 20, []);
   render(<QuestionSetEvidencePanel content={content()} attempts={[row]} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Evidence details' }));
   expect(screen.getAllByText('Not marked yet')).toHaveLength(4);
   expect(screen.getByText('4 marks unresolved')).toBeInTheDocument();
   expect(screen.getByText('0 of 2 concepts assessed')).toBeInTheDocument();
@@ -188,7 +218,7 @@ it('excludes unrelated sets and courses and hides unlinked concept coverage', ()
   expect(screen.queryByText(/concepts assessed/)).not.toBeInTheDocument();
 });
 
-it('omits dimensions without submitted marks', () => {
+it('omits dimensions without submitted marks', async () => {
   const set = content();
   set.questions[0].answer!.allocations = [set.questions[0].answer!.allocations[0]];
   const row = attempt(
@@ -198,7 +228,8 @@ it('omits dimensions without submitted marks', () => {
     { receipt: set },
   );
   render(<QuestionSetEvidencePanel content={set} attempts={[row]} />);
-  expect(screen.getByText('Knowledge')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Evidence details' }));
+  await waitFor(() => expect(screen.getByText('Knowledge')).toBeVisible());
   expect(screen.queryByText('Application')).not.toBeInTheDocument();
   expect(screen.queryByText('Exam execution')).not.toBeInTheDocument();
   expect(screen.queryByText('Mixed')).not.toBeInTheDocument();
