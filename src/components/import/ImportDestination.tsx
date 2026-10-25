@@ -6,13 +6,18 @@ import { CourseStudyTarget } from '../course/CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import { canEditLessons } from '../../course/lessonViewMode';
 import { Select } from '../ui/Select';
+import { chosenStudyTarget } from '../../onboarding/onboardingState';
 
 export function useImportDestination() {
   const [courseId, setCourseId] = useState('');
   const [lessonId, setLessonId] = useState('');
   const [title, setTitle] = useState('');
-  const [mode, setMode] = useState<CourseSchedulingMode>('steady');
-  const [examDate, setExamDate] = useState(defaultExamDate);
+  const [mode, setMode] = useState<CourseSchedulingMode>(
+    () => chosenStudyTarget()?.mode ?? 'steady',
+  );
+  const [examDate, setExamDate] = useState(
+    () => chosenStudyTarget()?.examDate ?? defaultExamDate(),
+  );
   const [validDate, setValidDate] = useState(true);
   const [timeZone] = useState(getLocalTimeZone);
   const courses = useCourses();

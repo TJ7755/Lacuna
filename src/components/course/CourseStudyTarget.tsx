@@ -21,15 +21,20 @@ export function StudyTargetTiles({
   value,
   onChange,
   disabled,
+  wording,
 }: {
   name: string;
   value: CourseSchedulingMode | null | undefined;
   onChange: (mode: CourseSchedulingMode) => void;
   disabled?: boolean;
+  /** Replaces the label and detail of each tile, for places that avoid scheduling terms. */
+  wording?: Record<CourseSchedulingMode, { label: string; detail: string }>;
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      {TARGETS.map(({ value: mode, label, detail, Icon }) => {
+      {TARGETS.map((target) => {
+        const { value: mode, Icon } = target;
+        const { label, detail } = wording?.[mode] ?? target;
         const selected = value === mode;
         return (
           <label

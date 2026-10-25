@@ -17,6 +17,7 @@ import { Field, Input } from '../ui/Field';
 import { normaliseShortClassCode } from '../../insights/classCode';
 import { countOf } from '../../utils/plural';
 import { LIBRARY_ORIGIN } from '../../config/origins';
+import { onboardingDestination } from '../../onboarding/onboardingState';
 
 type Source = 'class' | 'lacuna' | 'anki' | 'text';
 const sources = [
@@ -266,7 +267,7 @@ export function ImportPanel({
                 <SharedCourseImport
                   onBusyChange={setBusy}
                   initialFile={file}
-                  onImported={(id) => void navigate(`/course/${id}`)}
+                  onImported={(id) => void navigate(onboardingDestination(`/course/${id}`))}
                 />
               ) : (
                 <CardImportDialog
@@ -291,7 +292,9 @@ export function ImportPanel({
                     const result = await importCardsToDestination(draft.destination, content);
                     notify(`${countOf(result.count, 'card')} imported.`, 'positive');
                     void navigate(
-                      `/course/${result.courseId}${result.lesson ? `/lesson/${result.lesson.id}` : ''}`,
+                      onboardingDestination(
+                        `/course/${result.courseId}${result.lesson ? `/lesson/${result.lesson.id}` : ''}`,
+                      ),
                     );
                   }}
                 />

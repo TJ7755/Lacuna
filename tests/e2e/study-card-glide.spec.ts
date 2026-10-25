@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseScheduledStudy, createCourse } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, createCourse, skipOnboarding } from './fixtures/lacunaApp';
 
 test.use({ hasTouch: true });
 
@@ -7,7 +7,7 @@ async function startStudy(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await skipOnboarding(page);
   await createCourse(page, 'Card glide');
   await page.getByRole('button', { name: 'Edit mode' }).click();
   for (const front of ['Glide one', 'Glide two', 'Glide three']) {

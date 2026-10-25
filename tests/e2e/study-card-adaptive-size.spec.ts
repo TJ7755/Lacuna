@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { Card, Lesson } from '../../src/db/types';
-import { createCourse } from './fixtures/lacunaApp';
+import { createCourse, skipOnboarding } from './fixtures/lacunaApp';
 
 const directory = 'artifacts/study-card-adaptive-size';
 const kinds = ['short', 'medium', 'long', 'occlusion', 'short-return'];
@@ -10,7 +10,7 @@ async function prepareSession(page: Page) {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
+  await skipOnboarding(page);
   await createCourse(page, 'Adaptive cards');
   const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
   await page.getByRole('button', { name: 'Edit mode' }).click();

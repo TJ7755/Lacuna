@@ -32,7 +32,13 @@ import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
 import { UploadIcon, CameraIcon, CloseIcon } from '../ui/icons';
-import { defaultExamDate, formatDate, formatDateTime, getLocalTimeZone } from '../../utils/datetime';
+import { chosenStudyTarget } from '../../onboarding/onboardingState';
+import {
+  defaultExamDate,
+  formatDate,
+  formatDateTime,
+  getLocalTimeZone,
+} from '../../utils/datetime';
 import { CourseStudyTarget } from '../course/CourseStudyTarget';
 
 /** A decoded, not-yet-confirmed import. `merge` is present when the payload's lineage
@@ -79,16 +85,18 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     ? (final?.e ?? payload.course?.e)
     : undefined;
   const timeZone = final?.tz ?? getLocalTimeZone();
+  const chosen = chosenStudyTarget();
   return {
     summary,
     raw,
     scheduling: payload.course
       ? {
-          mode: null,
-          examDate: suggestedDate ?? defaultExamDate(),
+          mode: chosen?.mode ?? null,
+          examDate: suggestedDate ?? chosen?.examDate ?? defaultExamDate(),
           timeZone,
           valid: true,
-          suggestion: suggestedDate === undefined ? undefined : formatDateTime(suggestedDate, timeZone),
+          suggestion:
+            suggestedDate === undefined ? undefined : formatDateTime(suggestedDate, timeZone),
         }
       : undefined,
   };
@@ -258,7 +266,8 @@ export function SharedCourseImport({
         Object.entries(changes).every(
           ([key, value]) => scheduling[key as keyof typeof scheduling] === value,
         )
-      ) return current;
+      )
+        return current;
       return { ...current, scheduling: { ...scheduling, ...changes } };
     });
   }
@@ -473,8 +482,8 @@ export function SharedCourseImport({
                     {pending.scheduling.suggestion && (
                       <>Teacher suggests {pending.scheduling.suggestion}. </>
                     )}
-                    Choose Exam date to confirm or change your date, or Steady retention for no fixed
-                    exam. Your choice stays yours when the teacher updates this course.
+                    Choose Exam date to confirm or change your date, or Steady retention for no
+                    fixed exam. Your choice stays yours when the teacher updates this course.
                   </p>
                   <CourseStudyTarget
                     schedulingMode={pending.scheduling.mode}

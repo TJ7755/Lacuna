@@ -13,6 +13,7 @@ export function SessionSegments({
   value,
   label,
   m,
+  noun = 'Card',
 }: {
   cardIds: string[];
   outcomes: Map<string, SessionCardOutcome>;
@@ -20,6 +21,8 @@ export function SessionSegments({
   value: number;
   label: string;
   m: number;
+  /** What each segment stands for, in the spoken position. */
+  noun?: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -27,7 +30,7 @@ export function SessionSegments({
   const x = useMotionValue(0);
   const currentIndex = currentCardIds.length === 0 ? -1 : cardIds.indexOf(currentCardIds[0]);
   const progressAnnouncement =
-    currentIndex >= 0 ? `Card ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
+    currentIndex >= 0 ? `${noun} ${currentIndex + 1} of ${cardIds.length}` : 'Session complete';
   const { size, start, segmentWidth, gap } = sessionSegmentWindow(
     cardIds.length,
     currentCardIds.length === 0 ? cardIds.length - 1 : currentIndex,

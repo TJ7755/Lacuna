@@ -18,6 +18,7 @@ import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { consumeLandingHandover } from './landingHandover';
+import { markOnboardingPending, onboardingPending } from './onboarding/onboardingState';
 import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
 import { AiSessionProvider } from './ai/session/AiSessionContext';
@@ -125,7 +126,9 @@ const DesktopUpdateController = lazy(() =>
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
   // through first-run setup, including course sharing and material import.
-  return /^#\/(?:welcome|landing|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
+  return /^#\/(?:welcome|landing|start|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(
+    hash,
+  );
 }
 
 export function App() {
@@ -186,11 +189,17 @@ export function App() {
         // The first-run checks load only while that work remains.
         if (seedWorkPending()) {
           const { isFirstRun, settleFirstRun } = await import('./db/seed');
-          if ((await isFirstRun()) && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
+          const firstRun = await isFirstRun();
+          if (firstRun && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
             window.location.hash = '#/welcome';
           }
 
           await settleFirstRun();
+          if (firstRun) markOnboardingPending();
+        }
+        // A new learner who chose to enter starts with onboarding rather than an empty Today.
+        if (enteredFromLanding && onboardingPending() && /^#?\/?$/.test(window.location.hash)) {
+          window.location.hash = '#/start';
         }
       } catch (error) {
         if (import.meta.env.DEV) {

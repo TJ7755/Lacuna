@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipOnboarding } from './fixtures/lacunaApp';
 
 const CHANNEL_ID = '0123456789abcdef0123456789abcdef';
 const WRITE_TOKEN = 'ab'.repeat(32);
@@ -49,8 +50,7 @@ async function openSeededDashboard(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await skipOnboarding(page);
 }
 
 test('first-device sync setup completes against a stubbed relay', async ({ page }) => {

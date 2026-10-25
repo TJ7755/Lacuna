@@ -75,6 +75,9 @@ export const loadMcpBridgeController = () =>
     default: module.McpBridgeController,
   }));
 
+export const loadOnboarding = () =>
+  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding }));
+
 export const loadLanding = () =>
   import('../pages/Landing').then((module) => ({ default: module.Landing }));
 
@@ -84,10 +87,17 @@ export const loadImportPanel = () =>
 export const loadShareLinkPage = () =>
   import('../pages/ShareLinkPage').then((module) => ({ default: module.ShareLinkPage }));
 
-export const loadQuestionSetEditor = () => import('../pages/QuestionSetEditor').then(module => ({ default: module.QuestionSetEditor }));
-export const loadQuestionSetOverview = () => import('../pages/QuestionSetOverview').then(module => ({ default: module.QuestionSetOverview }));
+export const loadQuestionSetEditor = () =>
+  import('../pages/QuestionSetEditor').then((module) => ({ default: module.QuestionSetEditor }));
+export const loadQuestionSetOverview = () =>
+  import('../pages/QuestionSetOverview').then((module) => ({
+    default: module.QuestionSetOverview,
+  }));
 
-export const loadQuestionSetPractice = () => import('../pages/QuestionSetPractice').then(module => ({ default: module.QuestionSetPractice }));
+export const loadQuestionSetPractice = () =>
+  import('../pages/QuestionSetPractice').then((module) => ({
+    default: module.QuestionSetPractice,
+  }));
 
 export const loadPupilClassPage = () =>
   import('../pages/PupilClassPage').then((module) => ({ default: module.PupilClassPage }));

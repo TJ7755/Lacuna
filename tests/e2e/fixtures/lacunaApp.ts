@@ -11,7 +11,14 @@ export async function enterFreshLacuna(page: Page) {
   await page.goto('/');
   await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page).toHaveURL(/\/$/);
+  await skipOnboarding(page);
+}
+
+/** A fresh install starts with onboarding; Exit leaves it for an empty Today. */
+export async function skipOnboarding(page: Page) {
+  await expect(page).toHaveURL(/#\/start$/);
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await expect(page).toHaveURL(/#\/$/);
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
 }
 
