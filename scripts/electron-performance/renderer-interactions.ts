@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { importWelcomeCourse } from '../../tests/e2e/fixtures/lacunaApp';
 import type {
   BrowserProbeResult,
   InteractionScenario,
@@ -28,11 +29,13 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
   }
   await dashboard.waitFor({ state: 'visible' });
   await page.waitForFunction(() => window.location.hash === '#/' || window.location.hash === '');
-  await page
+  const welcome = page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-    .first()
-    .waitFor({ state: 'visible' });
+    .first();
+  // New installs start empty, so a fresh profile gets the Welcome course from its fixture.
+  if (!(await welcome.isVisible().catch(() => false))) await importWelcomeCourse(page);
+  await welcome.waitFor({ state: 'visible' });
   await twoAnimationFrames(page);
 }
 

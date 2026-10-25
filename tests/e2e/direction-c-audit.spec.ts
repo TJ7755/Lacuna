@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('Progress fits a phone, with today in view on the 30-day strip', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/analytics');
   const strip = page.getByRole('grid', { name: 'Review activity over the last 30 days' });
   await expect(strip).toBeVisible();
@@ -31,7 +31,7 @@ test('Today keeps New course and Import together beneath its counts on a phone',
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const main = page.locator('main');
   const importer = main.getByRole('button', { name: 'Import', exact: true });
   await expect(importer).toBeVisible();
@@ -57,7 +57,7 @@ test('Today keeps New course and Import together beneath its counts on a phone',
 test('card row actions meet the 44px target on a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -80,7 +80,7 @@ test('card row actions meet the 44px target on a phone', async ({ page }) => {
 test('controls on phone pages reach the 44px target', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -162,7 +162,7 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
 test('the course bar stays at the top while a course page scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

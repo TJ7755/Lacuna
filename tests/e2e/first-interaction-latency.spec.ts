@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Request } from '@playwright/test';
 import { measurePointerInteraction } from './fixtures/interactionPerformance';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 const CHUNK_DELAY_MS = 400;
 const PREFETCH_SETTLE_MS = 650;
@@ -94,10 +95,7 @@ test('prefetches the Cards chunk before the first intended click', async ({ page
 });
 
 async function openSeededCourse(page: Page): Promise<void> {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

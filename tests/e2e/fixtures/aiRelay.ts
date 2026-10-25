@@ -4,6 +4,7 @@ import { createHandler } from '../../../relay/src/relay.js';
 import { MemoryStore } from '../../../relay/src/store.js';
 import { TerminalAiClient } from '../../../tooling/lacuna-ai-mcp/src/client.js';
 import { HttpTerminalRelayTransport } from '../../../tooling/lacuna-ai-mcp/src/relayTransport.js';
+import { importWelcomeCourse } from './lacunaApp';
 
 const RELAY_URL = 'https://relay.getlacuna.app';
 const PAIRING_CODE_RE = /\b[A-HJ-KM-NP-TV-Z2-9]{4}(?:-[A-HJ-KM-NP-TV-Z2-9]{4}){4}\b/;
@@ -22,6 +23,7 @@ export interface RelayRouteOptions {
 export async function pairBrowserAndTerminal(
   page: Page,
   routeOptions: RelayRouteOptions = {},
+  { welcomeCourse = false }: { welcomeCourse?: boolean } = {},
 ): Promise<{
   composer: Locator;
   terminal: TerminalAiClient;
@@ -34,6 +36,7 @@ export async function pairBrowserAndTerminal(
 
   await page.goto('/');
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+  if (welcomeCourse) await importWelcomeCourse(page);
   await page.goto('/#/settings#settings-ai');
   await page.getByRole('switch', { name: 'Enable AI' }).click();
   await page.getByRole('button', { name: 'AI', exact: true }).first().click();

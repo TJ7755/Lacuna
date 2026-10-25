@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 // Regressions for #443: narrow, Larger-text diagram authoring keeps its dock inside the
 // page frame, its focused fields clear of fixed chrome, and focus after deleting a region.
@@ -11,7 +11,7 @@ async function openNewOcclusion(page: Page, width: number) {
     localStorage.setItem('lacuna-font-scale', '1.3');
     localStorage.setItem('lacuna-font-scale-user-set', '1');
   });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

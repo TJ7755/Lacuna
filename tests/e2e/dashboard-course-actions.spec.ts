@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('course actions work on first use after going offline', async ({ page, context }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
   await expect
     .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)))
@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
   test(`Today course actions preserve keyboard focus at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const queue = page.getByRole('region', { name: 'Today, most urgent first' });
     const course = queue.getByRole('button', { name: 'Welcome to Lacuna', exact: true });
     const more = queue.getByRole('button', { name: 'More for Welcome to Lacuna' });
@@ -65,7 +65,7 @@ for (const width of [390, 1440]) {
   test(`Sidebar ordering targets fit enlarged text at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page.goto('/#/settings');
     await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
     await page.getByRole('button', { name: /^Appearance & access/ }).click();

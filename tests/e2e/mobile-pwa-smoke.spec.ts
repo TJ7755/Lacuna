@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { chooseScheduledStudy, enterFreshLacuna } from './fixtures/lacunaApp';
+import { chooseScheduledStudy, enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function createMobileCourse(page: Page, courseName: string) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
@@ -27,11 +27,13 @@ async function waitForServiceWorkerControl(page: Page) {
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;
   });
-  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null))
+    .toBe(true);
 }
 
 test('opens course navigation and returns to the dashboard', async ({ page }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -45,7 +47,7 @@ test('opens course navigation and returns to the dashboard', async ({ page }) =>
 });
 
 test('studies a card with touch controls', async ({ page }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await createMobileCourse(page, 'Mobile study');
   await addCard(page, 'Mobile study front', 'Mobile study back');
   await page
@@ -54,29 +56,49 @@ test('studies a card with touch controls', async ({ page }) => {
     .click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
-  await expect(page.locator('[data-study-face="front"]').getByText('Mobile study front')).toBeVisible();
-  await page.getByRole('button', { name: /Show answer/i }).last().tap();
-  await expect(page.locator('[data-study-face="back"]').getByText('Mobile study back')).toBeVisible();
+  await expect(
+    page.locator('[data-study-face="front"]').getByText('Mobile study front'),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: /Show answer/i })
+    .last()
+    .tap();
+  await expect(
+    page.locator('[data-study-face="back"]').getByText('Mobile study back'),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Yes', exact: true }).tap();
   await expect(
-    page.getByRole('main', { name: 'Study progress' }).getByRole('img', { name: 'Completed', exact: true }),
+    page
+      .getByRole('main', { name: 'Study progress' })
+      .getByRole('img', { name: 'Completed', exact: true }),
   ).toBeVisible();
 });
 
 test('navigates a visited card library while offline', async ({ page, context }) => {
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await waitForServiceWorkerControl(page);
   await createMobileCourse(page, 'Mobile offline');
   await addCard(page, 'Mobile offline front', 'Mobile offline back');
-  await page.getByRole('navigation', { name: 'Course sections' }).getByRole('link', { name: 'Cards' }).click();
+  await page
+    .getByRole('navigation', { name: 'Course sections' })
+    .getByRole('link', { name: 'Cards' })
+    .click();
   const cards = page.locator('main:has([data-route-content$="/cards"])');
   await expect(cards.getByText('Mobile offline front', { exact: true }).first()).toBeVisible();
   await context.setOffline(true);
   try {
     await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(false);
-    await page.getByRole('navigation', { name: 'Course sections' }).getByRole('link', { name: 'Path' }).click();
-    await expect(page.getByRole('heading', { name: 'Lesson 1', exact: true, level: 1 })).toBeVisible();
-    await page.getByRole('navigation', { name: 'Course sections' }).getByRole('link', { name: 'Cards' }).click();
+    await page
+      .getByRole('navigation', { name: 'Course sections' })
+      .getByRole('link', { name: 'Path' })
+      .click();
+    await expect(
+      page.getByRole('heading', { name: 'Lesson 1', exact: true, level: 1 }),
+    ).toBeVisible();
+    await page
+      .getByRole('navigation', { name: 'Course sections' })
+      .getByRole('link', { name: 'Cards' })
+      .click();
     await expect(cards.getByText('Mobile offline front', { exact: true }).first()).toBeVisible();
   } finally {
     await context.setOffline(false);

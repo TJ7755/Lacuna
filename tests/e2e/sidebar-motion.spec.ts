@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('course lessons fold without unmounting and rail hover cards wait for the moving edge', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const aside = page.getByRole('complementary');
   const course = aside.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
   const expander = aside.getByRole('button', { name: /^(Expand|Collapse) Welcome to Lacuna$/ });

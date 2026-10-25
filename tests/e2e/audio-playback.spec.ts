@@ -52,7 +52,7 @@ test('plays stored audio while authoring and studying in the production build', 
   await page.getByRole('button', { name: 'More card types', exact: true }).click();
   await page.getByRole('button', { name: 'Audio', exact: true }).click();
   await page
-    .locator('input[type="file"]')
+    .getByLabel('Choose file', { exact: true })
     .setInputFiles({ name: 'tone.wav', mimeType: 'audio/wav', buffer: toneWav() });
 
   const editorPlayer = page

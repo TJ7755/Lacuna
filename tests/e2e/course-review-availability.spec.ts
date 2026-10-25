@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
+import { createCourse, enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const width of [320, 390]) {
   test(`keeps course names usable with nothing due at ${width}px and Larger text`, async ({
@@ -11,7 +11,7 @@ for (const width of [320, 390]) {
       localStorage.setItem('lacuna-font-scale', '1.3');
       localStorage.setItem('lacuna-font-scale-user-set', '1');
     });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const title = page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true });
@@ -31,7 +31,7 @@ for (const exam of [false, true]) {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await createCourse(page, 'Biology');
     const courseId = /#\/course\/([^/]+)/.exec(page.url())![1];
     await page.getByRole('button', { name: 'Edit mode' }).click();

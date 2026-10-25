@@ -50,7 +50,8 @@ function RouterWithOptionalAi() {
   const [session, setSession] = useState<EnabledAiSession | null>(null);
   const [runtimeGeneration, setRuntimeGeneration] = useState(0);
   const previousProvider = useRef(settings.provider);
-  const matchingSession = session && (session.provider ?? 'external') === settings.provider ? session : null;
+  const matchingSession =
+    session && (session.provider ?? 'external') === settings.provider ? session : null;
   const sessionRef = useRef<EnabledAiSession | null>(null);
   const handleSessionReady = useCallback((next: EnabledAiSession) => {
     const previous = sessionRef.current;
@@ -115,8 +116,11 @@ function RouterWithOptionalAi() {
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
-const DesktopUpdateController = lazy(() => import('./components/updates/DesktopUpdateController')
-  .then((module) => ({ default: module.DesktopUpdateController })));
+const DesktopUpdateController = lazy(() =>
+  import('./components/updates/DesktopUpdateController').then((module) => ({
+    default: module.DesktopUpdateController,
+  })),
+);
 
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
@@ -175,22 +179,18 @@ export function App() {
 
         // A genuinely fresh browser opens on the landing page; anyone with
         // existing data goes straight to the app they know. Decided before
-        // seeding, because the seed itself creates a course. Visitors arriving
-        // from the prerendered landing page explicitly chose to enter, so the
-        // handover skips the bounce back to the welcome route.
+        // settling, which records that the first run has happened. Visitors
+        // arriving from the prerendered landing page explicitly chose to enter,
+        // so the handover skips the bounce back to the welcome route.
         const enteredFromLanding = consumeLandingHandover();
-        // The welcome course's content loads only while seeding work remains.
+        // The first-run checks load only while that work remains.
         if (seedWorkPending()) {
-          const { isFirstRun, seedIfFirstRun } = await import('./db/seed');
-          if (
-            (await isFirstRun()) &&
-            !isPublicEntry(window.location.hash) &&
-            !enteredFromLanding
-          ) {
+          const { isFirstRun, settleFirstRun } = await import('./db/seed');
+          if ((await isFirstRun()) && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
             window.location.hash = '#/welcome';
           }
 
-          await seedIfFirstRun();
+          await settleFirstRun();
         }
       } catch (error) {
         if (import.meta.env.DEV) {

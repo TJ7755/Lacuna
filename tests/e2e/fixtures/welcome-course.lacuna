@@ -1,0 +1,540 @@
+{
+  "format": "lacuna-course",
+  "version": 1,
+  "payload": {
+    "v": 6,
+    "by": null,
+    "at": 1792914258924,
+    "course": {
+      "n": "Welcome to Lacuna",
+      "d": "A short tour of Lacuna, taught the way you will actually use it.",
+      "o": 0,
+      "c": 1792914258916,
+      "e": 1793577540000,
+      "r": 0.9,
+      "l": "#0d9488",
+      "um": "open"
+    },
+    "lessons": [
+      {
+        "n": "Core concepts & rendering",
+        "d": "What Lacuna is built on: the forgetting curve, FSRS, and how cards render.",
+        "notes": [
+          {
+            "n": "Why spaced repetition",
+            "c": "Every card you study has a **retrievability** — the probability you could recall it right now — which decays over time since your last review. Lacuna schedules each review to catch that decay just before it costs you the card, using the FSRS-6 model for stability and difficulty.\n\nNotes like this one live alongside a lesson's cards. Write explanations or source material here, then generate or add cards for the parts you actually need to be quizzed on."
+          }
+        ],
+        "cards": [
+          {
+            "k": 0,
+            "f": "What does the **forgetting curve** describe?",
+            "b": "How retrievability of a memory **decays over time** since the last review. Lacuna uses the FSRS-6 model:\n\n`R(t, S) = (1 + factor·(t/S))^decay`, where `factor = 0.9^(1/decay) − 1` and `decay = −w20`.\n\n![Forgetting curve](lacuna-asset://6628f6d02b9b5cf6a4f3148aefd00cb660d0cc8c57a9a5d29673d51a4f0821d1)",
+            "g": [
+              "fsrs",
+              "theory"
+            ],
+            "id": "8ddc8c37-cb71-42d6-8582-ebf5e867da10",
+            "co": "8e944594-8115-4f49-aa65-25deccf88614"
+          },
+          {
+            "k": 1,
+            "f": "The chemical symbol for water is {{c1::H2O}}.",
+            "g": [
+              "chemistry",
+              "basics"
+            ],
+            "id": "be4cd1b1-e215-49cb-90fe-54a8aab1fc22",
+            "co": "2cc22d33-3038-4753-ab4f-a639a8a470ff"
+          },
+          {
+            "k": 1,
+            "f": "In spaced repetition, the two state variables FSRS tracks are {{c1::stability::how long a memory lasts}} and {{c2::difficulty::how hard a card is}}.",
+            "g": [
+              "fsrs",
+              "theory"
+            ],
+            "id": "8380cdc3-9d99-48e1-a401-a8351690c2ee",
+            "co": "d6b1cbc8-161d-4a1b-a643-ecedf4a61564"
+          },
+          {
+            "k": 0,
+            "f": "Write the quadratic formula.",
+            "b": "For $ax^2 + bx + c = 0$:\n\n$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$",
+            "g": [
+              "maths",
+              "formulae"
+            ],
+            "id": "804af9ff-3200-4c78-8535-a7901d5feda1",
+            "co": "74fdd042-6546-43a2-aa64-87c9a9b652ad"
+          },
+          {
+            "k": 0,
+            "f": "What is the derivative of $e^x$ with respect to $x$?",
+            "b": "$$\\frac{d}{dx} e^x = e^x$$",
+            "g": [
+              "maths",
+              "calculus"
+            ],
+            "id": "880313e8-624c-4b42-890c-c04f5a7b7cd0",
+            "co": "1d6b135a-85b2-419b-bf1e-986dfed8b269"
+          }
+        ]
+      },
+      {
+        "n": "Scheduling philosophy",
+        "d": "How Lacuna schedules towards an exam date instead of just spacing intervals.",
+        "notes": [
+          {
+            "n": "Studying towards a date",
+            "c": "Classic spaced repetition asks \"when is this card next due?\" Lacuna asks \"what will this card's retrievability be **on the exam date**?\" Set an accurate exam date in Course Settings and every review is chosen to maximise your predicted score on that day."
+          }
+        ],
+        "cards": [
+          {
+            "k": 0,
+            "f": "How does Lacuna differ from classic spaced repetition?",
+            "b": "Classic SRS asks \"when is this card next due?\" Lacuna asks \"what will this card's retrievability be on the **exam date**?\" Every review is chosen to maximise your predicted score on exam day, not merely to space intervals.",
+            "g": [
+              "scheduling",
+              "philosophy"
+            ],
+            "id": "fac07c78-6f20-4beb-9054-6e2a121d5ef1",
+            "co": "1312bc14-a405-486e-ba4d-00855408f4b2"
+          },
+          {
+            "k": 0,
+            "f": "What are the two exam objectives a course can use?",
+            "b": "1. **Maximise expected marks** — maximise the mean predicted retrievability across all cards.\n2. **Secure topics** — maximise the fraction of cards whose predicted retrievability is at least 0.90.\n\nYou can switch between them in Course Settings.",
+            "g": [
+              "scheduling",
+              "objectives"
+            ],
+            "id": "1d1f5576-bdb2-4ffc-82e4-b9b8dba02786",
+            "co": "94223b1b-9f53-4ee5-93b6-779bdc2886a7"
+          },
+          {
+            "k": 0,
+            "f": "How does assessment revision work?",
+            "b": "Choose a named checkpoint or final assessment from the course path or **Study**. Lacuna creates a persistent, time-budgeted plan over reached and studied cards in that assessment’s coverage, respecting exclusions. Cards are ranked by predicted assessment-day value; invalid model data uses ordinary Practice ordering.",
+            "g": [
+              "scheduling",
+              "revision"
+            ],
+            "id": "18258e85-333b-46da-8f7f-59f62eed9d99",
+            "co": "1bb2ef1d-f23b-4247-abb3-6895b4046b58"
+          },
+          {
+            "k": 0,
+            "f": "What does a course path show alongside its lessons?",
+            "b": "**Checkpoints** — markers for exam dates you have set, informational and never blocking progress — and **practice sessions**, nodes that gather due cards from lessons studied so far so you keep reviewing older material as you move through the course.",
+            "g": [
+              "course-path",
+              "practice"
+            ],
+            "id": "6bcf0efb-ba17-41f4-b22e-203cd69d405b",
+            "co": "4fbcb2e2-5d2d-4416-b0b8-556fbdcc8f84"
+          }
+        ]
+      },
+      {
+        "n": "Learn mode & grading",
+        "d": "How a study session works, from revealing an answer to grading it.",
+        "notes": [],
+        "cards": [
+          {
+            "k": 0,
+            "f": "What happens when you press \"Yes\" with silent grading enabled?",
+            "b": "An **invisible timer** measures how long you took from revealing the answer to pressing Yes. Lacuna maps your speed to an FSRS grade: fast responses become **Easy**, average become **Good**, and slow become **Hard**. Only \"No\" maps directly to **Again**.",
+            "g": [
+              "learn",
+              "grading"
+            ],
+            "id": "e431ff38-f079-4a8c-a32d-0800e7ff40d0",
+            "co": "71ec2f4c-3c0c-4112-ac96-c258f300661f"
+          },
+          {
+            "k": 0,
+            "f": "How can you switch from silent to manual grading?",
+            "b": "Go to **Settings → Study behaviour** and enable **manual four-point grading**. When enabled, a study session shows **Again / Hard / Good / Easy** buttons instead of Yes / No.",
+            "g": [
+              "learn",
+              "grading"
+            ],
+            "id": "729da2fd-3625-408f-8c60-337210722ef8",
+            "co": "28cd73dd-b5f8-469f-bc3d-d75be2ed4fd6"
+          },
+          {
+            "k": 1,
+            "f": "During a study session, press {{c1::Space}} or {{c2::Up}} to reveal the answer. Press {{c3::Right}} for Yes and {{c4::Left}} for No. Press {{c5::E}} to edit the card, {{c6::U}} to undo, {{c7::F}} for focus mode, and {{c8::?}} for help.",
+            "g": [
+              "learn",
+              "shortcuts"
+            ],
+            "id": "9fb82fef-2312-4cd8-bb01-0940c4214589",
+            "co": "7a4de746-c179-4c95-827c-1449236e1ea5"
+          },
+          {
+            "k": 0,
+            "f": "What actions can you take on a card during a study session?",
+            "b": "From the card menu: **Edit** the card in-place, **Flag** it for later attention, **Bury** it until tomorrow, or **Suspend** it indefinitely. You can also **Undo** your last answer with **U**.",
+            "g": [
+              "learn",
+              "actions"
+            ],
+            "id": "ae5fe788-1b24-4ed1-a2a1-d830e07847ef",
+            "co": "af0515dc-7528-4ddf-9f1b-aa16ea50ed5f"
+          },
+          {
+            "k": 0,
+            "f": "What is Simple learn mode?",
+            "b": "A stripped-back mode with no algorithm. Every card in the course is shown; a correct answer marks it mastered, an incorrect one sends it to the back of the queue. The session ends once every card has been answered correctly.",
+            "g": [
+              "learn",
+              "modes"
+            ],
+            "id": "48f3bb51-4ac5-4040-aaba-4af89294f6b7",
+            "co": "e98e461f-2927-4c85-a336-e58bd213c502"
+          }
+        ]
+      },
+      {
+        "n": "Data, sharing & advanced features",
+        "d": "Search, backups, sharing courses, and the smaller features worth knowing about.",
+        "notes": [],
+        "cards": [
+          {
+            "k": 0,
+            "f": "How can you find content across all your courses?",
+            "b": "Open **Search content** from the sidebar for the full library and Card filters, or press **Ctrl/Cmd+K** for **Quick search**. Both search courses, lessons, notes and cards together; Search content can filter Cards by **due**, **new**, **leech**, **flagged**, and **suspended**.",
+            "g": [
+              "search",
+              "navigation"
+            ],
+            "id": "1956c106-3138-44d2-8bac-560bc43277a0",
+            "co": "4936119b-e488-4316-8178-58d098fd47a7"
+          },
+          {
+            "k": 0,
+            "f": "How can you share a course with someone else?",
+            "b": "Go to the **Share** page, select a course, and generate a compact **share code**. It carries the course's lessons, notes and cards, but not review history or images. The recipient pastes the code to add it as a new course of their own.",
+            "g": [
+              "share",
+              "export"
+            ],
+            "id": "e1090571-79b9-4b39-b0e3-0790f34d5270",
+            "co": "207870b9-3d9b-4bb7-b987-aff98d7a01b7"
+          },
+          {
+            "k": 0,
+            "f": "How is your data protected?",
+            "b": "Lacuna stores everything **locally** in your browser. Automatic **restore points** are taken daily. You can also **export** everything to a JSON file, or use **folder mirroring** (where supported) to write backups to disk.",
+            "g": [
+              "backup",
+              "privacy"
+            ],
+            "id": "2d87106b-0113-44d3-b74b-d63c5e782699",
+            "co": "9f978b89-f658-4ac0-a746-5576af30bc01"
+          },
+          {
+            "k": 0,
+            "f": "What is the question bank?",
+            "b": "Every course has a **question bank** listing all of its cards in one place, regardless of which lesson they belong to. Use it to browse, search, edit or bulk-manage cards, or add cards that are not tied to a specific lesson.",
+            "g": [
+              "course-model",
+              "question-bank"
+            ],
+            "id": "42f9f760-a1a9-4a4b-a86c-d19529fed2ff",
+            "co": "ad95ee76-f80f-4251-a211-8ded8abcafc4"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: FSRS parameters can be personalised?",
+            "b": "Lacuna can **optimise** a course's FSRS weights by training them on your own review history. Run it manually from **Course Settings → Scheduling optimisation**, or enable automatic optimisation in Settings. It only applies after confirming an improvement in prediction accuracy.",
+            "g": [
+              "optimisation",
+              "advanced"
+            ],
+            "id": "bf312bc4-df9f-4109-851a-5a8d2ccf76e8",
+            "co": "40221b55-b8fe-4432-9e68-0ddc31eaf45c"
+          },
+          {
+            "k": 0,
+            "f": "What is a leech card?",
+            "b": "A card with **8 or more lapses** by default is flagged as a **leech**. Lacuna surfaces it with a badge and a search filter; the threshold and what happens automatically (suspend, tag, or nothing) are configurable per course in Course Settings.",
+            "g": [
+              "leech",
+              "advanced"
+            ],
+            "id": "fb560500-11c7-404b-893e-e7f93955740f",
+            "co": "e4c9471e-ed73-4463-a297-575766fcdb44"
+          },
+          {
+            "k": 0,
+            "f": "What happens when you add tags to a card?",
+            "b": "Tags let you filter the card list in the question bank. The active tag also narrows a **study session** to only cards with that tag. Try selecting a tag and then pressing Study.",
+            "g": [
+              "tags",
+              "organisation"
+            ],
+            "id": "d8c4dfca-cec3-4e00-a51f-663192ce3176",
+            "co": "be741539-4938-4d56-ac04-78c937eef8f3"
+          },
+          {
+            "k": 0,
+            "f": "Can you create a card that tests both directions?",
+            "b": "Yes. When creating a basic card, choose the **reversed** type. Lacuna generates an independent second card with the front and back swapped, so you are tested on the relationship in both directions.",
+            "g": [
+              "cards",
+              "editor"
+            ],
+            "id": "0d1b2d24-fc96-4643-8b0d-ddcfec01559a",
+            "co": "532f0204-59a3-40b2-8fb6-e0b5ce4d2a10"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: failed cards are temporarily deferred?",
+            "b": "If you answer \"No\", the card enters a **cooldown** so it is not shown again immediately. This gives you a chance to see other cards before retrying it.",
+            "g": [
+              "learn",
+              "cooldown"
+            ],
+            "id": "2de14846-de5e-4883-aed6-c879a5d94ae4",
+            "co": "c5eb900e-9687-4a17-a3da-a2569f0df9b8"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: the dashboard tracks your study streak?",
+            "b": "The dashboard shows your current **study streak** and a **review heatmap** — a calendar grid of how many cards you reviewed each day across all your courses.",
+            "g": [
+              "dashboard",
+              "stats"
+            ],
+            "id": "4db02f1c-8699-4588-89b9-1cccb4c9efb5",
+            "co": "0e32d381-a663-4027-a391-2d7fc14e069a"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: you can import cards from a spreadsheet?",
+            "b": "From a lesson or the question bank, choose **Import**. Lacuna accepts **CSV** or **TSV** files (and Anki's plain-text export) with front, back, and optional tags. Cloze notation in a single column is recognised automatically.",
+            "g": [
+              "import",
+              "data"
+            ],
+            "id": "ec7c93b2-3f18-4ea4-90ec-48e6b8e66115",
+            "co": "4a149170-86ee-4840-9a0f-807eac6a5b4f"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: cards can include images?",
+            "b": "Paste or drag an image into the editor and it is stored as a binary asset, referenced in Markdown as `lacuna-asset://<hash>`. Identical images are deduplicated by hash so they are only stored once.\n\n![Sample embedded image](lacuna-asset://4b0e794581633d4e3e8a44898217059d41230e2696e5fd3130c9c6d56ce8968d)",
+            "g": [
+              "images",
+              "editor"
+            ],
+            "id": "caaef6e5-ddf3-4ef6-b561-887a83aeb242",
+            "co": "1975c8c3-0197-49d6-9254-eddc9a46776b"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: the interface is fully themeable?",
+            "b": "In **Settings** you can switch between light and dark mode, pick from **seven accent colours**, and adjust the **text size** in steps. Your choices persist across sessions.",
+            "g": [
+              "appearance",
+              "customisation"
+            ],
+            "id": "497a64f6-f107-4734-8c60-ab9a7aa4ce40",
+            "co": "a29fbf82-7bbe-46d7-9e1b-74907d38e353"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: you can cap new cards per day?",
+            "b": "In **Course Settings**, set a **new cards per day** cap to ration brand-new material. The dashboard denominator stays honest while your daily session paces itself.",
+            "g": [
+              "settings",
+              "scheduling"
+            ],
+            "id": "7de5918b-88e8-4fb5-aef9-3809325d5a36",
+            "co": "3c834e32-dcd6-4272-91f3-be022ed59e3b"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: target retention is adjustable?",
+            "b": "The **target retention** slider in Course Settings lets you choose between **0.80** (relaxed) and **0.97** (thorough). A higher value means more reviews but stronger memories on exam day.",
+            "g": [
+              "settings",
+              "fsrs"
+            ],
+            "id": "9c1c8c96-5311-46be-9daf-a2008bf3df21",
+            "co": "154f474f-3b5c-46b1-8c98-e52ed9218886"
+          },
+          {
+            "k": 0,
+            "f": "Did you know: Lacuna requests persistent storage?",
+            "b": "On first run the app asks the browser for **persistent storage** so your data is not silently evicted. Check the result in **Settings**; if denied, regular exports or folder mirroring are your safeguard.",
+            "g": [
+              "settings",
+              "privacy"
+            ],
+            "id": "e8374ecc-ee73-4730-9989-ee54be793432",
+            "co": "7e5164d8-1dc4-4967-8486-2818adecf535"
+          }
+        ]
+      }
+    ],
+    "exams": [
+      {
+        "id": "fda0290a-17a0-4e29-9655-52402a17cf48",
+        "n": "Final exam",
+        "e": 1793577540000,
+        "k": "f",
+        "a": 3,
+        "m": "p",
+        "c": 1792914258916
+      }
+    ],
+    "concepts": [
+      {
+        "id": "0e32d381-a663-4027-a391-2d7fc14e069a",
+        "n": "The dashboard shows your current study streak and a review heatmap — a calendar grid of how man…"
+      },
+      {
+        "id": "1312bc14-a405-486e-ba4d-00855408f4b2",
+        "n": "Classic SRS asks \"when is this card next due?\" Lacuna asks \"what will this card's retrievabilit…"
+      },
+      {
+        "id": "154f474f-3b5c-46b1-8c98-e52ed9218886",
+        "n": "The target retention slider in Course Settings lets you choose between 0.80 and 0.97 . A higher…"
+      },
+      {
+        "id": "1975c8c3-0197-49d6-9254-eddc9a46776b",
+        "n": "Paste or drag an image into the editor and it is stored as a binary asset, referenced in Markdo…"
+      },
+      {
+        "id": "1bb2ef1d-f23b-4247-abb3-6895b4046b58",
+        "n": "Choose a named checkpoint or final assessment from the course path or Study . Lacuna creates a…"
+      },
+      {
+        "id": "1d6b135a-85b2-419b-bf1e-986dfed8b269",
+        "n": "$$\\frac{d}{dx} e^x = e^x$$"
+      },
+      {
+        "id": "207870b9-3d9b-4bb7-b987-aff98d7a01b7",
+        "n": "Go to the Share page, select a course, and generate a compact share code . It carries the cours…"
+      },
+      {
+        "id": "28cd73dd-b5f8-469f-bc3d-d75be2ed4fd6",
+        "n": "Go to Settings → Study behaviour and enable manual four-point grading . When enabled, a study s…"
+      },
+      {
+        "id": "2cc22d33-3038-4753-ab4f-a639a8a470ff",
+        "n": "The chemical symbol for water is H2O."
+      },
+      {
+        "id": "3c834e32-dcd6-4272-91f3-be022ed59e3b",
+        "n": "In Course Settings , set a new cards per day cap to ration brand-new material. The dashboard de…"
+      },
+      {
+        "id": "40221b55-b8fe-4432-9e68-0ddc31eaf45c",
+        "n": "Lacuna can optimise a course's FSRS weights by training them on your own review history. Run it…"
+      },
+      {
+        "id": "4936119b-e488-4316-8178-58d098fd47a7",
+        "n": "Open Search content from the sidebar for the full library and Card filters, or press Ctrl/Cmd+K…"
+      },
+      {
+        "id": "4a149170-86ee-4840-9a0f-807eac6a5b4f",
+        "n": "From a lesson or the question bank, choose Import . Lacuna accepts CSV or TSV files with front,…"
+      },
+      {
+        "id": "4fbcb2e2-5d2d-4416-b0b8-556fbdcc8f84",
+        "n": "Checkpoints — markers for exam dates you have set, informational and never blocking progress —…"
+      },
+      {
+        "id": "532f0204-59a3-40b2-8fb6-e0b5ce4d2a10",
+        "n": "Yes. When creating a basic card, choose the reversed type. Lacuna generates an independent seco…"
+      },
+      {
+        "id": "71ec2f4c-3c0c-4112-ac96-c258f300661f",
+        "n": "An invisible timer measures how long you took from revealing the answer to pressing Yes. Lacuna…"
+      },
+      {
+        "id": "74fdd042-6546-43a2-aa64-87c9a9b652ad",
+        "n": "For $ax^2 + bx + c = 0$: $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$"
+      },
+      {
+        "id": "7a4de746-c179-4c95-827c-1449236e1ea5",
+        "n": "During a study session, press Space or Up to reveal the answer. Press Right for Yes and Left fo…"
+      },
+      {
+        "id": "7e5164d8-1dc4-4967-8486-2818adecf535",
+        "n": "On first run the app asks the browser for persistent storage so your data is not silently evict…"
+      },
+      {
+        "id": "8e944594-8115-4f49-aa65-25deccf88614",
+        "n": "How retrievability of a memory decays over time since the last review. Lacuna uses the FSRS-6 m…"
+      },
+      {
+        "id": "94223b1b-9f53-4ee5-93b6-779bdc2886a7",
+        "n": "1. Maximise expected marks — maximise the mean predicted retrievability across all cards. 2. Se…"
+      },
+      {
+        "id": "9f978b89-f658-4ac0-a746-5576af30bc01",
+        "n": "Lacuna stores everything locally in your browser. Automatic restore points are taken daily. You…"
+      },
+      {
+        "id": "a29fbf82-7bbe-46d7-9e1b-74907d38e353",
+        "n": "In Settings you can switch between light and dark mode, pick from seven accent colours , and ad…"
+      },
+      {
+        "id": "ad95ee76-f80f-4251-a211-8ded8abcafc4",
+        "n": "Every course has a question bank listing all of its cards in one place, regardless of which les…"
+      },
+      {
+        "id": "af0515dc-7528-4ddf-9f1b-aa16ea50ed5f",
+        "n": "From the card menu: Edit the card in-place, Flag it for later attention, Bury it until tomorrow…"
+      },
+      {
+        "id": "be741539-4938-4d56-ac04-78c937eef8f3",
+        "n": "Tags let you filter the card list in the question bank. The active tag also narrows a study ses…"
+      },
+      {
+        "id": "c5eb900e-9687-4a17-a3da-a2569f0df9b8",
+        "n": "If you answer \"No\", the card enters a cooldown so it is not shown again immediately. This gives…"
+      },
+      {
+        "id": "d6b1cbc8-161d-4a1b-a643-ecedf4a61564",
+        "n": "In spaced repetition, the two state variables FSRS tracks are stability and difficulty."
+      },
+      {
+        "id": "e4c9471e-ed73-4463-a297-575766fcdb44",
+        "n": "A card with 8 or more lapses by default is flagged as a leech . Lacuna surfaces it with a badge…"
+      },
+      {
+        "id": "e98e461f-2927-4c85-a336-e58bd213c502",
+        "n": "A stripped-back mode with no algorithm. Every card in the course is shown; a correct answer mar…"
+      }
+    ],
+    "questions": [],
+    "questionSets": [],
+    "questionSetPracticeNodes": []
+  },
+  "assets": [
+    {
+      "hash": "4b0e794581633d4e3e8a44898217059d41230e2696e5fd3130c9c6d56ce8968d",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgMjAwIDEyMCI+CiAgPHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIxMjAiIHJ4PSIxMCIgZmlsbD0iIzFjMTkxNyIvPgogIDxyZWN0IHg9IjEwIiB5PSIyMCIgd2lkdGg9IjE4MCIgaGVpZ2h0PSI4MCIgcng9IjYiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2E4YTI5ZSIgc3Ryb2tlLXdpZHRoPSIxLjUiLz4KICA8Y2lyY2xlIGN4PSI2MCIgY3k9IjU1IiByPSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDZkM2QxIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDxwb2x5bGluZSBwb2ludHM9IjkwLDkwIDExNSw2MCAxNDAsODAgMTc1LDQwIiBmaWxsPSJub25lIiBzdHJva2U9IiNmYjkyM2MiIHN0cm9rZS13aWR0aD0iMiIvPgo8L3N2Zz4=",
+      "mimeType": "image/svg+xml",
+      "width": 200,
+      "height": 120,
+      "createdAt": 1792914258917
+    },
+    {
+      "hash": "6628f6d02b9b5cf6a4f3148aefd00cb660d0cc8c57a9a5d29673d51a4f0821d1",
+      "data": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTYwIiB2aWV3Qm94PSIwIDAgMzIwIDE2MCI+CiAgPHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxNjAiIHJ4PSIxMCIgZmlsbD0iIzFjMTkxNyIvPgogIDxsaW5lIHgxPSIzMCIgeTE9IjEzMCIgeDI9IjMwMCIgeTI9IjEzMCIgc3Ryb2tlPSIjYThhMjllIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNyIvPgogIDxsaW5lIHgxPSIzMCIgeTE9IjEzMCIgeDI9IjMwIiB5Mj0iMjAiIHN0cm9rZT0iI2E4YTI5ZSIgc3Ryb2tlLXdpZHRoPSIxIiBvcGFjaXR5PSIwLjciLz4KICA8dGV4dCB4PSIxNiIgeT0iMjUiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IiNlN2U1ZTQiPlI8L3RleHQ+CiAgPHRleHQgeD0iMTYiIHk9IjEzNSIgZm9udC1zaXplPSIxMCIgZmlsbD0iI2U3ZTVlNCI+dDwvdGV4dD4KICA8cGF0aCBkPSJNIDMwIDMwIFEgMTIwIDQ1IDIwMCA4NSBUIDMwMCAxMjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZiOTIzYyIgc3Ryb2tlLXdpZHRoPSIyLjUiLz4KICA8bGluZSB4MT0iMzAiIHkxPSI0NSIgeDI9IjMwMCIgeTI9IjQ1IiBzdHJva2U9IiNkNmQzZDEiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLWRhc2hhcnJheT0iMywzIiBvcGFjaXR5PSIwLjY1Ii8+CiAgPHRleHQgeD0iMzA1IiB5PSI0MCIgZm9udC1zaXplPSI5IiBmaWxsPSIjZTdlNWU0Ij4wLjkwPC90ZXh0Pgo8L3N2Zz4=",
+      "mimeType": "image/svg+xml",
+      "width": 320,
+      "height": 160,
+      "createdAt": 1792914258917
+    }
+  ]
+}

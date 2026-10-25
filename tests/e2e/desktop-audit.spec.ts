@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 for (const width of [768, 1024, 1920]) {
   test(`analytics values remain accessible with enlarged text at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page.goto('/#/analytics');
     await expect(page.getByRole('heading', { name: 'Workload ahead' })).toBeVisible();
     await page.evaluate(() => {
@@ -27,7 +27,7 @@ for (const width of [768, 1024, 1920]) {
 
 test('a card follows a held pointer without spring lag', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('complementary')
     .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
@@ -56,7 +56,7 @@ for (const width of [768, 1024]) {
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
@@ -88,7 +88,7 @@ for (const width of [768, 1024]) {
 
 test('mouse lesson dragging carries the lesson and moves its neighbour aside', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 1200 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })

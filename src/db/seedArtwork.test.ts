@@ -3,17 +3,22 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveAssetUrl, revokeAllCachedUrls } from './assetCache';
-import { referencedAssetHashes } from './assets';
 import { db } from './schema';
-import { seedIfFirstRun } from './seed';
 import { seedArtworkFor } from './seedArtwork';
+
+function seedSource(): string {
+  return readFileSync('src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
+}
 
 /** Every SVG the seed has ever stored, read from seed.ts so a changed drawing cannot slip by. */
 function storedSeedSvgHashes(): string[] {
-  const source = readFileSync('src/db/seed.ts', 'utf8').replace(/\r\n/g, '\n');
-  return [...source.matchAll(/const \w+_SVG = `([\s\S]*?)`;/g)].map((match) =>
+  return [...seedSource().matchAll(/const \w+_SVG = `([\s\S]*?)`;/g)].map((match) =>
     createHash('sha256').update(match[1], 'utf8').digest('hex'),
   );
+}
+
+function storedSeedSvg(name: string): string {
+  return new RegExp(`const ${name} = \`([\\s\\S]*?)\`;`).exec(seedSource())![1];
 }
 
 describe('Welcome seed artwork', () => {
@@ -39,10 +44,16 @@ describe('Welcome seed artwork', () => {
   });
 
   it('displays the themed drawing while leaving the seeded records untouched', async () => {
-    await seedIfFirstRun();
-    const card = (await db.cards.toArray()).find((row) => row.back.includes('![Forgetting curve]'))!;
-    const [hash] = referencedAssetHashes(card.back);
-    const stored = new TextDecoder().decode((await db.assets.get(hash))!.blob as Uint8Array);
+    const stored = storedSeedSvg('FORGETTING_CURVE_SVG');
+    const hash = createHash('sha256').update(stored, 'utf8').digest('hex');
+    await db.assets.put({
+      hash,
+      blob: new TextEncoder().encode(stored),
+      mimeType: 'image/svg+xml',
+      width: 320,
+      height: 160,
+      createdAt: 0,
+    });
     const shown: Blob[] = [];
     vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
       shown.push(blob as Blob);

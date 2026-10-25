@@ -182,7 +182,7 @@ test('creates a complete authored course through approved AI tools', async ({ pa
 test('carries misconception-first instructions through a memory-guided teaching exchange', async ({
   page,
 }) => {
-  const { composer, terminal } = await pairBrowserAndTerminal(page);
+  const { composer, terminal } = await pairBrowserAndTerminal(page, {}, { welcomeCourse: true });
   await composer.fill('Remember that I think division distributes over addition.');
   await page.getByRole('button', { name: 'Send message' }).click();
   const memoryRun = await terminal.waitForMessage(2_000);

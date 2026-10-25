@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 test('keeps the sidebar quiet and shows study details beside a hovered course', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   const sidebar = page.getByRole('complementary');
   const course = sidebar.getByRole('link', { name: 'Welcome to Lacuna', exact: true });
   await expect(course).toHaveAccessibleName('Welcome to Lacuna');
@@ -52,7 +52,7 @@ test('shows details on focus in the collapsed rail and dismisses on navigation',
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await enterFreshLacuna(page);
+  await enterWithWelcomeCourse(page);
   await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
   const course = page
     .getByRole('complementary')
@@ -76,7 +76,7 @@ test('shows details on focus in the collapsed rail and dismisses on navigation',
 test.describe('touch navigation', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
   test('opens a course directly without showing a hover card', async ({ page }) => {
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     await page.getByRole('button', { name: 'Open navigation', exact: true }).tap();
     await page
       .getByRole('complementary')

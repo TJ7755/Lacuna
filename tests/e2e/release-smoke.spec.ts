@@ -1,19 +1,17 @@
-import { expect, test, type Page } from '@playwright/test';
-import { chooseScheduledStudy } from './fixtures/lacunaApp';
+import { expect, test } from '@playwright/test';
+import {
+  chooseScheduledStudy,
+  enterFreshLacuna,
+  enterWithWelcomeCourse,
+} from './fixtures/lacunaApp';
 
-async function openSeededDashboard(page: Page) {
-  await page.goto('/');
-  await expect(page.getByRole('region', { name: 'Revision around your exam' })).toBeVisible();
-  await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-  await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
-}
-
-test('first launch reaches the seeded dashboard', async ({ page }) => {
-  await openSeededDashboard(page);
-  await expect(page.getByText('Welcome to Lacuna', { exact: true }).first()).toBeVisible();
+test('first launch reaches an empty dashboard', async ({ page }) => {
+  await enterFreshLacuna(page);
+  await expect(page.getByRole('heading', { level: 2, name: 'No courses yet' })).toBeVisible();
   await expect(
-    page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Search content' }),
+    page
+      .getByRole('navigation', { name: 'Primary navigation' })
+      .getByRole('link', { name: 'Search content' }),
   ).toBeVisible();
   await page.keyboard.press('ControlOrMeta+k');
   await expect(page.getByRole('dialog', { name: 'Quick search' })).toBeVisible();
@@ -21,11 +19,14 @@ test('first launch reaches the seeded dashboard', async ({ page }) => {
 });
 
 test('creates a course with its first lesson', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const nameInput = page.getByRole('textbox', { name: 'Course name' });
   await page.getByRole('radio', { name: /Steady retention/ }).focus();
-  await page.locator('label').filter({ hasText: /^Course name$/ }).click();
+  await page
+    .locator('label')
+    .filter({ hasText: /^Course name$/ })
+    .click();
   await expect(nameInput).toBeFocused();
   await nameInput.fill('Browser smoke course');
   const steady = page.getByRole('radio', { name: /Steady retention/ });
@@ -38,7 +39,7 @@ test('creates a course with its first lesson', async ({ page }) => {
 });
 
 test('keeps the New Course calendar visible and focused', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const examDate = page.getByRole('radio', { name: /Exam date/ });
   await examDate.focus();
@@ -78,7 +79,7 @@ test('keeps the New Course calendar visible and focused', async ({ page }) => {
 });
 
 test('opens a lesson with persistent course navigation', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   await page.getByRole('button', { name: 'Core concepts & rendering' }).click();
   const navigation = page.getByRole('navigation', { name: 'Course sections' });
@@ -90,7 +91,7 @@ test('opens a lesson with persistent course navigation', async ({ page }) => {
 });
 
 test('starts a real lesson study interaction', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
   // Exact, because the dashboard also carries "Study Choose a course" and a per-course
   // "Study <name>" control. Without it, strict mode matches all three.
@@ -114,16 +115,18 @@ test('starts a real lesson study interaction', async ({ page }) => {
     cardId ?? '',
   );
   await expect
-    .poll(() => card.evaluate((surface, centre) => {
-      const bounds = surface.getBoundingClientRect();
-      return Math.abs(bounds.left + bounds.width / 2 - centre);
-    }, initialCentre))
+    .poll(() =>
+      card.evaluate((surface, centre) => {
+        const bounds = surface.getBoundingClientRect();
+        return Math.abs(bounds.left + bounds.width / 2 - centre);
+      }, initialCentre),
+    )
     .toBeLessThan(1);
   await expect(card).toHaveCSS('opacity', '1');
 });
 
 test('opens an archived course as read-only content', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   const courseCard = page.getByRole('button', { name: 'More for Welcome to Lacuna' });
 
   await courseCard.click();
@@ -162,7 +165,7 @@ test('opens an archived course as read-only content', async ({ page }) => {
 });
 
 test('downloads a full backup from recovery settings', async ({ page }) => {
-  await openSeededDashboard(page);
+  await enterWithWelcomeCourse(page);
   await page.goto('/#/settings#settings-export');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Full backup Complete database' }).click();

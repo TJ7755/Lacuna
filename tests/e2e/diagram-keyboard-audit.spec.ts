@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
-import { enterFreshLacuna } from './fixtures/lacunaApp';
+import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
 async function rect(region: Locator) {
   return region.evaluate((element) => {
@@ -21,7 +21,7 @@ for (const width of [390, 1440]) {
       reducedMotion: 'reduce',
       colorScheme: width === 390 ? 'dark' : 'light',
     });
-    await enterFreshLacuna(page);
+    await enterWithWelcomeCourse(page);
     const course = page
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true });
