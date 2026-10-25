@@ -36,6 +36,7 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingNote, setAddingNote] = useState(false);
+  const [compactAdd, setCompactAdd] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteBusy, setNoteBusy] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -84,7 +85,8 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
 
   const showTabs = sortedNotes.length > 1;
 
-  if (!activeNote && editable) {
+  // Keep an open editor in its original surface while live notes arrive or disappear.
+  if (editable && (addingNote ? compactAdd : !activeNote)) {
     return (
       <div className={cn('flex min-w-0', className)}>
         <ExpandingCreateControl
@@ -93,7 +95,10 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
           align="start"
           open={addingNote}
           onOpenChange={(open) => {
-            if (!noteBusy) setAddingNote(open);
+            if (!noteBusy) {
+              setCompactAdd(true);
+              setAddingNote(open);
+            }
           }}
         >
           {(close) => (
@@ -232,6 +237,7 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
                     variant="secondary"
                     size="sm"
                     onClick={() => {
+                      setCompactAdd(false);
                       setAddingNote(true);
                       setEditingNoteId(null);
                     }}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as MotionReact from 'motion/react';
 import type { Note } from '../../db/types';
@@ -38,6 +38,22 @@ describe('LessonNotesCard', () => {
     render(<LessonNotesCard lessonId="l1" notes={[]} editable />);
     expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add note' })).toBeInTheDocument();
+  });
+
+  it('keeps an open first-note draft when another note arrives', () => {
+    const { rerender } = render(<LessonNotesCard lessonId="l1" notes={[]} editable />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    const content = screen.getByRole('textbox', { name: 'Content' });
+    fireEvent.change(title, { target: { value: 'My unfinished explanation' } });
+    fireEvent.change(content, { target: { value: 'This draft must survive a live update.' } });
+    title.focus();
+    rerender(<LessonNotesCard lessonId="l1" notes={[note('arriving', 'Another note')]} editable />);
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('My unfinished explanation');
+    expect(screen.getByRole('textbox', { name: 'Content' })).toHaveValue(
+      'This draft must survive a live update.',
+    );
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveFocus();
   });
 
   it('leaves no empty bar above a single note in View mode', () => {
