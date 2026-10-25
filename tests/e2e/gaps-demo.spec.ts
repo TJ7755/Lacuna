@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 test.skip(
   process.env.LACUNA_BROWSER_SITE !== 'gaps',
@@ -74,6 +74,17 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 
 async function expectNoHorizontalOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+}
+
+async function expectEqualResultWidths(table: Locator, expectedWidth?: number) {
+  const widths = await table
+    .locator('td > button')
+    .evaluateAll((cells) => cells.map((cell) => cell.clientWidth));
+  expect(widths.length).toBeGreaterThan(0);
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
+  if (expectedWidth !== undefined)
+    for (const width of widths) expect(Math.abs(width - expectedWidth)).toBeLessThanOrEqual(1);
+  return widths[0];
 }
 
 for (const viewport of [
@@ -177,6 +188,35 @@ for (const viewport of [
         'column-gap',
         '20px',
       );
+      const resultWidth = await expectEqualResultWidths(table);
+      const questionLabels = table.locator('thead button > span:first-child');
+      for (const label of await questionLabels.all()) {
+        await expect(label).toHaveCSS('white-space', 'nowrap');
+        await expect(label).toHaveCSS('text-overflow', 'ellipsis');
+      }
+      const longQuestion = table.getByRole('button', {
+        name: /^How does active transport differ from diffusion\?/,
+      });
+      await expect(longQuestion).toHaveAttribute(
+        'title',
+        'How does active transport differ from diffusion?',
+      );
+      expect(
+        await longQuestion
+          .locator('span')
+          .first()
+          .evaluate((label) => label.scrollWidth > label.clientWidth),
+      ).toBe(true);
+      await longQuestion.click();
+      const longAnswers = main.getByRole('region', { name: 'Answers', exact: true });
+      await expect(
+        longAnswers.getByRole('heading', {
+          name: 'How does active transport differ from diffusion?',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expectEqualResultWidths(table, resultWidth);
+      await longAnswers.getByRole('button', { name: 'Close', exact: true }).click();
 
       await table.getByRole('button', { name: /^Explain osmosis\.\s*30%$/ }).click();
       const answers = main.getByRole('region', { name: 'Answers', exact: true });
@@ -196,6 +236,7 @@ for (const viewport of [
       await expect(unmarked).toContainText('Finn Wilson');
       await expect(unmarked).toContainText('Unknown / 2 marks · Self marked');
       await expectNoHorizontalOverflow(page);
+      await expectEqualResultWidths(table, resultWidth);
       await capture(page, testInfo, `gaps-demo-answers-${viewport.width}`);
 
       await unknown.click();
@@ -206,6 +247,7 @@ for (const viewport of [
       await expect(osmosisEvidence).toContainText('I am unsure which way the water moves.');
       await expect(osmosisEvidence).toContainText('Unknown / 2 marks · Self marked');
       await expectNoHorizontalOverflow(page);
+      await expectEqualResultWidths(table, resultWidth);
       await capture(page, testInfo, `gaps-demo-pupil-evidence-${viewport.width}`);
       await expectUnchangedStorage('supporting answers and pupil evidence');
       await testInfo.attach('automated-demo-path', {
