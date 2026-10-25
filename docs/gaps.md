@@ -60,17 +60,13 @@ preparing an update. Replacements reuse the original daily slot and do not exten
 the reporting day's expiry. Legacy immutable reports remain readable and cannot
 be replaced through the new update route.
 
-A backwards-readable claim reserves each snapshot's slot for older clients too.
-An older client skips an accepted snapshot and cannot upload a pending snapshot
-without its update credentials. Return to a compatible client to retry or finalise
-those snapshots; rolling back the pupil app does not convert them into legacy reports.
+Active outbox operations remove expired snapshots, retaining pending packets while
+their reporting day remains within the relay's retention window.
 
 Deploy the compatible relay before the updated pupil and teacher applications.
 An older relay rejects current-day publication; the pupil must see a failed send,
-not a successful publication. Keep the compatible relay when rolling back clients:
-older relay code cannot read the new internal snapshot storage wrapper. Report
-encryption, teacher recovery and the absence of verified pupil identity retain
-their existing boundaries.
+not a successful publication. Report encryption, teacher recovery and the absence
+of verified pupil identity retain their existing boundaries.
 
 ## Disable the trial
 
@@ -100,6 +96,10 @@ advanced operations, plus teacher reads, listing and maintenance. At the publish
 $5 per million advanced operations, those writes alone cost about $0.014. This
 already exceeds Hobby's 2,000 included advanced operations; the current design
 does not claim to fit that free-plan limit.
+
+Explicit current-day publications and repeat updates add requests and writes to
+that automatic-delivery estimate. Replacing a snapshot reuses its capacity slot,
+but is not a free operation or a limit on how often pupils can publish.
 
 At the maximum envelope size, 30 pupils over 84 retained days use less than
 0.24 GB of ciphertext, before cleanup lag. Storage, transfer, requests and function

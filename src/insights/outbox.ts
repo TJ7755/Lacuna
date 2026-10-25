@@ -1,5 +1,9 @@
 import Dexie from 'dexie';
-import { completedIsoDayLabel } from '../../relay/shared/insights/index';
+import {
+  completedIsoDayLabel,
+  DAY_MS,
+  INSIGHT_RETENTION_DAYS,
+} from '../../relay/shared/insights/index';
 import {
   INSIGHT_ID_RE,
   parseInsightEnvelope,
@@ -51,11 +55,17 @@ export function createInsightsOutbox(
   database.version(2).stores({ snapshots: '[shareId+isoDay], isoDay' });
   const snapshots = database.table<SnapshotPacket, [string, string]>('snapshots');
   const packets = database.table<SavedPacket, [string, string]>('packets');
+  const pruneExpired = () =>
+    database.transaction('rw', snapshots, async () => {
+      const cutoff = currentIsoDay(now() - (INSIGHT_RETENTION_DAYS + 1) * DAY_MS);
+      await snapshots.where('isoDay').belowOrEqual(cutoff).delete();
+    });
 
   return {
     async send(options: DailyDelivery): Promise<InsightsPublicationResult> {
       if (!options.isOptedIn() || options.signal?.aborted) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
+      await pruneExpired();
       const isoDay = completedIsoDayLabel(now());
       const context = {
         shareId: options.shareId,
@@ -124,6 +134,7 @@ export function createInsightsOutbox(
         stillAllowed() && (!options.isCurrent || (await options.isCurrent())) && stillAllowed();
       if (!(await allowed())) return 'idle';
       if (!INSIGHT_ID_RE.test(options.shareId)) throw new Error('Invalid insights course.');
+      await pruneExpired();
       const context = {
         shareId: options.shareId,
         isoDay,
@@ -131,16 +142,10 @@ export function createInsightsOutbox(
         keyId: options.recipient.keyId,
       };
       const key: [string, string] = [context.shareId, isoDay];
-      const read = () =>
-        database.transaction('rw', [snapshots, packets], async () => {
-          const raw = await snapshots.get(key);
-          if (!raw) return undefined;
-          const packet = checkSnapshot(raw, context);
-          const claim = await packets.get(key);
-          if (claim) checkSnapshotClaim(claim, packet);
-          else await packets.add(snapshotClaim(packet));
-          return packet;
-        });
+      const read = async () => {
+        const raw = await snapshots.get(key);
+        return raw ? checkSnapshot(raw, context) : undefined;
+      };
       const initial = await read();
       const legacy = await packets.get(key);
       if (legacy && !initial) {
@@ -186,18 +191,12 @@ export function createInsightsOutbox(
             status: 'pending',
           };
           // Commit before fetch. A racing tab must use the winner, never its own resealed bytes.
-          packet = await database.transaction('rw', [snapshots, packets], async () => {
+          packet = await database.transaction('rw', snapshots, async () => {
             if (!stillAllowed()) return undefined;
             const raw = await snapshots.get(key);
             const current = raw ? checkSnapshot(raw, context) : undefined;
             if (current && (!previous || !sameSnapshot(current, previous))) return current;
             if (previous && !current) throw new Error('The insights snapshot disappeared.');
-            const claim = await packets.get(key);
-            if (claim) {
-              if (!current)
-                throw new Error('The daily insights slot was claimed in another tab. Try again.');
-              checkSnapshotClaim(claim, current);
-            } else await packets.add(snapshotClaim(candidate));
             await snapshots.put(candidate);
             return candidate;
           });
@@ -221,17 +220,13 @@ export function createInsightsOutbox(
           throw error;
         }
         if (!(await allowed())) return 'idle';
-        const acknowledged = await database.transaction('rw', [snapshots, packets], async () => {
+        const acknowledged = await database.transaction('rw', snapshots, async () => {
           if (!stillAllowed()) return false;
           const raw = await snapshots.get(key);
           if (!raw) throw new Error('The insights snapshot disappeared.');
           const current = checkSnapshot(raw, context);
           if (!sameSnapshot(current, packet) || current.status !== 'pending') return false;
-          const claim = await packets.get(key);
-          if (!claim) throw new Error('The daily insights claim disappeared.');
-          checkSnapshotClaim(claim, current);
           await snapshots.put({ ...current, status: 'sent' });
-          await packets.put(snapshotClaim({ ...current, status: 'sent' }));
           return true;
         });
         sent ||= acknowledged;
@@ -255,7 +250,7 @@ export function createInsightsOutbox(
 function checkSavedPacket(raw: SavedPacket, context: Omit<PacketIdentity, 'slotId'>): SavedPacket {
   if (
     !raw ||
-    !['pending', 'sent'].includes(raw.status) ||
+    (raw.status !== 'pending' && raw.status !== 'sent') ||
     Object.keys(raw).length !== (raw.status === 'pending' ? 7 : 6) ||
     !INSIGHT_ID_RE.test(raw.slotId) ||
     !/^[0-9a-f]{64}$/.test(raw.keyId) ||
@@ -309,23 +304,4 @@ function checkSnapshot(
   const envelope = parseInsightEnvelope(raw.envelope, context);
   if (envelope.k !== context.keyId) throw new Error('The saved insights recipient changed.');
   return { ...raw, envelope };
-}
-
-function snapshotClaim(packet: SnapshotPacket): SavedPacket {
-  const { shareId, isoDay, relayUrl, keyId, slotId } = packet;
-  const identity = { shareId, isoDay, relayUrl, keyId, slotId };
-  // Old tabs understand this row. Before ACK they can only retry the same protected slot.
-  return packet.status === 'sent'
-    ? { ...identity, status: 'sent' }
-    : { ...identity, status: 'pending', envelope: packet.envelope };
-}
-
-function checkSnapshotClaim(raw: SavedPacket, packet: SnapshotPacket): void {
-  const claim = checkSavedPacket(raw, packet);
-  if (
-    claim.slotId !== packet.slotId ||
-    (claim.status === 'pending' &&
-      JSON.stringify(claim.envelope) !== JSON.stringify(packet.envelope))
-  )
-    throw new Error('The daily insights slot belongs to a different packet.');
 }
