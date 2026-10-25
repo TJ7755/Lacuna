@@ -242,6 +242,7 @@ export const CardRow = React.memo(function CardRow({
           <div className="min-w-0 flex-1">
             {/* Two lines of question and one of answer, clamped by line so maths keeps its height. */}
             <PageLoadingBoundary
+              animateArrival={!skipAnimation}
               fallback={
                 <div className="text-[15px] font-semibold">
                   <Skeleton as="span" className="inline-block h-4 w-24 rounded bg-ink/5" />
@@ -252,7 +253,7 @@ export const CardRow = React.memo(function CardRow({
                 <CardContent card={card} side="front" />
               </div>
             </PageLoadingBoundary>
-            <PageLoadingBoundary fallback={null}>
+            <PageLoadingBoundary fallback={null} animateArrival={!skipAnimation}>
               <div
                 data-card-answer
                 className="card-row-clamp mt-0.5 line-clamp-1 max-h-8 text-[13px] text-ink-soft"

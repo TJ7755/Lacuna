@@ -45,14 +45,12 @@ export function PageLoadingBoundary({
   children,
   fallback,
   pending = false,
-  minimumMs = 0,
   className,
   animateArrival = true,
 }: {
   children: ReactNode;
   fallback: ReactNode;
   pending?: boolean;
-  minimumMs?: number;
   className?: string;
   animateArrival?: boolean;
 }) {
@@ -74,15 +72,22 @@ export function PageLoadingBoundary({
     });
   }, []);
   const waiting = pending || loading.tokens.size > 0;
-  const visible = useLoadingVisibility(waiting, 200, minimumMs);
-  const showing = visible && (waiting || minimumMs > 0);
+  const visible = useLoadingVisibility(waiting, 200, 0);
+  const showing = visible && waiting;
   return (
     <LoadingContext.Provider value={report}>
       <div className={className ? `relative ${className}` : 'relative'}>
         <AnimatePresence>
           {showing && <LoadingSurface key="loading">{loading.fallback ?? fallback}</LoadingSurface>}
         </AnimatePresence>
-        <div hidden={showing}>
+        <div
+          inert={showing && pending}
+          style={
+            showing
+              ? { opacity: 0, position: 'absolute', inset: 0, pointerEvents: 'none' }
+              : undefined
+          }
+        >
           <PageArrivalReady value={!showing && !waiting}>
             {animateArrival ? (
               <PageArrival>

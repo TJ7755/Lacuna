@@ -95,10 +95,7 @@ function isolatedRoute(label: string, child: ReactNode) {
 
 function workspaceRoute(Component: ComponentType, lesson = false) {
   return (
-    <PageLoadingBoundary
-      minimumMs={200}
-      fallback={lesson ? <LessonViewSkeleton /> : <CoursePathSkeleton />}
-    >
+    <PageLoadingBoundary fallback={lesson ? <LessonViewSkeleton /> : <CoursePathSkeleton />}>
       <ArchivedCourseAccessGuard>
         <Component />
       </ArchivedCourseAccessGuard>

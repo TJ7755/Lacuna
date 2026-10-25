@@ -10,13 +10,13 @@ vi.mock('../../state/motionSpeed', () => ({
 
 afterEach(() => vi.useRealTimers());
 
-it('uses one delay and minimum lifetime across guard, chunk and page data', async () => {
+it('uses one delay across guard, chunk and page data without holding ready content', async () => {
   vi.useFakeTimers();
   function Page({ stage }: { stage: string }) {
     return (
       <>
         <header>Course navigation and View/Edit</header>
-        <PageLoadingBoundary minimumMs={200} fallback={<p>Shared skeleton</p>}>
+        <PageLoadingBoundary fallback={<p>Shared skeleton</p>}>
           {stage === 'ready' ? <p>Course content</p> : <PageLoading key={stage} />}
         </PageLoadingBoundary>
       </>
@@ -31,8 +31,6 @@ it('uses one delay and minimum lifetime across guard, chunk and page data', asyn
   expect(screen.getAllByRole('status')).toHaveLength(1);
   expect(screen.getByText('Course navigation and View/Edit')).toBeVisible();
   rerender(<Page stage="ready" />);
-  expect(screen.getByText('Course content')).not.toBeVisible();
-  await act(() => vi.advanceTimersByTime(200));
   expect(screen.getByText('Course content')).toBeVisible();
   expect(screen.queryByText('Shared skeleton')).not.toBeInTheDocument();
 });

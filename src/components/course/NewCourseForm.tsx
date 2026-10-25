@@ -258,16 +258,18 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
       <PageLoadingBoundary
         pending={!libraryReady}
         fallback={
-          <div
-            aria-busy="true"
-            aria-label="Loading the course library"
-            className="flex flex-col gap-3 px-6 pb-6"
-          >
-            <Skeleton className="h-[46px] rounded-2xl" />
-            <div className="grid gap-1.5">
-              {Array.from({ length: 6 }, (_, index) => (
-                <Skeleton key={index} className="h-14 rounded-2xl" />
-              ))}
+          <div className="px-6 pb-6">
+            <div
+              aria-busy="true"
+              aria-label="Loading the course library"
+              className="flex flex-col gap-3"
+            >
+              <Skeleton className="h-[46px] rounded-2xl" />
+              <div className="grid gap-1.5">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <Skeleton key={index} className="h-14 rounded-2xl" />
+                ))}
+              </div>
             </div>
           </div>
         }

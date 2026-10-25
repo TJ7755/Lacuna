@@ -33,7 +33,7 @@ import { ResultMark } from '../components/questions/ResultMark';
 
 export function QuestionLearnMode() {
   return (
-    <PageLoadingBoundary fallback={<QuestionSessionSkeleton />} animateArrival={false}>
+    <PageLoadingBoundary fallback={<QuestionSessionSkeleton />}>
       <QuestionSession />
     </PageLoadingBoundary>
   );

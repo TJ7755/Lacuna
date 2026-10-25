@@ -57,27 +57,31 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
   )
     return;
   const surfaces = (parts.length ? parts : defaults.length ? defaults : [content])
-    .map((element) => ({ element, top: element.getBoundingClientRect().top }))
+    // Existing Motion/CSS entrances retain ownership of their opacity.
+    .filter(
+      (element) =>
+        element.style.opacity === '' && getComputedStyle(element).animationName === 'none',
+    )
+    .map((element) => ({
+      element,
+      top: element.getBoundingClientRect().top,
+      opacity: Number(getComputedStyle(element).opacity),
+    }))
     .sort((a, b) => a.top - b.top);
   const rows = [...new Set(surfaces.map(({ top }) => Math.round(top)))];
-  const previous = surfaces.map(({ element }) => element.style.opacity);
-  const restorePart = (element: HTMLElement, index: number) => {
-    if (previous[index]) element.style.opacity = previous[index];
-    else element.style.removeProperty('opacity');
-  };
-  const controls = surfaces.map(({ element, top }, index) => {
+  const controls = surfaces.map(({ element, top, opacity: target }) => {
     element.style.opacity = '0';
-    return animate(0, 1, {
+    return animate(0, target, {
       ...liquidSpring(multiplier),
       delay: Math.min(rows.indexOf(Math.round(top)) * 0.04, 0.12) * multiplier,
       onUpdate: (opacity) => {
         element.style.opacity = String(opacity);
       },
-      onComplete: () => restorePart(element, index),
+      onComplete: () => element.style.removeProperty('opacity'),
     });
   });
   return () => {
     controls.forEach((control) => control.stop());
-    surfaces.forEach(({ element }, index) => restorePart(element, index));
+    surfaces.forEach(({ element }) => element.style.removeProperty('opacity'));
   };
 }
