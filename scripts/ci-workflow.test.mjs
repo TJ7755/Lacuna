@@ -360,8 +360,12 @@ test('browser consumers use the same pinned browser image and shared production 
   }
   for (const name of consumers) {
     const job = jobs[name];
-    assert.ok(job.needs.includes('production'));
+    assert.equal(job.needs, 'changes');
+    const wait = job.steps.find((step) => step.run === 'node scripts/ci-wait-for-production.mjs');
+    assert.equal(wait?.env.GH_TOKEN, '${{ github.token }}');
+    assert.equal(wait?.env.SOURCE_SHA, '${{ github.event.pull_request.head.sha || github.sha }}');
     const download = job.steps.find((step) => step.uses?.startsWith('actions/download-artifact@'));
+    assert.ok(job.steps.indexOf(wait) < job.steps.indexOf(download));
     assert.equal(download.with.name, producer.with.name);
     assert.equal(download.with.path, producer.with.path);
     assert.equal(job.env.LACUNA_BROWSER_PREBUILT, 'true');
@@ -372,6 +376,32 @@ test('browser consumers use the same pinned browser image and shared production 
       /--project=\$\{\{ matrix.project }} --workers=1/.test(step.run ?? ''),
     ),
   );
+  assert.ok(jobs['browser-smoke'].needs.includes('production'));
+  assert.equal(
+    jobs['browser-smoke'].steps[0].env.PRODUCTION_RESULT,
+    '${{ needs.production.result }}',
+  );
+  assert.deepEqual(jobs['browser-tests'].strategy.matrix.shard, [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.ok(
+    jobs['browser-tests'].steps.some(
+      (step) => step.run === 'node scripts/ci-browser-shards.mjs run ${{ matrix.shard }}/8',
+    ),
+  );
+});
+
+test('Windows skips the slow package cache while retaining verified runtime installation', () => {
+  const action = parse(
+    readFileSync(new URL('../.github/actions/setup-bun/action.yml', import.meta.url), 'utf8'),
+  );
+  const steps = action.runs.steps;
+  const packages = steps.find((step) => step.name === 'Restore Bun package downloads');
+  assert.equal(packages.if, "runner.os != 'Windows'");
+  const runtime = steps.find((step) => step.name === 'Restore verified Bun download');
+  assert.equal(runtime.if, undefined);
+  const install = steps.find(
+    (step) => step.run === 'node relay/scripts/security-bun.mjs --install',
+  );
+  assert.equal(install.if, undefined);
 });
 
 test('a retry cannot share or cancel newer pull-request validation even if the branch advances after inspection', () => {
@@ -416,6 +446,7 @@ test('aggregate gates accept only explicitly unaffected dependencies', () => {
               MACOS_ELECTRON_RESULT: 'ELECTRON',
             }
           : {
+              PRODUCTION_RESULT: 'APP',
               RESULT: 'APP',
               TIMING_RESULT: 'APP',
               MOBILE_RESULT: 'APP',
