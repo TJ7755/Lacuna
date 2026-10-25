@@ -311,6 +311,7 @@ async function followsPublisherUpdates(browser: Browser, testInfo: TestInfo, lin
     .getByRole('navigation', { name: 'Courses' })
     .getByRole('link', { name: 'Link biology', exact: true })
     .click();
+  await expect(student).toHaveURL(/#\/course\/[^/]+$/);
   const studentCourseId = /#\/course\/([^/]+)/.exec(student.url())?.[1];
   expect(studentCourseId).toBeTruthy();
   await student.goto(`/#/course/${studentCourseId}/cards`);

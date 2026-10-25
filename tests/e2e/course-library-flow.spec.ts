@@ -33,8 +33,14 @@ test('keeps the library coherent through a cold download and backtracking', asyn
     await expect(search).toBeFocused();
     const subjects = page.getByRole('list', { name: 'Library subjects', exact: true });
     await expect(subjects).toBeVisible();
-    const searchBounds = (await search.boundingBox())!;
-    const subjectsBounds = (await subjects.boundingBox())!;
+    // Sample both edges in one frame while their shared parent is still moving.
+    const [searchBounds, subjectsBounds] = await search.evaluate((input) => {
+      const subjects = input.parentElement!.querySelector('[aria-label="Library subjects"]')!;
+      return [input, subjects].map((element) => {
+        const { x, width } = element.getBoundingClientRect();
+        return { x, width };
+      });
+    });
     expect(Math.abs(searchBounds.x - subjectsBounds.x)).toBeLessThan(1);
     expect(Math.abs(searchBounds.width - subjectsBounds.width)).toBeLessThan(1);
     await search.fill('8461');
