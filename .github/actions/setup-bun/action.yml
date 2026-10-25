@@ -9,6 +9,9 @@ runs:
         path: relay/node_modules/.cache/security-runtime/downloads
         key: bun-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.bun-version', 'relay/scripts/security-bun.json') }}
     - name: Restore Bun package downloads
+      # Extracting the many-file package cache costs more than installing on Windows.
+      # Keep the small checksum-verified runtime cache on every platform.
+      if: runner.os != 'Windows'
       uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: ~/.bun/install/cache

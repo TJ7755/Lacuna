@@ -1,6 +1,11 @@
 import { chromium, expect as baseExpect } from '@playwright/test';
 import { clickToReadable } from './latency';
-import { installLagProbe, readLagProbe, startDiagnosticTrace, saveDiagnosticTrace } from './diagnostics';
+import {
+  installLagProbe,
+  readLagProbe,
+  startDiagnosticTrace,
+  saveDiagnosticTrace,
+} from './diagnostics';
 import { createServer } from 'node:http';
 import { readFile, mkdir, writeFile, stat, readdir, rm, cp } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
@@ -295,12 +300,15 @@ try {
     runs.push(run);
     await mkdir(resolve(output, '..'), { recursive: true });
     async function measure(name: string, iteration: number, action: () => Promise<unknown>) {
-      const trace = traceDirectory && iteration === 0
-        ? resolve(traceDirectory, `${rate}-${name}.json`) : undefined;
+      const trace =
+        traceDirectory && iteration === 0
+          ? resolve(traceDirectory, `${rate}-${name}.json`)
+          : undefined;
       if (trace) await startDiagnosticTrace(cdp);
-      if (diagnostics) await page.evaluate(() => {
-        (window as unknown as { __lacunaLag?: { reset(): void } }).__lacunaLag?.reset();
-      });
+      if (diagnostics)
+        await page.evaluate(() => {
+          (window as unknown as { __lacunaLag?: { reset(): void } }).__lacunaLag?.reset();
+        });
       const before = await cdp.send('Performance.getMetrics');
       const started = performance.now();
       let result: unknown;
@@ -346,10 +354,19 @@ try {
         ...(typeof inputToReadableMs === 'number' ? { inputToReadableMs } : {}),
       };
       samples.push(sample);
-      console.log(JSON.stringify({ rate, ...sample, lag: lag ? {
-        mountedCardRows: lag.mountedCardRows, longTasks: lag.longTasks.length,
-        longestFrameMs: Math.max(0, ...lag.frames),
-      } : undefined }));
+      console.log(
+        JSON.stringify({
+          rate,
+          ...sample,
+          lag: lag
+            ? {
+                mountedCardRows: lag.mountedCardRows,
+                longTasks: lag.longTasks.length,
+                longestFrameMs: Math.max(0, ...lag.frames),
+              }
+            : undefined,
+        }),
+      );
       // Save completed operations even if a later memory test kills the runner.
       await writeFile(output, JSON.stringify(report, null, 2) + '\n');
     }
@@ -362,7 +379,7 @@ try {
           await expect(page.getByText('Heavy course 0', { exact: true }).first()).toBeVisible();
         });
         await measure('global-search', iteration, async () => {
-          await page.getByRole('button', { name: /^Search/ }).click();
+          await page.keyboard.press('ControlOrMeta+k');
           await page.getByRole('combobox').fill('Recall item 0-0-99');
           await expect(
             page.getByRole('option').filter({ hasText: 'Recall item 0-0-99' }).first(),
@@ -372,7 +389,7 @@ try {
         await measure('course-open', iteration, async () => {
           await page.getByText('Heavy course 0', { exact: true }).first().click();
           await expect(
-            page.getByRole('heading', { name: 'Course', exact: true }),
+            page.getByRole('heading', { name: 'Heavy course 0', exact: true }),
           ).toBeVisible();
           await expect(
             page.getByRole('button', { name: 'Heavy lesson 0', exact: true }),
@@ -383,11 +400,13 @@ try {
             .getByRole('navigation', { name: 'Course sections' })
             .getByRole('link', { name: 'Cards', exact: true })
             .click();
-          await expect(page.getByPlaceholder('Search all cards…')).toBeVisible();
+          await expect(page.getByRole('searchbox', { name: 'Search all cards' })).toBeVisible();
           await expect(page.getByText(/Recall item 0-/).first()).toBeVisible();
         });
         await measure('cards-search', iteration, async () => {
-          await page.getByPlaceholder('Search all cards…').fill('Recall item 0-0-99');
+          await page
+            .getByRole('searchbox', { name: 'Search all cards' })
+            .fill('Recall item 0-0-99');
           await expect(
             page
               .getByText(

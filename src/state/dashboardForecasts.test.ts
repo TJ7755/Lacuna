@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { clearForecastCache, dashboardForecasts, urgencyOrder } from './dashboardForecasts';
+import {
+  clearForecastCache,
+  dashboardForecasts,
+  dashboardForecastHistories,
+  urgencyOrder,
+} from './dashboardForecasts';
 import { defaultFsrsParameters } from '../fsrs/params';
-import type { Card, Course } from '../db/types';
+import { examDayHistory } from '../fsrs/courseForecast';
+import type { Card, Course, Lesson } from '../db/types';
+import type { ReviewHistoryEntry } from '../db/reviewHistory';
 
 const NOW = Date.UTC(2026, 4, 21);
 const DAY = 86_400_000;
@@ -13,7 +20,11 @@ describe('urgencyOrder', () => {
       { id: 'chemistry', examDate: NOW + 28 * DAY, due: 14 },
       { id: 'biology', examDate: NOW + 22 * DAY, due: 24 },
     ];
-    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual(['biology', 'chemistry', 'french']);
+    expect(urgencyOrder(rows, NOW).map((row) => row.id)).toEqual([
+      'biology',
+      'chemistry',
+      'french',
+    ]);
   });
 
   it('treats a past exam like no exam and breaks ties by the larger workload', () => {
@@ -56,5 +67,55 @@ describe('dashboardForecasts', () => {
     const reviewed = [card('a', 12), card('b', 9)];
     expect(dashboardForecasts([course], [], reviewed, NOW + 60_000).bio).not.toBe(first);
   });
-});
 
+  it('replays current card membership even when review ownership predates a move', () => {
+    const chemistry = { ...course, id: 'chemistry' };
+    const archived = { ...course, id: 'archived', archived: true };
+    const courses = [course, chemistry, archived];
+    const biologyCard = card('biology-card', 4);
+    const moved = { ...card('moved', 9), courseId: chemistry.id };
+    const cards = [
+      biologyCard,
+      moved,
+      { ...card('extension', 2), primaryLessonId: 'extension' },
+      { ...card('suspended', 2), suspended: true },
+      { ...card('archived', 2), courseId: archived.id },
+    ];
+    const lessons = [{ id: 'extension', courseId: course.id, isExtension: true }] as Lesson[];
+    const history = [
+      'moved',
+      'biology-card',
+      'extension',
+      'suspended',
+      'archived',
+      'deleted',
+    ].flatMap((cardId) =>
+      [2, 5].map(
+        (days, i) =>
+          ({
+            id: `${cardId}-${i}`,
+            cardId,
+            courseId: 'old-course',
+            timestamp: NOW - days * DAY,
+            stabilityAfter: days,
+          }) as ReviewHistoryEntry,
+      ),
+    );
+    const forecasts = dashboardForecasts(courses, lessons, cards, NOW);
+    const from = NOW - 8 * DAY;
+    const histories = dashboardForecastHistories(
+      courses,
+      lessons,
+      cards,
+      history,
+      forecasts,
+      from,
+      NOW,
+    );
+    expect(histories).toEqual({
+      bio: examDayHistory([biologyCard], history, course, forecasts.bio.end, from, NOW),
+      chemistry: examDayHistory([moved], history, chemistry, forecasts.chemistry.end, from, NOW),
+    });
+    expect(dashboardForecastHistories(courses, lessons, cards, history, {}, from, NOW)).toEqual({});
+  });
+});
