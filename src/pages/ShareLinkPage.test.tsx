@@ -207,6 +207,105 @@ it('shows the unavailable state when the relay has no payload', async () => {
   expect(screen.getByText(/invalid or has been removed/)).toBeInTheDocument();
 });
 
+it('starts the manifest fetch while the payload is still downloading', async () => {
+  let finishPayload!: (response: Response) => void;
+  const payload = new Promise<Response>((resolve) => {
+    finishPayload = resolve;
+  });
+  const fetchImpl = vi.fn(async (input: string) =>
+    input.endsWith('/meta') ? manifestResponse(LINEAGE_ID) : payload,
+  );
+  vi.stubGlobal('fetch', fetchImpl);
+  open(SHARE_ID);
+  try {
+    await waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(2));
+    expect(mocks.decodeFile).not.toHaveBeenCalled();
+  } finally {
+    await act(async () => finishPayload(new Response('{}', { headers: { ETag: '"1"' } })));
+  }
+  expect(await screen.findByText('Shared biology')).toBeInTheDocument();
+});
+
+it('waits for the parallel manifest before allowing an import', async () => {
+  let finishManifest!: (response: Response) => void;
+  const manifest = new Promise<Response>((resolve) => {
+    finishManifest = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string) =>
+      input.endsWith('/meta') ? manifest : new Response('{}', { headers: { ETag: '"1"' } }),
+    ),
+  );
+  open(SHARE_ID);
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(mocks.decodeFile).not.toHaveBeenCalled();
+  expect(screen.queryByRole('button', { name: 'Add to my courses' })).toBeNull();
+  await act(async () => finishManifest(notFoundResponse()));
+  expect(await screen.findByText('This link is incomplete')).toBeInTheDocument();
+  expect(mocks.decodeFile).not.toHaveBeenCalled();
+});
+
+it('keeps the missing-payload result when the parallel manifest fails first', async () => {
+  let finishPayload!: (response: Response) => void;
+  const payload = new Promise<Response>((resolve) => {
+    finishPayload = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: string) => {
+      if (input.endsWith('/meta')) throw new TypeError('Manifest offline');
+      return payload;
+    }),
+  );
+  open(SHARE_ID);
+  try {
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  } finally {
+    await act(async () => finishPayload(notFoundResponse()));
+  }
+  expect(await screen.findByText(/invalid or has been removed/)).toBeInTheDocument();
+  expect(mocks.decodeFile).not.toHaveBeenCalled();
+});
+
+it.each(['payload', 'meta'])(
+  'reports a failed parallel %s download without importing',
+  async (slot) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string) => {
+        if (input.endsWith(`/${slot}`)) throw new TypeError('Offline');
+        return input.endsWith('/meta')
+          ? manifestResponse(LINEAGE_ID)
+          : new Response('{}', { headers: { ETag: '"1"' } });
+      }),
+    );
+    open(SHARE_ID);
+    expect(await screen.findByText(/Could not reach the share link service/)).toBeInTheDocument();
+    expect(mocks.decodeFile).not.toHaveBeenCalled();
+    expect(mocks.importShare).not.toHaveBeenCalled();
+  },
+);
+
+it('aborts both parallel downloads when leaving the share page', async () => {
+  const signals: AbortSignal[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((_input: string, init: RequestInit) => {
+      const signal = init.signal!;
+      signals.push(signal);
+      return new Promise<Response>((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      });
+    }),
+  );
+  open(SHARE_ID);
+  expect(signals).toHaveLength(2);
+  fireEvent.click(screen.getByRole('link', { name: 'Leave share page' }));
+  await waitFor(() => expect(signals.every((signal) => signal.aborted)).toBe(true));
+  expect(mocks.decodeFile).not.toHaveBeenCalled();
+});
+
 it('retries a failed fetch from the unavailable state', async () => {
   const fetchImpl = vi.fn(async (_input: string | URL | Request) => notFoundResponse());
   vi.stubGlobal('fetch', fetchImpl);
@@ -526,7 +625,9 @@ it.each([
 it('shows an update instruction for an unsupported compressed share without importing', async () => {
   stubFetch(new Response('LACUNA-SHARE:\u0002future', { headers: { ETag: '"1"' } }));
   open(SHARE_ID);
-  expect(await screen.findByText('Update Lacuna to read this compressed share link.')).toBeInTheDocument();
+  expect(
+    await screen.findByText('Update Lacuna to read this compressed share link.'),
+  ).toBeInTheDocument();
   expect(mocks.decodeFile).not.toHaveBeenCalled();
   expect(mocks.importShare).not.toHaveBeenCalled();
 });

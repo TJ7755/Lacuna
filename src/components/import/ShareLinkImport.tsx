@@ -109,13 +109,22 @@ export function ShareLinkImport({
         return;
       }
       try {
-        const result = await getShareBytes({
-          relayUrl: DEFAULT_RELAY_URL,
-          shareId,
-          slot: 'payload',
-          signal: controller.signal,
-        });
+        // Both slots are required. Overlap their relay round trips, but settle
+        // both so an early manifest failure cannot become an unhandled rejection
+        // or override the existing missing-payload/error result.
+        const [payloadResult, manifestResult] = await Promise.allSettled(
+          (['payload', 'meta'] as const).map((slot) =>
+            getShareBytes({
+              relayUrl: DEFAULT_RELAY_URL,
+              shareId,
+              slot,
+              signal: controller.signal,
+            }),
+          ),
+        );
         if (cancelled) return;
+        if (payloadResult.status === 'rejected') throw payloadResult.reason;
+        const result = payloadResult.value;
         if (!result) {
           setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
           return;
@@ -125,23 +134,8 @@ export function ShareLinkImport({
         // the linked course, and an untracked import would permanently miss
         // teacher updates. Show an incomplete state with a retry instead —
         // importing stays available once the manifest verifies.
-        let manifestSlot;
-        try {
-          manifestSlot = await getShareBytes({
-            relayUrl: DEFAULT_RELAY_URL,
-            shareId,
-            slot: 'meta',
-            signal: controller.signal,
-          });
-        } catch (error) {
-          if (cancelled) return;
-          setState({
-            status: 'unavailable',
-            message: error instanceof Error ? error.message : UNAVAILABLE_MESSAGE,
-          });
-          return;
-        }
-        if (cancelled) return;
+        if (manifestResult.status === 'rejected') throw manifestResult.reason;
+        const manifestSlot = manifestResult.value;
         if (!manifestSlot) {
           setState({ status: 'incomplete', message: INCOMPLETE_MESSAGE });
           return;
