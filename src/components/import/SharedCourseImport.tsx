@@ -54,6 +54,8 @@ interface PendingShareImport {
     timeZone: string;
     valid: boolean;
     suggestion?: string;
+    /** Onboarding already asked, so the picker is not shown again. */
+    fromOnboarding: boolean;
   };
   merge?: {
     course: CourseRecord;
@@ -98,6 +100,7 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
           valid: true,
           suggestion:
             suggestedDate === undefined ? undefined : formatDateTime(suggestedDate, timeZone),
+          fromOnboarding: suggestedDate === undefined && !!chosen,
         }
       : undefined,
   };
@@ -162,10 +165,13 @@ export function SharedCourseImport({
   initialFile,
   onImported,
   onBusyChange,
+  chosen = false,
 }: {
   initialFile?: File;
   onImported?: (courseId: string) => void;
   onBusyChange?: (busy: boolean) => void;
+  /** The learner already picked this course, so other ways to find one are hidden. */
+  chosen?: boolean;
 }) {
   const { notify } = useToast();
   const [input, setInput] = useState('');
@@ -339,46 +345,54 @@ export function SharedCourseImport({
         <h2 className="font-display text-xl">Import a shared course</h2>
       </div>
 
-      <CourseFileImportButton
-        disabled={importing}
-        onReadStart={beginInspection}
-        onError={(message, generation) => {
-          if (generation === inspectionGeneration.current) setError(message);
-        }}
-        onInspect={async (file, generation) => {
-          const next = await resolvePending(file.payload, '');
-          if (generation === inspectionGeneration.current) setPending({ ...next, file });
-        }}
-      />
+      {!chosen && (
+        <>
+          <CourseFileImportButton
+            disabled={importing}
+            onReadStart={beginInspection}
+            onError={(message, generation) => {
+              if (generation === inspectionGeneration.current) setError(message);
+            }}
+            onInspect={async (file, generation) => {
+              const next = await resolvePending(file.payload, '');
+              if (generation === inspectionGeneration.current) setPending({ ...next, file });
+            }}
+          />
 
-      <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
-        <textarea
-          aria-label="Share link or code to import"
-          autoFocus
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            beginInspection();
-          }}
-          rows={4}
-          placeholder="Paste a share link or code"
-          className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
-        />
-      </div>
+          <div className="rounded-2xl bg-paper/70 px-4 py-3 transition-shadow focus-within:bg-surface focus-within:shadow-[0_0_0_2px_hsl(var(--ink))]">
+            <textarea
+              aria-label="Share link or code to import"
+              autoFocus
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                beginInspection();
+              }}
+              rows={4}
+              placeholder="Paste a share link or code"
+              className="w-full resize-none break-all bg-transparent font-mono text-xs text-ink outline-none placeholder:font-body placeholder:text-sm placeholder:text-ink-faint"
+            />
+          </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={handleInspect} disabled={importing || !input.trim()}>
-          Read code
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={scanning ? handleStopScan : handleStartScan}
-          disabled={importing || !navigator.mediaDevices?.getUserMedia}
-        >
-          <CameraIcon width={18} height={18} />
-          {scanning ? 'Stop scanning' : 'Scan QR code'}
-        </Button>
-      </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={handleInspect}
+              disabled={importing || !input.trim()}
+            >
+              Read code
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={scanning ? handleStopScan : handleStartScan}
+              disabled={importing || !navigator.mediaDevices?.getUserMedia}
+            >
+              <CameraIcon width={18} height={18} />
+              {scanning ? 'Stop scanning' : 'Scan QR code'}
+            </Button>
+          </div>
+        </>
+      )}
 
       {(error || scanError) && (
         <p role="alert" className="mt-3 text-sm text-negative">
@@ -477,7 +491,7 @@ export function SharedCourseImport({
                   as placeholders after import. Use a full backup for an exact transfer.
                 </p>
               )}
-              {pending.scheduling && (
+              {pending.scheduling && !pending.scheduling.fromOnboarding && (
                 <div className="mb-5 space-y-3">
                   <p className="text-sm text-ink-soft">
                     {pending.scheduling.suggestion && (
@@ -498,9 +512,12 @@ export function SharedCourseImport({
                 </div>
               )}
               <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="ghost" onClick={() => setPending(null)}>
-                  {pending.merge?.stale ? 'Close' : 'Cancel'}
-                </Button>
+                {/* A chosen course has nothing to return to here; the panel offers the way back. */}
+                {!chosen && (
+                  <Button variant="ghost" onClick={() => setPending(null)}>
+                    {pending.merge?.stale ? 'Close' : 'Cancel'}
+                  </Button>
+                )}
                 {!pending.merge?.stale && (
                   <Button
                     variant="primary"

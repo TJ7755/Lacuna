@@ -11,16 +11,31 @@ import { Button } from '../ui/Button';
 import { StepSwap } from '../ui/StepSwap';
 import { expandingActionSpring } from '../ui/motion';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
-import { UploadIcon, CardsIcon, FileTextIcon, ShareIcon, ChevronLeftIcon } from '../ui/icons';
+import {
+  UploadIcon,
+  CardsIcon,
+  FileTextIcon,
+  ShareIcon,
+  ChevronLeftIcon,
+  BookIcon,
+} from '../ui/icons';
 import './ImportPanel.css';
 import { Field, Input } from '../ui/Field';
 import { normaliseShortClassCode } from '../../insights/classCode';
 import { countOf } from '../../utils/plural';
-import { LIBRARY_ORIGIN } from '../../config/origins';
+import { CourseLibraryPicker } from './CourseLibraryPicker';
+import { ShareLinkImport } from './ShareLinkImport';
+import type { LibraryCourse } from '../../library/catalogue';
 import { onboardingDestination } from '../../onboarding/onboardingState';
 
-type Source = 'class' | 'lacuna' | 'anki' | 'text';
+type Source = 'library' | 'class' | 'lacuna' | 'anki' | 'text';
 const sources = [
+  {
+    id: 'library',
+    title: 'Course library',
+    detail: 'Ready-made GCSE and IGCSE courses',
+    icon: BookIcon,
+  },
   { id: 'lacuna', title: 'Lacuna course', detail: 'File, link, code or QR', icon: ShareIcon },
   { id: 'anki', title: 'Anki deck', detail: 'Anki package (.apkg)', icon: CardsIcon },
   { id: 'text', title: 'Text or spreadsheet', detail: 'Paste or upload cards', icon: FileTextIcon },
@@ -50,6 +65,9 @@ export function ImportPanel({
   const [classCode, setClassCode] = useState('');
   const [classError, setClassError] = useState<string | null>(null);
   const [file, setFile] = useState<File>();
+  const [libraryCourse, setLibraryCourse] = useState<{ course: LibraryCourse; shareUrl: string }>();
+  const activeLibraryCourse = useRef<string>(undefined);
+  activeLibraryCourse.current = libraryCourse?.course.id;
   const [dragging, setDragging] = useState(false);
   const [pastedText, setPastedText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -71,20 +89,25 @@ export function ImportPanel({
     const observer = new ResizeObserver(measure);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [source]);
+  }, [source, libraryCourse]);
 
   useLayoutEffect(() => {
     if (source) {
       // A fast return can revive an exiting form, so mount-only autofocus is insufficient.
       const focusInput = () => {
         const selector =
-          source === 'class'
-            ? '#join-class-code'
-            : source === 'lacuna'
-              ? 'textarea[aria-label="Share link or code to import"]'
-              : source === 'anki'
-                ? '.card-import-package button'
-                : '#card-import-text';
+          source === 'library'
+            ? // A chosen course is still loading, so its way back is the first stable control.
+              activeLibraryCourse.current
+              ? 'button[aria-label="Back to the course library"]'
+              : '#import-library-search'
+            : source === 'class'
+              ? '#join-class-code'
+              : source === 'lacuna'
+                ? 'textarea[aria-label="Share link or code to import"]'
+                : source === 'anki'
+                  ? '.card-import-package button'
+                  : '#card-import-text';
         const target = [...(pageRoot.current?.querySelectorAll<HTMLElement>(selector) ?? [])].find(
           (element) => !element.closest('[inert]'),
         );
@@ -100,7 +123,7 @@ export function ImportPanel({
     if (!returnSource.current) return;
     sourceButtons.current[returnSource.current]?.focus({ preventScroll: true });
     returnSource.current = null;
-  }, [source, multiplier]);
+  }, [source, libraryCourse, multiplier]);
 
   function chooseFile(next: File | undefined) {
     if (!next) return;
@@ -116,13 +139,18 @@ export function ImportPanel({
   function reset() {
     setSource(null);
     setFile(undefined);
+    setLibraryCourse(undefined);
+  }
+  function back() {
+    if (libraryCourse) setLibraryCourse(undefined);
+    else reset();
   }
   // Escape returns to the source list while nothing has been entered; the card import form
   // claims its own keys first.
   const keys = useEditorKeys({
     onCancel: () => {
       if (!busy) {
-        if (source) reset();
+        if (source) back();
         else onClose?.();
       }
     },
@@ -142,7 +170,10 @@ export function ImportPanel({
         className="import-step-height"
       >
         <div ref={stepContent}>
-          <StepSwap stepKey={source ?? 'sources'} direction={source ? 1 : -1}>
+          <StepSwap
+            stepKey={libraryCourse ? `library/${libraryCourse.course.id}` : (source ?? 'sources')}
+            direction={source ? 1 : -1}
+          >
             <>
               <header className={source ? 'mb-3 flex items-center justify-end' : 'sr-only'}>
                 <h2 className="sr-only">Import</h2>
@@ -150,31 +181,26 @@ export function ImportPanel({
                   <button
                     type="button"
                     disabled={busy}
-                    aria-label="Back to import sources"
-                    onClick={reset}
+                    aria-label={
+                      libraryCourse ? 'Back to the course library' : 'Back to import sources'
+                    }
+                    onClick={back}
                     className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                   >
                     <ChevronLeftIcon width={16} height={16} />
-                    All sources
+                    {libraryCourse ? 'Course library' : 'All sources'}
                   </button>
                 )}
               </header>
               {!source ? (
                 <>
-                  <a
-                    href={LIBRARY_ORIGIN}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-3 block py-2 text-sm text-ink-soft underline underline-offset-4 hover:text-ink"
-                  >
-                    Browse the course library
-                  </a>
                   <div className="import-sources">
                     {sources.map(({ id, title, detail, icon: Icon }, index) => (
                       <button
                         key={id}
                         type="button"
                         autoFocus={index === 0}
+                        data-featured={id === 'library' || undefined}
                         ref={(button) => {
                           sourceButtons.current[id] = button;
                         }}
@@ -220,11 +246,24 @@ export function ImportPanel({
                         event.target.value = '';
                       }}
                     />
-                    <Button variant="primary" onClick={() => input.current?.click()}>
+                    <Button variant="secondary" onClick={() => input.current?.click()}>
                       Choose file
                     </Button>
                   </div>
                 </>
+              ) : source === 'library' ? (
+                libraryCourse ? (
+                  <ShareLinkImport
+                    code={libraryCourse.shareUrl}
+                    chosen
+                    isCurrent={() => activeLibraryCourse.current === libraryCourse.course.id}
+                    onOpenCourse={(id) => void navigate(onboardingDestination(`/course/${id}`))}
+                  />
+                ) : (
+                  <CourseLibraryPicker
+                    onChoose={(course, shareUrl) => setLibraryCourse({ course, shareUrl })}
+                  />
+                )
               ) : source === 'class' ? (
                 <form
                   className="space-y-4 p-5"

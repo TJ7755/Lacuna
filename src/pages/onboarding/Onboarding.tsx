@@ -309,7 +309,8 @@ function ContentStep() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto my-auto w-full max-w-md py-2">
+      {/* Top-aligned: the panel changes height as sources open and searches narrow. */}
+      <div className="mx-auto w-full max-w-md py-2 md:pt-8">
         <StepHeading>What do you want to learn?</StepHeading>
         <div className="overflow-hidden rounded-3xl bg-surface-raised card-surface">
           {fromScratch ? (

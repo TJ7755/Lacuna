@@ -98,8 +98,13 @@ it('starts a suggestion-free course with the onboarding choice', async () => {
     target: { value: `LAC0${btoa(JSON.stringify(source))}` },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeEnabled();
-  expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  expect(add).toBeEnabled();
+  // Onboarding has just asked, so the picker is not repeated.
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  fireEvent.click(add);
+  await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
+  expect((await db.courseAssessments.toArray())[0].schedulingMode).toBe('steady');
 });
 
 it('requires a choice for a code, including the keyboard shortcut, then confirms the suggestion', async () => {

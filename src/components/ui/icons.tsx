@@ -321,6 +321,13 @@ export const FileTextIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const BookIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" />
+    <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" />
+  </Icon>
+);
+
 export const FolderIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.5L8 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
