@@ -23,7 +23,7 @@ import './ImportPanel.css';
 import { Field, Input } from '../ui/Field';
 import { normaliseShortClassCode } from '../../insights/classCode';
 import { countOf } from '../../utils/plural';
-import { CourseLibraryPicker } from './CourseLibraryPicker';
+import { CourseLibraryPicker, type LibraryBrowseState } from './CourseLibraryPicker';
 import { ShareLinkImport } from './ShareLinkImport';
 import type { LibraryCourse } from '../../library/catalogue';
 import { onboardingDestination } from '../../onboarding/onboardingState';
@@ -57,6 +57,10 @@ export function ImportPanel({
   const [motionSpeed] = useMotionSpeed();
   const multiplier = speedMultiplier(motionSpeed);
   const [busy, setBusy] = useState(false);
+  const [libraryBrowse, setLibraryBrowse] = useState<LibraryBrowseState>({
+    query: '',
+    subject: null,
+  });
   useEffect(() => {
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
@@ -276,6 +280,8 @@ export function ImportPanel({
                   />
                 ) : (
                   <CourseLibraryPicker
+                    browse={libraryBrowse}
+                    onBrowseChange={setLibraryBrowse}
                     onChoose={(course, shareUrl) =>
                       setLibraryCourse({ course, shareUrl, token: Symbol(course.id) })
                     }

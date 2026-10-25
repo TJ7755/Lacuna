@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { Button } from '../ui/Button';
 import { ChevronLeftIcon } from '../ui/icons';
-import { CourseLibraryPicker } from './CourseLibraryPicker';
+import { CourseLibraryPicker, type LibraryBrowseState } from './CourseLibraryPicker';
+import { StepSwap } from '../ui/StepSwap';
+import { m as motion } from 'motion/react';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { ShareLinkImport } from './ShareLinkImport';
 import type { LibraryCourse } from '../../library/catalogue';
 import './ImportPanel.css';
-
-const backClassName =
-  'inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-soft transition-colors hover:bg-ink/5 hover:text-ink active:bg-ink/10 disabled:pointer-events-none disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink';
 
 /**
  * The course library with its own way back, for surfaces other than the import panel: search
@@ -17,14 +18,20 @@ export function CourseLibraryImport({
   onBack,
   onOpenCourse,
   onBusyChange,
+  browse,
+  onBrowseChange,
 }: {
   /** Names where the first Back leads, such as "New course". */
   backLabel: string;
+  browse: LibraryBrowseState;
+  onBrowseChange: (browse: LibraryBrowseState) => void;
   onBack: () => void;
   onOpenCourse: (courseId: string) => void;
   /** True while a course is being written, so the surrounding way out can wait too. */
   onBusyChange?: (busy: boolean) => void;
 }) {
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
   const [chosen, setChosen] = useState<{
     course: LibraryCourse;
     shareUrl: string;
@@ -54,8 +61,11 @@ export function CourseLibraryImport({
   };
 
   return (
-    <div
-      className="import-panel"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.12 * multiplier }}
+      className="import-panel import-course-library"
       onKeyDown={(event: KeyboardEvent) => {
         if (event.key !== 'Escape' || event.defaultPrevented) return;
         event.preventDefault();
@@ -64,35 +74,43 @@ export function CourseLibraryImport({
       }}
     >
       <header className="mb-3 flex items-center justify-start">
-        <button
+        <Button
           ref={back}
           type="button"
           disabled={busy}
           aria-label={chosen ? 'Back to the course library' : `Back to ${backLabel}`}
           onClick={goBack}
-          className={backClassName}
+          variant="ghost"
+          hoverScale={false}
+          style={{ paddingInline: 12, gap: 6 }}
         >
           <ChevronLeftIcon width={16} height={16} />
           {chosen ? 'Course library' : backLabel}
-        </button>
+        </Button>
       </header>
-      {chosen ? (
-        <ShareLinkImport
-          code={chosen.shareUrl}
-          chosen
-          isCurrent={() => current.current === chosen.token}
-          onBusyChange={(next) => {
-            setBusy(next);
-            onBusyChange?.(next);
-          }}
-          onOpenCourse={onOpenCourse}
-        />
-      ) : (
-        <CourseLibraryPicker
-          autoFocus
-          onChoose={(course, shareUrl) => setChosen({ course, shareUrl, token: Symbol(course.id) })}
-        />
-      )}
-    </div>
+      <StepSwap stepKey={chosen ? chosen.course.id : 'catalogue'} direction={chosen ? 1 : -1}>
+        {chosen ? (
+          <ShareLinkImport
+            code={chosen.shareUrl}
+            chosen
+            isCurrent={() => current.current === chosen.token}
+            onBusyChange={(next) => {
+              setBusy(next);
+              onBusyChange?.(next);
+            }}
+            onOpenCourse={onOpenCourse}
+          />
+        ) : (
+          <CourseLibraryPicker
+            browse={browse}
+            onBrowseChange={onBrowseChange}
+            autoFocus
+            onChoose={(course, shareUrl) =>
+              setChosen({ course, shareUrl, token: Symbol(course.id) })
+            }
+          />
+        )}
+      </StepSwap>
+    </motion.div>
   );
 }
