@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, useId, useRef, type ReactNode } from 'react';
-import { AnimatePresence, m as motion } from 'motion/react';
+import { m as motion } from 'motion/react';
 import { PlusIcon } from './icons';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { expandingActionSpring } from './motion';
@@ -47,6 +47,26 @@ export function ExpandingCreateControl({
   const [offset, setOffset] = useState(0);
   const [verticalOffset, setVerticalOffset] = useState(0);
   const [availableHeight, setAvailableHeight] = useState<number>();
+  const [retainForm, setRetainForm] = useState(open);
+  const form = useRef<HTMLDivElement>(null);
+  const surface = useRef<HTMLDivElement>(null);
+  const [formHeight, setFormHeight] = useState<number>();
+  useLayoutEffect(() => {
+    const element = form.current;
+    if (!element || !open) return;
+    setRetainForm(true);
+    const measure = (height = element.offsetHeight) => {
+      const shell = surface.current;
+      const borderHeight = shell ? shell.offsetHeight - shell.clientHeight : 0;
+      setFormHeight(height + borderHeight);
+    };
+    measure();
+    const observer = new ResizeObserver((entries) => {
+      measure(entries?.[0]?.borderBoxSize?.[0]?.blockSize ?? element.offsetHeight);
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [open]);
   // Keep a useful form area in short windows, allowing the header to rise with its surface.
   useLayoutEffect(() => {
     if (!open) return;
@@ -90,15 +110,20 @@ export function ExpandingCreateControl({
       style={{ width: closedWidth, height: triggerHeight }}
     >
       <motion.div
+        ref={surface}
         initial={false}
         animate={{
           x: open ? offset : 0,
           y: open ? verticalOffset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
-          height: open ? 'auto' : triggerHeight,
+          height: open ? (formHeight ?? 'auto') : triggerHeight,
           borderRadius: open ? 24 : triggerHeight / 2,
         }}
         transition={transition}
+        // Keep drafts and selection alive until the shape has actually closed.
+        onAnimationComplete={() => {
+          if (!open) setRetainForm(false);
+        }}
         // The closed button uses an inset ring; the open form is a flat card.
         className={`absolute ${anchor} top-0 overflow-hidden ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
@@ -136,29 +161,27 @@ export function ExpandingCreateControl({
             }
           }}
         >
-          <AnimatePresence initial={false}>
-            {open && (
-              <motion.div
-                key="form"
-                id={formId}
-                style={{ paddingTop: triggerHeight }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 * multiplier }}
+          {(open || retainForm) && (
+            <motion.div
+              key="form"
+              ref={form}
+              id={formId}
+              style={{ paddingTop: triggerHeight }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: open ? 1 : 0 }}
+              transition={{ duration: 0.12 * multiplier }}
+            >
+              <div
+                className="overflow-y-auto overscroll-contain text-left"
+                style={{
+                  maxHeight:
+                    availableHeight === undefined ? undefined : availableHeight - triggerHeight,
+                }}
               >
-                <div
-                  className="overflow-y-auto overscroll-contain text-left"
-                  style={{
-                    maxHeight:
-                      availableHeight === undefined ? undefined : availableHeight - triggerHeight,
-                  }}
-                >
-                  {typeof children === 'function' ? children(close) : children}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {typeof children === 'function' ? children(close) : children}
+              </div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </div>
