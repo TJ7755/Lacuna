@@ -57,8 +57,13 @@ test('a failed landing handover download recovers through the existing stale-chu
   });
   const page = await context.newPage();
   try {
+    await page.addInitScript(() => {
+      window.requestIdleCallback = () => 1;
+      localStorage.setItem('handover-recovery-proof', 'retained');
+    });
     let failed = false;
     let documents = 0;
+    let probes = 0;
     page.on('framenavigated', (frame) => {
       if (frame === page.mainFrame()) documents += 1;
     });
@@ -67,15 +72,41 @@ test('a failed landing handover download recovers through the existing stale-chu
       failed = true;
       return route.abort('failed');
     });
+    await page.route('**/sw.js?online-probe=*', (route) => {
+      probes += 1;
+      return route.continue();
+    });
     await page.goto('/');
-    await expect.poll(() => documents).toBe(2);
     await page.getByRole('button', { name: 'Pause illustrations' }).click();
     await expect(page.getByRole('button', { name: 'Play illustrations' })).toBeVisible();
+    expect(failed).toBe(false);
+    await page
+      .getByRole('region', { name: 'Revision around your exam' })
+      .getByRole('link', { name: 'Start revising' })
+      .click();
+    await expect(page).toHaveURL(/#\/start$/);
+    await expect(
+      page.getByRole('button', { name: 'Show answer', exact: true }).last(),
+    ).toBeVisible();
     expect(failed).toBe(true);
     expect(documents).toBe(2);
     expect(
       await page.evaluate(() => sessionStorage.getItem('lacuna-stale-chunk-recovery-at')),
     ).not.toBeNull();
+    expect(await page.evaluate(() => localStorage.getItem('handover-recovery-proof'))).toBe(
+      'retained',
+    );
+
+    await page.evaluate(async () => {
+      const cache = await caches.open('bounded-recovery-proof');
+      await cache.put('/bounded-recovery-proof', new Response('retained'));
+      window.dispatchEvent(new Event('vite:preloadError'));
+    });
+    await expect.poll(() => probes).toBe(2);
+    expect(documents).toBe(2);
+    expect(
+      await page.evaluate(async () => (await caches.match('/bounded-recovery-proof'))?.text()),
+    ).toBe('retained');
   } finally {
     await context.close();
   }
