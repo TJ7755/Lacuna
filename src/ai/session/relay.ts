@@ -1,9 +1,12 @@
+import { createRelayMailboxTransport } from './relayMailboxTransport';
+import { createRelayPolling } from './relayPolling';
 import {
-  RelayPushOutcomeUnknownError,
-  RelayStaleGenerationError,
-  type RelayClient,
-  type RelayMailbox,
-} from '../relayClient';
+  recoverDisconnectedState,
+  mailboxGenerationReason,
+  isExpiredPairing,
+  type RelaySessionState,
+} from './relaySessionState';
+import type { RelayClient } from '../relayClient';
 import {
   createRelayKeyPair,
   deriveRelayEncryptionKey,
@@ -16,34 +19,25 @@ import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
   MAX_AI_RELAY_MAILBOX_ENTRIES,
-  relayTerminalMailboxSchema,
   type RelayBrowserMailbox,
   type RelayEnvelope,
-  type RelayTerminalEvent,
-  type RelayToolResponse,
 } from '../relayProtocol';
-import { createAiToolSession, type AiToolInvokeResult, type AiToolSession } from '../toolSession';
+import { createAiToolSession, type AiToolSession } from '../toolSession';
 import { buildAiInstructionBundle } from '../instructions';
 import type { ReplacementParticipant } from '../../db/replacementLifecycle';
 import type { AiSession, AiSessionCommandResult, AiSessionSnapshot } from './types';
-import { appendConversationItems, applyTerminalEvent, expireClaimLease } from './relayEvents';
+import { appendConversationItems } from './relayEvents';
 import {
   createRelaySessionPersistence,
   type RelaySessionPersistence,
-  type PersistedRelayConnection,
   type RelaySessionStorage,
 } from './relayPersistence';
 
 export type { RelaySessionStorage } from './relayPersistence';
+export { AI_CONNECTION_QUIET_AFTER_MS } from './relaySessionState';
 
 const POLL_INTERVAL_MS = 1_000;
-export const AI_CONNECTION_QUIET_AFTER_MS = 90_000;
 const PAIRING_EXPIRED_REASON = 'Pairing code expired. Connect the terminal again.';
-const STALE_GENERATION_REASON =
-  'Another Lacuna tab or window changed this AI connection. Reconnect the terminal.';
-const UNKNOWN_OUTCOME_REASON =
-  'The relay may have accepted this AI update, but Lacuna could not verify it. Reconnect the terminal.';
-
 const EMPTY_SNAPSHOT: AiSessionSnapshot = {
   revision: 0,
   connection: { status: 'disconnected' },
@@ -104,14 +98,17 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     (() => buildAiInstructionBundle({ misconceptionFirstEnabled: true }));
   const listeners = new Set<() => void>();
   const restored = persistence.load();
-  let persisted: PersistedRelayConnection | null = restored?.connection ?? null;
-  let snapshot = restored?.snapshot ?? EMPTY_SNAPSHOT;
-  let encryptionKey: CryptoKey | null = null;
-  let cancelPolling: (() => void) | null = null;
-  let pollingEpoch = 0;
-  let active = false;
-  let pollInFlightEpoch: number | null = null;
-  let mutationQueue: Promise<void> = Promise.resolve();
+  const state: RelaySessionState = {
+    persisted: restored?.connection ?? null,
+    snapshot: restored?.snapshot ?? EMPTY_SNAPSHOT,
+    encryptionKey: null,
+    cancelPolling: null,
+    pollingEpoch: 0,
+    active: false,
+    pollInFlightEpoch: null,
+    mutationQueue: Promise.resolve(),
+  };
+
   const toolSession =
     options.toolSession ??
     createAiToolSession(
@@ -119,39 +116,56 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
         now,
         createId: () => createId('approval'),
       },
-      persisted?.toolSessionState,
+      state.persisted?.toolSessionState,
     );
 
-  if (isExpiredPairing(snapshot, now())) expirePairing();
+  const { getEncryptionKey, pushMailbox } = createRelayMailboxTransport(state, {
+    options,
+    crypto,
+  });
+  const { poll } = createRelayPolling(state, {
+    options,
+    crypto,
+    now,
+    toolSession,
+    serialise,
+    expirePairing,
+    publish,
+    getEncryptionKey,
+    pushMailbox,
+    disconnectMailboxGeneration,
+    stopPolling,
+  });
+  if (isExpiredPairing(state.snapshot, now())) expirePairing();
 
   function persist(): void {
-    if (persisted) {
-      persisted = { ...persisted, toolSessionState: toolSession.exportState() };
+    if (state.persisted) {
+      state.persisted = { ...state.persisted, toolSessionState: toolSession.exportState() };
     }
-    persistence.save({ snapshot, connection: persisted });
+    persistence.save({ snapshot: state.snapshot, connection: state.persisted });
   }
 
   function publish(next: Omit<AiSessionSnapshot, 'revision'>): void {
-    snapshot = { ...next, revision: snapshot.revision + 1 };
+    state.snapshot = { ...next, revision: state.snapshot.revision + 1 };
     persist();
     listeners.forEach((listener) => listener());
   }
 
   function startPolling(): void {
-    if (cancelPolling) return;
-    const epoch = ++pollingEpoch;
-    cancelPolling = timers.repeat(() => poll(epoch), POLL_INTERVAL_MS);
+    if (state.cancelPolling) return;
+    const epoch = ++state.pollingEpoch;
+    state.cancelPolling = timers.repeat(() => poll(epoch), POLL_INTERVAL_MS);
   }
 
   function stopPolling(): void {
-    pollingEpoch += 1;
-    cancelPolling?.();
-    cancelPolling = null;
+    state.pollingEpoch += 1;
+    state.cancelPolling?.();
+    state.cancelPolling = null;
   }
 
   function serialise<T>(operation: () => Promise<T>): Promise<T> {
-    const pending = mutationQueue.then(operation, operation);
-    mutationQueue = pending.then(
+    const pending = state.mutationQueue.then(operation, operation);
+    state.mutationQueue = pending.then(
       () => undefined,
       () => undefined,
     );
@@ -161,10 +175,10 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
   function expirePairing(): void {
     stopPolling();
     toolSession.clear();
-    persisted = null;
-    encryptionKey = null;
+    state.persisted = null;
+    state.encryptionKey = null;
     publish({
-      ...snapshot,
+      ...state.snapshot,
       connection: { status: 'disconnected', reason: PAIRING_EXPIRED_REASON },
       run: null,
       activity: null,
@@ -172,287 +186,10 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
     });
   }
 
-  async function poll(epoch: number): Promise<void> {
-    if (epoch !== pollingEpoch || pollInFlightEpoch === epoch) return;
-    pollInFlightEpoch = epoch;
-    try {
-      const connection = persisted;
-      const pulled: RelayMailbox | null =
-        connection?.peerPublicKey &&
-        snapshot.connection.status !== 'disconnected' &&
-        !isExpiredPairing(snapshot, now())
-          ? await options.relay.pull(connection.credentials)
-          : null;
-      await serialise(() => (epoch === pollingEpoch ? pollOnce(epoch, pulled) : Promise.resolve()));
-    } catch (error) {
-      const reason = mailboxGenerationReason(error);
-      if (epoch === pollingEpoch && reason) {
-        disconnectMailboxGeneration(reason);
-      }
-      // A later poll retries transient transport, persistence and crypto failures.
-    } finally {
-      if (pollInFlightEpoch === epoch) pollInFlightEpoch = null;
-    }
-  }
-
-  async function pollOnce(epoch: number, pulled: RelayMailbox | null): Promise<void> {
-    if (epoch !== pollingEpoch || !persisted || snapshot.connection.status === 'disconnected') {
-      return;
-    }
-    if (isExpiredPairing(snapshot, now())) {
-      expirePairing();
-      return;
-    }
-    if (!persisted.peerPublicKey) {
-      const connection = persisted;
-      const peer = await options.relay.peer(connection.credentials);
-      if (epoch !== pollingEpoch || persisted !== connection || !peer) return;
-      const derivedKey = await crypto.deriveKey(
-        connection.keyPair.privateKey,
-        peer.terminalPublicKey,
-      );
-      if (epoch !== pollingEpoch || persisted !== connection) return;
-      encryptionKey = derivedKey;
-      persisted = { ...connection, peerPublicKey: peer.terminalPublicKey };
-      publish({
-        ...snapshot,
-        connection: {
-          status: 'connected',
-          connectionId: persisted.credentials.sessionId,
-          client: peer.client,
-          lastActivityAt: now(),
-        },
-      });
-      return;
-    }
-    const processed = new Set(persisted.processedEventIds);
-    let queuedFollowUpMessageId = persisted.queuedFollowUpMessageId;
-    let nextSnapshot = snapshot;
-    let messages = [...persisted.browserMailbox.messages];
-    let toolResponses = [...persisted.browserMailbox.toolResponses];
-    let mailboxChanged = false;
-
-    if (epoch !== pollingEpoch) return;
-    let terminalRevisionSeen = persisted.terminalRevisionSeen;
-    let terminalActivitySeen = false;
-    const events: RelayTerminalEvent[] = [];
-    if (pulled) {
-      const envelope = JSON.parse(new TextDecoder().decode(pulled.bytes)) as unknown;
-      const key = await getEncryptionKey(epoch);
-      if (!key || epoch !== pollingEpoch) return;
-      const opened = await crypto.open(key, envelope);
-      if (epoch !== pollingEpoch) return;
-      const terminalMailbox = relayTerminalMailboxSchema.parse(opened);
-      terminalActivitySeen = terminalMailbox.revision > terminalRevisionSeen;
-      terminalRevisionSeen = Math.max(terminalRevisionSeen, terminalMailbox.revision);
-      if (
-        toolResponses.length > 0 &&
-        terminalMailbox.browserRevisionSeen >= persisted.browserMailbox.revision
-      ) {
-        toolResponses = [];
-        mailboxChanged = true;
-      }
-      events.push(...terminalMailbox.events.filter((event) => !processed.has(event.eventId)));
-    }
-    const activeRun = nextSnapshot.run?.status === 'active' ? nextSnapshot.run : null;
-    const timelyReply =
-      activeRun !== null &&
-      events.some(
-        (event) =>
-          event.type === 'reply' &&
-          event.runId === activeRun.runId &&
-          event.messageId === activeRun.messageId &&
-          event.createdAt < activeRun.leaseExpiresAt,
-      );
-    const expired = timelyReply ? null : expireClaimLease(nextSnapshot, messages, now());
-    if (expired) ({ snapshot: nextSnapshot, messages } = expired);
-
-    const connectionBeforeEvents = nextSnapshot.connection;
-    if (
-      terminalActivitySeen &&
-      (nextSnapshot.connection.status === 'connected' || nextSnapshot.connection.status === 'quiet')
-    ) {
-      nextSnapshot = {
-        ...nextSnapshot,
-        connection: { ...nextSnapshot.connection, status: 'connected', lastActivityAt: now() },
-      };
-    } else {
-      nextSnapshot = markQuietConnection(nextSnapshot, now());
-    }
-    const connectionChanged = nextSnapshot.connection !== connectionBeforeEvents;
-    if (!expired && events.length === 0 && !mailboxChanged && !terminalActivitySeen) {
-      if (connectionChanged) publish(nextSnapshot);
-      return;
-    }
-
-    for (const event of events) {
-      const beforeEvent = nextSnapshot;
-      if (event.type === 'tool_call') {
-        const outcome = await toolSession.invoke({
-          connectionId: persisted.credentials.sessionId,
-          runId: event.runId,
-          runStatus:
-            nextSnapshot.connection.status === 'disconnected'
-              ? 'disconnected'
-              : nextSnapshot.run?.runId === event.runId
-                ? nextSnapshot.run.status
-                : 'expired',
-          callId: event.callId,
-          toolName: event.toolName,
-          input: event.input,
-        });
-        const response: RelayToolResponse = outcome.response.ok
-          ? {
-              runId: event.runId,
-              callId: event.callId,
-              respondedAt: now(),
-              ok: true,
-              result: outcome.response.result,
-              ...(outcome.effects.receipt ? { receipt: outcome.effects.receipt } : {}),
-            }
-          : {
-              runId: event.runId,
-              callId: event.callId,
-              respondedAt: now(),
-              ok: false,
-              error: outcome.response.error,
-            };
-        toolResponses = [
-          ...toolResponses.filter(
-            (candidate) => candidate.runId !== event.runId || candidate.callId !== event.callId,
-          ),
-          response,
-        ].slice(-MAX_AI_RELAY_MAILBOX_ENTRIES);
-        nextSnapshot = applyToolEffects(nextSnapshot, event, outcome);
-      } else {
-        ({ snapshot: nextSnapshot, messages } = applyTerminalEvent(nextSnapshot, messages, event));
-      }
-      if (event.type === 'claimed' && event.messageId === queuedFollowUpMessageId) {
-        queuedFollowUpMessageId = null;
-      }
-      if (
-        event.type === 'disconnected' &&
-        (beforeEvent.run?.status === 'active' ||
-          beforeEvent.run?.status === 'stop_requested' ||
-          beforeEvent.queuedFollowUp !== null)
-      ) {
-        const recovered = recoverDisconnectedState(nextSnapshot);
-        nextSnapshot = {
-          ...nextSnapshot,
-          ...recovered,
-          activity: nextSnapshot.activity,
-        };
-        queuedFollowUpMessageId = null;
-      }
-      if (event.type === 'disconnected') {
-        toolSession.clear();
-        nextSnapshot = { ...nextSnapshot, approval: null };
-      }
-      processed.add(event.eventId);
-      if (processed.size > MAX_AI_RELAY_MAILBOX_ENTRIES) {
-        const oldest = processed.values().next().value;
-        if (oldest !== undefined) processed.delete(oldest);
-      }
-    }
-    const browserMailbox: RelayBrowserMailbox = {
-      ...persisted.browserMailbox,
-      revision: persisted.browserMailbox.revision + 1,
-      messages,
-      toolResponses,
-      terminalRevisionSeen,
-    };
-    let browserGeneration: string | null;
-    try {
-      browserGeneration = await pushMailbox(browserMailbox, epoch);
-    } catch (error) {
-      const reason = mailboxGenerationReason(error);
-      if (epoch === pollingEpoch && reason) {
-        disconnectMailboxGeneration(reason, nextSnapshot);
-        return;
-      }
-      throw error;
-    }
-    if (browserGeneration === null || epoch !== pollingEpoch) return;
-    persisted = {
-      ...persisted,
-      browserMailbox,
-      browserGeneration,
-      queuedFollowUpMessageId,
-      terminalRevisionSeen,
-      processedEventIds: [...processed],
-    };
-    publish(nextSnapshot);
-    if (nextSnapshot.connection.status === 'disconnected') {
-      stopPolling();
-    }
-  }
-
-  async function getEncryptionKey(epoch: number): Promise<CryptoKey | null> {
-    if (epoch !== pollingEpoch) return null;
-    if (encryptionKey) return encryptionKey;
-    const connection = persisted;
-    if (!connection?.peerPublicKey) throw new Error('AI terminal is not paired.');
-    const derivedKey = await crypto.deriveKey(
-      connection.keyPair.privateKey,
-      connection.peerPublicKey,
-    );
-    if (epoch !== pollingEpoch || persisted !== connection) return null;
-    encryptionKey = derivedKey;
-    return derivedKey;
-  }
-
-  async function pushMailbox(mailbox: RelayBrowserMailbox, epoch: number): Promise<string | null> {
-    if (!persisted) throw new Error('AI terminal is not paired.');
-    const key = await getEncryptionKey(epoch);
-    if (!key || epoch !== pollingEpoch) return null;
-    const envelope = await crypto.seal(key, mailbox as JsonValue);
-    if (epoch !== pollingEpoch) return null;
-    const bytes = new TextEncoder().encode(JSON.stringify(envelope));
-    const pushed = await options.relay.push(
-      persisted.credentials,
-      bytes,
-      persisted.browserGeneration,
-    );
-    if (epoch !== pollingEpoch) return null;
-    return pushed.generation;
-  }
-
-  function recoverDisconnectedState(
-    current: AiSessionSnapshot,
-  ): Pick<AiSessionSnapshot, 'items' | 'run' | 'activity' | 'draft' | 'queuedFollowUp'> {
-    const interruptedRun =
-      current.run?.status === 'active' || current.run?.status === 'stop_requested'
-        ? current.run
-        : null;
-    const interruptedPrompt = interruptedRun
-      ? current.items.find((item) => item.kind === 'user' && item.id === interruptedRun.messageId)
-      : null;
-    const pendingPrompt = current.items.find(
-      (item) => item.kind === 'user' && (item.delivery === 'queued' || item.delivery === 'claimed'),
-    );
-    const interruptedPromptContent =
-      interruptedPrompt?.kind === 'user'
-        ? interruptedPrompt.content
-        : pendingPrompt?.kind === 'user'
-          ? pendingPrompt.content
-          : '';
-    return {
-      items: current.items.map((item) =>
-        item.kind === 'user' && (item.delivery === 'queued' || item.delivery === 'claimed')
-          ? { ...item, delivery: 'stopped' as const }
-          : item,
-      ),
-      run: null,
-      activity: null,
-      draft: current.queuedFollowUp ?? (current.draft || interruptedPromptContent),
-      queuedFollowUp: null,
-    };
-  }
-
-  function disconnectMailboxGeneration(reason: string, current = snapshot): void {
+  function disconnectMailboxGeneration(reason: string, current = state.snapshot): void {
     stopPolling();
     toolSession.clear();
-    encryptionKey = null;
+    state.encryptionKey = null;
     publish({
       ...current,
       ...recoverDisconnectedState(current),
@@ -463,7 +200,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
 
   function mailboxGenerationFailure(
     error: unknown,
-    current = snapshot,
+    current = state.snapshot,
   ): AiSessionCommandFailure | null {
     const reason = mailboxGenerationReason(error);
     if (!reason) return null;
@@ -474,17 +211,17 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
   function invalidateForReplacement(): void {
     stopPolling();
     publish({
-      ...snapshot,
-      ...recoverDisconnectedState(snapshot),
+      ...state.snapshot,
+      ...recoverDisconnectedState(state.snapshot),
       approval: null,
     });
   }
 
   async function quiesceForReplacement(): Promise<void> {
-    const credentials = persisted?.credentials ?? null;
+    const credentials = state.persisted?.credentials ?? null;
     publish({
-      ...snapshot,
-      ...recoverDisconnectedState(snapshot),
+      ...state.snapshot,
+      ...recoverDisconnectedState(state.snapshot),
       connection: { status: 'disconnected' },
       approval: null,
     });
@@ -499,12 +236,12 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
 
   function clearReplacementState(): void {
     stopPolling();
-    pollInFlightEpoch = null;
-    mutationQueue = Promise.resolve();
+    state.pollInFlightEpoch = null;
+    state.mutationQueue = Promise.resolve();
     toolSession.clear();
-    persisted = null;
-    encryptionKey = null;
-    snapshot = { ...EMPTY_SNAPSHOT, revision: snapshot.revision + 1 };
+    state.persisted = null;
+    state.encryptionKey = null;
+    state.snapshot = { ...EMPTY_SNAPSHOT, revision: state.snapshot.revision + 1 };
     persistence.clear();
     listeners.forEach((listener) => listener());
   }
@@ -520,29 +257,29 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       return () => listeners.delete(listener);
     },
     getSnapshot() {
-      return snapshot;
+      return state.snapshot;
     },
     activate() {
-      if (active) return;
-      active = true;
-      if (persisted && snapshot.connection.status !== 'disconnected') startPolling();
+      if (state.active) return;
+      state.active = true;
+      if (state.persisted && state.snapshot.connection.status !== 'disconnected') startPolling();
     },
     dispose() {
-      active = false;
+      state.active = false;
       stopPolling();
     },
     pair() {
-      const epoch = pollingEpoch;
+      const epoch = state.pollingEpoch;
       return serialise(async () => {
-        if (epoch !== pollingEpoch || snapshot.connection.status !== 'disconnected') {
+        if (epoch !== state.pollingEpoch || state.snapshot.connection.status !== 'disconnected') {
           return conflict('AI is already connecting or connected.');
         }
         try {
           toolSession.clear();
           const keyPair = await crypto.createKeyPair();
-          if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
+          if (epoch !== state.pollingEpoch) return unavailable('AI connection was reset.');
           const created = await options.relay.create(keyPair.publicKey);
-          if (epoch !== pollingEpoch) {
+          if (epoch !== state.pollingEpoch) {
             void (async () => {
               try {
                 await options.relay.revoke({
@@ -561,7 +298,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
             code: created.pairingCode,
             expiresAt: created.expiresAt,
           };
-          persisted = {
+          state.persisted = {
             credentials: {
               sessionId: created.sessionId,
               browserToken: created.browserToken,
@@ -581,8 +318,8 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
             processedEventIds: [],
             toolSessionState: toolSession.exportState(),
           };
-          publish({ ...snapshot, connection, approval: null });
-          if (active) startPolling();
+          publish({ ...state.snapshot, connection, approval: null });
+          if (state.active) startPolling();
           return { ok: true, data: { code: created.pairingCode, expiresAt: created.expiresAt } };
         } catch (error) {
           if (error instanceof TypeError) {
@@ -595,22 +332,23 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       });
     },
     send(content) {
-      const epoch = pollingEpoch;
+      const epoch = state.pollingEpoch;
       return serialise(async () => {
         if (
-          epoch !== pollingEpoch ||
-          !persisted ||
-          (snapshot.connection.status !== 'connected' && snapshot.connection.status !== 'quiet')
+          epoch !== state.pollingEpoch ||
+          !state.persisted ||
+          (state.snapshot.connection.status !== 'connected' &&
+            state.snapshot.connection.status !== 'quiet')
         ) {
           return unavailable('AI is not connected.');
         }
-        if (snapshot.run?.status === 'stop_requested') {
+        if (state.snapshot.run?.status === 'stop_requested') {
           return conflict('Wait for AI to stop before sending another message.');
         }
         if (content.trim() === '') return conflict('The AI message cannot be blank.');
         if (content.length > MAX_AI_MESSAGE_LENGTH) return conflict('The AI message is too long.');
         const messageId = createId('message');
-        const conversationId = snapshot.conversationId ?? createId('conversation');
+        const conversationId = state.snapshot.conversationId ?? createId('conversation');
         const createdAt = now();
         const message = {
           messageId,
@@ -620,41 +358,41 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           instructions: getInstructions(),
           delivery: 'queued' as const,
         };
-        const active = snapshot.run?.status === 'active';
-        const replacedFollowUpMessageId = persisted.queuedFollowUpMessageId;
+        const active = state.snapshot.run?.status === 'active';
+        const replacedFollowUpMessageId = state.persisted.queuedFollowUpMessageId;
         const messages = active
           ? [
-              ...persisted.browserMailbox.messages.filter(
+              ...state.persisted.browserMailbox.messages.filter(
                 (item) => item.messageId !== replacedFollowUpMessageId,
               ),
               message,
             ]
-          : [...persisted.browserMailbox.messages, message];
+          : [...state.persisted.browserMailbox.messages, message];
         if (messages.length > MAX_AI_RELAY_MAILBOX_ENTRIES) {
           return conflict('The AI message queue is full.');
         }
         const mailbox: RelayBrowserMailbox = {
-          ...persisted.browserMailbox,
-          revision: persisted.browserMailbox.revision + 1,
+          ...state.persisted.browserMailbox,
+          revision: state.persisted.browserMailbox.revision + 1,
           messages,
         };
         try {
           const browserGeneration = await pushMailbox(mailbox, epoch);
           if (browserGeneration === null) return unavailable('AI connection was reset.');
-          persisted = {
-            ...persisted,
+          state.persisted = {
+            ...state.persisted,
             browserMailbox: mailbox,
             browserGeneration,
-            queuedFollowUpMessageId: active ? messageId : persisted.queuedFollowUpMessageId,
+            queuedFollowUpMessageId: active ? messageId : state.persisted.queuedFollowUpMessageId,
           };
           publish(
             active
-              ? { ...snapshot, conversationId, draft: '', queuedFollowUp: content }
+              ? { ...state.snapshot, conversationId, draft: '', queuedFollowUp: content }
               : {
-                  ...snapshot,
+                  ...state.snapshot,
                   conversationId,
                   draft: '',
-                  items: appendConversationItems(snapshot.items, {
+                  items: appendConversationItems(state.snapshot.items, {
                     kind: 'user',
                     id: messageId,
                     content,
@@ -665,9 +403,9 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           );
           return { ok: true, data: { messageId } };
         } catch (error) {
-          if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
+          if (epoch !== state.pollingEpoch) return unavailable('AI connection was reset.');
           const staleFailure = mailboxGenerationFailure(error, {
-            ...snapshot,
+            ...state.snapshot,
             draft: content,
             queuedFollowUp: null,
           });
@@ -677,45 +415,45 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       });
     },
     stop(runId) {
-      const epoch = pollingEpoch;
+      const epoch = state.pollingEpoch;
       return serialise(async () => {
         if (
-          epoch !== pollingEpoch ||
-          !persisted ||
-          !snapshot.run ||
-          snapshot.run.runId !== runId ||
-          snapshot.run.status !== 'active'
+          epoch !== state.pollingEpoch ||
+          !state.persisted ||
+          !state.snapshot.run ||
+          state.snapshot.run.runId !== runId ||
+          state.snapshot.run.status !== 'active'
         ) {
           return conflict('That AI run is no longer active.');
         }
         const stopRequestedAt = now();
-        const queuedFollowUpMessageId = persisted.queuedFollowUpMessageId;
-        const messages = persisted.browserMailbox.messages
+        const queuedFollowUpMessageId = state.persisted.queuedFollowUpMessageId;
+        const messages = state.persisted.browserMailbox.messages
           .filter((message) => message.messageId !== queuedFollowUpMessageId)
           .map((message) =>
-            message.messageId === snapshot.run?.messageId && message.delivery === 'claimed'
+            message.messageId === state.snapshot.run?.messageId && message.delivery === 'claimed'
               ? { ...message, delivery: 'stop_requested' as const }
               : message,
           );
         const browserMailbox: RelayBrowserMailbox = {
-          ...persisted.browserMailbox,
-          revision: persisted.browserMailbox.revision + 1,
+          ...state.persisted.browserMailbox,
+          revision: state.persisted.browserMailbox.revision + 1,
           messages,
         };
         try {
           const browserGeneration = await pushMailbox(browserMailbox, epoch);
           if (browserGeneration === null) return unavailable('AI connection was reset.');
-          persisted = {
-            ...persisted,
+          state.persisted = {
+            ...state.persisted,
             browserMailbox,
             browserGeneration,
             queuedFollowUpMessageId: null,
           };
           publish({
-            ...snapshot,
-            draft: snapshot.queuedFollowUp ?? snapshot.draft,
+            ...state.snapshot,
+            draft: state.snapshot.queuedFollowUp ?? state.snapshot.draft,
             queuedFollowUp: null,
-            run: { ...snapshot.run, status: 'stop_requested', stopRequestedAt },
+            run: { ...state.snapshot.run, status: 'stop_requested', stopRequestedAt },
             activity: {
               runId,
               status: 'stop_requested',
@@ -725,7 +463,7 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
           });
           return { ok: true, data: undefined };
         } catch (error) {
-          if (epoch !== pollingEpoch) return unavailable('AI connection was reset.');
+          if (epoch !== state.pollingEpoch) return unavailable('AI connection was reset.');
           const staleFailure = mailboxGenerationFailure(error);
           if (staleFailure) return staleFailure;
           return internal('The stop request could not be sent.');
@@ -740,11 +478,11 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
             decision.error.kind === 'tool' ? decision.error.error.message : decision.error.message,
           );
         const activity =
-          decision.effects.activity && snapshot.run
-            ? { runId: snapshot.run.runId, ...decision.effects.activity }
-            : snapshot.activity;
+          decision.effects.activity && state.snapshot.run
+            ? { runId: state.snapshot.run.runId, ...decision.effects.activity }
+            : state.snapshot.activity;
         publish({
-          ...snapshot,
+          ...state.snapshot,
           approval: decision.approval,
           activity,
         });
@@ -752,17 +490,17 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
       });
     },
     resetConnection() {
-      const credentials = persisted?.credentials ?? null;
-      const recovered = recoverDisconnectedState(snapshot);
+      const credentials = state.persisted?.credentials ?? null;
+      const recovered = recoverDisconnectedState(state.snapshot);
 
       stopPolling();
-      pollInFlightEpoch = null;
-      mutationQueue = Promise.resolve();
+      state.pollInFlightEpoch = null;
+      state.mutationQueue = Promise.resolve();
       toolSession.clear();
-      persisted = null;
-      encryptionKey = null;
+      state.persisted = null;
+      state.encryptionKey = null;
       publish({
-        ...snapshot,
+        ...state.snapshot,
         ...recovered,
         connection: { status: 'disconnected' },
         approval: null,
@@ -781,43 +519,6 @@ export function createRelayAiSession(options: RelayAiSessionOptions): RelayAiSes
   };
 }
 
-function applyToolEffects(
-  snapshot: AiSessionSnapshot,
-  event: Extract<RelayTerminalEvent, { type: 'tool_call' }>,
-  outcome: AiToolInvokeResult,
-): AiSessionSnapshot {
-  const approval = outcome.effects.approval
-    ? outcome.effects.approval
-    : outcome.response.ok ||
-        !['approval_required', 'approval_pending'].includes(outcome.response.error.kind)
-      ? null
-      : snapshot.approval;
-  const activity = outcome.effects.activity
-    ? { runId: event.runId, ...outcome.effects.activity }
-    : snapshot.activity;
-  const receipt = outcome.effects.receipt;
-  const items =
-    receipt &&
-    !snapshot.items.some(
-      (item) =>
-        item.kind === 'receipt' &&
-        (item.receipt.receiptId === receipt.receiptId || item.receipt.callId === receipt.callId),
-    )
-      ? appendConversationItems(snapshot.items, {
-          kind: 'receipt',
-          id: receipt.receiptId,
-          receipt,
-        })
-      : snapshot.items;
-  return { ...snapshot, approval, activity, items };
-}
-
-function mailboxGenerationReason(error: unknown): string | null {
-  if (error instanceof RelayStaleGenerationError) return STALE_GENERATION_REASON;
-  if (error instanceof RelayPushOutcomeUnknownError) return UNKNOWN_OUTCOME_REASON;
-  return null;
-}
-
 function browserCrypto(): RelaySessionCrypto {
   return {
     createKeyPair: createRelayKeyPair,
@@ -834,22 +535,6 @@ function browserTimers(): RelaySessionTimers {
       return () => window.clearInterval(handle);
     },
   };
-}
-
-function isExpiredPairing(snapshot: AiSessionSnapshot, now: number): boolean {
-  return snapshot.connection.status === 'pairing' && now >= snapshot.connection.expiresAt;
-}
-
-function markQuietConnection(snapshot: AiSessionSnapshot, currentTime: number): AiSessionSnapshot {
-  const connection = snapshot.connection;
-  if (
-    connection.status !== 'connected' ||
-    currentTime - connection.lastActivityAt < AI_CONNECTION_QUIET_AFTER_MS ||
-    (snapshot.run?.status === 'active' && currentTime < snapshot.run.leaseExpiresAt)
-  ) {
-    return snapshot;
-  }
-  return { ...snapshot, connection: { ...connection, status: 'quiet' } };
 }
 
 type AiSessionCommandFailure = Extract<AiSessionCommandResult<never>, { ok: false }>;

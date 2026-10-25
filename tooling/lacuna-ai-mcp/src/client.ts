@@ -1,5 +1,23 @@
+import { TerminalInvocationBudget } from './terminalInvocationBudget.js';
+import {
+  TerminalRelayReconnectRequiredError,
+  type ConnectedTerminalRelay,
+  type TerminalRelayTransport,
+  type WaitForMessageResult,
+  type TerminalToolResponse,
+  type TerminalAiClientOptions,
+} from './terminalContracts.js';
+export {
+  TerminalRelayReconnectRequiredError,
+  type TerminalRelayReconnectReason,
+  type ConnectedTerminalRelay,
+  type TerminalRelayTransport,
+  type WaitForMessageResult,
+  type TerminalToolResponse,
+  type TerminalAiClientOptions,
+} from './terminalContracts.js';
 import { randomUUID } from 'node:crypto';
-import type { AiClientIdentity, AiInstructionBundle, JsonValue } from '../../../src/ai/protocol.js';
+import type { AiClientIdentity, JsonValue } from '../../../src/ai/protocol.js';
 import {
   AI_RELAY_EMPTY_GENERATION,
   AI_RELAY_PROTOCOL_VERSION,
@@ -7,7 +25,6 @@ import {
   type RelayBrowserMailbox,
   type RelayTerminalEvent,
   type RelayTerminalMailbox,
-  type RelayToolResponse,
 } from '../../../src/ai/relayProtocol.js';
 
 export const DEFAULT_AI_RELAY_URL = 'https://relay.getlacuna.app';
@@ -18,87 +35,10 @@ const CLAIM_LEASE_MS = 5 * 60_000;
 const TOOL_CALL_TIMEOUT_MS = 25_000;
 export const AI_TERMINAL_HEARTBEAT_INTERVAL_MS = 60_000;
 
-export type TerminalRelayReconnectReason = 'write_outcome_unknown' | 'terminal_writer_changed';
-
-const TERMINAL_RECONNECT_MESSAGES: Record<TerminalRelayReconnectReason, string> = {
-  write_outcome_unknown:
-    'The terminal mailbox write outcome is unknown. Reconnect Lacuna AI before continuing.',
-  terminal_writer_changed:
-    'Another terminal writer changed this Lacuna AI session. Reconnect Lacuna AI before continuing.',
-};
-
-export class TerminalRelayReconnectRequiredError extends Error {
-  readonly reason: TerminalRelayReconnectReason;
-
-  constructor(reason: TerminalRelayReconnectReason = 'write_outcome_unknown') {
-    super(TERMINAL_RECONNECT_MESSAGES[reason]);
-    this.name = 'TerminalRelayReconnectRequiredError';
-    this.reason = reason;
-  }
-}
-
-class TerminalInvocationBoundaryError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'TerminalInvocationBoundaryError';
-  }
-}
-
-export interface ConnectedTerminalRelay {
-  relayUrl: string;
-  sessionId: string;
-  expiresAt: number;
-}
-
-export interface TerminalRelayTransport {
-  connect(
-    code: string,
-    relayUrl: string,
-    client: AiClientIdentity,
-  ): Promise<ConnectedTerminalRelay>;
-  readBrowserMailbox(connection: ConnectedTerminalRelay, signal?: AbortSignal): Promise<{
-    generation: string;
-    mailbox: RelayBrowserMailbox;
-  } | null>;
-  writeTerminalMailbox(
-    connection: ConnectedTerminalRelay,
-    generation: string,
-    mailbox: RelayTerminalMailbox,
-    signal?: AbortSignal,
-  ): Promise<string>;
-}
-
-export type WaitForMessageResult =
-  | {
-      type: 'message';
-      messageId: string;
-      conversationId: string;
-      runId: string;
-      content: string;
-      createdAt: number;
-      leaseExpiresAt: number;
-      instructions: AiInstructionBundle;
-    }
-  | { type: 'stop_requested'; messageId: string; runId: string }
-  | { type: 'empty' };
-
 interface ActiveRun {
   messageId: string;
   runId: string;
   replyRevision?: number;
-}
-
-type WithoutRelayEnvelope<T> = T extends unknown
-  ? Omit<T, 'runId' | 'callId' | 'respondedAt'>
-  : never;
-
-export type TerminalToolResponse = WithoutRelayEnvelope<RelayToolResponse>;
-
-export interface TerminalAiClientOptions {
-  transport: TerminalRelayTransport;
-  now?: () => number;
-  sleep?: (milliseconds: number) => Promise<void>;
-  createId?: (prefix: 'event' | 'run') => string;
 }
 
 export class TerminalAiClient {
@@ -106,6 +46,7 @@ export class TerminalAiClient {
   private readonly now: () => number;
   private readonly sleep: (milliseconds: number) => Promise<void>;
   private readonly createId: (prefix: 'event' | 'run') => string;
+  private readonly invocationBudget: TerminalInvocationBudget;
   private operationQueue: Promise<void> = Promise.resolve();
   private connection: ConnectedTerminalRelay | null = null;
   private browserGeneration: string | null = null;
@@ -128,6 +69,7 @@ export class TerminalAiClient {
       options.sleep ??
       ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
     this.createId = options.createId ?? ((prefix) => `${prefix}-${randomUUID()}`);
+    this.invocationBudget = new TerminalInvocationBudget(this.transport, this.now, this.sleep);
   }
 
   connect(
@@ -263,7 +205,7 @@ export class TerminalAiClient {
     signal?: AbortSignal,
   ): Promise<TerminalToolResponse> {
     const deadline = this.now() + timeoutMs;
-    this.throwIfCancelled(signal);
+    this.invocationBudget.throwIfCancelled(signal);
     const connection = this.requireConnection();
     const active = this.activeRuns.get(runId);
     if (!active || active.replyRevision !== undefined) {
@@ -281,7 +223,11 @@ export class TerminalAiClient {
     const parsedCall = relayTerminalEventSchema.safeParse(call);
     if (!parsedCall.success) throw new Error('The Lacuna AI tool call is invalid.');
 
-    const latest = await this.readBrowserMailboxUntil(connection, deadline, signal);
+    const latest = await this.invocationBudget.readBrowserMailboxUntil(
+      connection,
+      deadline,
+      signal,
+    );
     if (!latest) throw new Error('The Lacuna AI session is disconnected.');
     if (latest.generation !== this.browserGeneration) {
       this.noteBrowserMailbox(latest.mailbox);
@@ -300,7 +246,11 @@ export class TerminalAiClient {
     let callRevision = this.terminalMailbox.revision;
 
     for (;;) {
-      const read = await this.readBrowserMailboxUntil(connection, deadline, signal);
+      const read = await this.invocationBudget.readBrowserMailboxUntil(
+        connection,
+        deadline,
+        signal,
+      );
       if (!read) throw new Error('The Lacuna AI session is disconnected.');
       if (read.generation !== this.browserGeneration) {
         this.noteBrowserMailbox(read.mailbox);
@@ -320,12 +270,14 @@ export class TerminalAiClient {
         await this.acknowledgeBrowserRevision(deadline, signal);
         if (
           !response.ok &&
-          (response.error.kind === 'approval_required' || response.error.kind === 'approval_pending')
+          (response.error.kind === 'approval_required' ||
+            response.error.kind === 'approval_pending')
         ) {
-          const retryAfterMs = response.error.kind === 'approval_pending'
-            ? response.error.retryAfterMs
-            : APPROVAL_RETRY_INTERVAL_MS;
-          await this.sleepUntil(retryAfterMs, deadline, signal);
+          const retryAfterMs =
+            response.error.kind === 'approval_pending'
+              ? response.error.retryAfterMs
+              : APPROVAL_RETRY_INTERVAL_MS;
+          await this.invocationBudget.sleepUntil(retryAfterMs, deadline, signal);
           await this.appendEvent(
             { ...parsedCall.data, eventId: this.createId('event') },
             deadline,
@@ -342,7 +294,7 @@ export class TerminalAiClient {
             }
           : { ok: false, error: response.error };
       }
-      await this.sleepUntil(POLL_INTERVAL_MS, deadline, signal);
+      await this.invocationBudget.sleepUntil(POLL_INTERVAL_MS, deadline, signal);
     }
   }
 
@@ -423,32 +375,36 @@ export class TerminalAiClient {
     signal?: AbortSignal,
   ): Promise<void> {
     const connection = this.requireConnection();
-    this.throwIfCancelled(signal);
-    if (deadline !== undefined) this.requireRemaining(deadline);
+    this.invocationBudget.throwIfCancelled(signal);
+    if (deadline !== undefined) this.invocationBudget.requireRemaining(deadline);
     let generation: string;
     try {
-      generation = deadline === undefined
-        ? await this.transport.writeTerminalMailbox(
-            connection,
-            this.terminalGeneration,
-            next,
-            signal,
-          )
-        : await this.awaitUntil(
-            (boundedSignal) => this.transport.writeTerminalMailbox(
+      generation =
+        deadline === undefined
+          ? await this.transport.writeTerminalMailbox(
               connection,
               this.terminalGeneration,
               next,
-              boundedSignal,
-            ),
-            deadline,
-            signal,
-          );
+              signal,
+            )
+          : await this.invocationBudget.awaitUntil(
+              (boundedSignal) =>
+                this.transport.writeTerminalMailbox(
+                  connection,
+                  this.terminalGeneration,
+                  next,
+                  boundedSignal,
+                ),
+              deadline,
+              signal,
+            );
     } catch (error) {
       if (
         deadline !== undefined &&
         !(error instanceof TerminalRelayReconnectRequiredError) &&
-        (signal?.aborted || this.now() >= deadline || this.isBoundedOperationError(error))
+        (signal?.aborted ||
+          this.now() >= deadline ||
+          this.invocationBudget.isBoundedOperationError(error))
       ) {
         this.clearConnection();
         throw new TerminalRelayReconnectRequiredError();
@@ -491,85 +447,6 @@ export class TerminalAiClient {
 
   private acknowledgeBrowserRevision(deadline: number, signal?: AbortSignal): Promise<void> {
     return this.writeTerminalMailbox(this.terminalMailbox, deadline, signal);
-  }
-
-  private readBrowserMailboxUntil(
-    connection: ConnectedTerminalRelay,
-    deadline: number,
-    signal?: AbortSignal,
-  ): Promise<{ generation: string; mailbox: RelayBrowserMailbox } | null> {
-    return this.awaitUntil(
-      (boundedSignal) => this.transport.readBrowserMailbox(connection, boundedSignal),
-      deadline,
-      signal,
-    );
-  }
-
-  private async sleepUntil(
-    delayMs: number,
-    deadline: number,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    const remaining = this.requireRemaining(deadline);
-    await this.awaitUntil(
-      () => this.sleep(Math.min(delayMs, remaining)),
-      deadline,
-      signal,
-    );
-    this.requireRemaining(deadline);
-  }
-
-  private async awaitUntil<T>(
-    operation: (signal: AbortSignal) => Promise<T>,
-    deadline: number,
-    signal?: AbortSignal,
-  ): Promise<T> {
-    this.throwIfCancelled(signal);
-    const remaining = this.requireRemaining(deadline);
-    const controller = new AbortController();
-    const cancel = () => controller.abort();
-    signal?.addEventListener('abort', cancel, { once: true });
-    const timeout = setTimeout(() => controller.abort(), remaining);
-    const interrupted = new Promise<never>((_resolve, reject) => {
-      controller.signal.addEventListener('abort', () => {
-        reject(signal?.aborted ? this.cancelledError() : this.timedOutError());
-      }, { once: true });
-    });
-    try {
-      return await Promise.race([operation(controller.signal), interrupted]);
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw signal?.aborted ? this.cancelledError() : this.timedOutError();
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
-      signal?.removeEventListener('abort', cancel);
-    }
-  }
-
-  private throwIfCancelled(signal?: AbortSignal): void {
-    if (signal?.aborted) throw this.cancelledError();
-  }
-
-  private requireRemaining(deadline: number): number {
-    const remaining = deadline - this.now();
-    if (remaining <= 0) throw this.timedOutError();
-    return remaining;
-  }
-
-  private cancelledError(): TerminalInvocationBoundaryError {
-    return new TerminalInvocationBoundaryError('The Lacuna AI request was cancelled.');
-  }
-
-  private timedOutError(): TerminalInvocationBoundaryError {
-    return new TerminalInvocationBoundaryError(
-      'Timed out waiting for the Lacuna AI tool result.',
-    );
-  }
-
-  private isBoundedOperationError(error: unknown): boolean {
-    return error instanceof TerminalInvocationBoundaryError;
   }
 
   private requireConnection(): ConnectedTerminalRelay {

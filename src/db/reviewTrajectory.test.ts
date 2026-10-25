@@ -193,6 +193,60 @@ describe('review trajectory sampling', () => {
     }
   });
 
+  it('includes the reviewed card beyond the first trajectory batch', async () => {
+    const deck = await createCourse('Batched trajectory');
+    await Promise.all(
+      Array.from({ length: 65 }, (_, index) =>
+        createCard(deck.id, 'front_back', `Question ${index}`, 'Answer'),
+      ),
+    );
+    const cards = await db.cards.toArray();
+    const lastCard = cards[cards.length - 1];
+
+    await recordReview({
+      card: lastCard,
+      deck,
+      eventId: 'event-batch-final-card',
+      sessionId: 'session-batch-final-card',
+      sessionKind: 'deck',
+      grade: 3,
+      responseTimeSec: 2,
+      distracted: false,
+      correct: true,
+    });
+
+    const sample = await waitForTrajectorySample('event-batch-final-card');
+    expect(sample.averagePredictedRetrievability).toBeGreaterThan(0);
+    expect(sample.averagePredictedRetrievability).toBeLessThanOrEqual(1 / 65);
+    expect(await db.sessionHistory.count()).toBe(1);
+  });
+
+  it('samples after review commitment when animation frames are unavailable', async () => {
+    const deck = await createCourse('Timer-only trajectory');
+    const card = await createCard(deck.id, 'front_back', 'question', 'answer');
+    vi.stubGlobal('requestAnimationFrame', undefined);
+
+    try {
+      await recordReview({
+        card,
+        deck,
+        eventId: 'event-no-animation-frame',
+        sessionId: 'session-no-animation-frame',
+        sessionKind: 'deck',
+        grade: 3,
+        responseTimeSec: 2,
+        distracted: false,
+        correct: true,
+      });
+
+      const sample = await waitForTrajectorySample('event-no-animation-frame');
+      expect(sample.sessionId).toBe('session-no-animation-frame');
+      expect(await db.sessionHistory.count()).toBe(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('runs a frame-suspended trajectory job once through its timer fallback', async () => {
     const deck = await createCourse('Suspended frame');
     const card = await createCard(deck.id, 'front_back', 'question', 'answer');
