@@ -41,7 +41,6 @@ import {
   loadTeacherHome,
   loadShareLinkPage,
   loadLanding,
-  loadOnboarding,
   loadPupilClassPage,
 } from './loaders';
 
@@ -75,7 +74,10 @@ const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
-const Onboarding = lazy(loadOnboarding);
+// Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
+const Onboarding = lazy(() =>
+  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding })),
+);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 

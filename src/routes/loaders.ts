@@ -75,9 +75,6 @@ export const loadMcpBridgeController = () =>
     default: module.McpBridgeController,
   }));
 
-export const loadOnboarding = () =>
-  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding }));
-
 export const loadLanding = () =>
   import('../pages/Landing').then((module) => ({ default: module.Landing }));
 
