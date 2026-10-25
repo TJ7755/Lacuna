@@ -49,6 +49,10 @@ async function importRevision(page: Page, revision: number) {
       exact: true,
     })
     .click();
+  await page
+    .getByRole('list', { name: 'Course path' })
+    .getByRole('button', { name: 'Cells', exact: true })
+    .click();
   await expect(page.getByRole('heading', { name: 'Cells', exact: true })).toBeVisible();
 }
 
