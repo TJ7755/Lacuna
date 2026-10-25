@@ -71,7 +71,9 @@ export function ChartCard({
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <div>
           <h3 className="font-display text-lg font-semibold tracking-tight">{title}</h3>
-          {description && <p className="mt-0.5 text-sm text-ink-soft">{description}</p>}
+          {description && (
+            <p className="mt-1 max-w-[60ch] text-sm leading-relaxed text-ink-soft">{description}</p>
+          )}
         </div>
         {legend && legend.length > 0 && !empty && (
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft" aria-label="Legend">
@@ -84,7 +86,7 @@ export function ChartCard({
                 />
                 {item.label}
                 {item.value !== undefined && (
-                  <strong className="font-bold tabular-nums text-ink">{item.value}</strong>
+                  <strong className="font-semibold tabular-nums text-ink">{item.value}</strong>
                 )}
               </li>
             ))}
@@ -120,7 +122,10 @@ export function ChartCard({
       )}
       {!empty && action && <div className="mt-3 text-sm">{action}</div>}
       {!empty && data && data.rows.length > 0 && (
-        <ContentDisclosure label="View data" className={cn('text-sm', action ? 'mt-1' : 'mt-3')}>
+        <ContentDisclosure
+          label="View data"
+          className={cn('text-sm [&>button]:-ml-3', action ? 'mt-1' : 'mt-3')}
+        >
           <div
             className="mt-2 max-h-80 overflow-auto"
             tabIndex={0}

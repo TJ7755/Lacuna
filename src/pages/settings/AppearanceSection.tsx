@@ -45,8 +45,8 @@ export function AppearanceSection() {
         <SegmentedPills label="Theme" value={theme} options={THEME_OPTIONS} onChange={setTheme} />
       </SettingRow>
 
-      <SettingRow label="Accent colour">
-        <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap gap-2.5">
+      <SettingRow label="Accent colour" className="[&>div:first-child]:basis-28">
+        <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap gap-1">
           <LayoutGroup id="accent-swatches">
             {ACCENTS.map((option) => {
               const active = accent === option.key;
@@ -59,7 +59,7 @@ export function AppearanceSection() {
                   onClick={() => setAccent(option.key)}
                   title={option.label}
                   aria-label={option.label}
-                  className="relative grid h-11 w-11 place-items-center rounded-full transition-transform duration-150 hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+                  className="relative grid h-9 w-9 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                 >
                   <span
                     aria-hidden="true"
