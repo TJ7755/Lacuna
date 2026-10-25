@@ -282,7 +282,7 @@ export function LearnHeader({
               <motion.span
                 className="inline-flex"
                 animate={{ rotate: menuOpen ? 90 : 0 }}
-                transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+                transition={scaledSpring(m, 480, 2 * Math.sqrt(480))}
               >
                 <MoreIcon width={18} height={18} />
               </motion.span>
@@ -306,10 +306,13 @@ export function LearnHeader({
                   />
                 ) : (
                   <motion.div
-                    initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
-                    transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                    initial={m > 0 ? { opacity: 0, y: -6 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={m > 0 ? { opacity: 0, y: -6 } : undefined}
+                    transition={{
+                      y: scaledSpring(m, 480, 2 * Math.sqrt(480)),
+                      opacity: { duration: 0.12 * m },
+                    }}
                     className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
                   >
                     {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}

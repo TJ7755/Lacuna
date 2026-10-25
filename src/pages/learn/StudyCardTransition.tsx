@@ -16,7 +16,7 @@ import {
   usePresence,
   useTransform,
 } from 'motion/react';
-import { MOTION_EASING } from '../../components/ui/motion';
+import { scaledSpring } from '../../components/ui/motion';
 import type { Phase } from './types';
 import { StudyCardMotionContext } from './studyCardMotion';
 import { studyCardExitTransition } from './studyCardExit';
@@ -239,9 +239,9 @@ const StudyCardPresentation = forwardRef<
         }}
       >
         <motion.div
-          initial={{ y: 12, scale: 0.96 }}
-          animate={{ y: 0, scale: 1 }}
-          transition={{ duration: 0.28 * m, ease: MOTION_EASING.standard }}
+          initial={{ y: 12 }}
+          animate={{ y: 0 }}
+          transition={scaledSpring(m, 480, 2 * Math.sqrt(480))}
         >
           {children}
           {departure && <StudyGradeRim correct={departure.correct} m={m} />}
