@@ -25,7 +25,10 @@ already saved. Tell them the file and recovery code belong to the demonstration 
 prepared on another device. This session exercises recovery; observe first-time
 creation separately, including saving the one-time code and file before continuing.
 If no prepared report exists, postpone the results task rather than inventing one
-or changing a pupil's clock. Daily delivery is checked after a UTC boundary.
+or changing a pupil's clock. Also rehearse a synthetic pupil's **Send latest progress**
+action today and the teacher's **Refresh results** action. A second publication
+after more work must update the same daily report without duplicating activity.
+Automatic daily delivery is checked separately after a UTC boundary.
 
 Before a class trial, ask school IT whether pupil and teacher browser profiles clear
 storage at logout. Rehearse logout and reopening with synthetic data on the actual

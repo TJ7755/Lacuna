@@ -30,19 +30,26 @@ export class InsightsMailboxError extends Error {
 
 /** Retry the same slot and ciphertext after a lost acknowledgement; do not reseal it. */
 export async function putInsightEnvelope(
-  options: MailboxOptions & { slotId: string; envelope: InsightEnvelope },
+  options: MailboxOptions & {
+    slotId: string;
+    envelope: InsightEnvelope;
+    snapshot?: { writeToken: string; revision: number };
+  },
 ): Promise<void> {
   const url = mailboxUrl(options);
   if (!INSIGHT_ID_RE.test(options.slotId)) throw new InsightsMailboxError('Invalid insights slot.');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (options.snapshot) {
+    const { writeToken, revision } = options.snapshot;
+    if (!/^[0-9a-f]{64}$/.test(writeToken) || !Number.isSafeInteger(revision) || revision < 1)
+      throw new InsightsMailboxError('Invalid insights snapshot credentials.');
+    headers.Authorization = `Bearer ${writeToken}`;
+    headers['X-Insights-Revision'] = String(revision);
+  }
   const body = JSON.stringify(parseInsightEnvelope(options.envelope, options));
   if (new TextEncoder().encode(body).byteLength > INSIGHT_MAX_ENVELOPE_BYTES)
     throw new InsightsMailboxError('Insights envelope is too large.');
-  await request(
-    options,
-    `${url}/${options.slotId}`,
-    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body },
-    204,
-  );
+  await request(options, `${url}/${options.slotId}`, { method: 'PUT', headers, body }, 204);
 }
 
 export async function getInsightMailboxPage(

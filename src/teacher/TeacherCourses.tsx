@@ -148,7 +148,9 @@ export function TodayPage({
         <>
           {open.length > 0 && (
             <SectionCard className="gaps-rise mb-8 p-6 md:p-8">
-              <h2 className="font-display text-2xl font-semibold tracking-tight">Yesterday</h2>
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
+                Today’s loaded results
+              </h2>
               <ul className="mt-6 flex flex-col gap-5">
                 {open.map((row, index) => (
                   <li key={row.course.shareId}>

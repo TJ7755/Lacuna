@@ -1,5 +1,5 @@
 import { sealInsightEnvelope, type InsightsRecipient } from '../../src/insights/envelope';
-import { completedIsoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
+import { isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
 import { expect, test } from '@playwright/test';
 import { createHandler } from '../../relay/src/relay';
 import { MemoryStore } from '../../relay/src/store';
@@ -143,7 +143,7 @@ for (const width of [1280, 390]) {
         }),
       owner.shareId,
     );
-    const day = completedIsoDayLabel(Date.now());
+    const day = isoDayLabel(Date.now());
     const reportEnvelope = await sealInsightEnvelope(
       recipient,
       new TextEncoder().encode(

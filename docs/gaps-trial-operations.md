@@ -25,8 +25,11 @@ into an operations log. Do not use production pupil identities for a probe.
 
 For a delivery rehearsal, use a disposable synthetic course, separate author,
 teacher and pupil browser profiles, and the normal join/consent flow. Verify that
-consent starts off, a completed-day report is accepted once, the teacher can
-decrypt it, close clears the view, and opt-out survives reload. Delete the
+consent starts off, today's **Send latest progress** snapshot is accepted, the
+teacher can decrypt it after **Refresh results**, and a second publication after
+more study updates the same report without duplicating activity. Check that an
+unchanged publication and a failed send show honest status, automatic completed-day
+delivery still works, close clears the view, and opt-out survives reload. Delete the
 synthetic share afterwards and verify its payload returns 404. Keep browser traces
 and video disabled: they can retain authorisation material. A successful synthetic
 flow does not prove that every pupil's device has delivered.
@@ -75,8 +78,9 @@ and [Pro credit rules](https://vercel.com/docs/plans/pro-plan) when reviewing th
 
 ## After the class starts
 
-After the first completed UTC day with the class, have the teacher confirm that
-they can read the expected day's reports. Ask about missing reports privately;
+After the first explicit publication, have the teacher refresh today's results
+and confirm they can read the snapshot. After the first completed UTC day with
+the class, also confirm automatic daily delivery. Ask about missing reports privately;
 first check consent, class invitation, app version and whether the app was opened
 online. Record only aggregate operational findings publicly.
 

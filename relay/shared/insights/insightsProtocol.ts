@@ -112,11 +112,7 @@ export function insightDayExpiresAt(day: string): number {
 
 /** Late uploads and retries never extend the fixed reporting-day deadline. */
 export function requireInsightDay(day: string, now: number): void {
-  if (
-    !Number.isFinite(now) ||
-    isoDayStartMs(day) + INSIGHT_DAY_MS > now ||
-    insightDayExpiresAt(day) <= now
-  ) {
-    throw new Error('The insights day is incomplete or expired.');
+  if (!Number.isFinite(now) || isoDayStartMs(day) > now || insightDayExpiresAt(day) <= now) {
+    throw new Error('The insights day is in the future or expired.');
   }
 }

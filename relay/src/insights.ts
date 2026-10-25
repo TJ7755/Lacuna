@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { relayCorsHeaders } from './cors.js';
 import { consumeCounterPermit, consumeRatePermit } from './rateLimit.js';
 import { authorizeShare, shareLive } from './shares.js';
@@ -12,6 +13,8 @@ import {
   insightDayExpiresAt,
   parseInsightEnvelope,
   requireInsightDay,
+  type InsightEnvelope,
+  type InsightEnvelopeContext,
   type InsightMailboxPage,
 } from '../shared/insights/index.js';
 
@@ -82,13 +85,9 @@ async function readPage(
     const stored = await store.get(listed.key);
     if (!stored) continue;
     try {
-      if (stored.body.byteLength > INSIGHT_MAX_ENVELOPE_BYTES) throw new Error('oversized');
       envelopes.push({
         slotId,
-        envelope: parseInsightEnvelope(
-          JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(stored.body)),
-          { shareId: id, isoDay: day },
-        ),
+        envelope: parseStoredInsight(stored.body, { shareId: id, isoDay: day }).envelope,
       });
     } catch {
       return reply(request, 503, { error: 'mailbox unavailable' });
@@ -109,6 +108,22 @@ async function writeEnvelope(
   slotId: string,
   now: () => number,
 ): Promise<Response> {
+  const tokenHeader = request.headers.get('Authorization');
+  const revisionHeader = request.headers.get('X-Insights-Revision');
+  let snapshot: { writeTokenHash: string; revision: number } | undefined;
+  if (tokenHeader !== null || revisionHeader !== null) {
+    const token = /^Bearer ([0-9a-f]{64})$/.exec(tokenHeader ?? '')?.[1];
+    if (!token) return reply(request, 401, { error: 'unauthorised' });
+    if (
+      !/^[1-9][0-9]*$/.test(revisionHeader ?? '') ||
+      !Number.isSafeInteger(Number(revisionHeader))
+    )
+      return reply(request, 400, { error: 'invalid insights revision' });
+    snapshot = {
+      writeTokenHash: createHash('sha256').update(token, 'utf8').digest('hex'),
+      revision: Number(revisionHeader),
+    };
+  }
   const length = request.headers.get('Content-Length');
   if (length === null) return reply(request, 411, { error: 'length required' });
   if (!/^\d+$/.test(length) || !Number.isSafeInteger(Number(length)))
@@ -120,14 +135,13 @@ async function writeEnvelope(
   ) {
     return reply(request, 415, { error: 'JSON envelope required' });
   }
-  let body: Uint8Array;
+  let envelope: InsightEnvelope;
   try {
     const raw = await readBody(request, Number(length));
-    const envelope = parseInsightEnvelope(
+    envelope = parseInsightEnvelope(
       JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(raw)),
       { shareId: id, isoDay: day },
     );
-    body = new TextEncoder().encode(JSON.stringify(envelope));
   } catch {
     return reply(request, 400, { error: 'invalid insights envelope' });
   }
@@ -136,30 +150,111 @@ async function writeEnvelope(
   if (now() >= insightDayExpiresAt(day)) return reply(request, 410, { error: 'insights expired' });
   const key = `insights/${id}/${day}/envelopes/${slotId}`;
   const existing = await store.get(key);
-  if (existing) return reply(request, Buffer.from(existing.body).equals(body) ? 204 : 409);
-  const permit = await consumeCounterPermit(store, `insights/${id}/${day}/quota`, now(), {
-    limit: INSIGHT_DAILY_SLOTS,
-    windowMs: INSIGHT_RETENTION_DAYS * INSIGHT_DAY_MS,
-  });
-  if (permit !== 'allowed')
-    return reply(request, permit === 'limited' ? 429 : 503, {
-      error: 'mailbox capacity unavailable',
+  const context = { shareId: id, isoDay: day };
+  let current: StoredInsight | undefined;
+  if (existing) {
+    try {
+      current = parseStoredInsight(existing.body, context);
+    } catch {
+      return reply(request, 503, { error: 'mailbox unavailable' });
+    }
+    if (current.v === 1) {
+      if (!snapshot || !sameWriteToken(current, snapshot))
+        return reply(request, 401, { error: 'unauthorised' });
+      if (snapshot.revision === current.revision && sameEnvelope(current.envelope, envelope))
+        return acknowledge();
+      if (snapshot.revision !== current.revision + 1) return reply(request, 409);
+    } else {
+      // Legacy slots remain immutable, including when a snapshot client retries them.
+      return sameEnvelope(current.envelope, envelope) ? acknowledge() : reply(request, 409);
+    }
+  } else {
+    if (snapshot && snapshot.revision !== 1) return reply(request, 409);
+    // Failed or duplicate concurrent creates can consume a reservation. Refunding
+    // across writers could exceed the cap; replacements never reserve capacity.
+    const permit = await consumeCounterPermit(store, `insights/${id}/${day}/quota`, now(), {
+      limit: INSIGHT_DAILY_SLOTS,
+      windowMs: INSIGHT_RETENTION_DAYS * INSIGHT_DAY_MS,
     });
-  // A failed or duplicate concurrent upload can consume a reservation. Do not
-  // refund across writers: conservative capacity is safer than exceeding the cap.
-  const written = await store.put(key, body, { exclusive: true });
-  if (!(await store.get(`shares/${id}/auth`)) || now() >= insightDayExpiresAt(day)) {
-    await store.del([key]);
-    return reply(request, 404, { error: 'not found' });
+    if (permit !== 'allowed')
+      return reply(request, permit === 'limited' ? 429 : 503, {
+        error: 'mailbox capacity unavailable',
+      });
   }
-  // Another exact retry may already have acknowledged this slot. Public-share
-  // expiry cannot roll it back; retain ambiguous writes until their own deadline.
-  if (!(await shareLive(store, id, now))) return reply(request, 404, { error: 'not found' });
+  const body = new TextEncoder().encode(
+    JSON.stringify(snapshot ? { v: 1, envelope, ...snapshot } : envelope),
+  );
+  const written = await store.put(
+    key,
+    body,
+    existing ? { ifMatch: existing.etag } : { exclusive: true },
+  );
   if (!written.ok) {
     const other = await store.get(key);
-    return reply(request, other && Buffer.from(other.body).equals(body) ? 204 : 409);
+    if (!other) return reply(request, 409);
+    try {
+      const winner = parseStoredInsight(other.body, context);
+      const matches =
+        winner.v === 1
+          ? snapshot && sameWriteToken(winner, snapshot) && winner.revision === snapshot.revision
+          : true;
+      if (!matches || !sameEnvelope(winner.envelope, envelope)) return reply(request, 409);
+    } catch {
+      return reply(request, 503, { error: 'mailbox unavailable' });
+    }
   }
-  return reply(request, 204);
+  return acknowledge();
+
+  async function acknowledge(): Promise<Response> {
+    if (!(await store.get(`shares/${id}/auth`)) || now() >= insightDayExpiresAt(day)) {
+      await store.del([key]);
+      return reply(request, 404, { error: 'not found' });
+    }
+    // Public expiry must not delete a snapshot another request already acknowledged.
+    if (!(await shareLive(store, id, now))) return reply(request, 404, { error: 'not found' });
+    return reply(request, 204);
+  }
+}
+
+type StoredInsight =
+  | { v: 2; envelope: InsightEnvelope }
+  | { v: 1; envelope: InsightEnvelope; writeTokenHash: string; revision: number };
+
+function parseStoredInsight(body: Uint8Array, context: InsightEnvelopeContext): StoredInsight {
+  // Allow bounded internal metadata without increasing the accepted request size.
+  if (body.byteLength > INSIGHT_MAX_ENVELOPE_BYTES + 256) throw new Error('oversized');
+  const raw: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body));
+  if (raw && typeof raw === 'object' && !Array.isArray(raw) && 'v' in raw && raw.v === 1) {
+    const value = raw as Record<string, unknown>;
+    if (
+      Object.keys(value).length !== 4 ||
+      typeof value.writeTokenHash !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(value.writeTokenHash) ||
+      typeof value.revision !== 'number' ||
+      !Number.isSafeInteger(value.revision) ||
+      value.revision < 1
+    )
+      throw new Error('invalid snapshot');
+    return {
+      v: 1,
+      envelope: parseInsightEnvelope(value.envelope, context),
+      writeTokenHash: value.writeTokenHash,
+      revision: value.revision,
+    };
+  }
+  if (body.byteLength > INSIGHT_MAX_ENVELOPE_BYTES) throw new Error('oversized');
+  return { v: 2, envelope: parseInsightEnvelope(raw, context) };
+}
+
+function sameWriteToken(a: { writeTokenHash: string }, b: { writeTokenHash: string }): boolean {
+  return timingSafeEqual(
+    Buffer.from(a.writeTokenHash, 'hex'),
+    Buffer.from(b.writeTokenHash, 'hex'),
+  );
+}
+
+function sameEnvelope(a: InsightEnvelope, b: InsightEnvelope): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 async function readBody(request: Request, length: number): Promise<Uint8Array> {

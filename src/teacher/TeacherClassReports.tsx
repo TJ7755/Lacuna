@@ -26,12 +26,7 @@ import {
 } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
 import { StudyDrawing } from '../components/ui/StudyDrawing';
-import {
-  completedIsoDayLabel,
-  DAY_MS,
-  isoDayLabel,
-  isoDayStartMs,
-} from '../../relay/shared/insights/index';
+import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
 import { publishClassRecipient } from '../insights/classKey';
 import { requestShortClassCode } from '../shareLinks/client';
 import { formatClassCode, formatShortClassCode } from '../insights/classCode';
@@ -101,8 +96,8 @@ export function ClassPage({
   onLock(): void;
   onRemoved(): void;
 }) {
-  const latest = completedIsoDayLabel(Date.now());
-  const earliest = isoDayLabel(isoDayStartMs(latest) - (RETENTION_DAYS - 1) * DAY_MS);
+  const latest = isoDayLabel(Date.now());
+  const earliest = isoDayLabel(isoDayStartMs(latest) - RETENTION_DAYS * DAY_MS);
   const [forgetting, setForgetting] = useState(false);
   const [forgetBusy, setForgetBusy] = useState(false);
   const [forgetError, setForgetError] = useState('');
@@ -299,11 +294,13 @@ export function ClassPage({
                 count={view?.reports.length}
                 loading={loading}
                 onReload={
-                  view
+                  view && !loading
                     ? () => {
-                        // Reports keep arriving as pupils open Lacuna, so a day can be read again.
+                        // Invalidate before reading so a failed refresh cannot look up to date.
                         session.days.delete(day);
+                        setLoading(true);
                         setAttempt((value) => value + 1);
+                        onChanged();
                       }
                     : undefined
                 }
@@ -313,6 +310,12 @@ export function ClassPage({
               />
             )}
           </div>
+
+          {tab !== 'invite' && day === latest && (
+            <p className="mb-6 max-w-2xl text-sm text-ink-soft">
+              Partial UTC results. Ask pupils to Send latest progress, then Refresh results.
+            </p>
+          )}
 
           {tab !== 'invite' && !error && data && data.unreadable > 0 && (
             <p
@@ -358,7 +361,7 @@ export function ClassPage({
               <p role="status" className="mt-3 max-w-sm text-ink-soft">
                 {data.unreadable > 0
                   ? 'Reports arrived but could not be decrypted with this key. Check the class recovery key and try again.'
-                  : 'No report does not mean no study. Reports arrive when pupils next open Lacuna online.'}
+                  : 'No report does not mean no study.'}
               </p>
               <button
                 type="button"
@@ -554,51 +557,54 @@ function DayStepper({
     <div
       role="group"
       aria-label="Reporting day"
-      className="flex items-center gap-1 rounded-full bg-surface p-1 card-surface"
+      className="flex max-w-full flex-wrap items-center gap-2"
     >
-      <button
-        type="button"
-        aria-label="Previous day"
-        title="Previous day ( [ )"
-        disabled={day <= earliest}
-        onClick={() => onChange(step(day, -1, earliest, latest))}
-        className={arrow}
-      >
-        <ChevronLeftIcon width={18} height={18} />
-      </button>
-      <span
-        aria-live="polite"
-        className="flex min-w-48 items-center justify-center gap-2.5 px-1 text-sm tabular-nums"
-      >
-        <span className="font-semibold">
-          {day === latest ? 'Yesterday' : dayLabel(day, 'short')}
+      <div className="flex items-center gap-1 rounded-full bg-surface p-1 card-surface">
+        <button
+          type="button"
+          aria-label="Previous day"
+          title="Previous day ( [ )"
+          disabled={day <= earliest}
+          onClick={() => onChange(step(day, -1, earliest, latest))}
+          className={arrow}
+        >
+          <ChevronLeftIcon width={18} height={18} />
+        </button>
+        <span
+          aria-live="polite"
+          className="flex min-w-48 items-center justify-center gap-2.5 px-1 text-sm tabular-nums"
+        >
+          <span className="font-semibold">
+            {day === latest ? 'Today (UTC)' : dayLabel(day, 'short')}
+          </span>
+          {loading ? (
+            <>
+              <Spinner className="h-3.5 w-3.5 text-ink-faint" />
+              <span className="sr-only">Reading reports…</span>
+            </>
+          ) : (
+            count !== undefined && <span className="text-ink-faint">{count} reports</span>
+          )}
         </span>
-        {loading ? (
-          <Spinner className="h-3.5 w-3.5 text-ink-faint" />
-        ) : (
-          count !== undefined && <span className="text-ink-faint">{count} reports</span>
-        )}
-      </span>
+        <button
+          type="button"
+          aria-label="Next day"
+          title="Next day ( ] )"
+          disabled={day >= latest}
+          onClick={() => onChange(step(day, 1, earliest, latest))}
+          className={arrow}
+        >
+          <ChevronRightIcon width={18} height={18} />
+        </button>
+      </div>
       <button
         type="button"
-        aria-label="Next day"
-        title="Next day ( ] )"
-        disabled={day >= latest}
-        onClick={() => onChange(step(day, 1, earliest, latest))}
-        className={arrow}
-      >
-        <ChevronRightIcon width={18} height={18} />
-      </button>
-      <span aria-hidden="true" className="mx-0.5 h-5 w-px bg-line" />
-      <button
-        type="button"
-        aria-label="Read again"
-        title="Read again"
-        disabled={!onReload}
+        disabled={!onReload || loading}
         onClick={onReload}
-        className={arrow}
+        className={buttonClassName('ghost', 'sm')}
       >
         <RefreshIcon width={17} height={17} />
+        Refresh results
       </button>
     </div>
   );

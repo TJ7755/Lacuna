@@ -18,11 +18,22 @@ beforeEach(() => {
   store.list.mockResolvedValue([]);
 });
 
-it.each([{ courses: [] }, { courses: [biology] }])('labels the completed reporting day explicitly for %j', ({ courses }) => {
-  render(<TodayPage courses={courses} sessions={new Map()} day={day} connectRequest={0}
-    onOpen={vi.fn()} onConnected={vi.fn()} />);
-  expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
-});
+it.each([{ courses: [] }, { courses: [biology] }])(
+  'labels the UTC reporting day explicitly for %j',
+  ({ courses }) => {
+    render(
+      <TodayPage
+        courses={courses}
+        sessions={new Map()}
+        day={day}
+        connectRequest={0}
+        onOpen={vi.fn()}
+        onConnected={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
+  },
+);
 
 it('opens the connection form on the page when there are no classes', () => {
   const page = render(
@@ -128,6 +139,8 @@ it('makes the first locked class the default next step and summarises unlocked o
     />,
   );
   expect(screen.getByText('1 reports · 1 to revisit')).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Today’s loaded results' })).toBeVisible();
+  expect(screen.queryByRole('heading', { name: 'Yesterday' })).not.toBeInTheDocument();
   const unlock = screen.getByRole('button', { name: 'Unlock GCSE Chemistry' });
   expect(unlock.className).toContain('bg-accent');
   expect(screen.getByRole('button', { name: 'Open GCSE Biology' }).className).not.toContain(

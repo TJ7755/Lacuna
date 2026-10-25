@@ -38,13 +38,16 @@ describe('insights envelope boundary', () => {
   ])('rejects malformed or plaintext-bearing envelopes', (raw) => {
     expect(() => parseInsightEnvelope(raw)).toThrow();
   });
-  it('allows exactly eighty-four completed UTC reporting days', () => {
+  it('allows today and eighty-four completed UTC days without extending fixed retention', () => {
     const now = Date.parse('2026-10-19T00:00:00Z');
     expect(() => requireInsightDay('2026-10-18', now)).not.toThrow();
     expect(() => requireInsightDay('2026-07-27', now)).not.toThrow();
     expect(() => requireInsightDay('2026-07-26', now)).toThrow();
-    expect(() => requireInsightDay('2026-10-19', now)).toThrow();
+    expect(() => requireInsightDay('2026-10-19', now)).not.toThrow();
+    expect(() => requireInsightDay('2026-10-19', now - 1)).toThrow();
+    expect(() => requireInsightDay('2026-10-19', now + 86_399_999)).not.toThrow();
     expect(() => requireInsightDay('2026-10-20', now)).toThrow();
     expect(insightDayExpiresAt('2026-07-26')).toBe(now);
+    expect(() => requireInsightDay('2026-10-19', Number.NaN)).toThrow();
   });
 });

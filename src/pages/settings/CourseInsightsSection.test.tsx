@@ -1,12 +1,16 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CourseInsightsSection } from './CourseInsightsSection';
-import { enrolInClass } from '../../insights/enrolment';
+import { enrolInClass, setReportingConsent } from '../../insights/enrolment';
 
 vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['fast'],
   speedMultiplier: () => 0,
 }));
+
+vi.mock('dexie-react-hooks', () => ({ useLiveQuery: () => ({ name: 'Biology' }) }));
+vi.mock('../../insights/delivery', () => ({ publishCourseInsights: vi.fn() }));
+import { publishCourseInsights } from '../../insights/delivery';
 
 const COURSE_ID = 'course-1';
 
@@ -25,6 +29,12 @@ function renderSection() {
 describe('CourseInsightsSection', () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.stubEnv('VITE_GAPS_REPORTING_ENABLED', 'false');
+    vi.mocked(publishCourseInsights).mockReset();
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('renders the toggle off by default, with no day recorded as sent', () => {
@@ -70,10 +80,10 @@ describe('CourseInsightsSection', () => {
     expect(screen.getByText(/only your teacher can read/i)).toBeTruthy();
     expect(screen.getByText(/may be able to recognise you/i)).toBeTruthy();
     expect(screen.getByText(/submission time and packet size/i)).toBeTruthy();
-    expect(screen.getByText(/one report per completed day/i)).toBeTruthy();
+    expect(screen.getByText(/publishes today’s completed work immediately/i)).toBeTruthy();
     expect(screen.getByText(/expire from the relay after 12 weeks/i)).toBeTruthy();
     expect(screen.getByText(/teacher may keep results they have already received/i)).toBeTruthy();
-    expect(screen.getByText(/Daily delivery is not enabled in this build/i)).toBeTruthy();
+    expect(screen.getByText(/Insights delivery is not enabled in this build/i)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'School data notice' })).toHaveAttribute(
       'href',
       'https://github.com/TJ7755/Lacuna/blob/master/docs/gaps-school-notice.md',
@@ -85,7 +95,7 @@ describe('CourseInsightsSection', () => {
     joinClass();
     renderSection();
     expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-    expect(screen.getByText(/activity already recorded yesterday/)).toBeVisible();
+    expect(screen.getByText(/activity already recorded today and yesterday/)).toBeVisible();
     expect(screen.getByRole('button', { name: 'How sharing works' })).toHaveAttribute(
       'aria-expanded',
       'false',
@@ -95,7 +105,71 @@ describe('CourseInsightsSection', () => {
   it('shows the recorded day once a completed send exists', () => {
     localStorage.setItem(`lacuna.insights.lastSentDay.${COURSE_ID}`, '2026-10-18');
     renderSection();
-    expect(screen.getByText('Last sent: 2026-10-18.')).toBeTruthy();
+    expect(screen.getByText('Last daily report: 2026-10-18.')).toBeTruthy();
+  });
+
+  it('shows the connected course and a useful explicit-publication time', () => {
+    joinClass();
+    localStorage.setItem(
+      `lacuna.insights.lastPublishedAt.${COURSE_ID}`,
+      String(Date.parse('2026-10-19T12:34:00Z')),
+    );
+    renderSection();
+    expect(screen.getByText('Connected course: Biology.')).toBeVisible();
+    expect(screen.queryByText(/Class reference/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/Last successful publication:.*19.*10.*2026.*12:34.*UTC/),
+    ).toBeVisible();
+  });
+
+  it.each([
+    ['sent', /latest progress was accepted/],
+    ['unchanged', /Nothing new to send/],
+    ['idle', /Nothing was sent/],
+  ] as const)('reports %s honestly', async (result, message) => {
+    vi.stubEnv('VITE_GAPS_REPORTING_ENABLED', 'true');
+    joinClass();
+    setReportingConsent(COURSE_ID, true, 'Pupil A');
+    vi.mocked(publishCourseInsights).mockResolvedValue(result);
+    renderSection();
+    fireEvent.click(screen.getByRole('button', { name: 'Send latest progress' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(message));
+    expect(publishCourseInsights).toHaveBeenCalledWith(COURSE_ID);
+  });
+
+  it('shows sending until acknowledgement and does not claim a packet was saved after failure', async () => {
+    vi.stubEnv('VITE_GAPS_REPORTING_ENABLED', 'true');
+    joinClass();
+    setReportingConsent(COURSE_ID, true, 'Pupil A');
+    let fail!: (error: Error) => void;
+    vi.mocked(publishCourseInsights).mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          fail = reject;
+        }),
+    );
+    renderSection();
+    fireEvent.click(screen.getByRole('button', { name: 'Send latest progress' }));
+    await waitFor(() => expect(publishCourseInsights).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDisabled();
+    fail(new Error('Storage full'));
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Could not send your latest progress. Try again.',
+      ),
+    );
+    expect(screen.queryByText(/saved for retry/)).not.toBeInTheDocument();
+  });
+
+  it('reports offline without attempting publication', async () => {
+    vi.stubEnv('VITE_GAPS_REPORTING_ENABLED', 'true');
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    joinClass();
+    setReportingConsent(COURSE_ID, true, 'Pupil A');
+    renderSection();
+    fireEvent.click(screen.getByRole('button', { name: 'Send latest progress' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('You are offline.'));
+    expect(publishCourseInsights).not.toHaveBeenCalled();
   });
 
   it.each(['2026-W42', '2026-02-30', 'not a date'])(

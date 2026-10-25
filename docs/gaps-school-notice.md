@@ -12,10 +12,14 @@ The pupil must enter a name or class identifier and choose **Share insights with
 your teacher**. The choice applies to that course on that device. They can turn
 it off in the course's Class insights settings and keep studying without reporting.
 
-While the app is open and online, it can send one report for the latest completed
-UTC day. This can include study already recorded yesterday before the pupil opted
-in. Days missed while offline are not sent later. A UTC day ends at midnight UTC,
-which is not always local midnight.
+While the app is open and online, it can automatically send a report for the latest
+completed UTC day. Pupils can also choose **Send latest progress** in their Gaps
+class view to publish work recorded today. Publishing again replaces that device's
+snapshot for the day rather than adding its activity twice. The teacher chooses
+**Refresh results** to read the latest accepted snapshot; this is not live monitoring.
+Reports can include study recorded earlier in the selected day, before the pupil
+opted in. Days missed while offline are not backfilled. A UTC day ends at midnight
+UTC, which is not always local midnight.
 
 ## What the teacher receives
 
@@ -39,7 +43,9 @@ or recovery passphrase and cannot decrypt those packets in normal operation.
 The teacher's browser decrypts reports locally after explicit unlock.
 
 The relay still sees the course identifier, reporting day, random submission slot,
-teacher-key fingerprint, submission time and packet size. The hosting provider
+teacher-key fingerprint, submission time, update revision and packet size. A private
+write token authorises updates to a device's snapshot; the relay stores its hash,
+not the token itself. The hosting provider
 processes network information, including IP addresses and request logs, to serve
 and protect the service. Encryption does not hide this metadata. There are no
 public or keyless participation counters in this trial. Gaps reporting does not

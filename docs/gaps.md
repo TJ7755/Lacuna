@@ -42,6 +42,32 @@ email account. The device key protects stored token bytes; it does not protect a
 someone using the same profile. Keep recovery and connection files with their passphrases
 separately for another device or cleared browser storage.
 
+## Current-day publication
+
+Pupils who have joined and opted in can use **Send latest progress** from their
+Gaps class view. It publishes the selected course's current UTC-day evidence;
+subsequent publications replace the same device's daily snapshot. Teachers open
+today's results and choose **Refresh results** after a pupil publishes. Today's
+results are partial. Neither a missing report nor an unchanged snapshot proves
+that a pupil has stopped studying. Automatic delivery still covers the latest
+completed UTC day when the pupil opens Lacuna online.
+
+The encrypted envelope and evidence formats remain unchanged. Snapshot writes
+add a private, device-local write token and a consecutive revision; the relay
+stores only the token hash and uses conditional writes to reject stale updates.
+A lost acknowledgement retries the exact saved ciphertext and revision before
+preparing an update. Replacements reuse the original daily slot and do not extend
+the reporting day's expiry. Legacy immutable reports remain readable and cannot
+be replaced through the new update route.
+
+Active outbox operations remove expired snapshots, retaining pending packets while
+their reporting day remains within the relay's retention window.
+
+Deploy the compatible relay before the updated pupil and teacher applications.
+An older relay rejects current-day publication; the pupil must see a failed send,
+not a successful publication. Report encryption, teacher recovery and the absence
+of verified pupil identity retain their existing boundaries.
+
 ## Disable the trial
 
 Confirm the intended team and projects before changing production configuration.
@@ -70,6 +96,10 @@ advanced operations, plus teacher reads, listing and maintenance. At the publish
 $5 per million advanced operations, those writes alone cost about $0.014. This
 already exceeds Hobby's 2,000 included advanced operations; the current design
 does not claim to fit that free-plan limit.
+
+Explicit current-day publications and repeat updates add requests and writes to
+that automatic-delivery estimate. Replacing a snapshot reuses its capacity slot,
+but is not a free operation or a limit on how often pupils can publish.
 
 At the maximum envelope size, 30 pupils over 84 retained days use less than
 0.24 GB of ciphertext, before cleanup lag. Storage, transfer, requests and function

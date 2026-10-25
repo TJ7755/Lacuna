@@ -3,12 +3,35 @@ import { listShareImports, getCourseIdForShare } from '../shareLinks/linkStore';
 import { DEFAULT_RELAY_URL } from '../shareLinks/client';
 import {
   createInsightsLastSentDaySetting,
+  createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../state/insightsOptIn';
 import { completedIsoDayLabel } from '../../relay/shared/insights/index';
 import { collectDailyEvidence } from './collectEvidence';
 import { createEnrolmentSetting, reportingEnabled } from './enrolment';
-import { createInsightsOutbox } from './outbox';
+import { createInsightsOutbox, type InsightsPublicationResult } from './outbox';
+export type { InsightsPublicationResult } from './outbox';
+
+type DeliveryOptions = { retry?: boolean; fetchImpl?: typeof fetch; now?: () => number };
+const publications = new Map<
+  string,
+  { promise: Promise<InsightsPublicationResult>; controller: AbortController }
+>();
+
+export function publishCourseInsights(
+  courseId: string,
+  options: DeliveryOptions = {},
+): Promise<InsightsPublicationResult> {
+  if (!reportingEnabled()) return Promise.resolve('idle');
+  const running = publications.get(courseId);
+  if (running) return running.promise;
+  const controller = new AbortController();
+  const promise = deliver(courseId, controller, options, true).finally(() =>
+    publications.delete(courseId),
+  );
+  publications.set(courseId, { promise, controller });
+  return promise;
+}
 
 const active = new Map<string, { promise: Promise<void>; controller: AbortController }>();
 
@@ -25,7 +48,9 @@ export function deliverCourseInsights(
   const running = active.get(courseId);
   if (running) return running.promise;
   const controller = new AbortController();
-  const promise = deliver(courseId, controller, options).finally(() => active.delete(courseId));
+  const promise = deliver(courseId, controller, options)
+    .then(() => {})
+    .finally(() => active.delete(courseId));
   active.set(courseId, { promise, controller });
   return promise;
 }
@@ -38,44 +63,53 @@ async function deliver(
     fetchImpl?: typeof fetch;
     now?: () => number;
   },
-): Promise<void> {
+  publish = false,
+): Promise<InsightsPublicationResult> {
   const now = options.now ?? Date.now,
-    day = completedIsoDayLabel(now());
+    dayAt = (at: number) =>
+      publish ? new Date(at).toISOString().slice(0, 10) : completedIsoDayLabel(at),
+    day = dayAt(now());
   const setting = createEnrolmentSetting(courseId),
     enrolment = setting.read();
-  if (!enrolment || enrolment.consentedAt === null || !enrolment.pupilLabel.trim()) return;
+  if (!enrolment || enrolment.consentedAt === null || !enrolment.pupilLabel.trim()) return 'idle';
   const optIn = createInsightsOptInSetting(courseId);
   const allowed = () =>
     !controller.signal.aborted &&
-    completedIsoDayLabel(now()) === day &&
+    reportingEnabled() &&
+    dayAt(now()) === day &&
     optIn.read() &&
     JSON.stringify(setting.read()) === JSON.stringify(enrolment) &&
     getCourseIdForShare(enrolment.shareId) === courseId;
-  if (!allowed()) return;
+  if (!allowed()) return 'idle';
   const abortIfChanged = () => {
     if (!allowed()) controller.abort();
   };
   const unsubscribe = [setting.subscribe(abortIfChanged), optIn.subscribe(abortIfChanged)];
   const outbox = createInsightsOutbox(undefined, now);
   try {
-    const course = await db.courses.get(courseId);
-    if (
-      !course ||
-      course.archived ||
-      course.distributedCopy?.lineageId !== enrolment.lineageId ||
-      !allowed()
-    )
-      return;
-    if (createInsightsLastSentDaySetting(courseId).read() === day) return;
-    const attemptKey = `lacuna.insights.attempt.${courseId}`;
-    const previous = Number(localStorage.getItem(attemptKey));
-    if (!options.retry && previous > now() - 3_600_000 && previous <= now()) return;
-    localStorage.setItem(attemptKey, String(now()));
-    const result = await outbox.send({
+    const isCurrent = async () => {
+      const course = await db.courses.get(courseId);
+      return Boolean(
+        course &&
+        !course.archived &&
+        course.distributedCopy?.lineageId === enrolment.lineageId &&
+        allowed(),
+      );
+    };
+    if (!(await isCurrent())) return 'idle';
+    if (!publish) {
+      if (createInsightsLastSentDaySetting(courseId).read() === day) return 'idle';
+      const attemptKey = `lacuna.insights.attempt.${courseId}`;
+      const previous = Number(localStorage.getItem(attemptKey));
+      if (!options.retry && previous > now() - 3_600_000 && previous <= now()) return 'idle';
+      localStorage.setItem(attemptKey, String(now()));
+    }
+    const result = await outbox[publish ? 'publish' : 'send']({
       shareId: enrolment.shareId,
       relayUrl: DEFAULT_RELAY_URL,
       recipient: enrolment.recipient,
       isOptedIn: allowed,
+      isCurrent,
       signal: controller.signal,
       fetchImpl: options.fetchImpl,
       evidence: async () => {
@@ -95,7 +129,15 @@ async function deliver(
         });
       },
     });
-    if (result === 'sent') createInsightsLastSentDaySetting(courseId).write(day);
+    if (!(await isCurrent())) return 'idle';
+    if (!publish && result === 'unchanged') createInsightsLastSentDaySetting(courseId).write(day);
+    if (result === 'sent') {
+      if (publish) {
+        const published = createInsightsLastPublishedAtSetting(courseId);
+        published.write(Math.max(published.read() ?? 0, now()));
+      } else createInsightsLastSentDaySetting(courseId).write(day);
+    }
+    return result;
   } finally {
     unsubscribe.forEach((off) => off());
     outbox.close();
@@ -119,6 +161,7 @@ export function installInsightsDelivery(): () => void {
     clearInterval(timer);
     window.removeEventListener('online', run);
     document.removeEventListener('visibilitychange', run);
-    for (const request of active.values()) request.controller.abort();
+    for (const request of [...active.values(), ...publications.values()])
+      request.controller.abort();
   };
 }

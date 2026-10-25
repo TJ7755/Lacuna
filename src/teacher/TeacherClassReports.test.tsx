@@ -1,15 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { useCallback, useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
-import {
-  completedIsoDayLabel,
-  DAY_MS,
-  isoDayLabel,
-  isoDayStartMs,
-} from '../../relay/shared/insights/index';
+import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
 import { ClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';
+import { dayLabel } from './classInsights';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 
 const mocks = vi.hoisted(() => ({
@@ -52,7 +48,7 @@ vi.mock('./TeacherKeySetup', () => ({
 }));
 
 const course = { shareId: 'a'.repeat(32), courseName: 'Biology', verifiedAt: 0 };
-const latest = completedIsoDayLabel(Date.now());
+const latest = isoDayLabel(Date.now());
 const callbacks = { onRemoved: vi.fn() };
 const unlockRequest: ClassRequest = { kind: 'unlock', id: 1 };
 
@@ -301,18 +297,147 @@ it('moves to the requested step when a mounted locked class receives a new reque
   await waitFor(() => expect(screen.getByLabelText('Key set-up create')).toHaveFocus());
 });
 
-it('reads the same day again on request, for reports that arrive later', async () => {
+it('opens today’s UTC day and explains explicit partial snapshots and refreshing', async () => {
   render(<Harness />);
   await unlock();
   await screen.findByText(/No report does not mean no study/);
+  expect(mocks.read).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({ isoDay: isoDayLabel(Date.now()) }),
+  );
+  expect(screen.getByText('Today (UTC)')).toBeVisible();
+  expect(screen.getByText(/Partial UTC results/)).toHaveTextContent(
+    /Ask pupils to Send latest progress.*Refresh results/,
+  );
+  expect(screen.getByRole('button', { name: 'Next day' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Refresh results' })).toBeVisible();
+});
+
+it('refreshes a cached day by replacing the pupil’s evidence once', async () => {
   mocks.read.mockResolvedValue({
     unreadable: 0,
-    reports: [{ slotId: 'slot', report: report('Ada', [event()]) }],
+    reports: [{ slotId: 'slot', report: report('Ada', [event({ earned: 0 })]) }],
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Read again' }));
-  expect(await screen.findByRole('table')).toBeVisible();
-  expect(mocks.read).toHaveBeenCalledTimes(2);
+  const cache = createClassSessions();
+  render(<Harness cache={cache} />);
+  await unlock();
+  await screen.findByRole('button', { name: 'Ada, Explain osmosis.: 0%' });
+  // Returning from yesterday uses today's cached result before an explicit refresh.
+  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
+  await screen.findByRole('button', { name: 'Ada, Explain osmosis.: 0%' });
+  fireEvent.click(screen.getByRole('button', { name: 'Next day' }));
+  expect(screen.getByRole('button', { name: 'Ada, Explain osmosis.: 0%' })).toBeVisible();
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [{ slotId: 'slot', report: report('Ada', [event({ earned: 2 })]) }],
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh results' }));
+  expect(await screen.findByRole('button', { name: 'Ada, Explain osmosis.: 100%' })).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: 'Ada, Explain osmosis.: 0%' }),
+  ).not.toBeInTheDocument();
+  expect(within(screen.getByRole('table')).getAllByRole('button', { name: 'Ada' })).toHaveLength(1);
+  expect(cache.sessions.get(course.shareId)?.days.get(latest)?.reports).toHaveLength(1);
+  expect(mocks.read).toHaveBeenCalledTimes(3);
   expect(mocks.read).toHaveBeenLastCalledWith(expect.objectContaining({ isoDay: latest }));
+});
+
+it('shows failed refreshes honestly and retries without restoring stale evidence', async () => {
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [{ slotId: 'slot', report: report('Ada', [event({ earned: 0 })]) }],
+  });
+  const cache = createClassSessions();
+  render(<Harness cache={cache} />);
+  await unlock();
+  await screen.findByRole('table');
+  mocks.read.mockRejectedValue(new Error('Could not reach the insights service.'));
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh results' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not reach the insights service.',
+  );
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  expect(cache.sessions.get(course.shareId)?.days.has(latest)).toBe(false);
+  mocks.read.mockResolvedValue({
+    unreadable: 0,
+    reports: [{ slotId: 'slot', report: report('Ada', [event({ earned: 2 })]) }],
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(await screen.findByRole('button', { name: 'Ada, Explain osmosis.: 100%' })).toBeVisible();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(mocks.read).toHaveBeenCalledTimes(3);
+});
+
+it('aborts a pending refresh when navigating and ignores its late result', async () => {
+  const cache = createClassSessions();
+  render(<Harness cache={cache} />);
+  await unlock();
+  await screen.findByText(/No report does not mean no study/);
+  let finish!: (value: unknown) => void;
+  let signal!: AbortSignal;
+  mocks.read.mockImplementationOnce((options: { signal: AbortSignal }) => {
+    signal = options.signal;
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh results' }));
+  expect(screen.getByRole('button', { name: 'Refresh results' })).toBeDisabled();
+  await waitFor(() => expect(signal?.aborted).toBe(false));
+  fireEvent.click(screen.getByRole('button', { name: 'Previous day' }));
+  expect(signal.aborted).toBe(true);
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(3));
+  await waitFor(() =>
+    expect(
+      cache.sessions.get(course.shareId)?.days.has(isoDayLabel(isoDayStartMs(latest) - DAY_MS)),
+    ).toBe(true),
+  );
+  await act(async () =>
+    finish({
+      unreadable: 0,
+      reports: [{ slotId: 'slot', report: report('Late pupil', [event()]) }],
+    }),
+  );
+  expect(cache.sessions.get(course.shareId)?.days.has(latest)).toBe(false);
+  expect(screen.queryByRole('button', { name: 'Late pupil' })).not.toBeInTheDocument();
+  expect(
+    screen.getByText(dayLabel(isoDayLabel(isoDayStartMs(latest) - DAY_MS), 'short')),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Next day' }));
+  await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(4));
+  await screen.findByText(/No report does not mean no study/);
+  expect(screen.getByText('Today (UTC)')).toBeVisible();
+});
+
+it('aborts a pending refresh on lock without repopulating the revoked session', async () => {
+  const cache = createClassSessions();
+  render(<Harness cache={cache} />);
+  await unlock();
+  await screen.findByText(/No report does not mean no study/);
+  const session = cache.sessions.get(course.shareId)!;
+  let finish!: (value: unknown) => void;
+  let signal!: AbortSignal;
+  mocks.read.mockImplementationOnce((options: { signal: AbortSignal }) => {
+    signal = options.signal;
+    return new Promise((resolve) => {
+      finish = resolve;
+    });
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh results' }));
+  await waitFor(() => expect(signal?.aborted).toBe(false));
+  fireEvent.click(screen.getByRole('button', { name: 'Lock' }));
+  expect(signal.aborted).toBe(true);
+  await act(async () =>
+    finish({
+      unreadable: 0,
+      reports: [{ slotId: 'slot', report: report('Late pupil', [event()]) }],
+    }),
+  );
+  expect(cache.sessions.has(course.shareId)).toBe(false);
+  expect(session.days.has(latest)).toBe(false);
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Refresh results' })).not.toBeInTheDocument();
+  expect(await screen.findByRole('form', { name: 'Unlock class' })).toBeVisible();
 });
 
 it('does not restore a class when key recovery finishes after removal', async () => {
