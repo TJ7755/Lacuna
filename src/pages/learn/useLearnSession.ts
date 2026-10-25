@@ -1,22 +1,14 @@
-import { lessonCardMembership } from '../../course/lessonMembership';
 import type { JevMarkProvenance } from '../../jev/types';
-import { catchUpPracticePool } from '../../course/catchUpPractice';
-import { earlierCourseLessonIds } from '../../course/courseEntry';
 import { useLeaveFlowWith } from '../../utils/editorOrigin';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { db, makeId } from '../../db/schema';
 import { pauseAssetGc } from '../../db/assets';
-import {
-  getSchedulingUnit,
-  performanceForReviewUnit,
-  performanceForReviewUnits,
-} from '../../db/backingDecks';
-import { getCourse, listCourseAssessments } from '../../db/read';
+import { getSchedulingUnit, performanceForReviewUnits } from '../../db/backingDecks';
+import { getCourse } from '../../db/read';
 import { dailyReviewCounts, hydrateCardsWithHistory } from '../../db/reviewHistoryRead';
 import type {
   Card,
-  Course,
   Grade,
   Lesson,
   LessonCardExposure,
@@ -30,32 +22,19 @@ import type {
 import { buryCard, setCardFlag, suspendCard } from '../../db/cardRepository';
 import { upsertLessonCardExposure } from '../../db/lessonRepository';
 import { listNotes } from '../../db/noteRepository';
-import { savePracticeMilestoneProgress } from '../../db/practiceNodeRepository';
-import { undoReview, type ReviewUndo } from '../../db/reviewRepository';
+import { refreshRevisionPlan, startRevisionWindow } from '../../db/revisionPlanRepository';
 import {
-  completeRevisionWindow,
-  refreshRevisionPlan,
-  startRevisionWindow,
-} from '../../db/revisionPlanRepository';
-import { isLessonUnlocked, lessonEffectiveReleaseDates } from '../../course/path';
-import {
-  eligiblePracticePool,
-  dueReviewPool,
-  examPracticePool,
   directLessonStudyPool,
   lessonStudyPool,
   practiceCardScope,
-  practiceReadiness,
   practiceScopeVersion,
 } from '../../course/studyPools';
-import { assessmentPracticePool } from '../../course/assessmentPractice';
-import { resolveAssessmentCoverage } from '../../course/assessmentCoverage';
 import { revisionProjection } from '../../course/revisionProjection';
 import { emptyPerformance } from '../../fsrs/grading';
 import { applyCooldown, decrementCooldowns } from '../../fsrs/cooldown';
 import type { CooldownMap } from '../../fsrs/cooldown';
 import { progressHeading } from '../../fsrs/objective';
-import { makeExamDateContext, type ExamDateContext } from '../../fsrs/examDate';
+import { makeExamDateContext } from '../../fsrs/examDate';
 import {
   makeSessionContext,
   selectNext,
@@ -69,11 +48,7 @@ import { studyPool } from '../../fsrs/eligibility';
 import { startOfDay } from '../../utils/datetime';
 import { MS_PER_DAY } from '../../fsrs/params';
 import { allocateCramReview } from '../../fsrs/cramAllocator';
-import {
-  CRAM_SUCCESS_GRADES,
-  createHalfLifeLogisticModel,
-  readinessFromPredictions,
-} from '../../fsrs/halfLifeLogisticModel';
+import { CRAM_SUCCESS_GRADES, createHalfLifeLogisticModel } from '../../fsrs/halfLifeLogisticModel';
 import type { DistractionTracker } from '../../components/learn/useDistraction';
 import type { SessionEvent, SessionSummary } from '../../components/learn/types';
 import type { useToast } from '../../components/ui/Toast';
@@ -91,21 +66,31 @@ import type {
   SessionCardOutcome,
   StudyUnit,
 } from './types';
-import {
-  hasMachineMarkedPayload,
-  isUnrenderableItemPayload,
-} from './sessionCardCapabilities';
-import {
-  clearSimpleSession,
-  loadSimpleSession,
-  saveSimpleSession,
-} from './simpleSessionPersistence';
+import { hasMachineMarkedPayload, isUnrenderableItemPayload } from './sessionCardCapabilities';
+import { clearSimpleSession, saveSimpleSession } from './simpleSessionPersistence';
 import { useAnswerInput } from '../../state/answerInput';
 import { resolveAnswerMode, reviewAnswerInput } from '../../utils/resolveAnswerMode';
 import { shuffledSimpleQueue } from './recitation/recitationFlow';
 import { preloadSessionImages, sessionPreloadCards } from './sessionPreload';
+import {
+  prepareSimpleSessionQueue,
+  loadLessonSessionSource,
+  loadCourseSessionSource,
+  resolveCourseSessionSelection,
+  prepareCourseSessionPool,
+} from './sessionPool';
 import { resolveLearnSessionScope } from './sessionScope';
-import { ratchetSessionUnlocks } from './sessionUnlocks';
+import {
+  persistRecitationReview,
+  persistSimpleSessionAnswer,
+  undoSessionAnswer,
+  type AnswerSnapshot,
+} from './sessionAnswerPersistence';
+import {
+  persistSessionCompletion,
+  persistSessionPracticeMilestone,
+  type PracticeSession,
+} from './sessionCompletionPersistence';
 import { transitionRevisionAnswer, transitionSimpleAnswer } from './sessionTransitions';
 import {
   answerCorrect,
@@ -128,33 +113,6 @@ interface AnswerResponse {
   /** Response time in seconds. */
   t: number;
   distracted: boolean;
-}
-
-/** What undoing the most recent answer needs to restore (DB + in-session state). */
-interface AnswerSnapshot {
-  input?: AnswerResponse['input'];
-  responseTimeSec: number;
-  retainOnCompletion: boolean;
-  undo: ReviewUndo;
-  cooldowns: CooldownMap;
-  eventsLen: number;
-  deckId: string;
-  deckReviews: number;
-  outcomeBefore?: SessionCardOutcome;
-  revisionCovered: Set<string>;
-  revisionImproved: Set<string>;
-  revisionParked: Set<string>;
-  revisionCompleted: Set<string>;
-  revisionRetryAt: Map<string, number>;
-  revisionFailures: Map<string, number>;
-  revisionReviewEventIds: string[];
-  simple?: {
-    queue: Card[];
-    mastered: Set<string>;
-    wrong: Set<string>;
-    cardIds: string[];
-    exposureAdded: LessonCardExposure | null;
-  };
 }
 
 export type { AnswerResult } from './answerSteps';
@@ -340,9 +298,10 @@ export function useLearnSession({
   )?.answerMode;
   const occlusionAnswerText = currentOcclusionData?.answerText;
   const isTypingCard = useMemo(
-    () => current !== null && resolveAnswerMode(
-      current, lessonAnswerMode, answerInputPreference, occlusionAnswerText,
-    ) === 'type',
+    () =>
+      current !== null &&
+      resolveAnswerMode(current, lessonAnswerMode, answerInputPreference, occlusionAnswerText) ===
+        'type',
     [current, lessonAnswerMode, answerInputPreference, occlusionAnswerText],
   );
   const isMachineMarkedCard = hasMachineMarkedPayload(current);
@@ -447,14 +406,7 @@ export function useLearnSession({
   }, [current, recitationSequence, isSimpleMode, recitationFocus]);
   const lessonExposureIdRef = useRef<string | null>(null);
   const lessonHasMembersRef = useRef(false);
-  const practiceSessionRef = useRef<{
-    nodeKey: string;
-    courseId: string;
-    scopeVersion: string;
-    scopeCards: Card[];
-    course: Course;
-    examDateContext: ExamDateContext;
-  } | null>(null);
+  const practiceSessionRef = useRef<PracticeSession | null>(null);
   const revisionPlanRef = useRef<RevisionPlan | null>(null);
   const revisionInitialRevision = useRef(0);
   const revisionWindowStartedAt = useRef(0);
@@ -557,19 +509,7 @@ export function useLearnSession({
 
   const persistPracticeMilestone = useCallback(
     async (cards: Card[], completed: boolean): Promise<void> => {
-      const practice = practiceSessionRef.current;
-      if (!practice) return;
-      const cardsById = new Map(cards.map((card) => [card.id, card]));
-      const currentScope = practice.scopeCards.map((card) => cardsById.get(card.id) ?? card);
-      const readiness = practiceReadiness(currentScope, practice.course, practice.examDateContext);
-      await savePracticeMilestoneProgress(
-        practice.nodeKey,
-        practice.courseId,
-        practice.scopeVersion,
-        readiness.securedCardCount,
-        readiness.totalCardCount,
-        completed,
-      );
+      await persistSessionPracticeMilestone(practiceSessionRef.current, cards, completed);
     },
     [],
   );
@@ -585,120 +525,24 @@ export function useLearnSession({
     if (!nextSummary) return Promise.resolve(completionConfirmed.current);
     const commit = async (): Promise<boolean> => {
       try {
-        const { deliveredSummary, completedPlan } = await db.transaction(
-          'rw',
-          [
-            db.revisionPlans,
-            db.courseAssessments,
-            db.courses,
-            db.lessons,
-            db.cards,
-            db.lessonCards,
-            db.lessonCardExposures,
-            db.lessonCompletions,
-            db.reviewHistory,
-            db.practiceNodes,
-            db.practiceMilestones,
-            db.schedulingPerformance,
-            db.coursePerformance,
-          ],
-          async () => {
-            let deliveredSummary = nextSummary;
-            let completedPlan = revisionPlanRef.current;
-            const revisionPlan = revisionPlanRef.current;
-            if (revisionPlan && requestWindowId) {
-              const completedAt = Date.now();
-              const refreshedPlan = await refreshRevisionPlan(
-                revisionPlan.id,
-                revisionPlan.input.projection,
-                completedAt,
-              );
-              const updatedPlan = await completeRevisionWindow(
-                refreshedPlan.id,
-                requestWindowId,
-                {
-                  id: reviewSessionIdRef.current,
-                  windowId: requestWindowId,
-                  startedAt: revisionWindowStartedAt.current,
-                  completedAt,
-                  cardIds: [...revisionCovered.current],
-                  reviewEventIds: revisionReviewEventIds.current,
-                  improvedCardIds: [...revisionImproved.current],
-                  parkedCardIds: [...revisionParked.current],
-                },
-                completedAt,
-              );
-              completedPlan = updatedPlan;
-              const windowDayParts = requestWindowId.split(':');
-              const completedWindowDay = windowDayParts[windowDayParts.length - 1];
-              const nextWindow = updatedPlan.windows.find(
-                (window) => window.status === 'scheduled' && window.day >= completedWindowDay,
-              );
-              const latestReplan =
-                updatedPlan.revision > revisionInitialRevision.current
-                  ? updatedPlan.replans[updatedPlan.replans.length - 1]
-                  : undefined;
-              const objectiveContext = ctxRef.current?.decks.values().next().value?.oc;
-              const model = objectiveContext
-                ? createHalfLifeLogisticModel(objectiveContext.ctx.decay)
-                : undefined;
-              const readinessCards = cardsRef.current.filter((card) =>
-                updatedPlan.scope.eligibleCardIds.includes(card.id),
-              );
-              const readiness =
-                model &&
-                updatedPlan.input.projection.projectionMode === 'memory-model' &&
-                model.version === updatedPlan.input.projection.memoryModelVersion &&
-                readinessCards.every(
-                  (card) =>
-                    model.validate({
-                      card,
-                      now: completedAt,
-                      assessmentAt: updatedPlan.input.deadlineAt,
-                    }).valid,
-                )
-                  ? readinessFromPredictions(
-                      readinessCards.map((card) =>
-                        model.predictRecall({ card, at: updatedPlan.input.deadlineAt }),
-                      ),
-                    )
-                  : null;
-              deliveredSummary = {
-                ...nextSummary,
-                reachedGoal: true,
-                revision: {
-                  cardsCovered: revisionCovered.current.size,
-                  cardsImproved: revisionImproved.current.size,
-                  cardsParked: revisionParked.current.size,
-                  workNotReached: Math.max(
-                    0,
-                    revisionPlan.scope.eligibleCardIds.length - revisionCovered.current.size,
-                  ),
-                  ...(readiness?.standardDeviation === undefined
-                    ? {}
-                    : {
-                        predictedReadiness: readiness.probability,
-                        readinessUncertainty: readiness.standardDeviation,
-                      }),
-                  ...(nextWindow ? { nextWindowDay: nextWindow.day } : {}),
-                  ...(latestReplan?.explanation
-                    ? { replanExplanation: latestReplan.explanation }
-                    : {}),
-                },
-              };
-            }
-            if (practiceSessionRef.current) {
-              await persistPracticeMilestone(cardsRef.current, deliveredSummary.reachedGoal);
-            }
-            if (!revisionPlan && ratchetCourseIdRef.current) {
-              await ratchetSessionUnlocks(
-                deliveredSummary.reachedGoal,
-                ratchetCourseIdRef.current,
-                () => ratchetLessonIdRef.current,
-              );
-            }
-            return { deliveredSummary, completedPlan };
-          },
+        const { deliveredSummary, completedPlan } = await persistSessionCompletion(
+          nextSummary,
+          requestWindowId,
+          () => ({
+            revisionPlan: revisionPlanRef.current,
+            initialRevision: revisionInitialRevision.current,
+            sessionId: reviewSessionIdRef.current,
+            startedAt: revisionWindowStartedAt.current,
+            covered: revisionCovered.current,
+            improved: revisionImproved.current,
+            parked: revisionParked.current,
+            reviewEventIds: revisionReviewEventIds.current,
+            context: ctxRef.current,
+            cards: cardsRef.current,
+            practice: practiceSessionRef.current,
+            ratchetCourseId: ratchetCourseIdRef.current,
+            ratchetLessonId: ratchetLessonIdRef.current,
+          }),
         );
         revisionPlanRef.current = completedPlan;
         if (isSimpleMode && deliveredSummary.reachedGoal) clearSimpleSession(simpleSessionScope);
@@ -725,14 +569,7 @@ export function useLearnSession({
     };
     completionPromise.current = commit();
     return completionPromise.current;
-  }, [
-    isSimpleMode,
-    notify,
-    onStepFinished,
-    persistPracticeMilestone,
-    requestWindowId,
-    simpleSessionScope,
-  ]);
+  }, [isSimpleMode, notify, onStepFinished, requestWindowId, simpleSessionScope]);
 
   const finaliseSummary = useCallback(
     (nextSummary: SessionSummary) => {
@@ -1036,17 +873,15 @@ export function useLearnSession({
           return;
         }
         setResolvedCourseId(course.id);
-        const [courseLessons, examDates, links, rawAllCourseCards, lessonExposures] =
-          await Promise.all([
-            db.lessons.where('courseId').equals(course.id).toArray(),
-            listCourseAssessments(course.id),
-            db.lessonCards.where('lessonId').equals(lessonId).toArray(),
-            db.cards.where('courseId').equals(course.id).toArray(),
-            db.lessonCardExposures.where('lessonId').equals(lessonId).toArray(),
-          ]);
-        const allCourseCards = await hydrateCardsWithHistory(rawAllCourseCards);
-        const linkedCardIds = new Set(links.map((link) => link.cardId));
-        const membership = lessonCardMembership(lessonId, allCourseCards, links);
+        const {
+          courseLessons,
+          examDates,
+          links,
+          allCourseCards,
+          lessonExposures,
+          linkedCardIds,
+          membership,
+        } = await loadLessonSessionSource(course.id, lessonId);
         lessonHasMembersRef.current = membership.length > 0;
         const examDateContext = makeExamDateContext(course, courseLessons, examDates);
         const schedulingUnit = (await getSchedulingUnit(course.id, lessonId)) ?? course;
@@ -1081,42 +916,19 @@ export function useLearnSession({
           else void navigate('/');
           return;
         }
-        const [rawAllCards, courseLessons, examDates, manualNodes] = await Promise.all([
-          db.cards.where('courseId').equals(courseId).toArray(),
-          db.lessons.where('courseId').equals(courseId).sortBy('orderIndex'),
-          listCourseAssessments(courseId),
-          standaloneSimple ? [] : db.practiceNodes.where('courseId').equals(courseId).toArray(),
-        ]);
-        const allCards = await hydrateCardsWithHistory(rawAllCards);
-        const courseLessonIds = courseLessons.map((lesson) => lesson.id);
-        const [courseLinks, courseExposures] = await Promise.all([
-          !standaloneSimple && courseLessonIds.length > 0
-            ? db.lessonCards.where('lessonId').anyOf(courseLessonIds).toArray()
-            : [],
-          !standaloneSimple && courseLessonIds.length > 0
-            ? db.lessonCardExposures.where('lessonId').anyOf(courseLessonIds).toArray()
-            : [],
-        ]);
-        const effectiveDates = standaloneSimple
-          ? new Map<string, number>()
-          : lessonEffectiveReleaseDates(course, courseLessons);
-        const reachedLessonIds: Set<string> = standaloneSimple
-          ? new Set<string>()
-          : requestScopeLessonIds
-            ? new Set<string>(requestScopeLessonIds)
-            : new Set(
-                courseLessons
-                  .filter((lesson) =>
-                    isLessonUnlocked(course, lesson, effectiveDates, courseLessons),
-                  )
-                  .map((lesson) => lesson.id),
-              );
-        const practiceNode = practiceNodeKeyParam
-          ? manualNodes.find((node) => node.id === practiceNodeKeyParam)
-          : undefined;
-        const selectedAssessment = requestAssessmentId
-          ? examDates.find((assessment) => assessment.id === requestAssessmentId)
-          : undefined;
+        const poolRequest = {
+          standaloneSimple,
+          requestScopeLessonIds,
+          practiceNodeKeyParam,
+          requestAssessmentId,
+          filterParams,
+          examPractice,
+          catchUpPractice,
+        };
+        const source = await loadCourseSessionSource(courseId, standaloneSimple);
+        const { allCards, courseLinks, courseExposures } = source;
+        const selection = resolveCourseSessionSelection(course, source, poolRequest);
+        const { practiceNode, selectedAssessment } = selection;
         if (requestAssessmentId && !selectedAssessment) {
           if (onFlowExit) onFlowExit();
           else void navigate(`/course/${courseId}`);
@@ -1150,69 +962,15 @@ export function useLearnSession({
             )?.day,
           );
         }
-        // Optional passes need scheduling context, but no curricular eligibility planning.
-        const dueReview =
-          !selectedAssessment && !practiceNodeKeyParam && filterParams.includes('due');
-        const fullScope =
-          standaloneSimple || dueReview || examPractice
-            ? allCards
-            : selectedAssessment
-              ? resolveAssessmentCoverage(selectedAssessment, courseLessons, allCards, courseLinks)
-                  .cards
-              : practiceCardScope(
-                  allCards,
-                  courseLinks,
-                  courseExposures,
-                  {
-                    reachedLessonIds,
-                    practiceNode,
-                    requireExposure: course.learnFirst !== false,
-                  },
-                  Date.now(),
-                  course.leechThreshold,
-                );
-        const examDateContext = selectedAssessment
-          ? {
-              courseExamDate: selectedAssessment.examDate,
-              lessonsById: new Map<string, Lesson>(),
-              courseAssessments: [],
-            }
-          : makeExamDateContext(course, courseLessons, examDates);
-        cards = catchUpPractice
-          ? catchUpPracticePool(
-              allCards,
-              course,
-              courseLessons,
-              courseLinks,
-              examDateContext,
-              reachedLessonIds,
-              Date.now(),
-              earlierCourseLessonIds(course, courseLessons, examDates, manualNodes),
-            )
-          : standaloneSimple
-            ? course.archived
-              ? []
-              : allCards
-            : selectedAssessment
-              ? activeRevisionPlan
-                ? allCards.filter((card) =>
-                    activeRevisionPlan.scope.eligibleCardIds.includes(card.id),
-                  )
-                : assessmentPracticePool(selectedAssessment, {
-                    course,
-                    assessments: examDates,
-                    practiceNodes: manualNodes,
-                    lessons: courseLessons,
-                    cards: allCards,
-                    links: courseLinks,
-                    exposures: courseExposures,
-                    reachedLessonIds,
-                  })
-              : dueReview
-                ? dueReviewPool(fullScope, course)
-                : examPractice
-                  ? examPracticePool(fullScope, course, examDateContext)
-                  : eligiblePracticePool(fullScope, course, examDateContext);
+        const prepared = prepareCourseSessionPool(
+          course,
+          source,
+          selection,
+          poolRequest,
+          activeRevisionPlan,
+        );
+        cards = prepared.cards;
+        const { examDateContext } = prepared;
         const schedulingUnit = (await getSchedulingUnit(course.id)) ?? course;
         const practiceConfig: SessionSchedulingConfig = {
           ...schedulingUnit,
@@ -1341,27 +1099,14 @@ export function useLearnSession({
       });
 
       if (isSimpleMode) {
-        const cardsById = new Map(cards.map((card) => [card.id, card]));
-        const resumed = loadSimpleSession(
-          simpleSessionScope,
-          cards.map((card) => card.id),
-        );
-        simpleQueue.current = resumed
-          ? resumed.queueCardIds.flatMap((cardId) => {
-              const card = cardsById.get(cardId);
-              return card ? [card] : [];
-            })
-          : createSimpleQueue(cards);
+        const prepared = prepareSimpleSessionQueue(cards, simpleSessionScope, createSimpleQueue);
+        simpleQueue.current = prepared.queue;
         setSessionCardIds(simpleQueue.current.map((card) => card.id));
-        simpleMastered.current = new Set(resumed?.masteredCardIds ?? []);
-        simpleWrong.current = new Set(
-          [...(resumed?.outcomes ?? [])]
-            .filter(([, outcome]) => outcome === 'wrong')
-            .map(([cardId]) => cardId),
-        );
-        events.current = resumed?.events ?? [];
-        simpleRecitations.current = resumed?.recitations ?? new Map();
-        sessionCardOutcomesRef.current = resumed?.outcomes ?? new Map();
+        simpleMastered.current = prepared.mastered;
+        simpleWrong.current = prepared.wrong;
+        events.current = prepared.events;
+        simpleRecitations.current = prepared.recitations;
+        sessionCardOutcomesRef.current = prepared.outcomes;
         setSessionCardOutcomes(sessionCardOutcomesRef.current);
       }
 
@@ -1509,7 +1254,9 @@ export function useLearnSession({
       const card = currentRef.current;
       if (card) {
         presentedAnswerInput.current = reviewAnswerInput(
-          card, recitationSequence !== null, isTypingCard,
+          card,
+          recitationSequence !== null,
+          isTypingCard,
         );
       }
       responseTime.current = (performance.now() - timerStart.current) / 1000;
@@ -1585,54 +1332,31 @@ export function useLearnSession({
       const outcomeBefore = sessionCardOutcomesRef.current.get(cardNow.id);
       const eventId = pendingReviewEventId.current ?? makeId();
       pendingReviewEventId.current = eventId;
-      const { result, nextPerf, perfBefore } = await db.transaction(
-        'rw',
-        [
-          db.cards,
-          db.courses,
-          db.schedulingUnits,
-          db.sessionHistory,
-          db.coursePerformance,
-          db.schedulingPerformance,
-          db.reviewHistory,
-          db.lessonCardExposures,
-        ],
-        async () => {
-          const perfBefore =
-            (await performanceForReviewUnit(deck.id, reviewKindRef.current)) ?? null;
-          const lessonId = correct ? lessonExposureIdRef.current : null;
-          const exposureBefore = lessonId
-            ? await db.lessonCardExposures.get([lessonId, cardNow.id])
-            : undefined;
-          const { result, performance: nextPerf } = await persistAnswer(
-            {
-              card: cardNow,
-              eventId,
-              sessionId: reviewSessionIdRef.current,
-              sessionKind: reviewSessionKind,
-              deck,
-              kind: reviewKindRef.current,
-              grade,
-              responseTimeSec: t,
-              distracted,
-              hintUsed,
-              correct,
-              marksEarned: machineMarked?.marksEarned,
-              marksAvailable: machineMarked?.marksAvailable,
-              lineVerdicts: machineMarked?.lineVerdicts,
-              checkerDisputes: machineMarked?.checkerDisputes,
-              markedBy,
-              input,
-            },
-            deck.id,
-            perf,
-          );
-          if (lessonId && !exposureBefore) {
-            simpleSnapshot.exposureAdded = await upsertLessonCardExposure(lessonId, cardNow.id);
-          }
-          return { result, nextPerf, perfBefore };
-        },
+      const { result, nextPerf, perfBefore, exposureAdded } = await persistSimpleSessionAnswer(
+        deck.id,
+        perf,
+        () => ({
+          card: cardNow,
+          eventId,
+          sessionId: reviewSessionIdRef.current,
+          sessionKind: reviewSessionKind,
+          deck,
+          kind: reviewKindRef.current,
+          grade,
+          responseTimeSec: t,
+          distracted,
+          hintUsed,
+          correct,
+          marksEarned: machineMarked?.marksEarned,
+          marksAvailable: machineMarked?.marksAvailable,
+          lineVerdicts: machineMarked?.lineVerdicts,
+          checkerDisputes: machineMarked?.checkerDisputes,
+          markedBy,
+          input,
+        }),
+        () => lessonExposureIdRef.current,
       );
+      simpleSnapshot.exposureAdded = exposureAdded;
       if (nextPerf) perfRef.current.set(deck.id, nextPerf);
       lastAnswer.current =
         result.recorded && retainUndo
@@ -1781,30 +1505,17 @@ export function useLearnSession({
         if (correct) simpleWrong.current.delete(card.id);
         else simpleWrong.current.add(card.id);
         if (events.current.some((event) => event.cardId === card.id)) continue;
-        const grade: Grade = correct ? 3 : 1;
-        // Recitation is not timed per line, so it leaves speed calibration untouched.
-        const { result } = await persistAnswer(
-          {
-            card,
-            eventId: makeId(),
-            sessionId: reviewSessionIdRef.current,
-            sessionKind: reviewSessionKind,
-            deck,
-            kind: reviewKindRef.current,
-            grade,
-            responseTimeSec,
-            distracted: false,
-            hintUsed: false,
-            correct,
-          },
-          deck.id,
-          undefined,
-        );
-        replace(result.card);
-        events.current = [
-          ...events.current,
-          { cardId: card.id, grade, correct, responseTimeSec, distracted: false },
-        ];
+        const recorded = await persistRecitationReview({
+          card,
+          sessionId: reviewSessionIdRef.current,
+          sessionKind: reviewSessionKind,
+          deck,
+          kind: reviewKindRef.current,
+          responseTimeSec,
+          correct,
+        });
+        replace(recorded.card);
+        events.current = [...events.current, recorded.event];
       }
       if (masteredItemIds === 'all') simpleRecitations.current.delete(recitationSequence.id);
       for (const itemId of masteredItemIds === 'all' ? [...cards.keys()] : masteredItemIds) {
@@ -1839,7 +1550,16 @@ export function useLearnSession({
   const answerScheduled = useCallback(
     async (
       cardNow: Card,
-      { correct, manualGrade, machineMarked, t, distracted, markedBy, retainUndo, input }: AnswerResponse,
+      {
+        correct,
+        manualGrade,
+        machineMarked,
+        t,
+        distracted,
+        markedBy,
+        retainUndo,
+        input,
+      }: AnswerResponse,
     ): Promise<AnswerResult> => {
       const ctx = ctxRef.current;
       const deck = answerUnit(cardNow);
@@ -2091,7 +1811,11 @@ export function useLearnSession({
       try {
         const response: AnswerResponse = {
           retainUndo: options?.retainUndo ?? false,
-          input: reviewAnswerInput(cardNow, recitationSequence !== null, presentedAnswerInput.current === 'typed'),
+          input: reviewAnswerInput(
+            cardNow,
+            recitationSequence !== null,
+            presentedAnswerInput.current === 'typed',
+          ),
           markedBy: options?.markedBy,
           correct: answerCorrect(input),
           manualGrade: typeof input === 'number' ? input : null,
@@ -2116,33 +1840,7 @@ export function useLearnSession({
       if (!snap || !ctx || submitting.current || completionPromise.current) return;
       submitting.current = true;
       try {
-        await db.transaction(
-          'rw',
-          [
-            db.cards,
-            db.courses,
-            db.schedulingUnits,
-            db.sessionHistory,
-            db.coursePerformance,
-            db.schedulingPerformance,
-            db.reviewHistory,
-            db.lessonCardExposures,
-          ],
-          async () => {
-            const exposure = snap.simple?.exposureAdded;
-            if (exposure) {
-              const key: [string, string] = [exposure.lessonId, exposure.cardId];
-              const currentExposure = await db.lessonCardExposures.get(key);
-              if (JSON.stringify(currentExposure) !== JSON.stringify(exposure)) {
-                throw new Error(
-                  'The lesson exposure changed after this answer, so undo is no longer available.',
-                );
-              }
-              await db.lessonCardExposures.delete(key);
-            }
-            await undoReview(snap.undo);
-          },
-        );
+        await undoSessionAnswer(snap.undo, snap.simple?.exposureAdded);
         if (!mountedRef.current) return;
         cardsRef.current = cardsRef.current.map((c) =>
           c.id === snap.undo.cardBefore.id ? snap.undo.cardBefore : c,
