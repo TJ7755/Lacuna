@@ -206,21 +206,36 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     </>
   );
 
+  const backToForm = () => {
+    returnToLibraryButton.current = true;
+    setBrowsing(false);
+  };
+
   // Outside the form, so Enter in the library search never submits it.
   const libraryView = (
     <Suspense
       fallback={
-        <DelayedFallback>
-          <p role="status">Loading the course library…</p>
-        </DelayedFallback>
+        <div
+          className="import-panel"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            backToForm();
+          }}
+        >
+          <Button type="button" variant="ghost" autoFocus onClick={backToForm}>
+            Back to New course
+          </Button>
+          <DelayedFallback>
+            <p role="status">Loading the course library…</p>
+          </DelayedFallback>
+        </div>
       }
     >
       <CourseLibraryImport
         backLabel="New course"
-        onBack={() => {
-          returnToLibraryButton.current = true;
-          setBrowsing(false);
-        }}
+        onBack={backToForm}
         onBusyChange={setLibraryBusy}
         onOpenCourse={(courseId) => {
           onClose();
