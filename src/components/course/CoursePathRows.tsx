@@ -266,37 +266,28 @@ export function renderCoursePathRows(
             )}
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-            {/* The name wraps to a second line rather than losing itself on a phone,
-                          and keeps 8rem so the counts drop beneath it before a word breaks. */}
-            <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-              <span
-                className={cn(
-                  'line-clamp-2 min-w-[8rem] flex-[1_1_8rem] break-words font-bold',
-                  locked && 'text-ink-soft',
-                )}
-              >
-                {name}
+            <span className={cn('break-words font-bold', locked && 'text-ink-soft')}>{name}</span>
+            <span className="text-sm text-ink-faint">{state}</span>
+            {!locked && (
+              <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
+                <motion.span
+                  className={cn(
+                    'block h-1 origin-left rounded-full',
+                    done ? 'bg-positive' : 'bg-ink',
+                  )}
+                  style={{ width: `${locked ? 0 : pct}%` }}
+                  initial={m > 0 ? { scaleX: 0 } : false}
+                  animate={{ scaleX: 1 }}
+                  transition={{
+                    duration: 0.7 * m,
+                    delay: (0.15 + Math.min(index, 8) * 0.04) * m,
+                    ease: MOTION_EASING.emphasised,
+                  }}
+                />
               </span>
-              <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">{state}</span>
-            </span>
-            <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
-              <motion.span
-                className={cn(
-                  'block h-1 origin-left rounded-full',
-                  done ? 'bg-positive' : 'bg-ink',
-                )}
-                style={{ width: `${locked ? 0 : pct}%` }}
-                initial={m > 0 ? { scaleX: 0 } : false}
-                animate={{ scaleX: 1 }}
-                transition={{
-                  duration: 0.7 * m,
-                  delay: (0.15 + Math.min(index, 8) * 0.04) * m,
-                  ease: MOTION_EASING.emphasised,
-                }}
-              />
-            </span>
+            )}
           </span>
-          {!(authoring && (lesson || practice)) && (
+          {!(locked && !authoring && !archived) && !(authoring && (lesson || practice)) && (
             <ChevronRightIcon
               width={16}
               height={16}

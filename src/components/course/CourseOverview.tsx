@@ -3,6 +3,7 @@ import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { AddCourseControl } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { FlagIcon } from '../ui/icons';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
@@ -56,7 +57,7 @@ export function CourseOverview(props: CourseOverviewProps) {
               </div>
             )}
           </div>
-          {authoring && (
+          {authoring && nodes.length > 0 && (
             <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
               <AddLessonControl
                 initiallyOpen
@@ -75,9 +76,27 @@ export function CourseOverview(props: CourseOverviewProps) {
             {props.announcement}
           </div>
           {nodes.length === 0 ? (
-            <p className="py-12 text-center text-sm text-ink-soft">
-              This course has no lessons yet.
-            </p>
+            <div className="flex flex-col items-center gap-4 py-10 text-center">
+              <p className="text-sm text-ink-soft">This course has no lessons yet.</p>
+              {authoring && (
+                <ExpandingCreateControl
+                  label="Add first lesson"
+                  prominent
+                  align="centre"
+                  closedWidth={176}
+                  open={addingLesson}
+                  onOpenChange={setAddingLesson}
+                >
+                  <AddLessonControl
+                    initiallyOpen
+                    courseId={props.courseId}
+                    lessonCount={props.lessonCount}
+                    onCancel={() => setAddingLesson(false)}
+                    onCreated={props.onLessonCreated}
+                  />
+                </ExpandingCreateControl>
+              )}
+            </div>
           ) : (
             <ol className="m-0 list-none p-0" aria-label="Course path">
               {renderCoursePathRows(props, m, lessonMenus, lessons)}
@@ -138,7 +157,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <strong className="block truncate font-bold">{assessment.name}</strong>
+                      <strong className="block break-words font-bold">{assessment.name}</strong>
                       <span className="text-sm text-ink-faint">
                         {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
                       </span>

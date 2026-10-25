@@ -19,22 +19,31 @@ describe('CoursePath overview', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
   });
 
-  it('expands Add in place and creates a real lesson through its existing form', async () => {
-    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
-    renderPage();
-    const add = screen.getByRole('button', { name: 'Add' });
-    fireEvent.click(add);
-    expect(add).toHaveAttribute('aria-expanded', 'true');
-    const options = screen.getByRole('menu', { name: 'Add' });
-    expect(add.parentElement).toContainElement(options);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
-      target: { value: 'Energy' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-    await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
-  });
+  it.each([false, true])(
+    'creates a lesson through the existing form (empty path=%s)',
+    async (empty) => {
+      pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+      if (empty) pathState.mockLessons = [];
+      renderPage();
+      if (empty) {
+        expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
+      } else {
+        const add = screen.getByRole('button', { name: 'Add' });
+        fireEvent.click(add);
+        expect(add).toHaveAttribute('aria-expanded', 'true');
+        const options = screen.getByRole('menu', { name: 'Add' });
+        expect(add.parentElement).toContainElement(options);
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
+      }
+      fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
+        target: { value: 'Energy' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
+      await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
+      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
+    },
+  );
   it('shows the lock reason without opening an unreached lesson in View mode', () => {
     pathState.mockCourse = { ...course, unlockMode: 'semi-linear' };
     renderPage();

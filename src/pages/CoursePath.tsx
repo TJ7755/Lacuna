@@ -308,6 +308,7 @@ export function CoursePath() {
       masteryPct: Math.round(progressValue(cards, course, now, examDateContext) * 100),
     };
   };
+  const hasStudyContent = lessons.length > 0 || courseCards.length > 0;
   const cardTotal = courseCards.length;
   const lessonTotal = lessons.filter((lesson) => !lesson.isExtension).length;
   const status = forecast ? forecastStatus(forecast) : undefined;
@@ -336,7 +337,7 @@ export function CoursePath() {
           }
           renameLabel="course"
         />
-        {!archived && studyActions()}
+        {!archived && hasStudyContent && studyActions()}
       </div>
       {!archived && pendingUpdate && (
         <Link
@@ -348,15 +349,17 @@ export function CoursePath() {
       )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
-        summary={(cardClassName) => (
-          <CourseSummaryCard
-            className={cardClassName}
-            recallPct={forecastPct}
-            status={status ?? 'steady'}
-            cards={cardTotal}
-            lessons={lessonTotal}
-          />
-        )}
+        summary={(cardClassName) =>
+          hasStudyContent && (
+            <CourseSummaryCard
+              className={cardClassName}
+              recallPct={forecastPct}
+              status={status ?? 'steady'}
+              cards={cardTotal}
+              lessons={lessonTotal}
+            />
+          )
+        }
         courseId={course.id}
         nodes={visibleNodes}
         lessonCount={lessons.length}
