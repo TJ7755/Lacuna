@@ -38,6 +38,10 @@ export default defineConfig({
       include: [
         'src/db/schema.ts',
         'src/db/database.ts',
+        'src/db/legacySchemaUpgrades.ts',
+        'src/db/domainStorageUpgrades.ts',
+        'src/db/reviewHistoryUpgrades.ts',
+        'src/db/questionSchemaUpgrades.ts',
         'src/db/rawDatabaseSnapshot.ts',
         'src/db/preMigrationSnapshots.ts',
         'src/db/cardRepository.ts',
@@ -52,6 +56,30 @@ export default defineConfig({
         perFile: true,
         'src/db/schema.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
         'src/db/database.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
+        'src/db/legacySchemaUpgrades.ts': {
+          statements: 72,
+          branches: 60,
+          functions: 66,
+          lines: 75,
+        },
+        'src/db/domainStorageUpgrades.ts': {
+          statements: 72,
+          branches: 60,
+          functions: 66,
+          lines: 75,
+        },
+        'src/db/reviewHistoryUpgrades.ts': {
+          statements: 72,
+          branches: 60,
+          functions: 66,
+          lines: 75,
+        },
+        'src/db/questionSchemaUpgrades.ts': {
+          statements: 72,
+          branches: 60,
+          functions: 66,
+          lines: 75,
+        },
         'src/db/rawDatabaseSnapshot.ts': { statements: 72, branches: 60, functions: 66, lines: 75 },
         'src/db/preMigrationSnapshots.ts': {
           statements: 100,
