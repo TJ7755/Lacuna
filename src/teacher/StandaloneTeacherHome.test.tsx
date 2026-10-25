@@ -22,12 +22,14 @@ vi.mock('./TeacherCourses', () => ({
     sessions,
     onOpen,
     onConnected,
+    onExploreDemo,
   }: {
     connectRequest: number;
     day: string;
     sessions: ReadonlyMap<string, ClassSession>;
     onOpen(selected: typeof course): void;
     onConnected(selected: typeof course): void;
+    onExploreDemo(): void;
   }) => (
     <section>
       <h1 tabIndex={-1} data-page-title>
@@ -38,11 +40,20 @@ vi.mock('./TeacherCourses', () => ({
         {sessions.get(course.shareId)?.days.get(day)?.reports.length ?? 'Not loaded'}
       </p>
       <button onClick={() => onOpen(course)}>Open class</button>
+      <button onClick={onExploreDemo}>Explore a demo class</button>
       {connectRequest > 0 && <button onClick={() => onConnected(course)}>Finish connecting</button>}
     </section>
   ),
 }));
 vi.mock('./TeacherClassReports', () => ({
+  DemoClassPage: ({ onExit }: { onExit(): void }) => (
+    <section>
+      <h1 tabIndex={-1} data-page-title>
+        Biology — fictional demo
+      </h1>
+      <button onClick={onExit}>Exit demo</button>
+    </section>
+  ),
   ClassPage: ({
     session,
     request,
@@ -103,6 +114,21 @@ function show() {
     </ThemeProvider>,
   );
 }
+
+it('opens and exits a demo without adding it to classes or loaded sessions', async () => {
+  store.list.mockResolvedValue([]);
+  show();
+  fireEvent.click(await screen.findByRole('button', { name: 'Explore a demo class' }));
+  const title = await screen.findByRole('heading', { name: 'Biology — fictional demo' });
+  await waitFor(() => expect(title).toHaveFocus());
+  const nav = screen.getAllByRole('navigation', { name: 'Classes' })[0];
+  expect(within(nav).queryByRole('button', { name: /Biology/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Exit demo' }));
+  const today = await screen.findByRole('heading', { name: 'Today' });
+  await waitFor(() => expect(today).toHaveFocus());
+  expect(screen.getByTestId('today-loaded-count')).toHaveTextContent('Not loaded');
+  expect(store.list).toHaveBeenCalledOnce();
+});
 
 it('asks to unlock a locked class on open, leaving focus for its passphrase', async () => {
   show();

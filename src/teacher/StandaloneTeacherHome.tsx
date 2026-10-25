@@ -94,7 +94,7 @@ export function StandaloneTeacherHome() {
 
   // Lazy screens load on first use, so the opening page stays small.
   useEffect(() => {
-    if (page.kind === 'class' && !Class)
+    if ((page.kind === 'class' || page.kind === 'demo') && !Class)
       void import('./TeacherClassReports').then(setClassModule, () => setLoadFailed(true));
   }, [page.kind, Class]);
   useEffect(() => {
@@ -180,7 +180,7 @@ export function StandaloneTeacherHome() {
   } else if (
     !courses ||
     !Courses ||
-    (page.kind === 'class' && !Class) ||
+    ((page.kind === 'class' || page.kind === 'demo') && !Class) ||
     (page.kind === 'recover' && !Keys)
   ) {
     content = (
@@ -188,6 +188,8 @@ export function StandaloneTeacherHome() {
         <Spinner /> Opening Gaps…
       </p>
     );
+  } else if (page.kind === 'demo' && Class) {
+    content = <Class.DemoClassPage onExit={() => go({ kind: 'today' })} />;
   } else if (page.kind === 'class' && course && Class) {
     content = (
       <Class.ClassPage
@@ -245,6 +247,7 @@ export function StandaloneTeacherHome() {
         day={latestDay}
         connectRequest={connectRequest}
         onOpen={openClass}
+        onExploreDemo={() => go({ kind: 'demo' })}
         onConnected={(connected, session) => {
           if (session) sessionCache.beginUnlock(connected.shareId)(session);
           void reload().then(() =>

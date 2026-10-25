@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { DAY_MS, isoDayLabel, isoDayStartMs } from '../../relay/shared/insights/index';
 import type { DailyEvidence, DailyEvidenceEvent } from '../insights/evidence';
-import { ClassPage } from './TeacherClassReports';
+import { ClassPage, DemoClassPage } from './TeacherClassReports';
 import { createClassSessions } from './classSessions';
 import { dayLabel } from './classInsights';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
@@ -142,6 +142,47 @@ async function unlock() {
   });
   fireEvent.submit(form);
 }
+
+it('uses actual report views for fictional answers without unlocking, reading or publishing', async () => {
+  const onExit = vi.fn();
+  render(<DemoClassPage onExit={onExit} />);
+  expect(screen.getByRole('heading', { name: 'Biology — fictional demo' })).toBeVisible();
+  const notice = 'Fictional demo: six invented pupils and answers. Nothing is saved or sent.';
+  expect(screen.getByText(notice)).toBeVisible();
+  expect(screen.getByRole('table')).toBeVisible();
+  const revisit = screen.getByRole('heading', { name: 'Worth revisiting' }).parentElement!;
+  expect(within(revisit).getByText('30%')).toBeVisible();
+  expect(within(revisit).getByText('3 of 6 with a gap')).toBeVisible();
+  fireEvent.click(within(revisit).getByRole('button', { name: 'Answers' }));
+  expect(
+    await within(revisit).findByText(
+      '“Water moves from a concentrated solution to a dilute solution.”',
+    ),
+  ).toBeVisible();
+  expect(within(revisit).getByText('Ada Bennett, Ben Carter, Chloe Evans')).toBeVisible();
+  expect(within(revisit).getByText('Unknown / 2 marks · Self marked')).toBeVisible();
+
+  fireEvent.click(screen.getByRole('tab', { name: 'Pupils' }));
+  expect(screen.getByText(notice)).toBeVisible();
+  const pupils = screen.getByRole('list', { name: 'Pupils' });
+  expect(within(pupils).getAllByRole('button')).toHaveLength(6);
+  fireEvent.click(within(pupils).getByRole('button', { name: /Finn Wilson/ }));
+  const evidence = await screen.findByRole('region', { name: 'Evidence for Finn Wilson' });
+  expect(within(evidence).getByText('I am unsure which way the water moves.')).toBeVisible();
+  expect(within(evidence).getByText('Unknown / 2 marks · Self marked')).toBeVisible();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Reset demo' }));
+  expect(screen.getByRole('tab', { name: 'Results' })).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('table')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Answers' })).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.queryByRole('region', { name: /Evidence for/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('tab', { name: 'Invite' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Refresh results' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Class settings' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Exit demo' }));
+  expect(onExit).toHaveBeenCalledOnce();
+  for (const operation of Object.values(mocks)) expect(operation).not.toHaveBeenCalled();
+});
 
 it('reads only after an explicit unlock and preserves unknown, self-marked and disputed evidence', async () => {
   mocks.read.mockResolvedValue({

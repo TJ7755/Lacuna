@@ -17,7 +17,11 @@ import type { ConnectedGapsCourse } from './connectionStore';
 import { ClassGlyph, useSlidingIndicator } from './gapsUi';
 
 export type GapsPage =
-  { kind: 'today' } | { kind: 'class'; shareId: string } | { kind: 'recover' } | { kind: 'about' };
+  | { kind: 'today' }
+  | { kind: 'class'; shareId: string }
+  | { kind: 'demo' }
+  | { kind: 'recover' }
+  | { kind: 'about' };
 export interface SidebarClass {
   course: ConnectedGapsCourse;
   locked: boolean;

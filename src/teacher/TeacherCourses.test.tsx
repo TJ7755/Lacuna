@@ -18,6 +18,29 @@ beforeEach(() => {
   store.list.mockResolvedValue([]);
 });
 
+it('offers the demo before any connection form and opens it with one click', () => {
+  const onExploreDemo = vi.fn();
+  render(
+    <TodayPage
+      courses={[]}
+      sessions={new Map()}
+      day={day}
+      connectRequest={0}
+      onOpen={vi.fn()}
+      onConnected={vi.fn()}
+      onExploreDemo={onExploreDemo}
+    />,
+  );
+  const explore = screen.getByRole('button', { name: 'Explore a demo class' });
+  const connect = screen.getByRole('form', { name: 'Create class from a course link' });
+  expect(explore.compareDocumentPosition(connect) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+  expect(screen.getByLabelText('Course link or code')).not.toHaveFocus();
+  fireEvent.click(explore);
+  expect(onExploreDemo).toHaveBeenCalledOnce();
+  expect(store.createFromLink).not.toHaveBeenCalled();
+  expect(store.connect).not.toHaveBeenCalled();
+});
+
 it.each([{ courses: [] }, { courses: [biology] }])(
   'labels the UTC reporting day explicitly for %j',
   ({ courses }) => {
@@ -29,6 +52,7 @@ it.each([{ courses: [] }, { courses: [biology] }])(
         connectRequest={0}
         onOpen={vi.fn()}
         onConnected={vi.fn()}
+        onExploreDemo={vi.fn()}
       />,
     );
     expect(screen.getByText('Reports for Monday 19 October (UTC)')).toBeVisible();
@@ -44,6 +68,7 @@ it('opens the connection form on the page when there are no classes', () => {
       connectRequest={0}
       onOpen={vi.fn()}
       onConnected={vi.fn()}
+      onExploreDemo={vi.fn()}
     />,
   );
   expect(screen.getByRole('heading', { name: 'Connect your first class' })).toBeVisible();
@@ -56,6 +81,7 @@ it('opens the connection form on the page when there are no classes', () => {
       connectRequest={1}
       onOpen={vi.fn()}
       onConnected={vi.fn()}
+      onExploreDemo={vi.fn()}
     />,
   );
   fireEvent.click(screen.getByRole('button', { name: 'Use a connection file' }));
@@ -69,6 +95,7 @@ it('expands the connection form from its button once classes exist', async () =>
     day,
     onOpen: vi.fn(),
     onConnected: vi.fn(),
+    onExploreDemo: vi.fn(),
   };
   const page = render(<TodayPage {...props} connectRequest={0} />);
   const trigger = screen.getByRole('button', { name: 'Connect a class' });
@@ -136,6 +163,7 @@ it('makes the first locked class the default next step and summarises unlocked o
       connectRequest={0}
       onOpen={onOpen}
       onConnected={vi.fn()}
+      onExploreDemo={vi.fn()}
     />,
   );
   expect(screen.getByText('1 reports · 1 to revisit')).toBeVisible();
@@ -193,6 +221,7 @@ it.each([{ courses: [] }, { courses: [biology] }])(
         connectRequest={0}
         onOpen={vi.fn()}
         onConnected={vi.fn()}
+        onExploreDemo={vi.fn()}
       />,
     );
     await waitFor(() => expect(screen.getByLabelText('Course link or code')).toBeVisible());
@@ -226,6 +255,7 @@ it.each([
       connectRequest={0}
       onOpen={vi.fn()}
       onConnected={vi.fn()}
+      onExploreDemo={vi.fn()}
     />,
   );
   expect(screen.getByLabelText('Course link or code')).toHaveValue('');

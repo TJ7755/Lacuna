@@ -11,10 +11,12 @@ import type { ClassSession } from './classSessions';
 
 export function CreateGapsClass({
   initialCourseLink = '',
+  autoFocus = true,
   onConnected,
   onCreated,
 }: {
   initialCourseLink?: string;
+  autoFocus?: boolean;
   onConnected(shareId: string, session: ClassSession): void;
   onCreated?(): void;
 }) {
@@ -36,8 +38,8 @@ export function CreateGapsClass({
   const linkInput = useRef<HTMLInputElement>(null);
   const submitButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    (initialCourseLink ? submitButton.current : linkInput.current)?.focus();
-  }, [initialCourseLink]);
+    if (autoFocus) (initialCourseLink ? submitButton.current : linkInput.current)?.focus();
+  }, [initialCourseLink, autoFocus]);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
     if (!copied) return;
