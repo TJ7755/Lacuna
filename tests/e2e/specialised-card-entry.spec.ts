@@ -164,6 +164,7 @@ test('Working suggestions own Tab and Enter while multiline entry remains availa
 test('cloze retains two repeat-saves, its type and tags', async ({ page }) => {
   await openEditor(page, 'Cloze deletion');
   const text = page.getByRole('textbox', { name: 'Text (use the Cloze button to hide answers)' });
+  await page.getByRole('button', { name: /^Card options/ }).click();
   await page.getByRole('textbox', { name: 'Add tags' }).fill('chemistry');
   await page.getByRole('textbox', { name: 'Add tags' }).press('Enter');
   for (let entry = 1; entry <= 2; entry++) {
