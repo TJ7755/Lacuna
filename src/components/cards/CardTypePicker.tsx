@@ -4,7 +4,12 @@
 // Import stays beside the track, available without opening More.
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { m as motion } from 'motion/react';
 import { PillToggleGroup, type PillToggleOption } from './PillToggleGroup';
+import { Button } from '../ui/Button';
+import { MeasuredHeight } from '../ui/MeasuredHeight';
+import { expandingActionSpring } from '../ui/motion';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import type { CardType } from '../../db/types';
 
 /** Authoring types: the stored card types plus the structured and audio variants. */
@@ -58,49 +63,88 @@ export function CardTypePicker({
   sources?: (revealed: boolean) => ReactNode;
 }) {
   const [more, setMore] = useState(false);
+  const [speed] = useMotionSpeed();
+  const multiplier = speedMultiplier(speed);
   const rootRef = useRef<HTMLDivElement>(null);
   // More leaves as the further types arrive, so its focus passes to the first of them.
-  const focusRevealed = useRef(false);
+  const focusToggle = useRef(false);
   useEffect(() => {
-    if (!more || !focusRevealed.current) return;
-    focusRevealed.current = false;
-    rootRef.current
-      ?.querySelectorAll<HTMLElement>('[aria-pressed]')
-      [EVERYDAY_TYPES.length]?.focus();
+    if (!focusToggle.current) return;
+    focusToggle.current = false;
+    if (more) {
+      rootRef.current
+        ?.querySelectorAll<HTMLElement>('[aria-pressed]')
+        [EVERYDAY_TYPES.length]?.focus({ preventScroll: true });
+    } else {
+      rootRef.current
+        ?.querySelector<HTMLElement>('[aria-label="More card types"]')
+        ?.focus({ preventScroll: true });
+    }
   }, [more]);
-  // A card already of a rarer type shows its type rather than hiding it behind More.
-  const revealed = more || !isEveryday(value);
+  // Collapsing the further types must never conceal the current choice.
   const options: PillToggleOption<PickerValue>[] = [...EVERYDAY_TYPES];
-  if (revealed) {
+  if (more) {
     options.push(...MORE_TYPES);
     if (onNewSequence) options.push({ value: 'sequence', label: 'Sequence' });
     if (onNewOcclusion) options.push({ value: 'occlusion', label: 'Image occlusion' });
+  } else if (!isEveryday(value)) {
+    const selected = MORE_TYPES.find((option) => option.value === value);
+    if (selected) options.push(selected);
   }
 
   return (
-    <div ref={rootRef} className="flex flex-wrap items-center gap-2">
-      <PillToggleGroup<PickerValue>
-        label="Card type"
-        className="shrink-0"
-        options={options}
-        value={value}
-        onChange={(next) => {
-          if (next === 'sequence') onNewSequence?.();
-          else if (next === 'occlusion') onNewOcclusion?.();
-          else onChange(next);
-        }}
-        onMore={
-          revealed
-            ? undefined
-            : () => {
-                focusRevealed.current = true;
-                setMore(true);
-              }
-        }
-        moreLabel="More card types"
-      />
-      {sources?.(revealed)}
-      {TYPE_HELP[value] && <p className="basis-full text-sm text-ink-soft">{TYPE_HELP[value]}</p>}
-    </div>
+    <MeasuredHeight>
+      <div ref={rootRef} className="flex flex-wrap items-center gap-2">
+        <PillToggleGroup<PickerValue>
+          label="Card type"
+          animateLayout
+          className="shrink-0"
+          options={options}
+          value={value}
+          onChange={(next) => {
+            if (next === 'sequence') onNewSequence?.();
+            else if (next === 'occlusion') onNewOcclusion?.();
+            else onChange(next);
+          }}
+          onMore={
+            more
+              ? undefined
+              : () => {
+                  focusToggle.current = true;
+                  setMore(true);
+                }
+          }
+          moreLabel="More card types"
+        />
+        {(more || sources) && (
+          <div className={`flex flex-wrap items-center gap-2 ${more ? 'basis-full' : ''}`}>
+            {more && (
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Fewer card types"
+                aria-expanded={true}
+                onClick={() => {
+                  focusToggle.current = true;
+                  setMore(false);
+                }}
+              >
+                Fewer types
+              </Button>
+            )}
+            {sources && (
+              <motion.div
+                layout={multiplier > 0 ? 'position' : false}
+                transition={expandingActionSpring(multiplier)}
+                className="flex flex-wrap items-center gap-2"
+              >
+                {sources(more)}
+              </motion.div>
+            )}
+          </div>
+        )}
+        {TYPE_HELP[value] && <p className="basis-full text-sm text-ink-soft">{TYPE_HELP[value]}</p>}
+      </div>
+    </MeasuredHeight>
   );
 }

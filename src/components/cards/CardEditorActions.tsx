@@ -1,5 +1,5 @@
-// Action row for the card editor: Cancel/Done, Save & add
-// another and the primary save. On touch it becomes a floating bottom bar so the
+// Repeat-save leads new-card capture; editing leads with Save changes.
+// On touch this becomes a floating bottom bar so the
 // controls stay within thumb reach.
 
 import { useEffect, useState, type Ref } from 'react';
@@ -74,7 +74,7 @@ export function CardEditorActions({
         {!editing && (
           <Button
             ref={saveAddRef as Ref<HTMLButtonElement>}
-            variant="secondary"
+            variant="primary"
             size="lg"
             onClick={() => onSave(true)}
             disabled={!canSave}
@@ -87,7 +87,7 @@ export function CardEditorActions({
         )}
         <Button
           ref={saveRef as Ref<HTMLButtonElement>}
-          variant="primary"
+          variant={editing ? 'primary' : 'secondary'}
           size="lg"
           onClick={() => onSave(false)}
           disabled={!canSave}

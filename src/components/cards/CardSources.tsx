@@ -70,12 +70,12 @@ export function CardSources({
 
   return (
     <>
-      <Button size="sm" className="shrink-0" onClick={() => setOpen('import')}>
+      <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setOpen('import')}>
         <UploadIcon width={16} height={16} />
         Import cards
       </Button>
       {lessonId && (
-        <AnimatedDisclosure open={showLink} className="basis-full">
+        <AnimatedDisclosure open={showLink}>
           <Button variant="ghost" size="sm" onClick={() => setOpen('link')}>
             <PlusIcon width={16} height={16} />
             Link existing cards
