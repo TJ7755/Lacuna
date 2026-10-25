@@ -130,19 +130,17 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     <>
       <div className="flex flex-col gap-5 px-6 py-6">
         {library && (
-          <div className="import-sources">
-            <button
-              ref={libraryButtonRef}
-              type="button"
-              data-featured
-              disabled={saving}
-              onClick={() => setBrowsing(true)}
-            >
-              <BookIcon width={24} height={24} />
-              <strong>Course library</strong>
-              <span>Ready-made GCSE and IGCSE courses</span>
-            </button>
-          </div>
+          <Button
+            ref={libraryButtonRef}
+            type="button"
+            variant="secondary"
+            className="w-full justify-start"
+            disabled={saving}
+            onClick={() => setBrowsing(true)}
+          >
+            <BookIcon width={18} height={18} aria-hidden="true" />
+            Course library
+          </Button>
         )}
         <div className="flex flex-col gap-2">
           <label htmlFor={nameInputId} className={fieldLabelClassName}>

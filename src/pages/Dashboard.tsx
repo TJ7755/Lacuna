@@ -68,6 +68,7 @@ export function Dashboard() {
   const location = useLocation();
   const importing = new URLSearchParams(location.search).has('import');
   const [creatingCourse, setCreatingCourse] = useState(false);
+  const [creatingInEmptyState, setCreatingInEmptyState] = useState(false);
   useEffect(() => {
     if (location.state?.createCourse) {
       setCreatingCourse(true);
@@ -181,6 +182,12 @@ export function Dashboard() {
   // Once Today has arrived it stays: live updates never send it back to the skeleton.
   const [arrived, setArrived] = useState(false);
   const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
+  // Keep the form mounted in its opening position through live data and library imports.
+  const createInEmptyState = creatingCourse ? creatingInEmptyState : rows?.length === 0;
+  function changeCreatingCourse(open: boolean) {
+    if (open && !creatingCourse) setCreatingInEmptyState(rows?.length === 0);
+    setCreatingCourse(open);
+  }
   useEffect(() => {
     if (ready) setArrived(true);
   }, [ready]);
@@ -257,12 +264,14 @@ export function Dashboard() {
           </AppLink>
         </div>
         <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
-          <div inert={importing}>
-            <NewCourseControl
-              open={creatingCourse && !importing}
-              onOpenChange={setCreatingCourse}
-            />
-          </div>
+          {!createInEmptyState && (
+            <div inert={importing}>
+              <NewCourseControl
+                open={creatingCourse && !importing}
+                onOpenChange={changeCreatingCourse}
+              />
+            </div>
+          )}
           <ImportControl onOpen={() => setCreatingCourse(false)} />
         </div>
       </div>
@@ -270,8 +279,15 @@ export function Dashboard() {
       <PageLoadingBoundary fallback={<CourseSkeleton />}>
         {!rows || !ready ? (
           <PageLoading />
-        ) : rows.length === 0 ? (
-          <EmptyState hasArchivedCourses={courses?.some((course) => course.archived) ?? false} />
+        ) : rows.length === 0 || (creatingCourse && createInEmptyState) ? (
+          <EmptyState
+            hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
+            creatingCourse={creatingCourse && !importing}
+            onCreatingCourseChange={changeCreatingCourse}
+            showCreateControl={createInEmptyState}
+            importing={importing}
+            multiplier={m}
+          />
         ) : (
           <div className="flex flex-col gap-6">
             {/* The forecast arrives whole, fading in place, and holds its room while late. */}
@@ -395,9 +411,28 @@ function CourseSkeleton() {
   );
 }
 
-function EmptyState({ hasArchivedCourses }: { hasArchivedCourses: boolean }) {
+function EmptyState({
+  hasArchivedCourses,
+  creatingCourse,
+  onCreatingCourseChange,
+  showCreateControl,
+  importing,
+  multiplier,
+}: {
+  hasArchivedCourses: boolean;
+  creatingCourse: boolean;
+  onCreatingCourseChange: (open: boolean) => void;
+  showCreateControl: boolean;
+  importing: boolean;
+  multiplier: number;
+}) {
   return (
-    <div className="relative flex flex-col items-center justify-center px-4 py-20 text-center">
+    <motion.div
+      initial={multiplier > 0 ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ duration: MOTION_DURATION.local * multiplier, ease: MOTION_EASING.standard }}
+      className="relative flex flex-col items-center justify-center px-4 py-12 text-center sm:py-20"
+    >
       <div className="relative flex flex-col items-center">
         <StudyDrawing kind="course" className="mb-7 h-28 w-28" />
         <h2 className="mb-2 font-display text-2xl">
@@ -408,7 +443,16 @@ function EmptyState({ hasArchivedCourses }: { hasArchivedCourses: boolean }) {
             ? 'Restore a course from Archived or start another one.'
             : 'Start a course to organise your lessons and cards.'}
         </p>
+        {showCreateControl && (
+          <div inert={importing}>
+            <NewCourseControl
+              open={creatingCourse}
+              onOpenChange={onCreatingCourseChange}
+              prominent
+            />
+          </div>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }

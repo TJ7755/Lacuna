@@ -5,6 +5,7 @@ import { MarkdownEditor } from '../../components/markdown/MarkdownEditor';
 import { NumericAnswerEditor } from '../../components/items/NumericAnswerEditor';
 import { MarkSchemeEditor } from '../../components/items/MarkSchemeEditor';
 import { TagInput } from '../../components/ui/TagInput';
+import { ContentDisclosure } from '../../components/ui/ContentDisclosure';
 import { CheckIcon } from '../../components/ui/icons';
 import { cn } from '../../components/ui/cn';
 import { scaledSpring } from '../../components/ui/motion';
@@ -242,71 +243,86 @@ export function CardAuthoringFields({
         </motion.div>
       </AnimatePresence>
 
-      <div>
-        <div className="mb-2 text-sm text-ink-soft">Tags</div>
-        <TagInput
-          tags={tags}
-          onChange={(nextTags) => {
-            setTags(nextTags);
-            setDraftDirty(true);
-          }}
-          suggestions={tagSuggestions}
-          placeholder="Add tags"
-        />
-      </div>
-
-      {(!isStructured || canReverse) && (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,17rem),1fr))] items-end gap-4 border-t border-line pb-1 pt-5">
-          {!isStructured && (
-            <CardAnswerModeField
-              courseId={courseId}
-              value={answerMode}
-              onChange={(value) => modifyDraftField(setAnswerMode, value)}
-            />
-          )}
-          {canReverse && (
-            <motion.button
-              type="button"
-              onClick={() => {
-                setAlsoReverse((v) => !v);
-                setDraftDirty(true);
-              }}
-              data-press=""
-              whileTap={m > 0 ? { scale: 0.96 } : undefined}
-              aria-pressed={alsoReverse}
-              title="Also create a card testing the back side"
-              className={cn(
-                'inline-flex min-h-11 items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink active:bg-ink/10',
-                alsoReverse
-                  ? 'border-accent/30 bg-accent-soft text-accent-ink'
-                  : 'border-line bg-surface text-ink hover:border-ink/40',
-              )}
-            >
-              <span
-                className={cn(
-                  'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors',
-                  alsoReverse ? 'bg-accent text-accent-fg' : 'bg-ink/15',
-                )}
-              >
-                <AnimatePresence>
-                  {alsoReverse && (
-                    <motion.span
-                      initial={m > 0 ? { scale: 0, rotate: -25 } : false}
-                      animate={{ scale: 1, rotate: 0 }}
-                      exit={m > 0 ? { scale: 0 } : undefined}
-                      transition={scaledSpring(m, 600, 16)}
-                      className="inline-flex"
-                    >
-                      <CheckIcon width={11} height={11} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </span>
-              Also create reverse
-            </motion.button>
-          )}
+      {!isStructured && (
+        <div className="border-t border-line pt-5">
+          <CardAnswerModeField
+            courseId={courseId}
+            value={answerMode}
+            onChange={(value) => modifyDraftField(setAnswerMode, value)}
+          />
         </div>
       )}
+
+      <ContentDisclosure
+        label={
+          canReverse && alsoReverse
+            ? 'Card options (reverse on)'
+            : tags.length > 0
+              ? `Card options (${tags.length} ${tags.length === 1 ? 'tag' : 'tags'})`
+              : 'Card options'
+        }
+        defaultOpen={editing && tags.length > 0}
+        className="border-t border-line pt-2"
+      >
+        <div className="flex flex-col gap-4 pt-3">
+          <div>
+            <div className="mb-2 text-sm text-ink-soft">Tags</div>
+            <TagInput
+              tags={tags}
+              onChange={(nextTags) => {
+                setTags(nextTags);
+                setDraftDirty(true);
+              }}
+              suggestions={tagSuggestions}
+              placeholder="Add tags"
+            />
+          </div>
+
+          {canReverse && (
+            <div className="pb-1">
+              <motion.button
+                type="button"
+                onClick={() => {
+                  setAlsoReverse((v) => !v);
+                  setDraftDirty(true);
+                }}
+                data-press=""
+                whileTap={m > 0 ? { scale: 0.96 } : undefined}
+                aria-pressed={alsoReverse}
+                title="Also create a card testing the back side"
+                className={cn(
+                  'inline-flex min-h-11 items-center gap-2.5 rounded-full border px-3.5 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink active:bg-ink/10',
+                  alsoReverse
+                    ? 'border-accent/30 bg-accent-soft text-accent-ink'
+                    : 'border-line bg-surface text-ink hover:border-ink/40',
+                )}
+              >
+                <span
+                  className={cn(
+                    'grid h-4 w-4 shrink-0 place-items-center rounded-full transition-colors',
+                    alsoReverse ? 'bg-accent text-accent-fg' : 'bg-ink/15',
+                  )}
+                >
+                  <AnimatePresence>
+                    {alsoReverse && (
+                      <motion.span
+                        initial={m > 0 ? { scale: 0, rotate: -25 } : false}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={m > 0 ? { scale: 0 } : undefined}
+                        transition={scaledSpring(m, 600, 16)}
+                        className="inline-flex"
+                      >
+                        <CheckIcon width={11} height={11} />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </span>
+                Also create reverse
+              </motion.button>
+            </div>
+          )}
+        </div>
+      </ContentDisclosure>
     </section>
   );
 }

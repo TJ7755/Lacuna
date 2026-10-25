@@ -85,6 +85,11 @@ describe('Dashboard Today queue', () => {
     const emptyHeading = screen.getByRole('heading', { name: 'No courses yet' });
     expect(emptyHeading).toBeInTheDocument();
     expect(emptyHeading.parentElement).toHaveClass('flex', 'flex-col', 'items-center');
+    const create = screen.getByRole('button', { name: 'New course' });
+    expect(emptyHeading.parentElement).toContainElement(create);
+    fireEvent.click(create);
+    expect(create).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByTestId('new-course-form')).toBeInTheDocument();
     expect(screen.queryByLabelText(/^Today:/)).not.toBeInTheDocument();
   });
 
@@ -95,6 +100,33 @@ describe('Dashboard Today queue', () => {
     expect(screen.queryByRole('heading', { name: 'Archived courses' })).not.toBeInTheDocument();
     expect(screen.queryByText('Test Course')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'No active courses' })).toBeInTheDocument();
+  });
+
+  it('retains an open toolbar form when initial data resolves to an empty course list', () => {
+    const { rerender } = render(<Dashboard />);
+    const trigger = screen.getByRole('button', { name: 'New course' });
+    fireEvent.click(trigger);
+    const form = screen.getByTestId('new-course-form');
+    setCourseData([]);
+    rerender(<Dashboard />);
+    expect(screen.getByTestId('new-course-form')).toBe(form);
+    expect(screen.getByRole('button', { name: 'New course' })).toBe(trigger);
+  });
+
+  it('keeps the first-course importer mounted until its creation session closes', () => {
+    setCourseData([]);
+    const { rerender } = render(<Dashboard />);
+    const trigger = screen.getByRole('button', { name: 'New course' });
+    fireEvent.click(trigger);
+    const form = screen.getByTestId('new-course-form');
+    setCourseData();
+    rerender(<Dashboard />);
+    expect(screen.getByTestId('new-course-form')).toBe(form);
+    expect(screen.getByRole('button', { name: 'New course' })).toBe(trigger);
+    fireEvent.click(trigger);
+    expect(screen.queryByTestId('new-course-form')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Today, most urgent first' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New course' })).not.toBe(trigger);
   });
 
   it('excludes archived courses from the queue and the totals', () => {

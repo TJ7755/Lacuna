@@ -139,6 +139,7 @@ for (const { width, scale, mode } of scenarios) {
       };
     });
     expect(selectedText.width).toBeLessThanOrEqual(selectedText.available);
+    await page.getByRole('button', { name: 'Card options' }).click();
     const reverse = page.getByRole('button', { name: 'Also create reverse' });
     await expect(reverse).toHaveAttribute('aria-pressed', 'false');
     await reverse.click();

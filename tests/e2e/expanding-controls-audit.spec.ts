@@ -25,12 +25,15 @@ test('Tab leaves Other ways from its trigger in both directions', async ({ page 
 });
 
 async function assertPanelContained(trigger: Locator, menu: Locator) {
-  const panel = (await menu.boundingBox())!;
-  const surface = (await trigger.locator('..').boundingBox())!;
-  expect(panel.x).toBeGreaterThanOrEqual(surface.x - 1);
-  expect(panel.y).toBeGreaterThanOrEqual(surface.y - 1);
-  expect(panel.x + panel.width).toBeLessThanOrEqual(surface.x + surface.width + 1);
-  expect(panel.y + panel.height).toBeLessThanOrEqual(surface.y + surface.height + 1);
+  // Menu visibility can precede Motion's size update, even at zero duration.
+  await expect(async () => {
+    const panel = (await menu.boundingBox())!;
+    const surface = (await trigger.locator('..').boundingBox())!;
+    expect(panel.x).toBeGreaterThanOrEqual(surface.x - 1);
+    expect(panel.y).toBeGreaterThanOrEqual(surface.y - 1);
+    expect(panel.x + panel.width).toBeLessThanOrEqual(surface.x + surface.width + 1);
+    expect(panel.y + panel.height).toBeLessThanOrEqual(surface.y + surface.height + 1);
+  }).toPass();
 }
 
 for (const width of [390, 1440]) {

@@ -11,12 +11,14 @@ export function ContentDisclosure({
   label,
   children,
   className,
+  defaultOpen = false,
 }: {
   label: string;
   children: ReactNode;
   className?: string;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const id = useId();
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
