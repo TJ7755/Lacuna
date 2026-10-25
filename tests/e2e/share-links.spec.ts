@@ -165,7 +165,7 @@ async function openShare(page: Page, courseName: string): Promise<void> {
   // The picker appears only once there is more than one course to choose from.
   const picker = page.getByRole('button', { name: 'Course to share' });
   const only = page
-    .getByRole('banner')
+    .getByRole('main')
     .getByText(new RegExp(`^${courseName}`))
     .first();
   await expect(picker.or(only)).toBeVisible();
