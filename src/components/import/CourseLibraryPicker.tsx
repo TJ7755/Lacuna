@@ -69,6 +69,7 @@ export function CourseLibraryPicker({
                 <h3 className="import-library-heading">{subject}</h3>
               ) : (
                 <motion.button
+                  data-press=""
                   type="button"
                   className="import-library-subject"
                   aria-expanded={open}
@@ -90,6 +91,7 @@ export function CourseLibraryPicker({
                   {courses.map((course) => (
                     <li key={course.id}>
                       <motion.button
+                        data-press=""
                         type="button"
                         className="import-library-course"
                         aria-label={`${course.subject} ${course.qualification} · ${courseCodes(course)}`}
