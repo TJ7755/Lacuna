@@ -1,22 +1,17 @@
 import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { db } from './schema';
-import type { ReviewLog } from './types';
 import {
   createCourse,
   createCourseAssessment,
   createLesson,
   createLessonCard,
-  createNote,
-  createPracticeNode,
   createSequence,
   linkCardToLesson,
 } from './repository';
 import { createOrResumeRevisionPlan } from './revisionPlanRepository';
 import {
-  diagnosticsSummary,
   getCard,
-  hydrateCardsWithHistory,
   getCourse,
   getCourseStats,
   getLesson,
@@ -24,9 +19,6 @@ import {
   getWeakCards,
   listCardsForCourse,
   listCardsForLesson,
-  listCourseAssessments,
-  listCourseAssessmentDetails,
-  getCourseAssessmentDetails,
   listCourses,
   listDueCards,
   listLessons,
@@ -35,28 +27,11 @@ import {
   getRevisionPlanForAssessment,
   listRevisionPlansForCourse,
 } from './read';
+import { clearAll } from './read.testFixtures';
 
-async function clearAll(): Promise<void> {
-  await Promise.all([
-    db.schedulingUnits.clear(),
-    db.cards.clear(),
-    db.courses.clear(),
-    db.lessons.clear(),
-    db.notes.clear(),
-    db.lessonCards.clear(),
-    db.practiceNodes.clear(),
-    db.courseAssessments.clear(),
-    db.sequences.clear(),
-    db.revisionPlans.clear(),
-    db.userPerformance.clear(),
-    db.coursePerformance.clear(),
-    db.schedulingPerformance.clear(),
-    db.reviewHistory.clear(),
-  ]);
-}
-
-describe('read.ts', () => {
+describe('scoped reads', () => {
   beforeEach(clearAll);
+
   afterEach(() => vi.restoreAllMocks());
 
   it('reads revision plans by assessment and course', async () => {
@@ -103,103 +78,6 @@ describe('read.ts', () => {
     it('returns an empty list for a course with no lessons', async () => {
       const course = await createCourse('Empty');
       expect(await listLessons(course.id)).toEqual([]);
-    });
-  });
-
-  describe('cards', () => {
-    it('hydrates canonical review history and retains an unmatched legacy projection', async () => {
-      const course = await createCourse('Course A');
-      const lesson = await createLesson(course.id, 'Lesson 1');
-      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
-      const stale: ReviewLog = {
-        timestamp: 999,
-        grade: 1,
-        responseTimeSec: 2,
-        distracted: false,
-        stabilityBefore: null,
-        stabilityAfter: 1,
-        difficultyBefore: null,
-        difficultyAfter: 5,
-        retrievabilityAtReview: null,
-      };
-      await db.reviewHistory.add({
-        ...stale,
-        id: 'review:event:canonical',
-        eventId: 'canonical',
-        timestamp: 100,
-        cardId: card.id,
-        deckId: card.deckId,
-        schedulingUnitId: card.deckId,
-        courseId: course.id,
-        primaryLessonId: lesson.id,
-      });
-
-      const rawCard = await db.cards.get(card.id);
-      expect(rawCard).toBeDefined();
-      const hydrated = await hydrateCardsWithHistory([{ ...rawCard!, history: [stale] }]);
-      expect(hydrated[0].history.map((entry) => entry.eventId)).toEqual(['canonical', undefined]);
-      expect((await getCard(card.id))?.history[0].eventId).toBe('canonical');
-      expect((await getCard(card.id))?.history).toHaveLength(1);
-    });
-
-    it('falls back to embedded history for legacy-only cards', async () => {
-      const course = await createCourse('Course A');
-      const lesson = await createLesson(course.id, 'Lesson 1');
-      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
-      const legacy: ReviewLog = {
-        timestamp: 100,
-        grade: 3,
-        responseTimeSec: 2,
-        distracted: false,
-        stabilityBefore: null,
-        stabilityAfter: 1,
-        difficultyBefore: null,
-        difficultyAfter: 5,
-        retrievabilityAtReview: null,
-      };
-      const rawCard = await db.cards.get(card.id);
-      expect(rawCard).toBeDefined();
-      expect(
-        (await hydrateCardsWithHistory([{ ...rawCard!, history: [legacy] }]))[0].history[0]
-          .timestamp,
-      ).toBe(100);
-    });
-
-    it('scopes listCardsForCourse to its own course', async () => {
-      const a = await createCourse('Course A');
-      const b = await createCourse('Course B');
-      const lessonA = await createLesson(a.id, 'Lesson A');
-      const lessonB = await createLesson(b.id, 'Lesson B');
-      const cardA = await createLessonCard(a.id, lessonA.id, 'front_back', 'qa', 'aa');
-      await createLessonCard(b.id, lessonB.id, 'front_back', 'qb', 'ab');
-
-      const cardsA = await listCardsForCourse(a.id);
-      expect(cardsA.map((c) => c.id)).toEqual([cardA.id]);
-
-      expect((await getCard(cardA.id))?.front).toBe('qa');
-      expect(await getCard('missing')).toBeNull();
-    });
-
-    it('lists lesson cards as primary plus linked, de-duplicated', async () => {
-      const course = await createCourse('Course A');
-      const lesson1 = await createLesson(course.id, 'Lesson 1');
-      const lesson2 = await createLesson(course.id, 'Lesson 2');
-      const primary = await createLessonCard(course.id, lesson1.id, 'front_back', 'q1', 'a1');
-      const linked = await createLessonCard(course.id, lesson2.id, 'front_back', 'q2', 'a2');
-      await linkCardToLesson(lesson1.id, linked.id);
-
-      const cards = await listCardsForLesson(lesson1.id);
-      expect(cards.map((c) => c.id).sort()).toEqual([primary.id, linked.id].sort());
-
-      // No duplicate entries even though `linked` matches both the link and (via
-      // its own lesson2) would be found again if queried loosely.
-      expect(cards.filter((c) => c.id === linked.id)).toHaveLength(1);
-    });
-
-    it('returns an empty list for a lesson with no cards', async () => {
-      const course = await createCourse('Course A');
-      const lesson = await createLesson(course.id, 'Empty lesson');
-      expect(await listCardsForLesson(lesson.id)).toEqual([]);
     });
   });
 
@@ -380,153 +258,42 @@ describe('read.ts', () => {
     });
   });
 
-  describe('practice nodes / assessments', () => {
-    it('scopes practice nodes and assessments to their course', async () => {
+  describe('cards', () => {
+    it('scopes listCardsForCourse to its own course', async () => {
+      const a = await createCourse('Course A');
+      const b = await createCourse('Course B');
+      const lessonA = await createLesson(a.id, 'Lesson A');
+      const lessonB = await createLesson(b.id, 'Lesson B');
+      const cardA = await createLessonCard(a.id, lessonA.id, 'front_back', 'qa', 'aa');
+      await createLessonCard(b.id, lessonB.id, 'front_back', 'qb', 'ab');
+
+      const cardsA = await listCardsForCourse(a.id);
+      expect(cardsA.map((c) => c.id)).toEqual([cardA.id]);
+
+      expect((await getCard(cardA.id))?.front).toBe('qa');
+      expect(await getCard('missing')).toBeNull();
+    });
+
+    it('lists lesson cards as primary plus linked, de-duplicated', async () => {
       const course = await createCourse('Course A');
-      const otherCourse = await createCourse('Course B');
-      const node = await createPracticeNode(course.id, { type: 'manual', name: 'Practice 1' });
-      await createPracticeNode(otherCourse.id, { type: 'manual', name: 'Other practice' });
+      const lesson1 = await createLesson(course.id, 'Lesson 1');
+      const lesson2 = await createLesson(course.id, 'Lesson 2');
+      const primary = await createLessonCard(course.id, lesson1.id, 'front_back', 'q1', 'a1');
+      const linked = await createLessonCard(course.id, lesson2.id, 'front_back', 'q2', 'a2');
+      await linkCardToLesson(lesson1.id, linked.id);
 
-      const now = Date.now();
-      const examDate = await createCourseAssessment(course.id, 'Mid-term', now + 1000);
-      await createCourseAssessment(otherCourse.id, 'Other exam', now + 2000);
+      const cards = await listCardsForLesson(lesson1.id);
+      expect(cards.map((c) => c.id).sort()).toEqual([primary.id, linked.id].sort());
 
-      expect(
-        (await db.practiceNodes.where('courseId').equals(course.id).toArray()).map((n) => n.id),
-      ).toEqual([node.id]);
-      expect((await listCourseAssessments(course.id)).map((e) => e.id)).toContain(examDate.id);
+      // No duplicate entries even though `linked` matches both the link and (via
+      // its own lesson2) would be found again if queried loosely.
+      expect(cards.filter((c) => c.id === linked.id)).toHaveLength(1);
     });
 
-    it('returns empty lists for a course with none', async () => {
+    it('returns an empty list for a lesson with no cards', async () => {
       const course = await createCourse('Course A');
-      expect(await db.practiceNodes.where('courseId').equals(course.id).toArray()).toEqual([]);
-      expect(await listCourseAssessments(course.id)).toHaveLength(1);
-    });
-  });
-
-  describe('assessment read costs', () => {
-    it('resolves all assessments from one course snapshot without loading review history', async () => {
-      const course = await createCourse('Biology');
-      const first = await createLesson(course.id, 'Cells');
-      const second = await createLesson(course.id, 'Genetics');
-      const card = await createLessonCard(course.id, second.id, 'front_back', 'q', 'a');
-      await linkCardToLesson(first.id, card.id);
-      await createCourseAssessment(course.id, 'Cells paper', 1000, { afterLessonId: first.id });
-      await createCourseAssessment(course.id, 'Genetics paper', 2000, {
-        afterLessonId: second.id,
-        coverageMode: 'custom',
-        lessonIds: [second.id],
-      });
-      const expected = await Promise.all(
-        (await listCourseAssessments(course.id)).map((assessment) =>
-          getCourseAssessmentDetails(assessment.id),
-        ),
-      );
-      const cards = vi.spyOn(db.cards, 'where');
-      const lessons = vi.spyOn(db.lessons, 'where');
-      const history = vi.spyOn(db.reviewHistory, 'where');
-      const globalLinks = vi.spyOn(db.lessonCards, 'toArray');
-      const links = vi.spyOn(db.lessonCards, 'where');
-
-      const actual = await listCourseAssessmentDetails(course.id);
-      expect(actual).toEqual(expected);
-      expect(actual.slice(0, 2)).toMatchObject([
-        {
-          assessment: { name: 'Cells paper' },
-          placementIndex: 0,
-          coveredLessonIds: [first.id],
-          cardIds: [card.id],
-        },
-        {
-          assessment: { name: 'Genetics paper' },
-          placementIndex: 1,
-          coveredLessonIds: [second.id],
-          cardIds: [card.id],
-        },
-      ]);
-      expect(actual.every((detail) => detail.cardIds.includes(card.id))).toBe(true);
-      expect(cards).toHaveBeenCalledTimes(1);
-      expect(lessons).toHaveBeenCalledTimes(1);
-      expect(history).not.toHaveBeenCalled();
-      expect(globalLinks).not.toHaveBeenCalled();
-      expect(links).toHaveBeenCalledExactlyOnceWith('lessonId');
-    });
-
-    it('counts notes across lessons with one indexed query and no history hydration', async () => {
-      const course = await createCourse('Biology');
-      const courseLessons = [];
-      for (const name of ['Cells', 'Genetics', 'Ecology']) {
-        const lesson = await createLesson(course.id, name);
-        const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
-        await createNote(lesson.id, name);
-        courseLessons.push({ lesson, card });
-      }
-      await linkCardToLesson(courseLessons[0].lesson.id, courseLessons[1].card.id);
-      const links = vi.spyOn(db.lessonCards, 'where');
-      const notes = vi.spyOn(db.notes, 'where');
-      const history = vi.spyOn(db.reviewHistory, 'where');
-      expect(await diagnosticsSummary(course.id)).toMatchObject({
-        lessons: 3,
-        cards: 3,
-        notes: 3,
-        lessonCards: 1,
-      });
-      // One count and one scoped coverage read, independent of the number of lessons.
-      expect(links).toHaveBeenCalledTimes(2);
-      expect(notes).toHaveBeenCalledExactlyOnceWith('lessonId');
-      expect(history).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('diagnosticsSummary', () => {
-    it('returns whole-database counts when no courseId is given', async () => {
-      const course = await createCourse('Course A');
-      const lesson = await createLesson(course.id, 'Lesson 1');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
-
-      const summary = await diagnosticsSummary();
-      expect('courseId' in summary).toBe(false);
-      expect((summary as { courses: number }).courses).toBe(1);
-      expect((summary as { cards: number }).cards).toBe(1);
-    });
-
-    it('scopes counts to a single course when courseId is given', async () => {
-      const course = await createCourse('Course A');
-      const otherCourse = await createCourse('Course B');
-      const lesson = await createLesson(course.id, 'Lesson 1');
-      const otherLesson = await createLesson(otherCourse.id, 'Other lesson');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'q1', 'a1');
-      await createLessonCard(course.id, lesson.id, 'front_back', 'q2', 'a2');
-      await createLessonCard(otherCourse.id, otherLesson.id, 'front_back', 'q3', 'a3');
-      await createPracticeNode(course.id, { type: 'manual', name: 'Practice' });
-      await createCourseAssessment(course.id, 'Mid-term', Date.now() + 1000);
-
-      const summary = await diagnosticsSummary(course.id);
-      expect(summary).toMatchObject({
-        courseId: course.id,
-        lessons: 1,
-        cards: 2,
-        notes: 0,
-        lessonCards: 0,
-        practiceNodes: 1,
-        courseAssessments: 2,
-        sequences: 0,
-      });
-    });
-
-    it('scopes to an empty course cleanly', async () => {
-      const course = await createCourse('Empty course');
-      const summary = await diagnosticsSummary(course.id);
-      expect(summary).toMatchObject({
-        courseId: course.id,
-        lessons: 0,
-        cards: 0,
-        notes: 0,
-        lessonCards: 0,
-        practiceNodes: 0,
-        courseAssessments: 1,
-        sequences: 0,
-      });
+      const lesson = await createLesson(course.id, 'Empty lesson');
+      expect(await listCardsForLesson(lesson.id)).toEqual([]);
     });
   });
 });

@@ -7,6 +7,8 @@ import {
   savePracticeMilestoneProgress,
   updatePracticeNode,
 } from './practiceNodeRepository';
+import { createCourse } from './repository';
+import { reset as resetCourseRepositoryData } from './courseRepository.testFixtures';
 
 describe('practiceNodeRepository', () => {
   beforeEach(async () => {
@@ -55,5 +57,23 @@ describe('practiceNodeRepository', () => {
 
     expect(sameScope.completedAt).toBe(100);
     expect(changedScope.completedAt).toBeUndefined();
+  });
+});
+
+describe('listPracticeNodes', () => {
+  beforeEach(resetCourseRepositoryData);
+
+  it('returns only nodes belonging to the given course', async () => {
+    const c1 = await createCourse('Course 1');
+    const c2 = await createCourse('Course 2');
+    await createPracticeNode(c1.id, { type: 'auto', name: 'P1' });
+    await createPracticeNode(c2.id, { type: 'manual', name: 'P2' });
+
+    const nodes1 = await db.practiceNodes.where('courseId').equals(c1.id).toArray();
+    const nodes2 = await db.practiceNodes.where('courseId').equals(c2.id).toArray();
+    expect(nodes1).toHaveLength(1);
+    expect(nodes1[0].name).toBe('P1');
+    expect(nodes2).toHaveLength(1);
+    expect(nodes2[0].name).toBe('P2');
   });
 });

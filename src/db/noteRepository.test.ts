@@ -11,6 +11,8 @@ import {
   updateNote,
   updateNoteAnnotation,
 } from './noteRepository';
+import { createCourse, createLesson } from './repository';
+import { reset as resetCourseRepositoryData } from './courseRepository.testFixtures';
 
 async function reset() {
   db.close();
@@ -70,5 +72,35 @@ describe('noteRepository', () => {
   it('rejects empty or negative annotation ranges', async () => {
     await expect(createNoteAnnotation('note-1', -1, 2, 'x')).rejects.toThrow('non-empty');
     await expect(createNoteAnnotation('note-1', 3, 3, 'x')).rejects.toThrow('non-empty');
+  });
+});
+
+describe('listNotes ordering', () => {
+  beforeEach(resetCourseRepositoryData);
+
+  it('returns notes in orderIndex ascending order', async () => {
+    const course = await createCourse('Notes test');
+    const lesson = await createLesson(course.id, 'L1');
+    const n1 = await createNote(lesson.id, 'Note 1');
+    const n2 = await createNote(lesson.id, 'Note 2');
+    const n3 = await createNote(lesson.id, 'Note 3');
+
+    const notes = await listNotes(lesson.id);
+    expect(notes.map((n) => n.id)).toEqual([n1.id, n2.id, n3.id]);
+  });
+
+  it('gives concurrent notes distinct indices and a stable listed order', async () => {
+    const course = await createCourse('Notes test');
+    const lesson = await createLesson(course.id, 'L1');
+    const created = await Promise.all(
+      Array.from({ length: 5 }, (_, index) => createNote(lesson.id, `Note ${index + 1}`)),
+    );
+    const listed = await listNotes(lesson.id);
+
+    expect(created.map((note) => note.orderIndex).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(listed.map((note) => note.orderIndex)).toEqual([0, 1, 2, 3, 4]);
+    expect((await listNotes(lesson.id)).map((note) => note.id)).toEqual(
+      listed.map((note) => note.id),
+    );
   });
 });
