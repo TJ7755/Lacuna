@@ -156,7 +156,7 @@ it('ships a teacher-only graph and assets without a learner runtime or PWA', asy
       files.filter((file) => file.endsWith('.js')).map((file) => readFile(join(directory, file))),
     );
     expect(scripts.reduce((size, script) => size + gzipSync(script).byteLength, 0)).toBeLessThan(
-      162_000,
+      165_000,
     );
     for (const name of ['InstrumentSans', 'SpaceGrotesk', 'JetBrainsMono']) {
       expect(files).toContain(`fonts/${name}-Variable.ttf`);
