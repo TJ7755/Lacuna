@@ -100,21 +100,26 @@ export function Results({ reports }: { reports: DailyEvidence[] }) {
         </div>
 
         <div ref={grid} className="-mx-2 mt-6 overflow-x-auto px-2 pb-2">
-          <table className="gaps-grid w-full border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-sm">
+          <table
+            className="gaps-grid w-full table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-sm"
+            style={{ minWidth: `${9 + columns.length * 7}rem` }}
+          >
+            <colgroup>
+              <col className="w-36" />
+              {columns.map((item) => (
+                <col key={item.itemId} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
                 <th
                   scope="col"
-                  className="w-36 min-w-28 pr-3 text-left align-bottom text-xs font-normal text-ink-faint"
+                  className="pr-3 text-left align-bottom text-xs font-normal text-ink-faint"
                 >
                   Weakest first
                 </th>
                 {columns.map((item) => (
-                  <th
-                    key={item.itemId}
-                    scope="col"
-                    className="min-w-[6.5rem] max-w-[11rem] align-bottom font-normal"
-                  >
+                  <th key={item.itemId} scope="col" className="align-bottom font-normal">
                     <button
                       type="button"
                       onClick={() => showItem(item.itemId)}
@@ -126,7 +131,7 @@ export function Results({ reports }: { reports: DailyEvidence[] }) {
                         open?.kind === 'item' && open.itemId === item.itemId && 'bg-ink/[0.06]',
                       )}
                     >
-                      <span className="line-clamp-2 text-xs leading-snug text-ink-soft group-hover:text-ink">
+                      <span className="block min-w-0 truncate text-xs leading-snug text-ink-soft group-hover:text-ink">
                         {item.prompt || 'Untitled item'}
                       </span>
                       <span className="mt-1.5 block font-display text-lg font-semibold tabular-nums">
@@ -161,7 +166,7 @@ export function Results({ reports }: { reports: DailyEvidence[] }) {
                 return (
                   <Fragment key={report.pupil.id}>
                     <tr className="group/row">
-                      <th scope="row" className="max-w-36 pr-3 text-left font-normal">
+                      <th scope="row" className="pr-3 text-left font-normal">
                         <button
                           type="button"
                           onClick={() => showPupil(report.pupil.id)}

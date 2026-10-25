@@ -1,13 +1,8 @@
 @import '../index.css';
 
-/* The Gaps root sits outside src, so scan only the view and its shared primitives. */
-@source './StandaloneTeacherHome.tsx';
-@source './GapsSidebar.tsx';
-@source './gapsUi.tsx';
-@source './TeacherKeySetup.tsx';
-@source './TeacherCourses.tsx';
-@source './CreateGapsClass.tsx';
-@source './TeacherClassReports.tsx';
+/* The Gaps root sits outside src; include extracted teacher views without scanning tests. */
+@source './**/*.tsx';
+@source not './**/*.test.tsx';
 @source '../components/ui/Field.tsx';
 @source '../components/course/coursePageLayout.ts';
 @source '../components/ui/SectionCard.tsx';
