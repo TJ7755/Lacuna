@@ -68,7 +68,6 @@ export function Dashboard() {
   const location = useLocation();
   const importing = new URLSearchParams(location.search).has('import');
   const [creatingCourse, setCreatingCourse] = useState(false);
-  const [creatingInEmptyState, setCreatingInEmptyState] = useState(false);
   useEffect(() => {
     if (location.state?.createCourse) {
       setCreatingCourse(true);
@@ -182,12 +181,6 @@ export function Dashboard() {
   // Once Today has arrived it stays: live updates never send it back to the skeleton.
   const [arrived, setArrived] = useState(false);
   const ready = arrived || (rows !== undefined && (forecastSettled || forecastOverdue));
-  // Keep the form mounted in its opening position through live data and library imports.
-  const createInEmptyState = creatingCourse ? creatingInEmptyState : rows?.length === 0;
-  function changeCreatingCourse(open: boolean) {
-    if (open && !creatingCourse) setCreatingInEmptyState(rows?.length === 0);
-    setCreatingCourse(open);
-  }
   useEffect(() => {
     if (ready) setArrived(true);
   }, [ready]);
@@ -264,14 +257,12 @@ export function Dashboard() {
           </AppLink>
         </div>
         <div className="ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-2">
-          {!createInEmptyState && (
-            <div inert={importing}>
-              <NewCourseControl
-                open={creatingCourse && !importing}
-                onOpenChange={changeCreatingCourse}
-              />
-            </div>
-          )}
+          <div inert={importing}>
+            <NewCourseControl
+              open={creatingCourse && !importing}
+              onOpenChange={setCreatingCourse}
+            />
+          </div>
           <ImportControl onOpen={() => setCreatingCourse(false)} />
         </div>
       </div>
@@ -279,13 +270,9 @@ export function Dashboard() {
       <PageLoadingBoundary fallback={<CourseSkeleton />}>
         {!rows || !ready ? (
           <PageLoading />
-        ) : rows.length === 0 || (creatingCourse && createInEmptyState) ? (
+        ) : rows.length === 0 ? (
           <EmptyState
             hasArchivedCourses={courses?.some((course) => course.archived) ?? false}
-            creatingCourse={creatingCourse && !importing}
-            onCreatingCourseChange={changeCreatingCourse}
-            showCreateControl={createInEmptyState}
-            importing={importing}
             multiplier={m}
           />
         ) : (
@@ -413,17 +400,9 @@ function CourseSkeleton() {
 
 function EmptyState({
   hasArchivedCourses,
-  creatingCourse,
-  onCreatingCourseChange,
-  showCreateControl,
-  importing,
   multiplier,
 }: {
   hasArchivedCourses: boolean;
-  creatingCourse: boolean;
-  onCreatingCourseChange: (open: boolean) => void;
-  showCreateControl: boolean;
-  importing: boolean;
   multiplier: number;
 }) {
   return (
@@ -443,15 +422,6 @@ function EmptyState({
             ? 'Restore a course from Archived or start another one.'
             : 'Start a course to organise your lessons and cards.'}
         </p>
-        {showCreateControl && (
-          <div inert={importing}>
-            <NewCourseControl
-              open={creatingCourse}
-              onOpenChange={onCreatingCourseChange}
-              prominent
-            />
-          </div>
-        )}
       </div>
     </motion.div>
   );

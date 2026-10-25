@@ -1,5 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { enterFreshLacuna, enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import {
+  enterFreshLacuna,
+  enterWithWelcomeCourse,
+  importWelcomeCourse,
+} from './fixtures/lacunaApp';
 
 test('Tab leaves Other ways from its trigger in both directions', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -219,4 +223,23 @@ test('reopening a visibly collapsing creation surface keeps its input, selection
       end: element.selectionEnd,
     })),
   ).toEqual({ connected: true, value: 'Retained course draft', start: 3, end: 11 });
+});
+
+test('keeps New course beside Import for empty and populated Today', async ({ page }) => {
+  await page.setViewportSize({ width: 1470, height: 956 });
+  await enterFreshLacuna(page);
+  const create = page.locator('main').getByRole('button', { name: 'New course', exact: true });
+  const importer = page.locator('main').getByRole('button', { name: 'Import', exact: true });
+  const assertHeader = async () => {
+    await expect(create).toHaveCount(1);
+    const creation = (await create.boundingBox())!;
+    const importing = (await importer.boundingBox())!;
+    expect(
+      Math.abs(creation.y + creation.height / 2 - importing.y - importing.height / 2),
+    ).toBeLessThan(1);
+    expect(creation.x + creation.width).toBeLessThanOrEqual(importing.x);
+  };
+  await assertHeader();
+  await importWelcomeCourse(page);
+  await assertHeader();
 });

@@ -84,9 +84,7 @@ describe('Dashboard Today queue', () => {
     render(<Dashboard />);
     const emptyHeading = screen.getByRole('heading', { name: 'No courses yet' });
     expect(emptyHeading).toBeInTheDocument();
-    expect(emptyHeading.parentElement).toHaveClass('flex', 'flex-col', 'items-center');
     const create = screen.getByRole('button', { name: 'New course' });
-    expect(emptyHeading.parentElement).toContainElement(create);
     fireEvent.click(create);
     expect(create).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('new-course-form')).toBeInTheDocument();
@@ -113,7 +111,7 @@ describe('Dashboard Today queue', () => {
     expect(screen.getByRole('button', { name: 'New course' })).toBe(trigger);
   });
 
-  it('keeps the first-course importer mounted until its creation session closes', () => {
+  it('keeps the toolbar creation session mounted through first-course arrival', () => {
     setCourseData([]);
     const { rerender } = render(<Dashboard />);
     const trigger = screen.getByRole('button', { name: 'New course' });
@@ -124,9 +122,10 @@ describe('Dashboard Today queue', () => {
     expect(screen.getByTestId('new-course-form')).toBe(form);
     expect(screen.getByRole('button', { name: 'New course' })).toBe(trigger);
     fireEvent.click(trigger);
-    expect(screen.queryByTestId('new-course-form')).not.toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    expect(trigger).toHaveFocus();
     expect(screen.getByRole('region', { name: 'Today, most urgent first' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New course' })).not.toBe(trigger);
+    expect(screen.getByRole('button', { name: 'New course' })).toBe(trigger);
   });
 
   it('excludes archived courses from the queue and the totals', () => {
