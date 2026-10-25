@@ -15,7 +15,7 @@ import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import { createDemoReports } from './demoClass';
 import { ResultsSkeleton, Results } from './ClassResults';
-import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
+import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 import { Pupils } from './ClassPupils';
 import { LockedClass } from './ClassAccess';
 import { Invite } from './ClassInvite';
@@ -333,7 +333,7 @@ export function ClassPage({
             </p>
           )}
 
-          <PageLoadingBoundary
+          <GapsLoadingBoundary
             pending={tab !== 'invite' && !error && !data}
             fallback={<ResultsSkeleton />}
           >
@@ -394,7 +394,7 @@ export function ClassPage({
                 )}
               </div>
             )}
-          </PageLoadingBoundary>
+          </GapsLoadingBoundary>
         </>
       )}
 

@@ -12,7 +12,7 @@ import { forgetRememberedClass, readRememberedClass, rememberClass } from './rem
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import type * as KeysExports from './TeacherKeySetup';
 import { ResultsSkeleton } from './ClassResults';
-import { PageLoadingBoundary } from '../components/ui/PageLoadingBoundary';
+import { GapsLoadingBoundary } from './GapsLoadingBoundary';
 
 /** Loads the key set-up form when it is first needed, as the shell loads each screen. */
 export function useKeySetup(needed: boolean) {
@@ -32,7 +32,7 @@ export function KeySetupSlot({
   children(Keys: typeof KeysExports): ReactNode;
 }) {
   return (
-    <PageLoadingBoundary
+    <GapsLoadingBoundary
       pending={!keys.Keys && !keys.failed}
       fallback={
         <p role="status" className="flex items-center gap-3 py-6 text-ink-soft">
@@ -47,7 +47,7 @@ export function KeySetupSlot({
           Could not open key set-up. Reload Gaps to try again.
         </p>
       ) : null}
-    </PageLoadingBoundary>
+    </GapsLoadingBoundary>
   );
 }
 
@@ -106,7 +106,7 @@ export function LockedClass({
   }
 
   return (
-    <PageLoadingBoundary pending={checking} fallback={<ResultsSkeleton />}>
+    <GapsLoadingBoundary pending={checking} fallback={<ResultsSkeleton />}>
       {!checking && (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-14 text-center md:py-16">
           <ClassGlyph locked size={64} />
@@ -154,7 +154,7 @@ export function LockedClass({
           </div>
         </SectionCard>
       )}
-    </PageLoadingBoundary>
+    </GapsLoadingBoundary>
   );
 }
 

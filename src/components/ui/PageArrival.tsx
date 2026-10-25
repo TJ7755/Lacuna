@@ -66,10 +66,19 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
       element,
       top: element.getBoundingClientRect().top,
       opacity: Number(getComputedStyle(element).opacity),
+      willChange: element.style.willChange,
     }))
     .sort((a, b) => a.top - b.top);
   const rows = [...new Set(surfaces.map(({ top }) => Math.round(top)))];
-  const controls = surfaces.map(({ element, top, opacity: target }) => {
+  const restore = ({ element, willChange }: (typeof surfaces)[number]) => {
+    element.style.removeProperty('opacity');
+    if (willChange) element.style.willChange = willChange;
+    else element.style.removeProperty('will-change');
+  };
+  const controls = surfaces.map((surface) => {
+    const { element, top, opacity: target, willChange } = surface;
+    element.style.willChange =
+      willChange && willChange !== 'auto' ? `${willChange}, opacity` : 'opacity';
     element.style.opacity = '0';
     return animate(0, target, {
       ...liquidSpring(multiplier),
@@ -77,11 +86,11 @@ export function revealPageParts(root: HTMLElement, multiplier: number) {
       onUpdate: (opacity) => {
         element.style.opacity = String(opacity);
       },
-      onComplete: () => element.style.removeProperty('opacity'),
+      onComplete: () => restore(surface),
     });
   });
   return () => {
     controls.forEach((control) => control.stop());
-    surfaces.forEach(({ element }) => element.style.removeProperty('opacity'));
+    surfaces.forEach(restore);
   };
 }

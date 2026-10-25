@@ -57,14 +57,6 @@
     stroke-dashoffset: 1;
   }
 }
-@keyframes gaps-shimmer {
-  from {
-    background-position: 150% 0;
-  }
-  to {
-    background-position: -50% 0;
-  }
-}
 @keyframes gaps-shake {
   20%,
   60% {
@@ -112,10 +104,30 @@
   animation: gaps-spin 800ms linear infinite;
 }
 .gaps-skeleton {
-  background: linear-gradient(100deg, transparent 30%, hsl(var(--ink) / 0.07) 50%, transparent 70%)
-    hsl(var(--ink) / 0.05);
-  background-size: 200% 100%;
-  animation: gaps-shimmer 1.6s linear infinite;
+  background: hsl(var(--ink) / 0.05);
+}
+
+.gaps-loading-placeholder {
+  position: absolute;
+  inset: 0 0 auto;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 460ms var(--gaps-ease);
+}
+.gaps-loading-placeholder[data-showing] {
+  position: relative;
+  opacity: 1;
+}
+@starting-style {
+  .gaps-loading-placeholder[data-showing] {
+    opacity: 0;
+  }
+}
+.gaps-loading-content[data-loading] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
 }
 
 /* Rows lift a touch under the pointer, as the study app's Today rows do. */
@@ -245,6 +257,9 @@ svg.gaps-turn[data-open] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .gaps-loading-placeholder {
+    transition-duration: 100ms;
+  }
   .gaps-page,
   .gaps-rise,
   .gaps-fade,
