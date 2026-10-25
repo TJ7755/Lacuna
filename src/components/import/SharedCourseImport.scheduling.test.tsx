@@ -1,3 +1,4 @@
+import { getLocalTimeZone } from '../../utils/datetime';
 import 'fake-indexeddb/auto';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
@@ -76,15 +77,31 @@ beforeEach(async () => {
   await db.open();
 });
 
-it('keeps a teacher suggestion unconfirmed when onboarding chose an exam date', async () => {
+it('imports with the onboarding exam date over a teacher suggestion, without asking again', async () => {
   markOnboardingPending();
   chooseStudyTarget({ mode: 'exam', examDate: learnerDate });
   render(<SharedCourseImport />);
   const input = screen.getByLabelText('Share link or code to import');
-  fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(payload()))}` } });
+  // The teacher sets the exam in another zone; the learner's date stays in their own.
+  const teacherZone =
+    getLocalTimeZone() === 'Pacific/Kiritimati' ? 'Etc/GMT+12' : 'Pacific/Kiritimati';
+  const source = {
+    ...payload(),
+    exams: [{ n: 'Final', k: 'f' as const, e: teacherDate, tz: teacherZone }],
+  };
+  fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(source))}` } });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeDisabled();
-  expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  expect(add).toBeEnabled();
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  expect(screen.getByText(/Reviews build up to your exam on/)).toBeInTheDocument();
+  fireEvent.click(add);
+  await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
+  expect((await db.courseAssessments.toArray())[0]).toMatchObject({
+    schedulingMode: 'exam',
+    examDate: learnerDate,
+    timeZone: getLocalTimeZone(),
+  });
 });
 
 it('starts a suggestion-free course with the onboarding choice', async () => {
@@ -98,8 +115,13 @@ it('starts a suggestion-free course with the onboarding choice', async () => {
     target: { value: `LAC0${btoa(JSON.stringify(source))}` },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeEnabled();
-  expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  expect(add).toBeEnabled();
+  // Onboarding has just asked, so the picker is not repeated.
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  fireEvent.click(add);
+  await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
+  expect((await db.courseAssessments.toArray())[0].schedulingMode).toBe('steady');
 });
 
 it('requires a choice for a code, including the keyboard shortcut, then confirms the suggestion', async () => {

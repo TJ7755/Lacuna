@@ -26,7 +26,7 @@ for (const width of [1280, 390]) {
         .toBeLessThanOrEqual(844);
     };
     await checkBounds();
-    for (const source of ['Lacuna course', 'Anki deck', 'Text or spreadsheet']) {
+    for (const source of ['Course library', 'Lacuna course', 'Anki deck', 'Text or spreadsheet']) {
       await panel.getByRole('button', { name: new RegExp(source) }).click();
       const back = panel.getByRole('button', { name: 'Back to import sources' });
       await expect(back).toBeVisible();
@@ -42,6 +42,13 @@ for (const width of [1280, 390]) {
         await examDate.press('Space');
         await expect(examDate).toBeChecked();
         await expect(panel.getByText('Exam date and time', { exact: true })).toBeVisible();
+        await checkBounds();
+      }
+      if (source === 'Course library') {
+        const search = panel.getByRole('searchbox', { name: 'Search the course library' });
+        await expect(search).toBeFocused();
+        await search.fill('biology');
+        await expect(panel.getByRole('button', { name: /^Biology/ }).first()).toBeVisible();
         await checkBounds();
       }
       if (source === 'Lacuna course') {
@@ -65,7 +72,9 @@ for (const width of [1280, 390]) {
 }
 
 for (const width of [1280, 390]) {
-  test(`keeps import dropdown chevrons inset and controls within bounds at ${width}px`, async ({ page }, testInfo) => {
+  test(`keeps import dropdown chevrons inset and controls within bounds at ${width}px`, async ({
+    page,
+  }, testInfo) => {
     await enterFreshLacuna(page);
     const courseName = 'French vocabulary with a deliberately long destination name';
     await createCourse(page, courseName);
@@ -87,7 +96,10 @@ for (const width of [1280, 390]) {
     await lesson.selectOption({ label: 'Lesson 1' });
     await expect(lesson.locator('option:checked')).toHaveText('Lesson 1');
     for (const theme of ['light', 'dark']) {
-      await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
+      await page.evaluate(
+        (dark) => document.documentElement.classList.toggle('dark', dark),
+        theme === 'dark',
+      );
       for (const select of [destination, lesson]) {
         await select.focus();
         await expect(select).toHaveCSS('appearance', 'none');
@@ -95,7 +107,11 @@ for (const width of [1280, 390]) {
         const metrics = await select.evaluate((element) => {
           const style = getComputedStyle(element);
           const bounds = element.getBoundingClientRect();
-          return { padding: parseFloat(style.paddingRight), left: bounds.left, right: bounds.right };
+          return {
+            padding: parseFloat(style.paddingRight),
+            left: bounds.left,
+            right: bounds.right,
+          };
         });
         expect(metrics.padding).toBeGreaterThanOrEqual(36);
         expect(metrics.left).toBeGreaterThanOrEqual(0);
@@ -103,7 +119,10 @@ for (const width of [1280, 390]) {
       }
       const path = testInfo.outputPath(`import-dropdowns-${width}-${theme}.png`);
       await panel.screenshot({ path });
-      await testInfo.attach(`${width}px ${theme} import dropdowns`, { path, contentType: 'image/png' });
+      await testInfo.attach(`${width}px ${theme} import dropdowns`, {
+        path,
+        contentType: 'image/png',
+      });
     }
   });
 }

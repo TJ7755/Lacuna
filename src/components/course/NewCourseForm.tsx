@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react';
 import { useIsPresent } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
@@ -13,16 +13,26 @@ import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
-import { LIBRARY_ORIGIN } from '../../config/origins';
+import { BookIcon } from '../ui/icons';
+import { DelayedFallback } from '../ui/DelayedFallback';
 import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
+
+// New course is eager; the library importer must stay behind the learner's choice.
+const CourseLibraryImport = lazy(() =>
+  import('../import/CourseLibraryImport').then((module) => ({
+    default: module.CourseLibraryImport,
+  })),
+);
 
 interface NewCourseFormProps {
   onClose: () => void;
   inline?: boolean;
+  /** Offer the course library first; onboarding has already shown it. */
+  library?: boolean;
 }
 
 /** Create an empty course; steady retention is the default study target. */
-export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
+export function NewCourseForm({ onClose, inline = false, library = true }: NewCourseFormProps) {
   const { notify } = useToast();
   const navigate = useNavigate();
   const present = useIsPresent();
@@ -43,9 +53,21 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   // Onboarding has just asked about the exam, so the course takes that answer as it is.
   const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
+  const [browsing, setBrowsing] = useState(false);
+  // A library course being written must finish here, or its lineage confirmation is skipped.
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const close = () => {
+    if (!saving && !libraryBusy) onClose();
+  };
+  const libraryButtonRef = useRef<HTMLButtonElement>(null);
+  const returnToLibraryButton = useRef(false);
   useEffect(() => {
-    if (present && inline) nameInputRef.current?.focus();
-  }, [present, inline]);
+    if (!present || browsing) return;
+    if (returnToLibraryButton.current) {
+      returnToLibraryButton.current = false;
+      libraryButtonRef.current?.focus();
+    } else if (inline) nameInputRef.current?.focus();
+  }, [present, inline, browsing]);
 
   useEffect(() => {
     // Fetch both route modules while the user names the course, without delaying creation.
@@ -93,10 +115,11 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   }
 
   const onKeyDown = dialogKeyDown({
-    onCancel: () => {
-      if (!saving) onClose();
+    onCancel: close,
+    // The library has no course name to submit, so Ctrl+Enter there never creates one.
+    onSubmit: () => {
+      if (!browsing) void handleCreate();
     },
-    onSubmit: () => void handleCreate(),
     enterSubmits: true,
     ignore: (target, key) =>
       key === 'Escape'
@@ -106,14 +129,21 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const fields = (
     <>
       <div className="flex flex-col gap-5 px-6 py-6">
-        <a
-          href={LIBRARY_ORIGIN}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-ink-soft underline underline-offset-4 hover:text-ink"
-        >
-          Browse the course library
-        </a>
+        {library && (
+          <div className="import-sources">
+            <button
+              ref={libraryButtonRef}
+              type="button"
+              data-featured
+              disabled={saving}
+              onClick={() => setBrowsing(true)}
+            >
+              <BookIcon width={24} height={24} />
+              <strong>Course library</strong>
+              <span>Ready-made GCSE and IGCSE courses</span>
+            </button>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <label htmlFor={nameInputId} className={fieldLabelClassName}>
             Course name
@@ -176,7 +206,47 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
     </>
   );
 
+  const backToForm = () => {
+    returnToLibraryButton.current = true;
+    setBrowsing(false);
+  };
+
+  // Outside the form, so Enter in the library search never submits it.
+  const libraryView = (
+    <Suspense
+      fallback={
+        <div
+          className="import-panel"
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            backToForm();
+          }}
+        >
+          <Button type="button" variant="ghost" autoFocus onClick={backToForm}>
+            Back to New course
+          </Button>
+          <DelayedFallback>
+            <p role="status">Loading the course library…</p>
+          </DelayedFallback>
+        </div>
+      }
+    >
+      <CourseLibraryImport
+        backLabel="New course"
+        onBack={backToForm}
+        onBusyChange={setLibraryBusy}
+        onOpenCourse={(courseId) => {
+          onClose();
+          void navigate(onboardingDestination(`/course/${courseId}`));
+        }}
+      />
+    </Suspense>
+  );
+
   if (inline) {
+    if (browsing) return libraryView;
     return (
       <form
         aria-label="New course"
@@ -195,15 +265,13 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
     <DialogPanel
       label="New course"
       trapRef={trapRef}
-      onBackdropClick={() => {
-        if (!saving) onClose();
-      }}
+      onBackdropClick={close}
       className="max-w-md"
       overlayClassName="will-change-transform-opacity"
       onKeyDown={onKeyDown}
     >
-      <DialogHeader title="New course" onClose={onClose} closeLabel="Close" />
-      {fields}
+      <DialogHeader title="New course" onClose={close} closeLabel="Close" />
+      {browsing ? libraryView : fields}
     </DialogPanel>,
     document.body,
   );

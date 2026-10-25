@@ -25,7 +25,8 @@ const LOCALE = /(?:^|[\\/])locales[\\/][^\\/]+\.pak$/i;
 const WINDOWS_PACKAGE_BUDGET = {
   archiveBytes: 19_000_000,
   payloadBytes: 19_000_000,
-  payloadFileCount: 700,
+  // The embedded library adds renderer chunks; archive and payload byte limits still apply.
+  payloadFileCount: 710,
   sourceMapBytes: 0,
   buildOnlyAssetBytes: 10_000,
   localeBytes: 1_300_000,

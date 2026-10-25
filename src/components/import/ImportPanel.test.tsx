@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type * as Router from 'react-router-dom';
 import type * as CardImport from '../../db/cardImport';
 import { MemoryRouter } from 'react-router-dom';
 import { ImportPanel } from './ImportPanel';
 import { domAnimation, LazyMotion } from 'motion/react';
-import { LIBRARY_ORIGIN } from '../../config/origins';
+import { libraryCourses } from '../../library/catalogue';
 
 const mocks = vi.hoisted(() => ({
   multiplier: 0,
@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   parseApkg: vi.fn(),
   decodeFile: vi.fn(),
   importShare: vi.fn(),
+  shareLink: vi.fn(),
 }));
 vi.mock('react-router-dom', async (original) => ({
   ...(await original<typeof Router>()),
@@ -55,6 +56,18 @@ vi.mock('../../db/share', () => ({
   importSharePayload: mocks.importShare,
 }));
 vi.mock('../../db/mergeImport', () => ({ isLineagePayload: () => false }));
+vi.mock('./ShareLinkImport', () => ({
+  ShareLinkImport: (props: {
+    code: string;
+    chosen?: boolean;
+    isCurrent: () => boolean;
+    onBusyChange?: (busy: boolean) => void;
+    onOpenCourse: (id: string) => void;
+  }) => {
+    mocks.shareLink(props);
+    return <p>Importing {props.code}</p>;
+  },
+}));
 vi.mock('../cards/CardContent', () => ({
   CardContent: ({ card, side }: { card: Record<string, string>; side: string }) => (
     <div>{card[side]}</div>
@@ -77,15 +90,75 @@ function open(entry = '/') {
     </MemoryRouter>,
   );
 }
-it('exposes the library alongside course import sources', () => {
+it('leads with the course library and imports a chosen course inside the panel', async () => {
   open();
-  const link = screen
-    .getAllByRole('link')
-    .find((anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN);
-  expect(link).toHaveAccessibleName();
-  expect(link).toHaveAttribute('target', '_blank');
-  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-  expect(mocks.importShare).not.toHaveBeenCalled();
+  const library = screen.getByRole('button', { name: /Course library/ });
+  expect(library).toHaveFocus();
+  expect(library).toHaveAttribute('data-featured', 'true');
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  fireEvent.click(library);
+
+  const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+  expect(search).toHaveFocus();
+  fireEvent.change(search, { target: { value: 'aqa biology' } });
+  const course = libraryCourses.find((entry) => entry.id === 'biology8461')!;
+  const matches = screen.getAllByRole('button', { name: /^Biology/ });
+  expect(matches).toHaveLength(1);
+  fireEvent.click(matches[0]);
+
+  expect(mocks.shareLink).toHaveBeenLastCalledWith(
+    expect.objectContaining({ code: course.shareUrl, chosen: true }),
+  );
+  const { isCurrent, onOpenCourse } = mocks.shareLink.mock.lastCall![0];
+  expect(isCurrent()).toBe(true);
+  onOpenCourse('biology');
+  expect(mocks.navigate).toHaveBeenCalledWith('/course/biology');
+
+  const back = screen.getByRole('button', { name: 'Back to the course library' });
+  await waitFor(() => expect(back).toHaveFocus());
+  fireEvent.click(back);
+  expect(isCurrent()).toBe(false);
+  expect(screen.getByRole('searchbox', { name: 'Search the course library' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
+  expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus();
+});
+
+it('holds the way back during a library import and ignores an earlier choice afterwards', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+  const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+  fireEvent.change(search, { target: { value: '8461' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+  const first = mocks.shareLink.mock.lastCall![0];
+
+  act(() => {
+    first.onBusyChange(true);
+  });
+  const back = screen.getByRole('button', { name: 'Back to the course library' });
+  expect(back).toBeDisabled();
+  fireEvent.keyDown(back, { key: 'Escape' });
+  expect(screen.getByText(/^Importing/)).toBeInTheDocument();
+  act(() => {
+    first.onBusyChange(false);
+  });
+
+  fireEvent.click(back);
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search the course library' }), {
+    target: { value: '8461' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+  // The same course chosen again is a new import; the first one is stale.
+  expect(first.isCurrent()).toBe(false);
+  expect(mocks.shareLink.mock.lastCall![0].isCurrent()).toBe(true);
+});
+
+it('tells the learner when no library course matches', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search the course library' }), {
+    target: { value: 'astrophysics' },
+  });
+  expect(screen.getByRole('status')).toHaveTextContent('No library course matches');
 });
 async function reviewText(reverse = false) {
   fireEvent.click(screen.getByRole('button', { name: /Text or spreadsheet/ }));

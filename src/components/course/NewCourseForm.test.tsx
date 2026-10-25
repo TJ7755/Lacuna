@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NewCourseForm } from './NewCourseForm';
 import { defaultExamDate, fromDateTimeLocalValue, getLocalTimeZone } from '../../utils/datetime';
-import { LIBRARY_ORIGIN } from '../../config/origins';
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -17,16 +16,93 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
 vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
 vi.mock('../../db/lessonRepository', () => ({ createLesson: mocks.createLesson }));
+vi.mock('../import/ShareLinkImport', () => ({
+  ShareLinkImport: ({
+    onOpenCourse,
+    onBusyChange,
+  }: {
+    onOpenCourse: (id: string) => void;
+    onBusyChange: (busy: boolean) => void;
+  }) => (
+    <>
+      <button type="button" onClick={() => onOpenCourse('library-course')}>
+        Add to my courses
+      </button>
+      <button type="button" onClick={() => onBusyChange(true)}>
+        Start writing
+      </button>
+      <button type="button" onClick={() => onBusyChange(false)}>
+        Finish writing
+      </button>
+    </>
+  ),
+}));
 describe('NewCourseForm', () => {
-  it('offers the library as an external alternative to creating a course', () => {
-    render(<NewCourseForm onClose={vi.fn()} inline />);
-    const link = screen
-      .getAllByRole('link')
-      .find((anchor) => anchor.getAttribute('href') === LIBRARY_ORIGIN);
-    expect(link).toHaveAccessibleName();
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  it('leads with the course library and imports a library course in place', async () => {
+    const onClose = vi.fn();
+    render(<NewCourseForm onClose={onClose} inline />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
+    expect(search).toHaveFocus();
+    // Enter in the search never creates a course from the hidden form.
+    fireEvent.keyDown(search, { key: 'Enter' });
+    fireEvent.change(search, { target: { value: '8461' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Back to the course library' })).toHaveFocus(),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Add to my courses' }));
+    expect(onClose).toHaveBeenCalled();
+    expect(mocks.navigate).toHaveBeenCalledWith('/course/library-course');
     expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
+
+  it('steps back out of the library with Escape, one level at a time', async () => {
+    const onClose = vi.fn();
+    render(<NewCourseForm onClose={onClose} inline />);
+    fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Search the course library' }), {
+      target: { value: '8461' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+    const back = screen.getByRole('button', { name: 'Back to the course library' });
+    fireEvent.keyDown(back, { key: 'Escape' });
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
+    fireEvent.keyDown(search, { key: 'Escape' });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus(),
+    );
+    expect(screen.getByLabelText('Course name')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the dialog open while a library course is written, and never creates one there', async () => {
+    const onClose = vi.fn();
+    render(<NewCourseForm onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Biology' } });
+    fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+    const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
+    fireEvent.keyDown(search, { key: 'Enter', ctrlKey: true });
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+
+    fireEvent.change(search, { target: { value: '8461' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start writing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Start writing' }), { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish writing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+  });
+
+  it('leaves the library out when onboarding has already offered it', () => {
+    render(<NewCourseForm onClose={vi.fn()} inline library={false} />);
+    expect(screen.queryByRole('button', { name: /Course library/ })).not.toBeInTheDocument();
   });
   beforeEach(() => {
     vi.clearAllMocks();
