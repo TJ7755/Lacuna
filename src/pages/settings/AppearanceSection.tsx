@@ -45,25 +45,27 @@ export function AppearanceSection() {
         <SegmentedPills label="Theme" value={theme} options={THEME_OPTIONS} onChange={setTheme} />
       </SettingRow>
 
-      <SettingRow label="Accent colour">
-        <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap gap-2.5">
+      <SettingRow label="Accent colour" className="[&>div:first-child]:basis-28">
+        <div role="radiogroup" aria-label="Accent colour" className="flex flex-wrap">
           <LayoutGroup id="accent-swatches">
             {ACCENTS.map((option) => {
               const active = accent === option.key;
               return (
-                <button
+                <motion.button
                   key={option.key}
                   type="button"
                   role="radio"
                   aria-checked={active}
                   onClick={() => setAccent(option.key)}
+                  whileHover={multiplier > 0 ? { scale: 1.1 } : undefined}
+                  transition={scaledSpring(multiplier, 520, 32)}
                   title={option.label}
                   aria-label={option.label}
-                  className="relative grid h-11 w-11 place-items-center rounded-full transition-transform duration-150 hover:scale-105 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
+                  className="relative grid h-11 w-11 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
                 >
                   <span
                     aria-hidden="true"
-                    className="absolute inset-1.5 rounded-full"
+                    className="absolute inset-2.5 rounded-full"
                     style={{ backgroundColor: option.swatch }}
                   />
                   {active && (
@@ -72,10 +74,10 @@ export function AppearanceSection() {
                       layoutDependency={accent}
                       aria-hidden="true"
                       transition={scaledSpring(multiplier, 520, 32)}
-                      className="absolute inset-0.5 rounded-full ring-2 ring-ink"
+                      className="absolute inset-1.5 rounded-full ring-2 ring-ink"
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </LayoutGroup>

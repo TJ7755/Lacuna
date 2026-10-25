@@ -5,26 +5,21 @@ import { useCourseCardMetric, type CourseCardMetric } from '../../state/courseCa
 import { useDashboardSort, type DashboardSort } from '../../state/dashboardSort';
 import { useForecastRange, type ForecastRange } from '../../state/forecastRange';
 import { SettingsSectionHeading, SettingsSubsectionHeading } from './SettingsSectionHeading';
-import {
-  choiceChipClass,
-  PillSwitch,
-  SETTINGS_HEADING_ROW_CLASS,
-  SettingsCard,
-} from './SettingsUi';
+import { SegmentedPills, PillSwitch, SETTINGS_HEADING_ROW_CLASS, SettingsCard } from './SettingsUi';
 
-const SORT_OPTIONS: { key: DashboardSort; label: string }[] = [
-  { key: 'recent', label: 'Recently studied' },
-  { key: 'ready', label: 'Ready for review' },
-  { key: 'mastery', label: 'Lowest mastery' },
-  { key: 'exam', label: 'Soonest exam' },
-  { key: 'name', label: 'Name A–Z' },
-  { key: 'created', label: 'Created recently' },
+const SORT_OPTIONS: { value: DashboardSort; label: string }[] = [
+  { value: 'recent', label: 'Recently studied' },
+  { value: 'ready', label: 'Ready for review' },
+  { value: 'mastery', label: 'Lowest mastery' },
+  { value: 'exam', label: 'Soonest exam' },
+  { value: 'name', label: 'Name A–Z' },
+  { value: 'created', label: 'Created recently' },
 ];
 
-const RANGE_OPTIONS: { key: ForecastRange; label: string }[] = [
-  { key: 'fortnight', label: '2 weeks' },
-  { key: 'month', label: 'Month' },
-  { key: 'quarter', label: '3 months' },
+const RANGE_OPTIONS: { value: ForecastRange; label: string }[] = [
+  { value: 'fortnight', label: '2 weeks' },
+  { value: 'month', label: 'Month' },
+  { value: 'quarter', label: '3 months' },
 ];
 
 export function DashboardSection() {
@@ -41,75 +36,51 @@ export function DashboardSection() {
           Dashboard
         </SettingsSectionHeading>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {SORT_OPTIONS.map((option) => {
-          const active = dashboardSort === option.key;
-          return (
-            <button
-              key={option.key}
-              type="button"
-              onClick={() => setDashboardSort(option.key)}
-              aria-pressed={active}
-              className={choiceChipClass(active)}
-            >
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+      <SettingsSubsectionHeading className="mb-3 text-sm font-medium text-ink">
+        Sort courses
+      </SettingsSubsectionHeading>
+      <SegmentedPills
+        label="Sort courses"
+        semantics="pressed"
+        value={dashboardSort}
+        options={SORT_OPTIONS}
+        onChange={setDashboardSort}
+      />
 
-      <div className="mt-6 pt-0">
-        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
+      <div className="mt-5 border-t border-line pt-5">
+        <SettingsSubsectionHeading className="mb-3 text-sm font-medium text-ink">
           Course progress metric
         </SettingsSubsectionHeading>
-        <div className="flex flex-wrap gap-2">
-          {(
+        <SegmentedPills
+          label="Course progress metric"
+          semantics="pressed"
+          value={courseCardMetric}
+          options={
             [
-              { key: 'curriculum', label: 'Course progress' },
-              { key: 'coverage', label: 'Card coverage' },
-              { key: 'today', label: "Today's workload" },
-            ] as { key: CourseCardMetric; label: string }[]
-          ).map((option) => {
-            const active = courseCardMetric === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setCourseCardMetric(option.key)}
-                aria-pressed={active}
-                className={choiceChipClass(active)}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+              { value: 'curriculum', label: 'Course progress' },
+              { value: 'coverage', label: 'Card coverage' },
+              { value: 'today', label: "Today's workload" },
+            ] satisfies { value: CourseCardMetric; label: string }[]
+          }
+          onChange={setCourseCardMetric}
+        />
       </div>
 
-      <div className="mt-6 pt-0">
-        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
+      <div className="mt-5 border-t border-line pt-5">
+        <SettingsSubsectionHeading className="mb-3 text-sm font-medium text-ink">
           Forecast range
         </SettingsSubsectionHeading>
-        <div className="flex flex-wrap gap-2">
-          {RANGE_OPTIONS.map((option) => {
-            const active = forecastRange === option.key;
-            return (
-              <button
-                key={option.key}
-                type="button"
-                onClick={() => setForecastRange(option.key)}
-                aria-pressed={active}
-                className={choiceChipClass(active)}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedPills
+          label="Forecast range"
+          semantics="pressed"
+          value={forecastRange}
+          options={RANGE_OPTIONS}
+          onChange={setForecastRange}
+        />
       </div>
 
-      <div className="mt-6 pt-0">
-        <SettingsSubsectionHeading className="mb-4 text-sm font-medium text-ink">
+      <div className="mt-5 border-t border-line pt-5">
+        <SettingsSubsectionHeading className="mb-3 text-sm font-medium text-ink">
           Card hover detail
         </SettingsSubsectionHeading>
         <div className="flex flex-col gap-3">
