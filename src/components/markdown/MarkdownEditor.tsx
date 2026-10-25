@@ -1,13 +1,7 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type DragEvent,
-  type ReactNode,
-  type Ref,
-} from 'react';
+import { useId, useRef, useState, type DragEvent, type Ref } from 'react';
 import { m as motion, AnimatePresence } from 'motion/react';
+import { wrap, linePrefix, type ToolbarAction, type Selection } from './markdownSelection';
+import { useMarkdownEditorHistory } from './useMarkdownEditorHistory';
 import { MarkdownView } from './MarkdownView';
 import { imageFileToAssetUrl, imageMarkdown } from './image';
 import { nextClozeIndex } from '../../utils/cloze';
@@ -58,46 +52,6 @@ interface MarkdownEditorProps {
   ariaDescribedBy?: string;
 }
 
-type ToolbarAction = {
-  label: ReactNode;
-  title: string;
-  /** Letter pressed with Cmd/Ctrl inside the editor. */
-  shortcut?: string;
-  apply: (sel: Selection) => Replacement;
-};
-
-interface Selection {
-  before: string;
-  selected: string;
-  after: string;
-  full: string;
-}
-
-interface Replacement {
-  text: string;
-  /** Caret/selection offsets within the new full text. */
-  selStart: number;
-  selEnd: number;
-}
-
-/** Wrap the selection with the given prefix/suffix, or insert a placeholder if empty. */
-function wrap(sel: Selection, prefix: string, suffix: string, placeholder: string): Replacement {
-  const inner = sel.selected || placeholder;
-  const text = sel.before + prefix + inner + suffix + sel.after;
-  const selStart = sel.before.length + prefix.length;
-  return { text, selStart, selEnd: selStart + inner.length };
-}
-
-/** Insert a line-prefixed block (heading, list item) at the start of the selection's line. */
-function linePrefix(sel: Selection, prefix: string, placeholder: string): Replacement {
-  const inner = sel.selected || placeholder;
-  const needsBreak = sel.before.length > 0 && !sel.before.endsWith('\n');
-  const lead = needsBreak ? '\n' : '';
-  const text = sel.before + lead + prefix + inner + sel.after;
-  const selStart = sel.before.length + lead.length + prefix.length;
-  return { text, selStart, selEnd: selStart + inner.length };
-}
-
 export function MarkdownEditor({
   value,
   onChange,
@@ -136,114 +90,15 @@ export function MarkdownEditor({
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
-  /* Undo/redo history */
-  interface HistoryEntry {
-    text: string;
-    selStart: number;
-    selEnd: number;
-  }
-  // Captured once on first render (lazy ref init) so the mount-only effect below can seed
-  // history without depending on the `value` prop, which changes on every keystroke.
-  const initialValueRef = useRef(value);
-  const historyRef = useRef<HistoryEntry[]>([
-    { text: initialValueRef.current, selStart: 0, selEnd: 0 },
-  ]);
-  const historyIndexRef = useRef(0);
-  const historyTimerRef = useRef<number | null>(null);
-  const lastPushedTextRef = useRef(initialValueRef.current);
-  const currentValueRef = useRef(initialValueRef.current);
-
-  useEffect(() => {
-    currentValueRef.current = value;
-  }, [value]);
-
-  useEffect(() => {
-    // Reset history when the editor is mounted for a new card. Uses the value captured at
-    // first render (initialValueRef), not the live `value` prop, so this genuinely only
-    // needs to run on mount — no eslint suppression required. Subsequent changes are
-    // handled by pushHistory/scheduleHistoryPush.
-    const initial = initialValueRef.current;
-    historyRef.current = [{ text: initial, selStart: 0, selEnd: 0 }];
-    historyIndexRef.current = 0;
-    lastPushedTextRef.current = initial;
-    currentValueRef.current = initial;
-    return () => {
-      cancelHistoryTimer();
-    };
-  }, []);
-
-  function pushHistory() {
-    const el = textareaRef.current;
-    const entry: HistoryEntry = {
-      text: currentValueRef.current,
-      selStart: el?.selectionStart ?? 0,
-      selEnd: el?.selectionEnd ?? 0,
-    };
-    // Avoid duplicate adjacent entries.
-    if (lastPushedTextRef.current === entry.text) return;
-
-    // Truncate any redo entries.
-    if (historyIndexRef.current < historyRef.current.length - 1) {
-      historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1);
-    }
-
-    historyRef.current.push(entry);
-    historyIndexRef.current = historyRef.current.length - 1;
-    lastPushedTextRef.current = entry.text;
-
-    // Cap at 50 entries.
-    if (historyRef.current.length > 50) {
-      historyRef.current.shift();
-      historyIndexRef.current--;
-    }
-  }
-
-  function scheduleHistoryPush() {
-    if (historyTimerRef.current) window.clearTimeout(historyTimerRef.current);
-    historyTimerRef.current = window.setTimeout(() => pushHistory(), 800);
-  }
-
-  function cancelHistoryTimer() {
-    if (historyTimerRef.current) {
-      window.clearTimeout(historyTimerRef.current);
-      historyTimerRef.current = null;
-    }
-  }
-
-  function undo() {
-    cancelHistoryTimer();
-    pushHistory();
-    if (historyIndexRef.current <= 0) return;
-    historyIndexRef.current--;
-    const entry = historyRef.current[historyIndexRef.current];
-    lastPushedTextRef.current = entry.text;
-    currentValueRef.current = entry.text;
-    onChange(entry.text);
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(entry.selStart, entry.selEnd);
-    });
-  }
-
-  function redo() {
-    cancelHistoryTimer();
-    // A fresh edit replaces the redo branch even before the debounce has elapsed.
-    pushHistory();
-    if (historyIndexRef.current >= historyRef.current.length - 1) return;
-    historyIndexRef.current++;
-    const entry = historyRef.current[historyIndexRef.current];
-    lastPushedTextRef.current = entry.text;
-    currentValueRef.current = entry.text;
-    onChange(entry.text);
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(entry.selStart, entry.selEnd);
-    });
-  }
+  const {
+    currentValueRef,
+    pushHistory,
+    scheduleHistoryPush,
+    cancelHistoryTimer,
+    undo,
+    redo,
+    applyReplacement,
+  } = useMarkdownEditorHistory(value, onChange, textareaRef);
 
   function currentSelection(): Selection {
     const el = textareaRef.current!;
@@ -255,20 +110,6 @@ export function MarkdownEditor({
       after: value.slice(end),
       full: value,
     };
-  }
-
-  function applyReplacement(rep: Replacement) {
-    cancelHistoryTimer();
-    pushHistory();
-    currentValueRef.current = rep.text;
-    onChange(rep.text);
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      el.focus();
-      el.setSelectionRange(rep.selStart, rep.selEnd);
-      pushHistory();
-    });
   }
 
   function runAction(action: ToolbarAction) {
