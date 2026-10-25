@@ -49,9 +49,30 @@ const RECORD_REVIEW_CARD_COUNTS = [500, 2_000, 10_000] as const;
 const INITIAL_ASSET_BUDGET = {
   javascriptBytes: 910_000,
   javascriptGzipBytes: 280_000,
+  scriptRequests: 16,
   // Include the landing styles required to paint prerendered HTML before hydration.
   cssBytes: 150_000,
   cssGzipBytes: 27_000,
+  landingJavascriptBytes: 500_000,
+  landingJavascriptGzipBytes: 165_000,
+  landingScriptRequests: 9,
+} as const;
+
+const PUBLIC_ASSET_BUDGET = {
+  comparison: {
+    javascriptBytes: 1_650_000,
+    javascriptGzipBytes: 510_000,
+    scriptRequests: 28,
+    cssBytes: 190_000,
+    cssGzipBytes: 38_000,
+  },
+  courses: {
+    javascriptBytes: 260_000,
+    javascriptGzipBytes: 81_000,
+    scriptRequests: 8,
+    cssBytes: 134_000,
+    cssGzipBytes: 24_500,
+  },
 } as const;
 
 function benchmark(fn: () => unknown, repetitions: number): number {
@@ -120,14 +141,8 @@ async function measureSessionEngine() {
 
   return {
     cardCount: SESSION_CARD_COUNT,
-    selectNextMsMedian: benchmark(
-      () => selectNext(cards, context, cooldowns, NOW),
-      5,
-    ),
-    sessionCompleteMsMedian: benchmark(
-      () => sessionComplete(cards, context, NOW),
-      5,
-    ),
+    selectNextMsMedian: benchmark(() => selectNext(cards, context, cooldowns, NOW), 5),
+    sessionCompleteMsMedian: benchmark(() => sessionComplete(cards, context, NOW), 5),
   };
 }
 
@@ -139,9 +154,7 @@ async function resetBenchmarkDatabase(cardCount: number) {
   });
   const deck = await db.schedulingUnits.get(course.id);
   if (!deck) throw new Error('Performance benchmark scheduling unit was not created.');
-  const cards = Array.from({ length: cardCount }, (_, index) =>
-    makeBenchmarkCard(index, deck.id),
-  );
+  const cards = Array.from({ length: cardCount }, (_, index) => makeBenchmarkCard(index, deck.id));
   await db.cards.bulkAdd(cards);
   return { deck, cards };
 }
@@ -259,15 +272,83 @@ async function measureBuildOutput() {
       };
     }),
   );
-  const initialJavaScript = assets.filter((asset) => asset.name.endsWith('.js'));
+  // HTML references alone no longer describe either usable page: the head
+  // chooses the study entry or landing hydration entry. Budget both complete
+  // static graphs, without including optional routes or the idle app warm-up.
+  const manifest = JSON.parse(await readFile('dist/.vite/manifest.json', 'utf8')) as Record<
+    string,
+    { file: string; imports?: string[] }
+  >;
+  function staticScripts(root: string): Set<string> {
+    const visited = new Set<string>();
+    const scripts = new Set<string>();
+    function visit(key: string): void {
+      if (visited.has(key)) return;
+      visited.add(key);
+      const chunk = manifest[key];
+      if (!chunk) throw new Error(`Missing production asset graph entry: ${key}`);
+      if (chunk.file.endsWith('.js')) scripts.add(chunk.file.replace('assets/', ''));
+      for (const dependency of chunk.imports ?? []) visit(dependency);
+    }
+    visit(root);
+    return scripts;
+  }
+  const documentScripts = assets.filter((asset) => asset.name.endsWith('.js'));
+  function pageScripts(root: string) {
+    const names = new Set([...documentScripts.map((asset) => asset.name), ...staticScripts(root)]);
+    const scripts = allAssets.filter((asset) => names.has(asset.name));
+    if (scripts.length !== names.size) throw new Error(`Missing built scripts for ${root}`);
+    return {
+      assets: scripts,
+      bytes: scripts.reduce((total, asset) => total + asset.bytes, 0),
+      gzipBytes: scripts.reduce((total, asset) => total + asset.gzipBytes, 0),
+    };
+  }
+  const manifestByFile = new Map(Object.entries(manifest).map(([key, chunk]) => [chunk.file, key]));
+  const publicPages = await Promise.all(
+    (await readdir('dist', { recursive: true }))
+      .filter((path) => path.endsWith('.html') && path !== 'index.html')
+      .sort()
+      .map(async (path) => {
+        const html = await readFile(`dist/${path}`, 'utf8');
+        const references = new Set(
+          [...html.matchAll(/(?:src|href)="(\/assets\/[^"?]+)"/g)].map((match) =>
+            match[1].replace('/assets/', ''),
+          ),
+        );
+        const scripts = new Set<string>();
+        for (const reference of references) {
+          if (!reference.endsWith('.js')) continue;
+          const key = manifestByFile.get(`assets/${reference}`);
+          if (!key) throw new Error(`Missing production asset graph entry: ${reference}`);
+          for (const script of staticScripts(key)) scripts.add(script);
+        }
+        const javascript = allAssets.filter((asset) => scripts.has(asset.name));
+        const css = allAssets.filter(
+          (asset) => asset.name.endsWith('.css') && references.has(asset.name),
+        );
+        return {
+          path,
+          javascript: {
+            assets: javascript,
+            bytes: javascript.reduce((total, asset) => total + asset.bytes, 0),
+            gzipBytes: javascript.reduce((total, asset) => total + asset.gzipBytes, 0),
+          },
+          css: {
+            assets: css,
+            bytes: css.reduce((total, asset) => total + asset.bytes, 0),
+            gzipBytes: css.reduce((total, asset) => total + asset.gzipBytes, 0),
+          },
+        };
+      }),
+  );
   const initialCss = assets.filter((asset) => asset.name.endsWith('.css'));
   return {
     available: true as const,
-    initialJavaScript: {
-      assets: initialJavaScript,
-      bytes: initialJavaScript.reduce((total, asset) => total + asset.bytes, 0),
-      gzipBytes: initialJavaScript.reduce((total, asset) => total + asset.gzipBytes, 0),
-    },
+    initialJavaScript: pageScripts('index.html'),
+    landingJavaScript: pageScripts('src/landingBootstrap.ts'),
+    documentJavaScript: documentScripts,
+    publicPages,
     initialCss: {
       assets: initialCss,
       bytes: initialCss.reduce((total, asset) => total + asset.bytes, 0),
@@ -285,6 +366,24 @@ function assertInitialAssetBudget(build: BuildOutput): void {
   }
 
   const failures: string[] = [];
+  for (const page of build.publicPages) {
+    const budget = page.path.startsWith('compare/')
+      ? PUBLIC_ASSET_BUDGET.comparison
+      : page.path.startsWith('courses/')
+        ? PUBLIC_ASSET_BUDGET.courses
+        : null;
+    if (!budget) throw new Error(`No initial asset budget for shipped HTML: ${page.path}`);
+    const checks = [
+      ['JavaScript bytes', page.javascript.bytes, budget.javascriptBytes],
+      ['JavaScript gzip bytes', page.javascript.gzipBytes, budget.javascriptGzipBytes],
+      ['script requests', page.javascript.assets.length, budget.scriptRequests],
+      ['CSS bytes', page.css.bytes, budget.cssBytes],
+      ['CSS gzip bytes', page.css.gzipBytes, budget.cssGzipBytes],
+    ] as const;
+    for (const [label, actual, maximum] of checks) {
+      if (actual > maximum) failures.push(`${page.path} ${label}: ${actual} > ${maximum}`);
+    }
+  }
   const checks = [
     ['JavaScript bytes', build.initialJavaScript.bytes, INITIAL_ASSET_BUDGET.javascriptBytes],
     [
@@ -294,6 +393,26 @@ function assertInitialAssetBudget(build: BuildOutput): void {
     ],
     ['CSS bytes', build.initialCss.bytes, INITIAL_ASSET_BUDGET.cssBytes],
     ['CSS gzip bytes', build.initialCss.gzipBytes, INITIAL_ASSET_BUDGET.cssGzipBytes],
+    [
+      'Study script requests',
+      build.initialJavaScript.assets.length,
+      INITIAL_ASSET_BUDGET.scriptRequests,
+    ],
+    [
+      'Landing JavaScript bytes',
+      build.landingJavaScript.bytes,
+      INITIAL_ASSET_BUDGET.landingJavascriptBytes,
+    ],
+    [
+      'Landing JavaScript gzip bytes',
+      build.landingJavaScript.gzipBytes,
+      INITIAL_ASSET_BUDGET.landingJavascriptGzipBytes,
+    ],
+    [
+      'Landing script requests',
+      build.landingJavaScript.assets.length,
+      INITIAL_ASSET_BUDGET.landingScriptRequests,
+    ],
   ] as const;
   for (const [label, actual, maximum] of checks) {
     if (actual > maximum) failures.push(`${label}: ${actual} > ${maximum}`);

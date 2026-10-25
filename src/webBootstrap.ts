@@ -1,5 +1,3 @@
-import { SEED_FLAG_KEY } from './db/seedFlags';
-
 /** In-app hash routes start with `#/`; any other fragment is an in-page anchor. */
 export function isAppHashRoute(hash: string): boolean {
   return hash.startsWith('#/');
@@ -38,47 +36,6 @@ export async function registerProductionServiceWorker(
     // A browser policy may disable workers; this must not prevent Lacuna starting.
     return false;
   }
-}
-
-export interface LandingHydrationOptions {
-  hostname?: string;
-  hash?: string;
-  isElectron?: boolean;
-  seedFlagPresent?: boolean;
-  landingMarkupPresent?: boolean;
-  appStartPending?: boolean;
-}
-
-function readSeedFlag(): boolean {
-  try {
-    return localStorage.getItem(SEED_FLAG_KEY) !== null;
-  } catch {
-    // Storage may be unavailable; fall through to the prerender check.
-    return false;
-  }
-}
-
-/** First-visit browsers hydrate the prerendered landing page; the packaged app,
- * in-app hash routes and returning browsers boot the study app directly. */
-export function shouldHydrateLanding({
-  hostname = window.location.hostname,
-  hash = window.location.hash,
-  isElectron = window.electronAPI?.isElectron === true,
-  seedFlagPresent = readSeedFlag(),
-  landingMarkupPresent = !!document.getElementById('root')?.querySelector('.landing-page'),
-  appStartPending = document.documentElement.hasAttribute('data-app-starting'),
-}: LandingHydrationOptions = {}): boolean {
-  // Honour the head's decision even if storage or the URL changed while modules loaded.
-  if (appStartPending) return false;
-  if (hostname === 'gaps.getlacuna.app') return false;
-  if (isElectron) return false;
-  // In-page anchors (for example #landing-product) stay on the landing page.
-  // Anything addressing the study app through its hash routes boots the full app.
-  if (hash.startsWith('#/')) return false;
-  // A previous start seeded the example course, so this browser already knows
-  // the app: skip the marketing flash and go straight to the dashboard.
-  if (seedFlagPresent) return false;
-  return landingMarkupPresent;
 }
 
 /** Keep website analytics out of desktop, development and preview sessions. */
