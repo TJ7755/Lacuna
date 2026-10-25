@@ -28,6 +28,8 @@ async function measureBuild(label, directory, port) {
   page.on('pageerror', error => console.error(label, error.message));
   await page.goto(origin);
   await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+  // A fresh profile enters through onboarding; Exit leaves it for Today.
+  await page.getByRole('button', { name: 'Exit', exact: true }).click();
   await page.getByRole('heading', { name: 'Today', exact: true }).waitFor();
   await page.getByRole('region', { name: 'Today, most urgent first' }).waitFor();
   await page.evaluate(async () => {

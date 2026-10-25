@@ -33,7 +33,8 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   });
   try {
     await cta.click();
-    await expect(page).toHaveURL(/#\/$/);
+    // A fresh visitor enters through onboarding.
+    await expect(page).toHaveURL(/#\/start$/);
     await expect(page.locator('[data-landing-transition]')).toHaveCount(0);
   } finally {
     const complete = new Promise<void>((resolve) =>

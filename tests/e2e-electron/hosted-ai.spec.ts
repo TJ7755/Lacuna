@@ -61,6 +61,8 @@ test('Electron keeps Jev access without the AI chat interface', async () => {
     });
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
+    // A fresh profile enters through onboarding; Exit leaves it for Today.
+    await page.getByRole('button', { name: 'Exit', exact: true }).click();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
     await page.getByRole('button', { name: /^Integrations/ }).click();
     await expect(page.getByRole('switch', { name: 'Enable AI', exact: true })).toHaveCount(0);
