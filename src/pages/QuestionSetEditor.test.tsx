@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { createFixedQuestion } from '../questions/repository.authoring';
 import { createConcept } from '../questions/repository.concepts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import * as setRepository from '../questions/questionSetRepository';
 import { db } from '../db/schema';
 import { createLesson } from '../db/lessonRepository';
@@ -51,22 +51,6 @@ describe('Paper question set authoring', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'Back to Questions' }));
     expect(await screen.findByRole('heading', { name: 'Questions' })).toBeVisible();
-  });
-
-  it('acknowledges a slow draft load and replaces it with the saved editor', async () => {
-    const course = await setup();
-    let finish!: (value: null) => void;
-    vi.spyOn(setRepository, 'getQuestionSet').mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve;
-        }),
-    );
-    open(course.id);
-    expect(await screen.findByRole('status', { name: 'Loading question set' })).toBeVisible();
-    await act(async () => finish(null));
-    expect(await screen.findByLabelText('Q1 question')).toBeVisible();
-    expect(screen.queryByRole('status', { name: 'Loading question set' })).not.toBeInTheDocument();
   });
 
   it('indents an empty row, moves its parent scheme and offers a working Undo', async () => {

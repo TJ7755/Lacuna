@@ -216,7 +216,7 @@ describe('CardsPage', () => {
     expect(screen.queryByRole('button', { name: /batch prompt/i })).not.toBeInTheDocument();
   });
 
-  it('shows a skeleton while loading', () => {
+  it('waits for the course before rendering its controls', () => {
     renderPage();
     expect(screen.queryByRole('heading', { name: 'Cards' })).not.toBeInTheDocument();
   });

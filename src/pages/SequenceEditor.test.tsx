@@ -166,7 +166,7 @@ describe('SequenceEditor', () => {
     const { container } = renderNew();
     expect(container.querySelector('header p')).toBeNull();
   });
-  it('shows a skeleton while loading', () => {
+  it('waits for the course before rendering its controls', () => {
     renderNew();
     expect(screen.queryByText('New sequence')).not.toBeInTheDocument();
   });
