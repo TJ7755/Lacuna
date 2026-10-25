@@ -15,7 +15,7 @@ function luminance(hsl: string) {
 }
 
 describe('readable secondary text', () => {
-  const css = readFileSync('src/index.css', 'utf8');
+  const css = readFileSync('src/styles/theme.css', 'utf8');
   it.each([':root', '.dark'])('keeps faint text above 4.5:1 on %s reading surfaces', (theme) => {
     const block = css.slice(css.indexOf(`${theme} {`)).split('}')[0];
     const token = (name: string) => luminance(block.match(new RegExp(`--${name}: ([^;]+);`))![1]);
@@ -31,7 +31,7 @@ describe('readable secondary text', () => {
 });
 
 describe('colour scheme', () => {
-  const css = readFileSync('src/index.css', 'utf8');
+  const css = readFileSync('src/styles/theme.css', 'utf8');
   // The seed drawings and native controls follow color-scheme, not the theme class.
   it.each([
     [':root', 'light'],
@@ -43,7 +43,7 @@ describe('colour scheme', () => {
 });
 
 describe('course identity palette', () => {
-  const css = readFileSync('src/index.css', 'utf8');
+  const css = readFileSync('src/styles/theme.css', 'utf8');
   it.each([':root', '.dark'])(
     'keeps course indicators and small glyph text above 4.5:1 in %s',
     (theme) => {
