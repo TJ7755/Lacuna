@@ -1,0 +1,127 @@
+.card-import-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.card-import-dialog {
+  position: relative;
+  width: min(1020px, 100%);
+  height: 620px;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border-radius: 24px;
+  background: hsl(var(--surface));
+  border: var(--card-border);
+  box-shadow: none;
+  color: hsl(var(--ink));
+}
+.card-import-dialog button {
+  cursor: pointer;
+}
+.card-import-dialog button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.card-import-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 24px;
+}
+.card-import-header h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.card-import-header > button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  color: hsl(var(--ink-soft));
+}
+.card-import-header > button:hover {
+  background: hsl(var(--ink) / 0.06);
+  color: hsl(var(--ink));
+}
+.card-import-steps {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: hsl(var(--ink-faint));
+}
+.card-import-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-import-step-mark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: hsl(var(--ink) / 0.07);
+  color: hsl(var(--ink-soft));
+  transition:
+    background-color calc(0.16s * var(--import-motion, 1)),
+    color calc(0.16s * var(--import-motion, 1));
+}
+.card-import-steps b {
+  font-size: 13px;
+  font-weight: 600;
+}
+.card-import-steps [aria-current] {
+  color: hsl(var(--ink));
+}
+.card-import-steps [aria-current] .card-import-step-mark {
+  background: hsl(var(--ink));
+  color: hsl(var(--surface));
+}
+.card-import-steps li[data-done='true'] {
+  color: hsl(var(--ink-soft));
+}
+.card-import-steps li[data-done='true'] .card-import-step-mark {
+  background: hsl(var(--positive) / 0.16);
+  color: hsl(var(--positive));
+}
+.card-import-tick {
+  display: grid;
+  place-items: center;
+}
+.card-import-connector {
+  width: 40px;
+  height: 2px;
+  border-radius: 1px;
+  background: hsl(var(--line));
+  overflow: hidden;
+}
+.card-import-connector span {
+  display: block;
+  height: 2px;
+  background: hsl(var(--ink));
+  transform-origin: left;
+}
+.card-import-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.card-import-body {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  min-height: 440px;
+}

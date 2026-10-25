@@ -1,96 +1,31 @@
+import { useSyncCredentials, useSyncCredentialPrivacy } from './useSyncCredentials';
+import { useEffect, useState } from 'react';
 import { AnimatedDisclosure } from '../../components/ui/AnimatedDisclosure';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmInlineSwap } from '../../components/ui/ConfirmInline';
-import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
 import { useToast } from '../../components/ui/Toast';
+import { ClockIcon, QrCodeIcon, ShareIcon, TrashIcon, UnlockIcon } from '../../components/ui/icons';
 import { readSyncState } from '../../db/mutationStamp';
+import type { SyncState } from '../../db/types';
+import { readRememberedCredentials } from '../../sync/credentials';
+import { allowRelayConnect } from '../../sync/csp';
+import { loadSyncPairing } from '../../sync/loaders';
+import type { PairingPayload, PairingSession } from '../../sync/pairing';
+import { validateRecoveryPassphrase } from '../../sync/pairingConfig';
 import { SettingsSectionHeading } from './SettingsSectionHeading';
 import { SettingsCard } from './SettingsUi';
-import { SettingsModal } from './SettingsModal';
-import { InlineSettingsDisclosure } from './InlineSettingsDisclosure';
-import { loadQrCode, SyncQrPanel } from './SyncQrPanel';
-import type { SyncState } from '../../db/types';
-import { formatDateTime, formatRelativeTime } from '../../utils/datetime';
-import type { PairingPayload, PairingSession } from '../../sync/pairing';
-import {
-  forgetRememberedCredentials,
-  readRememberedCredentials,
-  type SyncCredentials,
-} from '../../sync/credentials';
-import { validateRecoveryPassphrase } from '../../sync/pairingConfig';
-import { loadSyncPairing } from '../../sync/loaders';
-import { allowRelayConnect } from '../../sync/csp';
-import { clearUnlockedCredentials, publishUnlockedCredentials } from '../../sync/triggers';
 import { SyncField } from './SyncField';
 import type { SyncPairingBusy, SyncPairingMode } from './SyncPairingFlow';
+import { SyncPairingModal, loadSyncPairingFlow } from './SyncPairingModal';
+import { SyncQrPanel, loadQrCode } from './SyncQrPanel';
+import { StatusPanel, SyncDetails } from './SyncStatus';
 import { useSyncFeedback } from './useSyncFeedback';
-
-const loadSyncPairingFlow = () =>
-  import('./SyncPairingFlow').then((module) => ({ default: module.SyncPairingFlow }));
-const SyncPairingFlow = lazy(loadSyncPairingFlow);
 
 type PairingMode = 'idle' | SyncPairingMode;
 type BusyAction = 'setup' | 'join' | 'sync' | 'unpair' | 'delete' | null;
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
-}
-
-function formatBytes(bytes: number | undefined): string | null {
-  if (bytes === undefined) return null;
-  if (bytes < 1_000_000) return `${Math.round(bytes / 1_000)} KB`;
-  return `${(bytes / 1_000_000).toFixed(2)} MB`;
-}
-
-function StatusPanel({ state }: { state: SyncState }) {
-  return (
-    <div>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm">
-        <span className="inline-flex items-center gap-2 font-medium text-positive">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-positive" aria-hidden="true" />
-          Paired to a sync channel
-        </span>
-        {state.lastSuccessfulSyncAt ? (
-          <span className="text-ink-soft" title={formatDateTime(state.lastSuccessfulSyncAt)}>
-            Last synced {formatRelativeTime(state.lastSuccessfulSyncAt)}
-          </span>
-        ) : (
-          <span className="text-ink-soft">Not synced yet</span>
-        )}
-      </div>
-      {state.lastError && (
-        <p role="alert" className="mt-3 rounded-xl bg-negative/10 px-3 py-2 text-sm text-negative">
-          {state.lastError}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function SyncDetails({ state }: { state: SyncState }) {
-  const encrypted = formatBytes(state.lastSnapshotBytes);
-  const plaintext = formatBytes(state.lastSnapshotPlaintextBytes);
-  return (
-    <InlineSettingsDisclosure
-      header="End-to-end encrypted"
-      headerClassName="flex min-h-11 items-center justify-between gap-3 rounded-lg text-sm text-ink-soft outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
-    >
-      <div className="space-y-2 pb-3 pt-1 text-sm text-ink-soft">
-        <p>Keeps paired devices up to date. Export a backup for a separate copy.</p>
-        <div className="flex flex-wrap gap-x-5 gap-y-1 break-all text-xs">
-          <span>{state.relayUrl ?? 'Relay not recorded'}</span>
-          <span>{state.channelId ?? 'channel unavailable'}</span>
-        </div>
-        {(encrypted || plaintext) && (
-          <p className="text-xs">
-            Last snapshot: {encrypted ? `${encrypted} encrypted` : 'encrypted size unknown'}
-            {plaintext ? ` · ${plaintext} before encryption` : ''}
-          </p>
-        )}
-      </div>
-    </InlineSettingsDisclosure>
-  );
 }
 
 export function SyncSection() {
@@ -100,14 +35,24 @@ export function SyncSection() {
   const [mode, setMode] = useState<PairingMode>('idle');
   const [pairOpen, setPairOpen] = useState(false);
   const [busy, setBusy] = useState<BusyAction>(null);
-  const [unlocked, setUnlocked] = useState<SyncCredentials | null>(null);
-  const [showQr, setShowQr] = useState(false);
-  const [qrValue, setQrValue] = useState('');
   const [confirmUnpair, setConfirmUnpair] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionPassphrase, setActionPassphrase] = useState('');
-  const qrPanelRef = useRef<HTMLDivElement>(null);
   const feedback = useSyncFeedback(busy, pairOpen);
+
+  const {
+    unlocked,
+    setUnlocked,
+    showQr,
+    setShowQr,
+    qrValue,
+    setQrValue,
+    qrPanelRef,
+    hideQr,
+    handleRevealQr,
+    handleCopyPairingLink,
+    handleLock,
+  } = useSyncCredentials({ syncState, actionPassphrase, setActionPassphrase, feedback, notify });
 
   useEffect(() => {
     if (pairOpen && mode === 'idle') document.getElementById('sync-begin-setup')?.focus();
@@ -130,29 +75,9 @@ export function SyncSection() {
     return () => {
       active = false;
     };
-  }, [notify]);
+  }, [notify, setUnlocked]);
 
-  useEffect(() => {
-    if (!qrValue) return;
-    if (showQr) qrPanelRef.current?.focus();
-    const hide = () => {
-      setShowQr(false);
-      setQrValue('');
-    };
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') hide();
-    };
-    window.addEventListener('blur', hide);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      window.removeEventListener('blur', hide);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, [showQr, qrValue]);
-
-  useEffect(() => {
-    publishUnlockedCredentials(unlocked);
-  }, [unlocked]);
+  useSyncCredentialPrivacy({ unlocked, showQr, qrValue, qrPanelRef, setShowQr, setQrValue });
 
   async function refreshState(): Promise<SyncState | null> {
     const next = await readSyncState();
@@ -180,11 +105,6 @@ export function SyncSection() {
   function closePair() {
     setPairOpen(false);
     setMode('idle');
-  }
-
-  function hideQr() {
-    setShowQr(false);
-    setQrValue('');
   }
 
   function preparePairingFlow() {
@@ -307,50 +227,6 @@ export function SyncSection() {
       feedback.fail(error, 'Sync could not be completed. Try again.');
     } finally {
       setBusy(null);
-    }
-  }
-
-  async function handleRevealQr() {
-    if (!syncState) return;
-    feedback.begin();
-    if (!unlocked) {
-      const passphraseError = validateRecoveryPassphrase(actionPassphrase);
-      if (passphraseError) {
-        feedback.fail(new Error(passphraseError), 'Enter a recovery passphrase.');
-        return;
-      }
-    }
-    try {
-      const { encodePairingCode, unlockSyncState } = await loadSyncPairing();
-      const credentials = unlocked ?? (await unlockSyncState(syncState, actionPassphrase));
-      setUnlocked(credentials);
-      setActionPassphrase('');
-      setQrValue(encodePairingCode(credentials));
-      setShowQr(true);
-    } catch (error) {
-      feedback.fail(error, 'Could not unlock the pairing QR code. Try again.');
-    }
-  }
-
-  async function handleCopyPairingLink() {
-    if (!qrValue) return;
-    try {
-      await navigator.clipboard.writeText(qrValue);
-      notify('Pairing link copied.', 'positive');
-    } catch {
-      notify('Could not copy the pairing link.', 'negative');
-    }
-  }
-
-  async function handleLock() {
-    clearUnlockedCredentials();
-    try {
-      await forgetRememberedCredentials();
-      setUnlocked(null);
-      setActionPassphrase('');
-    } catch (error) {
-      publishUnlockedCredentials(unlocked);
-      notify(errorMessage(error, 'Could not lock this device.'), 'negative');
     }
   }
 
@@ -573,42 +449,19 @@ export function SyncSection() {
         </div>
       )}
 
-      <SettingsModal
-        open={pairOpen && !syncState}
-        labelledBy="sync-pair-heading"
-        onClose={closePair}
-        wide={mode !== 'idle'}
-      >
-        <h2
-          id="sync-pair-heading"
-          className="mb-4 font-display text-2xl font-semibold tracking-tight"
-        >
-          Pair this device
-        </h2>
-        {mode === 'setup' || mode === 'join' ? (
-          <Suspense fallback={<p className="text-sm text-ink-faint">Preparing sync setup…</p>}>
-            <SyncPairingFlow
-              mode={mode}
-              busy={pairingBusy}
-              onSetup={handleSetup}
-              onManualJoin={handleManualJoin}
-              onQrJoin={handleQrJoin}
-              onCancel={cancelFlow}
-            />
-          </Suspense>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button id="sync-begin-setup" variant="primary" onClick={beginSetup}>
-              <ShareIcon width={18} height={18} />
-              Set up sync
-            </Button>
-            <Button variant="secondary" onClick={beginJoin}>
-              <QrCodeIcon width={18} height={18} />
-              Join another device
-            </Button>
-          </div>
-        )}
-      </SettingsModal>
+      <SyncPairingModal
+        pairOpen={pairOpen}
+        syncState={syncState}
+        mode={mode}
+        closePair={closePair}
+        pairingBusy={pairingBusy}
+        handleSetup={handleSetup}
+        handleManualJoin={handleManualJoin}
+        handleQrJoin={handleQrJoin}
+        cancelFlow={cancelFlow}
+        beginSetup={beginSetup}
+        beginJoin={beginJoin}
+      />
     </SettingsCard>
   );
 }

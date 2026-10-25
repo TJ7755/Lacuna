@@ -1,347 +1,33 @@
-import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
-import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
-import { afterAll, beforeAll, describe, expect, it, vi, beforeEach } from 'vitest';
-import { domAnimation, LazyMotion } from 'motion/react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import * as React from 'react';
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
-import type * as ReactRouterDom from 'react-router-dom';
-import type * as MotionSpeedState from '../state/motionSpeed';
-import { CoursePath } from './CoursePath';
-import { ToastProvider } from '../components/ui/Toast';
-import type {
-  Card,
-  Course,
-  CourseAssessment,
-  Lesson,
-  LessonCardExposure,
-  LessonCardLink,
-  LessonCompletion,
-  PendingMergeReview,
-  PracticeMilestone,
-  PracticeNode,
-  QuestionSetPracticeNode,
-} from '../db/types';
-import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
-import { practiceScopeVersion } from '../course/studyPools';
-
-// Use the same motion provider as the app and the JS engine used by path-editor tests.
-const animateDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'animate');
-beforeAll(() => {
-  Reflect.deleteProperty(Element.prototype, 'animate');
-});
-afterAll(() => {
-  if (animateDescriptor) Object.defineProperty(Element.prototype, 'animate', animateDescriptor);
-});
-
-const mockNavigate = vi.fn();
-const {
+import {
+  mockNavigate,
   mockCreateLesson,
   mockUpdateCourse,
-  mockCreatePracticeNode,
-  mockUpdatePracticeNode,
-  mockDeletePracticeNode,
-  mockCreateCourseAssessment,
-  mockUpdateCourseAssessment,
-  mockDeleteCourseAssessment,
-  mockReorderLessons,
   mockLessonViewProps,
-} = vi.hoisted(() => ({
-  mockCreateLesson: vi.fn(),
-  mockUpdateCourse: vi.fn(),
-  mockCreatePracticeNode: vi.fn(),
-  mockUpdatePracticeNode: vi.fn(),
-  mockDeletePracticeNode: vi.fn(),
-  mockCreateCourseAssessment: vi.fn(),
-  mockUpdateCourseAssessment: vi.fn(),
-  mockDeleteCourseAssessment: vi.fn(),
-  mockReorderLessons: vi.fn(),
-  mockLessonViewProps: vi.fn(),
-}));
-
-let mockCourse: Course | null | undefined;
-let mockLessons: Lesson[] | undefined;
-let mockAssessments: CourseAssessment[] | undefined;
-let mockCourseCards: Card[] | undefined;
-let mockPracticeNodes: PracticeNode[] | undefined;
-let mockPendingMerge: PendingMergeReview | null;
-let mockPerformance: unknown[] | undefined;
-const live = vi.hoisted(() => ({
-  links: [] as LessonCardLink[],
-  exposures: [] as LessonCardExposure[],
-  completions: [] as LessonCompletion[],
-  milestones: [] as PracticeMilestone[],
-}));
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof ReactRouterDom>('react-router-dom');
-  function TestMemoryRouter(props: React.ComponentProps<typeof actual.MemoryRouter>) {
-    return React.createElement(actual.MemoryRouter, {
-      ...props,
-    });
-  }
-  return {
-    ...actual,
-    MemoryRouter: TestMemoryRouter,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: (querier: () => unknown) => {
-    const source = Function.prototype.toString.call(querier);
-    if (source.includes('listQuestionSetAttempts')) {
-      return [
-        {
-          id: 'question-set-1',
-          content: {
-            id: 'question-set-1',
-            courseId: 'course-1',
-            title: 'Question set',
-            lessonIds: [],
-            assessmentIds: [],
-            contentVersion: 1,
-            contentRevisionId: 'content-1',
-            createdAt: 1,
-            updatedAt: 1,
-            questions: [],
-          },
-          attempt: null,
-          exam: undefined,
-        },
-      ];
-    }
-    if (source.includes('lessonCardExposures')) return live.exposures;
-    if (source.includes('lessonCompletions')) return live.completions;
-    if (source.includes('practiceMilestones')) return live.milestones;
-    if (source.includes('lessonCards')) return live.links;
-    return [];
-  },
-}));
-
-vi.mock('../state/useCourseData', () => ({
-  useCourse: () => mockCourse,
-  useLessons: () => mockLessons,
-  useCourseAssessments: () => mockAssessments,
-  useCourseCards: () => mockCourseCards,
-  useCoursePerformance: () => mockPerformance,
-  usePracticeNodes: () => mockPracticeNodes,
-  usePendingMergeReview: () => mockPendingMerge,
-}));
-
-vi.mock('../state/useCourseStudyFlowRecords', () => ({
-  useCoursePathRecords: () => {
-    if (
-      mockCourse === undefined ||
-      mockLessons === undefined ||
-      mockAssessments === undefined ||
-      mockCourseCards === undefined ||
-      mockPracticeNodes === undefined ||
-      mockPerformance === undefined
-    )
-      return undefined;
-    return {
-      course: mockCourse,
-      lessons: mockLessons,
-      assessments: mockAssessments,
-      cards: mockCourseCards,
-      practiceNodes: mockPracticeNodes,
-      performance: mockPerformance,
-      links: live.links,
-      exposures: live.exposures,
-      completions: live.completions,
-      milestones: live.milestones,
-    };
-  },
-}));
-
-vi.mock('./LessonView', () => ({
-  LessonView: (props: unknown) => {
-    mockLessonViewProps(props);
-    return null;
-  },
-}));
-
-vi.mock('../db/lessonRepository', () => ({
-  createLesson: mockCreateLesson,
-  reorderLessons: mockReorderLessons,
-}));
-vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
-vi.mock('../db/practiceNodeRepository', () => ({
-  createPracticeNode: mockCreatePracticeNode,
-  updatePracticeNode: mockUpdatePracticeNode,
-  deletePracticeNode: mockDeletePracticeNode,
-}));
-vi.mock('../db/assessmentRepository', () => ({
-  createCourseAssessment: mockCreateCourseAssessment,
-  updateCourseAssessment: mockUpdateCourseAssessment,
-  deleteCourseAssessment: mockDeleteCourseAssessment,
-}));
-
-vi.mock('../state/motionSpeed', async (importOriginal) => {
-  const actual = await importOriginal<typeof MotionSpeedState>();
-  return { ...actual, useMotionSpeed: () => ['fast'] };
-});
-
-const mockOpenStudySheet = vi.hoisted(() => vi.fn());
-vi.mock('../components/learn/StudySheetContext', () => ({
-  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
-}));
-
-const course: Course = {
-  id: 'course-1',
-  name: 'Mechanics',
-  description: '',
-  createdAt: 0,
-  updatedAt: 0,
-  examDate: Date.now() + 7 * MS_PER_DAY,
-  fsrsVersion: FSRS_VERSION,
-  fsrsParameters: defaultFsrsParameters(),
-  examObjective: 'expectedMarks',
-  unlockMode: 'open',
-  autoPractice: false,
-  practiceThresholdMinutesFar: 12,
-  practiceThresholdMinutesNear: 6,
-  practiceUrgentWindowDays: 7,
-  practiceMaxGap: 3,
-};
-
-const lesson1: Lesson = {
-  id: 'lesson-1',
-  courseId: 'course-1',
-  name: 'Kinematics',
-  orderIndex: 0,
-  createdAt: 0,
-  updatedAt: 0,
-  isExtension: false,
-};
-
-const lesson2: Lesson = {
-  id: 'lesson-2',
-  courseId: 'course-1',
-  name: 'Dynamics',
-  orderIndex: 1,
-  createdAt: 0,
-  updatedAt: 0,
-  isExtension: false,
-};
-
-const practiceNode: PracticeNode = {
-  id: 'practice-1',
-  courseId: 'course-1',
-  type: 'manual',
-  name: 'Weekly review',
-  position: 0,
-  createdAt: 0,
-  updatedAt: 0,
-};
-
-function makeCard(id: string, lessonId: string): Card {
-  return {
-    id,
-    conceptId: `concept-${id}`,
-    deckId: 'deck-1',
-    schedulingUnitId: 'deck-1',
-    courseId: 'course-1',
-    primaryLessonId: lessonId,
-    type: 'front_back',
-    front: 'front',
-    back: 'back',
-    stability: null,
-    difficulty: null,
-    lastReviewed: null,
-    reps: 0,
-    lapses: 0,
-    state: 0,
-    due: null,
-    scheduledDays: 0,
-    learningSteps: 0,
-    history: [],
-    createdAt: 0,
-    updatedAt: 0,
-  };
-}
-
-function showCompletedPractice() {
-  const card = makeCard('card-1', 'lesson-1');
-  mockCourseCards = [card];
-  mockPracticeNodes = [practiceNode];
-  live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
-  live.milestones = [
-    {
-      nodeKey: 'practice-1',
-      courseId: 'course-1',
-      scopeVersion: practiceScopeVersion([card]),
-      securedCardCount: 1,
-      totalCardCount: 1,
-      updatedAt: 1,
-      completedAt: 1,
-    },
-  ];
-}
-
-function renderPage(search = '') {
-  return render(
-    <MemoryRouter initialEntries={[`/course/course-1${search}`]}>
-      <ToastProvider>
-        <LazyMotion features={domAnimation}>
-          <Routes>
-            <Route
-              path="/course/:courseId"
-              element={
-                <>
-                  <CourseSectionNavigation courseId="course-1" />
-                  <CoursePath />
-                </>
-              }
-            />
-          </Routes>
-        </LazyMotion>
-      </ToastProvider>
-    </MemoryRouter>,
-  );
-}
-
-beforeEach(() => {
-  mockCourse = course;
-  mockLessons = [lesson1, lesson2];
-  mockAssessments = [];
-  mockCourseCards = [];
-  mockPracticeNodes = [];
-  mockPendingMerge = null;
-  mockPerformance = [];
-  live.links = [];
-  live.exposures = [];
-  live.completions = [];
-  live.milestones = [];
-  mockNavigate.mockClear();
-  mockCreateLesson.mockReset();
-  mockCreateLesson.mockResolvedValue({
-    ...lesson2,
-    id: 'lesson-3',
-    name: 'Lesson 3',
-    orderIndex: 2,
-  });
-  mockUpdateCourse.mockReset();
-  mockUpdateCourse.mockResolvedValue(undefined);
-  mockCreatePracticeNode.mockReset();
-  mockCreatePracticeNode.mockResolvedValue(undefined);
-  mockUpdatePracticeNode.mockReset();
-  mockDeletePracticeNode.mockReset();
-  mockCreateCourseAssessment.mockReset();
-  mockCreateCourseAssessment.mockResolvedValue(undefined);
-  mockUpdateCourseAssessment.mockReset();
-  mockUpdateCourseAssessment.mockResolvedValue(undefined);
-  mockDeleteCourseAssessment.mockReset();
-  mockDeleteCourseAssessment.mockResolvedValue(undefined);
-  mockReorderLessons.mockReset();
-  mockLessonViewProps.mockReset();
-});
-
+  live,
+  mockOpenStudySheet,
+  course,
+  lesson1,
+  lesson2,
+  makeCard,
+  showCompletedPractice,
+  renderPage,
+  resetCoursePathFixtures,
+  pathState,
+} from './CoursePath.testFixtures';
+import { CoursePath } from './CoursePath';
+import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
+import { describe, expect, it, beforeEach } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import * as React from 'react';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { ToastProvider } from '../components/ui/Toast';
+import type { Card, QuestionSetPracticeNode } from '../db/types';
+import { MS_PER_DAY } from '../fsrs/params';
 describe('CoursePath View mode', () => {
+  beforeEach(resetCoursePathFixtures);
   it('displays checkpoint dates in the assessment time zone', () => {
-    mockCourse = { ...course, timeZone: 'Europe/London' };
-    mockAssessments = [
+    pathState.mockCourse = { ...course, timeZone: 'Europe/London' };
+    pathState.mockAssessments = [
       {
         id: 'assessment-zone',
         courseId: course.id,
@@ -364,7 +50,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('shows a one-lesson course as a path when it contains a Practice Qs activity', () => {
-    mockLessons = [lesson1];
+    pathState.mockLessons = [lesson1];
     const activity: QuestionSetPracticeNode = {
       id: 'question-set-activity-1',
       courseId: course.id,
@@ -375,7 +61,7 @@ describe('CoursePath View mode', () => {
       createdAt: 1,
       updatedAt: 1,
     };
-    mockPracticeNodes = [activity];
+    pathState.mockPracticeNodes = [activity];
 
     renderPage();
 
@@ -390,7 +76,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('opens an assessment deep link after the CoursePath is already mounted', async () => {
-    mockAssessments = [
+    pathState.mockAssessments = [
       {
         id: 'assessment-1',
         courseId: 'course-1',
@@ -422,7 +108,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('opens archived lessons for read-only inspection without exposing study or authoring exits', () => {
-    mockCourse = {
+    pathState.mockCourse = {
       ...course,
       archived: true,
       lessonViewMode: 'edit',
@@ -458,7 +144,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('keeps course figures in one compact card under the lessons, not under the title', () => {
-    mockCourseCards = [makeCard('card-1', 'lesson-1')];
+    pathState.mockCourseCards = [makeCard('card-1', 'lesson-1')];
     renderPage();
 
     const summary = screen.getByRole('region', { name: 'Course summary' });
@@ -476,7 +162,7 @@ describe('CoursePath View mode', () => {
   it('starts course-wide practice from the header', () => {
     // Header practice serves scheduled reviews; unseen cards no longer count as due.
     const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
-    mockCourseCards = [card];
+    pathState.mockCourseCards = [card];
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
     renderPage();
@@ -495,8 +181,8 @@ describe('CoursePath View mode', () => {
   it.each([false, true])(
     'only exposes pending updates on active multi-lesson courses (archived=%s)',
     (archived) => {
-      mockCourse = { ...course, archived };
-      mockPendingMerge = {
+      pathState.mockCourse = { ...course, archived };
+      pathState.mockPendingMerge = {
         id: 'review-1',
         courseId: 'course-1',
         lineageId: 'lineage-1',
@@ -526,9 +212,9 @@ describe('CoursePath View mode', () => {
   it.each([false, true])(
     'only exposes pending updates on active single-lesson courses (archived=%s)',
     (archived) => {
-      mockCourse = { ...course, archived };
-      mockLessons = [lesson1];
-      mockPendingMerge = {
+      pathState.mockCourse = { ...course, archived };
+      pathState.mockLessons = [lesson1];
+      pathState.mockPendingMerge = {
         id: 'review-1',
         courseId: 'course-1',
         lineageId: 'lineage-1',
@@ -558,8 +244,8 @@ describe('CoursePath View mode', () => {
   it('exposes course-wide practice in a single-lesson course header', async () => {
     // Header practice serves scheduled reviews; unseen cards no longer count as due.
     const card: Card = { ...makeCard('card-1', 'lesson-1'), state: 2, due: Date.now() - 1 };
-    mockLessons = [lesson1];
-    mockCourseCards = [card];
+    pathState.mockLessons = [lesson1];
+    pathState.mockCourseCards = [card];
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
     renderPage();
@@ -584,15 +270,15 @@ describe('CoursePath View mode', () => {
   it.each([1, 2])(
     'keeps study options available after all %i lessons are complete',
     async (count) => {
-      mockLessons = [lesson1, lesson2].slice(0, count);
-      mockCourseCards = mockLessons.map((lesson) => ({
+      pathState.mockLessons = [lesson1, lesson2].slice(0, count);
+      pathState.mockCourseCards = pathState.mockLessons.map((lesson) => ({
         ...makeCard(`card-${lesson.id}`, lesson.id),
         state: 2,
         stability: 10,
         lastReviewed: Date.now(),
         due: Date.now() + MS_PER_DAY,
       }));
-      live.exposures = mockCourseCards.map((card) => ({
+      live.exposures = pathState.mockCourseCards.map((card) => ({
         lessonId: card.primaryLessonId!,
         cardId: card.id,
         taughtAt: 1,
@@ -641,7 +327,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('hides Add lesson on an empty path', () => {
-    mockLessons = [];
+    pathState.mockLessons = [];
     renderPage();
     expect(screen.getByText('This course has no lessons yet.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
@@ -669,7 +355,7 @@ describe('CoursePath View mode', () => {
   });
 
   it('keeps a locked distributed copy in View mode across every path authoring gate', () => {
-    mockCourse = {
+    pathState.mockCourse = {
       ...course,
       lessonViewMode: 'edit',
       distributedCopy: {
@@ -679,7 +365,7 @@ describe('CoursePath View mode', () => {
         autoAcceptUpdates: false,
       },
     };
-    mockAssessments = [
+    pathState.mockAssessments = [
       {
         id: 'assessment-1',
         courseId: 'course-1',
@@ -706,392 +392,4 @@ describe('CoursePath View mode', () => {
       screen.queryByRole('button', { name: 'Edit checkpoint: Paper 1' }),
     ).not.toBeInTheDocument();
   });
-});
-
-describe('CoursePath Edit mode', () => {
-  beforeEach(() => {
-    mockCourse = { ...course, lessonViewMode: 'edit' };
-  });
-
-  it('creates manual practice from the path', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
-    expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await waitFor(() => {
-      expect(mockCreatePracticeNode).toHaveBeenCalledWith(
-        'course-1',
-        expect.objectContaining({ type: 'manual', name: 'Card practice', position: 1 }),
-      );
-    });
-  });
-
-  it('creates a checkpoint from the path', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-    expect(screen.getByRole('dialog', { name: 'Add checkpoint' })).toBeInTheDocument();
-    const nameInput = screen.getByRole('textbox', { name: 'Name' });
-    expect(nameInput).toHaveFocus();
-    fireEvent.change(nameInput, {
-      target: { value: 'Paper 1' },
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await waitFor(() => {
-      expect(mockCreateCourseAssessment).toHaveBeenCalledWith(
-        'course-1',
-        'Paper 1',
-        expect.any(Number),
-        expect.objectContaining({ afterLessonId: 'lesson-2', coverageMode: 'prefix' }),
-      );
-    });
-  });
-
-  it('keeps a new checkpoint open with an inline error when Done has no name', async () => {
-    renderPage();
-    const opener = screen.getByRole('button', { name: 'Add' });
-    opener.focus();
-    fireEvent.click(opener);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await screen.findByText('Enter a name.');
-    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus();
-  });
-
-  it('restores the Add checkpoint control after closing checkpoint creation with Escape', async () => {
-    renderPage();
-    const opener = screen.getByRole('button', { name: 'Add' });
-    opener.focus();
-    fireEvent.click(opener);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-
-    const nameInput = screen.getByRole('textbox', { name: 'Name' });
-    expect(nameInput).toHaveFocus();
-    fireEvent.change(nameInput, { target: { value: 'New checkpoint' } });
-    fireEvent.keyDown(nameInput, { key: 'Escape' });
-
-    await waitFor(() => expect(opener).toHaveFocus());
-  });
-
-  it('keeps Tab trapped in the checkpoint editor when its date picker is open', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Choose date and time' }));
-
-    const done = screen.getAllByRole('button', { name: 'Done' }).at(-1)!;
-    done.focus();
-    fireEvent.keyDown(done, { key: 'Tab' });
-
-    await waitFor(() =>
-      expect(
-        within(screen.getByRole('dialog', { name: 'Choose date and time' })).getAllByRole(
-          'button',
-        )[0],
-      ).toHaveFocus(),
-    );
-  });
-
-  it('edits a checkpoint directly from its path node', async () => {
-    mockAssessments = [
-      {
-        id: 'assessment-1',
-        courseId: 'course-1',
-        kind: 'checkpoint',
-        name: 'Paper 1',
-        examDate: Date.now() + MS_PER_DAY,
-        afterLessonId: 'lesson-1',
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: 0,
-        updatedAt: 0,
-      },
-    ];
-
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
-
-    expect(screen.getByRole('dialog', { name: 'Edit checkpoint' })).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: 'Paper 1 details' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
-      target: { value: 'Revised Paper 1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await waitFor(() => {
-      expect(mockUpdateCourseAssessment).toHaveBeenCalledWith(
-        'assessment-1',
-        expect.objectContaining({ name: 'Revised Paper 1' }),
-      );
-    });
-  });
-
-  it('moves a checkpoint by the same lesson anchor with Alt+Arrow as its menu', async () => {
-    mockAssessments = [
-      {
-        id: 'assessment-1',
-        courseId: 'course-1',
-        kind: 'checkpoint',
-        name: 'Paper 1',
-        examDate: Date.now() + MS_PER_DAY,
-        afterLessonId: 'lesson-1',
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: 0,
-        updatedAt: 0,
-      },
-    ];
-    renderPage();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }), {
-      key: 'ArrowDown',
-      altKey: true,
-    });
-    await waitFor(() =>
-      expect(mockUpdateCourseAssessment).toHaveBeenCalledWith('assessment-1', {
-        afterLessonId: 'lesson-2',
-      }),
-    );
-  });
-
-  it('confirms checkpoint deletion before removing it from the repository', async () => {
-    mockAssessments = [
-      {
-        id: 'assessment-1',
-        courseId: 'course-1',
-        kind: 'checkpoint',
-        name: 'Paper 1',
-        examDate: Date.now() + MS_PER_DAY,
-        afterLessonId: 'lesson-1',
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: 0,
-        updatedAt: 0,
-      },
-    ];
-
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
-    const deleteTrigger = screen.getByRole('button', { name: 'Delete' });
-    fireEvent.click(deleteTrigger);
-
-    expect(screen.getByText('Delete this checkpoint?')).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('dialog', { name: 'Delete' })).getByRole('button', {
-        name: 'Delete',
-      }),
-    ).toHaveFocus();
-    expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
-
-    fireEvent.click(
-      within(screen.getByRole('dialog', { name: 'Delete' })).getByRole('button', {
-        name: 'Delete',
-      }),
-    );
-
-    await waitFor(() => {
-      expect(mockDeleteCourseAssessment).toHaveBeenCalledWith('assessment-1');
-    });
-  });
-
-  it('restores the checkpoint Delete trigger after cancelling deletion', async () => {
-    mockAssessments = [
-      {
-        id: 'assessment-1',
-        courseId: 'course-1',
-        kind: 'checkpoint',
-        name: 'Paper 1',
-        examDate: Date.now() + MS_PER_DAY,
-        afterLessonId: 'lesson-1',
-        coverageMode: 'prefix',
-        excludedCardIds: [],
-        createdAt: 0,
-        updatedAt: 0,
-      },
-    ];
-
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit checkpoint: Paper 1' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    fireEvent.keyDown(screen.getByRole('dialog', { name: 'Delete' }), { key: 'Escape' });
-
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus());
-    expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
-  });
-
-  it('creates practice at the single lesson position from the lesson header', async () => {
-    mockLessons = [lesson1];
-    renderPage();
-
-    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
-    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
-      onAddPractice: () => void;
-    };
-    act(() => lessonViewProps.onAddPractice());
-    expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await waitFor(() => {
-      expect(mockCreatePracticeNode).toHaveBeenCalledWith(
-        'course-1',
-        expect.objectContaining({ type: 'manual', name: 'Card practice', position: 0 }),
-      );
-    });
-  });
-
-  it('anchors a single-lesson checkpoint after that lesson', async () => {
-    mockLessons = [lesson1];
-    renderPage();
-
-    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
-    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
-      onAddCheckpoint: () => void;
-    };
-    act(() => lessonViewProps.onAddCheckpoint());
-
-    const nameInput = screen.getByRole('textbox', { name: 'Name' });
-    expect(nameInput).toHaveFocus();
-    fireEvent.change(nameInput, { target: { value: 'Solo checkpoint' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-
-    await waitFor(() => {
-      expect(mockCreateCourseAssessment).toHaveBeenCalledWith(
-        'course-1',
-        'Solo checkpoint',
-        expect.any(Number),
-        expect.objectContaining({ afterLessonId: 'lesson-1', coverageMode: 'prefix' }),
-      );
-    });
-  });
-
-  it('opens the editor from the practice-node menu', () => {
-    mockPracticeNodes = [practiceNode];
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Practice actions: Weekly review' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit' }));
-    expect(screen.getByRole('dialog', { name: 'Edit card practice' })).toBeInTheDocument();
-  });
-
-  it('creates a lesson from an empty path', async () => {
-    mockLessons = [];
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-
-    await waitFor(() => {
-      expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Lesson 1');
-      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
-    });
-  });
-
-  it('creates a lesson from a populated path', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-
-    await waitFor(() => {
-      expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Lesson 3');
-      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
-    });
-  });
-
-  it('renames the course from its header', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Rename course' }));
-    const input = screen.getByRole('textbox', { name: 'Course name' });
-    fireEvent.change(input, { target: { value: 'Further mechanics' } });
-    fireEvent.blur(input);
-
-    await waitFor(() => {
-      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { name: 'Further mechanics' });
-    });
-  });
-});
-
-describe('CoursePath overview', () => {
-  it('opens a lesson straight from its row', () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
-  });
-
-  it('expands Add in place and creates a real lesson through its existing form', async () => {
-    mockCourse = { ...course, lessonViewMode: 'edit' };
-    renderPage();
-    const add = screen.getByRole('button', { name: 'Add' });
-    fireEvent.click(add);
-    expect(add).toHaveAttribute('aria-expanded', 'true');
-    const options = screen.getByRole('menu', { name: 'Add' });
-    expect(add.parentElement).toContainElement(options);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
-      target: { value: 'Energy' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-    await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
-  });
-  it('shows the lock reason without opening an unreached lesson in View mode', () => {
-    mockCourse = { ...course, unlockMode: 'semi-linear' };
-    renderPage();
-    const locked = screen.getByRole('button', { name: 'Dynamics' });
-    expect(locked).toHaveTextContent(/Unlocks once the lesson before it is complete/);
-    expect(locked).toBeDisabled();
-    fireEvent.click(locked);
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('retains keyboard lesson reordering in Edit mode', async () => {
-    mockCourse = { ...course, lessonViewMode: 'edit' };
-    mockReorderLessons.mockResolvedValue(undefined);
-    renderPage();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), {
-      key: 'ArrowUp',
-      altKey: true,
-    });
-    await waitFor(() =>
-      expect(mockReorderLessons).toHaveBeenCalledWith('course-1', ['lesson-2', 'lesson-1']),
-    );
-    expect(mockNavigate).not.toHaveBeenCalled();
-  });
-
-  it('dismisses Add with Escape or an outside press and restores its focus', () => {
-    mockCourse = { ...course, lessonViewMode: 'edit' };
-    renderPage();
-    const add = screen.getByRole('button', { name: 'Add' });
-    add.focus();
-    fireEvent.click(add);
-    fireEvent.keyDown(add, { key: 'Escape' });
-    expect(add).toHaveAttribute('aria-expanded', 'false');
-    expect(add).toHaveFocus();
-    expect(screen.queryByRole('menu', { name: 'Add' })).not.toBeInTheDocument();
-    fireEvent.click(add);
-    fireEvent.pointerDown(document.body);
-    expect(add).toHaveAttribute('aria-expanded', 'false');
-    expect(mockCreateLesson).not.toHaveBeenCalled();
-  });
-});
-
-it('explains a suspended saved order on the path without enabling locked authoring', () => {
-  mockCourse = {
-    ...course,
-    localLessonOrder: [lesson2.id, lesson1.id],
-    autoPractice: true,
-    distributedCopy: { lineageId: 'science', revision: 1, locked: true, autoAcceptUpdates: false },
-  };
-  renderPage();
-  expect(screen.getByText(/Saved lesson order is suspended/)).toHaveTextContent(
-    'Turn off automatic Card practice',
-  );
-  expect(screen.queryByRole('button', { name: /Add lesson/i })).not.toBeInTheDocument();
 });

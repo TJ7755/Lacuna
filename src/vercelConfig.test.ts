@@ -203,7 +203,7 @@ describe('Vercel configuration', () => {
       expect(source).not.toMatch(/fonts\.(?:googleapis|gstatic)\.com/);
     }
 
-    const styles = await readFile('src/index.css', 'utf8');
+    const styles = await readFile('src/styles/foundations.css', 'utf8');
     const faces = [...styles.matchAll(/font-family: '([^']+)';\s*src: url\('([^']+)'\)/g)];
     expect(faces.map(([, family]) => family)).toEqual(
       expect.arrayContaining(['Instrument Sans', 'Space Grotesk', 'JetBrains Mono']),

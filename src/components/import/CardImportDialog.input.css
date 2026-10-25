@@ -1,0 +1,201 @@
+.card-import-options {
+  padding: 24px;
+  background: hsl(var(--paper) / 0.55);
+}
+.card-import-options h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 24px;
+  outline: none;
+}
+.card-import-title-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.import-destination > label input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  border: 1.5px solid hsl(var(--line));
+  border-radius: 12px;
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+  transition: border-color calc(0.16s * var(--import-motion, 1));
+}
+.import-destination > label input:focus {
+  border-color: hsl(var(--accent));
+}
+.card-import-destination {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.card-import-destination span {
+  font-size: 13px;
+  font-weight: 600;
+  color: hsl(var(--ink-faint));
+}
+.card-import-destination strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.card-import-content {
+  padding: 24px;
+  min-width: 0;
+}
+.card-import-input-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card-import-input-label label {
+  font-weight: 600;
+}
+.card-import-input textarea {
+  width: 100%;
+  height: 260px;
+  min-height: 180px;
+  resize: vertical;
+  font: 14px/1.7 var(--font-body);
+  tab-size: 20;
+}
+.card-import-input[data-dragging='true'] textarea {
+  border-color: hsl(var(--accent));
+}
+.card-import-input[data-dragging='true'] .card-import-package {
+  background: hsl(var(--accent-soft));
+}
+.card-import-source-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 16px;
+  font-size: 14px;
+  color: hsl(var(--ink-faint));
+}
+.card-import-source-meta span:last-child {
+  font-weight: 600;
+  color: hsl(var(--ink-soft));
+}
+.card-import-input details {
+  font-size: 14px;
+  color: hsl(var(--ink-soft));
+}
+.card-import-input summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: hsl(var(--ink));
+}
+.card-import-input details label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0;
+}
+.card-import-input details select {
+  width: auto;
+}
+.card-import-package {
+  min-height: 260px;
+  border-radius: 24px;
+  background: hsl(var(--paper) / 0.7);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: background-color calc(0.16s * var(--import-motion, 1));
+}
+.card-import-package-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  background: hsl(var(--surface));
+}
+.card-import-package p {
+  font-size: 14px;
+  color: hsl(var(--ink-soft));
+}
+.card-import-package button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  margin-top: 6px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.card-import-reverse {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  min-height: 44px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.card-import-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 20px;
+}
+.card-import-total strong {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.card-import-total span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  color: hsl(var(--ink-soft));
+}
+.card-import-total small {
+  font-size: 13px;
+  color: hsl(var(--ink-faint));
+}
+.card-import-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.card-import-notice {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: hsl(var(--ink) / 0.06);
+  color: hsl(var(--ink-soft));
+  font-size: 14px;
+  line-height: 1.45;
+}
+.card-import-notice[data-tone='warning'] {
+  background: hsl(var(--warning) / 0.14);
+  color: hsl(var(--warning-fg));
+}

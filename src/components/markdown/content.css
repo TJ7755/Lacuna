@@ -1,0 +1,235 @@
+/* Markdown / KaTeX rendered content sits inside `.prose-lacuna`. */
+.prose-lacuna {
+  line-height: 1.65;
+  caret-color: transparent;
+  cursor: text;
+}
+.prose-lacuna > :first-child {
+  margin-top: 0;
+}
+.prose-lacuna > :last-child {
+  margin-bottom: 0;
+}
+.prose-lacuna p {
+  margin: 0.6em 0;
+}
+/* Card-list previews: compact lines for text, while KaTeX keeps its own line height so a
+   fraction is shown whole rather than clipped. The height cap stops images growing a row. */
+.card-row-clamp {
+  line-height: 1.25rem;
+}
+.card-row-clamp :not(.katex, .katex *) {
+  line-height: inherit;
+}
+.prose-lacuna h1,
+.prose-lacuna h2,
+.prose-lacuna h3 {
+  margin: 0.8em 0 0.4em;
+  line-height: 1.2;
+}
+.prose-lacuna h1 {
+  font-size: 1.5em;
+}
+.prose-lacuna h2 {
+  font-size: 1.3em;
+}
+.prose-lacuna h3 {
+  font-size: 1.12em;
+}
+.prose-lacuna ul,
+.prose-lacuna ol {
+  margin: 0.5em 0;
+  padding-left: 1.4em;
+}
+.prose-lacuna ul {
+  list-style: disc;
+}
+.prose-lacuna ol {
+  list-style: decimal;
+}
+.prose-lacuna li {
+  margin: 0.2em 0;
+}
+.prose-lacuna a {
+  color: hsl(var(--accent-ink));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 150ms ease;
+}
+.prose-lacuna a:hover {
+  opacity: 0.8;
+}
+.prose-lacuna strong {
+  font-weight: 600;
+  color: hsl(var(--ink));
+}
+.prose-lacuna em {
+  font-style: italic;
+}
+.prose-lacuna blockquote {
+  border-left: 3px solid hsl(var(--accent) / 0.5);
+  padding-left: 1em;
+  margin: 0.7em 0;
+  color: hsl(var(--ink-soft));
+}
+.prose-lacuna code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background-color: hsl(var(--ink) / 0.07);
+  padding: 0.12em 0.36em;
+  border-radius: 4px;
+}
+.prose-lacuna pre {
+  background-color: hsl(var(--ink) / 0.06);
+  border: 1px solid hsl(var(--line));
+  border-radius: 10px;
+  padding: 0.9em 1.1em;
+  overflow-x: auto;
+  margin: 0.7em 0;
+}
+.prose-lacuna pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+}
+.prose-lacuna img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid hsl(var(--line));
+  margin: 0.6em 0;
+}
+/* A study face centres its text; images are blocks, so they need their own centring. */
+[data-study-face] .prose-lacuna img {
+  margin-inline: auto;
+}
+.prose-lacuna table {
+  border-collapse: collapse;
+  margin: 0;
+  width: 100%;
+  min-width: 100%;
+  font-size: 0.92em;
+  line-height: 1.5;
+}
+.prose-lacuna th,
+.prose-lacuna td {
+  border-bottom: 1px solid hsl(var(--line));
+  padding: 0.6em 0.9em;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+.prose-lacuna th {
+  background-color: hsl(var(--ink) / 0.045);
+  font-weight: 600;
+  font-size: 0.86em;
+  letter-spacing: 0.01em;
+  border-bottom: 2px solid hsl(var(--accent) / 0.35);
+  white-space: nowrap;
+}
+.prose-lacuna tbody tr:last-child th,
+.prose-lacuna tbody tr:last-child td {
+  border-bottom: none;
+}
+.prose-lacuna tbody tr:hover td {
+  background-color: hsl(var(--ink) / 0.025);
+}
+.prose-lacuna hr {
+  border: none;
+  border-top: 1px solid hsl(var(--line));
+  margin: 1em 0;
+}
+
+/* Wide tables scroll inside a native card rather than squeezing columns. */
+.lacuna-table-wrap {
+  overflow-x: auto;
+  margin: 0.9em 0;
+  border: 1px solid hsl(var(--line));
+  border-radius: 12px;
+  background-color: hsl(var(--surface-raised));
+}
+.lacuna-table-wrap > table {
+  margin: 0;
+}
+
+/* Obsidian-style [[note]] references render as quiet pills, never links. */
+.lacuna-wikilink {
+  display: inline-block;
+  padding: 0.08em 0.55em;
+  margin: 0 0.1em;
+  border-radius: 999px;
+  background-color: hsl(var(--accent-soft));
+  color: hsl(var(--accent-ink));
+  border: 1px solid hsl(var(--accent) / 0.28);
+  font-size: 0.86em;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* Mermaid diagrams sit in the same card language as tables and images. */
+.prose-lacuna pre.lacuna-mermaid {
+  background-color: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
+  border-radius: 24px;
+  padding: 1.25rem;
+}
+pre.lacuna-mermaid[data-mermaid-error='true'] {
+  border-color: hsl(var(--warning) / 0.6);
+}
+.lacuna-mermaid-rendered {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 0.4rem 0;
+}
+.lacuna-mermaid-rendered svg {
+  max-width: 100%;
+  height: auto;
+  min-width: min(100%, 300px);
+}
+.lacuna-mermaid-source {
+  margin-top: 0.7rem;
+  font-family: var(--font-body);
+  white-space: normal;
+  color: hsl(var(--ink-soft));
+}
+.lacuna-mermaid-source > summary {
+  cursor: pointer;
+  width: fit-content;
+  min-height: 44px;
+  align-content: center;
+  border-radius: 9999px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.lacuna-mermaid-source pre {
+  margin-top: 0.5rem;
+  white-space: pre;
+}
+
+/* Revealed cloze answer: highlighted inline within the full sentence.
+   The highlight is rendered with text-decoration (and a faint accent-ink
+   text-shadow) rather than background-color. This is deliberate: the
+   global ::selection rule paints a translucent accent fill on selected
+   text, and if the cloze element also had a background fill, the two
+   near-identical accent layers stacked into a muddy double-highlight. With
+   no element background, ::selection paints cleanly across selected cloze
+   text. The explicit ::selection override below makes the selection
+   clearly visible against the cloze mark without competing with it. */
+.cloze-reveal {
+  color: hsl(var(--accent-ink));
+  font-weight: 600;
+  text-decoration: underline 0.16em hsl(var(--accent) / 0.55);
+  text-decoration-skip-ink: auto;
+  text-underline-offset: 0.18em;
+}
+.cloze-reveal::selection {
+  background-color: hsl(var(--accent) / 0.45);
+  color: inherit;
+}
+.cloze-blank {
+  color: hsl(var(--accent-ink));
+  font-weight: 600;
+}

@@ -8,7 +8,7 @@ export default defineConfig({
     environment: 'happy-dom',
     clearMocks: false,
     include: [
-      'src/db/migrations.test.ts',
+      'src/db/migrations*.test.ts',
       'src/db/schemaLifecycle.test.ts',
       'src/db/rawDatabaseSnapshot.test.ts',
       'src/db/markdownAssetsColdImport.test.ts',
@@ -42,7 +42,7 @@ export default defineConfig({
       'src/db/practiceNodeRepository.test.ts',
       'src/db/preMigrationSnapshots.test.ts',
       'src/db/practiceNodeRepository.questionSets.test.ts',
-      'src/pages/LearnMode.test.tsx',
+      'src/pages/LearnMode*.test.tsx',
       'src/pages/learn/useLearnSession*.test.tsx',
       'src/pages/learn/courseReviews.test.tsx',
       'src/pages/learn/practiceQueue.test.tsx',
