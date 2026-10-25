@@ -22,11 +22,7 @@ test('app-entry expansion does not rerasterise a viewport mask every frame', asy
   session.on('Tracing.dataCollected', ({ value }) => {
     for (const raw of value) {
       const event = raw as unknown as TraceEvent;
-      if (
-        typeof event.name === 'string' &&
-        typeof event.ts === 'number' &&
-        typeof event.pid === 'number'
-      ) {
+      if (typeof event.name === 'string' && typeof event.ts === 'number' && typeof event.pid === 'number') {
         events.push(event);
       }
     }
