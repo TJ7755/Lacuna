@@ -166,7 +166,7 @@ export function CostPanel() {
         </a>
       </div>
       <p className="qc-fineprint">
-        Lacuna is in beta. Built-in AI is optional and needs separate beta access.
+        Lacuna is in beta. Jev automatic marking is optional and needs a beta access code.
       </p>
     </div>
   );

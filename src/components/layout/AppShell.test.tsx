@@ -1,38 +1,27 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AiSession } from '../../ai/session/types';
-import { createInMemoryAiSession } from '../../ai/session/inMemory';
 import { AppShell } from './AppShell';
 
 const mediaQueryState = vi.hoisted(() => ({
-  aiDesktop: true,
   mobileViewport: true,
   motionMultiplier: 0,
 }));
-const aiSessionState = vi.hoisted<{ current: AiSession | null }>(() => ({ current: null }));
 
 vi.mock('./Sidebar', () => ({
   Sidebar: ({
     onToggleCollapsed,
     toggleLabel = 'Toggle navigation',
     collapsed,
-    aiAction,
   }: {
     onToggleCollapsed: () => void;
     toggleLabel?: string;
     collapsed: boolean;
-    aiAction?: { onClick: () => void; triggerRef: React.RefObject<HTMLButtonElement> };
   }) => (
     <aside data-collapsed={collapsed || undefined}>
       <button type="button" data-sidebar-close onClick={onToggleCollapsed} aria-label={toggleLabel}>
         {toggleLabel}
       </button>
-      {aiAction && (
-        <button ref={aiAction.triggerRef} type="button" onClick={aiAction.onClick}>
-          AI
-        </button>
-      )}
       <a href="#/search">Search content</a>
     </aside>
   ),
@@ -57,25 +46,6 @@ vi.mock('../../state/motionSpeed', () => ({
   useMotionSpeed: () => ['normal', vi.fn()],
   speedMultiplier: () => mediaQueryState.motionMultiplier,
 }));
-vi.mock('../../hooks/useMediaQuery', () => ({
-  useMediaQuery: () => mediaQueryState.aiDesktop,
-}));
-vi.mock('../../ai/settings', () => ({
-  useAiSettings: () => [{ enabled: true, misconceptionFirstEnabled: true }, vi.fn()],
-}));
-vi.mock('../../ai/session/AiSessionContext', () => ({
-  useOptionalAiSession: () => aiSessionState.current,
-}));
-vi.mock('../ai/AiPanel', () => ({
-  AiPanel: ({ onClose }: { onClose: () => void }) => (
-    <aside aria-label="AI conversation">
-      <button type="button" onClick={onClose}>
-        Close AI
-      </button>
-    </aside>
-  ),
-}));
-
 function RouteContent() {
   const navigate = useNavigate();
   return (
@@ -109,10 +79,8 @@ function shellElement() {
 beforeEach(() => {
   sessionStorage.clear();
   localStorage.removeItem('lacuna-shortcut-bindings');
-  mediaQueryState.aiDesktop = true;
   mediaQueryState.mobileViewport = true;
   mediaQueryState.motionMultiplier = 0;
-  aiSessionState.current = createInMemoryAiSession();
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
     matches:
       query === '(prefers-reduced-motion: reduce)' ||
@@ -311,187 +279,6 @@ describe('AppShell mobile navigation', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible());
     expect(HTMLElement.prototype.scrollTo).toHaveBeenCalledWith({ top: 0 });
-  });
-});
-
-describe('AppShell AI workspace', () => {
-  it('removes the AI panel immediately when its session disappears', async () => {
-    mediaQueryState.motionMultiplier = 1;
-    const view = renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    expect(
-      await screen.findByRole('complementary', { name: 'AI conversation' }),
-    ).toBeInTheDocument();
-
-    aiSessionState.current = null;
-    view.rerender(shellElement());
-
-    expect(
-      screen.queryByRole('complementary', { name: 'AI conversation' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows the activity capsule only while the full conversation is closed', async () => {
-    aiSessionState.current = createInMemoryAiSession({
-      run: {
-        runId: 'run-1',
-        conversationId: 'conversation-1',
-        messageId: 'message-1',
-        claimedAt: 1,
-        leaseExpiresAt: 10_000,
-        status: 'active',
-      },
-      activity: {
-        runId: 'run-1',
-        status: 'working',
-        summary: 'Checking recall evidence',
-        updatedAt: 2,
-      },
-    });
-    renderShell();
-
-    expect(screen.getByRole('region', { name: 'AI activity' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-
-    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'AI activity' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
-    expect(screen.getByRole('region', { name: 'AI activity' })).toBeInTheDocument();
-  });
-
-  it('makes the activity capsule inert while a modal overlay is open', () => {
-    aiSessionState.current = createInMemoryAiSession({
-      run: {
-        runId: 'run-modal',
-        conversationId: 'conversation-1',
-        messageId: 'message-1',
-        claimedAt: 1,
-        leaseExpiresAt: 10_000,
-        status: 'active',
-      },
-      activity: {
-        runId: 'run-modal',
-        status: 'working',
-        summary: 'Checking recall evidence',
-        updatedAt: 2,
-      },
-    });
-    renderShell();
-
-    const capsule = screen.getByRole('region', { name: 'AI activity' });
-    expect(capsule.parentElement).not.toHaveAttribute('inert');
-
-    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-
-    expect(capsule.parentElement).toHaveAttribute('inert');
-  });
-
-  it('floats over the page without collapsing the rail, and restores focus when closed', async () => {
-    vi.mocked(window.matchMedia).mockImplementation((query) => ({
-      matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-    renderShell();
-
-    const trigger = screen.getByRole('button', { name: 'AI' });
-    trigger.focus();
-    fireEvent.click(trigger);
-
-    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-    expect(trigger.closest('aside')).not.toHaveAttribute('data-collapsed');
-
-    const close = screen.getByRole('button', { name: 'Close AI' });
-    close.focus();
-    fireEvent.click(close);
-    expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
-  });
-
-  it('closes to an Assistant pill that reopens the window and takes focus back', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Close AI' }));
-
-    const pill = screen.getByRole('button', { name: 'Assistant' });
-    pill.focus();
-    fireEvent.click(pill);
-    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Assistant' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Close AI' }));
-    expect(screen.getByRole('button', { name: 'Assistant' })).toHaveFocus();
-  });
-
-  it('does not mount the AI control below the desktop breakpoint', () => {
-    mediaQueryState.aiDesktop = false;
-    renderShell();
-    expect(screen.queryByRole('button', { name: 'AI' })).not.toBeInTheDocument();
-  });
-
-  it('does not expose completed AI activity below the desktop breakpoint', () => {
-    mediaQueryState.aiDesktop = false;
-    aiSessionState.current = createInMemoryAiSession({
-      activity: {
-        runId: 'run-complete',
-        status: 'completed',
-        summary: 'Explanation complete',
-        updatedAt: 2,
-      },
-    });
-
-    renderShell();
-
-    expect(screen.queryByRole('region', { name: 'AI activity' })).not.toBeInTheDocument();
-  });
-
-  it('closes the full workspace but retains Stop when an active run crosses the breakpoint', async () => {
-    aiSessionState.current = createInMemoryAiSession({
-      run: {
-        runId: 'run-breakpoint',
-        conversationId: 'conversation-1',
-        messageId: 'message-1',
-        claimedAt: 1,
-        leaseExpiresAt: 10_000,
-        status: 'active',
-      },
-      activity: {
-        runId: 'run-breakpoint',
-        status: 'working',
-        summary: 'Preparing an explanation',
-        updatedAt: 2,
-      },
-    });
-    vi.mocked(window.matchMedia).mockImplementation((query) => ({
-      matches: query === '(min-width: 1024px)' || query === '(min-width: 1280px)',
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }));
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'AI' }));
-    expect(await screen.findByLabelText('AI conversation')).toBeInTheDocument();
-
-    mediaQueryState.aiDesktop = false;
-    fireEvent.click(screen.getByRole('button', { name: 'Navigate page' }));
-
-    await waitFor(() => {
-      expect(screen.queryByLabelText('AI conversation')).not.toBeInTheDocument();
-    });
-    expect(screen.queryByRole('button', { name: 'AI' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
   });
 });
 

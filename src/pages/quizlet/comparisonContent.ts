@@ -100,7 +100,7 @@ export const comparisonRows: {
     category: 'Access',
     lacuna: 'Free, no subscription',
     quizlet: 'Free tier and paid subscriptions',
-    note: 'Lacuna’s built-in AI has separate beta access. Quizlet features and allowances vary by plan; check its current subscription details.',
+    note: 'Lacuna’s optional Jev automatic marking requires a beta access code. Quizlet features and allowances vary by plan; check its current subscription details.',
     source: 'plans',
   },
   {
@@ -139,7 +139,7 @@ export const comparisonRows: {
 export const faqs = [
   [
     'Is Lacuna free?',
-    'Core revision is free and open source, with no subscription. Built-in AI currently requires a separate beta access code; it is optional. You can create, import and study without it.',
+    'Core revision is free and open source, with no subscription. Jev automatic marking currently requires a beta access code; it is optional. You can create, import and study without it.',
   ],
   [
     'Does Quizlet have spaced repetition?',

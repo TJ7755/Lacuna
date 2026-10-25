@@ -139,13 +139,19 @@ describe('Settings', () => {
   it('persists the global answer input preference', () => {
     const view = render(<Settings />);
     fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
-    expect(screen.getByRole('radio', { name: 'As the course suggests' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'As the course suggests' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
     fireEvent.click(screen.getByRole('radio', { name: 'Typing where possible' }));
     expect(localStorage.getItem('lacuna.answerInput')).toBe('type');
     view.unmount();
     render(<Settings />);
     fireEvent.click(screen.getByRole('button', { name: /^Study behaviour/ }));
-    expect(screen.getByRole('radio', { name: 'Typing where possible' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: 'Typing where possible' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
     fireEvent.click(screen.getByRole('radio', { name: 'Revealing' }));
     expect(localStorage.getItem('lacuna.answerInput')).toBe('reveal');
     fireEvent.click(screen.getByRole('radio', { name: 'As the course suggests' }));
@@ -268,7 +274,7 @@ describe('Settings', () => {
         'settings-sync',
         'settings-export',
       ],
-      'settings-group-integrations': ['settings-install', 'settings-ai'],
+      'settings-group-integrations': ['settings-install', 'settings-jev'],
     };
 
     Object.entries(membership).forEach(([groupId, childIds]) => {

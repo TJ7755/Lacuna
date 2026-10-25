@@ -15,7 +15,6 @@ import { SidebarSection } from './settings/SidebarSection';
 import { CourseHeaderSection } from './settings/CourseHeaderSection';
 import { CourseDefaultsSection, StudySection } from './settings/StudySection';
 import { SyncSection } from './settings/SyncSection';
-import { AiSection } from './settings/AiSection';
 import { JevSection } from './settings/JevSection';
 import { SettingsDisclosure } from './settings/SettingsDisclosure';
 import { SettingsArrivalProvider } from './settings/SettingsUi';
@@ -40,7 +39,7 @@ const DATA_ANCHORS = [
   'settings-sync',
   'settings-export',
 ];
-const INTEGRATION_ANCHORS = ['settings-install', 'settings-ai', 'settings-jev', 'settings-mcp'];
+const INTEGRATION_ANCHORS = ['settings-install', 'settings-jev', 'settings-mcp'];
 const COMMON_ANCHORS = new Set(['settings-appearance', 'settings-input', 'settings-pomodoro']);
 
 export function Settings() {
@@ -103,11 +102,10 @@ export function Settings() {
           <SettingsDisclosure
             id="settings-group-integrations"
             title="Integrations"
-            summary="Install, AI and automatic marking"
+            summary="Install, automatic marking and MCP"
             anchors={INTEGRATION_ANCHORS}
           >
             <InstallSection />
-            <AiSection />
             <JevSection />
             {window.electronAPI?.isElectron && <McpSection />}
           </SettingsDisclosure>

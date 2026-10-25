@@ -1,20 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 
-test('AI and study pills retain keyboard choices after reloading', async ({ page }) => {
+test('Study pills retain keyboard choices after reloading', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await page.goto('/#/settings#settings-ai');
-  const external = page.getByRole('radio', { name: 'External AI client' });
-  await external.focus();
-  await external.press('ArrowRight');
-  const hosted = page.getByRole('radio', { name: 'Built-in AI' });
-  await expect(hosted).toBeChecked();
-  await expect(hosted).toBeFocused();
-  await page.reload();
-  await expect(hosted).toBeChecked();
-  await expect(page.getByRole('switch', { name: 'Enable AI', exact: true })).not.toBeChecked();
-
   await page.goto('/#/settings#settings-study');
   const speed = page.getByRole('radiogroup', { name: 'Audio playback speed' });
   await speed.getByRole('radio', { name: '1×', exact: true }).focus();
