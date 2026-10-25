@@ -77,16 +77,22 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 for (const viewport of [
-  { width: 1280, height: 900 },
-  { width: 390, height: 844 },
+  { width: 1280, height: 900, theme: 'dark' },
+  { width: 390, height: 844, theme: 'dark' },
+  { width: 1280, height: 900, theme: 'light' },
+  { width: 390, height: 844, theme: 'light' },
 ]) {
-  test(`explores fictional class evidence without setup, relay or persistence at ${viewport.width}px`, async ({
+  test(`explores fictional class evidence without setup, relay or persistence at ${viewport.width}px in ${viewport.theme} mode`, async ({
     page,
     context,
     baseURL,
   }, testInfo) => {
     test.setTimeout(30_000);
     await page.setViewportSize(viewport);
+    await page.addInitScript(
+      (theme) => localStorage.setItem('lacuna-theme', theme),
+      viewport.theme,
+    );
     const errors: string[] = [];
     const blockedRequests: { method: string; url: string; type: string }[] = [];
     const storageChecks: { stage: string; state: Awaited<ReturnType<typeof browserStorage>> }[] =
@@ -163,6 +169,14 @@ for (const viewport of [
       await expectUnchangedStorage('results after one click');
       expect(blockedRequests).toEqual([]);
       await capture(page, testInfo, `gaps-demo-results-${viewport.width}`);
+      await expect(table).toHaveCSS('border-spacing', '6px');
+      const cell = table.locator('td button').first();
+      await expect(cell).toHaveCSS('border-radius', '10px');
+      await expect(cell.locator('span')).toHaveCSS('padding-left', '8px');
+      await expect(main.getByRole('list', { name: 'Key', exact: true })).toHaveCSS(
+        'column-gap',
+        '20px',
+      );
 
       await table.getByRole('button', { name: /^Explain osmosis\.\s*30%$/ }).click();
       const answers = main.getByRole('region', { name: 'Answers', exact: true });
