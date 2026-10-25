@@ -4,6 +4,7 @@ import type { VitePluginPWAAPI } from 'vite-plugin-pwa';
 type OutputChunk = Rolldown.OutputChunk;
 type StaticChunk = Pick<OutputChunk, 'fileName' | 'imports' | 'isEntry'> & {
   viteMetadata?: { importedCss: Set<string> };
+  moduleIds?: readonly string[];
 };
 
 function collectStaticImports(chunks: readonly StaticChunk[], root: StaticChunk): string[] {
@@ -28,7 +29,9 @@ export function collectAppShellScripts(chunks: readonly StaticChunk[]): string[]
   // lesson-order writes, the welcome-course seed and motion features after first paint.
   // Restore also needs the decoder and its mandatory device-local AI cleanup hook.
   const deferredControls = chunks.filter((chunk) =>
-    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|lessonOrder|backups|portability|relay)-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    /^assets\/(?:RouteAnnouncement|CourseActions|CommandPalette|ForecastChart|seed|motionFeatures|markdownAssets|lessonOrder|backups|portability|relay)-[A-Za-z0-9_-]{8}\.js$/.test(
+      chunk.fileName,
+    ),
   );
   return [
     ...new Set([
@@ -69,7 +72,11 @@ export function collectOfflineCardsDependencies(chunks: readonly StaticChunk[]):
  */
 export function collectOfflineImportRoute(chunks: readonly StaticChunk[]): string[] {
   const route = chunks.find((chunk) =>
-    /^assets\/ImportPanel-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
+    chunk.moduleIds
+      ? chunk.moduleIds.some((id) =>
+          id.replaceAll('\\', '/').endsWith('/src/components/import/ImportPanel.tsx'),
+        )
+      : /^assets\/ImportPanel-[A-Za-z0-9_-]{8}\.js$/.test(chunk.fileName),
   );
   if (!route) throw new Error('Could not find the Import panel for offline precaching.');
   const eager = new Set([...collectAppShellScripts(chunks), ...collectAppShellStyles(chunks)]);
