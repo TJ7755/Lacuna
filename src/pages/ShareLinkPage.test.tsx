@@ -287,6 +287,40 @@ it.each(['payload', 'meta'])(
   },
 );
 
+it.each(['missing', 'failed'])(
+  'reports a %s payload without waiting for metadata',
+  async (failure) => {
+    let failManifest!: (error: Error) => void;
+    let manifestSignal: AbortSignal | undefined;
+    const manifest = new Promise<Response>((_resolve, reject) => {
+      failManifest = reject;
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string, init: RequestInit) => {
+        if (input.endsWith('/meta')) {
+          manifestSignal = init.signal!;
+          return manifest;
+        }
+        if (failure === 'failed') throw new TypeError('Payload offline');
+        return notFoundResponse();
+      }),
+    );
+    open(SHARE_ID);
+    try {
+      const message =
+        failure === 'missing'
+          ? /invalid or has been removed/
+          : /Could not reach the share link service/;
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(manifestSignal?.aborted).toBe(true);
+      expect(mocks.decodeFile).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => failManifest(new TypeError('Late metadata rejection')));
+    }
+  },
+);
+
 it('aborts both parallel downloads when leaving the share page', async () => {
   const signals: AbortSignal[] = [];
   vi.stubGlobal(

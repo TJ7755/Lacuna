@@ -109,23 +109,18 @@ export function ShareLinkImport({
         return;
       }
       try {
-        // Both slots are required. Overlap their relay round trips, but settle
-        // both so an early manifest failure cannot become an unhandled rejection
-        // or override the existing missing-payload/error result.
-        const [payloadResult, manifestResult] = await Promise.allSettled(
-          (['payload', 'meta'] as const).map((slot) =>
-            getShareBytes({
-              relayUrl: DEFAULT_RELAY_URL,
-              shareId,
-              slot,
-              signal: controller.signal,
-            }),
-          ),
+        const options = { relayUrl: DEFAULT_RELAY_URL, shareId, signal: controller.signal };
+        const payloadRequest = getShareBytes({ ...options, slot: 'payload' });
+        // Handle metadata rejection immediately, but only wait for its result
+        // after a valid payload. A known payload failure must not wait for it.
+        const manifestRequest = getShareBytes({ ...options, slot: 'meta' }).then(
+          (value) => ({ status: 'fulfilled' as const, value }),
+          (reason: unknown) => ({ status: 'rejected' as const, reason }),
         );
+        const result = await payloadRequest;
         if (cancelled) return;
-        if (payloadResult.status === 'rejected') throw payloadResult.reason;
-        const result = payloadResult.value;
         if (!result) {
+          controller.abort();
           setState({ status: 'unavailable', message: UNAVAILABLE_MESSAGE });
           return;
         }
@@ -134,6 +129,8 @@ export function ShareLinkImport({
         // the linked course, and an untracked import would permanently miss
         // teacher updates. Show an incomplete state with a retry instead —
         // importing stays available once the manifest verifies.
+        const manifestResult = await manifestRequest;
+        if (cancelled) return;
         if (manifestResult.status === 'rejected') throw manifestResult.reason;
         const manifestSlot = manifestResult.value;
         if (!manifestSlot) {
@@ -172,6 +169,7 @@ export function ShareLinkImport({
           }),
         });
       } catch (error) {
+        controller.abort();
         if (!cancelled) {
           setState({
             status: 'unavailable',
