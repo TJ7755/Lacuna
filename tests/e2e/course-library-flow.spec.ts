@@ -26,7 +26,7 @@ test('keeps the library coherent through a cold download and backtracking', asyn
     await expect(library).toBeFocused();
     await expect(name).toHaveValue('Unfinished chemistry');
 
-    await library.click();
+    await library.press('Enter');
     await expect(loading).toBeVisible();
     release();
     const search = page.getByRole('searchbox', { name: 'Search the course library' });
@@ -39,6 +39,11 @@ test('keeps the library coherent through a cold download and backtracking', asyn
     expect(Math.abs(searchBounds.x - subjectsBounds.x)).toBeLessThan(1);
     expect(Math.abs(searchBounds.width - subjectsBounds.width)).toBeLessThan(1);
     expect(Math.abs(loadedHeight - loadingHeight)).toBeLessThan(2);
+    await search.fill('8461');
+    await page.getByRole('button', { name: 'Biology AQA GCSE · 8461', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to the course library' }).press('Escape');
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('8461');
   } finally {
     release();
   }

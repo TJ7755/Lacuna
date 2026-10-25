@@ -48,10 +48,16 @@ export function CourseLibraryImport({
     [],
   );
   const back = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // A chosen course is still loading, so its way back is the first stable control.
-    if (chosen) back.current?.focus({ preventScroll: true });
+    // A fast Back can revive the exiting picker, so mount-only autofocus is insufficient.
+    const target = chosen
+      ? back.current
+      : [...(panel.current?.querySelectorAll<HTMLInputElement>('input[type="search"]') ?? [])].find(
+          (element) => !element.closest('[inert]'),
+        );
+    target?.focus({ preventScroll: true });
   }, [chosen]);
 
   const goBack = () => {
@@ -62,6 +68,7 @@ export function CourseLibraryImport({
 
   return (
     <motion.div
+      ref={panel}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.12 * multiplier }}
