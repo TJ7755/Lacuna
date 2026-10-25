@@ -16,7 +16,6 @@ for (const provider of ['external', 'hosted']) {
         }),
       );
       localStorage.setItem('lacuna.answerInput', 'type');
-      localStorage.setItem('lacuna.studyMode', 'simple');
     }, provider);
     const requests: string[] = [];
     await page.route('**/api/ai/**', (route) => {
@@ -67,7 +66,7 @@ for (const provider of ['external', 'hosted']) {
     await page.getByRole('textbox', { name: 'Back', exact: true }).fill('Carbon dioxide');
     await page.getByRole('button', { name: 'Add card', exact: true }).click();
     await expect(page).not.toHaveURL(/\/cards\/new$/);
-    await page.goto(`/#/course/${courseId}/learn`);
+    await page.goto(`/#/course/${courseId}/learn?mode=simple`);
     await page.getByRole('textbox', { name: 'Your answer', exact: true }).fill('CO2');
     await page.getByRole('button', { name: 'Check answer', exact: true }).click();
     await expect(page.getByRole('main', { name: 'Session report' })).toBeVisible();
