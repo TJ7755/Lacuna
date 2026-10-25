@@ -59,7 +59,6 @@ test('a failed landing handover download recovers through the existing stale-chu
   try {
     await page.addInitScript(() => {
       window.requestIdleCallback = () => 1;
-      localStorage.setItem('handover-recovery-proof', 'retained');
     });
     let failed = false;
     let documents = 0;
@@ -79,6 +78,7 @@ test('a failed landing handover download recovers through the existing stale-chu
     await page.goto('/');
     await page.getByRole('button', { name: 'Pause illustrations' }).click();
     await expect(page.getByRole('button', { name: 'Play illustrations' })).toBeVisible();
+    await page.evaluate(() => localStorage.setItem('handover-recovery-proof', 'retained'));
     expect(failed).toBe(false);
     await page
       .getByRole('region', { name: 'Revision around your exam' })
@@ -103,6 +103,12 @@ test('a failed landing handover download recovers through the existing stale-chu
       window.dispatchEvent(new Event('vite:preloadError'));
     });
     await expect.poll(() => probes).toBe(2);
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }),
+    );
     expect(documents).toBe(2);
     expect(
       await page.evaluate(async () => (await caches.match('/bounded-recovery-proof'))?.text()),
