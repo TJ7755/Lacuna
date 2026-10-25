@@ -1,6 +1,23 @@
 .qs-library .qs-set-list {
   overflow: visible;
 }
+.qs-library .qs-set-row {
+  padding: 20px;
+}
+.qs-library .qs-set-row h2,
+.qs-library .qs-empty h2 {
+  font-size: var(--text-xl);
+  line-height: var(--text-xl--line-height);
+}
+.qs-library .qs-set-row h2 {
+  margin-bottom: 4px;
+}
+.qs-library .qs-empty {
+  padding: 32px;
+}
+.qs-library .qs-empty h2 {
+  margin-bottom: 8px;
+}
 .qs-library-row {
   display: flex;
   align-items: center;
@@ -62,7 +79,7 @@
 }
 .qs-library-options {
   position: relative;
-  margin-right: 14px;
+  margin-right: 20px;
 }
 .qs-library-options > summary {
   cursor: pointer;
