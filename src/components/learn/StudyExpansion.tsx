@@ -38,11 +38,7 @@ export function StudyExpansion({
     const style = getComputedStyle(anchor);
     return { backgroundColor: style.backgroundColor, color: style.color };
   });
-  const [originTextScale] = useState(() => {
-    const triggerSize = parseFloat(getComputedStyle(anchor).fontSize);
-    const previewSize = parseFloat(getComputedStyle(document.documentElement).fontSize) * 0.875;
-    return Number.isFinite(triggerSize / previewSize) ? triggerSize / previewSize : 1;
-  });
+  const [triggerFontSize] = useState(() => getComputedStyle(anchor).fontSize);
   const [headerInk, setHeaderInk] = useState(originColours.color);
   const [bounds, setBounds] = useState(() => ({
     left: origin.left,
@@ -203,18 +199,13 @@ export function StudyExpansion({
           width: origin.width,
           height: origin.height,
           borderRadius: origin.height / 2,
+          fontSize: triggerFontSize,
         }}
       >
-        <motion.span
-          className="inline-flex items-center gap-2"
-          initial={multiplier > 0 ? { scale: originTextScale } : false}
-          animate={{ scale: 1 }}
-          exit={{ scale: originTextScale }}
-          transition={expandingActionSpring(multiplier)}
-        >
+        <span className="inline-flex items-center gap-2">
           <span>Study</span>
           <StudyActionIcon open={present} multiplier={multiplier} />
-        </motion.span>
+        </span>
       </motion.button>
       {/* Keep the final-width body still while the shell reveals it towards the left. */}
       <div className="absolute right-0 top-0 pt-11 text-ink" style={{ width }}>
