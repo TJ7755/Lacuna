@@ -26,6 +26,10 @@ export async function waitForSeededDashboard(page: Page): Promise<void> {
   await openLacuna.or(dashboard).waitFor({ state: 'visible' });
   if (!(await dashboard.isVisible().catch(() => false))) {
     await openLacuna.click();
+    // A fresh profile enters through onboarding; Exit leaves it for Today.
+    const exit = page.getByRole('button', { name: 'Exit', exact: true });
+    await exit.or(dashboard).waitFor({ state: 'visible' });
+    if (await exit.isVisible().catch(() => false)) await exit.click();
   }
   await dashboard.waitFor({ state: 'visible' });
   await page.waitForFunction(() => window.location.hash === '#/' || window.location.hash === '');

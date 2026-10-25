@@ -9,7 +9,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { seedWorkPending } from './db/seedFlags';
-import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
+import { db, ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
 import { stampMissingLessonViewModes } from './db/lessonViewModeMigration';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
@@ -18,7 +18,11 @@ import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { consumeLandingHandover } from './landingHandover';
-import { markOnboardingPending, onboardingPending } from './onboarding/onboardingState';
+import {
+  finishOnboarding,
+  markOnboardingPending,
+  onboardingPending,
+} from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
 
 export { router } from './routes/router';
@@ -117,6 +121,15 @@ export function App() {
 
           await settleFirstRun();
           if (firstRun) markOnboardingPending();
+        }
+        // Courses restored, synced or made outside the flow mean the learner is past onboarding,
+        // unless they are part-way through it.
+        if (
+          onboardingPending() &&
+          !window.location.hash.startsWith('#/start') &&
+          (await db.courses.count()) > 0
+        ) {
+          finishOnboarding();
         }
         // A new learner who chose to enter starts with onboarding rather than an empty Today.
         if (enteredFromLanding && onboardingPending() && /^#?\/?$/.test(window.location.hash)) {

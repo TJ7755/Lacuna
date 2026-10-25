@@ -46,6 +46,7 @@ vi.mock('./pages/Dashboard', () => ({ Dashboard: () => null }));
 
 import { App } from './App';
 import { replacementLifecycle } from './db/replacementLifecycle';
+import { db } from './db/schema';
 
 describe('App initialisation', () => {
   beforeEach(() => {
@@ -160,6 +161,32 @@ describe('App initialisation', () => {
     await act(() => replacementLifecycle.replace('manual', async () => undefined));
 
     expect(localStorage.getItem('lacuna-ai-relay-session-v1')).toBeNull();
+  });
+
+  it('ends a pending onboarding for a learner who already has courses', async () => {
+    localStorage.setItem('lacuna-onboarding', 'pending');
+    window.location.hash = '#/download';
+    const count = vi.spyOn(db.courses, 'count').mockResolvedValue(1);
+
+    render(<App />);
+
+    await waitFor(() => expect(localStorage.getItem('lacuna-onboarding')).toBe('done'));
+    count.mockRestore();
+  });
+
+  it('keeps onboarding pending part-way through it', async () => {
+    localStorage.setItem('lacuna-onboarding', 'pending');
+    window.location.hash = '#/start?then=%2Fcourse%2Fc1';
+    const count = vi.spyOn(db.courses, 'count').mockResolvedValue(1);
+
+    render(<App />);
+
+    await waitFor(() => expect(dependencies.openDatabase).toHaveBeenCalled());
+    await act(async () => {});
+    expect(localStorage.getItem('lacuna-onboarding')).toBe('pending');
+    expect(count).not.toHaveBeenCalled();
+    count.mockRestore();
+    localStorage.removeItem('lacuna-onboarding');
   });
 
   it('does not redirect a first-time visitor away from the public download page', async () => {
