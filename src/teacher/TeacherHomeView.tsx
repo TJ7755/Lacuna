@@ -27,8 +27,12 @@ export function TeacherHomeView({ children }: { children?: ReactNode }) {
               relay; connecting a class does not turn it on.
             </p>
             <p>
-              Reports cover the latest completed UTC day when pupils open Lacuna online. Missed days
-              are not backfilled. No report does not mean no study.
+              Pupils can choose Send latest progress to share a partial snapshot of today’s UTC day.
+              Refresh results in the class view to read their latest accepted update.
+            </p>
+            <p>
+              Automatic reports cover the latest completed UTC day when pupils open Lacuna online.
+              Missed days are not backfilled. No report does not mean no study.
             </p>
             <p>
               Names are self-reported, not verified identity or attendance. The relay retains

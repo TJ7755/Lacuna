@@ -25,7 +25,7 @@ export function corsAllowOrigin(request: Request): string | null {
 export function relayCorsHeaders(request: Request, exposeHeaders: string): Headers {
   const headers = new Headers({
     'Access-Control-Allow-Methods': 'GET, HEAD, PUT, POST, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, If-Match, X-Insights-Revision',
     'Access-Control-Expose-Headers': exposeHeaders,
     'Access-Control-Max-Age': '86400',
     'Cross-Origin-Resource-Policy': 'cross-origin',

@@ -118,6 +118,14 @@ export function TodayPage({
         )}
       </div>
 
+      {courses.length > 0 && (
+        <p className="mb-6 max-w-2xl text-sm text-ink-soft">
+          Today’s results are partial snapshots pupils choose to send. Open a class and Refresh
+          results to read its latest accepted updates. Summaries show only results already loaded
+          for this UTC day.
+        </p>
+      )}
+
       {courses.length === 0 ? (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-16 text-center md:py-20">
           {!classCreated && (
@@ -148,7 +156,9 @@ export function TodayPage({
         <>
           {open.length > 0 && (
             <SectionCard className="gaps-rise mb-8 p-6 md:p-8">
-              <h2 className="font-display text-2xl font-semibold tracking-tight">Yesterday</h2>
+              <h2 className="font-display text-2xl font-semibold tracking-tight">
+                Today’s loaded results
+              </h2>
               <ul className="mt-6 flex flex-col gap-5">
                 {open.map((row, index) => (
                   <li key={row.course.shareId}>

@@ -40,3 +40,20 @@ export function createInsightsLastSentDaySetting(courseId: string): LocalSetting
     serialise: (value) => value ?? '',
   });
 }
+
+/** Device-local acknowledgement time for explicit current-progress publication. */
+export function createInsightsLastPublishedAtSetting(
+  courseId: string,
+): LocalSetting<number | null> {
+  return createLocalSetting<number | null>({
+    key: `lacuna.insights.lastPublishedAt.${courseId}`,
+    event: `lacuna:insights-last-published-at-${courseId}`,
+    parse: (raw) => {
+      const value = raw === null || raw === '' ? NaN : Number(raw);
+      return Number.isSafeInteger(value) && value >= 0 && value <= 8_640_000_000_000_000
+        ? value
+        : null;
+    },
+    serialise: (value) => (value === null ? '' : String(value)),
+  });
+}

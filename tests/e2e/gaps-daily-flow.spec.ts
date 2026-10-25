@@ -14,7 +14,7 @@ test.skip(
   process.env.VITE_GAPS_REPORTING_ENABLED !== 'true' || process.env.LACUNA_BROWSER_SITE === 'gaps',
   'Requires the isolated trial-enabled learner build',
 );
-test.use({ actionTimeout: 15_000 });
+test.use({ actionTimeout: 15_000, trace: 'off', video: 'off' });
 let teacherBuild: string;
 test.beforeAll(async () => {
   teacherBuild = await mkdtemp(join(tmpdir(), 'gaps-daily-flow-'));
@@ -37,6 +37,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   const relay = new MemoryStore(() => clock),
     handle = createHandler(relay, { now: () => clock });
   const uploads: string[] = [];
+  let failPublication = false;
   async function wire(page: Page) {
     await page.route('https://relay.getlacuna.app/**', async (route) => {
       const source = route.request(),
@@ -44,7 +45,10 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
         body = source.postDataBuffer();
       const headers = new Headers(source.headers());
       if (body) headers.set('Content-Length', String(body.length));
-      if (source.url().includes('/insights/') && method === 'PUT') uploads.push(body!.toString());
+      if (source.url().includes('/insights/') && method === 'PUT') {
+        uploads.push(body!.toString());
+        if (failPublication) return route.fulfill({ status: 503, body: '' });
+      }
       const response = await handle(
         new Request(source.url(), {
           method,
@@ -112,6 +116,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
       animations: 'disabled',
       path: testInfo.outputPath('class-protected.png'),
       fullPage: true,
+      mask: [teacher.getByLabel('Recovery code')],
     });
     const recoveryDownload = teacher.waitForEvent('download');
     await teacher
@@ -132,7 +137,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await unlock.getByLabel('Recovery code', { exact: true }).fill(recoveryCode);
     await unlock.getByRole('checkbox', { name: 'Remember this class on this device' }).uncheck();
     await unlock.getByRole('button', { name: 'Unlock class', exact: true }).click();
-    // Unlocking reads the latest completed day; an empty day does not claim no study.
+    // Unlocking reads today; an empty day does not claim no study.
     await expect(teacher.getByText(/No report does not mean no study/)).toBeVisible();
     await expect(teacher.getByRole('table')).toHaveCount(0);
     await teacher.screenshot({
@@ -278,7 +283,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await pupil.goto('/#/');
     await pupil.reload();
     await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
-    await expect(pupil.getByText(`Last sent: ${day}.`, { exact: true })).toBeVisible({
+    await expect(pupil.getByText(`Last daily report: ${day}.`, { exact: true })).toBeVisible({
       timeout: 15_000,
     });
     expect(uploads).toHaveLength(1);
@@ -288,7 +293,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     expect(uploads[0]).not.toContain('Membrane');
     await pupil.screenshot({ path: testInfo.outputPath('pupil-consent.png'), fullPage: true });
     await teacher.getByRole('tab', { name: 'Results', exact: true }).click();
-    await teacher.getByRole('button', { name: 'Read again', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Previous day', exact: true }).click();
+    await teacher.getByRole('button', { name: 'Refresh results', exact: true }).click();
     await expect(teacher.getByRole('table')).toBeVisible();
     await teacher.screenshot({
       animations: 'disabled',
@@ -337,6 +343,103 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     expect(
       (await teacher.evaluate(() => indexedDB.databases())).map((db) => db.name).sort(),
     ).toEqual(['lacuna.gaps.connections', 'lacuna.gaps.owner-keys']);
+
+    // Today's work is explicitly published through ordinary pupil navigation.
+    await teacher.setViewportSize({ width: 1280, height: 900 });
+    await teacher.getByRole('button', { name: 'Next day', exact: true }).click();
+    await expect(teacher.getByRole('table')).toHaveCount(0);
+    const practise = async () => {
+      const count = (await readAll(pupil, 'reviewHistory')).length;
+      await pupil.goto(`/#/course/${importedId}`);
+      await pupil.getByRole('button', { name: 'Other ways to study' }).click();
+      await pupil.getByRole('menuitem', { name: 'Practise until all correct' }).click();
+      await pupil.getByRole('button', { name: 'Start practising' }).click();
+      await pupil
+        .getByRole('button', { name: /Show answer/i })
+        .last()
+        .click();
+      await pupil.getByRole('button', { name: 'Yes', exact: true }).click();
+      await expect(pupil.getByRole('heading', { name: 'Goal reached.' })).toBeVisible();
+      await expect
+        .poll(async () => (await readAll(pupil, 'reviewHistory')).length)
+        .toBeGreaterThan(count);
+      await pupil.goto('/#/');
+      await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
+    };
+    const publish = pupil.getByRole('button', { name: 'Send latest progress', exact: true });
+    await practise();
+    const firstPublication = pupil.waitForResponse(
+      (response) =>
+        response.url().includes('/insights/') &&
+        response.request().method() === 'PUT' &&
+        response.status() === 204,
+    );
+    await publish.click();
+    await firstPublication;
+    await expect(publish).toBeEnabled();
+    await teacher.getByRole('button', { name: 'Refresh results', exact: true }).click();
+    await expect(
+      teacher.getByRole('table').getByRole('button', { name: 'Pupil A', exact: true }),
+    ).toHaveCount(1);
+    await teacher.getByRole('table').locator('tbody td button').first().click();
+    await expect(teacher.getByRole('region', { name: 'Evidence for Pupil A' })).toContainText(
+      'Recalled',
+    );
+    const todayPrefix = `insights/${shareId}/${new Date(clock).toISOString().slice(0, 10)}/envelopes/`;
+    const firstSlots = (await relay.list(todayPrefix)).map(({ key }) => key);
+    expect(firstSlots).toHaveLength(1);
+    await teacher.screenshot({
+      path: testInfo.outputPath('current-day-results.png'),
+      fullPage: true,
+    });
+    await pupil.screenshot({
+      path: testInfo.outputPath('current-day-published.png'),
+      fullPage: true,
+    });
+
+    const sentBeforeUnchanged = uploads.length;
+    await publish.click();
+    await expect(
+      pupil.getByRole('status').filter({ hasText: /nothing new|up to date|unchanged/i }),
+    ).toBeVisible();
+    expect(uploads).toHaveLength(sentBeforeUnchanged);
+
+    await pupil.clock.setFixedTime(clock + 1000);
+    await practise();
+    failPublication = true;
+    await publish.click();
+    await expect(pupil.getByRole('status').filter({ hasText: /could not|failed/i })).toBeVisible();
+    const failedPacket = uploads.at(-1);
+    failPublication = false;
+    const retryPublication = pupil.waitForResponse(
+      (response) =>
+        response.url().includes('/insights/') &&
+        response.request().method() === 'PUT' &&
+        response.status() === 204,
+    );
+    await publish.click();
+    await retryPublication;
+    await expect(publish).toBeEnabled();
+    expect(uploads.at(-1)).toBe(failedPacket);
+    expect((await relay.list(todayPrefix)).map(({ key }) => key)).toEqual(firstSlots);
+    await teacher.getByRole('button', { name: 'Refresh results', exact: true }).click();
+    await expect(
+      teacher.getByRole('table').getByRole('button', { name: 'Pupil A', exact: true }),
+    ).toHaveCount(1);
+    if (!(await teacher.getByRole('region', { name: 'Evidence for Pupil A' }).isVisible()))
+      await teacher.getByRole('table').locator('tbody td button').first().click();
+    await expect(
+      teacher
+        .getByRole('region', { name: 'Evidence for Pupil A' })
+        .getByText('Membrane recall', { exact: true }),
+    ).toHaveCount(2);
+
+    await pupil.reload();
+    await expect(publish).toBeVisible();
+    await pupil.goto('/#/');
+    await pupilClasses.getByRole('link', { name: 'Class biology', exact: true }).click();
+    await expect(publish).toBeVisible();
+    const uploadedBeforeOptOut = uploads.length;
     await teacher.getByRole('button', { name: 'Lock', exact: true }).click();
     await expect(teacher.getByRole('heading', { name: 'Unlock to see results' })).toBeVisible();
     await expect(teacher.getByRole('table')).toHaveCount(0);
@@ -347,7 +450,8 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     await expect(
       pupilClasses.getByRole('link', { name: 'Class biology', exact: true }),
     ).toBeVisible();
-    expect(uploads).toHaveLength(1);
+    await expect(publish).toHaveCount(0);
+    expect(uploads).toHaveLength(uploadedBeforeOptOut);
   } finally {
     await Promise.allSettled([
       teacherContext.close(),

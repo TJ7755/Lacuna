@@ -263,3 +263,168 @@ describe('durable encrypted daily delivery', () => {
     expect(input.evidence).toHaveBeenCalledTimes(1);
   });
 });
+
+async function inspectSnapshots() {
+  const database = new Dexie(databaseName);
+  try {
+    await database.open();
+    return await database.table('snapshots').toArray();
+  } finally {
+    database.close();
+  }
+}
+
+describe('current-progress snapshots', () => {
+  it('publishes today, skips unchanged evidence and revises one stable slot after more work', async () => {
+    const input = options();
+    const outbox = openOutbox();
+    expect(await outbox.publish(input)).toBe('sent');
+    expect(await outbox.publish(input)).toBe('unchanged');
+    input.evidence.mockResolvedValue(new TextEncoder().encode('more completed work'));
+    expect(await outbox.publish(input)).toBe('sent');
+    const calls = input.fetchImpl.mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0][0]).toBe(calls[1][0]);
+    expect(calls[0][0]).toContain('/2026-10-19/');
+    const first = new Headers(calls[0][1]?.headers);
+    const second = new Headers(calls[1][1]?.headers);
+    expect(first.get('Authorization')).toMatch(/^Bearer [0-9a-f]{64}$/);
+    expect(second.get('Authorization')).toBe(first.get('Authorization'));
+    expect(first.get('X-Insights-Revision')).toBe('1');
+    expect(second.get('X-Insights-Revision')).toBe('2');
+    expect(await inspect()).toEqual([]);
+    expect(await inspectSnapshots()).toMatchObject([{ status: 'sent', revision: 2 }]);
+  });
+
+  it('retries exact committed bytes after a lost acknowledgement, then publishes newer evidence', async () => {
+    const input = options();
+    input.fetchImpl.mockRejectedValueOnce(new TypeError('Reply lost after acceptance'));
+    const first = openOutbox();
+    await expect(first.publish(input)).rejects.toThrow('Could not reach');
+    const pending = (await inspectSnapshots())[0];
+    expect(pending).toMatchObject({ status: 'pending', revision: 1 });
+    expect(JSON.stringify(pending)).not.toContain('pupil-17');
+    first.close();
+    input.evidence.mockResolvedValue(new TextEncoder().encode('new work after failure'));
+    expect(await openOutbox().publish(input)).toBe('sent');
+    const calls = input.fetchImpl.mock.calls;
+    expect(calls).toHaveLength(3);
+    expect(calls[1][0]).toBe(calls[0][0]);
+    expect(calls[1][1]?.body).toBe(calls[0][1]?.body);
+    expect(calls[1][1]?.headers).toEqual(calls[0][1]?.headers);
+    expect(new Headers(calls[2][1]?.headers).get('X-Insights-Revision')).toBe('2');
+  });
+
+  it('never fetches before the snapshot commit succeeds', async () => {
+    const input = options();
+    vi.spyOn(Dexie.prototype, 'transaction').mockRejectedValueOnce(new Error('Storage full'));
+    await expect(openOutbox().publish(input)).rejects.toThrow('Storage full');
+    expect(input.fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('retains pending bytes if the acknowledgement commit fails', async () => {
+    const input = options();
+    input.fetchImpl.mockImplementationOnce(async () => {
+      vi.spyOn(Dexie.prototype, 'transaction').mockRejectedValueOnce(new Error('Commit failed'));
+      return new Response(null, { status: 204 });
+    });
+    const outbox = openOutbox();
+    await expect(outbox.publish(input)).rejects.toThrow('Commit failed');
+    expect(await inspectSnapshots()).toMatchObject([{ status: 'pending', revision: 1 }]);
+    expect(await outbox.publish(input)).toBe('sent');
+    expect(input.fetchImpl.mock.calls[1][1]?.body).toBe(input.fetchImpl.mock.calls[0][1]?.body);
+  });
+
+  it.each([false, true])(
+    'does not let a delayed acknowledgement overwrite another tab’s newer revision (lost reply: %s)',
+    async (loseReply) => {
+      const input = options();
+      let started!: () => void, release!: () => void;
+      const ready = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      const delayed = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      input.fetchImpl.mockImplementationOnce(async () => {
+        started();
+        await delayed;
+        if (loseReply) throw new TypeError('Acknowledgement lost');
+        return new Response(null, { status: 204 });
+      });
+      const first = openOutbox().publish(input);
+      await ready;
+      input.evidence.mockResolvedValue(new TextEncoder().encode('new work'));
+      expect(await openOutbox().publish(input)).toBe('sent');
+      const latest = (await inspectSnapshots())[0];
+      expect(latest).toMatchObject({ status: 'sent', revision: 2 });
+      release();
+      expect(await first).toBe('unchanged');
+      expect((await inspectSnapshots())[0]).toEqual(latest);
+      const calls = input.fetchImpl.mock.calls;
+      expect(new Set(calls.map(([url]) => url)).size).toBe(1);
+      expect(calls[1][1]?.body).toBe(calls[0][1]?.body);
+    },
+  );
+
+  it('holds ambiguous pending bytes through opt-out and does not mark a late response sent', async () => {
+    const input = options();
+    let optedIn = true;
+    input.isOptedIn = () => optedIn;
+    input.fetchImpl.mockImplementationOnce(async () => {
+      optedIn = false;
+      return new Response(null, { status: 204 });
+    });
+    const outbox = openOutbox();
+    expect(await outbox.publish(input)).toBe('idle');
+    expect(await inspectSnapshots()).toMatchObject([{ status: 'pending' }]);
+    expect(await outbox.publish(input)).toBe('idle');
+    expect(input.fetchImpl).toHaveBeenCalledTimes(1);
+    optedIn = true;
+    expect(await outbox.publish(input)).toBe('sent');
+    expect(input.fetchImpl.mock.calls[1][1]?.body).toBe(input.fetchImpl.mock.calls[0][1]?.body);
+  });
+
+  it('stops across midnight and finalises an existing snapshot in the same slot the next day', async () => {
+    const input = options();
+    const outbox = openOutbox();
+    expect(await outbox.publish(input)).toBe('sent');
+    clock += 86_400_000;
+    input.evidence.mockResolvedValue(new TextEncoder().encode('final completed-day work'));
+    expect(await outbox.send(input)).toBe('sent');
+    expect(input.fetchImpl.mock.calls[1][0]).toBe(input.fetchImpl.mock.calls[0][0]);
+    expect(await inspect()).toEqual([]);
+    expect(await inspectSnapshots()).toMatchObject([{ isoDay: '2026-10-19', revision: 2 }]);
+    input.evidence.mockImplementationOnce(async () => {
+      clock += 86_400_000;
+      return evidence;
+    });
+    expect(await outbox.publish(input)).toBe('idle');
+    expect(input.fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps legacy pending retries exact and never creates a snapshot beside an accepted legacy day', async () => {
+    const input = options();
+    input.fetchImpl.mockRejectedValueOnce(new TypeError('Reply lost'));
+    const outbox = openOutbox();
+    await expect(outbox.send(input)).rejects.toThrow();
+    expect(await outbox.publish(input, true)).toBe('sent');
+    expect(input.fetchImpl.mock.calls[1][1]?.body).toBe(input.fetchImpl.mock.calls[0][1]?.body);
+    expect(await outbox.publish(input, true)).toBe('unchanged');
+    expect(await inspectSnapshots()).toEqual([]);
+  });
+
+  it('fails closed on damaged pending snapshot credentials without resealing', async () => {
+    const input = options();
+    input.fetchImpl.mockRejectedValueOnce(new TypeError('Offline'));
+    const outbox = openOutbox();
+    await expect(outbox.publish(input)).rejects.toThrow();
+    const database = new Dexie(databaseName);
+    await database.open();
+    await database.table('snapshots').update([shareId, '2026-10-19'], { revision: 0 });
+    database.close();
+    await expect(outbox.publish(input)).rejects.toThrow('does not match');
+    expect(input.evidence).toHaveBeenCalledTimes(1);
+    expect(input.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});

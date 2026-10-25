@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHandler, parseRoute } from '../src/relay.js';
 import { cleanupExpiredInsights } from '../src/insights.js';
@@ -15,7 +16,13 @@ const start = Date.parse('2026-10-19T00:00:00Z');
 beforeEach(() => vi.stubEnv('RELAY_INSIGHTS_ENABLED', '1'));
 afterEach(() => vi.unstubAllEnvs());
 
-async function fixture(createdAt = start) {
+const snapshotToken = 'f'.repeat(64);
+
+function snapshotHeaders(revision = 1, token = snapshotToken): Record<string, string> {
+  return { Authorization: `Bearer ${token}`, 'X-Insights-Revision': String(revision) };
+}
+
+async function fixture(createdAt = start, reportDay = day) {
   let time = createdAt;
   const store = new MemoryStore(() => time);
   const handle = createHandler(store, { now: () => time });
@@ -25,7 +32,7 @@ async function fixture(createdAt = start) {
   const envelope = {
     v: 2,
     s: shareId,
-    d: day,
+    d: reportDay,
     k: 'b'.repeat(64),
     x: Buffer.alloc(384).toString('base64'),
     n: Buffer.alloc(12).toString('base64'),
@@ -33,7 +40,7 @@ async function fixture(createdAt = start) {
   };
   const read = (token: string | null = writeToken, suffix = '') =>
     handle(
-      new Request(`https://relay.example/insights/${shareId}/${day}${suffix}`, {
+      new Request(`https://relay.example/insights/${shareId}/${reportDay}${suffix}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
           Origin: 'https://gaps.getlacuna.app',
@@ -47,7 +54,7 @@ async function fixture(createdAt = start) {
   ) => {
     const body = JSON.stringify(raw);
     return handle(
-      new Request(`https://relay.example/insights/${shareId}/${day}/${slot}`, {
+      new Request(`https://relay.example/insights/${shareId}/${reportDay}/${slot}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -73,6 +80,261 @@ async function fixture(createdAt = start) {
 }
 
 describe('encrypted insight mailbox', () => {
+  it('accepts current-day snapshots and returns only the envelope to the teacher', async () => {
+    const f = await fixture(start, '2026-10-19');
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    expect(await (await f.read()).json()).toEqual({
+      v: 2,
+      envelopes: [{ slotId: 'c'.repeat(32), envelope: f.envelope }],
+      cursor: null,
+    });
+    const stored = await f.store.get(
+      `insights/${f.shareId}/2026-10-19/envelopes/${'c'.repeat(32)}`,
+    );
+    const text = new TextDecoder().decode(stored!.body);
+    expect(JSON.parse(text)).toEqual({
+      v: 1,
+      envelope: f.envelope,
+      writeTokenHash: createHash('sha256').update(snapshotToken).digest('hex'),
+      revision: 1,
+    });
+    expect(text).not.toContain(snapshotToken);
+    f.setTime(insightDayExpiresAt('2026-10-19') - 1);
+    expect((await f.put(undefined, undefined, snapshotHeaders(2))).status).toBe(204);
+    expect((await f.read()).status).toBe(200);
+    f.setTime(insightDayExpiresAt('2026-10-19'));
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(410);
+    expect((await f.read()).status).toBe(410);
+  });
+
+  it('acknowledges lost responses, replaces only the next revision, and rejects stale packets', async () => {
+    const f = await fixture();
+    const next = { ...f.envelope, c: Buffer.alloc(20, 1).toString('base64') };
+    const key = `insights/${f.shareId}/${day}/envelopes/${'c'.repeat(32)}`;
+    expect((await f.put(undefined, undefined, snapshotHeaders(2))).status).toBe(409);
+    expect(await f.store.list(`insights/${f.shareId}/`)).toEqual([]);
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    const original = await f.store.get(key);
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    expect(await f.store.get(key)).toEqual(original);
+    expect((await f.put(undefined, next, snapshotHeaders())).status).toBe(409);
+    expect((await f.put(undefined, next, snapshotHeaders(3))).status).toBe(409);
+    expect((await f.put(undefined, next, snapshotHeaders(2))).status).toBe(204);
+    const replaced = await f.store.get(key);
+    expect((await f.put(undefined, next, snapshotHeaders(2))).status).toBe(204);
+    expect(await f.store.get(key)).toEqual(replaced);
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(409);
+    expect((await f.put(undefined, undefined, snapshotHeaders(2))).status).toBe(409);
+    expect(await (await f.read()).json()).toMatchObject({ envelopes: [{ envelope: next }] });
+  });
+
+  it('requires the slot token even for an exact snapshot replay', async () => {
+    const f = await fixture();
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    const key = `insights/${f.shareId}/${day}/envelopes/${'c'.repeat(32)}`;
+    const original = await f.store.get(key);
+    for (const revision of [1, 2]) {
+      for (const headers of [
+        {},
+        snapshotHeaders(revision, 'a'.repeat(64)),
+        snapshotHeaders(revision, f.writeToken),
+      ])
+        expect((await f.put(undefined, undefined, headers)).status).toBe(401);
+    }
+    expect(await f.store.get(key)).toEqual(original);
+  });
+
+  it.each(['0', '-1', '1.5', '01', '1e1', '9007199254740992', '', '1, 2'])(
+    'rejects invalid revision %s before reserving capacity',
+    async (revision) => {
+      const f = await fixture();
+      expect(
+        (
+          await f.put(undefined, undefined, {
+            ...snapshotHeaders(),
+            'X-Insights-Revision': revision,
+          })
+        ).status,
+      ).toBe(400);
+      expect(await f.store.list(`insights/${f.shareId}/`)).toEqual([]);
+    },
+  );
+
+  it('rejects partial credentials and malformed tokens without reserving capacity', async () => {
+    const f = await fixture();
+    for (const token of ['A'.repeat(64), 'a'.repeat(63), 'invalid'])
+      expect((await f.put(undefined, undefined, snapshotHeaders(1, token))).status).toBe(401);
+    expect((await f.put(undefined, undefined, { 'X-Insights-Revision': '1' })).status).toBe(401);
+    expect(
+      (await f.put(undefined, undefined, { Authorization: `Bearer ${snapshotToken}` })).status,
+    ).toBe(400);
+    expect(await f.store.list(`insights/${f.shareId}/`)).toEqual([]);
+  });
+
+  it('keeps legacy envelopes readable and retryable without allowing a snapshot claim', async () => {
+    const f = await fixture();
+    expect((await f.put()).status).toBe(204);
+    const key = `insights/${f.shareId}/${day}/envelopes/${'c'.repeat(32)}`;
+    const legacy = await f.store.get(key);
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    expect(
+      (await f.put(undefined, { ...f.envelope, k: 'a'.repeat(64) }, snapshotHeaders(2))).status,
+    ).toBe(409);
+    expect(await f.store.get(key)).toEqual(legacy);
+    expect(await (await f.read()).json()).toMatchObject({ envelopes: [{ envelope: f.envelope }] });
+  });
+
+  it('replaces snapshots at daily capacity without reserving another slot', async () => {
+    const f = await fixture();
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    for (let i = 0; i < INSIGHT_DAILY_SLOTS - 1; i++)
+      expect((await f.put(i.toString(16).padStart(32, '0'))).status).toBe(204);
+    const quotaKey = `insights/${f.shareId}/${day}/quota`;
+    const quota = await f.store.get(quotaKey);
+    expect((await f.put('d'.repeat(32))).status).toBe(429);
+    expect(
+      (await f.put(undefined, { ...f.envelope, k: 'a'.repeat(64) }, snapshotHeaders(2))).status,
+    ).toBe(204);
+    expect(
+      (await f.put(undefined, { ...f.envelope, k: 'a'.repeat(64) }, snapshotHeaders(2))).status,
+    ).toBe(204);
+    expect(await f.store.get(quotaKey)).toEqual(quota);
+  });
+
+  it.each([false, true])(
+    'handles competing first snapshot claims (same token: %s)',
+    async (sameToken) => {
+      const f = await fixture();
+      const put = f.store.put.bind(f.store);
+      let release!: () => void;
+      let arrived!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        arrived = resolve;
+      });
+      const resume = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let first = true;
+      vi.spyOn(f.store, 'put').mockImplementation(async (key, body, opts) => {
+        if (key.includes('/envelopes/') && first) {
+          first = false;
+          arrived();
+          await resume;
+        }
+        return put(key, body, opts);
+      });
+      const pending = f.put(undefined, undefined, snapshotHeaders());
+      await paused;
+      expect(
+        (
+          await f.put(
+            undefined,
+            undefined,
+            snapshotHeaders(1, sameToken ? snapshotToken : 'a'.repeat(64)),
+          )
+        ).status,
+      ).toBe(204);
+      release();
+      expect((await pending).status).toBe(sameToken ? 204 : 409);
+      expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toHaveLength(1);
+    },
+  );
+
+  it.each(['same', 'conflict', 'newer', 'deleted'])(
+    'safely resolves a paused replacement against a %s snapshot',
+    async (race) => {
+      const f = await fixture();
+      expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+      const put = f.store.put.bind(f.store);
+      let release!: () => void;
+      let arrived!: () => void;
+      const paused = new Promise<void>((resolve) => {
+        arrived = resolve;
+      });
+      const resume = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let first = true;
+      vi.spyOn(f.store, 'put').mockImplementation(async (key, body, opts) => {
+        if (key.includes('/envelopes/') && first) {
+          first = false;
+          expect(opts).toHaveProperty('ifMatch');
+          arrived();
+          await resume;
+        }
+        return put(key, body, opts);
+      });
+      const delayedEnvelope = { ...f.envelope, k: '1'.repeat(64) };
+      const delayed = f.put(undefined, delayedEnvelope, snapshotHeaders(2));
+      await paused;
+      const winner = race === 'same' ? delayedEnvelope : { ...f.envelope, k: '2'.repeat(64) };
+      const key = `insights/${f.shareId}/${day}/envelopes/${'c'.repeat(32)}`;
+      if (race === 'deleted') await f.store.del([key]);
+      else {
+        expect((await f.put(undefined, winner, snapshotHeaders(2))).status).toBe(204);
+        if (race === 'newer')
+          expect((await f.put(undefined, winner, snapshotHeaders(3))).status).toBe(204);
+      }
+      release();
+      expect((await delayed).status).toBe(race === 'same' ? 204 : 409);
+      if (race === 'deleted') {
+        expect(await f.store.get(key)).toBeNull();
+        return;
+      }
+      expect(await (await f.read()).json()).toMatchObject({ envelopes: [{ envelope: winner }] });
+      const stored = await f.store.get(key);
+      expect(JSON.parse(new TextDecoder().decode(stored!.body))).toMatchObject({
+        revision: race === 'newer' ? 3 : 2,
+      });
+    },
+  );
+
+  it('does not acknowledge a replay when revocation races the existing-slot read', async () => {
+    const f = await fixture();
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    const get = f.store.get.bind(f.store);
+    vi.spyOn(f.store, 'get').mockImplementation(async (key) => {
+      const result = await get(key);
+      if (key.includes('/envelopes/')) await f.store.del([`shares/${f.shareId}/auth`]);
+      return result;
+    });
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(404);
+    expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toEqual([]);
+  });
+
+  it('cleans up a snapshot replacement when revocation races CAS', async () => {
+    const f = await fixture();
+    expect((await f.put(undefined, undefined, snapshotHeaders())).status).toBe(204);
+    const put = f.store.put.bind(f.store);
+    vi.spyOn(f.store, 'put').mockImplementation(async (key, ...args) => {
+      const result = await put(key, ...args);
+      if (key.includes('/envelopes/')) await f.store.del([`shares/${f.shareId}/auth`]);
+      return result;
+    });
+    expect(
+      (await f.put(undefined, { ...f.envelope, k: 'a'.repeat(64) }, snapshotHeaders(2))).status,
+    ).toBe(404);
+    expect(await f.store.list(`insights/${f.shareId}/${day}/envelopes/`)).toEqual([]);
+  });
+
+  it('allows snapshot authentication headers in browser preflight', async () => {
+    const f = await fixture();
+    const response = await f.handle(
+      new Request(`https://relay.example/insights/${f.shareId}/${day}/${'c'.repeat(32)}`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://getlacuna.app',
+          'Access-Control-Request-Headers': 'authorization,x-insights-revision',
+        },
+      }),
+    );
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Headers')?.toLowerCase()).toContain(
+      'x-insights-revision',
+    );
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('https://getlacuna.app');
+  });
+
   it('preserves owner access until report expiry when an unchanged public share expires', async () => {
     const f = await fixture(start - 89 * 24 * 60 * 60 * 1000);
     expect((await f.put()).status).toBe(204);
@@ -250,7 +512,7 @@ describe('encrypted insight mailbox', () => {
     expect((await f.put('0'.repeat(32))).status).toBe(204);
   });
 
-  it('expires by reporting day, rejects current days, and sweeps retained bytes through maintenance', async () => {
+  it('expires by reporting day, rejects future days, and sweeps retained bytes through maintenance', async () => {
     const f = await fixture();
     expect((await f.put()).status).toBe(204);
     const objects = await f.store.list(`insights/${f.shareId}/`);

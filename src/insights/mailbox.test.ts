@@ -221,3 +221,28 @@ describe('encrypted mailbox transport', () => {
     }
   });
 });
+
+it('sends snapshot authorisation privately with a positive safe revision and unchanged envelope body', async () => {
+  const f = await fixture();
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+  const writeToken = 'd'.repeat(64);
+  await putInsightEnvelope({ ...f.options, fetchImpl, snapshot: { writeToken, revision: 2 } });
+  const [url, init] = fetchImpl.mock.calls[0];
+  expect(String(url)).not.toContain(writeToken);
+  expect(init).toMatchObject({
+    body: JSON.stringify(f.options.envelope),
+    credentials: 'omit',
+    redirect: 'error',
+    cache: 'no-store',
+    headers: { Authorization: `Bearer ${writeToken}`, 'X-Insights-Revision': '2' },
+  });
+  fetchImpl.mockClear();
+  for (const snapshot of [
+    { writeToken: 'invalid', revision: 1 },
+    ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1].map((revision) => ({ writeToken, revision })),
+  ])
+    await expect(putInsightEnvelope({ ...f.options, fetchImpl, snapshot })).rejects.toThrow(
+      'credentials',
+    );
+  expect(fetchImpl).not.toHaveBeenCalled();
+});

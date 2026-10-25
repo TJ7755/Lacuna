@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../../db/schema';
 import { Toggle } from '../../components/ui/Toggle';
 import { Field, Input } from '../../components/ui/Field';
 import { buttonClassName } from '../../components/ui/buttonStyles';
 import {
   createInsightsLastSentDaySetting,
+  createInsightsLastPublishedAtSetting,
   createInsightsOptInSetting,
 } from '../../state/insightsOptIn';
 import {
@@ -18,21 +21,37 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
   const [enrolment] = createEnrolmentSetting(courseId).use();
   const [optedIn] = createInsightsOptInSetting(courseId).use();
   const [lastSent] = createInsightsLastSentDaySetting(courseId).use();
+  const [lastPublished] = createInsightsLastPublishedAtSetting(courseId).use();
+  const course = useLiveQuery(() => db.courses.get(courseId), [courseId]);
   const [label, setLabel] = useState(enrolment?.pupilLabel ?? '');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const enabled = reportingEnabled();
   const consenting = optedIn && enrolment?.consentedAt !== null && enrolment !== null;
 
-  async function retry() {
+  async function publish() {
     setBusy(true);
     setMessage('');
     try {
-      const { deliverCourseInsights } = await import('../../insights/delivery');
-      await deliverCourseInsights(courseId, { retry: true });
-      setMessage('Checked yesterday’s report. Only the latest completed UTC day is sent.');
+      if (!navigator.onLine) {
+        setMessage('You are offline. Connect to the internet and send again.');
+        return;
+      }
+      const { publishCourseInsights } = await import('../../insights/delivery');
+      const result = await publishCourseInsights(courseId);
+      setMessage(
+        result === 'sent'
+          ? 'Your latest progress was accepted. Your teacher can refresh the class view to read it.'
+          : result === 'unchanged'
+            ? 'Nothing new to send. Your latest progress is already published.'
+            : 'Nothing was sent. Check sharing is enabled and this course is still connected.',
+      );
     } catch {
-      setMessage('Could not deliver the report. Your encrypted packet is saved for retry.');
+      setMessage(
+        navigator.onLine
+          ? 'Could not send your latest progress. Try again.'
+          : 'You are offline. Connect to the internet and send again.',
+      );
     } finally {
       setBusy(false);
     }
@@ -43,12 +62,17 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
       <h2 className="font-semibold text-ink">Class insights</h2>
       <p className="mt-1 text-sm text-ink-soft">
         {enrolment
-          ? 'Send your teacher a daily, encrypted summary of how you are getting on.'
+          ? 'Send your teacher an encrypted summary of your latest progress.'
           : 'Join with your teacher’s Gaps class code to connect this course. Ordinary share links do not enable reporting.'}
       </p>
       {!enabled && (
         <p className="mt-2 text-sm text-ink-soft">
-          Daily delivery is not enabled in this build. No results will be sent.
+          Insights delivery is not enabled in this build. No results will be sent.
+        </p>
+      )}
+      {enrolment && (
+        <p className="mt-2 text-sm text-ink-soft">
+          Connected course: {course?.name ?? 'Loading course…'}.
         </p>
       )}
       {enrolment && (
@@ -74,10 +98,14 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
           <p className="mt-1 text-sm text-ink-soft">
             Your prompts, answers, marks, criterion results and card recall are encrypted so only
             your teacher can read them. They may be able to recognise you from this detail. Reports
-            can include activity already recorded yesterday.
+            include activity already recorded today and yesterday.
           </p>
           <p className="mt-1 text-sm text-ink-faint">
-            {lastSent === null ? 'Nothing has been sent yet.' : `Last sent: ${lastSent}.`}
+            {lastPublished !== null
+              ? `Last successful publication: ${new Date(lastPublished).toLocaleString('en-GB', { timeZone: 'UTC' })} UTC.`
+              : lastSent === null
+                ? 'Nothing has been sent yet.'
+                : `Last daily report: ${lastSent}.`}
           </p>
         </div>
         <Toggle
@@ -99,9 +127,9 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
           type="button"
           disabled={busy}
           className={`${buttonClassName('secondary', 'sm')} mt-3`}
-          onClick={() => void retry()}
+          onClick={() => void publish()}
         >
-          {busy ? 'Checking…' : 'Send yesterday’s report'}
+          {busy ? 'Sending…' : 'Send latest progress'}
         </button>
       )}
       {message && (
@@ -116,9 +144,10 @@ export function CourseInsightsSection({ courseId }: { courseId: string }) {
       >
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink-soft">
           <li>
-            While this app is open and online, at most one report per completed day is sent: the
-            latest completed UTC day. Missed days are not sent later, and long answers or busy days
-            may be shortened.
+            Send latest progress publishes today’s completed work immediately. Send again after more
+            work to update the same daily report, without counting it twice. While this app is open
+            and online, yesterday’s report is also sent automatically. Days use UTC; missed days are
+            not sent later, and long answers or busy days may be shortened.
           </li>
           <li>
             The service sees the course, reporting day, submission time and packet size, but not

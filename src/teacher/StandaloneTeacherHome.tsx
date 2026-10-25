@@ -4,7 +4,7 @@ import { buttonClassName } from '../components/ui/buttonStyles';
 import { cn } from '../components/ui/cn';
 import { LacunaIcon, MenuIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
-import { completedIsoDayLabel } from '../../relay/shared/insights/index';
+import { isoDayLabel } from '../../relay/shared/insights/index';
 import type { ConnectedGapsCourse } from './connectionStore';
 import { GapsSidebar, type GapsPage, type SidebarClass } from './GapsSidebar';
 import { Spinner, usePresence } from './gapsUi';
@@ -67,7 +67,7 @@ export function StandaloneTeacherHome() {
     desktop.addEventListener('change', closeOnDesktop);
     return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
-  const latestDay = completedIsoDayLabel(Date.now());
+  const latestDay = isoDayLabel(Date.now());
 
   const reload = useCallback(async () => {
     setListFailed(false);
@@ -335,8 +335,12 @@ function AboutGaps() {
     <div className="space-y-3 text-sm leading-relaxed text-ink-soft">
       <p>Pupils choose whether to share results. Connecting a class does not turn it on.</p>
       <p>
-        Each report covers the last full UTC day and arrives when a pupil next opens Lacuna online.
-        Missed days are not backfilled, so no report does not mean no study.
+        Pupils can choose Send latest progress to share a partial snapshot of today’s UTC day.
+        Refresh results in the class view to read their latest accepted update.
+      </p>
+      <p>
+        Automatic reports cover the latest completed UTC day and arrive when a pupil next opens
+        Lacuna online. Missed days are not backfilled, so no report does not mean no study.
       </p>
       <p>
         Names are typed by pupils and anyone with the class code can send results: treat them as
