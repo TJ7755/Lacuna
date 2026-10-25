@@ -8,7 +8,6 @@ import { questionSetReturn } from '../questions/questionSetNavigation';
 import { Button, buttonClassName } from '../components/ui/Button';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
-import { StepSwap } from '../components/ui/StepSwap';
 import {
   QuestionSetLoading,
   QuestionSetUnavailable,
@@ -113,25 +112,16 @@ export function QuestionSetOverview() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           {unfinished ? (
             <p className="text-sm text-ink-soft">
-              {unfinished.mode === 'paper'
-                ? 'Paper attempt · Feedback at the end'
-                : 'Practice attempt · Feedback after each question'}
+              {unfinished.mode === 'paper' ? 'Paper attempt' : 'Practice attempt'}
             </p>
           ) : (
-            <>
-              <PillToggleGroup
-                label="Attempt mode"
-                size="sm"
-                options={MODE_OPTIONS}
-                value={mode}
-                onChange={setMode}
-              />
-              <StepSwap stepKey={mode}>
-                <p className="text-sm text-ink-soft">
-                  {MODE_OPTIONS.find((option) => option.value === mode)!.description}
-                </p>
-              </StepSwap>
-            </>
+            <PillToggleGroup
+              label="Attempt mode"
+              size="sm"
+              options={MODE_OPTIONS}
+              value={mode}
+              onChange={setMode}
+            />
           )}
         </div>
         <Button

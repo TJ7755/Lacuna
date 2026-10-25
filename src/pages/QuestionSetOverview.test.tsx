@@ -95,7 +95,7 @@ describe('QuestionSetOverview', () => {
   });
 
   it.each(['practice', 'paper'] as const)(
-    'starts the chosen %s mode and preserves the feedback descriptions',
+    'starts the chosen %s mode without redundant visible feedback copy',
     async (mode) => {
       const { course } = await fixture();
       const { router } = open(course.id);
@@ -104,6 +104,9 @@ describe('QuestionSetOverview', () => {
       const paper = within(group).getByRole('button', { name: 'Paper' });
       expect(practice).toHaveAccessibleDescription('Feedback after each question');
       expect(paper).toHaveAccessibleDescription('Feedback at the end');
+      expect(
+        screen.queryByText(/^Feedback (after each question|at the end)$/),
+      ).not.toBeInTheDocument();
       fireEvent.click(mode === 'paper' ? paper : practice);
       expect(mode === 'paper' ? paper : practice).toHaveAttribute('aria-pressed', 'true');
       fireEvent.click(screen.getByRole('button', { name: 'Start' }));
@@ -158,7 +161,7 @@ describe('QuestionSetOverview', () => {
       const resume = await screen.findByRole('button', { name: 'Resume' });
       expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
       expect(screen.queryByRole('group', { name: 'Attempt mode' })).not.toBeInTheDocument();
-      expect(screen.getByText('Paper attempt · Feedback at the end')).toBeVisible();
+      expect(screen.getByText('Paper attempt')).toBeVisible();
       fireEvent.click(resume);
       await waitFor(() =>
         expect(router.state.location.pathname).toContain(`/attempts/${latest.id}`),
