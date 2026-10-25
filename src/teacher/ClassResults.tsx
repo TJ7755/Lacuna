@@ -50,6 +50,8 @@ export function Results({ reports }: { reports: DailyEvidence[] }) {
   const grid = useRef<HTMLDivElement>(null);
   const base = useId();
   const columns = all ? items : items.slice(0, GRID_ITEMS);
+  // Include the pupil column and inner/outer table gaps around the 7rem questions.
+  const tableWidth = 9 + columns.length * 7 + (columns.length + 2) * 0.375;
   const revisit = itemsToRevisit(items);
   const activities = reports.reduce((sum, report) => sum + report.events.length, 0);
   const openItem = open?.kind === 'item' ? items.find((item) => item.itemId === open.itemId) : null;
@@ -101,8 +103,8 @@ export function Results({ reports }: { reports: DailyEvidence[] }) {
 
         <div ref={grid} className="-mx-2 mt-6 overflow-x-auto px-2 pb-2">
           <table
-            className="gaps-grid w-full table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-sm"
-            style={{ minWidth: `${9 + columns.length * 7}rem` }}
+            className="gaps-grid table-fixed border-separate border-spacing-x-1.5 border-spacing-y-1.5 text-sm"
+            style={{ width: `${tableWidth}rem` }}
           >
             <colgroup>
               <col className="w-36" />
