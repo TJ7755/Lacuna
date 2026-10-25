@@ -1,8 +1,5 @@
-import { makeId } from '../utils/id';
 import Dexie, { type Table } from 'dexie';
 import type {
-  LegacyDeckRecord,
-  LegacyFolder,
   Card,
   SessionHistoryEntry,
   UserPerformance,
@@ -30,25 +27,7 @@ import type {
   Tombstone,
   AgentMemory,
 } from './types';
-import {
-  projectCardForStorage,
-  reviewHistoryEntriesForCard,
-  type ReviewHistoryEntry,
-} from './reviewHistory';
-import {
-  migrateCardRecord,
-  migrateDeckRecord,
-  buildLessonCardExposureBackfill,
-  type LegacyCard,
-  type LegacyDeck,
-} from './migrations';
-import { buildCourseMigration } from './courseMigration';
-import {
-  buildCourseAssessmentMigration,
-  type LegacyAssessmentRecord,
-  type LegacyCourseRecord,
-} from './assessmentMigration';
-import { buildDomainStorageMigration } from './storageMigration';
+import { type ReviewHistoryEntry } from './reviewHistory';
 import type {
   Concept,
   QuestionAttempt,
@@ -61,60 +40,27 @@ import {
   reviewActivityProjectionMiddleware,
   type ReviewActivityRow,
 } from './reviewActivityProjection';
-
-/**
- * Write one migration batch while checking only the destination keys needed for
- * collision resolution. The destination table is the durable collision index, so
- * migration does not need to retain every historical event in JavaScript memory.
- */
-async function putMigratedReviewHistoryEntries(
-  table: Table<ReviewHistoryEntry, string>,
-  entries: ReviewHistoryEntry[],
-): Promise<void> {
-  for (const entry of entries) {
-    const identity = migratedReviewHistoryIdentity(entry);
-    let id = entry.id;
-    let existing = await table.get(id);
-    if (existing) {
-      if (migratedReviewHistoryIdentity(existing) === identity) continue;
-
-      const suffix =
-        existing.cardId === entry.cardId
-          ? `${entry.id}:duplicate`
-          : `${entry.id}:card:${encodeURIComponent(entry.cardId)}`;
-      id = suffix;
-      existing = await table.get(id);
-      let collision = 1;
-      while (existing) {
-        if (migratedReviewHistoryIdentity(existing) === identity) {
-          id = '';
-          break;
-        }
-        id = `${suffix}:${collision++}`;
-        existing = await table.get(id);
-      }
-      if (!id) continue;
-    }
-    await table.put({ ...entry, id });
-  }
-}
-
-/**
- * Card ownership fields are compatibility projections, not review identity. A
- * card may have moved Course or Lesson since an older canonical row was written;
- * that must not turn one review into two during a later migration.
- */
-function migratedReviewHistoryIdentity(entry: ReviewHistoryEntry): string {
-  const {
-    id: _id,
-    deckId: _deckId,
-    courseId: _courseId,
-    primaryLessonId: _primaryLessonId,
-    schedulingUnitId: _schedulingUnitId,
-    ...identity
-  } = entry;
-  return JSON.stringify(identity);
-}
+import {
+  upgradeLegacyFsrs,
+  upgradeLegacyCardFlags,
+  upgradeLegacyMarkdownAssets,
+  upgradeLegacySchedulingControls,
+  upgradeLegacyCourses,
+  upgradeLessonExposures,
+  upgradeTypedCards,
+  upgradeCourseAssessments,
+} from './legacySchemaUpgrades';
+import {
+  upgradeCanonicalReviewHistory,
+  upgradeStoredReviewProjection,
+  upgradeReviewActivity,
+} from './reviewHistoryUpgrades';
+import {
+  upgradeDomainStorage,
+  validateLegacyStorageRemoval,
+  upgradeMutationTimestamps,
+} from './domainStorageUpgrades';
+import { upgradeQuestionStorage, upgradeQuestionSetActivities } from './questionSchemaUpgrades';
 
 /**
  * Lacuna's IndexedDB database. A single Dexie instance owns every store.
@@ -176,20 +122,7 @@ class LacunaDatabase extends Dexie {
         sessionHistory: '++id, deckId, timestamp',
         userPerformance: 'deckId',
       })
-      .upgrade(async (tx) => {
-        await tx
-          .table('decks')
-          .toCollection()
-          .modify((deck) => {
-            Object.assign(deck, migrateDeckRecord(deck as LegacyDeck));
-          });
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify((card) => {
-            Object.assign(card, migrateCardRecord(card as LegacyCard));
-          });
-      });
+      .upgrade(upgradeLegacyFsrs);
 
     // Version 3: add the automatic-backup restore-point store and a small key/value
     // store (for the optional File System Access folder handle), and backfill the
@@ -205,14 +138,7 @@ class LacunaDatabase extends Dexie {
         backups: '++id, createdAt',
         appState: 'key',
       })
-      .upgrade(async (tx) => {
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify((card) => {
-            Object.assign(card, migrateCardRecord(card as LegacyCard));
-          });
-      });
+      .upgrade(upgradeLegacyCardFlags);
 
     // Version 4: move embedded card images into a Blob asset table. Markdown keeps
     // only lacuna-asset://hash references, which keeps reactive card reads small.
@@ -226,34 +152,7 @@ class LacunaDatabase extends Dexie {
         appState: 'key',
         assets: 'hash, createdAt',
       })
-      .upgrade(async (tx) => {
-        const { extractMarkdownAssets: extract } = await Dexie.waitFor(import('./markdownAssetExtraction'));
-        const extractMarkdownAssets = (
-          markdown: string,
-          putAsset: (asset: MediaAsset) => Promise<unknown>,
-        ) => extract(markdown, putAsset, (hash) => db.assets.get(hash));
-        // Process cards in small batches so we never load the whole table into
-        // memory at once. Async extraction happens per-card, keeping the upgrade safe.
-        const table = tx.table('cards');
-        let offset = 0;
-        const batchSize = 50;
-        for (;;) {
-          const batch = await table.offset(offset).limit(batchSize).toArray();
-          if (batch.length === 0) break;
-          for (const card of batch) {
-            const front = await extractMarkdownAssets(card.front ?? '', (asset) =>
-              tx.table('assets').put(asset),
-            );
-            const back = await extractMarkdownAssets(card.back ?? '', (asset) =>
-              tx.table('assets').put(asset),
-            );
-            const migrated = { ...card, front, back };
-            Object.assign(migrated, migrateCardRecord(migrated as LegacyCard));
-            await table.put(migrated);
-          }
-          offset += batchSize;
-        }
-      });
+      .upgrade((tx) => upgradeLegacyMarkdownAssets(tx, (hash) => db.assets.get(hash)));
 
     // Version 5: add folders for hierarchical deck grouping. Folders are nested
     // via parentId. Decks gain a folderId that links them into a folder.
@@ -297,20 +196,7 @@ class LacunaDatabase extends Dexie {
         assets: 'hash, createdAt',
         folders: 'id, parentId, createdAt',
       })
-      .upgrade(async (tx) => {
-        await tx
-          .table('decks')
-          .toCollection()
-          .modify((deck) => {
-            Object.assign(deck, migrateDeckRecord(deck as LegacyDeck));
-          });
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify((card) => {
-            Object.assign(card, migrateCardRecord(card as LegacyCard));
-          });
-      });
+      .upgrade(upgradeLegacySchedulingControls);
 
     // Version 8: add daily review goal and session time limit per deck.
     // No new indexes needed; the fields are optional numeric values on the deck record.
@@ -350,46 +236,7 @@ class LacunaDatabase extends Dexie {
         practiceNodes: 'id, courseId, position, createdAt',
         courseExamDates: 'id, courseId, examDate, createdAt',
       })
-      .upgrade(async (tx) => {
-        const decks = (await tx.table('decks').toArray()) as LegacyDeckRecord[];
-        const folders = (await tx.table('folders').toArray()) as LegacyFolder[];
-        const { courses, lessons, courseIdByDeckId, lessonIdByDeckId } = buildCourseMigration(
-          decks,
-          folders,
-          makeId,
-        );
-
-        await tx.table('courses').bulkPut(courses);
-        await tx.table('lessons').bulkPut(lessons);
-
-        // Stamp the derived courseId/primaryLessonId onto every card.
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify((card) => {
-            const courseId = courseIdByDeckId.get(card.deckId);
-            if (courseId !== undefined) {
-              card.courseId = courseId;
-              card.primaryLessonId = lessonIdByDeckId.get(card.deckId) ?? null;
-            }
-          });
-
-        // Carry the derived courseId onto session history and performance rows.
-        await tx
-          .table('sessionHistory')
-          .toCollection()
-          .modify((entry) => {
-            const courseId = courseIdByDeckId.get(entry.deckId);
-            if (courseId !== undefined) entry.courseId = courseId;
-          });
-        await tx
-          .table('userPerformance')
-          .toCollection()
-          .modify((perf) => {
-            const courseId = courseIdByDeckId.get(perf.deckId);
-            if (courseId !== undefined) perf.courseId = courseId;
-          });
-      });
+      .upgrade(upgradeLegacyCourses);
 
     // Version 10: add an optional per-course lesson-view-mode override (study
     // vs edit; see src/state/lessonViewMode.ts and src/course/lessonViewMode.ts).
@@ -460,14 +307,7 @@ class LacunaDatabase extends Dexie {
         courseExamDates: 'id, courseId, examDate, createdAt',
         sequences: 'id, courseId, primaryLessonId, createdAt',
       })
-      .upgrade(async (tx) => {
-        const exposures = buildLessonCardExposureBackfill(
-          (await tx.table('cards').toArray()) as Card[],
-        );
-        if (exposures.length > 0) {
-          await tx.table('lessonCardExposures').bulkPut(exposures);
-        }
-      });
+      .upgrade(upgradeLessonExposures);
 
     // Version 13: retire the 'typing' card type. Typed answering is now a global
     // Learn-mode presentation mode (src/state/answerInput.ts) that applies to any
@@ -495,15 +335,7 @@ class LacunaDatabase extends Dexie {
         courseExamDates: 'id, courseId, examDate, createdAt',
         sequences: 'id, courseId, primaryLessonId, createdAt',
       })
-      .upgrade(async (tx) => {
-        await tx
-          .table('cards')
-          .where('type')
-          .equals('typing')
-          .modify((card) => {
-            card.type = 'front_back';
-          });
-      });
+      .upgrade(upgradeTypedCards);
 
     // Version 14: unify the primary final exam and intermediate exam-date rows
     // as CourseAssessment records. Keep the old store for this one upgrade step
@@ -531,18 +363,7 @@ class LacunaDatabase extends Dexie {
         courseAssessments: 'id, courseId, kind, examDate, createdAt',
         sequences: 'id, courseId, primaryLessonId, createdAt',
       })
-      .upgrade(async (tx) => {
-        const migration = buildCourseAssessmentMigration(
-          (await tx.table('courses').toArray()) as LegacyCourseRecord[],
-          (await tx.table('lessons').toArray()) as Lesson[],
-          (await tx.table('courseExamDates').toArray()) as LegacyAssessmentRecord[],
-          makeId,
-        );
-        await tx.table('courses').bulkPut(migration.courses);
-        if (migration.assessments.length > 0) {
-          await tx.table('courseAssessments').bulkPut(migration.assessments);
-        }
-      });
+      .upgrade(upgradeCourseAssessments);
 
     // Version 15: remove the retired course exam-date store after v14 has copied
     // every row. No application code reads or writes the old representation.
@@ -712,22 +533,7 @@ class LacunaDatabase extends Dexie {
         occlusions: 'id, courseId, primaryLessonId, createdAt',
         reviewHistory: 'id, cardId, deckId, courseId, primaryLessonId, timestamp',
       })
-      .upgrade(async (tx) => {
-        const cardsTable = tx.table('cards');
-        const reviewHistoryTable = tx.table('reviewHistory');
-        const batchSize = 100;
-        // Resolve collisions against rows already written to the destination table.
-        // This keeps migration memory bounded by the batch rather than retaining a
-        // process-wide index of every migrated event.
-        let offset = 0;
-        for (;;) {
-          const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
-          if (cards.length === 0) break;
-          const entries = cards.flatMap((card) => reviewHistoryEntriesForCard(card as Card));
-          await putMigratedReviewHistoryEntries(reviewHistoryTable, entries);
-          offset += cards.length;
-        }
-      });
+      .upgrade(upgradeCanonicalReviewHistory);
 
     // Version 21: materialise the target domain-storage concepts without deleting
     // compatibility stores. Course/Lesson scheduling units and split performance
@@ -765,54 +571,7 @@ class LacunaDatabase extends Dexie {
         coursePerformance: 'courseId',
         schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
       })
-      .upgrade(async (tx) => {
-        const migration = buildDomainStorageMigration(
-          (await tx.table('courses').toArray()) as CourseRecord[],
-          (await tx.table('lessons').toArray()) as Lesson[],
-          (await tx.table('courseAssessments').toArray()) as CourseAssessment[],
-          (await tx.table('decks').toArray()) as LegacyDeckRecord[],
-          (await tx.table('cards').toArray()) as Card[],
-          (await tx.table('userPerformance').toArray()) as UserPerformance[],
-        );
-        await tx.table('schedulingUnits').bulkPut(migration.schedulingUnits);
-        await tx.table('coursePerformance').bulkPut(migration.coursePerformance);
-        await tx.table('schedulingPerformance').bulkPut(migration.schedulingPerformance);
-
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify((card) => {
-            const schedulingUnitId = migration.schedulingUnitByCardId.get(card.id);
-            if (schedulingUnitId) card.schedulingUnitId = schedulingUnitId;
-          });
-        const schedulingUnitIds = new Set(migration.schedulingUnits.map((unit) => unit.id));
-        const reviewUnitByEventId = new Map<string, string>();
-        for (const entry of (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[]) {
-          if (entry.eventId) {
-            const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
-            if (schedulingUnitId) reviewUnitByEventId.set(entry.eventId, schedulingUnitId);
-          }
-        }
-        await tx
-          .table('reviewHistory')
-          .toCollection()
-          .modify((entry) => {
-            const schedulingUnitId = migration.schedulingUnitByCardId.get(entry.cardId);
-            if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
-          });
-        await tx
-          .table('sessionHistory')
-          .toCollection()
-          .modify((entry) => {
-            const schedulingUnitId =
-              (entry.eventId ? reviewUnitByEventId.get(entry.eventId) : undefined) ??
-              migration.schedulingUnitByDeckId.get(entry.deckId) ??
-              (entry.courseId && schedulingUnitIds.has(entry.courseId)
-                ? entry.courseId
-                : undefined);
-            if (schedulingUnitId) entry.schedulingUnitId = schedulingUnitId;
-          });
-      });
+      .upgrade(upgradeDomainStorage);
 
     // Version 22: remove the hidden Deck and Folder compatibility stores. All
     // cards and review projections already carry explicit scheduling-unit ids.
@@ -847,19 +606,7 @@ class LacunaDatabase extends Dexie {
         coursePerformance: 'courseId',
         schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
       })
-      .upgrade(async (tx) => {
-        const schedulingUnitIds = new Set<string>(
-          (await tx.table('schedulingUnits').toCollection().primaryKeys()) as string[],
-        );
-        const cards = (await tx.table('cards').toArray()) as Card[];
-        for (const card of cards) {
-          if (!card.schedulingUnitId || !schedulingUnitIds.has(card.schedulingUnitId)) {
-            throw new Error(
-              `Cannot remove legacy storage: card ${card.id} has no valid scheduling unit`,
-            );
-          }
-        }
-      });
+      .upgrade(validateLegacyStorageRemoval);
 
     // Version 23: mutation timestamps and deletion tombstones for multi-device
     // merge. Additive. updatedAt is a record field, not an index. Tombstones
@@ -894,74 +641,7 @@ class LacunaDatabase extends Dexie {
         schedulingPerformance: 'schedulingUnitId, courseId, lessonId',
         tombstones: '[table+recordId], deletedAt',
       })
-      .upgrade(async (tx) => {
-        const stampFromCreated = async (name: string) => {
-          await tx
-            .table(name)
-            .toCollection()
-            .modify((row: { createdAt?: number; updatedAt?: number }) => {
-              if (typeof row.updatedAt !== 'number') row.updatedAt = row.createdAt ?? 0;
-            });
-        };
-        await stampFromCreated('courses');
-        await stampFromCreated('lessons');
-        await stampFromCreated('notes');
-        await stampFromCreated('lessonCards');
-        await stampFromCreated('practiceNodes');
-        await stampFromCreated('courseAssessments');
-        await stampFromCreated('sequences');
-        await stampFromCreated('occlusions');
-        await stampFromCreated('noteAnnotations');
-        await stampFromCreated('revisionPlans');
-        await tx
-          .table('lessonCardExposures')
-          .toCollection()
-          .modify((row: { taughtAt?: number; updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') row.updatedAt = row.taughtAt ?? 0;
-          });
-        await tx
-          .table('lessonCompletions')
-          .toCollection()
-          .modify((row: { completedAt?: number; updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') row.updatedAt = row.completedAt ?? 0;
-          });
-        await tx
-          .table('cards')
-          .toCollection()
-          .modify(
-            (row: { createdAt?: number; lastReviewed?: number | null; updatedAt?: number }) => {
-              if (typeof row.updatedAt !== 'number') {
-                row.updatedAt = Math.max(row.createdAt ?? 0, row.lastReviewed ?? 0);
-              }
-            },
-          );
-        await tx
-          .table('schedulingUnits')
-          .toCollection()
-          .modify((row: { createdAt?: number; lastInteractedAt?: number; updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') {
-              row.updatedAt = Math.max(row.createdAt ?? 0, row.lastInteractedAt ?? 0);
-            }
-          });
-        await tx
-          .table('coursePerformance')
-          .toCollection()
-          .modify((row: { updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-          });
-        await tx
-          .table('schedulingPerformance')
-          .toCollection()
-          .modify((row: { updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-          });
-        await tx
-          .table('practiceMilestones')
-          .toCollection()
-          .modify((row: { updatedAt?: number }) => {
-            if (typeof row.updatedAt !== 'number') row.updatedAt = 0;
-          });
-      });
+      .upgrade(upgradeMutationTimestamps);
 
     // Version 24: separate direct-recall Cards from application Questions. Every
     // surviving Card receives a stable Concept; known numeric/working Cards become
@@ -1003,199 +683,7 @@ class LacunaDatabase extends Dexie {
         questionAttempts:
           'id, questionId, courseId, status, shownAt, sessionId, [questionId+shownAt], [courseId+shownAt], updatedAt',
       })
-      .upgrade(async (tx) => {
-        const cards = await tx.table('cards').toArray();
-        const reviewHistory = (await tx.table('reviewHistory').toArray()) as ReviewHistoryEntry[];
-        const lessonCardLinks = (await tx.table('lessonCards').toArray()) as LessonCardLink[];
-        const exposures = (await tx.table('lessonCardExposures').toArray()) as LessonCardExposure[];
-        const lineageMappings = (await tx
-          .table('lineageIdMappings')
-          .toArray()) as LineageIdMapping[];
-        const pendingReviews = (await tx
-          .table('pendingMergeReviews')
-          .toArray()) as PendingMergeReview[];
-
-        // A structured Card participating in unresolved distributed-course state cannot
-        // be translated without also changing the lineage protocol. Preserve it as a
-        // compatibility Card until that merge is resolved instead of losing the work.
-        const protectedCardIds = new Set(lineageMappings.flatMap((mapping) => mapping.cardIds));
-        for (const pending of pendingReviews) {
-          pending.diff.creates.cards.forEach((card) => protectedCardIds.add(card.id));
-          pending.diff.updates.cards.forEach((update) => protectedCardIds.add(update.id));
-          pending.diff.removals.cardIds.forEach((id) => protectedCardIds.add(id));
-          pending.diff.conflicts.forEach((conflict) => {
-            if (conflict.kind === 'card') protectedCardIds.add(conflict.entityId);
-          });
-        }
-
-        // The question migration carries the expression verifier and mathjs. It is
-        // needed only when v24 actually upgrades an existing database, not on every
-        // launch. Dexie.waitFor keeps the versionchange transaction alive while the
-        // optional module is fetched.
-        const { migrateQuestionModeContent } = await Dexie.waitFor(import('../questions/domain'));
-        const migration = migrateQuestionModeContent({
-          cards,
-          reviewHistory,
-          lessonCardLinks,
-          protectedCardIds,
-        });
-
-        await tx.table('concepts').bulkPut(migration.concepts);
-        await tx.table('questions').bulkPut(migration.questions);
-        await tx.table('questionConcepts').bulkPut(migration.questionConcepts);
-        await tx.table('questionAttempts').bulkPut(migration.attempts);
-        await tx.table('cards').bulkPut(migration.cards);
-
-        const removed = new Set(migration.removedCardIds);
-        const removedReviews = reviewHistory.filter((entry) => removed.has(entry.cardId));
-        const removedExposures = exposures.filter((entry) => removed.has(entry.cardId));
-        const removedLinks = lessonCardLinks.filter((entry) => removed.has(entry.cardId));
-        await tx.table('cards').bulkDelete(migration.removedCardIds);
-        await tx.table('reviewHistory').bulkDelete(migration.removedReviewHistoryIds);
-        await tx.table('lessonCards').bulkDelete(removedLinks.map((entry) => entry.id));
-        await tx
-          .table('lessonCardExposures')
-          .bulkDelete(removedExposures.map((entry) => [entry.lessonId, entry.cardId]));
-
-        const removedEventIds = new Set(
-          removedReviews.flatMap((entry) => (entry.eventId ? [entry.eventId] : [])),
-        );
-        if (removedEventIds.size > 0) {
-          await tx
-            .table('sessionHistory')
-            .filter(
-              (entry: SessionHistoryEntry) =>
-                typeof entry.eventId === 'string' && removedEventIds.has(entry.eventId),
-            )
-            .delete();
-        }
-
-        if (removed.size > 0) {
-          await tx
-            .table('courseAssessments')
-            .toCollection()
-            .modify((assessment: CourseAssessment) => {
-              assessment.excludedCardIds = (assessment.excludedCardIds ?? []).filter(
-                (id) => !removed.has(id),
-              );
-            });
-          await tx
-            .table('revisionPlans')
-            .toCollection()
-            .modify((plan: RevisionPlan) => {
-              if (!plan.scope || !Array.isArray(plan.cardStates)) return;
-              plan.scope.excludedCardIds = (plan.scope.excludedCardIds ?? []).filter(
-                (id) => !removed.has(id),
-              );
-              plan.scope.eligibleCardIds = (plan.scope.eligibleCardIds ?? []).filter(
-                (id) => !removed.has(id),
-              );
-              plan.scope.unavailableCardIds = (plan.scope.unavailableCardIds ?? []).filter(
-                (id) => !removed.has(id),
-              );
-              plan.cardStates = plan.cardStates.filter((state) => !removed.has(state.cardId));
-              if (plan.pendingReplan?.scope && Array.isArray(plan.pendingReplan.cardStates)) {
-                plan.pendingReplan.scope.excludedCardIds = (
-                  plan.pendingReplan.scope.excludedCardIds ?? []
-                ).filter((id) => !removed.has(id));
-                plan.pendingReplan.scope.eligibleCardIds = (
-                  plan.pendingReplan.scope.eligibleCardIds ?? []
-                ).filter((id) => !removed.has(id));
-                plan.pendingReplan.scope.unavailableCardIds = (
-                  plan.pendingReplan.scope.unavailableCardIds ?? []
-                ).filter((id) => !removed.has(id));
-                plan.pendingReplan.cardStates = plan.pendingReplan.cardStates.filter(
-                  (state) => !removed.has(state.cardId),
-                );
-              }
-            });
-        }
-
-        const affectedCourseIds = new Set(
-          cards.flatMap((card) => (removed.has(card.id) && card.courseId ? [card.courseId] : [])),
-        );
-        const affectedSchedulingUnitIds = new Set(
-          cards.flatMap((card) =>
-            removed.has(card.id) && card.schedulingUnitId ? [card.schedulingUnitId] : [],
-          ),
-        );
-        const removedMilestones = (
-          (await tx.table('practiceMilestones').toArray()) as PracticeMilestone[]
-        ).filter((milestone) => affectedCourseIds.has(milestone.courseId));
-        await tx
-          .table('practiceMilestones')
-          .bulkDelete(removedMilestones.map((milestone) => milestone.nodeKey));
-
-        const remainingReviews = reviewHistory.filter((entry) => !removed.has(entry.cardId));
-        const performance = (entries: ReviewHistoryEntry[]) => {
-          let count = 0;
-          let mean = 0;
-          let m2 = 0;
-          for (const entry of entries) {
-            if (!(entry.correct ?? entry.grade > 1) || !Number.isFinite(entry.responseTimeSec))
-              continue;
-            count += 1;
-            const delta = entry.responseTimeSec - mean;
-            mean += delta / count;
-            m2 += delta * (entry.responseTimeSec - mean);
-          }
-          return {
-            runningMeanResponseTime: mean,
-            runningStdDevResponseTime: count > 0 ? Math.sqrt(m2 / count) : 0,
-            m2,
-            totalCorrectReviews: count,
-          };
-        };
-        await tx
-          .table('coursePerformance')
-          .toCollection()
-          .modify((row: CoursePerformance) => {
-            if (!affectedCourseIds.has(row.courseId)) return;
-            Object.assign(
-              row,
-              performance(remainingReviews.filter((entry) => entry.courseId === row.courseId)),
-            );
-          });
-        await tx
-          .table('schedulingPerformance')
-          .toCollection()
-          .modify((row: SchedulingPerformance) => {
-            if (!affectedSchedulingUnitIds.has(row.schedulingUnitId)) return;
-            Object.assign(
-              row,
-              performance(
-                remainingReviews.filter((entry) => entry.schedulingUnitId === row.schedulingUnitId),
-              ),
-            );
-          });
-
-        const tombstones: Tombstone[] = [
-          ...migration.removedCardIds.map((id) => {
-            const source = cards.find((card) => card.id === id);
-            return {
-              table: 'cards',
-              recordId: id,
-              deletedAt: source?.updatedAt ?? source?.createdAt ?? 0,
-            };
-          }),
-          ...removedLinks.map((entry) => ({
-            table: 'lessonCards',
-            recordId: entry.id,
-            deletedAt: entry.updatedAt ?? entry.createdAt,
-          })),
-          ...removedExposures.map((entry) => ({
-            table: 'lessonCardExposures',
-            recordId: `${entry.lessonId}:${entry.cardId}`,
-            deletedAt: entry.updatedAt ?? entry.taughtAt,
-          })),
-          ...removedMilestones.map((entry) => ({
-            table: 'practiceMilestones',
-            recordId: entry.nodeKey,
-            deletedAt: entry.updatedAt,
-          })),
-        ];
-        await tx.table('tombstones').bulkPut(tombstones);
-      });
+      .upgrade(upgradeQuestionStorage);
 
     // Version 25: durable learner-correctable AI teaching context. Additive only.
     this.version(25).stores({
@@ -1244,54 +732,11 @@ class LacunaDatabase extends Dexie {
         cards:
           'id, courseId, primaryLessonId, schedulingUnitId, conceptId, type, lastReviewed, sequenceItemId, occlusionRegionId',
       })
-      .upgrade(async (tx) => {
-        const cardsTable = tx.table<Card, string>('cards');
-        const reviewHistoryTable = tx.table<ReviewHistoryEntry, string>('reviewHistory');
-        const batchSize = 100;
-        let offset = 0;
-
-        for (;;) {
-          const cards = await cardsTable.offset(offset).limit(batchSize).toArray();
-          if (cards.length === 0) break;
-
-          for (const card of cards) {
-            const projectedEntries = reviewHistoryEntriesForCard(card);
-            if (projectedEntries.length > 0) {
-              await putMigratedReviewHistoryEntries(reviewHistoryTable, projectedEntries);
-              const persisted = await reviewHistoryTable.where('cardId').equals(card.id).toArray();
-              if (!containsReviewProjection(persisted, projectedEntries)) {
-                throw new Error(`Review-history migration verification failed for card ${card.id}`);
-              }
-            }
-            await cardsTable.put(projectCardForStorage(card));
-          }
-          offset += cards.length;
-        }
-      });
+      .upgrade(upgradeStoredReviewProjection);
 
     // Version 27: materialise the timestamp-only review projection by card. The
     // projection is derived from canonical history and is not part of backups.
-    this.version(27)
-      .stores({ reviewActivity: 'cardId' })
-      .upgrade(async (tx) => {
-        const timestamps = new Map<string, number[]>();
-        await tx
-          .table<ReviewHistoryEntry, string>('reviewHistory')
-          .orderBy('cardId')
-          .each((entry) => {
-            const values = timestamps.get(entry.cardId) ?? [];
-            values.push(entry.timestamp);
-            timestamps.set(entry.cardId, values);
-          });
-        if (timestamps.size > 0) {
-          await tx.table<ReviewActivityRow, string>('reviewActivity').bulkPut(
-            [...timestamps].map(([cardId, values]) => ({
-              cardId,
-              timestamps: values.sort((a, b) => a - b),
-            })),
-          );
-        }
-      });
+    this.version(27).stores({ reviewActivity: 'cardId' }).upgrade(upgradeReviewActivity);
 
     // Version 28: authored Question Sets are revisioned document aggregates.
     // This additive store does not reinterpret legacy scheduled Questions.
@@ -1310,34 +755,8 @@ class LacunaDatabase extends Dexie {
     });
 
     // Version 31: ordered activity membership and matching last-imported snapshots.
-    this.version(31).stores({}).upgrade(async (tx) => {
-      const { parseQuestionSetPracticeNode, normalisePracticeNodeLineage } = await Dexie.waitFor(import('./questionSetPracticeNode'));
-      await tx.table<PracticeNode, string>('practiceNodes').toCollection().modify((node, ref) => {
-        if (node.type === 'question-set') ref.value = parseQuestionSetPracticeNode(node);
-      });
-      await tx.table<LineageIdMapping, string>('lineageIdMappings').toCollection().modify((mapping, ref) => {
-        ref.value = normalisePracticeNodeLineage(mapping);
-      });
-    });
+    this.version(31).stores({}).upgrade(upgradeQuestionSetActivities);
   }
-}
-
-function containsReviewProjection(
-  persisted: ReviewHistoryEntry[],
-  projected: ReviewHistoryEntry[],
-): boolean {
-  const available = new Map<string, number>();
-  for (const entry of persisted) {
-    const key = migratedReviewHistoryIdentity(entry);
-    available.set(key, (available.get(key) ?? 0) + 1);
-  }
-  for (const entry of projected) {
-    const key = migratedReviewHistoryIdentity(entry);
-    const count = available.get(key) ?? 0;
-    if (count === 0) return false;
-    available.set(key, count - 1);
-  }
-  return true;
 }
 
 export const db = new LacunaDatabase();
