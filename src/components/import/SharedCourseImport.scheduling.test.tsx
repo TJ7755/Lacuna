@@ -5,37 +5,101 @@ import { SharedCourseImport } from './SharedCourseImport';
 import { db } from '../../db/schema';
 import { mergeLineageUpdate } from '../../db/mergeImport';
 import type { SharePayloadV2 } from '../../db/share';
+import {
+  chooseStudyTarget,
+  finishOnboarding,
+  markOnboardingPending,
+} from '../../onboarding/onboardingState';
 
 vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: vi.fn() }) }));
-vi.mock('../../state/motionSpeed', () => ({ useMotionSpeed: () => ['none'], speedMultiplier: () => 0 }));
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['none'],
+  speedMultiplier: () => 0,
+}));
 vi.mock('../ui/DateTimePicker', () => ({
-  DateTimePicker: ({ value, onChange, onValidityChange }: {
-    value: number; onChange: (value: number) => void; onValidityChange: (valid: boolean) => void;
-  }) => <input aria-label="Exam instant" value={value} onChange={(event) => {
-    const date = Number(event.target.value);
-    onChange(date);
-    onValidityChange(Number.isFinite(date));
-  }} />,
+  DateTimePicker: ({
+    value,
+    onChange,
+    onValidityChange,
+  }: {
+    value: number;
+    onChange: (value: number) => void;
+    onValidityChange: (valid: boolean) => void;
+  }) => (
+    <input
+      aria-label="Exam instant"
+      value={value}
+      onChange={(event) => {
+        const date = Number(event.target.value);
+        onChange(date);
+        onValidityChange(Number.isFinite(date));
+      }}
+    />
+  ),
 }));
 
 const teacherDate = 1_900_000_000_000;
 const learnerDate = 1_950_000_000_000;
 function payload(): SharePayloadV2 {
   return {
-    v: 2, at: 1000, li: 'ui-scheduling', rv: 1,
+    v: 2,
+    at: 1000,
+    li: 'ui-scheduling',
+    rv: 1,
     course: { n: 'Biology', o: 0, c: 1000, e: teacherDate, um: 'open' },
-    lessons: [{ i: 'ui-lesson', n: 'Cells', notes: [], cards: [
-      { id: 'ui-card', k: 0, f: 'Question', b: 'Answer' },
-    ] }],
+    lessons: [
+      {
+        i: 'ui-lesson',
+        n: 'Cells',
+        notes: [],
+        cards: [{ id: 'ui-card', k: 0, f: 'Question', b: 'Answer' }],
+      },
+    ],
   };
 }
-const courseFile = (source: SharePayloadV2) => new File([JSON.stringify({
-  format: 'lacuna-course', version: 1, payload: source, assets: [],
-})], 'Biology.lacuna');
+const courseFile = (source: SharePayloadV2) =>
+  new File(
+    [
+      JSON.stringify({
+        format: 'lacuna-course',
+        version: 1,
+        payload: source,
+        assets: [],
+      }),
+    ],
+    'Biology.lacuna',
+  );
 
 beforeEach(async () => {
+  finishOnboarding();
   await db.delete();
   await db.open();
+});
+
+it('keeps a teacher suggestion unconfirmed when onboarding chose an exam date', async () => {
+  markOnboardingPending();
+  chooseStudyTarget({ mode: 'exam', examDate: learnerDate });
+  render(<SharedCourseImport />);
+  const input = screen.getByLabelText('Share link or code to import');
+  fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(payload()))}` } });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeDisabled();
+  expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
+});
+
+it('starts a suggestion-free course with the onboarding choice', async () => {
+  markOnboardingPending();
+  chooseStudyTarget({ mode: 'steady' });
+  const source = payload();
+  source.course.sm = 1;
+  delete source.course.e;
+  render(<SharedCourseImport />);
+  fireEvent.change(screen.getByLabelText('Share link or code to import'), {
+    target: { value: `LAC0${btoa(JSON.stringify(source))}` },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
+  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeEnabled();
+  expect(screen.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
 });
 
 it('requires a choice for a code, including the keyboard shortcut, then confirms the suggestion', async () => {
@@ -78,30 +142,38 @@ it('changes a file suggestion, refuses invalid input, and retains the choice on 
   await screen.findByRole('heading', { name: 'Course update' });
   expect(screen.queryByRole('radio', { name: /Exam date/ })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Update course' }));
-  await waitFor(async () => expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(2));
+  await waitFor(async () =>
+    expect((await db.courses.get(course.id))?.distributedCopy?.revision).toBe(2),
+  );
   expect((await db.courseAssessments.toArray())[0].examDate).toBe(learnerDate);
 });
 
-it.each([true, false])('chooses no fixed exam for an initial link file (teacher date present: %s)', async (dated) => {
-  const source = payload();
-  if (!dated) { delete source.course.e; source.course.sm = 1; }
-  const onImported = vi.fn();
-  render(<SharedCourseImport initialFile={courseFile(source)} onImported={onImported} />);
-  const add = await screen.findByRole('button', { name: 'Add to my courses' });
-  expect(add).toBeDisabled();
-  expect(screen.getByText(/no fixed exam/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
-  fireEvent.click(add);
-  await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
-  const courseId = onImported.mock.calls[0][0];
-  expect((await db.courseAssessments.toArray())[0]).toMatchObject({ schedulingMode: 'steady' });
-  expect((await db.courseAssessments.toArray())[0].examDate).toBeUndefined();
-  const revised = payload(); revised.rv = 2;
-  await mergeLineageUpdate(courseId, revised);
-  expect((await db.courseAssessments.toArray())[0].schedulingMode).toBe('steady');
-  expect((await db.courseAssessments.toArray())[0].examDate).toBeUndefined();
-});
-
+it.each([true, false])(
+  'chooses no fixed exam for an initial link file (teacher date present: %s)',
+  async (dated) => {
+    const source = payload();
+    if (!dated) {
+      delete source.course.e;
+      source.course.sm = 1;
+    }
+    const onImported = vi.fn();
+    render(<SharedCourseImport initialFile={courseFile(source)} onImported={onImported} />);
+    const add = await screen.findByRole('button', { name: 'Add to my courses' });
+    expect(add).toBeDisabled();
+    expect(screen.getByText(/no fixed exam/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: /Steady retention/ }));
+    fireEvent.click(add);
+    await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
+    const courseId = onImported.mock.calls[0][0];
+    expect((await db.courseAssessments.toArray())[0]).toMatchObject({ schedulingMode: 'steady' });
+    expect((await db.courseAssessments.toArray())[0].examDate).toBeUndefined();
+    const revised = payload();
+    revised.rv = 2;
+    await mergeLineageUpdate(courseId, revised);
+    expect((await db.courseAssessments.toArray())[0].schedulingMode).toBe('steady');
+    expect((await db.courseAssessments.toArray())[0].examDate).toBeUndefined();
+  },
+);
 
 it('reports an invalid suggested time zone during inspection without importing', async () => {
   const source = payload();

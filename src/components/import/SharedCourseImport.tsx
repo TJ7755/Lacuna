@@ -91,7 +91,8 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     raw,
     scheduling: payload.course
       ? {
-          mode: chosen?.mode ?? null,
+          // A teacher's suggested date is never taken as confirmed: the learner chooses, as before.
+          mode: suggestedDate === undefined ? (chosen?.mode ?? null) : null,
           examDate: suggestedDate ?? chosen?.examDate ?? defaultExamDate(),
           timeZone,
           valid: true,

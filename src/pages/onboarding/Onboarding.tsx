@@ -67,10 +67,13 @@ export function Onboarding() {
   // Set once the learner has a course: every flow that makes one returns here for the last step.
   const then = params.get('then');
   const [step, setStep] = useState<Step>(then ? 'features' : 'card');
-  const destination = then?.startsWith('/') ? then : '/';
-  // Step 3 hands over by navigating here again, which keeps this page mounted.
+  // Only a course the learner has just made or imported; anything else goes to Today.
+  const destination = then && /^\/course\/[^/?#]+(?:\/lesson\/[^/?#]+)?$/.test(then) ? then : '/';
+  // Step 3 hands over by navigating here again, which keeps this page mounted. Going back from
+  // the last step loses the course, so it returns to step 3.
   useEffect(() => {
     if (then) setStep('features');
+    else setStep((current) => (current === 'features' ? 'content' : current));
   }, [then]);
   const stepIndex = STEPS.indexOf(step);
   const outcomes = new Map<string, SessionCardOutcome>(
