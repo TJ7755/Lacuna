@@ -1,3 +1,5 @@
+import { isRouteImportFailure } from './routeImportFailures';
+
 const RECOVERY_ATTEMPT_KEY = 'lacuna-stale-chunk-recovery-at';
 const RECOVERY_COOLDOWN_MS = 60_000;
 
@@ -54,12 +56,20 @@ async function performRecovery(environment: StaleChunkRecoveryEnvironment): Prom
 export function installStaleChunkRecovery(
   environment: StaleChunkRecoveryEnvironment = browserEnvironment(),
 ): () => void {
-  const onPreloadError = () => {
-    void recoverFromChunkFailure(environment);
+  let active = true;
+  const onPreloadError = (event: Event) => {
+    const cause = (event as Event & { payload?: unknown }).payload;
+    // Vite dispatches before the rejecting promise can identify its route owner.
+    setTimeout(() => {
+      if (active && !isRouteImportFailure(cause)) void recoverFromChunkFailure(environment);
+    }, 0);
   };
 
   environment.events.addEventListener('vite:preloadError', onPreloadError);
-  return () => environment.events.removeEventListener('vite:preloadError', onPreloadError);
+  return () => {
+    active = false;
+    environment.events.removeEventListener('vite:preloadError', onPreloadError);
+  };
 }
 
 function claimRecoveryAttempt(storage: Storage, now: number): boolean {

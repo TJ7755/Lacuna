@@ -1,5 +1,6 @@
 import { lazy, useState, type ComponentType } from 'react';
 import { recoverFromChunkFailure } from '../pwa/staleChunkRecovery';
+import { claimRouteImportFailure } from '../pwa/routeImportFailures';
 
 type RouteModule = { default: ComponentType; preload?: (key: string) => Promise<void> };
 export type RouteLoader = () => Promise<RouteModule>;
@@ -27,6 +28,7 @@ export function loadRouteModule(loader: RouteLoader): Promise<RouteModule> {
       return module;
     },
     (error: unknown) => {
+      claimRouteImportFailure(error);
       pendingModules.delete(loader);
       throw error;
     },
