@@ -1,4 +1,3 @@
-import { referencedQuestionSetConceptIds } from '../questions/questionSets';
 /**
  * Classroom-distribution merge importer (docs/spec/portability.md).
  *
@@ -32,7 +31,6 @@ import { referencedQuestionSetConceptIds } from '../questions/questionSets';
  */
 
 import { assertLessonPrerequisites, assertShareLessonPrerequisites } from './lessonPrerequisites';
-import type { Transaction } from 'dexie';
 import { db, makeId } from './schema';
 import {
   assignCardsToLesson,
@@ -42,841 +40,85 @@ import {
   deleteNote,
   updateCard,
   updateNote,
-  updateSequence,
 } from './repository';
 import {
   ensureCourseBankBackingDeck,
   ensureLessonBackingDeck,
   syncCourseSchedulingUnits,
 } from './backingDecks';
-import { clearTombstone, clearTombstones, recordTombstones, stampUpdatedAt } from './mutationStamp';
-import { updateOcclusion } from './occlusionRepository';
+import { clearTombstone, stampUpdatedAt } from './mutationStamp';
 import { assertValidCardPayload } from '../items/payloadValidation';
 import { buildCardConcept, conceptNameForCard } from '../questions/concepts';
 import { diffLineage, jsonValuesEqual } from './lineageDiff';
 import type {
-  CardUpdate,
-  CreateCardPayload,
-  CreateLessonPayload,
-  CreateNotePayload,
-  ExistingCard,
-  ExistingLesson,
-  ExistingNote,
   LineageConflict,
   LineageDiffInput,
   ShareCardInput,
   ShareLessonInput,
   ShareNoteInput,
 } from './lineageDiff';
-import { applyImportedCourseScheduling, importSharePayload, type ImportCourseScheduling } from './share';
-import type { SharePayload, SharePayloadV2, SharePayloadV3, SharePayloadV4, SharePayloadV5, SharePayloadV6 } from './share';
+import {
+  applyImportedCourseScheduling,
+  importSharePayload,
+  type ImportCourseScheduling,
+} from './share';
+import type { SharePayload } from './share';
 import type {
   Card,
-  CardType,
   Course,
   CourseDistributedCopy,
   CourseRecord,
   Lesson,
-  LessonCardLink,
-  LineageCardSnapshot,
   LineageIdMapping,
-  LineageLessonSnapshot,
-  LineageNoteSnapshot,
   ItemPayload,
   Note,
-  Occlusion,
   PendingMergeReview,
-  Sequence,
 } from './types';
-import type {
-  Concept,
-  QuestionConceptSet,
-  QuestionDefinition,
-  QuestionScheduleState,
-} from '../questions/types';
+import type { Concept } from '../questions/types';
 import { assertLineageReviewIntegrity, prepareLineageMapping } from './lineageIntegrity';
-import { emptyQuestionSchedule } from '../questions/scheduler';
 import { clampRequestRetention, defaultFsrsParameters } from '../fsrs/params';
-import { questionGeneratorRegistry } from '../questions/generators';
-import { applyLineageQuestionSets, applyLineageQuestionSetPracticeNodes, assertStoredQuestionSetActivities } from '../questions/questionSetLineage';
+import {
+  applyLineageQuestionSets,
+  applyLineageQuestionSetPracticeNodes,
+  assertStoredQuestionSetActivities,
+} from '../questions/questionSetLineage';
 import { applyLineageAssessments } from './assessmentLineage';
 import { finalAssessmentForCourse, hydrateCourse } from './assessmentMigration';
 
-/** Narrowed view of the fields this module reads off a decoded course share payload. */
-type LineagePayload = (SharePayloadV2 | SharePayloadV3 | SharePayloadV4 | SharePayloadV5 | SharePayloadV6) & {
-  li: string;
-  rv: number;
-};
+import {
+  cardSnapshot,
+  detectStudentEdits,
+  emptyMapping,
+  incomingCardConceptIds,
+  isGeneratedShareCard,
+  isLineagePayload,
+  lessonSnapshot,
+  lineageCardConceptId,
+  noteSnapshot,
+  reverseCardId,
+  shareCardKindToType,
+  toExistingCard,
+  toExistingLesson,
+  toExistingNote,
+  toShareCardInput,
+  toShareLessonInput,
+} from './lineageImportModel';
+import type { LineagePayload, ShareCard } from './lineageImportModel';
+import { MERGE_TABLES } from './lineageImportTables';
+import {
+  applyLineageQuestions,
+  pruneRemovedLineageConcepts,
+  upsertLineageConcepts,
+} from './lineageQuestionImport';
+import { applyOcclusions, applySequences } from './lineageGeneratedImport';
+import {
+  applyCardUpdate,
+  applyCreates,
+  applyLineageLessonUpdate,
+  syncLineageLinks,
+} from './lineageImportEntities';
 
-type ShareCard = LineagePayload['lessons'][number]['cards'][number];
-
-/** Type guard: a decoded payload actually carries a lineage (`li`/`rv`, §7.2). */
-export function isLineagePayload(payload: SharePayload): payload is LineagePayload {
-  return payload.v !== 1 && typeof payload.li === 'string' && typeof payload.rv === 'number';
-}
-
-/** `k` -> local `CardType`, mirroring `unpackCard`'s decode in `src/db/share.ts:771-784`
- *  exactly (including `k: 3`, the retired "typing" kind, folding to `front_back`). */
-function shareCardKindToType(k: 0 | 1 | 2 | 3): CardType {
-  if (k === 1) return 'cloze';
-  return 'front_back';
-}
-
-/**
- * `unpackCard`'s reverse-pair id, deterministic and stable across merges so a later
- * re-import recognises the same mirror row. `k: 2` cannot actually occur in a course
- * lesson's cards today — `packCards` in `share.ts:673-736` only folds a front/back pair
- * into a reversible entry when `preserveIds` is false, and every course-lesson export
- * calls it with `preserveIds: true` (`share.ts:857`) precisely so originating ids survive
- * — but the wire format still declares `k: 2` as a valid discriminant, and `unpackCard`
- * still decodes it as two independent `front_back` cards (never `CardType`
- * `'basic_reversed'`, which is an unrelated, explicitly-linked pair feature — see
- * `repository.ts:285-302`). Handled defensively here so a future producer of `k: 2`
- * course-lesson payloads is not silently mishandled by the merge path.
- */
-function reverseCardId(primaryId: string): string {
-  return `${primaryId}::rev`;
-}
-
-/**
- * Concept identity follows the originating Card, not the locally generated Course id.
- * Lineage imports adopt that Card identity across clients, so this id converges too.
- */
-function lineageCardConceptId(sourceCardId: string): string {
-  return `concept:lineage-card:${encodeURIComponent(sourceCardId)}`;
-}
-
-// ---------------------------------------------------------------------------
-// Adapting the share payload shape to lineageDiff's input types.
-// ShareLesson packs the originating id as `i`, ShareNote as `oi`
-// (its own `i` is taken by the image-omission flag), and ShareCard's existing `id`
-// field doubles as the originating card id for a published course; see share.ts).
-// ---------------------------------------------------------------------------
-
-/**
- * True for a share card that some authoring entity regenerates rather than the diff
- * owning directly. Such cards are packed into a course payload like any other (the
- * recipient of a plain share import needs them), but a lineage merge must skip them:
- * `applySequences`/`applyOcclusions` recreate them from their owning entity, so diffing
- * them as well adopts a second, stale copy under the payload's own card id.
- */
-function isGeneratedShareCard(card: ShareCard): boolean {
-  return card.si !== undefined || card.oc !== undefined;
-}
-
-function toShareLessonInput(lesson: LineagePayload['lessons'][number]): ShareLessonInput {
-  if (!lesson.i) throw new Error('Lineage payload lesson is missing its originating id.');
-  return {
-    i: lesson.i,
-    pr: lesson.pr,
-    n: lesson.n,
-    d: lesson.d,
-    x: lesson.x,
-    rd: lesson.rd,
-    ed: lesson.ed,
-    tz: lesson.tz,
-    sf: lesson.sf,
-    am: lesson.am,
-    notes: lesson.notes.map((note): ShareNoteInput => {
-      if (!note.oi) throw new Error('Lineage payload note is missing its originating id.');
-      return { i: note.oi, n: note.n, c: note.c };
-    }),
-    cards: lesson.cards.filter((card) => !isGeneratedShareCard(card)).map(toShareCardInput),
-  };
-}
-
-function toShareCardInput(card: ShareCard): ShareCardInput {
-  if (!card.id) throw new Error('Lineage payload card is missing its originating id.');
-  return {
-    i: card.id,
-    k: card.k,
-    f: card.f,
-    b: card.b,
-    g: card.g,
-    p: card.p as ItemPayload | undefined,
-    am: card.am,
-  };
-}
-
-function toExistingLesson(lesson: Lesson): ExistingLesson {
-  return {
-    id: lesson.id,
-    prerequisiteLessonIds: lesson.prerequisiteLessonIds,
-    name: lesson.name,
-    description: lesson.description,
-    isExtension: lesson.isExtension,
-    releaseDate: lesson.releaseDate,
-    examDate: lesson.examDate,
-    timeZone: lesson.timeZone,
-    sessionFilter: lesson.sessionFilter === 'new' ? undefined : lesson.sessionFilter,
-    answerMode: lesson.answerMode,
-    orderIndex: lesson.orderIndex,
-  };
-}
-
-function toExistingNote(note: Note): ExistingNote {
-  return {
-    id: note.id,
-    lessonId: note.lessonId,
-    name: note.name,
-    content: note.content,
-    orderIndex: note.orderIndex,
-  };
-}
-
-function toExistingCard(card: Card): ExistingCard {
-  return {
-    id: card.id,
-    lessonId: card.primaryLessonId ?? null,
-    type: card.type,
-    front: card.front,
-    back: card.back,
-    tags: card.tags,
-    payload: card.payload,
-    answerMode: card.answerMode,
-  };
-}
-
-function lessonSnapshot(lesson: ExistingLesson): LineageLessonSnapshot {
-  const { id: _id, ...rest } = lesson;
-  return rest;
-}
-
-function noteSnapshot(note: ExistingNote): LineageNoteSnapshot {
-  return { name: note.name, content: note.content, orderIndex: note.orderIndex };
-}
-
-function cardSnapshot(card: ExistingCard): LineageCardSnapshot {
-  return {
-    type: card.type,
-    front: card.front,
-    back: card.back,
-    tags: card.tags,
-    payload: card.payload,
-    answerMode: card.answerMode,
-  };
-}
-
-/**
- * Which adopted ids the student has edited since the last merge (§7.3's `studentEdits`,
- * populated per §7.10's third risk: compare current local content against the mapping's
- * last-merged snapshot rather than a separate dirty flag that could drift out of sync).
- * Only adopted (mapping-known) ids are compared. A missing baseline is unknown,
- * so differing incoming content must go through conflict review.
- */
-/** Exported for `src/mcp/tools/lineage.ts`'s `lacuna.diff_lineage_update` (Arc 7 §7.6,
- *  Task 10) — the read-only MCP preview reuses this classification verbatim rather than
- *  reimplementing it, so the two can never drift apart on what counts as a student edit. */
-export function detectStudentEdits(
-  mapping: LineageIdMapping,
-  lessons: Lesson[],
-  notes: Note[],
-  cards: Card[],
-): Set<string> {
-  const edited = new Set<string>();
-  const lessonsById = new Map(lessons.map((l) => [l.id, l]));
-  const notesById = new Map(notes.map((n) => [n.id, n]));
-  const cardsById = new Map(cards.map((c) => [c.id, c]));
-
-  for (const id of mapping.lessonIds) {
-    const snapshot = mapping.lessonSnapshots[id];
-    const current = lessonsById.get(id);
-    if (
-      current &&
-      (!snapshot || !lessonSnapshotsEqual(snapshot, lessonSnapshot(toExistingLesson(current))))
-    ) {
-      edited.add(id);
-    }
-  }
-  for (const id of mapping.noteIds) {
-    const snapshot = mapping.noteSnapshots[id];
-    const current = notesById.get(id);
-    if (
-      current &&
-      (!snapshot || !noteSnapshotsEqual(snapshot, noteSnapshot(toExistingNote(current))))
-    ) {
-      edited.add(id);
-    }
-  }
-  for (const id of mapping.cardIds) {
-    const snapshot = mapping.cardSnapshots[id];
-    const current = cardsById.get(id);
-    if (
-      current &&
-      (!snapshot || !cardSnapshotsEqual(snapshot, cardSnapshot(toExistingCard(current))))
-    ) {
-      edited.add(id);
-    }
-  }
-  return edited;
-}
-
-function lessonSnapshotsEqual(a: LineageLessonSnapshot, b: LineageLessonSnapshot): boolean {
-  return (
-    tagsEqual([...(a.prerequisiteLessonIds ?? [])].sort(), [...(b.prerequisiteLessonIds ?? [])].sort()) &&
-    a.name === b.name &&
-    a.description === b.description &&
-    a.isExtension === b.isExtension &&
-    a.releaseDate === b.releaseDate &&
-    a.examDate === b.examDate &&
-    a.timeZone === b.timeZone &&
-    a.sessionFilter === b.sessionFilter &&
-    a.answerMode === b.answerMode &&
-    a.orderIndex === b.orderIndex
-  );
-}
-
-function noteSnapshotsEqual(a: LineageNoteSnapshot, b: LineageNoteSnapshot): boolean {
-  return a.name === b.name && a.content === b.content && a.orderIndex === b.orderIndex;
-}
-
-function tagsEqual(a?: string[], b?: string[]): boolean {
-  const x = a ?? [];
-  const y = b ?? [];
-  return x.length === y.length && x.every((v, i) => v === y[i]);
-}
-
-function cardSnapshotsEqual(a: LineageCardSnapshot, b: LineageCardSnapshot): boolean {
-  return (
-    a.type === b.type &&
-    a.front === b.front &&
-    a.back === b.back &&
-    tagsEqual(a.tags, b.tags) &&
-    a.answerMode === b.answerMode &&
-    jsonValuesEqual(a.payload, b.payload)
-  );
-}
-
-const MERGE_TABLES = [
-  db.courses,
-  db.lessons,
-  db.notes,
-  db.noteAnnotations,
-  db.cards,
-  db.concepts,
-  db.questions,
-  db.questionConcepts,
-  db.questionAttempts,
-  db.questionSets,
-  db.practiceNodes,
-  db.practiceMilestones,
-  db.lessonCards,
-  db.lessonCardExposures,
-  db.lessonCompletions,
-  db.sessionHistory,
-  db.sequences,
-  db.occlusions,
-  db.courseAssessments,
-  db.lineageIdMappings,
-  db.pendingMergeReviews,
-  db.reviewHistory,
-  db.schedulingUnits,
-  db.coursePerformance,
-  db.schedulingPerformance,
-  db.tombstones,
-] as const;
-
-/** Empty membership/snapshot registry for a brand-new lineage mapping row. */
-function emptyMapping(lineageId: string, courseId: string): LineageIdMapping {
-  return {
-    id: lineageId,
-    courseId,
-    lessonIds: [],
-    noteIds: [],
-    cardIds: [],
-    conceptIds: [],
-    questionIds: [],
-    questionSetIds: [],
-    questionSetRevisions: {},
-    assessmentIds: [],
-    assessmentSnapshots: {},
-    sequenceIds: [],
-    occlusionIds: [],
-    lessonSnapshots: {},
-    noteSnapshots: {},
-    cardSnapshots: {},
-  };
-}
-
-async function upsertLineageConcepts(
-  payload: LineagePayload,
-  courseId: string,
-  mapping: LineageIdMapping,
-): Promise<string[]> {
-  if (payload.v === 2) return [];
-  const previousIds = [...(mapping.conceptIds ?? [])];
-  const conceptIds = new Set(payload.concepts.map((concept) => concept.id));
-  if (conceptIds.size !== payload.concepts.length) {
-    throw new Error('A shared course contains duplicate Concept ids.');
-  }
-  const cardConceptIds = [
-    ...payload.lessons.flatMap((lesson) => lesson.cards.map((card) => card.co)),
-    ...(payload.bankCards ?? []).map((card) => card.co),
-  ];
-  if (cardConceptIds.some((id) => !id || !conceptIds.has(id))) {
-    throw new Error('A shared Card references a missing Concept.');
-  }
-  const questionIds = new Set(payload.questions.map((question) => question.id));
-  if (questionIds.size !== payload.questions.length) {
-    throw new Error('A shared course contains duplicate Question ids.');
-  }
-  if (
-    payload.questions.some(
-      (question) =>
-        !conceptIds.has(question.t) || question.pr.some((conceptId) => !conceptIds.has(conceptId)),
-    )
-  ) {
-    throw new Error('A shared Question references a missing Concept.');
-  }
-  const existing = await db.concepts.bulkGet(payload.concepts.map((concept) => concept.id));
-  for (const concept of existing) {
-    if (concept && (concept.scope !== 'course' || concept.courseId !== courseId)) {
-      throw new Error(`A shared Concept id is already used by another Course: ${concept.id}.`);
-    }
-  }
-  const concepts: Concept[] = payload.concepts.map((concept) => ({
-    id: concept.id,
-    scope: 'course',
-    scopeKey: `course:${courseId}`,
-    courseId,
-    name: concept.n,
-    provisional: concept.p === 1,
-    ...(concept.specificationPointIds === undefined
-      ? {}
-      : { specificationPointIds: concept.specificationPointIds }),
-    createdAt: payload.at,
-    updatedAt: payload.at,
-  }));
-  if (concepts.length > 0) await db.concepts.bulkPut(concepts);
-  mapping.conceptIds = concepts.map((concept) => concept.id);
-  return previousIds;
-}
-
-function incomingCardConceptIds(payload: LineagePayload): Map<string, string> {
-  const result = new Map<string, string>();
-  if (payload.v === 2) return result;
-  for (const card of [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])]) {
-    if (!card.id || !card.co || isGeneratedShareCard(card)) continue;
-    result.set(card.id, card.co);
-    if (card.k === 2) result.set(reverseCardId(card.id), card.co);
-  }
-  return result;
-}
-
-function lessonIdFromShareIndex(payload: LineagePayload, index: number | undefined): string | null {
-  if (index === undefined) return null;
-  const id = payload.lessons[index]?.i;
-  if (!id) throw new Error('A lineage Question references a Lesson without an originating id.');
-  return id;
-}
-
-function questionSemanticChanged(
-  existing: QuestionDefinition,
-  incoming: SharePayloadV3['questions'][number],
-  existingSet: QuestionConceptSet | undefined,
-): boolean {
-  if (existingSet?.targetConceptIds[0] !== incoming.t) return true;
-  if (!jsonValuesEqual(existingSet?.prerequisiteConceptIds ?? [], incoming.pr)) return true;
-  if (existing.kind === 'fixed' && incoming.k === 0) {
-    return existing.prompt !== incoming.f || !jsonValuesEqual(existing.payload, incoming.p);
-  }
-  if (existing.kind === 'generated' && incoming.k === 1) {
-    return (
-      existing.generatorKey !== incoming.gk ||
-      existing.generatorVersion !== incoming.gv ||
-      !jsonValuesEqual(existing.generatorConfig, incoming.gc)
-    );
-  }
-  return true;
-}
-
-function questionSchedule(question: QuestionDefinition): QuestionScheduleState {
-  return {
-    stability: question.stability,
-    difficulty: question.difficulty,
-    lastReviewed: question.lastReviewed,
-    reps: question.reps,
-    lapses: question.lapses,
-    state: question.state,
-    due: question.due,
-    scheduledDays: question.scheduledDays,
-    learningSteps: question.learningSteps,
-  };
-}
-
-async function applyLineageQuestions(
-  payload: LineagePayload,
-  courseId: string,
-  mapping: LineageIdMapping,
-): Promise<void> {
-  if (payload.v === 2) return;
-  const previousIds = new Set(mapping.questionIds ?? []);
-  const incomingIds = new Set(payload.questions.map((question) => question.id));
-  const removedIds = [...previousIds].filter((id) => !incomingIds.has(id));
-  if (removedIds.length > 0) {
-    await db.questions.bulkDelete(removedIds);
-    await db.questionConcepts.bulkDelete(removedIds);
-    await db.tombstones.bulkPut([
-      ...removedIds.map((recordId) => ({
-        table: 'questions' as const,
-        recordId,
-        deletedAt: payload.at,
-      })),
-      ...removedIds.map((recordId) => ({
-        table: 'questionConcepts' as const,
-        recordId,
-        deletedAt: payload.at,
-      })),
-    ]);
-  }
-
-  for (const incoming of payload.questions) {
-    const [existing, existingSet] = await Promise.all([
-      db.questions.get(incoming.id),
-      db.questionConcepts.get(incoming.id),
-    ]);
-    if (existing && existing.courseId !== courseId) {
-      throw new Error(`A shared Question id is already used by another Course: ${incoming.id}.`);
-    }
-    if (existingSet && existingSet.courseId !== courseId) {
-      throw new Error(
-        `A shared Question Concept set is already used by another Course: ${incoming.id}.`,
-      );
-    }
-    const referencedConceptIds = [incoming.t, ...incoming.pr];
-    const referencedConcepts = await db.concepts.bulkGet(referencedConceptIds);
-    if (
-      referencedConcepts.some(
-        (concept) => !concept || concept.scope !== 'course' || concept.courseId !== courseId,
-      )
-    ) {
-      throw new Error(`A shared Question references a missing Concept: ${incoming.id}.`);
-    }
-    const semantic = existing ? questionSemanticChanged(existing, incoming, existingSet) : true;
-    const authoringRevisionId = `question-authoring:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`;
-    const contentRevisionId =
-      existing && !semantic
-        ? existing.contentRevisionId
-        : `question-content:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`;
-    const scheduleEpoch =
-      existing && !semantic
-        ? existing.scheduleEpoch
-        : {
-            id: `question-epoch:lineage:${encodeURIComponent(payload.li)}:${payload.rv}:${encodeURIComponent(incoming.id)}`,
-            startedAt: payload.at,
-            reason: existing ? ('semantic-edit' as const) : ('created' as const),
-            baseline: { kind: 'new' as const },
-          };
-    const schedule = existing && !semantic ? questionSchedule(existing) : emptyQuestionSchedule();
-    const common = {
-      id: incoming.id,
-      courseId,
-      primaryLessonId: lessonIdFromShareIndex(payload, incoming.pl),
-      additionalLessonIds: (incoming.al ?? []).map((index) => {
-        const lessonId = lessonIdFromShareIndex(payload, index);
-        if (!lessonId) throw new Error('A Question additional Lesson is missing.');
-        return lessonId;
-      }),
-      name: incoming.n,
-      tags: incoming.g ?? [],
-      contentVersion: existing ? existing.contentVersion + (semantic ? 1 : 0) : 1,
-      contentRevisionId,
-      authoringRevisionId,
-      authoringUpdatedAt: payload.at,
-      ...schedule,
-      scheduleEpoch,
-      scheduleUpdatedAt: existing && !semantic ? existing.scheduleUpdatedAt : payload.at,
-      createdAt: existing?.createdAt ?? payload.at,
-      updatedAt: Math.max(existing?.updatedAt ?? payload.at, payload.at),
-    };
-    const definition: QuestionDefinition =
-      incoming.k === 0
-        ? {
-            ...common,
-            kind: 'fixed',
-            suspended: incoming.s === 1,
-            prompt: incoming.f,
-            payload: incoming.p,
-            explanation: incoming.e,
-            explanationStatus: incoming.ld === 1 ? 'legacy-derived' : 'authored',
-          }
-        : {
-            ...common,
-            kind: 'generated',
-            suspended:
-              incoming.s === 1 ||
-              questionGeneratorRegistry.describe(incoming.gk, incoming.gv) === undefined,
-            generatorKey: incoming.gk,
-            generatorVersion: incoming.gv,
-            generatorConfig: incoming.gc,
-          };
-    const set: QuestionConceptSet = {
-      questionId: incoming.id,
-      courseId,
-      targetConceptIds: [incoming.t],
-      prerequisiteConceptIds: [...incoming.pr],
-      authoringRevisionId,
-      authoringUpdatedAt: payload.at,
-      createdAt: existingSet?.createdAt ?? payload.at,
-      updatedAt: payload.at,
-    };
-    await db.questions.put(definition);
-    await db.questionConcepts.put(set);
-  }
-  mapping.questionIds = [...incomingIds];
-}
-
-async function pruneRemovedLineageConcepts(
-  previousIds: readonly string[],
-  mapping: LineageIdMapping,
-  deletedAt: number,
-): Promise<void> {
-  const incoming = new Set(mapping.conceptIds ?? []);
-  const candidates = previousIds.filter((id) => !incoming.has(id));
-  const referenced = new Set([
-    ...(await db.questionSets.toArray()).flatMap(referencedQuestionSetConceptIds),
-    ...(await db.occlusions.toArray()).flatMap((occlusion) => Object.values(occlusion.regionConceptIds ?? {})),
-  ]);
-  const removed: string[] = [];
-  for (const id of candidates) {
-    const [card, set] = await Promise.all([
-      db.cards.where('conceptId').equals(id).first(),
-      db.questionConcepts
-        .filter(
-          (links) =>
-            links.targetConceptIds.includes(id) || links.prerequisiteConceptIds.includes(id),
-        )
-        .first(),
-    ]);
-    if (!card && !set && !referenced.has(id)) removed.push(id);
-  }
-  if (removed.length > 0) {
-    await db.concepts.bulkDelete(removed);
-    await db.tombstones.bulkPut(
-      removed.map((recordId) => ({ table: 'concepts' as const, recordId, deletedAt })),
-    );
-  }
-}
-
-/**
- * Insert a payload's sequences via `updateSequence`, which already handles both create
- * (an id with no existing row — `db.sequences.put` inserts, and the diff against zero
- * existing generated cards is all-creates) and update (regenerate content-only via
- * `diffRegeneration`) in one call. The sequence's own packed `id` is its originating id,
- * adopted directly exactly like lessons/notes/cards (§7.1) — `buildCourseSharePayload`
- * always packs a sequence's real local id (`share.ts:914-917`), never a payload-scoped
- * placeholder, so there is nothing to remap.
- */
-async function applySequences(
-  payload: LineagePayload,
-  courseId: string,
-  lessonIdByIndex: (index: number) => string | null,
-  mapping: LineageIdMapping,
-): Promise<void> {
-  for (const shareSeq of payload.sequences ?? []) {
-    const createdAt = Date.now();
-    const sequence: Sequence = {
-      id: shareSeq.id,
-      courseId,
-      primaryLessonId: typeof shareSeq.pl === 'number' ? lessonIdByIndex(shareSeq.pl) : null,
-      name: shareSeq.n || 'Shared sequence',
-      ...(shareSeq.d ? { description: shareSeq.d } : {}),
-      items: shareSeq.items.map((item) => ({
-        id: item.id,
-        value: item.v,
-        ...(item.l ? { label: item.l } : {}),
-        ...(item.ci !== undefined ? { chunkIndex: item.ci } : {}),
-        ...(item.sp ? { speaker: item.sp } : {}),
-      })),
-      cueWindow: shareSeq.cw,
-      ...(shareSeq.cl && shareSeq.cl.length ? { chunkLabels: shareSeq.cl } : {}),
-      ...(shareSeq.lc === 1 ? { generateLabelCards: true } : {}),
-      ...(shareSeq.m === 'lines' ? { mode: 'lines' as const } : {}),
-      ...(shareSeq.ms ? { mySpeaker: shareSeq.ms } : {}),
-      ...(shareSeq.rc !== undefined ? { recitationChunkSize: shareSeq.rc } : {}),
-      createdAt,
-      updatedAt: createdAt,
-    };
-    await updateSequence(sequence);
-    if (!mapping.sequenceIds.includes(sequence.id)) mapping.sequenceIds.push(sequence.id);
-  }
-}
-
-/**
- * Insert a payload's occlusions via `updateOcclusion`, the occlusion counterpart to
- * {@link applySequences}: it owns "diff against the previous generation, touch content
- * fields only" through the same `diffRegeneration` contract, and covers the create case
- * because `db.occlusions.put` on an unknown id inserts and the diff against zero existing
- * cards is all-creates. Occlusion and region ids are the originating ids, adopted directly
- * (§7.1), so there is nothing to remap.
- *
- * The diagram itself never travels in a share code (Arc 6 §6.6), so `assetHash` will not
- * resolve for the student; the study face falls back to each card's plain-text content.
- */
-async function applyOcclusions(
-  payload: LineagePayload,
-  courseId: string,
-  lessonIdByIndex: (index: number) => string | null,
-  mapping: LineageIdMapping,
-): Promise<void> {
-  for (const shareOcc of payload.occlusions ?? []) {
-    const createdAt = Date.now();
-    const occlusion: Occlusion = {
-      id: shareOcc.id,
-      courseId,
-      primaryLessonId: typeof shareOcc.pl === 'number' ? lessonIdByIndex(shareOcc.pl) : null,
-      name: shareOcc.n || 'Shared occlusion',
-      assetHash: shareOcc.ah,
-      ...(payload.v !== 2 && shareOcc.regionConceptIds
-        ? { regionConceptIds: shareOcc.regionConceptIds }
-        : {}),
-      regions: shareOcc.regions.map((region) => ({
-        id: region.id,
-        role: region.r === 1 ? ('feature' as const) : ('label' as const),
-        shape: 'rectangle' as const,
-        x: region.x,
-        y: region.y,
-        w: region.w,
-        h: region.h,
-        ...(region.a ? { answerText: region.a } : {}),
-        ...(region.p ? { pairedRegionId: region.p } : {}),
-        ...(region.bn ? { backNote: region.bn } : {}),
-      })),
-      createdAt,
-      updatedAt: createdAt,
-    };
-    await updateOcclusion(occlusion);
-    const occlusionIds = (mapping.occlusionIds ??= []);
-    if (!occlusionIds.includes(occlusion.id)) occlusionIds.push(occlusion.id);
-  }
-}
-
-/** Build the full local Lesson/Note/Card rows a diff `creates` payload describes, and
- *  write the mapping's snapshot for each newly adopted entity. Card creates are always
- *  plain `front_back`/`cloze` here — `k: 2` cannot reach a `creates` entry via `diffLineage`
- *  (unreachable via today's course export, see `reverseCardId`'s doc comment above). */
-async function applyCreates(
-  courseId: string,
-  createdAt: number,
-  creates: {
-    lessons: CreateLessonPayload[];
-    notes: CreateNotePayload[];
-    cards: CreateCardPayload[];
-  },
-  mapping: LineageIdMapping,
-  conceptIdByCard?: ReadonlyMap<string, string>,
-): Promise<{ lessons: Lesson[]; notes: Note[]; cards: Card[] }> {
-  const newLessons: Lesson[] = creates.lessons.map((l) => ({
-    id: l.id,
-    prerequisiteLessonIds: l.prerequisiteLessonIds,
-    courseId,
-    name: l.name,
-    ...(l.description ? { description: l.description } : {}),
-    isExtension: l.isExtension,
-    ...(typeof l.releaseDate === 'number' ? { releaseDate: l.releaseDate } : {}),
-    ...(typeof l.examDate === 'number' ? { examDate: l.examDate } : {}),
-    ...(l.timeZone ? { timeZone: l.timeZone } : {}),
-    ...(l.sessionFilter ? { sessionFilter: l.sessionFilter } : {}),
-    answerMode: l.answerMode,
-    orderIndex: l.orderIndex,
-    createdAt,
-    updatedAt: createdAt,
-  }));
-  if (newLessons.length > 0) await db.lessons.bulkAdd(newLessons);
-
-  const newNotes: Note[] = creates.notes.map((n) => ({
-    id: n.id,
-    lessonId: n.lessonId,
-    name: n.name,
-    content: n.content,
-    orderIndex: n.orderIndex,
-    createdAt,
-    updatedAt: createdAt,
-  }));
-  if (newNotes.length > 0) await db.notes.bulkAdd(newNotes);
-
-  const newCards: Card[] = [];
-  const newConcepts: Concept[] = [];
-  for (const c of creates.cards) {
-    const deckId = c.lessonId
-      ? await ensureLessonBackingDeck(courseId, c.lessonId)
-      : await ensureCourseBankBackingDeck(courseId);
-    const conceptId = conceptIdByCard ? conceptIdByCard.get(c.id) : lineageCardConceptId(c.id);
-    if (!conceptId) throw new Error(`A shared Card references a missing Concept: ${c.id}.`);
-    if (!conceptIdByCard) {
-      newConcepts.push(
-        buildCardConcept({
-          id: conceptId,
-          courseId,
-          schedulingUnitId: deckId,
-          name: conceptNameForCard(c.type, c.front, c.back),
-          now: createdAt,
-        }),
-      );
-    }
-    newCards.push({
-      id: c.id,
-      conceptId,
-      deckId,
-      courseId,
-      primaryLessonId: c.lessonId,
-      schedulingUnitId: deckId,
-      type: c.type,
-      front: c.front,
-      back: c.back,
-      stability: null,
-      difficulty: null,
-      lastReviewed: null,
-      reps: 0,
-      lapses: 0,
-      state: 0,
-      due: null,
-      scheduledDays: 0,
-      learningSteps: 0,
-      history: [],
-      createdAt,
-      updatedAt: createdAt,
-      tags: c.tags ?? [],
-      payload: c.payload,
-      answerMode: c.answerMode,
-      suspended: false,
-      buriedUntil: null,
-    });
-  }
-  if (newConcepts.length > 0) await db.concepts.bulkAdd(newConcepts);
-  if (newCards.length > 0) await db.cards.bulkAdd(newCards);
-
-  for (const l of newLessons) {
-    mapping.lessonIds.push(l.id);
-    mapping.lessonSnapshots[l.id] = lessonSnapshot(toExistingLesson(l));
-  }
-  for (const n of newNotes) {
-    mapping.noteIds.push(n.id);
-    mapping.noteSnapshots[n.id] = noteSnapshot(toExistingNote(n));
-  }
-  for (const c of newCards) {
-    mapping.cardIds.push(c.id);
-    mapping.cardSnapshots[c.id] = cardSnapshot(toExistingCard(c));
-  }
-
-  return { lessons: newLessons, notes: newNotes, cards: newCards };
-}
-
-// Validate the final graph at each enclosing merge/review transaction boundary: a valid
-// batch can reverse an edge and briefly form a cycle while individual rows are applied.
-async function applyLineageLessonUpdate(id: string, changes: Partial<Lesson>): Promise<void> {
-  await db.lessons.update(id, stampUpdatedAt(changes));
-  const lesson = await db.lessons.get(id);
-  if (lesson) await syncCourseSchedulingUnits(lesson.courseId);
-}
-
-/** Apply a card update, routing a lesson move through `assignCardsToLesson` so the
- *  backing deck, scheduling unit and review history follow the card. */
-async function applyCardUpdate(courseId: string, update: CardUpdate): Promise<void> {
-  const { id, primaryLessonId, ...changes } = update;
-  if (primaryLessonId !== undefined) await assignCardsToLesson([id], courseId, primaryLessonId);
-  if (Object.keys(changes).length > 0) await updateCard(id, changes);
-}
+export { detectStudentEdits, isLineagePayload } from './lineageImportModel';
 
 /** The teacher's course details as first import writes them. */
 function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCopy['source']> {
@@ -895,59 +137,15 @@ function courseSource(payload: LineagePayload): NonNullable<CourseDistributedCop
   };
 }
 
-/** Deterministic, so every device that imports the lineage converges on one row. */
-function lineageLinkId(lessonId: string, cardId: string): string {
-  return `lineage-link:${encodeURIComponent(lessonId)}:${encodeURIComponent(cardId)}`;
-}
-
-/**
- * Make the course's lineage-owned lesson-card links match the payload's. Links are
- * display-only (the card's primary lesson is unchanged), so they are applied directly
- * rather than queued for review. Only links with a lineage id are touched.
- */
-async function syncLineageLinks(
-  tx: Transaction,
-  payload: LineagePayload,
-  courseId: string,
-): Promise<void> {
-  const lessonIds = (await db.lessons.where('courseId').equals(courseId).primaryKeys()) as string[];
-  const lessonIdSet = new Set(lessonIds);
-  const current = lessonIds.length
-    ? (await db.lessonCards.where('lessonId').anyOf(lessonIds).toArray()).filter((link) =>
-        link.id.startsWith('lineage-link:'),
-      )
-    : [];
-  const currentIds = new Set(current.map((link) => link.id));
-  const links = payload.links ?? [];
-  const cards = await db.cards.bulkGet(links.map((link) => link.c));
-  const now = Date.now();
-  const wanted = new Set<string>();
-  const added: LessonCardLink[] = [];
-  links.forEach((link, index) => {
-    const lessonId = payload.lessons[link.l]?.i;
-    if (!lessonId || !lessonIdSet.has(lessonId) || cards[index]?.courseId !== courseId) return;
-    const id = lineageLinkId(lessonId, link.c);
-    if (wanted.has(id)) return;
-    wanted.add(id);
-    if (!currentIds.has(id)) {
-      added.push({ id, lessonId, cardId: link.c, createdAt: now, updatedAt: now });
-    }
-  });
-  const removed = current.filter((link) => !wanted.has(link.id)).map((link) => link.id);
-  if (removed.length > 0) {
-    await db.lessonCards.bulkDelete(removed);
-    await recordTombstones(tx, 'lessonCards', removed);
-  }
-  if (added.length > 0) {
-    await db.lessonCards.bulkAdd(added);
-    await clearTombstones(tx, 'lessonCards', added.map((link) => link.id));
-  }
-}
-
 async function lineageIdsInUse(payload: LineagePayload): Promise<boolean> {
   const lessonIds = payload.lessons.flatMap((lesson) => (lesson.i ? [lesson.i] : []));
-  const noteIds = payload.lessons.flatMap((lesson) => lesson.notes.flatMap((note) => (note.oi ? [note.oi] : [])));
-  const cardIds = [...payload.lessons.flatMap((lesson) => lesson.cards), ...(payload.bankCards ?? [])]
+  const noteIds = payload.lessons.flatMap((lesson) =>
+    lesson.notes.flatMap((note) => (note.oi ? [note.oi] : [])),
+  );
+  const cardIds = [
+    ...payload.lessons.flatMap((lesson) => lesson.cards),
+    ...(payload.bankCards ?? []),
+  ]
     .filter((card) => !isGeneratedShareCard(card))
     .flatMap((card) => (card.id ? [card.id] : []));
   const [lessons, notes, cards] = await Promise.all([
@@ -1175,9 +373,12 @@ export async function importLineageFirstTime(
     await applyOcclusions(payload, course.id, lessonIdByIndex, mapping);
     await syncLineageLinks(tx, payload, course.id);
     await applyLineageQuestions(payload, course.id, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageAssessments(payload, course.id, mapping, true);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageQuestionSets(payload, course.id, mapping);
-    if (payload.v === 5 || payload.v === 6) await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
+      await applyLineageAssessments(payload, course.id, mapping, true);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
+      await applyLineageQuestionSets(payload, course.id, mapping);
+    if (payload.v === 5 || payload.v === 6)
+      await applyLineageQuestionSetPracticeNodes(payload, course.id, mapping);
     await assertStoredQuestionSetActivities(course.id);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
     await syncCourseSchedulingUnits(course.id);
@@ -1400,9 +601,12 @@ export async function mergeLineageUpdate(
       }
     }
     await applyLineageQuestions(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageAssessments(payload, courseId, mapping);
-    if (payload.v === 4 || payload.v === 5 || payload.v === 6) await applyLineageQuestionSets(payload, courseId, mapping);
-    if (payload.v === 5 || payload.v === 6) await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
+      await applyLineageAssessments(payload, courseId, mapping);
+    if (payload.v === 4 || payload.v === 5 || payload.v === 6)
+      await applyLineageQuestionSets(payload, courseId, mapping);
+    if (payload.v === 5 || payload.v === 6)
+      await applyLineageQuestionSetPracticeNodes(payload, courseId, mapping);
     await assertStoredQuestionSetActivities(courseId);
     await pruneRemovedLineageConcepts(previousConceptIds, mapping, payload.at);
 
@@ -1420,7 +624,13 @@ export async function mergeLineageUpdate(
       specification: course.specification,
     };
     for (const key of [
-      'name', 'description', 'unlockMode', 'creator', 'specificationRef', 'examBoard', 'specification',
+      'name',
+      'description',
+      'unlockMode',
+      'creator',
+      'specificationRef',
+      'examBoard',
+      'specification',
     ] as const) {
       if (
         !jsonValuesEqual(local[key], source[key]) &&
@@ -1434,7 +644,12 @@ export async function mergeLineageUpdate(
       courseId,
       stampUpdatedAt({
         ...detailChanges,
-        distributedCopy: { ...dc, revision: payload.rv, source, sourceLabel: payload.by ?? undefined },
+        distributedCopy: {
+          ...dc,
+          revision: payload.rv,
+          source,
+          sourceLabel: payload.by ?? undefined,
+        },
       }),
     );
     await syncCourseSchedulingUnits(courseId);
