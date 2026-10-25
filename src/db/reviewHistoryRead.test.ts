@@ -11,7 +11,7 @@ import {
   listReviewHistoryForCards,
   listReviewHistoryForCourse,
 } from './reviewHistoryRead';
-import { reviewHistoryEntryIdForEvent } from './reviewHistory';
+import { reviewHistoryEntryIdForEvent, resolveReviewHistoryCollisions } from './reviewHistory';
 import { makeSessionContext, selectNext } from '../fsrs/session';
 import type { Card, ReviewLog } from './types';
 
@@ -42,24 +42,38 @@ describe('review-history read adapter', () => {
 
   it('bulk-reads card histories without event-by-event cursors and preserves session order', async () => {
     const course = await createCourse('Biology', { learnFirst: false });
-    const cards = await Promise.all(Array.from({ length: 12 }, (_, i) =>
-      createCourseCard(course.id, 'front_back', `Cell ${i}`, 'Mitochondrion'),
-    ));
+    const cards = await Promise.all(
+      Array.from({ length: 12 }, (_, i) =>
+        createCourseCard(course.id, 'front_back', `Cell ${i}`, 'Mitochondrion'),
+      ),
+    );
     const now = Date.now();
     for (const [i, card] of cards.entries()) {
-      Object.assign(card, { stability: 2 + i, difficulty: 5, reps: 3, state: 2,
-        lastReviewed: now - 10 * 86_400_000, due: now - 86_400_000 });
+      Object.assign(card, {
+        stability: 2 + i,
+        difficulty: 5,
+        reps: 3,
+        state: 2,
+        lastReviewed: now - 10 * 86_400_000,
+        due: now - 86_400_000,
+      });
     }
-    await db.reviewHistory.bulkAdd(cards.flatMap((card, i) =>
-      Array.from({ length: 3 }, (_, r) => ({
-        ...review(now - (4 - r) * 86_400_000, `${card.id}-${r}`),
-        id: `${card.id}-${r}`, cardId: card.id,
-        // Historical ownership can differ after a card moves; cardId is authoritative.
-        courseId: i % 2 ? 'previous-course' : course.id,
-        schedulingUnitId: card.schedulingUnitId,
-      })),
-    ));
-    const canonical = await db.reviewHistory.where('cardId').anyOf(cards.map((card) => card.id)).toArray();
+    await db.reviewHistory.bulkAdd(
+      cards.flatMap((card, i) =>
+        Array.from({ length: 3 }, (_, r) => ({
+          ...review(now - (4 - r) * 86_400_000, `${card.id}-${r}`),
+          id: `${card.id}-${r}`,
+          cardId: card.id,
+          // Historical ownership can differ after a card moves; cardId is authoritative.
+          courseId: i % 2 ? 'previous-course' : course.id,
+          schedulingUnitId: card.schedulingUnitId,
+        })),
+      ),
+    );
+    const canonical = await db.reviewHistory
+      .where('cardId')
+      .anyOf(cards.map((card) => card.id))
+      .toArray();
     const expected = await hydrateCardsWithHistory(cards, canonical);
     const cursor = vi.spyOn(IDBIndex.prototype, 'openCursor');
     let actual: Card[];
@@ -71,7 +85,11 @@ describe('review-history read adapter', () => {
     }
     expect(actual!).toEqual(expected);
     function order(pool: Card[]) {
-      const ctx = makeSessionContext([{ config: course, scope: { kind: 'course', courseId: course.id } }], 'due', pool);
+      const ctx = makeSessionContext(
+        [{ config: course, scope: { kind: 'course', courseId: course.id } }],
+        'due',
+        pool,
+      );
       const ids: string[] = [];
       let next: Card | null;
       while ((next = selectNext(pool, ctx, new Map(), now))) {
@@ -93,23 +111,54 @@ describe('review-history read adapter', () => {
     const dayStart = startOfDay(today);
     const tomorrow = addDays(dayStart, 1);
     await db.reviewHistory.bulkAdd([
-      { ...review(dayStart - 1, 'yesterday'), id: 'yesterday', cardId: card.id,
-        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
-      { ...review(dayStart, 'first'), id: 'first', cardId: card.id,
-        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
-      { ...review(today, 'repeat'), id: 'repeat', cardId: card.id,
-        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
-      { ...review(tomorrow, 'tomorrow'), id: 'tomorrow', cardId: card.id,
-        courseId: course.id, schedulingUnitId: card.schedulingUnitId },
-      { ...review(today, 'other'), id: 'other', cardId: otherCard.id,
-        courseId: otherCourse.id, schedulingUnitId: otherCard.schedulingUnitId },
+      {
+        ...review(dayStart - 1, 'yesterday'),
+        id: 'yesterday',
+        cardId: card.id,
+        courseId: course.id,
+        schedulingUnitId: card.schedulingUnitId,
+      },
+      {
+        ...review(dayStart, 'first'),
+        id: 'first',
+        cardId: card.id,
+        courseId: course.id,
+        schedulingUnitId: card.schedulingUnitId,
+      },
+      {
+        ...review(today, 'repeat'),
+        id: 'repeat',
+        cardId: card.id,
+        courseId: course.id,
+        schedulingUnitId: card.schedulingUnitId,
+      },
+      {
+        ...review(tomorrow, 'tomorrow'),
+        id: 'tomorrow',
+        cardId: card.id,
+        courseId: course.id,
+        schedulingUnitId: card.schedulingUnitId,
+      },
+      {
+        ...review(today, 'other'),
+        id: 'other',
+        cardId: otherCard.id,
+        courseId: otherCourse.id,
+        schedulingUnitId: otherCard.schedulingUnitId,
+      },
     ]);
 
     expect(await dailyReviewCounts('course', today)).toEqual(
-      new Map([[course.id, 2], [otherCourse.id, 1]]),
+      new Map([
+        [course.id, 2],
+        [otherCourse.id, 1],
+      ]),
     );
     expect(await dailyReviewCounts('scheduling-unit', today)).toEqual(
-      new Map([[card.schedulingUnitId, 2], [otherCard.schedulingUnitId, 1]]),
+      new Map([
+        [card.schedulingUnitId, 2],
+        [otherCard.schedulingUnitId, 1],
+      ]),
     );
   });
 
@@ -176,8 +225,7 @@ describe('review-history read adapter', () => {
     expect(projectionHydrated.history).toHaveLength(1);
     expect(projectionHydrated.history[0].eventId).toBe('projection-only');
 
-    const explicitEmptyHydrated =
-      (await hydrateCardsWithHistory([projectionCard], []))[0];
+    const explicitEmptyHydrated = (await hydrateCardsWithHistory([projectionCard], []))[0];
     expect(explicitEmptyHydrated.history).toEqual([]);
   });
 
@@ -210,5 +258,42 @@ describe('review-history read adapter', () => {
     expect(events).toHaveLength(1);
     expect(events[0].cardId).toBe(biologyCard.id);
     expect(await listAllReviewHistory()).toHaveLength(2);
+  });
+
+  it('repairs canonical cross-card event collisions even when all projections are suppressed', async () => {
+    const course = await createCourse('Collision reads');
+    const first = await createCourseCard(course.id, 'front_back', 'First', 'A');
+    const second = await createCourseCard(course.id, 'front_back', 'Second', 'A');
+    const canonical = [
+      { ...review(100, 'shared-event'), id: 'first-row', cardId: first.id, courseId: course.id },
+      { ...review(200, 'shared-event'), id: 'second-row', cardId: second.id, courseId: course.id },
+    ];
+    await db.reviewHistory.bulkAdd(canonical);
+    // Both stale projections must be suppressed before resolving canonical collisions.
+    await db.cards.bulkPut([
+      { ...first, history: [review(999, 'shared-event')] },
+      { ...second, history: [review(999, 'shared-event')] },
+    ]);
+
+    expect(await listAllReviewHistory()).toEqual(resolveReviewHistoryCollisions(canonical));
+    expect(await listReviewHistoryForCourse(course.id)).toEqual(
+      resolveReviewHistoryCollisions(canonical),
+    );
+  });
+
+  it('retains legacy duplicate occurrences alongside canonical events after filtering projections', async () => {
+    const course = await createCourse('Legacy reads');
+    const card = await createCourseCard(course.id, 'front_back', 'Q', 'A');
+    const legacy = review(200);
+    await db.reviewHistory.add({
+      ...review(100, 'canonical'),
+      id: 'canonical-row',
+      cardId: card.id,
+    });
+    const entries = await listReviewHistoryForCards([
+      { ...card, history: [review(999, 'canonical'), legacy, legacy] },
+    ]);
+    expect(entries.map((entry) => entry.timestamp)).toEqual([100, 200, 200]);
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(3);
   });
 });
