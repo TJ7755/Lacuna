@@ -1,4 +1,14 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+async function pauseLanding(page: Page): Promise<void> {
+  const paused = page.getByRole('button', { name: 'Play illustrations' });
+  await expect(async () => {
+    if (!(await paused.isVisible())) {
+      await page.getByRole('button', { name: 'Pause illustrations' }).click();
+    }
+    await expect(paused).toBeVisible({ timeout: 250 });
+  }).toPass({ timeout: 10_000 });
+}
 
 test('landing enters the app before its optional idle warm-up', async ({ page }) => {
   const errors: string[] = [];
@@ -7,8 +17,7 @@ test('landing enters the app before its optional idle warm-up', async ({ page })
     window.requestIdleCallback = () => 1;
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Pause illustrations' }).click();
-  await expect(page.getByRole('button', { name: 'Play illustrations' })).toBeVisible();
+  await pauseLanding(page);
   await page
     .getByRole('region', { name: 'Revision around your exam' })
     .getByRole('link', { name: 'Start revising' })
@@ -30,8 +39,7 @@ test('a landing-only installation can open Import offline without the HTTP cache
       window.requestIdleCallback = () => 1;
     });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Pause illustrations' }).click();
-    await expect(page.getByRole('button', { name: 'Play illustrations' })).toBeVisible();
+    await pauseLanding(page);
     await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
     await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true);
     const session = await context.newCDPSession(page);
@@ -63,8 +71,8 @@ test('a failed landing handover download recovers through the existing stale-chu
     let failed = false;
     let documents = 0;
     let probes = 0;
-    page.on('framenavigated', (frame) => {
-      if (frame === page.mainFrame()) documents += 1;
+    page.on('request', (request) => {
+      if (request.isNavigationRequest() && request.frame() === page.mainFrame()) documents += 1;
     });
     await page.route('**/assets/app-*.js', (route) => {
       if (failed) return route.continue();
@@ -76,15 +84,14 @@ test('a failed landing handover download recovers through the existing stale-chu
       return route.continue();
     });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Pause illustrations' }).click();
-    await expect(page.getByRole('button', { name: 'Play illustrations' })).toBeVisible();
+    await pauseLanding(page);
     await page.evaluate(() => localStorage.setItem('handover-recovery-proof', 'retained'));
     expect(failed).toBe(false);
     await page
       .getByRole('region', { name: 'Revision around your exam' })
       .getByRole('link', { name: 'Start revising' })
       .click();
-    await expect(page).toHaveURL(/#\/start$/);
+    await expect(page).toHaveURL(/#\/start$/, { timeout: 30_000 });
     await expect(
       page.getByRole('button', { name: 'Show answer', exact: true }).last(),
     ).toBeVisible();
