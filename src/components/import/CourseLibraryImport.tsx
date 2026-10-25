@@ -16,11 +16,14 @@ export function CourseLibraryImport({
   backLabel,
   onBack,
   onOpenCourse,
+  onBusyChange,
 }: {
   /** Names where the first Back leads, such as "New course". */
   backLabel: string;
   onBack: () => void;
   onOpenCourse: (courseId: string) => void;
+  /** True while a course is being written, so the surrounding way out can wait too. */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [chosen, setChosen] = useState<{
     course: LibraryCourse;
@@ -78,7 +81,10 @@ export function CourseLibraryImport({
           code={chosen.shareUrl}
           chosen
           isCurrent={() => current.current === chosen.token}
-          onBusyChange={setBusy}
+          onBusyChange={(next) => {
+            setBusy(next);
+            onBusyChange?.(next);
+          }}
           onOpenCourse={onOpenCourse}
         />
       ) : (

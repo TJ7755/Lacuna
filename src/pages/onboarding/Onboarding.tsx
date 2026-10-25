@@ -80,7 +80,10 @@ export function Onboarding() {
     STEPS.slice(0, stepIndex).map((done) => [done, 'correct']),
   );
 
+  // A course being imported must finish here, or its lineage confirmation is skipped.
+  const [importing, setImporting] = useState(false);
   const leave = () => {
+    if (importing && step === 'content') return;
     finishOnboarding();
     void navigate(destination, { replace: true });
   };
@@ -145,7 +148,7 @@ export function Onboarding() {
             ) : step === 'exam' ? (
               <ExamStep onDone={advance} />
             ) : step === 'content' ? (
-              <ContentStep />
+              <ContentStep onBusyChange={setImporting} />
             ) : (
               <FeaturesStep onDone={leave} />
             )}
@@ -304,7 +307,7 @@ function StepHeading({ children }: { children: string }) {
  * Step 3: the real import surface, or a new empty course. Each of them finishes by opening
  * its course, which onboardingDestination routes back here for the last step first.
  */
-function ContentStep() {
+function ContentStep({ onBusyChange }: { onBusyChange: (busy: boolean) => void }) {
   const [fromScratch, setFromScratch] = useState(false);
 
   return (
@@ -317,7 +320,7 @@ function ContentStep() {
             <NewCourseForm inline library={false} onClose={() => setFromScratch(false)} />
           ) : (
             <div className="pt-2">
-              <ImportPanel />
+              <ImportPanel onBusyChange={onBusyChange} />
             </div>
           )}
         </div>

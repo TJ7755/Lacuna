@@ -86,8 +86,9 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
   const suggestedDate = (final ? final.sm !== 1 : payload.course?.sm !== 1)
     ? (final?.e ?? payload.course?.e)
     : undefined;
-  const timeZone = final?.tz ?? getLocalTimeZone();
   const chosen = chosenStudyTarget();
+  // Onboarding's date was picked in the learner's own zone, so it is kept in that zone.
+  const timeZone = (!chosen && final?.tz) || getLocalTimeZone();
   return {
     summary,
     raw,

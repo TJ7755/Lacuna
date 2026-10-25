@@ -17,10 +17,24 @@ vi.mock('../ui/Toast', () => ({ useToast: () => ({ notify: mocks.notify }) }));
 vi.mock('../../db/courseRepository', () => ({ createCourse: mocks.createCourse }));
 vi.mock('../../db/lessonRepository', () => ({ createLesson: mocks.createLesson }));
 vi.mock('../import/ShareLinkImport', () => ({
-  ShareLinkImport: ({ onOpenCourse }: { onOpenCourse: (id: string) => void }) => (
-    <button type="button" onClick={() => onOpenCourse('library-course')}>
-      Add to my courses
-    </button>
+  ShareLinkImport: ({
+    onOpenCourse,
+    onBusyChange,
+  }: {
+    onOpenCourse: (id: string) => void;
+    onBusyChange: (busy: boolean) => void;
+  }) => (
+    <>
+      <button type="button" onClick={() => onOpenCourse('library-course')}>
+        Add to my courses
+      </button>
+      <button type="button" onClick={() => onBusyChange(true)}>
+        Start writing
+      </button>
+      <button type="button" onClick={() => onBusyChange(false)}>
+        Finish writing
+      </button>
+    </>
   ),
 }));
 describe('NewCourseForm', () => {
@@ -62,6 +76,28 @@ describe('NewCourseForm', () => {
     );
     expect(screen.getByLabelText('Course name')).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('keeps the dialog open while a library course is written, and never creates one there', () => {
+    const onClose = vi.fn();
+    render(<NewCourseForm onClose={onClose} />);
+    fireEvent.change(screen.getByLabelText('Course name'), { target: { value: 'Biology' } });
+    fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+    const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+    fireEvent.keyDown(search, { key: 'Enter', ctrlKey: true });
+    expect(mocks.createCourse).not.toHaveBeenCalled();
+
+    fireEvent.change(search, { target: { value: '8461' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start writing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Start writing' }), { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Finish writing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onClose).toHaveBeenCalledOnce();
+    expect(mocks.createCourse).not.toHaveBeenCalled();
   });
 
   it('leaves the library out when onboarding has already offered it', () => {

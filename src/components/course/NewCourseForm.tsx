@@ -47,6 +47,11 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  // A library course being written must finish here, or its lineage confirmation is skipped.
+  const [libraryBusy, setLibraryBusy] = useState(false);
+  const close = () => {
+    if (!saving && !libraryBusy) onClose();
+  };
   const libraryButtonRef = useRef<HTMLButtonElement>(null);
   const returnToLibraryButton = useRef(false);
   useEffect(() => {
@@ -103,10 +108,11 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   }
 
   const onKeyDown = dialogKeyDown({
-    onCancel: () => {
-      if (!saving) onClose();
+    onCancel: close,
+    // The library has no course name to submit, so Ctrl+Enter there never creates one.
+    onSubmit: () => {
+      if (!browsing) void handleCreate();
     },
-    onSubmit: () => void handleCreate(),
     enterSubmits: true,
     ignore: (target, key) =>
       key === 'Escape'
@@ -193,7 +199,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     </>
   );
 
-  // Outside the form, so Enter in the library search never creates a course.
+  // Outside the form, so Enter in the library search never submits it.
   const libraryView = (
     <CourseLibraryImport
       backLabel="New course"
@@ -201,6 +207,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
         returnToLibraryButton.current = true;
         setBrowsing(false);
       }}
+      onBusyChange={setLibraryBusy}
       onOpenCourse={(courseId) => {
         onClose();
         void navigate(onboardingDestination(`/course/${courseId}`));
@@ -228,14 +235,12 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     <DialogPanel
       label="New course"
       trapRef={trapRef}
-      onBackdropClick={() => {
-        if (!saving) onClose();
-      }}
+      onBackdropClick={close}
       className="max-w-md"
       overlayClassName="will-change-transform-opacity"
       onKeyDown={onKeyDown}
     >
-      <DialogHeader title="New course" onClose={onClose} closeLabel="Close" />
+      <DialogHeader title="New course" onClose={close} closeLabel="Close" />
       {browsing ? libraryView : fields}
     </DialogPanel>,
     document.body,
