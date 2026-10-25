@@ -126,6 +126,8 @@ export default defineConfig({
         'src/db/lessonRepository.ts': { statements: 87, branches: 77, functions: 81, lines: 89 },
         'src/db/lessonDeletion.ts': { statements: 87, branches: 77, functions: 81, lines: 89 },
         'src/db/noteRepository.ts': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'src/db/reviewRepository.ts': { statements: 80, branches: 70, functions: 100, lines: 80 },
+        'src/db/reviewTrajectory.ts': { statements: 90, branches: 85, functions: 85, lines: 90 },
         'src/pages/learn/useLearnSession.ts': {
           statements: 83,
           branches: 68,
