@@ -7,7 +7,6 @@
 import { useState, type ComponentProps } from 'react';
 import { AnimatePresence, LayoutGroup, m as motion, useIsPresent } from 'motion/react';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
-import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
@@ -36,7 +35,6 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingNote, setAddingNote] = useState(false);
-  const [compactAdd, setCompactAdd] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteBusy, setNoteBusy] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -84,38 +82,6 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
   }
 
   const showTabs = sortedNotes.length > 1;
-
-  // Keep an open editor in its original surface while live notes arrive or disappear.
-  if (editable && (addingNote ? compactAdd : !activeNote)) {
-    return (
-      <div className={cn('flex min-w-0', className)}>
-        <ExpandingCreateControl
-          label="Add note"
-          closedWidth={112}
-          align="start"
-          open={addingNote}
-          onOpenChange={(open) => {
-            if (!noteBusy) {
-              setCompactAdd(true);
-              setAddingNote(open);
-            }
-          }}
-        >
-          {(close) => (
-            <div
-              className="px-4 pb-4 pt-2"
-              onKeyDown={(event) => {
-                // Keep the editor's Escape safeguard for a typed draft.
-                if (event.key === 'Escape') event.stopPropagation();
-              }}
-            >
-              <LessonNoteEditor compact onSave={handleAddNote} onCancel={close} busy={noteBusy} />
-            </div>
-          )}
-        </ExpandingCreateControl>
-      </div>
-    );
-  }
 
   return (
     <article
@@ -237,7 +203,6 @@ export function LessonNotesCard({ lessonId, notes, editable, className }: Lesson
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      setCompactAdd(false);
                       setAddingNote(true);
                       setEditingNoteId(null);
                     }}

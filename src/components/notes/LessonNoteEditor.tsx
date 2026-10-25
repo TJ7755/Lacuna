@@ -12,8 +12,6 @@ interface LessonNoteEditorProps {
   onCancel: () => void;
   /** Set to true while the parent is persisting the save. Disables actions. */
   busy?: boolean;
-  /** A narrow creation surface uses the editor's existing Write/Preview tabs. */
-  compact?: boolean;
 }
 
 /**
@@ -21,13 +19,7 @@ interface LessonNoteEditorProps {
  * persistence via `onSave`. This keeps the component usable by both the
  * lesson-view CRUD flow and any AI-authoring path.
  */
-export function LessonNoteEditor({
-  note,
-  onSave,
-  onCancel,
-  busy = false,
-  compact = false,
-}: LessonNoteEditorProps) {
+export function LessonNoteEditor({ note, onSave, onCancel, busy = false }: LessonNoteEditorProps) {
   const [name, setName] = useState(note?.name ?? '');
   const [content, setContent] = useState(note?.content ?? '');
 
@@ -64,8 +56,7 @@ export function LessonNoteEditor({
         onChange={setContent}
         placeholder="Write your notes in Markdown…"
         label="Content"
-        minRows={compact ? 6 : 8}
-        layout={compact ? 'tabs' : 'split'}
+        minRows={8}
         allowEmbeds
         onTabForward={() => saveRef.current?.focus()}
       />
