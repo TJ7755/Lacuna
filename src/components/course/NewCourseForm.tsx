@@ -80,6 +80,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     if (!saving && !libraryBusy) onClose();
   };
   const libraryButtonRef = useRef<HTMLButtonElement>(null);
+  const libraryBackRef = useRef<HTMLButtonElement>(null);
   const returnToLibraryButton = useRef(false);
   useEffect(() => {
     if (!present || browsing) return;
@@ -103,6 +104,12 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
       // The live Back action and existing error boundary own a failed cold open.
     }
   }
+
+  useEffect(() => {
+    if (present && browsing && !libraryReady) {
+      libraryBackRef.current?.focus({ preventScroll: true });
+    }
+  }, [present, browsing, libraryReady]);
 
   const canCreate = !saving;
 
@@ -259,6 +266,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             hoverScale={false}
             style={{ paddingInline: 12, gap: 6 }}
             autoFocus
+            ref={libraryBackRef}
             aria-label="Back to New course"
             onClick={backToForm}
           >
