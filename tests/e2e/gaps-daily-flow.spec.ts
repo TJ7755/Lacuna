@@ -68,7 +68,7 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
   // Class biology is the only course, so the page opens on it without a picker.
   await expect(
     author
-      .getByRole('banner')
+      .getByRole('main')
       .getByText(/^Class biology/)
       .first(),
   ).toBeVisible();
