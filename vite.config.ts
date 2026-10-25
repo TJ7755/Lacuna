@@ -177,6 +177,7 @@ export default defineConfig({
     format: 'es',
   },
   build: {
+    manifest: true,
     rolldownOptions: {
       input: {
         index: 'index.html',
@@ -189,9 +190,34 @@ export default defineConfig({
         // it and its vendor dependency without downloading every lazy JavaScript chunk.
         entryFileNames: (chunk) =>
           chunk.name === 'index' ? 'assets/app-[hash].js' : 'assets/[name]-[hash].js',
-        // No manualChunks: rolldown's fine-grained splitting keeps the landing
-        // preloads small, which `perf:check` enforces. Mermaid stays lazy on its
-        // own via the dynamic import in src/components/markdown/mermaid.ts.
+        codeSplitting: {
+          // Separate shared page requirements: coupling these makes the course
+          // catalogue download motion/router code, or the landing page download the app.
+          groups: [
+            {
+              name: 'web-runtime',
+              test(id) {
+                const path = id.replaceAll('\\', '/');
+                return (
+                  path === '\0vite/preload-helper.js' ||
+                  /\/src\/(?:webBootstrap|landingHandover|pwa\/staleChunkRecovery|onboarding\/onboardingState)\.ts$/.test(
+                    path,
+                  ) ||
+                  /\/src\/components\/ui\/(?:icons|Field|SectionCard)\.tsx$/.test(path) ||
+                  /\/node_modules\/react-dom\/client\.js$/.test(path)
+                );
+              },
+            },
+            {
+              name: 'landing-motion',
+              test: /[\\/](?:src[\\/](?:state[\\/]motionSpeed\.ts|components[\\/]layout[\\/]LandingTransition\.tsx)$|node_modules[\\/]framer-motion[\\/]dist[\\/]es[\\/]components[\\/]LazyMotion[\\/])/,
+            },
+            {
+              name: 'router',
+              test: /[\\/]node_modules[\\/]react-router(?:-dom)?[\\/]/,
+            },
+          ],
+        },
       },
     },
   },

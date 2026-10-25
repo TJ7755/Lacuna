@@ -59,7 +59,7 @@ export function publicPagePrerenderPlugin(): Plugin {
           }
           if (markup.includes('/src/'))
             throw new Error('Unresolved public-page asset in rendered HTML.');
-          const renderedHtml = html.replace(page.placeholder, markup);
+          let renderedHtml = html.replace(page.placeholder, markup);
           if (page.path !== 'index.html') return renderedHtml;
 
           // Prerendered content needs its lazy entry's CSS before JavaScript runs.
@@ -71,6 +71,38 @@ export function publicPagePrerenderPlugin(): Plugin {
               asset.moduleIds.some((id) => id.endsWith('/src/pages/landing/entry-client.tsx')),
           );
           if (!entry) throw new Error('Missing landing hydration chunk.');
+          const appScript = renderedHtml.match(
+            /<script type="module" crossorigin src="([^"]+)"><\/script>/,
+          );
+          const landingEntry = Object.values(bundle).find(
+            (asset) =>
+              asset.type === 'chunk' &&
+              asset.moduleIds.some((id) => id.endsWith('/src/landingBootstrap.ts')),
+          );
+          if (!appScript || !landingEntry) throw new Error('Missing homepage entry points.');
+          const appFile = appScript[1].slice(base.length);
+          function scriptsFor(fileName: string, visited = new Set<string>()): string[] {
+            if (visited.has(fileName)) return [];
+            visited.add(fileName);
+            const chunk = bundle[fileName];
+            return [
+              `${base}${fileName}`,
+              ...(chunk?.type === 'chunk'
+                ? chunk.imports.flatMap((dependency) => scriptsFor(dependency, visited))
+                : []),
+            ];
+          }
+          function serialiseScripts(fileName: string): string {
+            // JSON escaping alone cannot stop HTML from recognising </script>.
+            return JSON.stringify(scriptsFor(fileName)).replace(/</g, '\\u003c');
+          }
+          // Keep the study entry eager in the build, but only fetch its graph
+          // when the head's pre-paint decision selected the app. Both graphs
+          // start in the head, without a bootstrap-module network round trip.
+          const selectEntry = `<script>(function(){var app=document.documentElement.hasAttribute('data-app-starting');if(!app)document.documentElement.setAttribute('data-landing-entry','');var files=app?${serialiseScripts(appFile)}:${serialiseScripts(landingEntry.fileName)};var script=document.createElement('script');script.type='module';script.crossOrigin='';script.src=files[0];document.head.appendChild(script);for(var i=1;i<files.length;i++){var link=document.createElement('link');link.rel='modulepreload';link.crossOrigin='';link.href=files[i];document.head.appendChild(link);}})();</script>`;
+          renderedHtml = renderedHtml
+            .replace(appScript[0], () => selectEntry)
+            .replace(/<link rel="modulepreload"[^>]*>/g, '');
           const visited = new Set<string>();
           const stylesheets = new Set<string>();
           function collectStyles(fileName: string): void {

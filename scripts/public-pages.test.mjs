@@ -1,9 +1,59 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { runInNewContext } from 'node:vm';
 import { Window } from 'happy-dom';
 
 const pagePath = 'dist/compare/quizlet/index.html';
+
+test('homepage selects one entry before fetching modules and keeps critical styles eager', async () => {
+  const html = readFileSync('dist/index.html', 'utf8');
+  const manifest = JSON.parse(readFileSync('dist/.vite/manifest.json', 'utf8'));
+  const view = new Window();
+  try {
+    view.document.documentElement.innerHTML = html;
+    const selection = [...view.document.querySelectorAll('script:not([type]):not([src])')].find(
+      (script) => script.textContent.includes('data-landing-entry'),
+    )?.textContent;
+    assert.ok(selection, 'Missing pre-module entry selection');
+    assert.equal(view.document.querySelectorAll('script[type="module"][src]').length, 0);
+    const styles = [...view.document.querySelectorAll('link[rel="stylesheet"]')].map((link) =>
+      link.getAttribute('href'),
+    );
+    assert.ok(styles.length > 0, 'Critical CSS must load without JavaScript');
+
+    for (const app of [false, true]) {
+      const document = view.document.implementation.createHTMLDocument();
+      if (app) document.documentElement.setAttribute('data-app-starting', '');
+      runInNewContext(selection, { document });
+      const root = app ? 'index.html' : 'src/landingBootstrap.ts';
+      assert.equal(
+        document.querySelector('script[type="module"]')?.getAttribute('src'),
+        `/${manifest[root].file}`,
+      );
+      assert.equal(document.querySelectorAll('script[type="module"]').length, 1);
+      assert.equal(document.documentElement.hasAttribute('data-landing-entry'), !app);
+      const scripts = new Set();
+      const visit = (key) => {
+        const chunk = manifest[key];
+        if (scripts.has(chunk.file)) return;
+        scripts.add(chunk.file);
+        for (const dependency of chunk.imports ?? []) visit(dependency);
+        for (const css of chunk.css ?? []) assert.ok(styles.includes(`/${css}`));
+      };
+      visit(root);
+      scripts.delete(manifest[root].file);
+      assert.deepEqual(
+        [...document.querySelectorAll('link[rel="modulepreload"]')]
+          .map((link) => link.getAttribute('href'))
+          .sort(),
+        [...scripts].map((file) => `/${file}`).sort(),
+      );
+    }
+  } finally {
+    await view.happyDOM.close();
+  }
+});
 test('public pages describe their identity and comparison intent without invented ratings', () => {
   const schema = (path) => {
     const html = readFileSync(path, 'utf8');

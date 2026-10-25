@@ -1,16 +1,7 @@
 import './index.css';
 import { installStaleChunkRecovery } from './pwa/staleChunkRecovery';
-import {
-  installSimpleAnalytics,
-  registerProductionServiceWorker,
-  shouldHydrateLanding,
-} from './webBootstrap';
+import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
 import { renderApp } from './appRoot';
-
-
-installStaleChunkRecovery();
-installSimpleAnalytics();
-void registerProductionServiceWorker();
 
 async function clearDevelopmentPwaState(): Promise<void> {
   if (!import.meta.env.DEV || !('serviceWorker' in navigator)) return;
@@ -31,12 +22,14 @@ async function clearDevelopmentPwaState(): Promise<void> {
 }
 
 function start(): void {
-  if (!import.meta.env.DEV && shouldHydrateLanding()) {
-    // Keep the landing chunk out of the application shell: it loads only for
-    // the prerendered first visit, never for dashboard starts.
-    void import('./pages/landing/entry-client').then(({ hydrateLanding }) =>
-      hydrateLanding(),
-    );
+  // The standalone landing tree explicitly mounts the app after its handover.
+  // Importing this shared chunk for warm-up must never mount a second root.
+  if (document.documentElement.hasAttribute('data-landing-entry')) return;
+  installStaleChunkRecovery();
+  installSimpleAnalytics();
+  void registerProductionServiceWorker();
+  if (!import.meta.env.DEV && !document.documentElement.hasAttribute('data-app-starting')) {
+    void import('./landingBootstrap');
     return;
   }
   renderApp();
@@ -44,6 +37,8 @@ function start(): void {
 
 if (import.meta.env.DEV) {
   void clearDevelopmentPwaState().finally(start);
+} else if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', start, { once: true });
 } else {
   start();
 }

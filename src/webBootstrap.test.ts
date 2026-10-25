@@ -1,11 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  installSimpleAnalytics,
-  registerProductionServiceWorker,
-  shouldHydrateLanding,
-} from './webBootstrap';
+import { installSimpleAnalytics, registerProductionServiceWorker } from './webBootstrap';
 
 describe('hosted web bootstrap', () => {
   it('does not attempt service-worker registration from a packaged app origin', async () => {
@@ -68,40 +64,34 @@ describe('Simple Analytics bootstrap', () => {
   });
 });
 
-describe('landing hydration decision', () => {
-  const firstVisit = {
-    hash: '',
-    isElectron: false,
-    seedFlagPresent: false,
-    landingMarkupPresent: true,
-  };
-
-  it('hydrates the prerendered landing page on a first visit', () => {
-    expect(shouldHydrateLanding(firstVisit)).toBe(true);
+it.each([
+  { name: 'first visit', hash: '', app: false },
+  { name: 'landing anchor', hash: '#how-it-works', app: false },
+  { name: 'app route', hash: '#/cards', app: true },
+  { name: 'returning browser', hash: '', seeded: '1', app: true },
+  { name: 'empty seed flag', hash: '', seeded: '', app: true },
+  { name: 'storage denied', hash: '', denied: true, app: false },
+  { name: 'storage-denied app route', hash: '#/', denied: true, app: true },
+])('selects the homepage entry before modules load: $name', ({ hash, app, ...options }) => {
+  const targetDocument = document.implementation.createHTMLDocument();
+  const sourceDocument = new DOMParser().parseFromString(
+    readFileSync('index.html', 'utf8'),
+    'text/html',
+  );
+  runInNewContext(sourceDocument.querySelector('script:not([type]):not([src])')!.textContent, {
+    document: targetDocument,
+    window: {
+      location: { hash, hostname: 'getlacuna.app', protocol: 'https:' },
+      matchMedia: () => ({ matches: true }),
+    },
+    localStorage: {
+      getItem: (key: string) => {
+        if ('denied' in options) throw new Error('Storage denied');
+        return key === 'lacuna-seeded' && 'seeded' in options ? options.seeded : null;
+      },
+    },
   });
-
-  it('never hydrates the study landing page on the teacher domain', () => {
-    expect(shouldHydrateLanding({ ...firstVisit, hostname: 'gaps.getlacuna.app' })).toBe(false);
-  });
-
-  it('keeps in-page anchors such as #landing-product on the landing page', () => {
-    expect(shouldHydrateLanding({ ...firstVisit, hash: '#landing-product' })).toBe(true);
-  });
-
-  it('boots the study app for hash routes', () => {
-    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/cards' })).toBe(false);
-    expect(shouldHydrateLanding({ ...firstVisit, hash: '#/' })).toBe(false);
-  });
-
-  it('boots the study app for Electron, seeded browsers and missing markup', () => {
-    expect(shouldHydrateLanding({ ...firstVisit, isElectron: true })).toBe(false);
-    expect(shouldHydrateLanding({ ...firstVisit, seedFlagPresent: true })).toBe(false);
-    expect(shouldHydrateLanding({ ...firstVisit, landingMarkupPresent: false })).toBe(false);
-  });
-
-  it('honours the pre-paint app decision if storage changes before modules load', () => {
-    expect(shouldHydrateLanding({ ...firstVisit, appStartPending: true })).toBe(false);
-  });
+  expect(targetDocument.documentElement.hasAttribute('data-app-starting')).toBe(app);
 });
 
 it.each(['', '#how-it-works', '#/teach', '#/share', '#/s/abc'])(
