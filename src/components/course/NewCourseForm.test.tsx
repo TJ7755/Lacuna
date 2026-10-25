@@ -70,11 +70,16 @@ describe('NewCourseForm', () => {
     const back = screen.getByRole('button', { name: 'Back to the course library' });
     fireEvent.keyDown(back, { key: 'Escape' });
     const search = await screen.findByRole('searchbox', { name: 'Search the course library' });
+    expect(search).toHaveValue('8461');
     fireEvent.keyDown(search, { key: 'Escape' });
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus(),
     );
     expect(screen.getByLabelText('Course name')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+    expect(await screen.findByRole('searchbox', { name: 'Search the course library' })).toHaveValue(
+      '8461',
+    );
     expect(onClose).not.toHaveBeenCalled();
   });
 

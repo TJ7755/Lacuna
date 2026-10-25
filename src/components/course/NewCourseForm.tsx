@@ -13,16 +13,19 @@ import { CourseStudyTarget } from './CourseStudyTarget';
 import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
-import { BookIcon } from '../ui/icons';
-import { DelayedFallback } from '../ui/DelayedFallback';
+import { BookIcon, ChevronLeftIcon } from '../ui/icons';
+import { Skeleton } from '../ui/Skeleton';
+import { StepSwap } from '../ui/StepSwap';
+import { MeasuredHeight } from '../ui/MeasuredHeight';
+import type { LibraryBrowseState } from '../import/CourseLibraryPicker';
 import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
 
-// New course is eager; the library importer must stay behind the learner's choice.
-const CourseLibraryImport = lazy(() =>
+// Keep the importer lazy, warming it only when the learner points to or focuses its action.
+const loadCourseLibrary = () =>
   import('../import/CourseLibraryImport').then((module) => ({
     default: module.CourseLibraryImport,
-  })),
-);
+  }));
+const CourseLibraryImport = lazy(loadCourseLibrary);
 
 interface NewCourseFormProps {
   onClose: () => void;
@@ -54,6 +57,10 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
   const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   const [browsing, setBrowsing] = useState(false);
+  const [libraryBrowse, setLibraryBrowse] = useState<LibraryBrowseState>({
+    query: '',
+    subject: null,
+  });
   // A library course being written must finish here, or its lineage confirmation is skipped.
   const [libraryBusy, setLibraryBusy] = useState(false);
   const close = () => {
@@ -138,6 +145,8 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             style={{ borderRadius: '1rem', paddingInline: '0.875rem', borderWidth: '1.5px' }}
             hoverScale={false}
             disabled={saving}
+            onPointerEnter={() => void loadCourseLibrary().catch(() => {})}
+            onFocus={() => void loadCourseLibrary().catch(() => {})}
             onClick={() => setBrowsing(true)}
           >
             <BookIcon width={18} height={18} aria-hidden="true" />
@@ -215,7 +224,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     <Suspense
       fallback={
         <div
-          className="import-panel"
+          className="px-6 pb-6 pt-2"
           onKeyDown={(event) => {
             if (event.key !== 'Escape') return;
             event.preventDefault();
@@ -223,17 +232,39 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             backToForm();
           }}
         >
-          <Button type="button" variant="ghost" autoFocus onClick={backToForm}>
-            Back to New course
-          </Button>
-          <DelayedFallback>
-            <p role="status">Loading the course library…</p>
-          </DelayedFallback>
+          <header className="mb-3 flex items-center justify-start">
+            <Button
+              type="button"
+              variant="ghost"
+              hoverScale={false}
+              style={{ paddingInline: 12, gap: 6 }}
+              autoFocus
+              aria-label="Back to New course"
+              onClick={backToForm}
+            >
+              <ChevronLeftIcon width={16} height={16} aria-hidden="true" />
+              New course
+            </Button>
+          </header>
+          <div
+            aria-busy="true"
+            aria-label="Loading the course library"
+            className="flex flex-col gap-3"
+          >
+            <Skeleton className="h-[46px] rounded-2xl" />
+            <div className="grid gap-1.5">
+              {Array.from({ length: 6 }, (_, index) => (
+                <Skeleton key={index} className="h-14 rounded-2xl" />
+              ))}
+            </div>
+          </div>
         </div>
       }
     >
       <CourseLibraryImport
         backLabel="New course"
+        browse={libraryBrowse}
+        onBrowseChange={setLibraryBrowse}
         onBack={backToForm}
         onBusyChange={setLibraryBusy}
         onOpenCourse={(courseId) => {
@@ -244,21 +275,27 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     </Suspense>
   );
 
-  if (inline) {
-    if (browsing) return libraryView;
-    return (
-      <form
-        aria-label="New course"
-        onKeyDown={onKeyDown}
-        onSubmit={(event) => {
-          event.preventDefault();
-          void handleCreate();
-        }}
-      >
-        {fields}
-      </form>
-    );
-  }
+  const form = (
+    <form
+      aria-label="New course"
+      onKeyDown={onKeyDown}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleCreate();
+      }}
+    >
+      {fields}
+    </form>
+  );
+  const content = (
+    <MeasuredHeight>
+      <StepSwap stepKey={browsing ? 'library' : 'form'} direction={browsing ? 1 : -1}>
+        {browsing ? libraryView : form}
+      </StepSwap>
+    </MeasuredHeight>
+  );
+
+  if (inline) return content;
 
   return createPortal(
     <DialogPanel
@@ -270,7 +307,7 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
       onKeyDown={onKeyDown}
     >
       <DialogHeader title="New course" onClose={close} closeLabel="Close" />
-      {browsing ? libraryView : fields}
+      {content}
     </DialogPanel>,
     document.body,
   );

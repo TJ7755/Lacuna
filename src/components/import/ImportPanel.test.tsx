@@ -100,6 +100,13 @@ it('leads with the course library and imports a chosen course inside the panel',
 
   const search = screen.getByRole('searchbox', { name: 'Search the course library' });
   expect(search).toHaveFocus();
+  const biology = screen.getByRole('button', { name: /^Biology \d+ courses$/ });
+  expect(screen.queryByRole('button', { name: /Biology AQA/ })).not.toBeInTheDocument();
+  fireEvent.click(biology);
+  expect(screen.getByRole('button', { name: /Biology AQA GCSE/ })).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: /^Chemistry \d+ courses$/ }));
+  expect(biology).toHaveAttribute('aria-expanded', 'false');
+  expect(screen.getByRole('button', { name: /Chemistry AQA GCSE/ })).toBeVisible();
   fireEvent.change(search, { target: { value: 'aqa biology' } });
   const course = libraryCourses.find((entry) => entry.id === 'biology8461')!;
   const matches = screen.getAllByRole('button', { name: /^Biology/ });
@@ -119,6 +126,9 @@ it('leads with the course library and imports a chosen course inside the panel',
   fireEvent.click(back);
   expect(isCurrent()).toBe(false);
   expect(screen.getByRole('searchbox', { name: 'Search the course library' })).toHaveFocus();
+  expect(screen.getByRole('searchbox', { name: 'Search the course library' })).toHaveValue(
+    'aqa biology',
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
   expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus();
 });
