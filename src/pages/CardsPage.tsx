@@ -194,7 +194,7 @@ export function CardsPage() {
 
   return (
     <div className={`${COURSE_PAGE_FRAME} pb-12`}>
-      <header className={COURSE_PAGE_HEADER}>
+      <header className={`${COURSE_PAGE_HEADER} [&>*]:self-center`}>
         <h1 className={COURSE_PAGE_TITLE}>Cards</h1>
         <CreateButton onClick={() => go(`/course/${courseId}/cards/new`)}>
           <PlusIcon width={18} height={18} />
@@ -228,7 +228,10 @@ export function CardsPage() {
       {isEmpty ? (
         <div className={`${BUCKET_CLASS} p-6 text-center md:p-8`}>
           <StudyDrawing kind="course" className="mx-auto mb-5" />
-          <p className="text-ink-soft">This course has no cards yet.</p>
+          <h2 className="mb-2 font-display text-xl font-semibold tracking-tight">
+            This course has no cards yet.
+          </h2>
+          <p className="text-sm text-ink-soft">Choose New card to start building your recall.</p>
         </div>
       ) : noMatches ? (
         <div className={`${BUCKET_CLASS} p-6 text-center md:p-8`}>
@@ -240,8 +243,15 @@ export function CardsPage() {
             <button
               type="button"
               onClick={() => {
-                setSearch('');
-                setFilters(new Set());
+                setParams(
+                  (previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.delete('q');
+                    next.delete('f');
+                    return next;
+                  },
+                  { replace: true },
+                );
               }}
               className="mt-3 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
             >

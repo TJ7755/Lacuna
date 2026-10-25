@@ -383,8 +383,12 @@ describe('CardsPage', () => {
     mockCards = [makeCard({ id: 'c1', primaryLessonId: 'lesson-1', front: 'Apple' })];
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /Leech/ }));
-    expect(screen.getByText('No cards match.')).toBeInTheDocument();
+    const search = screen.getByRole('searchbox', { name: 'Search all cards' });
+    fireEvent.change(search, { target: { value: 'missing' } });
+    expect(screen.getByText(/No cards match/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear search and filters' }));
+    expect(search).toHaveValue('');
+    expect(screen.getByRole('button', { name: /Leech/ })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByTestId('card-list-count').textContent).toBe('1');
   });
 
