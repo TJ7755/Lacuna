@@ -232,8 +232,14 @@ test('keeps New course beside Import for empty and populated Today', async ({ pa
   const importer = page.locator('main').getByRole('button', { name: 'Import', exact: true });
   const assertHeader = async () => {
     await expect(create).toHaveCount(1);
-    const creation = (await create.boundingBox())!;
-    const importing = (await importer.boundingBox())!;
+    const [creation, importing] = await page.evaluate(
+      ({ create, importer }) =>
+        [create, importer].map((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return { x, y, width, height };
+        }),
+      { create: (await create.elementHandle())!, importer: (await importer.elementHandle())! },
+    );
     expect(
       Math.abs(creation.y + creation.height / 2 - importing.y - importing.height / 2),
     ).toBeLessThan(1);
