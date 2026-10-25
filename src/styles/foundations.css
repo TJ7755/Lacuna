@@ -1,0 +1,114 @@
+/* Instrument Sans is shared with the landing page and available offline. */
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('/fonts/InstrumentSans-Variable.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Volt's display face is bundled alongside Instrument Sans for offline use. */
+@font-face {
+  font-family: 'Space Grotesk';
+  src: url('/fonts/SpaceGrotesk-Variable.ttf') format('truetype');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Code and tabular figures use JetBrains Mono, also bundled so no font request leaves the app. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Variable.ttf') format('truetype');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Class-based dark mode: utilities prefixed `dark:` apply within `.dark`. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Short windows driven by a mouse or trackpad: navigation tightens so the whole
+   sidebar fits without scrolling. Touch screens keep full-size targets. */
+@custom-variant short (@media (max-height: 760px) and (pointer: fine));
+
+/* Every Select draws the app's line chevron (ChevronDownIcon) inset by the same padding as
+   its text, instead of the platform arrow pressed against the border. The native intrinsic
+   width (the widest option) is kept, so an unsized select does not resize with its value. */
+.lacuna-select {
+  appearance: none;
+  padding-inline-end: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b4833' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  /* 11px, not the 14px text padding: the chevron path has 4px of air on each side. */
+  background-position: right 11px center;
+  background-size: 1rem;
+}
+
+.dark .lacuna-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cfd6c4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Native keyboard handling and top-layer placement, with Lacuna's colours.
+   Browsers without customisable selects retain their platform picker. */
+@supports (appearance: base-select) {
+  .simple-learn-select,
+  .simple-learn-select::picker(select) {
+    appearance: base-select;
+  }
+
+  .simple-learn-select::picker(select) {
+    background: hsl(var(--surface-raised));
+    color: hsl(var(--ink));
+    border: 1px solid hsl(var(--line-strong));
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+    margin-block: 0.375rem;
+    max-block-size: min(20rem, 50dvh);
+    overflow-y: auto;
+    box-shadow: 0 8px 24px hsl(var(--ink) / 0.12);
+    font: inherit;
+  }
+
+  .simple-learn-select option {
+    min-block-size: 2.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.5rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .simple-learn-select option:checked {
+    background: hsl(var(--accent-soft));
+    color: hsl(var(--accent-ink));
+  }
+
+  .simple-learn-select option:hover,
+  .simple-learn-select option:focus-visible {
+    background: hsl(var(--ink) / 0.07);
+    outline: 2px solid hsl(var(--accent-ink));
+    outline-offset: -2px;
+  }
+
+  .simple-learn-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-inline-end: 11px;
+    background-image: none;
+  }
+
+  .dark .simple-learn-select {
+    background-image: none;
+  }
+
+  .simple-learn-select::picker-icon {
+    content: '';
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin-inline-start: auto;
+    background-color: hsl(var(--ink-soft));
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
+}

@@ -1,0 +1,201 @@
+/*
+ * Volt: pale green paper in light mode; near-black ground in dark mode.
+ * `--chrome` is the slightly darker ground behind the sidebar.
+ * Volt neon foreground is retained; accent-ink keeps text and fine strokes legible in both themes.
+ * Defined as raw custom properties so they can switch with the `.dark` class, then
+ * surfaced to Tailwind via `@theme inline` so utilities like `bg-surface` resolve to them.
+ */
+:root {
+  /* Native controls (scrollbars, select menus) and SVG images' prefers-color-scheme follow
+     the app's theme rather than the system's, which can differ when the theme is chosen. */
+  color-scheme: light;
+  --paper: 82 30% 94%;
+  --surface: 75 45% 99%;
+  --surface-raised: 75 45% 99%;
+  --chrome: 80 40% 87%;
+  --ink: 92 30% 10%;
+  --ink-soft: 95 17% 24%;
+  --ink-faint: 95 15% 29%;
+  --line: 80 20% 78%;
+  --line-strong: 80 18% 68%;
+  --accent: 73 100% 59%;
+  --accent-soft: 75 85% 82%;
+  --accent-ink: 90 52% 19%;
+  --accent-fg: 92 40% 10%;
+  --positive: 148 75% 25%;
+  --negative: 3 70% 40%;
+  --warning: 28 90% 36%;
+  --warning-fg: 28 80% 30%;
+  /* Shared course/chart palette: readable on dashboard surfaces and sidebar chrome. */
+  --series-1: 205 100% 35%;
+  --series-2: 18 85% 38%;
+  --series-3: 290 45% 45%;
+  --series-4: 180 70% 26%;
+  --series-5: 38 95% 29%;
+  --grain-opacity: 0;
+  --card-border: 1px solid hsl(var(--line));
+}
+
+.dark {
+  color-scheme: dark;
+  --paper: 90 10% 4%;
+  --surface: 90 22% 12%;
+  --surface-raised: 90 20% 16%;
+  --chrome: 90 10% 3%;
+  --ink: 81 75% 93%;
+  --ink-soft: 80 18% 80%;
+  --ink-faint: 80 15% 71%;
+  --line: 90 20% 22%;
+  --line-strong: 90 17% 30%;
+  --accent: 73 100% 62%;
+  --accent-soft: 80 48% 18%;
+  --accent-ink: 73 100% 76%;
+  --accent-fg: 92 40% 10%;
+  --positive: 155 65% 67%;
+  --negative: 7 100% 75%;
+  --warning: 35 100% 71%;
+  --warning-fg: 35 100% 76%;
+  --series-1: 205 85% 70%;
+  --series-2: 18 95% 68%;
+  --series-3: 290 60% 75%;
+  --series-4: 175 60% 55%;
+  --series-5: 42 95% 62%;
+  --grain-opacity: 0;
+}
+
+/*
+ * Volt is the base accent. Named alternatives override only the accent tokens,
+ * with separate light and dark recipes.
+ */
+:root[data-accent='amber'] {
+  --accent: 32 90% 48%;
+  --accent-soft: 32 85% 92%;
+  --accent-ink: 28 60% 24%;
+  --accent-fg: 28 60% 14%;
+}
+:root[data-accent='red'] {
+  --accent: 6 90% 48%;
+  --accent-soft: 6 85% 92%;
+  --accent-ink: 6 60% 24%;
+  --accent-fg: 0 0% 0%;
+}
+:root[data-accent='rose'] {
+  --accent: 340 90% 48%;
+  --accent-soft: 340 85% 93%;
+  --accent-ink: 340 60% 26%;
+  --accent-fg: 0 0% 0%;
+}
+:root[data-accent='pink'] {
+  --accent: 320 80% 50%;
+  --accent-soft: 320 80% 93%;
+  --accent-ink: 320 55% 28%;
+  --accent-fg: 0 0% 0%;
+}
+:root[data-accent='violet'] {
+  --accent: 265 80% 55%;
+  --accent-soft: 265 75% 94%;
+  --accent-ink: 265 55% 32%;
+  --accent-fg: 0 0% 100%;
+}
+:root[data-accent='blue'] {
+  --accent: 217 90% 52%;
+  --accent-soft: 213 85% 93%;
+  --accent-ink: 217 60% 30%;
+  --accent-fg: 0 0% 100%;
+}
+:root[data-accent='teal'] {
+  --accent: 186 90% 36%;
+  --accent-soft: 186 70% 90%;
+  --accent-ink: 186 70% 20%;
+  --accent-fg: 0 0% 5%;
+}
+:root[data-accent='green'] {
+  --accent: 150 70% 36%;
+  --accent-soft: 150 60% 90%;
+  --accent-ink: 150 60% 20%;
+  --accent-fg: 0 0% 5%;
+}
+
+.dark[data-accent='amber'] {
+  --accent: 34 92% 56%;
+  --accent-soft: 32 40% 18%;
+  --accent-ink: 36 90% 70%;
+  --accent-fg: 28 60% 14%;
+}
+.dark[data-accent='red'] {
+  --accent: 6 85% 60%;
+  --accent-soft: 6 40% 18%;
+  --accent-ink: 6 85% 72%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='rose'] {
+  --accent: 340 85% 62%;
+  --accent-soft: 340 35% 18%;
+  --accent-ink: 340 85% 76%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='pink'] {
+  --accent: 320 80% 64%;
+  --accent-soft: 320 35% 18%;
+  --accent-ink: 320 80% 78%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='violet'] {
+  --accent: 265 85% 70%;
+  --accent-soft: 265 35% 22%;
+  --accent-ink: 265 85% 80%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='blue'] {
+  --accent: 213 90% 64%;
+  --accent-soft: 215 40% 20%;
+  --accent-ink: 213 90% 76%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='teal'] {
+  --accent: 186 80% 48%;
+  --accent-soft: 186 40% 16%;
+  --accent-ink: 186 80% 66%;
+  --accent-fg: 92 40% 10%;
+}
+.dark[data-accent='green'] {
+  --accent: 150 65% 50%;
+  --accent-soft: 150 35% 15%;
+  --accent-ink: 150 70% 66%;
+  --accent-fg: 92 40% 10%;
+}
+
+@theme inline {
+  --color-paper: hsl(var(--paper));
+  --color-surface: hsl(var(--surface));
+  --color-surface-raised: hsl(var(--surface-raised));
+  --color-chrome: hsl(var(--chrome));
+  --color-ink: hsl(var(--ink));
+  --color-ink-soft: hsl(var(--ink-soft));
+  --color-ink-faint: hsl(var(--ink-faint));
+  --color-line: hsl(var(--line));
+  --color-line-strong: hsl(var(--line-strong));
+  --color-accent: hsl(var(--accent));
+  --color-accent-soft: hsl(var(--accent-soft));
+  --color-accent-ink: hsl(var(--accent-ink));
+  --color-accent-fg: hsl(var(--accent-fg));
+  --color-positive: hsl(var(--positive));
+  --color-negative: hsl(var(--negative));
+  --color-warning: hsl(var(--warning));
+  --color-warning-fg: hsl(var(--warning-fg));
+
+  --font-brand: 'Space Grotesk', 'Instrument Sans', sans-serif;
+  --font-display: 'Space Grotesk', 'Instrument Sans', sans-serif;
+  --font-body: 'Instrument Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* Cards and panels share one flat boundary across every accent palette. */
+@utility card-surface {
+  border: var(--card-border);
+}
+
+/* A control that relies on its boundary needs non-text contrast, not a quiet divider. */
+@utility card-surface-control {
+  --card-border: 1px solid hsl(var(--ink-faint));
+}

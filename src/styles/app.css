@@ -1,0 +1,349 @@
+@layer base {
+  * {
+    border-color: hsl(var(--line));
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background-color: hsl(var(--paper));
+    color: hsl(var(--ink));
+    font-family: var(--font-body);
+    font-weight: 400;
+    -webkit-user-select: none;
+    user-select: none;
+    /* Subtle paper grain for atmosphere and depth rather than a flat fill. */
+    background-image: radial-gradient(
+      hsl(var(--ink) / var(--grain-opacity)) 0.5px,
+      transparent 0.5px
+    );
+    background-size: 4px 4px;
+  }
+
+  /* Prevent iOS Safari from zooming on focus of any input with a font size below 16 px.
+     The text-base size (16 px) is the minimum that avoids the zoom behaviour. */
+  @media (max-width: 768px) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
+  /* Chromium and Firefox honour this standard property for history-navigation
+     overscroll. Safari may still reserve its native screen-edge back gesture. */
+  @media (max-width: 767px) {
+    html.lacuna-app-shell {
+      overscroll-behavior-x: none;
+    }
+  }
+
+  /* Re-enable text selection for actual editable and readable content. */
+  input,
+  textarea,
+  select,
+  [contenteditable],
+  .prose-lacuna,
+  .prose-lacuna * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+  }
+
+  ::selection {
+    background-color: hsl(var(--accent) / 0.25);
+  }
+
+  /* Inputs already have their own native selection styling; our global
+     ::selection rule can create a muddy double-highlight effect inside form
+     fields. Revert to the browser's native system colours so selection remains
+     visible and clean. */
+  input::selection,
+  textarea::selection,
+  select::selection {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Refined, theme-aware scrollbars. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--line-strong)) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--line-strong));
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+
+  /* Glide, don't jump, on in-page anchors (landing page syllabus link). */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+
+  /* Consistent, theme-aware focus rings for keyboard navigation. */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--accent-ink));
+    border-radius: 6px;
+  }
+  button:focus-visible,
+  [role='button']:focus-visible {
+    border-radius: 10px;
+  }
+  /* A focus-within wrapper owns the outer indicator; suppressing the nested
+     control's shadow avoids the double ring without removing keyboard focus. */
+  :is([class*='focus-within:ring-'], [class*='focus-within:shadow-'])
+    > :is(input, textarea, select):focus-visible {
+    box-shadow: none;
+  }
+}
+
+/* Edge-fade lengths for `.scroll-edge-fade`, registered so they can animate. */
+@property --scroll-fade-top {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@property --scroll-fade-bottom {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes scroll-edge-fade {
+  from {
+    --scroll-fade-top: 0px;
+    --scroll-fade-bottom: 36px;
+  }
+  8% {
+    --scroll-fade-top: 36px;
+  }
+  92% {
+    --scroll-fade-bottom: 36px;
+  }
+  to {
+    --scroll-fade-top: 36px;
+    --scroll-fade-bottom: 0px;
+  }
+}
+
+@layer utilities {
+  /* A compact control keeps its look but takes a 44px target, centred on it. */
+  .hit-target {
+    position: relative;
+  }
+  .hit-target::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  .text-balance {
+    text-wrap: balance;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* GPU hints for frequently animated elements (cards, modals, toasts, lists). */
+  .will-change-transform {
+    will-change: transform;
+  }
+  .will-change-transform-opacity {
+    will-change: transform, opacity;
+  }
+
+  /*
+   * Fades a scroller's content out at whichever edge has more beyond it, for lists whose
+   * scrollbar is hidden. A scroll-driven animation grows each fade from nothing once there is
+   * somewhere to scroll and removes it at that end, so a list that fits is never faded.
+   * Masking blends into whatever sits behind, so no shadow colour can glow in dark mode.
+   */
+  @supports (animation-timeline: scroll()) {
+    .scroll-edge-fade {
+      mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        #000 var(--scroll-fade-top),
+        #000 calc(100% - var(--scroll-fade-bottom)),
+        transparent
+      );
+      animation: scroll-edge-fade linear both;
+      animation-timeline: scroll(self);
+    }
+  }
+
+  /* The shell's first Tab stop; hidden until it receives focus. */
+  .skip-link:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .skip-link:focus {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 100;
+    border-radius: 9999px;
+    padding: 0.625rem 1rem;
+    background: hsl(var(--ink));
+    color: hsl(var(--paper));
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  /* Electron titlebar drag regions. */
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Honour reduced-motion preferences across all transitions and animations. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+
+  /* On touch devices without hover, force hover-only affordances to be visible
+     so they are not hidden from the user. */
+  @media (hover: none) {
+    .touch-visible {
+      opacity: 1 !important;
+    }
+  }
+
+  /* Paper-like offset shadow for physical card illusion. */
+  .shadow-paper {
+    box-shadow: 3px 3px 0px hsl(var(--line-strong));
+  }
+  .shadow-paper-hover {
+    transition:
+      box-shadow 200ms ease,
+      transform 200ms ease;
+  }
+  .shadow-paper-hover:hover {
+    box-shadow: 5px 5px 0px hsl(var(--line-strong));
+    transform: translateY(-2px);
+  }
+
+  /* Form-field shake animation for inline validation feedback. */
+  .shake-field {
+    animation: shake-field 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+  @keyframes shake-field {
+    10%,
+    90% {
+      transform: translateX(-1px);
+    }
+    20%,
+    80% {
+      transform: translateX(2px);
+    }
+    30%,
+    50%,
+    70% {
+      transform: translateX(-3px);
+    }
+    40%,
+    60% {
+      transform: translateX(3px);
+    }
+  }
+
+  /* Scroll reveal: elements start lowered and transparent, rise when marked.
+     Deliberately unhurried — the page should feel like it takes its time. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity 1100ms ease,
+      transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Pulsing exam-day marker on the retrievability sketch. */
+  .exam-pulse {
+    animation: exam-pulse 2.4s ease-in-out infinite;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  @keyframes exam-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.55;
+    }
+  }
+
+  /* "You are here": a quiet breathing halo on the course path's next lesson.
+     Distinct from .exam-pulse (which scales an icon for urgency) — this stays
+     still and lets a soft ring expand outward, reading as a gentle beacon
+     rather than an alarm. */
+  .path-here-glow {
+    animation: path-here-glow 2.6s ease-in-out infinite;
+  }
+  @keyframes path-here-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 hsl(var(--accent) / 0.35);
+    }
+    50% {
+      box-shadow: 0 0 0 7px hsl(var(--accent) / 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exam-pulse {
+      animation: none;
+    }
+    .path-here-glow {
+      animation: none;
+    }
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
