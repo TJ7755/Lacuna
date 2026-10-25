@@ -48,6 +48,7 @@ export function CourseOverview(props: CourseOverviewProps) {
         <section
           className={cn(CARD, 'min-w-0 px-5 pb-3 pt-6 md:px-7 md:pt-7')}
           data-path-card=""
+          data-page-part=""
           aria-labelledby="course-path-heading"
         >
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -129,6 +130,7 @@ export function CourseOverview(props: CourseOverviewProps) {
           <section
             className={cn(CARD, 'flex flex-col gap-3.5 px-5 pb-6 pt-6 md:px-7 md:pt-7')}
             data-path-card=""
+            data-page-part=""
             aria-labelledby="course-assessments-heading"
           >
             {/* Matches the Lessons card beside it, so the two headings share a line. */}

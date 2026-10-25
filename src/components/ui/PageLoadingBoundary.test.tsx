@@ -2,6 +2,12 @@ import { act, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PageLoading, PageLoadingBoundary } from './PageLoadingBoundary';
 
+// This owner covers the loading clock; real-browser proof owns the animated hand-off.
+vi.mock('../../state/motionSpeed', () => ({
+  useMotionSpeed: () => ['normal'],
+  speedMultiplier: () => 0,
+}));
+
 afterEach(() => vi.useRealTimers());
 
 it('uses one delay and minimum lifetime across guard, chunk and page data', async () => {

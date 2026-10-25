@@ -92,3 +92,119 @@ test('practice editing keeps an unobstructed 44px touch target with a long name'
   await page.getByRole('menuitem', { name: 'Edit', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue(name);
 });
+
+test.describe('course loading motion', () => {
+  test.use({ serviceWorkers: 'block' });
+  for (const reduced of [false, true]) {
+    test(`course loading hands off in reading order with ${reduced ? 'reduced' : 'normal'} motion`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1470, height: 956 });
+      await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+      let release!: () => void;
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route('**/assets/CoursePath-*.js', async (route) => {
+        await held;
+        await route.continue();
+      });
+      await enterWithWelcomeCourse(page);
+      await page.evaluate(() => {
+        type Sample = { loading: number[] | null; content: number[] | null };
+        const capture = window as typeof window & { arrivalFrames: Sample[]; stopArrival: boolean };
+        capture.arrivalFrames = [];
+        capture.stopArrival = false;
+        const opacity = (element: Element | null) => {
+          if (!element) return 0;
+          let result = 1;
+          for (let node: Element | null = element; node; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            if (style.display === 'none' || style.visibility === 'hidden') return 0;
+            result *= Number(style.opacity);
+          }
+          return result;
+        };
+        const sample = () => {
+          const loading = document.querySelector('[role="status"][aria-label="Loading page"]');
+          const heading = [...document.querySelectorAll('h1')].find(
+            (h) => h.textContent === 'Welcome to Lacuna',
+          );
+          const path = document.querySelector('[aria-label="Course path"]')?.closest('section');
+          const summary = document.querySelector('[aria-label="Course summary"]');
+          capture.arrivalFrames.push({
+            loading: loading
+              ? [
+                  opacity(loading.querySelector('header')),
+                  ...[...loading.querySelectorAll('section')].slice(0, 2).map(opacity),
+                ]
+              : null,
+            content:
+              heading && path && summary
+                ? [opacity(heading), opacity(path), opacity(summary)]
+                : null,
+          });
+          if (!capture.stopArrival) requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+      });
+      try {
+        await page
+          .getByRole('navigation', { name: 'Courses', exact: true })
+          .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+          .click();
+        await expect(page.getByRole('status', { name: 'Loading page' })).toBeVisible();
+        // Hold only the real route chunk. The loader owns its ordinary visibility clock.
+        await page.waitForFunction(() => {
+          const frames = (
+            window as typeof window & { arrivalFrames: { loading: number[] | null }[] }
+          ).arrivalFrames;
+          return frames.some(
+            ({ loading }) => loading && loading.length === 3 && loading.every((v) => v > 0.95),
+          );
+        });
+      } finally {
+        release();
+      }
+      await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+      const study = page.getByRole('button', { name: 'Study', exact: true });
+      await study.focus();
+      await study.press('Enter');
+      await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('status', { name: 'Loading page' })).toHaveCount(0);
+      await page.waitForFunction(() => {
+        const frames = (window as typeof window & { arrivalFrames: { content: number[] | null }[] })
+          .arrivalFrames;
+        return frames.some(({ content }) => content && content.every((v) => v > 0.99));
+      });
+      const frames = await page.evaluate(() => {
+        const capture = window as typeof window & {
+          arrivalFrames: { loading: number[] | null; content: number[] | null }[];
+          stopArrival: boolean;
+        };
+        capture.stopArrival = true;
+        return capture.arrivalFrames;
+      });
+      if (reduced) {
+        expect(frames.filter((f) => f.loading).every((f) => f.loading!.every((v) => v === 1))).toBe(
+          true,
+        );
+      } else {
+        for (const phase of ['loading', 'content'] as const) {
+          expect(
+            frames.some((f) => {
+              const values = f[phase];
+              return values && values[0] > values[1] + 0.02 && values[1] > values[2] + 0.02;
+            }),
+            `${phase} should reveal the heading before the path, then the summary`,
+          ).toBe(true);
+        }
+      }
+      await page.getByRole('button', { name: 'Scheduling philosophy', exact: true }).click();
+      await expect(
+        page.getByRole('heading', { name: 'Scheduling philosophy', exact: true }),
+      ).toBeVisible();
+    });
+  }
+});

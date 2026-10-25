@@ -8,10 +8,33 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { AnimatePresence, m as motion, useIsPresent } from 'motion/react';
 import { useLoadingVisibility } from '../../hooks/useLoadingVisibility';
+import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { DelayedFallback } from './DelayedFallback';
+import { PageArrival, PageArrivalReady } from './PageArrival';
+import { liquidSpring } from './motion';
 
 const LoadingContext = createContext<((token: object, pending: boolean) => void) | null>(null);
+
+function LoadingSurface({ children }: { children: ReactNode }) {
+  const present = useIsPresent();
+  const [speed] = useMotionSpeed();
+  return (
+    <motion.div
+      role={present ? 'status' : undefined}
+      aria-label={present ? 'Loading page' : undefined}
+      aria-hidden={!present || undefined}
+      inert={!present}
+      className="left-0 top-0 w-full [&_.animate-pulse]:animate-none"
+      style={{ position: present ? 'relative' : 'absolute', pointerEvents: 'none' }}
+      exit={{ opacity: 0 }}
+      transition={liquidSpring(speedMultiplier(speed))}
+    >
+      <PageArrival>{children}</PageArrival>
+    </motion.div>
+  );
+}
 
 /** One clock spans archive checks, chunk loading and page data. Chrome remains outside it. */
 export function PageLoadingBoundary({
@@ -33,13 +56,15 @@ export function PageLoadingBoundary({
   const visible = useLoadingVisibility(tokens.size > 0);
   return (
     <LoadingContext.Provider value={report}>
-      {visible && (
-        <div role="status" aria-label="Loading page">
-          {fallback}
+      <div className="relative">
+        <AnimatePresence>
+          {visible && <LoadingSurface key="loading">{fallback}</LoadingSurface>}
+        </AnimatePresence>
+        <div hidden={visible}>
+          <PageArrivalReady value={!visible && tokens.size === 0}>
+            <Suspense fallback={<PageLoading />}>{children}</Suspense>
+          </PageArrivalReady>
         </div>
-      )}
-      <div hidden={visible}>
-        <Suspense fallback={<PageLoading />}>{children}</Suspense>
       </div>
     </LoadingContext.Provider>
   );

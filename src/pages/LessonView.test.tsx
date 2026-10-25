@@ -184,11 +184,11 @@ describe('LessonView arrival', () => {
     mockNotes = undefined;
     const view = renderPage();
     expect(screen.queryByRole('heading', { name: lesson.name })).not.toBeInTheDocument();
-    expect(view.container.querySelector('[data-course-page-arrival]')).toBeNull();
+    expect(view.container.querySelector('[data-page-arrival]')).toBeNull();
 
     mockNotes = [];
     view.refresh();
-    const arrival = view.container.querySelector('[data-course-page-arrival]');
+    const arrival = view.container.querySelector('[data-page-arrival]');
     expect(arrival).toContainElement(screen.getByRole('heading', { name: lesson.name }));
     expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Notes' }));
     expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Cards in this lesson' }));

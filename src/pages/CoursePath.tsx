@@ -37,7 +37,7 @@ import { useCoursePathReorder } from '../components/course/useCoursePathReorder'
 import { useToast } from '../components/ui/Toast';
 import type { CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
-import { CoursePageArrival } from '../components/course/CoursePageArrival';
+import { PageArrival } from '../components/ui/PageArrival';
 import { loadLessonView } from '../routes/lessonRoute';
 import { loadRouteModule } from '../routes/routeModule';
 import { scheduleIdlePrefetch } from '../routes/idlePrefetch';
@@ -265,9 +265,12 @@ export function CoursePath() {
   const status = forecast ? forecastStatus(forecast) : undefined;
   const forecastPct = Math.round((forecast?.ifStopped ?? mastery) * 100);
   return (
-    <CoursePageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
+    <PageArrival key={course.id} className={`${COURSE_PAGE_FRAME} flex flex-col gap-8 pb-12`}>
       {orderNotice}
-      <div className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8">
+      <header
+        data-page-part=""
+        className="flex flex-wrap items-start justify-between gap-4 pt-6 md:pt-8"
+      >
         <CourseHeader
           className="min-w-0 flex-[1_1_320px]"
           title={course.name}
@@ -289,7 +292,7 @@ export function CoursePath() {
           renameLabel="course"
         />
         {!archived && hasStudyContent && studyActions()}
-      </div>
+      </header>
       {!archived && pendingUpdate && (
         <Link
           to={`/course/${courseId}/updates`}
@@ -357,6 +360,6 @@ export function CoursePath() {
           onClose={() => setAddingQuestionSet(false)}
         />
       )}
-    </CoursePageArrival>
+    </PageArrival>
   );
 }
