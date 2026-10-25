@@ -44,6 +44,8 @@ interface LessonCardsListProps {
   onSwitchToEdit?: () => void;
   /** Focus New card on arrival, as the next step after creating a course. */
   focusNewCard?: boolean;
+  /** The first task in an otherwise empty lesson. */
+  prominentNewCard?: boolean;
   className?: string;
 }
 
@@ -58,6 +60,7 @@ export function LessonCardsList({
   className,
   onSwitchToEdit,
   focusNewCard = false,
+  prominentNewCard = false,
 }: LessonCardsListProps) {
   const newCardRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -90,25 +93,38 @@ export function LessonCardsList({
           Cards in this lesson
         </h2>
         <div className="flex shrink-0 items-center gap-1">
-          <CreateButton
-            ref={newCardRef}
-            type="button"
-            {...fade}
-            tabIndex={editable ? 0 : -1}
-            aria-hidden={editable ? undefined : true}
-            onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
-            className={cn(!editable && 'pointer-events-none')}
-          >
-            <PlusIcon width={16} height={16} />
-            New card
-          </CreateButton>
-          {find}
+          {prominentNewCard && cards.length === 0 && editable ? (
+            <Button
+              ref={newCardRef}
+              variant="primary"
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+            >
+              <PlusIcon width={16} height={16} />
+              New card
+            </Button>
+          ) : (
+            <CreateButton
+              ref={newCardRef}
+              type="button"
+              {...fade}
+              tabIndex={editable ? 0 : -1}
+              aria-hidden={editable ? undefined : true}
+              onClick={() => onNavigate(`/course/${courseId}/lesson/${lessonId}/cards/new`)}
+              className={cn(!editable && 'pointer-events-none')}
+            >
+              <PlusIcon width={16} height={16} />
+              New card
+            </CreateButton>
+          )}
+          {cards.length > 0 && find}
         </div>
       </div>
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-start gap-3 py-4">
-          <p className="text-sm text-ink-soft">No cards yet.</p>
+          <p className="text-sm text-ink-soft">
+            {editable ? 'Add a card to start learning.' : 'No cards yet.'}
+          </p>
           {!editable && onSwitchToEdit && (
             <Button variant="secondary" size="sm" onClick={onSwitchToEdit}>
               Switch to Edit to add cards

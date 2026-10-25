@@ -34,9 +34,9 @@ describe('LessonNotesCard', () => {
     presence.current = true;
   });
 
-  it('names an empty notes card beside its Add note action', () => {
+  it('offers Add note without an empty reading panel', () => {
     render(<LessonNotesCard lessonId="l1" notes={[]} editable />);
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add note' })).toBeInTheDocument();
   });
 

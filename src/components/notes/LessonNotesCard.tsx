@@ -7,6 +7,7 @@
 import { useState, type ComponentProps } from 'react';
 import { AnimatePresence, LayoutGroup, m as motion, useIsPresent } from 'motion/react';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { AnnotatedNoteContent } from './AnnotatedNoteContent';
 import { LessonNoteEditor } from './LessonNoteEditor';
 import { Button } from '../ui/Button';
@@ -29,12 +30,7 @@ interface LessonNotesCardProps {
 const ICON_BUTTON =
   'flex h-11 w-11 items-center justify-center rounded-full text-ink-faint transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink disabled:pointer-events-none disabled:opacity-30';
 
-export function LessonNotesCard({
-  lessonId,
-  notes,
-  editable,
-  className,
-}: LessonNotesCardProps) {
+export function LessonNotesCard({ lessonId, notes, editable, className }: LessonNotesCardProps) {
   const [motionSpeed] = useMotionSpeed();
   const m = speedMultiplier(motionSpeed);
 
@@ -88,6 +84,34 @@ export function LessonNotesCard({
 
   const showTabs = sortedNotes.length > 1;
 
+  if (!activeNote && editable) {
+    return (
+      <div className={cn('flex min-w-0', className)}>
+        <ExpandingCreateControl
+          label="Add note"
+          closedWidth={112}
+          align="start"
+          open={addingNote}
+          onOpenChange={(open) => {
+            if (!noteBusy) setAddingNote(open);
+          }}
+        >
+          {(close) => (
+            <div
+              className="px-4 pb-4 pt-2"
+              onKeyDown={(event) => {
+                // Keep the editor's Escape safeguard for a typed draft.
+                if (event.key === 'Escape') event.stopPropagation();
+              }}
+            >
+              <LessonNoteEditor compact onSave={handleAddNote} onCancel={close} busy={noteBusy} />
+            </div>
+          )}
+        </ExpandingCreateControl>
+      </div>
+    );
+  }
+
   return (
     <article
       className={cn(
@@ -100,124 +124,124 @@ export function LessonNotesCard({
       <AnimatedDisclosure open={showTabs || editable}>
         <div data-note-bar="" className="pb-5">
           <div className="flex min-h-11 items-center justify-between gap-3 text-[15px] leading-normal">
-        {showTabs ? (
-          <div role="tablist" aria-label="Notes" className="flex min-w-0 gap-5 overflow-x-auto">
-            <LayoutGroup id={`note-tabs-${lessonId}`}>
-              {sortedNotes.map((note) => {
-                const active = note.id === activeNote?.id;
-                return (
-                  <button
-                    key={note.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => {
-                      setSelectedId(note.id);
-                      setConfirmDeleteId(null);
-                    }}
-                    className={cn(
-                      'relative min-h-11 shrink-0 whitespace-nowrap py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
-                      active ? 'font-bold text-ink' : 'text-ink-soft hover:text-ink',
-                    )}
-                  >
-                    {note.name}
-                    {active && (
-                      <motion.span
-                        layoutId="note-tab-underline"
-                        aria-hidden="true"
-                        transition={scaledSpring(m, 380, 32)}
-                        className="absolute inset-x-0 bottom-1 h-0.5 rounded-full bg-ink"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </LayoutGroup>
-          </div>
-        ) : sortedNotes.length === 0 ? (
-          // Names the empty card, as its neighbour names the cards.
-          <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Notes</h2>
-        ) : (
-          <span />
-        )}
+            {showTabs ? (
+              <div role="tablist" aria-label="Notes" className="flex min-w-0 gap-5 overflow-x-auto">
+                <LayoutGroup id={`note-tabs-${lessonId}`}>
+                  {sortedNotes.map((note) => {
+                    const active = note.id === activeNote?.id;
+                    return (
+                      <button
+                        key={note.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => {
+                          setSelectedId(note.id);
+                          setConfirmDeleteId(null);
+                        }}
+                        className={cn(
+                          'relative min-h-11 shrink-0 whitespace-nowrap py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink',
+                          active ? 'font-bold text-ink' : 'text-ink-soft hover:text-ink',
+                        )}
+                      >
+                        {note.name}
+                        {active && (
+                          <motion.span
+                            layoutId="note-tab-underline"
+                            aria-hidden="true"
+                            transition={scaledSpring(m, 380, 32)}
+                            className="absolute inset-x-0 bottom-1 h-0.5 rounded-full bg-ink"
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </LayoutGroup>
+              </div>
+            ) : sortedNotes.length === 0 ? (
+              // Names the empty card, as its neighbour names the cards.
+              <h2 className="font-display text-lg font-semibold tracking-tight text-ink">Notes</h2>
+            ) : (
+              <span />
+            )}
 
-        <AnimatePresence initial={false}>
-          {editable && !addingNote && !editingActive && (
-            <NoteActionsBar
-              key="note-actions"
-              initial={m > 0 ? { opacity: 0, scale: 0.9 } : false}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={m > 0 ? { opacity: 0, scale: 0.9 } : undefined}
-              transition={motionTransition('feedback', m)}
-              className="flex shrink-0 items-center gap-0.5"
-            >
-              {activeNote && (
-                <ConfirmInlineSwap
-                  active={confirmDeleteId === activeNote.id}
-                  message="Delete?"
-                  onConfirm={() => void handleDeleteNote(activeNote.id)}
-                  onCancel={() => setConfirmDeleteId(null)}
-                  swapClassName="shrink-0"
+            <AnimatePresence initial={false}>
+              {editable && !addingNote && !editingActive && (
+                <NoteActionsBar
+                  key="note-actions"
+                  initial={m > 0 ? { opacity: 0, scale: 0.9 } : false}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={m > 0 ? { opacity: 0, scale: 0.9 } : undefined}
+                  transition={motionTransition('feedback', m)}
+                  className="flex shrink-0 items-center gap-0.5"
                 >
-                  <div className="flex items-center gap-0.5">
-                    {showTabs && (
-                      <>
+                  {activeNote && (
+                    <ConfirmInlineSwap
+                      active={confirmDeleteId === activeNote.id}
+                      message="Delete?"
+                      onConfirm={() => void handleDeleteNote(activeNote.id)}
+                      onCancel={() => setConfirmDeleteId(null)}
+                      swapClassName="shrink-0"
+                    >
+                      <div className="flex items-center gap-0.5">
+                        {showTabs && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleMoveNote('up')}
+                              disabled={activeIndex <= 0}
+                              title="Move up"
+                              className={ICON_BUTTON}
+                            >
+                              <ChevronDownIcon width={14} height={14} className="rotate-90" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleMoveNote('down')}
+                              disabled={activeIndex >= sortedNotes.length - 1}
+                              title="Move down"
+                              className={ICON_BUTTON}
+                            >
+                              <ChevronDownIcon width={14} height={14} className="-rotate-90" />
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
-                          onClick={() => void handleMoveNote('up')}
-                          disabled={activeIndex <= 0}
-                          title="Move up"
-                          className={ICON_BUTTON}
+                          onClick={() => {
+                            setEditingNoteId(activeNote.id);
+                            setAddingNote(false);
+                          }}
+                          title="Edit note"
+                          className={cn(ICON_BUTTON, 'hover:text-accent-ink')}
                         >
-                          <ChevronDownIcon width={14} height={14} className="rotate-90" />
+                          <EditIcon width={15} height={15} />
                         </button>
                         <button
                           type="button"
-                          onClick={() => void handleMoveNote('down')}
-                          disabled={activeIndex >= sortedNotes.length - 1}
-                          title="Move down"
-                          className={ICON_BUTTON}
+                          onClick={() => setConfirmDeleteId(activeNote.id)}
+                          title="Delete note"
+                          className={cn(ICON_BUTTON, 'hover:bg-negative/10 hover:text-negative')}
                         >
-                          <ChevronDownIcon width={14} height={14} className="-rotate-90" />
+                          <TrashIcon width={15} height={15} />
                         </button>
-                      </>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingNoteId(activeNote.id);
-                        setAddingNote(false);
-                      }}
-                      title="Edit note"
-                      className={cn(ICON_BUTTON, 'hover:text-accent-ink')}
-                    >
-                      <EditIcon width={15} height={15} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDeleteId(activeNote.id)}
-                      title="Delete note"
-                      className={cn(ICON_BUTTON, 'hover:bg-negative/10 hover:text-negative')}
-                    >
-                      <TrashIcon width={15} height={15} />
-                    </button>
-                  </div>
-                </ConfirmInlineSwap>
+                      </div>
+                    </ConfirmInlineSwap>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setAddingNote(true);
+                      setEditingNoteId(null);
+                    }}
+                  >
+                    <PlusIcon width={16} height={16} />
+                    Add note
+                  </Button>
+                </NoteActionsBar>
               )}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setAddingNote(true);
-                  setEditingNoteId(null);
-                }}
-              >
-                <PlusIcon width={16} height={16} />
-                Add note
-              </Button>
-            </NoteActionsBar>
-          )}
-        </AnimatePresence>
+            </AnimatePresence>
           </div>
         </div>
       </AnimatedDisclosure>

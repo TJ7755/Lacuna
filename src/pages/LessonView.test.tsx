@@ -45,9 +45,10 @@ vi.mock('dexie-react-hooks', () => ({
 }));
 
 vi.mock('../state/useLessonOrderData', () => ({
-  useLessonOrderData: () => mockCourse && mockLessons
-    ? { course: mockCourse, lessons: mockLessons, unavailableReason: undefined }
-    : undefined,
+  useLessonOrderData: () =>
+    mockCourse && mockLessons
+      ? { course: mockCourse, lessons: mockLessons, unavailableReason: undefined }
+      : undefined,
 }));
 
 vi.mock('../state/useCourseData', () => ({
@@ -244,7 +245,7 @@ describe('LessonView arrival', () => {
     view.refresh();
     const arrival = view.container.querySelector('[data-course-page-arrival]');
     expect(arrival).toContainElement(screen.getByRole('heading', { name: lesson.name }));
-    expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Notes' }));
+    expect(arrival).toContainElement(screen.getByRole('button', { name: 'Add note' }));
     expect(arrival).toContainElement(screen.getByRole('heading', { name: 'Cards in this lesson' }));
     // Backing scheduling configuration remains undefined in this fixture: it must not block arrival.
     expect(screen.getByRole('button', { name: 'New card' })).toBeEnabled();
@@ -442,7 +443,7 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(mockOnStudy).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves out an empty notes panel in View mode but keeps it in Edit', () => {
+  it('offers a compact Add note entry for empty notes only in Edit', () => {
     mockNotes = [];
     const { unmount } = renderPage();
     expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
@@ -451,7 +452,8 @@ describe('LessonView inline (single-lesson course) rendering', () => {
 
     mockCourse = { ...course, lessonViewMode: 'edit' };
     renderPage();
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add note' })).toBeInTheDocument();
   });
 
   it('withholds Study only when the course has no cards and the lesson no notes', () => {
