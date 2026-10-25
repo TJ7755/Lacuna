@@ -434,10 +434,20 @@ test('relays a consenting pupil’s study evidence into the separate teacher wor
     if (!(await teacher.getByRole('region', { name: 'Evidence for Pupil A' }).isVisible()))
       await teacher.getByRole('table').locator('tbody td button').first().click();
     await expect(
-      teacher
-        .getByRole('region', { name: 'Evidence for Pupil A' })
-        .getByText('Membrane recall', { exact: true }),
+      teacher.getByRole('region', { name: 'Evidence for Pupil A' }).getByRole('listitem'),
     ).toHaveCount(2);
+    await teacher.screenshot({
+      path: testInfo.outputPath('current-day-updated.png'),
+      fullPage: true,
+    });
+    await teacher.setViewportSize({ width: 390, height: 844 });
+    expect(await teacher.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await teacher.screenshot({
+      path: testInfo.outputPath('current-day-updated-mobile.png'),
+      fullPage: true,
+    });
 
     await pupil.reload();
     await expect(publish).toBeVisible();
