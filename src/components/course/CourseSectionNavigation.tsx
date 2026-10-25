@@ -32,7 +32,7 @@ export function useCourseTitleInView(pathname: string): boolean {
         : document;
       const title = page?.querySelector('[data-course-title]');
       if (!title) {
-        // An inline single-lesson course settles with only its lesson heading.
+        // A missing course settles with an error heading instead of a course title.
         if (pending && page?.querySelector('h1')) setInView(false);
         return;
       }

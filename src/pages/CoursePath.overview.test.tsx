@@ -1,6 +1,5 @@
 import {
   mockNavigate,
-  mockLessonViewProps,
   mockCreateLesson,
   mockReorderLessons,
   course,
@@ -33,10 +32,14 @@ function coursePathSubject() {
 
 describe('CoursePath overview', () => {
   beforeEach(resetCoursePathFixtures);
-  it('opens a lesson straight from its row', () => {
+  it.each([1, 2])('keeps a %i-lesson course on its ladder until a lesson is selected', (count) => {
+    pathState.mockLessons = [lesson1, lesson2].slice(0, count);
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+    const ladder = screen.getByRole('list', { name: 'Course path' });
+    expect(ladder).toHaveTextContent('Kinematics');
+    expect(mockNavigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
   });
 
   it.each([false, true])(
@@ -91,11 +94,7 @@ describe('CoursePath overview', () => {
         pathState.mockLessons = [lesson1];
         pathState.mockCourse = { ...course, lessonViewMode: 'study' };
         view.rerender(coursePathSubject());
-        await waitFor(() =>
-          expect(mockLessonViewProps).toHaveBeenCalledWith(
-            expect.objectContaining({ lessonId: lesson1.id }),
-          ),
-        );
+        expect(screen.getByRole('list', { name: 'Course path' })).toHaveTextContent('Kinematics');
         expect(screen.queryByRole('textbox', { name: 'Lesson name' })).not.toBeInTheDocument();
       }
       expect(mockNavigate).not.toHaveBeenCalled();

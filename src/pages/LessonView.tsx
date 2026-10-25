@@ -1,7 +1,6 @@
 import { DeckFind } from '../components/search/DeckFind';
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { LessonViewSkeleton } from '../components/course/LessonViewSkeleton';
-import { QuestionSetPathEditor } from '../components/course/QuestionSetPathEditor';
 import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestionSets';
 // Lesson view page — a study destination first, notes/cards second. A header
 // (title, one meta line, a Study/Edit pill and the study action) sits above a large
@@ -11,15 +10,13 @@ import { RelatedQuestionSets } from '../components/question-sets/RelatedQuestion
 // the full card management section revealed beneath), driven by the course's own
 // Course.lessonViewMode.
 // Route: /course/:courseId/lesson/:lessonId
-// Also renderable inline by CoursePath when a course has exactly one lesson
-// (via optional courseId/lessonId props that take precedence over route params).
 // British English throughout.
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useRef } from 'react';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
-import { useLessonViewData, type InlineLessonData } from '../state/useLessonViewData';
+import { useLessonViewData } from '../state/useLessonViewData';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { LessonNotesCard } from '../components/notes/LessonNotesCard';
 import { LessonCardsSection } from '../components/cards/LessonCardsSection';
@@ -29,8 +26,6 @@ import { ArrowRightIcon } from '../components/ui/icons';
 import { Button } from '../components/ui/Button';
 import { updateCourse } from '../db/courseRepository';
 import { AnimatedDisclosure } from '../components/ui/AnimatedDisclosure';
-import { AddLessonControl } from '../components/course/AddLessonControl';
-import { AddCourseControl } from '../components/course/AddCourseControl';
 import { LessonHeader } from '../components/course/LessonHeader';
 import { ArchivedCourseRestoreNotice } from '../components/course/ArchivedCourseState';
 import { courseHeaderStats } from '../course/headerStats';
@@ -54,62 +49,15 @@ import { useToast } from '../components/ui/Toast';
 import { SimpleLearnOptions } from '../components/learn/SimpleLearnOptions';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 
-interface LessonViewProps {
-  inlineData?: InlineLessonData;
-  /**
-   * When provided (inline single-lesson branch from CoursePath), takes precedence
-   * over the route param. The back link also changes to the dashboard rather than
-   * the course path, since there is no path to go back to.
-   */
-  courseId?: string;
-  /** Same precedence rule as courseId above. */
-  lessonId?: string;
-  /**
-   * The course-level study actions for the inline one-lesson course, as on every course
-   * page; told whether there is anything to study yet.
-   */
-  studyActions?: (disabled: boolean) => ReactNode;
-  /** Opens the course's session plan (the S shortcut), with studyActions. */
-  onStudy?: () => void;
-  /** Cards anywhere in the inline one-lesson course, including its unassigned bank. */
-  courseCardCount?: number;
-  /** Opens path-native manual-practice creation for an inline one-lesson course. */
-  onAddPractice?: () => void;
-  /** Opens path-native checkpoint creation for an inline one-lesson course. */
-  onAddCheckpoint?: () => void;
-}
-
-export function LessonView({
-  inlineData,
-  courseId: courseIdProp,
-  lessonId: lessonIdProp,
-  studyActions,
-  onStudy,
-  courseCardCount,
-  onAddPractice,
-  onAddCheckpoint,
-}: LessonViewProps) {
-  const params = useParams<{ courseId: string; lessonId: string }>();
-  // Props take precedence over route params (single-lesson inline branch).
-  const courseId = courseIdProp ?? params.courseId;
-  const lessonId = lessonIdProp ?? params.lessonId;
-  // The component is rendered inline when props were supplied by CoursePath.
-  const isInline = courseIdProp !== undefined;
+export function LessonView() {
+  const { courseId, lessonId } = useParams<{ courseId: string; lessonId: string }>();
 
   const navigate = useNavigate();
-  // Set by NewCourseForm, so a fresh course opens ready for its first card.
+  // A caller can request focus on the first card action.
   const focusNewCard =
     (useLocation().state as { focusNewCard?: boolean } | null)?.focusNewCard === true;
   const { notify } = useToast();
-  const [addingLesson, setAddingLesson] = useState(false);
-  const [addingQuestionSet, setAddingQuestionSet] = useState(false);
-  const addRef = useRef<HTMLDivElement>(null);
   const lessonMenu = useRef<MenuHandle>(null);
-  const restoreAdd = () => {
-    setAddingLesson(false);
-    addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-  };
-
   const {
     lesson,
     course,
@@ -120,25 +68,14 @@ export function LessonView({
     dueReviewCardIds,
     studyReady,
     lessonDeck,
-  } = useLessonViewData(courseId, lessonId, inlineData);
+  } = useLessonViewData(courseId, lessonId);
 
   const shortcutArchived = course?.archived === true;
-  // With no cards and no notes, the inline course's study flow has nothing to show.
-  const showStudyNow = studyActions !== undefined;
-  const nothingToStudy =
-    showStudyNow &&
-    (courseCardCount ?? 0) === 0 &&
-    lessonCards?.length === 0 &&
-    notes?.length === 0;
   usePageShortcuts({
     s:
-      shortcutArchived || nothingToStudy
-        ? undefined
-        : showStudyNow
-          ? onStudy
-          : !isInline && lessonCards && lessonCards.length > 0
-            ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
-            : undefined,
+      !shortcutArchived && lessonCards && lessonCards.length > 0
+        ? () => navigate(`/lesson/${encodeURIComponent(lessonId ?? '')}/learn`)
+        : undefined,
     n:
       courseId &&
       lessonId &&
@@ -211,31 +148,8 @@ export function LessonView({
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
-  const addToPath =
-    isInline && courseId && authoring ? (
-      <div ref={addRef} role="group" aria-label="Add to path">
-        <AddCourseControl
-          kinds={[
-            'lesson',
-            ...(onAddPractice ? (['practice'] as const) : []),
-            'question-set',
-            ...(onAddCheckpoint ? (['checkpoint'] as const) : []),
-          ]}
-          onAdd={(kind) => {
-            if (kind === 'lesson') setAddingLesson(true);
-            else if (kind === 'practice') onAddPractice?.();
-            else if (kind === 'question-set') setAddingQuestionSet(true);
-            else onAddCheckpoint?.();
-          }}
-        />
-      </div>
-    ) : null;
-
   return (
-    <CoursePageArrival
-      key={lesson.id}
-      className={`${COURSE_PAGE_FRAME} ${isInline ? 'pb-8' : 'py-8'}`}
-    >
+    <CoursePageArrival key={lesson.id} className={`${COURSE_PAGE_FRAME} py-8`}>
       <div className="flex flex-col gap-6">
         <div>
           <LessonHeader
@@ -278,7 +192,7 @@ export function LessonView({
                         ).catch(() => notify('Lesson order could not be saved.', 'negative'));
                       }}
                       onDeleted={() => {
-                        if (!isInline) void navigate(`/course/${courseId}`);
+                        void navigate(`/course/${courseId}`);
                         focusAfterLessonDeletion(['#course-path-heading', 'main h1']);
                       }}
                     />
@@ -289,9 +203,7 @@ export function LessonView({
           >
             {archived ? (
               <ArchivedCourseRestoreNotice />
-            ) : showStudyNow ? (
-              studyActions(nothingToStudy)
-            ) : isInline ? null : (
+            ) : (
               <Button
                 variant="primary"
                 size="lg"
@@ -303,41 +215,7 @@ export function LessonView({
                 <ArrowRightIcon />
               </Button>
             )}
-            {addToPath}
           </LessonHeader>
-          {/* The due count already leads the meta line, so this only speaks when
-              there is something it does not say. */}
-          {!archived && showStudyNow && (lessonCards.length === 0 || lessonDueCount === 0) && (
-            <p className="mt-3 text-sm text-ink-faint">
-              {lessonCards.length === 0 ? 'Add cards to begin studying.' : 'Nothing due right now.'}
-            </p>
-          )}
-          {addToPath && courseId && (
-            <>
-              <AnimatedDisclosure open={addingLesson}>
-                <div className="pt-4">
-                  <AddLessonControl
-                    initiallyOpen
-                    courseId={courseId}
-                    lessonCount={lessons.length}
-                    onCancel={restoreAdd}
-                    onCreated={(createdLesson) =>
-                      navigate(`/course/${courseId}/lesson/${createdLesson.id}`)
-                    }
-                  />
-                </div>
-              </AnimatedDisclosure>
-              {addingQuestionSet && (
-                <div className="pt-4">
-                  <QuestionSetPathEditor
-                    courseId={courseId}
-                    afterLessonId={lesson.id}
-                    onClose={() => setAddingQuestionSet(false)}
-                  />
-                </div>
-              )}
-            </>
-          )}
         </div>
 
         {/* Notes and cards. Edit mode fades the edit controls in place and reveals card
@@ -367,7 +245,7 @@ export function LessonView({
                   <DeckFind key={lesson.id} cards={lessonCards} course={course} lesson={lesson} />
                 }
                 footer={
-                  !archived && !isInline ? (
+                  !archived ? (
                     <SimpleLearnOptions
                       key={lesson.id}
                       courseId={course.id}

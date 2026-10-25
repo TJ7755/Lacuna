@@ -6,7 +6,7 @@ import { localLessonOrderUnavailableReason } from '../course/lessonOrder';
 
 import { COURSE_PAGE_FRAME } from '../components/course/coursePageLayout';
 import { PageLoading } from '../components/ui/PageLoadingBoundary';
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { AnimatePresence } from 'motion/react';
@@ -39,10 +39,8 @@ import type { CourseAssessment, PracticeNode } from '../db/types';
 import { usePageShortcuts } from '../hooks/usePageShortcuts';
 import { CoursePageArrival } from '../components/course/CoursePageArrival';
 import { loadLessonView } from '../routes/lessonRoute';
-import { getLoadedRouteModule, loadRouteModule } from '../routes/routeModule';
+import { loadRouteModule } from '../routes/routeModule';
 import { scheduleIdlePrefetch } from '../routes/idlePrefetch';
-
-const LazyLessonView = lazy(() => loadRouteModule(loadLessonView));
 
 function prefetchLessonView(): void {
   void loadRouteModule(loadLessonView).catch(() => {
@@ -63,7 +61,6 @@ export function CoursePath() {
     node?: PracticeNode;
     defaultPosition?: number;
   } | null>(null);
-  const [addingLesson, setAddingLesson] = useState(false);
   const [addingQuestionSet, setAddingQuestionSet] = useState(false);
   const [assessmentEditor, setAssessmentEditor] = useState<{
     assessment?: CourseAssessment;
@@ -125,15 +122,9 @@ export function CoursePath() {
     notifyReorderError,
   );
 
-  // A one-lesson course renders LessonView inline, which owns S for its own Study action.
-  // A live first lesson must not replace an open creation form with LessonView.
-  const inlineLesson =
-    !addingLesson &&
-    lessons?.length === 1 &&
-    !nodes.some((node) => node.nodeType === 'practice-question-set');
   usePageShortcuts({
     s:
-      dataLoaded && course && !archived && !inlineLesson
+      dataLoaded && course && !archived
         ? () => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)
         : undefined,
   });
@@ -250,50 +241,6 @@ export function CoursePath() {
     />
   );
 
-  // Single-lesson branch (addendum E): render the lesson view directly rather than
-  // showing a one-item path. A question-set activity makes this a multi-step path.
-  // No redirect — this is a rendering branch. The
-  // course header (and its review entry point) is bypassed here, so a pending
-  // merge review gets the same entry above the lesson.
-  if (inlineLesson) {
-    const LessonView = getLoadedRouteModule(loadLessonView)?.default ?? LazyLessonView;
-    return (
-      <>
-        {orderNotice}
-        {!archived && pendingUpdate && (
-          <div className="mx-auto mb-4 max-w-3xl px-6 md:px-10">
-            <Link
-              to={`/course/${courseId}/updates`}
-              className="inline-flex min-h-11 items-center rounded-full bg-accent-soft px-3.5 text-sm font-medium text-accent-ink transition-colors hover:brightness-95"
-            >
-              Review updates
-            </Link>
-          </div>
-        )}
-        <Suspense fallback={<PageLoading fallback={<CoursePathSkeleton />} />}>
-          <LessonView
-            inlineData={{
-              course,
-              lesson: lessons[0],
-              lessons,
-              examDates: assessments,
-              lessonCards: lessonCardsById.get(lessons[0].id) ?? [],
-              dueReviewCardIds: studyFlowSnapshot!.dueReviewCardIds,
-            }}
-            courseId={courseId}
-            lessonId={lessons[0].id}
-            studyActions={archived ? undefined : studyActions}
-            onStudy={() => openStudySheet(courseId, PAGE_OFFERS_OTHER_WAYS)}
-            courseCardCount={courseCards?.length ?? 0}
-            onAddPractice={() => setPracticeEditor({ defaultPosition: lessons[0].orderIndex })}
-            onAddCheckpoint={() => setAssessmentEditor({ defaultAfterLessonId: lessons[0].id })}
-          />
-        </Suspense>
-        {pathEditors}
-      </>
-    );
-  }
-
   // Release-date map for the "locked" hint (see lockHintFor below) — only
   // consulted under `linear` unlock mode.
   const effectiveDates = lessonEffectiveReleaseDates(course, lessons);
@@ -353,7 +300,6 @@ export function CoursePath() {
       )}
       {archived && <ArchivedCourseRestoreNotice />}
       <CourseOverview
-        onCreationOpenChange={setAddingLesson}
         summary={(cardClassName) =>
           hasStudyContent && (
             <CourseSummaryCard

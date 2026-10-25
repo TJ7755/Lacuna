@@ -89,8 +89,7 @@ for (const reviewed of [false, true]) {
   test(`deletes a course and restores it with Undo (reviewed: ${reviewed})`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
-    await createCourse(page, 'Biology');
-    const courseUrl = page.url();
+    const courseUrl = await createCourse(page, 'Biology');
     const courseId = /#\/course\/([^/]+)/.exec(courseUrl)![1];
     if (reviewed) {
       await page.getByRole('button', { name: 'Edit mode' }).click();

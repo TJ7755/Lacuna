@@ -6,7 +6,6 @@ import {
   mockCreateCourseAssessment,
   mockUpdateCourseAssessment,
   mockDeleteCourseAssessment,
-  mockLessonViewProps,
   course,
   lesson1,
   practiceNode,
@@ -15,7 +14,7 @@ import {
   pathState,
 } from './CoursePath.testFixtures';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { MS_PER_DAY } from '../fsrs/params';
 describe('CoursePath Edit mode', () => {
   beforeEach(resetCoursePathFixtures);
@@ -236,15 +235,12 @@ describe('CoursePath Edit mode', () => {
     expect(mockDeleteCourseAssessment).not.toHaveBeenCalled();
   });
 
-  it('creates practice at the single lesson position from the lesson header', async () => {
+  it('creates practice at the single lesson position from the ladder', async () => {
     pathState.mockLessons = [lesson1];
     renderPage();
 
-    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
-    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
-      onAddPractice: () => void;
-    };
-    act(() => lessonViewProps.onAddPractice());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
     expect(screen.getByRole('dialog', { name: 'Add card practice' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -261,11 +257,8 @@ describe('CoursePath Edit mode', () => {
     pathState.mockLessons = [lesson1];
     renderPage();
 
-    await waitFor(() => expect(mockLessonViewProps).toHaveBeenCalled());
-    const lessonViewProps = mockLessonViewProps.mock.lastCall?.[0] as {
-      onAddCheckpoint: () => void;
-    };
-    act(() => lessonViewProps.onAddCheckpoint());
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
 
     const nameInput = screen.getByRole('textbox', { name: 'Name' });
     expect(nameInput).toHaveFocus();

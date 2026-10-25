@@ -21,7 +21,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Getting started',
     question: 'How do I create a course and lessons?',
     answer:
-      'Choose New course on Today, then add lessons from the course path or course settings under Lessons. In a single-lesson course, switch to Edit and use Add to add another lesson.',
+      'Choose New course on Today, then add lessons from the course path or course settings under Lessons. Switch to Edit and use Add on the course path to add another lesson.',
     keywords: ['new', 'subject', 'add', 'start'],
   },
   {
@@ -29,7 +29,7 @@ export const helpTopics: readonly HelpTopic[] = [
     group: 'Getting started',
     question: 'What are the course path, checkpoints and Card practice?',
     answer:
-      'The path organises your lessons; Card practice brings back due cards from lessons you have studied. Checkpoints mark assessment dates and let you start revision without blocking your progress. A single-lesson course opens straight into its lesson.',
+      'The path organises your lessons; Card practice brings back due cards from lessons you have studied. Checkpoints mark assessment dates and let you start revision without blocking your progress. Every course opens on its lesson path. Select a lesson to open its workspace.',
     keywords: ['course', 'path', 'lessons', 'exam'],
   },
   {

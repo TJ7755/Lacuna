@@ -10,6 +10,7 @@ async function createMobileCourse(page: Page, courseName: string) {
   await expect(steady).toBeChecked();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page).toHaveURL(/#\/course\/[^/]+$/);
+  await page.getByRole('button', { name: 'Lesson 1', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
 }
 
@@ -92,9 +93,7 @@ test('navigates a visited card library while offline', async ({ page, context })
       .getByRole('navigation', { name: 'Course sections' })
       .getByRole('link', { name: 'Path' })
       .click();
-    await expect(
-      page.getByRole('heading', { name: 'Lesson 1', exact: true, level: 1 }),
-    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Lesson 1', exact: true })).toBeVisible();
     await page
       .getByRole('navigation', { name: 'Course sections' })
       .getByRole('link', { name: 'Cards' })

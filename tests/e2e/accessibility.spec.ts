@@ -67,6 +67,7 @@ test('replaces the shell when entering study with reduced motion', async ({ page
   // A course needs something to study before Study is offered.
   await addLessonNote(page, 'First reading');
   const shell = page.getByRole('navigation', { name: 'Primary navigation' });
+  await page.getByRole('link', { name: 'Path', exact: true }).click();
   const study = page.getByRole('button', { name: 'Study', exact: true });
   await expect(shell).toBeVisible();
   await study.click();

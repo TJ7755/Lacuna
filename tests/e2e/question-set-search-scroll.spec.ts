@@ -8,7 +8,7 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width: 1280, height: 600 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
-    await createCourse(page, 'Search continuity');
+    await createCourse(page, 'Search continuity', false);
     const coursePath = new URL(page.url()).hash.slice(1);
     const courseId = coursePath.split('/')[2];
     await page.evaluate(

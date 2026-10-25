@@ -20,30 +20,23 @@ const CARD = 'rounded-3xl bg-surface card-surface';
  * they fall, beside the course's assessments. Each lesson shows its number, state and a
  * progress bar; in Edit mode lessons can be dragged or moved with Alt and the arrows.
  */
-export function CourseOverview(
-  props: CourseOverviewProps & { onCreationOpenChange?: (open: boolean) => void },
-) {
-  const { nodes, authoring, archived, onCreationOpenChange } = props;
+export function CourseOverview(props: CourseOverviewProps) {
+  const { nodes, authoring, archived } = props;
   const [addingLesson, setAddingLesson] = useState(false);
   const [creationAtEmpty, setCreationAtEmpty] = useState(nodes.length === 0);
   useLayoutEffect(() => {
     if (authoring || !addingLesson) return;
     setAddingLesson(false);
-    onCreationOpenChange?.(false);
-  }, [authoring, addingLesson, onCreationOpenChange]);
-  const changeAddingLesson = (open: boolean) => {
-    setAddingLesson(open);
-    onCreationOpenChange?.(open);
-  };
+  }, [authoring, addingLesson]);
   const startAddingLesson = () => {
     setCreationAtEmpty(nodes.length === 0);
-    changeAddingLesson(true);
+    setAddingLesson(true);
   };
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
   const addRef = useRef<HTMLDivElement>(null);
   const restoreAdd = () => {
-    changeAddingLesson(false);
+    setAddingLesson(false);
     addRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
   };
   const lessonMenus = useRef(new Map<string, MenuHandle>());
@@ -109,14 +102,14 @@ export function CourseOverview(
                   open={addingLesson}
                   onOpenChange={(open) => {
                     if (open) setCreationAtEmpty(true);
-                    changeAddingLesson(open);
+                    setAddingLesson(open);
                   }}
                 >
                   <AddLessonControl
                     initiallyOpen
                     courseId={props.courseId}
                     lessonCount={props.lessonCount}
-                    onCancel={() => changeAddingLesson(false)}
+                    onCancel={() => setAddingLesson(false)}
                     onCreated={props.onLessonCreated}
                   />
                 </ExpandingCreateControl>

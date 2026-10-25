@@ -4,11 +4,11 @@ import { createCourse, enterFreshLacuna } from './fixtures/lacunaApp';
 test('the Add surface grows with enlarged text instead of clipping its label', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await createCourse(page, 'Large text course');
+  await createCourse(page, 'Large text course', false);
   await page.setViewportSize({ width: 390, height: 900 });
   await page.evaluate(() => (document.documentElement.style.fontSize = '200%'));
   const add = page
-    .getByRole('group', { name: 'Add to path' })
+    .getByRole('region', { name: 'Lessons', exact: true })
     .getByRole('button', { name: 'Add', exact: true });
   await expect
     .poll(async () => {
