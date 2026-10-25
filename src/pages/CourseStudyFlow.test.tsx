@@ -11,6 +11,9 @@ import type { AssessmentPracticeOption } from '../course/assessmentPractice';
 import { defaultFsrsParameters, FSRS_VERSION } from '../fsrs/params';
 import type { useCourseStudyFlow } from '../state/useCourseStudyFlow';
 import { CourseStudyFlow } from './CourseStudyFlow';
+import { LazyMotion, domAnimation } from 'motion/react';
+import { beginStudyTransition, LandingTransition } from '../components/layout/LandingTransition';
+import { readActiveStudyFlow } from '../state/activeStudyFlow';
 
 type FlowData = NonNullable<ReturnType<typeof useCourseStudyFlow>>;
 
@@ -247,6 +250,7 @@ function request(): Record<string, unknown> {
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   mockNavigate.mockClear();
   mockAcceptBreak.mockClear();
   mockDeferBreak.mockClear();
@@ -288,6 +292,29 @@ describe('CourseStudyFlow', () => {
     expect(screen.queryByRole('heading', { name: 'You are caught up' })).not.toBeInTheDocument();
     await screen.findByTestId('learn-request');
     expect(request()).toEqual({ kind: 'lesson', lessonId: 'lesson-1' });
+  });
+
+  it('uses the mounted conductor Exit when a covered launch is waiting for its first plan', () => {
+    render(
+      <LazyMotion features={domAnimation}>
+        <LandingTransition />
+      </LazyMotion>,
+    );
+    const cancelBeforeMount = vi.fn();
+    act(() =>
+      beginStudyTransition(
+        new DOMRect(20, 40, 400, 300),
+        { colour: 'white', radius: '24px', paper: 'white' },
+        vi.fn(),
+        cancelBeforeMount,
+      ),
+    );
+    renderFlow();
+    expect(readActiveStudyFlow()?.courseId).toBe('course-1');
+    fireEvent.click(screen.getByRole('button', { name: 'Exit' }));
+    expect(readActiveStudyFlow()).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1', { state: { returning: true } });
+    expect(cancelBeforeMount).not.toHaveBeenCalled();
   });
 
   it('replans after a completed step and continues without leaving the conductor', async () => {

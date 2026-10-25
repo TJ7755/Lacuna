@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { createCourse, enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
+test.use({ serviceWorkers: 'block' });
+
 for (const single of [true, false]) {
   test(`a ${single ? 'single' : 'multi'}-lesson ladder opens its real workspace and returns to the path`, async ({
     page,
@@ -224,6 +226,9 @@ test.describe('ready-first course navigation', () => {
 });
 
 test('Exit cancels a covered study launch without a late arrival', async ({ page }) => {
+  const loaded = page.waitForResponse((response) =>
+    /\/assets\/CourseStudyFlow-[^/]+\.js$/.test(new URL(response.url()).pathname),
+  );
   let release!: () => void;
   let requested!: () => void;
   const gate = new Promise<void>((resolve) => {
@@ -257,9 +262,7 @@ test('Exit cancels a covered study launch without a late arrival', async ({ page
   } finally {
     release();
   }
-  await page.waitForResponse((response) =>
-    /\/assets\/CourseStudyFlow-[^/]+\.js$/.test(new URL(response.url()).pathname),
-  );
+  await loaded;
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>

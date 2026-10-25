@@ -1,12 +1,25 @@
-import { hasLandingArrival, releaseStudyCover } from '../layout/LandingTransition';
+import { useLayoutEffect } from 'react';
+import {
+  hasLandingArrival,
+  releaseStudyCover,
+  STUDY_EXIT_EVENT,
+} from '../layout/LandingTransition';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
 import { STUDY_HEADER_ROW } from './studyHeaderLayout';
 
 export function StudyExitHeader({ onExit }: { onExit: () => void }) {
+  useLayoutEffect(() => {
+    const exit = (event: Event) => {
+      event.preventDefault();
+      onExit();
+    };
+    window.addEventListener(STUDY_EXIT_EVENT, exit);
+    return () => window.removeEventListener(STUDY_EXIT_EVENT, exit);
+  }, [onExit]);
   if (hasLandingArrival()) return null;
   return (
-    <header className="relative z-[101] bg-paper pt-[env(safe-area-inset-top)]">
+    <header className="bg-paper pt-[env(safe-area-inset-top)]">
       <div className={STUDY_HEADER_ROW}>
         <Button
           variant="secondary"

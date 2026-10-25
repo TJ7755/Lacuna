@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { CloseIcon } from '../ui/icons';
 import { STUDY_HEADER_ROW } from '../learn/studyHeaderLayout';
@@ -10,6 +10,7 @@ import { getMotionMultiplier } from '../../state/motionSpeed';
 const BEGIN_EVENT = 'lacuna:landing-transition';
 export const COVERED_EVENT = 'lacuna:landing-covered';
 const RELEASE_EVENT = 'lacuna:study-reveal';
+export const STUDY_EXIT_EVENT = 'lacuna:study-exit';
 const ARRIVAL_KEY = 'lacuna.landingArrival';
 
 const SWEEP_EASE = [0.16, 1, 0.3, 1] as const;
@@ -89,26 +90,26 @@ export function LandingTransition() {
     };
   }, []);
 
-  const cancel = () => {
+  const cancel = useCallback(() => {
     if (!transition?.cancel) return;
     generation.current++;
     sessionStorage.removeItem(ARRIVAL_KEY);
     setTransition(null);
-    transition.cancel();
-  };
+    // A mounted study owner clears its own identity and returns through its history.
+    // Before that owner mounts, return to the source to abort the pending route load.
+    const exit = new Event(STUDY_EXIT_EVENT, { cancelable: true });
+    if (window.dispatchEvent(exit)) transition.cancel();
+  }, [transition]);
   useEffect(() => {
     if (!transition?.cancel) return;
     const escape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return;
       event.preventDefault();
-      generation.current++;
-      sessionStorage.removeItem(ARRIVAL_KEY);
-      setTransition(null);
-      transition.cancel?.();
+      cancel();
     };
     window.addEventListener('keydown', escape);
     return () => window.removeEventListener('keydown', escape);
-  }, [transition]);
+  }, [transition, cancel]);
 
   if (!transition) return null;
   const { rect, covered, colour, radius, paper, navigate, id } = transition;
