@@ -95,7 +95,7 @@ export function publicPagePrerenderPlugin(): Plugin {
           // Keep the study entry eager in the build, but only fetch its graph
           // when the head's pre-paint decision selected the app. Both graphs
           // start in the head, without a bootstrap-module network round trip.
-          const selectEntry = `<script>(function(){var app=document.documentElement.hasAttribute('data-app-starting');if(!app)document.documentElement.setAttribute('data-landing-entry','');var files=app?${JSON.stringify(scriptsFor(appFile))}:${JSON.stringify(scriptsFor(landingEntry.fileName))};for(var i=1;i<files.length;i++){var link=document.createElement('link');link.rel='modulepreload';link.crossOrigin='';link.href=files[i];document.head.appendChild(link);}var script=document.createElement('script');script.type='module';script.crossOrigin='';script.src=files[0];document.head.appendChild(script);})();</script>`;
+          const selectEntry = `<script>(function(){var app=document.documentElement.hasAttribute('data-app-starting');if(!app)document.documentElement.setAttribute('data-landing-entry','');var files=app?${JSON.stringify(scriptsFor(appFile))}:${JSON.stringify(scriptsFor(landingEntry.fileName))};var script=document.createElement('script');script.type='module';script.crossOrigin='';script.src=files[0];document.head.appendChild(script);for(var i=1;i<files.length;i++){var link=document.createElement('link');link.rel='modulepreload';link.crossOrigin='';link.href=files[i];document.head.appendChild(link);}})();</script>`;
           renderedHtml = renderedHtml
             .replace(appScript[0], () => selectEntry)
             .replace(/<link rel="modulepreload"[^>]*>/g, '');
