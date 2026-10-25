@@ -97,10 +97,31 @@ export function dashboardForecastHistories(
   now: number,
 ): Record<string, ForecastPoint[]> {
   const histories: Record<string, ForecastPoint[]> = {};
-  for (const [course, courseCards] of forecastCards(courses, lessons, cards, now)) {
+  const scopes = forecastCards(courses, lessons, cards, now);
+  const courseByCard = new Map<string, string>();
+  for (const [course, courseCards] of scopes) {
+    for (const card of courseCards) courseByCard.set(card.id, course.id);
+  }
+  const historyByCourse = new Map<string, ReviewHistoryEntry[]>();
+  for (const entry of history) {
+    // Historical ownership may predate a move; the current Card owns the forecast.
+    const courseId = courseByCard.get(entry.cardId);
+    if (!courseId) continue;
+    const entries = historyByCourse.get(courseId);
+    if (entries) entries.push(entry);
+    else historyByCourse.set(courseId, [entry]);
+  }
+  for (const [course, courseCards] of scopes) {
     const forecast = forecasts[course.id];
     if (!forecast || courseCards.length === 0) continue;
-    histories[course.id] = examDayHistory(courseCards, history, course, forecast.end, from, now);
+    histories[course.id] = examDayHistory(
+      courseCards,
+      historyByCourse.get(course.id) ?? [],
+      course,
+      forecast.end,
+      from,
+      now,
+    );
   }
   return histories;
 }
