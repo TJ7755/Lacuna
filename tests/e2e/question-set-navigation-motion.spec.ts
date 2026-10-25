@@ -110,7 +110,7 @@ test.describe('Overview mode replacement', () => {
       const practice = Array.from(group.querySelectorAll('button')).find(
         (el) => el.textContent === 'Practice',
       )!;
-      const frames: { time: number; paper: number; practice: number }[] = [];
+      const frames: { time: number; phase: string; paper: number; practice: number }[] = [];
       const opacity = (text: string) => {
         const paragraph = Array.from(document.querySelectorAll('p')).find(
           (el) => el.textContent === text,
@@ -123,24 +123,20 @@ test.describe('Overview mode replacement', () => {
         return opacity;
       };
       const start = performance.now();
-      let reversed = false;
-      let reopened = false;
+      let phase: 'paper' | 'practice' | 'paper-return' = 'paper';
       paper.click();
       await new Promise<void>((resolve) => {
         const sample = () => {
           const time = performance.now() - start;
-          frames.push({
-            time,
-            paper: opacity('Feedback at the end'),
-            practice: opacity('Feedback after each question'),
-          });
-          if (time >= 70 && !reversed) {
-            reversed = true;
+          const paperOpacity = opacity('Feedback at the end');
+          const practiceOpacity = opacity('Feedback after each question');
+          frames.push({ time, phase, paper: paperOpacity, practice: practiceOpacity });
+          if (phase === 'paper' && paperOpacity > 0) {
+            phase = 'practice';
             practice.focus();
             practice.click();
-          }
-          if (time >= 140 && !reopened) {
-            reopened = true;
+          } else if (phase === 'practice' && practiceOpacity > 0) {
+            phase = 'paper-return';
             paper.focus();
             paper.click();
           }
@@ -158,8 +154,7 @@ test.describe('Overview mode replacement', () => {
     expect(frames.some((frame) => frame.paper > 0 && frame.paper < 0.95)).toBe(true);
     expect(
       frames.some(
-        (frame) =>
-          frame.time > 70 && frame.time < 140 && frame.practice > 0 && frame.practice < 0.95,
+        (frame) => frame.phase === 'practice' && frame.practice > 0 && frame.practice < 0.95,
       ),
     ).toBe(true);
     expect(frames.at(-1)!.paper).toBe(1);
