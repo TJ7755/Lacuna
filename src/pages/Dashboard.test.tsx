@@ -1,208 +1,19 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import type * as DashboardForecasts from '../state/dashboardForecasts';
-import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import {
+  dashboardState,
+  mockNavigate,
+  mockOpenStudySheet,
+  mockCourse,
+  DAY,
+  course,
+  summary,
+  setCourseData,
+  queueTitles,
+} from './Dashboard.testSupport';
+import { describe, expect, it, vi } from 'vitest';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from './Dashboard';
-import type { Course } from '../db/types';
 
-const mockNavigate = vi.fn();
-const { mockUpdateCourse, mockNotify } = vi.hoisted(() => ({
-  mockUpdateCourse: vi.fn(),
-  mockNotify: vi.fn(),
-}));
-
-vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
-const mockOpenStudySheet = vi.fn();
-vi.mock('../components/learn/StudySheetContext', () => ({
-  useStudySheet: () => ({ openStudySheet: mockOpenStudySheet }),
-}));
-vi.mock('../components/ui/Toast', () => ({ useToast: () => ({ notify: mockNotify }) }));
-
-vi.mock('react-router-dom', () => ({
-  useNavigate: () => mockNavigate,
-  useHref: (to: string) => to,
-  useLinkClickHandler: (to: string) => (event: React.MouseEvent) => {
-    event.preventDefault();
-    mockNavigate(to);
-  },
-  useLocation: () => ({ state: null, search: '' }),
-  useSearchParams: () => [new URLSearchParams(), vi.fn()],
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
-
-let mockCourseDashboardData: unknown = undefined;
-let mockPendingUpdateIds = new Set<string>();
-
-// The chart's past line needs graded review history; tests supply one per forecast.
-// Undefined stands for history still loading.
-let mockReviewHistory: unknown[] | undefined = [];
-vi.mock('../state/useData', () => ({ useAllReviewHistory: () => mockReviewHistory }));
-vi.mock('../state/dashboardForecasts', async (importOriginal) => ({
-  ...(await importOriginal<typeof DashboardForecasts>()),
-  dashboardForecastHistories: (
-    _courses: unknown,
-    _lessons: unknown,
-    _cards: unknown,
-    _history: unknown,
-    forecasts: Record<string, { ifStopped: number }>,
-  ) =>
-    Object.fromEntries(
-      Object.entries(forecasts).map(([id, value]) => [
-        id,
-        [
-          { at: Date.now() - DAY, recall: value.ifStopped / 2 },
-          { at: Date.now(), recall: value.ifStopped },
-        ],
-      ]),
-    ),
-}));
-vi.mock('../state/useCourseData', () => ({
-  useCourseDashboardData: () => mockCourseDashboardData,
-  usePendingUpdateCourseIds: () => mockPendingUpdateIds,
-}));
-
-vi.mock('../state/motionSpeed', () => ({
-  useMotionSpeed: () => ['fast'],
-  speedMultiplier: () => 1,
-  getMotionMultiplier: () => 1,
-}));
-
-vi.mock('../components/dashboard/SyncStatus', () => ({ SyncStatus: () => null }));
-
-// Forecasts arrive with the shared course data; tests set them after the data.
-let mockForecasts: Record<string, unknown> = {};
-
-vi.mock('../components/course/NewCourseForm', () => ({
-  NewCourseForm: () => <div data-testid="new-course-form" />,
-}));
-
-vi.mock('../components/ui/Button', () => ({
-  Button: ({
-    children,
-    onClick,
-    disabled,
-    ...rest
-  }: {
-    children: React.ReactNode;
-    onClick?: () => void;
-    disabled?: boolean;
-    [key: string]: unknown;
-  }) => (
-    <button type="button" onClick={onClick} disabled={disabled} {...rest}>
-      {children}
-    </button>
-  ),
-}));
-
-const mockCourse: Course = {
-  id: 'course-1',
-  name: 'Test Course',
-  description: 'A test course',
-  examDate: Date.now() + 7 * 24 * 60 * 60 * 1000,
-  timeZone: 'UTC',
-  createdAt: Date.now(),
-  updatedAt: 1,
-  fsrsVersion: 6,
-  fsrsParameters: {
-    requestRetention: 0.9,
-    w: Array(21).fill(0),
-    enable_fuzz: true,
-    maximum_interval: 36500,
-    learning_steps: ['1m', '10m'],
-    relearning_steps: ['10m'],
-  },
-  examObjective: 'expectedMarks',
-  unlockMode: 'open',
-  autoPractice: false,
-  practiceThresholdMinutesFar: 30,
-  practiceThresholdMinutesNear: 15,
-  practiceUrgentWindowDays: 7,
-  practiceMaxGap: 5,
-};
-
-const DAY = 24 * 60 * 60 * 1000;
-
-function course(id: string, name: string, extra: Partial<Course> = {}): Course {
-  return { ...mockCourse, id, name, ...extra };
-}
-
-function summary(
-  eligible: number,
-  extra: { cardCount?: number; reviewedTodayCount?: number; completedLessonCount?: number } = {},
-) {
-  return {
-    lessonCount: 2,
-    completedLessonCount: 2,
-    cardCount: 10,
-    mastery: 0.3,
-    unreviewed: 5,
-    eligible,
-    reviewedTodayCount: 0,
-    ...extra,
-  };
-}
-
-function forecast(ifStopped: number, hasExam = true) {
-  return { end: Date.now() + 7 * DAY, hasExam, target: 0.9, ifStopped };
-}
-
-interface DataOptions {
-  summaries?: Record<string, ReturnType<typeof summary>>;
-  minutes?: Record<string, number>;
-  forecastCardCounts?: Record<string, number>;
-  streak?: number;
-  reviewActivity?: Map<string, number[]>;
-}
-
-function setCourseData(courses: Course[] = [mockCourse], options: DataOptions = {}) {
-  mockCourseDashboardData = {
-    courses,
-    lessons: [],
-    allCards: [],
-    summaries: options.summaries ?? {},
-    get forecasts() {
-      return mockForecasts;
-    },
-    reviewActivity: options.reviewActivity ?? new Map(),
-    stats: {
-      reviewedToday: 0,
-      streak: options.streak ?? 0,
-      forecast: [
-        {
-          byDeck: Object.entries(options.minutes ?? {}).map(([sourceId, minutes]) => ({
-            sourceId,
-            minutes,
-            dueCount:
-              options.forecastCardCounts?.[sourceId] ??
-              options.summaries?.[sourceId]?.eligible ??
-              0,
-            newCount: 0,
-          })),
-        },
-      ],
-    },
-  };
-}
-
-beforeEach(() => {
-  mockNavigate.mockClear();
-  mockOpenStudySheet.mockClear();
-  mockUpdateCourse.mockReset();
-  mockUpdateCourse.mockResolvedValue(undefined);
-  mockNotify.mockReset();
-  mockCourseDashboardData = undefined;
-  mockPendingUpdateIds = new Set<string>();
-  mockForecasts = {};
-  mockReviewHistory = [];
-});
-
-function queueTitles() {
-  const queue = screen.getByRole('region', { name: 'Today, most urgent first' });
-  return Array.from(queue.children, (row) => within(row as HTMLElement).getAllByRole('button')[0]);
-}
-
-describe('Dashboard', () => {
+describe('Dashboard Today queue', () => {
   it('ends a pending onboarding once the learner reaches Today', () => {
     localStorage.setItem('lacuna-onboarding', 'pending');
     setCourseData();
@@ -210,12 +21,14 @@ describe('Dashboard', () => {
     expect(localStorage.getItem('lacuna-onboarding')).toBe('done');
     localStorage.removeItem('lacuna-onboarding');
   });
+
   it('opens class-code entry from Today', () => {
     setCourseData();
     render(<Dashboard />);
     fireEvent.click(screen.getByRole('link', { name: 'Join a class' }));
     expect(mockNavigate).toHaveBeenCalledWith('/?import=1&join=1');
   });
+
   it('keeps new lessons available without marking their cards as due', () => {
     setCourseData([course('poems', 'Poems', { examDate: undefined })], {
       summaries: { poems: summary(0, { completedLessonCount: 0 }) },
@@ -225,6 +38,7 @@ describe('Dashboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Study Poems' }));
     expect(mockOpenStudySheet).toHaveBeenCalledWith('poems');
   });
+
   it('estimates due minutes without counting new or later-today cards as due work', () => {
     setCourseData([mockCourse], {
       summaries: { [mockCourse.id]: summary(2) },
@@ -234,6 +48,7 @@ describe('Dashboard', () => {
     render(<Dashboard />);
     expect(screen.getByLabelText('Today: 2 cards, about 6 minutes')).toBeInTheDocument();
   });
+
   it('does not render a sharing announcement on Today', async () => {
     localStorage.clear();
     setCourseData();
@@ -330,7 +145,7 @@ describe('Dashboard', () => {
 
   it('opens update review and flags the row when a course has pending changes', () => {
     setCourseData();
-    mockPendingUpdateIds = new Set(['course-1']);
+    dashboardState.mockPendingUpdateIds = new Set(['course-1']);
 
     render(<Dashboard />);
 
@@ -443,282 +258,5 @@ describe('Dashboard', () => {
       'Past Exam',
       'No Exam Small',
     ]);
-  });
-
-  it('shows the exam-day forecast with a legend entry per course', async () => {
-    setCourseData([mockCourse, course('course-2', 'Second Course')], {
-      summaries: { 'course-1': summary(3), 'course-2': summary(1) },
-    });
-    mockForecasts = { 'course-1': forecast(0.93), 'course-2': forecast(0.71) };
-    render(<Dashboard />);
-
-    // The chart loads on demand.
-    expect(await screen.findByRole('heading', { name: 'Exam-day forecast' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Exam-day forecast' })).toBeInTheDocument();
-    const legend = screen.getByRole('list', { name: 'Courses' });
-    expect(
-      within(legend).getByRole('button', { name: 'Test Course On track' }),
-    ).toBeInTheDocument();
-    expect(
-      within(legend).getByRole('button', { name: 'Second Course Behind' }),
-    ).toBeInTheDocument();
-    // Each course's figure appears once, beside its point at today.
-    expect(screen.getAllByText('93%')).toHaveLength(1);
-    expect(screen.getAllByText('71%')).toHaveLength(1);
-  });
-
-  it('omits the forecast chart when no course has a forecast to draw', () => {
-    setCourseData();
-    render(<Dashboard />);
-    expect(screen.queryByRole('heading', { name: 'Exam-day forecast' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
-  });
-
-  it('labels the rolling review count separately from calendar-week study days', async () => {
-    setCourseData([mockCourse], {
-      streak: 5,
-      reviewActivity: new Map([['card-1', [Date.now(), Date.now() - 1000]]]),
-    });
-    mockForecasts = { 'course-1': forecast(0.9) };
-    render(<Dashboard />);
-
-    expect(await screen.findByText('days in a row')).toBeInTheDocument();
-    expect(screen.getByText('cards in the last 7 days')).toBeInTheDocument();
-    expect(screen.getByText('studied this week')).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Studied on \d of \d days this week/)).toBeInTheDocument();
-    const streak = screen.getByText('days in a row').parentElement as HTMLElement;
-    expect(streak).toHaveTextContent('5');
-    const cards = screen.getByText('cards in the last 7 days').parentElement as HTMLElement;
-    expect(cards).toHaveTextContent('2');
-  });
-
-  it('leads with the forecast, above what to study', async () => {
-    setCourseData([mockCourse], {
-      summaries: { 'course-1': summary(3) },
-      reviewActivity: new Map([['card-1', [Date.now()]]]),
-    });
-    mockForecasts = { 'course-1': forecast(0.9) };
-    render(<Dashboard />);
-
-    const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
-    const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(screen.getByLabelText('Today: 3 cards, about 1 minute')).toHaveTextContent('3cards');
-  });
-
-  it('holds the queue until the forecast can arrive whole above it', async () => {
-    setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
-    mockForecasts = { 'course-1': forecast(0.9) };
-    mockReviewHistory = undefined;
-    const { rerender } = render(<Dashboard />);
-
-    // Review history is still loading, so neither the forecast nor the queue shows yet.
-    expect(
-      screen.queryByRole('region', { name: 'Today, most urgent first' }),
-    ).not.toBeInTheDocument();
-
-    mockReviewHistory = [];
-    rerender(<Dashboard />);
-    const queue = await screen.findByRole('region', { name: 'Today, most urgent first' });
-    const forecastPanel = screen.getByRole('region', { name: 'Forecast and this week' });
-    expect(
-      within(forecastPanel).getByRole('heading', { name: 'Exam-day forecast' }),
-    ).toBeInTheDocument();
-    expect(forecastPanel.compareDocumentPosition(queue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  });
-
-  it('shows the queue without waiting indefinitely on a slow forecast', () => {
-    vi.useFakeTimers();
-    try {
-      setCourseData([mockCourse], { summaries: { 'course-1': summary(3) } });
-      mockForecasts = { 'course-1': forecast(0.9) };
-      mockReviewHistory = undefined;
-      render(<Dashboard />);
-      expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
-
-      act(() => {
-        vi.advanceTimersByTime(200);
-      });
-      act(() => {
-        vi.advanceTimersByTime(800);
-      });
-      expect(screen.getByRole('button', { name: 'Test Course' })).toBeInTheDocument();
-      expect(
-        screen.queryByRole('region', { name: 'Forecast and this week' }),
-      ).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('opens the course menu under its More button without navigating, then dismisses it', async () => {
-    setCourseData();
-    render(<Dashboard />);
-    const more = screen.getByRole('button', { name: 'More for Test Course' });
-    vi.spyOn(more, 'getBoundingClientRect').mockReturnValue({
-      right: 500,
-      bottom: 100,
-      left: 456,
-      top: 56,
-      width: 44,
-      height: 44,
-      x: 456,
-      y: 56,
-      toJSON: () => ({}),
-    });
-
-    fireEvent.click(more);
-    const menu = await screen.findByRole('menu', { name: 'Actions for Test Course' });
-    expect(menu).toHaveStyle({ left: '340px', top: '106px' });
-    expect(mockNavigate).not.toHaveBeenCalled();
-
-    fireEvent.pointerDown(document.body);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-  });
-
-  it('closes the course menu with Escape and returns focus to the More button', async () => {
-    setCourseData();
-    render(<Dashboard />);
-    const more = screen.getByRole('button', { name: 'More for Test Course' });
-
-    fireEvent.click(more);
-    const menu = await screen.findByRole('menu');
-    expect(screen.getByRole('menuitem', { name: 'Archive' })).toHaveFocus();
-    fireEvent.keyDown(menu, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    expect(more).toHaveFocus();
-  });
-
-  it.each(['ContextMenu', 'F10'])(
-    'opens the course actions with %s on the course title',
-    async (key) => {
-      setCourseData();
-      render(<Dashboard />);
-      const link = screen.getByRole('button', { name: 'Test Course' });
-      act(() => link.focus());
-      fireEvent.keyDown(link, { key, shiftKey: key === 'F10' });
-      expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveFocus();
-      expect(mockNavigate).not.toHaveBeenCalled();
-    },
-  );
-
-  it('opens visible course actions on right-click while preserving selected text menus', async () => {
-    setCourseData();
-    render(<Dashboard />);
-    const link = screen.getByRole('button', { name: 'Test Course' });
-    const selection = window.getSelection()!;
-    const range = document.createRange();
-    range.selectNodeContents(link);
-    selection.addRange(range);
-    expect(fireEvent.contextMenu(link)).toBe(true);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    selection.removeAllRanges();
-    expect(fireEvent.contextMenu(link)).toBe(false);
-    expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveFocus();
-  });
-
-  it('cancels archiving from the confirmation dialog', async () => {
-    setCourseData();
-    render(<Dashboard />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
-    expect(await screen.findByRole('dialog', { name: 'Archive Test Course?' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(mockUpdateCourse).not.toHaveBeenCalled();
-  });
-
-  it.each([false, true])('dismisses the course menu on Tab (shift: %s)', async (shiftKey) => {
-    setCourseData();
-    render(<Dashboard />);
-    const more = screen.getByRole('button', { name: 'More for Test Course' });
-    fireEvent.click(more);
-    expect(more).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.keyDown(await screen.findByRole('menuitem', { name: 'Archive' }), {
-      key: 'Tab',
-      shiftKey,
-    });
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-    expect(more).toHaveFocus();
-    expect(more).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('keeps the Archive menu action at the shared minimum target size', async () => {
-    setCourseData();
-    render(<Dashboard />);
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    expect(await screen.findByRole('menuitem', { name: 'Archive' })).toHaveClass('min-h-11');
-  });
-
-  it.each([false, true])('returns focus after archiving (last course: %s)', async (lastCourse) => {
-    setCourseData(lastCourse ? [mockCourse] : [mockCourse, course('course-2', 'Second Course')]);
-    const { rerender } = render(<Dashboard />);
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
-    const confirm = await screen.findByRole('button', { name: 'Archive course' });
-    confirm.focus();
-    fireEvent.click(confirm);
-    await waitFor(() => expect(mockNotify).toHaveBeenCalled());
-    setCourseData(
-      lastCourse
-        ? [{ ...mockCourse, archived: true }]
-        : [{ ...mockCourse, archived: true }, course('course-2', 'Second Course')],
-    );
-    rerender(<Dashboard />);
-    await waitFor(() =>
-      expect(
-        lastCourse
-          ? screen.getByRole('heading', { name: 'Today' })
-          : screen.getByRole('button', { name: 'More for Second Course' }),
-      ).toHaveFocus(),
-    );
-  });
-
-  it('archives a course, allows Undo and drops the archived course from the queue', async () => {
-    setCourseData();
-    const { rerender } = render(<Dashboard />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Archive course' }));
-
-    await waitFor(() =>
-      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: true }),
-    );
-    await waitFor(() =>
-      expect(mockNotify).toHaveBeenCalledWith(
-        'Test Course archived',
-        'positive',
-        expect.objectContaining({ actionLabel: 'Undo' }),
-      ),
-    );
-
-    setCourseData([{ ...mockCourse, archived: true }]);
-    rerender(<Dashboard />);
-    expect(screen.queryByRole('button', { name: 'Test Course' })).not.toBeInTheDocument();
-
-    const options = mockNotify.mock.calls[0][2] as { onAction: () => void };
-    options.onAction();
-    await waitFor(() =>
-      expect(mockUpdateCourse).toHaveBeenCalledWith('course-1', { archived: false }),
-    );
-  });
-
-  it('keeps the confirmation open and reports an archive failure', async () => {
-    mockUpdateCourse.mockRejectedValueOnce(new Error('database unavailable'));
-    setCourseData();
-    render(<Dashboard />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'More for Test Course' }));
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Archive' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Archive course' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'The course could not be archived. Nothing was changed.',
-    );
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(mockNotify).not.toHaveBeenCalled();
   });
 });
