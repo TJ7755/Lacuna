@@ -203,6 +203,13 @@ function queueTitles() {
 }
 
 describe('Dashboard', () => {
+  it('ends a pending onboarding once the learner reaches Today', () => {
+    localStorage.setItem('lacuna-onboarding', 'pending');
+    setCourseData();
+    render(<Dashboard />);
+    expect(localStorage.getItem('lacuna-onboarding')).toBe('done');
+    localStorage.removeItem('lacuna-onboarding');
+  });
   it('opens class-code entry from Today', () => {
     setCourseData();
     render(<Dashboard />);

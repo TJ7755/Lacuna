@@ -33,6 +33,7 @@ import { forecastWindow, useForecastRange } from '../state/forecastRange';
 import { useAllReviewHistory } from '../state/useData';
 import { weekSummary } from '../state/weekSummary';
 import { useToast } from '../components/ui/Toast';
+import { finishOnboarding, onboardingPending } from '../onboarding/onboardingState';
 import type { ArchiveTarget, CourseMenuState } from '../components/dashboard/CourseActions';
 
 /**
@@ -73,6 +74,11 @@ export function Dashboard() {
       void navigate('/', { replace: true, state: null });
     }
   }, [location.state, navigate]);
+  // Reaching Today ends onboarding, however the learner left it, so a later course never
+  // detours through its last step.
+  useEffect(() => {
+    if (onboardingPending()) finishOnboarding();
+  }, []);
   const { notify } = useToast();
   const [courseMenu, setCourseMenu] = useState<CourseMenuState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
