@@ -123,24 +123,59 @@ async function openDesktopCreation(page: Page) {
 test('an open creation surface springs towards changed content and can reverse before arrival', async ({
   page,
 }) => {
-  const { form, surface, targetHeight } = await openDesktopCreation(page);
-  const initialHeight = (await surface.boundingBox())!.height;
-  const exam = form.getByRole('radio', { name: /Exam date/ });
-  await exam.press('Space');
-  const expandedHeight = await targetHeight();
-  expect(expandedHeight).toBeGreaterThan(initialHeight);
-  await expect
-    .poll(async () => {
-      const height = (await surface.boundingBox())!.height;
-      return height > initialHeight + 1 && height < expandedHeight - 1;
-    })
-    .toBe(true);
+  const { form, surface, closedHeight } = await openDesktopCreation(page);
   const steady = form.getByRole('radio', { name: /Steady retention/ });
-  await steady.press('Space');
+  const observed = await surface.evaluate(
+    (element, { exam, steady, form, closedHeight }) =>
+      new Promise<{ initial: number; expanded: number; intermediate: number[]; reversed: boolean }>(
+        (resolve) => {
+          if (
+            !(element instanceof HTMLElement) ||
+            !(exam instanceof HTMLElement) ||
+            !(steady instanceof HTMLElement)
+          )
+            throw new Error('Expected HTML creation controls');
+          const initial = element.getBoundingClientRect().height;
+          const intermediate: number[] = [];
+          let expanded = initial;
+          let reversed = false;
+          let samples = 0;
+          const sample = () => {
+            const height = element.getBoundingClientRect().height;
+            const target =
+              form.parentElement!.getBoundingClientRect().height +
+              closedHeight +
+              element.offsetHeight -
+              element.clientHeight;
+            expanded = Math.max(expanded, target);
+            if (!reversed && height > initial + 1 && height < target - 1) {
+              intermediate.push(height);
+              reversed = true;
+              steady.focus();
+              steady.click();
+            }
+            if ((reversed && Math.abs(height - initial) < 1) || ++samples >= 120)
+              resolve({ initial, expanded, intermediate, reversed });
+            else requestAnimationFrame(sample);
+          };
+          requestAnimationFrame(sample);
+          exam.click();
+        },
+      ),
+    {
+      exam: (await form.getByRole('radio', { name: /Exam date/ }).elementHandle())!,
+      steady: (await steady.elementHandle())!,
+      form: (await form.elementHandle())!,
+      closedHeight,
+    },
+  );
+  expect(observed.expanded).toBeGreaterThan(observed.initial);
+  expect(observed.intermediate.length).toBeGreaterThan(0);
+  expect(observed.reversed).toBe(true);
   await expect(steady).toBeChecked();
   await expect(steady).toBeFocused();
   await expect
-    .poll(async () => Math.abs((await surface.boundingBox())!.height - initialHeight))
+    .poll(async () => Math.abs((await surface.boundingBox())!.height - observed.initial))
     .toBeLessThan(1);
 });
 
@@ -152,17 +187,29 @@ test('reopening a visibly collapsing creation surface keeps its input, selection
   await name.fill('Retained course draft');
   await name.evaluate((element: HTMLInputElement) => element.setSelectionRange(3, 11));
   const input = (await name.elementHandle())!;
-  const openHeight = (await surface.boundingBox())!.height;
-  await trigger.press('Enter');
-  // Reopen after most of the shape has collapsed, while it is still visibly in flight.
-  await page.waitForFunction(
-    ({ element, closedHeight, openHeight }) => {
-      const height = element.getBoundingClientRect().height;
-      return height > closedHeight + 1 && height < closedHeight + (openHeight - closedHeight) / 4;
-    },
-    { element: (await surface.elementHandle())!, closedHeight, openHeight },
+  const reopened = await surface.evaluate(
+    (element, { trigger, closedHeight }) =>
+      new Promise<boolean>((resolve) => {
+        if (!(trigger instanceof HTMLElement)) throw new Error('Expected an HTML creation trigger');
+        const openHeight = element.getBoundingClientRect().height;
+        let samples = 0;
+        const sample = () => {
+          const height = element.getBoundingClientRect().height;
+          if (
+            height > closedHeight + 1 &&
+            height < closedHeight + (openHeight - closedHeight) / 4
+          ) {
+            trigger.click();
+            resolve(true);
+          } else if (++samples >= 120) resolve(false);
+          else requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
+        trigger.click();
+      }),
+    { trigger: (await trigger.elementHandle())!, closedHeight },
   );
-  await trigger.press('Enter');
+  expect(reopened).toBe(true);
   await expect(name).toBeFocused();
   expect(
     await input.evaluate((element: HTMLInputElement) => ({
