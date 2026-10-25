@@ -267,7 +267,15 @@ async function getShareSlot(
   slot: ShareSlot,
   now: () => number,
 ): Promise<Response> {
-  if (!(await shareLive(store, id, now))) {
+  // Source resolution validates liveness at every hop. Teacher bytes belong to
+  // the requested share itself and therefore need their own liveness check.
+  const contentId =
+    slot === 'teacher'
+      ? (await shareLive(store, id, now))
+        ? id
+        : null
+      : await courseSource(store, id, now);
+  if (!contentId) {
     return shareJson(404, request, { error: 'not found' });
   }
 
@@ -277,8 +285,7 @@ async function getShareSlot(
     return shareJson(404, request, { error: 'not found' });
   }
 
-  const contentId = slot === 'teacher' ? id : await courseSource(store, id, now);
-  const stored = contentId ? await store.get(shareSlotKey(contentId, slot)) : null;
+  const stored = await store.get(shareSlotKey(contentId, slot));
   if (!stored) {
     return shareJson(404, request, { error: 'not found' });
   }

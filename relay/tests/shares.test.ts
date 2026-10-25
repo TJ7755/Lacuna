@@ -21,6 +21,43 @@ afterEach(() => {
 });
 
 describe('course share links', () => {
+  it('resolves an official payload with one authoritative liveness check', async () => {
+    const store = new MemoryStore();
+    const shareId = '5459ed1b6b0ca5ac7e646b68f17d1732';
+    await store.put(`shares/${shareId}/auth`, new Uint8Array([1]), { exclusive: true });
+    await store.put(`shares/${shareId}/payload`, new Uint8Array([2]), { exclusive: true });
+    const stat = vi.spyOn(store, 'stat');
+    const response = await createHandler(store)(getShareRequest(shareId, 'payload'));
+    expect(response.status).toBe(200);
+    expect(stat.mock.calls.filter(([key]) => key === `shares/${shareId}/payload`)).toHaveLength(1);
+  });
+
+  it.each([false, true])(
+    'rechecks ownership after resolving content before reading its body (linked: %s)',
+    async (linked) => {
+      const ctx = await mintedShare();
+      const prefix = `shares/${ctx.shareId}/`;
+      await ctx.store.put(`${prefix}payload`, new Uint8Array([2]), { exclusive: true });
+      const shareId = linked ? 'a'.repeat(32) : ctx.shareId;
+      if (linked) {
+        await ctx.store.put(`shares/${shareId}/auth`, new Uint8Array([1]), { exclusive: true });
+        await ctx.store.put(`shares/${shareId}/source`, new TextEncoder().encode(ctx.shareId), {
+          exclusive: true,
+        });
+      }
+      const get = ctx.store.get.bind(ctx.store);
+      let payloadReads = 0;
+      vi.spyOn(ctx.store, 'get').mockImplementation(async (key) => {
+        if (key === `${prefix}payload`) payloadReads++;
+        const value = await get(key);
+        if (key === `${prefix}source`) await ctx.store.del([`shares/${shareId}/auth`]);
+        return value;
+      });
+      expect((await ctx.handle(getShareRequest(shareId, 'payload'))).status).toBe(404);
+      expect(payloadReads).toBe(0);
+    },
+  );
+
   it.each([
     '6fb10671c70197caeff8616f80697ac5',
     'daf16de2b88b97fa236948559ede6c4c',

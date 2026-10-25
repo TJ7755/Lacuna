@@ -30,6 +30,23 @@ for (const width of [1280, 390]) {
     });
     const preview = page.getByRole('heading', { name: 'Ready to import' });
     await expect(preview).toBeVisible();
+    // Uploading bypasses the native chooser delay. Wait for expansion before scrolling:
+    // an overflow-hidden ancestor can otherwise scroll and then reset at its final height.
+    await expect
+      .poll(() =>
+        preview.evaluate((element) => {
+          for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            const overflow = getComputedStyle(ancestor).overflowY;
+            if (
+              (overflow === 'hidden' || overflow === 'clip') &&
+              ancestor.scrollHeight > ancestor.clientHeight
+            )
+              return false;
+          }
+          return true;
+        }),
+      )
+      .toBe(true);
     await preview.scrollIntoViewIfNeeded();
     await page.getByText('Steady retention', { exact: true }).click();
     await expect(page.getByRole('radio', { name: /Steady retention/ })).toBeChecked();
