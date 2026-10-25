@@ -48,7 +48,8 @@ const SESSION_CARD_COUNT = 10_000;
 const RECORD_REVIEW_CARD_COUNTS = [500, 2_000, 10_000] as const;
 const INITIAL_ASSET_BUDGET = {
   javascriptBytes: 910_000,
-  javascriptGzipBytes: 280_000,
+  // Separate landing dependencies add a small amount of study-entry chunk framing.
+  javascriptGzipBytes: 281_000,
   scriptRequests: 16,
   // Include the landing styles required to paint prerendered HTML before hydration.
   cssBytes: 150_000,
