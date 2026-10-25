@@ -27,6 +27,7 @@ for (const width of [390, 1440]) {
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true });
     await course.focus();
     await course.press('Enter');
+    await expect(page).toHaveURL(/#\/course\/[^/]+$/);
     const courseUrl = page.url();
     await page.goto(`${courseUrl}/cards`);
     const newCard = page.getByRole('button', { name: 'New card', exact: true });

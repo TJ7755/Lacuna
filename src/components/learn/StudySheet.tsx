@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { prefetchRoute } from '../../routes/prefetch';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useCourse, useCourses } from '../../state/useCourseData';
 import { useCourseStudyFlow } from '../../state/useCourseStudyFlow';
 import { StudyExpansion, useStudyLaunch } from './StudyExpansion';
@@ -26,13 +26,26 @@ export function StudySheet({
   otherWays?: boolean;
   onClose: () => void;
 }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   // Chosen within the preview when it opened without a course.
   const [pickedCourseId, setPickedCourseId] = useState<string | null>(courseId);
   const [stepDirection, setStepDirection] = useState(0);
   const scopedCourseId = courseId ?? pickedCourseId;
 
   return (
-    <StudyExpansion anchor={anchor} onClose={onClose}>
+    <StudyExpansion
+      anchor={anchor}
+      onClose={onClose}
+      onCancelLaunch={() => {
+        // Returning to the source also aborts a destination loader still in flight.
+        void navigate(`${location.pathname}${location.search}${location.hash}`, {
+          replace: true,
+          state: location.state,
+        });
+        onClose();
+      }}
+    >
       <StepSwap
         stepKey={scopedCourseId ?? 'picker'}
         direction={courseId === null ? stepDirection : 0}
@@ -169,7 +182,9 @@ function CourseStudyOptions({
         {(snapshot?.catchUpEligibleCount ?? 0) > 0 && (
           <Button variant="secondary" onClick={() => start('?review=earlier')}>
             Review earlier material
-            <span className="ml-1 text-sm opacity-70 tabular-nums">{snapshot?.catchUpEligibleCount}</span>
+            <span className="ml-1 text-sm opacity-70 tabular-nums">
+              {snapshot?.catchUpEligibleCount}
+            </span>
           </Button>
         )}
         {canPractiseForExam && (

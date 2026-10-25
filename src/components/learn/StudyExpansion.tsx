@@ -21,10 +21,12 @@ export const useStudyLaunch = () => useContext(StudyLaunchContext);
 export function StudyExpansion({
   anchor,
   onClose,
+  onCancelLaunch,
   children,
 }: {
   anchor: HTMLElement;
   onClose: () => void;
+  onCancelLaunch?: () => void;
   children: ReactNode;
 }) {
   const [launching, setLaunching] = useState(false);
@@ -237,6 +239,15 @@ export function StudyExpansion({
                     paper: `hsl(${getComputedStyle(document.documentElement).getPropertyValue('--paper').trim()})`,
                   },
                   navigate,
+                  onCancelLaunch
+                    ? () => {
+                        launchingRef.current = false;
+                        setLaunching(false);
+                        returnFocus.current = true;
+                        onCancelLaunch();
+                        if (anchor.isConnected) anchor.focus();
+                      }
+                    : undefined,
                 );
                 setLaunching(true);
               }}

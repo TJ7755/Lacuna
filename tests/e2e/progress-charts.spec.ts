@@ -27,6 +27,7 @@ test('Lesson breakdown keeps card counts off the percentage axis', async ({ page
     .getByRole('region', { name: 'Today, most urgent first' })
     .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
     .click();
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   await page.goto(`${page.url()}/analytics`);
   const card = await chartCard(page, 'Lesson breakdown');
   await expect(card.locator('.recharts-bar').first()).toBeAttached();

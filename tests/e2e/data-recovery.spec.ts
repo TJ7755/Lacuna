@@ -7,6 +7,7 @@ const IMAGE_FIXTURE = resolve('public/icons/icon-192.png');
 async function openCourseCards(page: Page): Promise<{ courseId: string }> {
   await page.getByText('Welcome to Lacuna', { exact: true }).first().click();
 
+  await expect(page).toHaveURL(/#\/course\/[^/]+$/);
   const match = /#\/course\/([^/]+)\/?.*$/.exec(page.url());
   if (!match) throw new Error(`Expected a course route, got ${page.url()}`);
   await page.goto(`/#/course/${match[1]}/cards`);

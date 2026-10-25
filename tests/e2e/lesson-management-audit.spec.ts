@@ -12,6 +12,7 @@ for (const width of [390, 1440]) {
       .getByRole('region', { name: 'Today, most urgent first' })
       .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
       .click();
+    await expect(page).toHaveURL(/#\/course\/[^/]+$/);
     await page.goto(`${page.url()}/settings`);
     await expect(page.getByRole('heading', { name: 'Course settings', exact: true })).toBeVisible();
     await page

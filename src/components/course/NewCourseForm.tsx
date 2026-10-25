@@ -17,11 +17,12 @@ import { BookIcon, ChevronLeftIcon } from '../ui/icons';
 import { PageLoadingBoundary } from '../ui/PageLoadingBoundary';
 import { StepSwap } from '../ui/StepSwap';
 import { MeasuredHeight } from '../ui/MeasuredHeight';
+import type { CourseLibraryImport as CourseLibraryComponent } from '../import/CourseLibraryImport';
 import type { LibraryBrowseState } from '../import/CourseLibraryPicker';
 import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
 
 // Keep the importer lazy, warming it only when the learner points to or focuses its action.
-let loadedLibrary: typeof import('../import/CourseLibraryImport').CourseLibraryImport | undefined;
+let loadedLibrary: typeof CourseLibraryComponent | undefined;
 const loadCourseLibrary = () =>
   import('../import/CourseLibraryImport').then((module) => {
     loadedLibrary = module.CourseLibraryImport;

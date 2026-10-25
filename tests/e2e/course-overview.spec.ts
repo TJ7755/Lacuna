@@ -12,8 +12,8 @@ for (const single of [true, false]) {
         .getByRole('region', { name: 'Today, most urgent first' })
         .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
         .click();
-    const courseUrl = page.url();
     await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+    const courseUrl = page.url();
     await page.reload();
     await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
     await page.keyboard.press('s');
@@ -221,4 +221,52 @@ test.describe('ready-first course navigation', () => {
       ).toBeVisible();
     });
   }
+});
+
+test('Exit cancels a covered study launch without a late arrival', async ({ page }) => {
+  let release!: () => void;
+  let requested!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const requestStarted = new Promise<void>((resolve) => {
+    requested = resolve;
+  });
+  await page.route('**/assets/CourseStudyFlow-*.js', async (route) => {
+    requested();
+    await gate;
+    await route.continue();
+  });
+  await enterWithWelcomeCourse(page);
+  await page
+    .getByRole('navigation', { name: 'Courses', exact: true })
+    .getByRole('link', { name: 'Welcome to Lacuna', exact: true })
+    .click();
+  await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+  const sourceUrl = page.url();
+  await page.getByRole('button', { name: 'Study', exact: true }).click();
+  await page.getByRole('button', { name: 'Start session', exact: true }).click();
+  try {
+    await requestStarted;
+    await page.waitForFunction(() => {
+      const cover = document.querySelector('[data-landing-transition] > div:last-child');
+      return cover && Math.abs(cover.getBoundingClientRect().width - innerWidth) < 0.1;
+    });
+    await page.getByRole('button', { name: 'Exit', exact: true }).click();
+    await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+  } finally {
+    release();
+  }
+  await page.waitForResponse((response) =>
+    /\/assets\/CourseStudyFlow-[^/]+\.js$/.test(new URL(response.url()).pathname),
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  await expect(page).toHaveURL(sourceUrl);
+  await expect(page.getByRole('heading', { name: 'Welcome to Lacuna', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Study', exact: true })).toBeFocused();
 });
