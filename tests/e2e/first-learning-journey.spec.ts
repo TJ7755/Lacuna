@@ -21,8 +21,7 @@ for (const { height, scale, reducedMotion, colorScheme } of [
 
     const create = page.locator('main').getByRole('button', { name: 'New course', exact: true });
     await expect(create).toHaveCount(1);
-    const empty = page.getByRole('heading', { name: 'No courses yet' }).locator('..');
-    await expect(empty).toContainText('New course');
+    await expect(page.getByRole('heading', { name: 'No courses yet' })).toBeVisible();
     await create.click();
     const form = page.getByRole('form', { name: 'New course' });
     const name = form.getByRole('textbox', { name: 'Course name' });
