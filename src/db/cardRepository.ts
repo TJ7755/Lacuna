@@ -1,37 +1,15 @@
-// High-level data operations that combine the FSRS engine with persistence.
-// Components call these rather than touching Dexie tables directly.
-
 import {
   buildCardConcept,
   conceptMatchesCardScope,
   conceptNameForCard,
 } from '../questions/concepts';
 import { scheduleAssetGc } from './assets';
-import { canEditLessons } from '../course/lessonViewMode';
 import { ensureCourseBankBackingDeck, ensureLessonBackingDeck } from './backingDecks';
 import { friendlyDbError } from './dbErrors';
-import {
-  clearTombstones,
-  lessonCardExposureId,
-  recordTombstones,
-  stampUpdatedAt,
-} from './mutationStamp';
-import {
-  projectCardsForStorage,
-  reviewHistoryEntriesForCard,
-  type ReviewHistoryEntry,
-} from './reviewHistory';
-import { applyScheduleEdit, mergeScheduleEdits } from './scheduleEdits';
+import { lessonCardExposureId, recordTombstones, stampUpdatedAt } from './mutationStamp';
 import { db, makeId } from './schema';
-import type {
-  AnswerMode,
-  Card,
-  CardType,
-  ItemPayload,
-  LessonCardExposure,
-  LessonCardLink,
-  ScheduleEdit,
-} from './types';
+import type { AnswerMode, Card, CardType, ItemPayload } from './types';
+
 async function assertValidCardPayload(type: CardType, payload: unknown): Promise<void> {
   if (payload === undefined || payload === null) return;
   const { assertValidCardPayload: validate } = await import('../items/payloadValidation');
@@ -76,7 +54,9 @@ export async function checkDuplicatesBatch(
 ): Promise<Set<number>> {
   const existing = await db.cards.where('schedulingUnitId').equals(deckId).toArray();
   const existingSet = new Set(
-    existing.map((c) => JSON.stringify([c.type, normaliseCardText(c.front), normaliseCardText(c.back)])),
+    existing.map((c) =>
+      JSON.stringify([c.type, normaliseCardText(c.front), normaliseCardText(c.back)]),
+    ),
   );
   const seen = new Set<string>();
   const duplicates = new Set<number>();
@@ -98,7 +78,9 @@ export async function createCard(
   front: string,
   back: string,
   tags: string[] = [],
-  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload' | 'answerMode'> & { conceptId?: string },
+  opts?: Pick<Card, 'courseId' | 'primaryLessonId' | 'payload' | 'answerMode'> & {
+    conceptId?: string;
+  },
 ): Promise<Card> {
   try {
     // Avoid a non-database await inside a caller's transaction when there is
@@ -347,7 +329,11 @@ export async function createLessonCardWithReverse(
   answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureLessonDeck(courseId, lessonId);
-  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: lessonId, answerMode });
+  return createCardWithReverse(deckId, front, back, tags, {
+    courseId,
+    primaryLessonId: lessonId,
+    answerMode,
+  });
 }
 
 /** Lesson-scoped equivalent of {@link createBasicReversedPair}. */
@@ -381,7 +367,12 @@ export async function createCourseCard(
   answerMode?: AnswerMode,
 ): Promise<Card> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCard(deckId, type, front, back, tags, { courseId, primaryLessonId: null, payload, answerMode });
+  return createCard(deckId, type, front, back, tags, {
+    courseId,
+    primaryLessonId: null,
+    payload,
+    answerMode,
+  });
 }
 
 /** Course-bank equivalent of {@link createCardWithReverse}. */
@@ -393,7 +384,11 @@ export async function createCourseCardWithReverse(
   answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createCardWithReverse(deckId, front, back, tags, { courseId, primaryLessonId: null, answerMode });
+  return createCardWithReverse(deckId, front, back, tags, {
+    courseId,
+    primaryLessonId: null,
+    answerMode,
+  });
 }
 
 /** Course-bank equivalent of {@link createBasicReversedPair}. */
@@ -405,7 +400,11 @@ export async function createCourseBasicReversedPair(
   answerMode?: AnswerMode,
 ): Promise<{ card: Card; reverse: Card }> {
   const deckId = await ensureCourseBankDeck(courseId);
-  return createBasicReversedPair(deckId, front, back, tags, { courseId, primaryLessonId: null, answerMode });
+  return createBasicReversedPair(deckId, front, back, tags, {
+    courseId,
+    primaryLessonId: null,
+    answerMode,
+  });
 }
 
 /**
@@ -497,237 +496,18 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
   }
 }
 
-/**
- * Sequence-generated cards (those with a `sequenceItemId`) and occlusion-generated cards
- * (those with an `occlusionRegionId`) may only be added, edited, moved or removed via
- * their owning sequence/occlusion, which keeps them synced with `sequenceGeneration`'s and
- * `occlusionGeneration`'s diffing. Guard the generic bulk card mutations against being
- * pointed at either by mistake.
- */
-async function assertNoGeneratedCards(ids: string[]): Promise<void> {
-  const generatedCount = await db.cards
-    .where('id')
-    .anyOf(ids)
-    .filter(
-      (card) =>
-        (card.sequenceItemId !== null && card.sequenceItemId !== undefined) ||
-        (card.occlusionRegionId !== null && card.occlusionRegionId !== undefined),
-    )
-    .count();
-  if (generatedCount > 0) {
-    throw new Error(
-      'One or more cards were generated by a sequence or occlusion and can only be deleted or moved via that sequence or occlusion.',
-    );
-  }
-}
-
-export async function deleteCards(
-  ids: string[],
-  options?: { source: 'lineage-update' },
-): Promise<void> {
-  if (ids.length === 0) return;
-  await db.transaction(
-    'rw',
-    [db.courses, db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
-    async (tx) => {
-      await assertNoGeneratedCards(ids);
-      // Teacher removals use the same cleanup after the lineage merge has authorised them.
-      if (options?.source !== 'lineage-update') {
-        const cards = await db.cards.bulkGet(ids);
-        const courseIds = [...new Set(cards.flatMap((card) => card?.courseId ? [card.courseId] : []))];
-        const courses = await db.courses.bulkGet(courseIds);
-        if (courses.some((course) => course && !canEditLessons(course))) {
-          throw new Error('This published course is locked.');
-        }
-      }
-      const [lessonCards, exposures] = await Promise.all([
-        db.lessonCards.where('cardId').anyOf(ids).toArray(),
-        db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
-      ]);
-      await db.lessonCards.where('cardId').anyOf(ids).delete();
-      await db.lessonCardExposures.where('cardId').anyOf(ids).delete();
-      await db.reviewHistory.where('cardId').anyOf(ids).delete();
-      await db.cards.bulkDelete(ids);
-      await recordTombstones(tx, 'cards', ids);
-      await recordTombstones(
-        tx,
-        'lessonCards',
-        lessonCards.map((link) => link.id),
-      );
-      await recordTombstones(
-        tx,
-        'lessonCardExposures',
-        exposures.map((exposure) => lessonCardExposureId(exposure.lessonId, exposure.cardId)),
-      );
-    },
-  );
-  scheduleAssetGc();
-}
-
-export type CardSnapshot = Card[] & {
-  lessonCards: LessonCardLink[];
-  lessonCardExposures: LessonCardExposure[];
-  reviewHistory: ReviewHistoryEntry[];
-};
-
-export async function replaceReviewHistoryForCards(
-  cardIds: string[],
-  entries: ReviewHistoryEntry[],
-): Promise<void> {
-  if (cardIds.length > 0) {
-    await db.reviewHistory.where('cardId').anyOf(cardIds).delete();
-  }
-  if (entries.length > 0) await db.reviewHistory.bulkPut(entries);
-}
-
-/** Capture card rows and dependent lesson progress before an undoable mutation. */
-export async function snapshotCards(ids: string[]): Promise<CardSnapshot> {
-  const [cards, lessonCards, lessonCardExposures, reviewHistory] = await Promise.all([
-    db.cards.where('id').anyOf(ids).toArray(),
-    db.lessonCards.where('cardId').anyOf(ids).toArray(),
-    db.lessonCardExposures.where('cardId').anyOf(ids).toArray(),
-    db.reviewHistory.where('cardId').anyOf(ids).toArray(),
-  ]);
-  return Object.assign(cards, { lessonCards, lessonCardExposures, reviewHistory });
-}
-
-/** Re-insert previously captured cards (the inverse of deleteCards). */
-export async function restoreCards(cards: CardSnapshot): Promise<void> {
-  try {
-    const cardsToRestore = projectCardsForStorage(cards);
-    const reviewHistoryToRestore =
-      cards.reviewHistory ?? cards.flatMap((card) => reviewHistoryEntriesForCard(card));
-    await db.transaction(
-      'rw',
-      [db.cards, db.lessonCards, db.lessonCardExposures, db.reviewHistory, db.tombstones],
-      async (tx) => {
-        await replaceReviewHistoryForCards(
-          cardsToRestore.map((card) => card.id),
-          reviewHistoryToRestore,
-        );
-        await db.cards.bulkPut(cardsToRestore);
-        await db.lessonCards.bulkPut(cards.lessonCards);
-        await db.lessonCardExposures.bulkPut(cards.lessonCardExposures);
-        await clearTombstones(
-          tx,
-          'cards',
-          cardsToRestore.map((card) => card.id),
-        );
-        await clearTombstones(
-          tx,
-          'lessonCards',
-          cards.lessonCards.map((link) => link.id),
-        );
-        await clearTombstones(
-          tx,
-          'lessonCardExposures',
-          cards.lessonCardExposures.map((exposure) =>
-            lessonCardExposureId(exposure.lessonId, exposure.cardId),
-          ),
-        );
-      },
-    );
-  } catch (err) {
-    throw friendlyDbError(err);
-  }
-}
-
-/** Withhold a card from all study and from progress/objective until un-suspended. */
-export async function suspendCard(id: string): Promise<void> {
-  await db.cards.update(id, stampUpdatedAt({ suspended: true }));
-}
-
-/** Return a suspended card to normal scheduling. */
-export async function unsuspendCard(id: string): Promise<void> {
-  await db.cards.update(id, stampUpdatedAt({ suspended: false }));
-}
-
-/** Suspend or un-suspend many cards at once (used by the card list's bulk actions). */
-export async function setCardsSuspended(ids: string[], suspended: boolean): Promise<void> {
-  await db.transaction('rw', db.cards, async () => {
-    await db.cards.where('id').anyOf(ids).modify(stampUpdatedAt({ suspended }));
-  });
-}
-
-/** Add a tag to many cards at once, leaving cards that already have it untouched. */
-export async function addTagToCards(ids: string[], tag: string): Promise<void> {
-  const clean = tag.trim();
-  if (!clean) return;
-  const now = Date.now();
-  await db.transaction('rw', db.cards, async () => {
-    await db.cards
-      .where('id')
-      .anyOf(ids)
-      .modify((card) => {
-        const tags = card.tags ?? [];
-        if (!tags.includes(clean)) card.tags = [...tags, clean];
-        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
-      });
-  });
-}
-
-/** Remove a tag from many cards at once. */
-export async function removeTagFromCards(ids: string[], tag: string): Promise<void> {
-  const now = Date.now();
-  await db.transaction('rw', db.cards, async () => {
-    await db.cards
-      .where('id')
-      .anyOf(ids)
-      .modify((card) => {
-        if (card.tags?.length) card.tags = card.tags.filter((t) => t !== tag);
-        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
-      });
-  });
-}
-
-/** Skip a card until the given instant (defaults to the caller-supplied next midnight). */
-export async function buryCard(id: string, until: number): Promise<void> {
-  await db.cards.update(id, stampUpdatedAt({ buriedUntil: until }));
-}
-
-/** Skip many cards until the given instant. */
-export async function buryCards(ids: string[], until: number): Promise<void> {
-  await db.transaction('rw', db.cards, async () => {
-    await db.cards
-      .where('id')
-      .anyOf(ids)
-      .modify(stampUpdatedAt({ buriedUntil: until }));
-  });
-}
-
-export interface RescheduleOptions {
-  /** Reset selected cards to the New state, clearing all scheduling data. */
-  reset?: boolean;
-  /** Set a specific due date (epoch ms). Takes precedence over reset. */
-  due?: number;
-}
-
-/**
- * Bulk-reschedule cards: either reset them to New (clearing stability, difficulty,
- * due, etc.) or set a custom due date. History is preserved in both cases.
- */
-export async function rescheduleCards(ids: string[], options: RescheduleOptions): Promise<void> {
-  if (options.due === undefined && !options.reset) {
-    throw new Error('Reschedule requires either reset: true or a due date.');
-  }
-  const now = Date.now();
-  const edit: ScheduleEdit =
-    options.due !== undefined ? { at: now, kind: 'due', due: options.due } : { at: now, kind: 'reset' };
-  await db.transaction('rw', db.cards, async () => {
-    await db.cards
-      .where('id')
-      .anyOf(ids)
-      .modify((card) => {
-        Object.assign(card, applyScheduleEdit(card, edit), {
-          buriedUntil: null,
-          scheduleEdits: mergeScheduleEdits(card.scheduleEdits, [edit]),
-        });
-        card.updatedAt = stampUpdatedAt(card, now).updatedAt;
-      });
-  });
-}
-
-/** Set or clear a card's flag (a user marker for quick filtering and follow-up). */
-export async function setCardFlag(id: string, flagged: boolean): Promise<void> {
-  await db.cards.update(id, stampUpdatedAt({ flagged }));
-}
+export { deleteCards, snapshotCards, restoreCards } from './cardDeletion';
+export type { CardSnapshot } from './cardDeletion';
+export { replaceReviewHistoryForCards } from './cardReviewHistory';
+export {
+  suspendCard,
+  unsuspendCard,
+  setCardsSuspended,
+  addTagToCards,
+  removeTagFromCards,
+  buryCard,
+  buryCards,
+  rescheduleCards,
+  setCardFlag,
+} from './cardBulkActions';
+export type { RescheduleOptions } from './cardBulkActions';

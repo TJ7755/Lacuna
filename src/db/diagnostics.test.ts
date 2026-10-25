@@ -1,13 +1,25 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, afterEach, vi } from 'vitest';
 import { db } from './schema';
-import { createCard, createCourse, recordReview } from './repository';
+import {
+  createCard,
+  createCourse,
+  recordReview,
+  createCourseAssessment,
+  createLesson,
+  createLessonCard,
+  createNote,
+  createPracticeNode,
+  linkCardToLesson,
+} from './repository';
 import {
   buildDiagnostics,
   formatDiagnostics,
   gatherContentSample,
   gatherCounts,
 } from './diagnostics';
+import { diagnosticsSummary } from './read';
+import { clearAll } from './read.testFixtures';
 
 describe('buildDiagnostics', () => {
   it('assembles a well-formed bundle with no card content by default', () => {
@@ -159,5 +171,85 @@ describe('gatherCounts', () => {
 
     const sample = await gatherContentSample(5);
     expect(sample).toEqual([{ front: 'q', back: 'a' }]);
+  });
+});
+describe('diagnosticsSummary', () => {
+  beforeEach(clearAll);
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('returns whole-database counts when no courseId is given', async () => {
+    const course = await createCourse('Course A');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+
+    const summary = await diagnosticsSummary();
+    expect('courseId' in summary).toBe(false);
+    expect((summary as { courses: number }).courses).toBe(1);
+    expect((summary as { cards: number }).cards).toBe(1);
+  });
+
+  it('scopes counts to a single course when courseId is given', async () => {
+    const course = await createCourse('Course A');
+    const otherCourse = await createCourse('Course B');
+    const lesson = await createLesson(course.id, 'Lesson 1');
+    const otherLesson = await createLesson(otherCourse.id, 'Other lesson');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'q1', 'a1');
+    await createLessonCard(course.id, lesson.id, 'front_back', 'q2', 'a2');
+    await createLessonCard(otherCourse.id, otherLesson.id, 'front_back', 'q3', 'a3');
+    await createPracticeNode(course.id, { type: 'manual', name: 'Practice' });
+    await createCourseAssessment(course.id, 'Mid-term', Date.now() + 1000);
+
+    const summary = await diagnosticsSummary(course.id);
+    expect(summary).toMatchObject({
+      courseId: course.id,
+      lessons: 1,
+      cards: 2,
+      notes: 0,
+      lessonCards: 0,
+      practiceNodes: 1,
+      courseAssessments: 2,
+      sequences: 0,
+    });
+  });
+
+  it('scopes to an empty course cleanly', async () => {
+    const course = await createCourse('Empty course');
+    const summary = await diagnosticsSummary(course.id);
+    expect(summary).toMatchObject({
+      courseId: course.id,
+      lessons: 0,
+      cards: 0,
+      notes: 0,
+      lessonCards: 0,
+      practiceNodes: 0,
+      courseAssessments: 1,
+      sequences: 0,
+    });
+  });
+
+  it('counts notes across lessons with one indexed query and no history hydration', async () => {
+    const course = await createCourse('Biology');
+    const courseLessons = [];
+    for (const name of ['Cells', 'Genetics', 'Ecology']) {
+      const lesson = await createLesson(course.id, name);
+      const card = await createLessonCard(course.id, lesson.id, 'front_back', 'q', 'a');
+      await createNote(lesson.id, name);
+      courseLessons.push({ lesson, card });
+    }
+    await linkCardToLesson(courseLessons[0].lesson.id, courseLessons[1].card.id);
+    const links = vi.spyOn(db.lessonCards, 'where');
+    const notes = vi.spyOn(db.notes, 'where');
+    const history = vi.spyOn(db.reviewHistory, 'where');
+    expect(await diagnosticsSummary(course.id)).toMatchObject({
+      lessons: 3,
+      cards: 3,
+      notes: 3,
+      lessonCards: 1,
+    });
+    // One count and one scoped coverage read, independent of the number of lessons.
+    expect(links).toHaveBeenCalledTimes(2);
+    expect(notes).toHaveBeenCalledExactlyOnceWith('lessonId');
+    expect(history).not.toHaveBeenCalled();
   });
 });
