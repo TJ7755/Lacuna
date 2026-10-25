@@ -200,6 +200,8 @@ export function LessonView({
           })
       : undefined;
   const authoring = !archived && isLessonAuthoringMode(course);
+  const emptyAuthoring =
+    authoring && viewMode === 'edit' && lessonCards.length === 0 && notes.length === 0;
   const metaParts = lessonMetaParts({
     learnt: learntCardCount(lessonCards),
     total: lessonCards.length,
@@ -208,6 +210,8 @@ export function LessonView({
     daysToExam:
       nearestExam === undefined ? undefined : Math.max(calendarDaysUntil(nearestExam, now), 0),
   });
+  // The first two parts are the empty card/note counters; keep any exam countdown.
+  const visibleMetaParts = emptyAuthoring ? metaParts.slice(2) : metaParts;
   const lessonPosition = lessons.findIndex((candidate) => candidate.id === lesson.id);
   const lessonStudyPath = `/lesson/${encodeURIComponent(lesson.id)}/learn`;
 
@@ -242,9 +246,11 @@ export function LessonView({
             title={lesson.name}
             description={lesson.description || undefined}
             meta={
-              <span className={examUrgent ? 'text-warning-fg' : undefined}>
-                {metaParts.join(' · ')}
-              </span>
+              visibleMetaParts.length > 0 && (
+                <span className={examUrgent ? 'text-warning-fg' : undefined}>
+                  {visibleMetaParts.join(' · ')}
+                </span>
+              )
             }
             onRename={
               authoring
@@ -290,8 +296,10 @@ export function LessonView({
             {archived ? (
               <ArchivedCourseRestoreNotice />
             ) : showStudyNow ? (
-              studyActions(nothingToStudy)
-            ) : isInline ? null : (
+              nothingToStudy && emptyAuthoring ? null : (
+                studyActions(nothingToStudy)
+              )
+            ) : isInline || emptyAuthoring ? null : (
               <Button
                 variant="primary"
                 size="lg"
@@ -307,11 +315,16 @@ export function LessonView({
           </LessonHeader>
           {/* The due count already leads the meta line, so this only speaks when
               there is something it does not say. */}
-          {!archived && showStudyNow && (lessonCards.length === 0 || lessonDueCount === 0) && (
-            <p className="mt-3 text-sm text-ink-faint">
-              {lessonCards.length === 0 ? 'Add cards to begin studying.' : 'Nothing due right now.'}
-            </p>
-          )}
+          {!archived &&
+            !emptyAuthoring &&
+            showStudyNow &&
+            (lessonCards.length === 0 || lessonDueCount === 0) && (
+              <p className="mt-3 text-sm text-ink-faint">
+                {lessonCards.length === 0
+                  ? 'Add cards to begin studying.'
+                  : 'Nothing due right now.'}
+              </p>
+            )}
           {addToPath && courseId && (
             <>
               <AnimatedDisclosure open={addingLesson}>
@@ -340,17 +353,18 @@ export function LessonView({
           )}
         </div>
 
-        {/* Notes and cards. Edit mode fades the edit controls in place and reveals card
-            management beneath. View mode leaves out a lesson's empty notes, so its cards
-            take the width; Edit keeps the panel, where the first note is added. */}
+        {/* Empty notes keep a compact authoring entry below the cards. Existing notes
+            retain the reading layout beside the card list. */}
         <div data-lesson-workspace-mode={viewMode} className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-start gap-6">
+          <div
+            className={`flex items-start gap-6 ${notes.length === 0 ? 'flex-col' : 'flex-wrap'}`}
+          >
             {lessonId && (viewMode === 'edit' || notes.length > 0) && (
               <LessonNotesCard
                 lessonId={lessonId}
                 notes={notes}
                 editable={viewMode === 'edit'}
-                className="flex-[3_1_560px]"
+                className={notes.length === 0 ? 'order-2 w-full' : 'flex-[3_1_560px]'}
               />
             )}
             {courseId && lessonId && (
@@ -362,12 +376,13 @@ export function LessonView({
                 onNavigate={navigate}
                 onSwitchToEdit={switchToEdit}
                 focusNewCard={focusNewCard && lessonCards.length === 0}
-                className="flex-[2_1_340px]"
+                prominentNewCard={emptyAuthoring}
+                className={notes.length === 0 ? 'w-full' : 'flex-[2_1_340px]'}
                 find={
                   <DeckFind key={lesson.id} cards={lessonCards} course={course} lesson={lesson} />
                 }
                 footer={
-                  !archived && !isInline ? (
+                  !archived && !isInline && lessonCards.length > 0 ? (
                     <SimpleLearnOptions
                       key={lesson.id}
                       courseId={course.id}

@@ -45,9 +45,10 @@ vi.mock('dexie-react-hooks', () => ({
 }));
 
 vi.mock('../state/useLessonOrderData', () => ({
-  useLessonOrderData: () => mockCourse && mockLessons
-    ? { course: mockCourse, lessons: mockLessons, unavailableReason: undefined }
-    : undefined,
+  useLessonOrderData: () =>
+    mockCourse && mockLessons
+      ? { course: mockCourse, lessons: mockLessons, unavailableReason: undefined }
+      : undefined,
 }));
 
 vi.mock('../state/useCourseData', () => ({

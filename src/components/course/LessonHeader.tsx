@@ -82,7 +82,7 @@ export function LessonHeader({
   }
 
   return (
-    <header className={cn('flex flex-wrap items-end gap-x-6 gap-y-4', className)}>
+    <header className={cn('flex flex-wrap items-start gap-x-6 gap-y-4', className)}>
       <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2">
         <div className="flex min-w-0 items-center gap-1" {...contextMenu}>
           {editing ? (
