@@ -67,6 +67,7 @@ import { forgetRememberedClass, readRememberedClass, rememberClass } from './rem
 import { readClassReports } from './readReports';
 import type { ClassRequest, ClassSession } from './StandaloneTeacherHome';
 import type * as KeysExports from './TeacherKeySetup';
+import { createDemoReports } from './demoClass';
 
 type Tab = 'results' | 'pupils' | 'invite';
 type Open = { kind: 'pupil'; id: string; focus?: string } | { kind: 'item'; itemId: string };
@@ -75,6 +76,61 @@ type Open = { kind: 'pupil'; id: string; focus?: string } | { kind: 'item'; item
 const RETENTION_DAYS = 84;
 /** Columns shown before the grid asks to show every item. */
 const GRID_ITEMS = 12;
+
+export function DemoClassPage({ onExit }: { onExit(): void }) {
+  const [reports] = useState(createDemoReports);
+  const [tab, setTab] = useState<'results' | 'pupils'>('results');
+  const [reset, setReset] = useState(0);
+
+  return (
+    <div className={`${PAGE_FRAME} pb-24`}>
+      <header className={cn(PAGE_HEADER, 'md:pt-12')}>
+        <h1 tabIndex={-1} data-page-title className={cn(PAGE_TITLE, 'min-w-0 break-words')}>
+          Biology — fictional demo
+        </h1>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={buttonClassName('secondary')}
+            onClick={() => {
+              setTab('results');
+              setReset((value) => value + 1);
+            }}
+          >
+            Reset demo
+          </button>
+          <button type="button" onClick={onExit} className={buttonClassName('ghost')}>
+            Exit demo
+          </button>
+        </div>
+      </header>
+      <SectionCard className="mb-6 p-5 text-sm text-ink-soft">
+        <p className="font-semibold text-ink">
+          Fictional demo: six invented pupils and answers. Nothing is saved or sent.
+        </p>
+        <p className="mt-2">
+          Choose “Explain osmosis.” to inspect the shared answer, or choose a pupil. Some evidence
+          is self marked or unknown; it is not a verified assessment.
+        </p>
+      </SectionCard>
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <SlidingTabs<'results' | 'pupils'>
+          label="Class view"
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'results', label: 'Results' },
+            { value: 'pupils', label: 'Pupils' },
+          ]}
+        />
+        <p className="text-sm text-ink-faint">6 fictional reports · 3 questions</p>
+      </div>
+      <div key={reset}>
+        {tab === 'results' ? <Results reports={reports} /> : <Pupils reports={reports} />}
+      </div>
+    </div>
+  );
+}
 
 export function ClassPage({
   course,

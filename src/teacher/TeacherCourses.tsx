@@ -41,6 +41,7 @@ export function TodayPage({
   connectRequest,
   onOpen,
   onConnected,
+  onExploreDemo,
 }: {
   courses: ConnectedGapsCourse[];
   sessions: ReadonlyMap<string, ClassSession>;
@@ -49,6 +50,7 @@ export function TodayPage({
   connectRequest: number;
   onOpen(course: ConnectedGapsCourse): void;
   onConnected(course: ConnectedGapsCourse, session?: ClassSession): void;
+  onExploreDemo(): void;
 }) {
   const [initialCourseLink] = useState(() => {
     const hash = window.location.hash;
@@ -118,6 +120,22 @@ export function TodayPage({
         )}
       </div>
 
+      <SectionCard className="gaps-rise mb-6 flex flex-wrap items-center justify-between gap-5 p-6">
+        <div>
+          <h2 className="font-display text-xl font-semibold tracking-tight">See Gaps in action</h2>
+          <p className="mt-1 text-sm text-ink-soft">
+            Explore Biology results from six fictional pupils. Nothing is saved or sent.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onExploreDemo}
+          className={`${buttonClassName('primary')} gaps-press`}
+        >
+          Explore a demo class <ArrowRightIcon width={18} height={18} />
+        </button>
+      </SectionCard>
+
       {courses.length === 0 ? (
         <SectionCard className="gaps-rise flex flex-col items-center px-6 py-16 text-center md:py-20">
           {!classCreated && (
@@ -134,6 +152,7 @@ export function TodayPage({
           <div ref={first} className="mt-10 w-full max-w-sm text-left">
             <ConnectClassForm
               initialCourseLink={initialCourseLink}
+              autoFocus={Boolean(initialCourseLink) || connectRequest > 0}
               onConnected={onConnected}
               onCreated={() => setClassCreated(true)}
             />
@@ -239,10 +258,12 @@ function Stat({ value, label }: { value: number | string; label: string }) {
 
 export function ConnectClassForm({
   initialCourseLink = '',
+  autoFocus = true,
   onConnected,
   onCreated,
 }: {
   initialCourseLink?: string;
+  autoFocus?: boolean;
   onCreated?(): void;
   onConnected(course: ConnectedGapsCourse, session?: ClassSession): void;
 }) {
@@ -258,8 +279,8 @@ export function ConnectClassForm({
     };
   }, []);
   useEffect(() => {
-    if (useFile || !initialCourseLink) focusFirstField(root.current);
-  }, [useFile, initialCourseLink]);
+    if (useFile || (autoFocus && !initialCourseLink)) focusFirstField(root.current);
+  }, [useFile, initialCourseLink, autoFocus]);
 
   async function created(shareId: string, session: ClassSession) {
     const store = createGapsConnectionStore();
@@ -307,6 +328,7 @@ export function ConnectClassForm({
       ) : (
         <CreateGapsClass
           initialCourseLink={initialCourseLink}
+          autoFocus={autoFocus}
           onCreated={() => {
             setClassCreated(true);
             onCreated?.();

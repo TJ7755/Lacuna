@@ -437,9 +437,17 @@ describe('release configuration', () => {
     expect(python).toContain('working-directory: tooling/${{ matrix.workspace }}');
 
     const gate = workflowJob(ciWorkflow, 'test');
-    expect(gate).toContain(
-      'needs: [changes, documentation, test-unit, test-coverage, handwriting, python-tools, electron-macos-smoke]',
-    );
+    const dependencies = (parse(ciWorkflow) as { jobs: { test: { needs: string[] } } }).jobs.test
+      .needs;
+    expect(dependencies).toEqual([
+      'changes',
+      'documentation',
+      'test-unit',
+      'test-coverage',
+      'handwriting',
+      'python-tools',
+      'electron-macos-smoke',
+    ]);
     expect(gate).toContain('PYTHON: ${{ needs.changes.outputs.python }}');
     expect(gate).toContain(
       'ok() { [ "$1" = success ] || { [ "$2" = false ] && [ "$1" = skipped ]; }; }',
