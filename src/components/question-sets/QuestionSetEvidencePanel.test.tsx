@@ -142,7 +142,7 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.queryByText('Mixed')).not.toBeInTheDocument();
   });
 
-  it('filters first-recorded and repeated partitions accessibly', () => {
+  it('filters first-recorded and repeated partitions accessibly', async () => {
     const first = attempt('attempt-1', 10, [
       { allocationId: 'knowledge', status: 'awarded', marks: 0 },
       { allocationId: 'application', status: 'unsure' },
@@ -164,15 +164,23 @@ describe('QuestionSetEvidencePanel', () => {
     expect(screen.getByRole('button', { name: 'Repeated' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'First recorded' }));
-    expect(screen.getByText('1 / 2')).toBeInTheDocument();
-    expect(screen.getByText('0 / 1')).toBeInTheDocument();
-    const recordedMarks = screen.getByRole('heading', { name: 'Recorded marks' }).parentElement;
-    expect(recordedMarks).not.toBeNull();
-    expect(within(recordedMarks!).getByText(/2 marks unresolved/i)).toBeInTheDocument();
+    const recordedMarks = screen.getByRole('region', { name: 'Recorded marks' });
+    expect(within(recordedMarks).getByText('1 / 2')).toBeInTheDocument();
+    expect(screen.getAllByRole('definition').map((element) => element.textContent)).toEqual([
+      '0 / 1',
+      'Not marked yet2 marks unresolved',
+      '1 / 1',
+    ]);
+    expect(recordedMarks).toHaveTextContent('2 marks unresolved');
 
     fireEvent.click(screen.getByRole('button', { name: 'Repeated' }));
     expect(screen.getByText('3 / 4')).toBeInTheDocument();
-    expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole('definition').map((element) => element.textContent)).toEqual([
+      '1 / 1',
+      '2 / 2',
+      '0 / 1',
+    ]);
+    await waitFor(() => expect(screen.queryByText(/marks unresolved/i)).not.toBeInTheDocument());
     fireEvent.click(disclosure);
     expect(screen.queryByRole('group', { name: 'Evidence attempts' })).not.toBeInTheDocument();
     expect(screen.getByText('Repeated attempts')).toBeVisible();

@@ -8,6 +8,7 @@ import { questionSetReturn } from '../questions/questionSetNavigation';
 import { Button, buttonClassName } from '../components/ui/Button';
 import { ArrowRightIcon } from '../components/ui/icons';
 import { SectionCard } from '../components/ui/SectionCard';
+import { StepSwap } from '../components/ui/StepSwap';
 import {
   QuestionSetLoading,
   QuestionSetUnavailable,
@@ -125,9 +126,11 @@ export function QuestionSetOverview() {
                 value={mode}
                 onChange={setMode}
               />
-              <p className="text-sm text-ink-soft">
-                {MODE_OPTIONS.find((option) => option.value === mode)!.description}
-              </p>
+              <StepSwap stepKey={mode}>
+                <p className="text-sm text-ink-soft">
+                  {MODE_OPTIONS.find((option) => option.value === mode)!.description}
+                </p>
+              </StepSwap>
             </>
           )}
         </div>

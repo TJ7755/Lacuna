@@ -27,37 +27,37 @@ async function openSet(page: Page) {
     lessonIds: [],
     assessmentIds: [],
     questions: [
+      {
+        id: 'q1',
+        prompt: 'Describe the nucleus.',
+        parts: [
+          { id: 'part-a', prompt: 'State its role.', subparts: [], answer: answer('a1') },
           {
-            id: 'q1',
-            prompt: 'Describe the nucleus.',
-            parts: [
-              { id: 'part-a', prompt: 'State its role.', subparts: [], answer: answer('a1') },
-              {
-                id: 'part-b',
-                prompt: 'Explain its importance.',
-                subparts: [],
-                answer: answer('a2'),
-              },
-            ],
-          },
-          {
-            id: 'q2',
-            prompt: 'Choose the membrane property.',
-            parts: [],
-            answer: {
-              ...answer('a3'),
-              response: {
-                kind: 'multiple-choice',
-                selection: 'single',
-                options: [
-                  { id: 'permeable', content: 'Selectively permeable' },
-                  { id: 'impermeable', content: 'Impermeable' },
-                ],
-                correctOptionIds: ['permeable'],
-              },
-            },
+            id: 'part-b',
+            prompt: 'Explain its importance.',
+            subparts: [],
+            answer: answer('a2'),
           },
         ],
+      },
+      {
+        id: 'q2',
+        prompt: 'Choose the membrane property.',
+        parts: [],
+        answer: {
+          ...answer('a3'),
+          response: {
+            kind: 'multiple-choice',
+            selection: 'single',
+            options: [
+              { id: 'permeable', content: 'Selectively permeable' },
+              { id: 'impermeable', content: 'Impermeable' },
+            ],
+            correctOptionIds: ['permeable'],
+          },
+        },
+      },
+    ],
   };
   // Seed authored content through the real browser store; all attempt writes use the UI.
   await page.evaluate(
@@ -93,6 +93,85 @@ async function openSet(page: Page) {
 
 test.use({ video: 'on' });
 
+test.describe('Overview mode replacement', () => {
+  test.use({ viewport: { width: 1470, height: 956 }, deviceScaleFactor: 2 });
+
+  test('keeps the feedback description continuous during rapid mode reversals', async ({
+    page,
+  }, testInfo) => {
+    await openSet(page);
+    const paper = page.getByRole('button', { name: 'Paper', exact: true });
+    await paper.focus();
+    const frames = await page.evaluate(async () => {
+      const group = document.querySelector('[aria-label="Attempt mode"]')!;
+      const paper = Array.from(group.querySelectorAll('button')).find(
+        (el) => el.textContent === 'Paper',
+      )!;
+      const practice = Array.from(group.querySelectorAll('button')).find(
+        (el) => el.textContent === 'Practice',
+      )!;
+      const frames: { time: number; paper: number; practice: number }[] = [];
+      const opacity = (text: string) => {
+        const paragraph = Array.from(document.querySelectorAll('p')).find(
+          (el) => el.textContent === text,
+        );
+        if (!paragraph) return 0;
+        let opacity = 1;
+        for (let el: HTMLElement | null = paragraph; el; el = el.parentElement) {
+          opacity *= Number(getComputedStyle(el).opacity);
+        }
+        return opacity;
+      };
+      const start = performance.now();
+      let reversed = false;
+      let reopened = false;
+      paper.click();
+      await new Promise<void>((resolve) => {
+        const sample = () => {
+          const time = performance.now() - start;
+          frames.push({
+            time,
+            paper: opacity('Feedback at the end'),
+            practice: opacity('Feedback after each question'),
+          });
+          if (time >= 70 && !reversed) {
+            reversed = true;
+            practice.focus();
+            practice.click();
+          }
+          if (time >= 140 && !reopened) {
+            reopened = true;
+            paper.focus();
+            paper.click();
+          }
+          if (time < 650) requestAnimationFrame(sample);
+          else resolve();
+        };
+        requestAnimationFrame(sample);
+      });
+      return frames;
+    });
+    await testInfo.attach('overview-mode-frames', {
+      body: JSON.stringify(frames, null, 2),
+      contentType: 'application/json',
+    });
+    expect(frames.some((frame) => frame.paper > 0 && frame.paper < 0.95)).toBe(true);
+    expect(
+      frames.some(
+        (frame) =>
+          frame.time > 70 && frame.time < 140 && frame.practice > 0 && frame.practice < 0.95,
+      ),
+    ).toBe(true);
+    expect(frames.at(-1)!.paper).toBe(1);
+    expect(frames.at(-1)!.practice).toBe(0);
+    await expect(paper).toBeFocused();
+    await expect(paper).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByText('Feedback at the end', { exact: true })).toHaveCount(1);
+    await expect(page.getByText('Feedback after each question', { exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeEnabled();
+  });
+});
+
 for (const width of [1280, 390]) {
   test(`navigation transitions in both directions at ${width}px`, async ({ page }, testInfo) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -100,29 +179,52 @@ for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.getByRole('button', { name: 'Start', exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Your answer', exact: true })).toBeFocused();
-    await page.getByRole('textbox', { name: 'Your answer', exact: true }).fill('Controls cell activities.');
-    for (const [label, heading, direction] of [['Next', 'Q1 (b)', 1], ['Previous', 'Q1 (a)', -1]] as const) {
+    await page
+      .getByRole('textbox', { name: 'Your answer', exact: true })
+      .fill('Controls cell activities.');
+    for (const [label, heading, direction] of [
+      ['Next', 'Q1 (b)', 1],
+      ['Previous', 'Q1 (a)', -1],
+    ] as const) {
       await expect(page.getByRole('button', { name: label, exact: true })).toBeEnabled();
-      const frames = await page.evaluate(async ({ label, heading }) => {
-        const samples: { opacity: number; x: number; time: number }[] = [];
-        const start = performance.now();
-        const done = new Promise<typeof samples>((resolve) => {
-          const sample = () => {
-            const surface = Array.from(document.querySelectorAll('.qs-paper > .relative > div'))
-              .find((element) => !element.hasAttribute('inert') && element.textContent?.includes(heading));
-            if (surface) {
-              const style = getComputedStyle(surface);
-              samples.push({ opacity: Number(style.opacity), x: new DOMMatrixReadOnly(style.transform).m41, time: performance.now() - start });
-            }
-            if (performance.now() - start < 650) requestAnimationFrame(sample);
-            else resolve(samples);
-          };
-          requestAnimationFrame(sample);
-        });
-        (document.querySelector(`.qs-preview-nav button[aria-label="${label}"]`) as HTMLButtonElement).click();
-        return done;
-      }, { label, heading });
-      await testInfo.attach(`${label}-frames`, { body: JSON.stringify(frames, null, 2), contentType: 'application/json' });
+      const frames = await page.evaluate(
+        async ({ label, heading }) => {
+          const samples: { opacity: number; x: number; time: number }[] = [];
+          const start = performance.now();
+          const done = new Promise<typeof samples>((resolve) => {
+            const sample = () => {
+              const surface = Array.from(
+                document.querySelectorAll('.qs-paper > .relative > div'),
+              ).find(
+                (element) =>
+                  !element.hasAttribute('inert') && element.textContent?.includes(heading),
+              );
+              if (surface) {
+                const style = getComputedStyle(surface);
+                samples.push({
+                  opacity: Number(style.opacity),
+                  x: new DOMMatrixReadOnly(style.transform).m41,
+                  time: performance.now() - start,
+                });
+              }
+              if (performance.now() - start < 650) requestAnimationFrame(sample);
+              else resolve(samples);
+            };
+            requestAnimationFrame(sample);
+          });
+          (
+            document.querySelector(
+              `.qs-preview-nav button[aria-label="${label}"]`,
+            ) as HTMLButtonElement
+          ).click();
+          return done;
+        },
+        { label, heading },
+      );
+      await testInfo.attach(`${label}-frames`, {
+        body: JSON.stringify(frames, null, 2),
+        contentType: 'application/json',
+      });
       await page.screenshot({ path: testInfo.outputPath(`${label}-${width}.png`) });
       expect(frames.some((frame) => frame.opacity > 0 && frame.opacity < 0.95)).toBe(true);
       expect(frames.some((frame) => frame.x * direction > 1)).toBe(true);
