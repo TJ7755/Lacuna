@@ -1,5 +1,5 @@
 import { buttonClassName } from './components/ui/buttonStyles';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { m as motion } from 'motion/react';
 import { RouterProvider } from 'react-router-dom';
 import { ThemeProvider } from './state/ThemeContext';
@@ -19,10 +19,7 @@ import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { consumeLandingHandover } from './landingHandover';
 import { markOnboardingPending, onboardingPending } from './onboarding/onboardingState';
-import { useAiSettings } from './ai/settings';
 import { replacementLifecycle } from './db/replacementLifecycle';
-import { AiSessionProvider } from './ai/session/AiSessionContext';
-import type { EnabledAiSession } from './ai/session/EnabledAiRuntime';
 
 export { router } from './routes/router';
 
@@ -38,82 +35,6 @@ const relayAiDeviceStateParticipant = {
 function RouterWithQuotaWarning() {
   useStorageQuotaWarning();
   return <RouterProvider router={router} />;
-}
-
-const EnabledAiRuntime = lazy(() =>
-  import('./ai/session/EnabledAiRuntime').then((module) => ({
-    default: module.EnabledAiRuntime,
-  })),
-);
-
-function RouterWithOptionalAi() {
-  const [settings] = useAiSettings();
-  const [session, setSession] = useState<EnabledAiSession | null>(null);
-  const [runtimeGeneration, setRuntimeGeneration] = useState(0);
-  const previousProvider = useRef(settings.provider);
-  const matchingSession =
-    session && (session.provider ?? 'external') === settings.provider ? session : null;
-  const sessionRef = useRef<EnabledAiSession | null>(null);
-  const handleSessionReady = useCallback((next: EnabledAiSession) => {
-    const previous = sessionRef.current;
-    if (previous && previous !== next) previous.dispose();
-    sessionRef.current = next;
-    setSession(next);
-  }, []);
-
-  useEffect(() => {
-    if (settings.enabled) return;
-    const current = sessionRef.current;
-    if (!current) return;
-    sessionRef.current = null;
-    setSession((existing) => (existing === current ? null : existing));
-    current.dispose();
-  }, [settings.enabled]);
-
-  useEffect(() => {
-    if (previousProvider.current === settings.provider) return;
-    previousProvider.current = settings.provider;
-    const current = sessionRef.current;
-    if (!current || (current.provider ?? 'external') === settings.provider) return;
-    current.dispose();
-    sessionRef.current = null;
-    setSession(null);
-    setRuntimeGeneration((generation) => generation + 1);
-  }, [settings.provider]);
-
-  useEffect(() => {
-    if (!settings.enabled) return;
-    const ai = window.electronAPI?.ai;
-    if (!ai) return;
-    return ai.onRestartRequested(() => {
-      const current = sessionRef.current;
-      current?.dispose();
-      setRuntimeGeneration((generation) => generation + 1);
-    });
-  }, [settings.enabled]);
-
-  useEffect(
-    () => () => {
-      sessionRef.current?.dispose();
-      sessionRef.current = null;
-    },
-    [],
-  );
-
-  return (
-    <AiSessionProvider session={settings.enabled ? matchingSession : null}>
-      <Suspense fallback={null}>
-        {settings.enabled && (
-          <EnabledAiRuntime
-            key={`${settings.provider}:${runtimeGeneration}`}
-            retainedSession={matchingSession}
-            onSessionReady={handleSessionReady}
-          />
-        )}
-      </Suspense>
-      <RouterWithQuotaWarning />
-    </AiSessionProvider>
-  );
 }
 
 const McpBridgeController = lazy(loadMcpBridgeController);
@@ -331,7 +252,7 @@ export function App() {
                   <McpBridgeController />
                 </Suspense>
               )}
-              <RouterWithOptionalAi />
+              <RouterWithQuotaWarning />
               <LandingTransition />
             </ToastProvider>
           </FontScaleProvider>

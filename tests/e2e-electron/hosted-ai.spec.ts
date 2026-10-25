@@ -10,7 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const require = createRequire(import.meta.url);
 const service = 'https://getlacuna.app';
 
-test('Electron connects to the hosted service and shows its streamed reply', async () => {
+test('Electron keeps Jev access without the AI chat interface', async () => {
   test.skip(process.platform !== 'darwin' && process.platform !== 'win32');
   const profile = await realpath(await mkdtemp(path.join(tmpdir(), 'lacuna-hosted-ai-')));
   let app: ElectronApplication | undefined;
@@ -18,12 +18,15 @@ test('Electron connects to the hosted service and shows its streamed reply', asy
   try {
     const packaged = Boolean(process.env.LACUNA_ELECTRON_APP_DIR);
     const devExecutable: unknown = require('electron');
-    if (!packaged && typeof devExecutable !== 'string') throw new Error('Electron executable unavailable.');
+    if (!packaged && typeof devExecutable !== 'string')
+      throw new Error('Electron executable unavailable.');
     const executablePath = packaged
       ? await resolvePackagedExecutable({ appDir: process.env.LACUNA_ELECTRON_APP_DIR })
-      : devExecutable as string;
-    app = await electron.launch({ executablePath,
-      args: packaged ? [`--user-data-dir=${profile}`] : [root, `--user-data-dir=${profile}`] });
+      : (devExecutable as string);
+    app = await electron.launch({
+      executablePath,
+      args: packaged ? [`--user-data-dir=${profile}`] : [root, `--user-data-dir=${profile}`],
+    });
     const page = await app.firstWindow();
     const rendererOrigin = packaged ? 'app://.' : new URL(page.url()).origin;
     const cors = {
@@ -40,30 +43,39 @@ test('Electron connects to the hosted service and shows its streamed reply', asy
         return;
       }
       if (route.request().url().endsWith('/session')) {
-        await route.fulfill({ status: 200, headers: cors, contentType: 'application/json',
-          body: JSON.stringify({ token: 'electron-session', expiresAt: Date.now() + 3_600_000 }) });
+        await route.fulfill({
+          status: 200,
+          headers: cors,
+          contentType: 'application/json',
+          body: JSON.stringify({ token: 'electron-session', expiresAt: Date.now() + 3_600_000 }),
+        });
         return;
       }
-      await route.fulfill({ status: 200,
+      await route.fulfill({
+        status: 200,
         headers: { ...cors, 'Content-Type': 'application/x-ndjson; charset=utf-8' },
-        body: '{"type":"text_delta","text":"Electron hosted reply."}\n' +
-          '{"type":"completed","finishReason":"stop"}\n' });
+        body:
+          '{"type":"text_delta","text":"Electron hosted reply."}\n' +
+          '{"type":"completed","finishReason":"stop"}\n',
+      });
     });
     await page.waitForLoadState('domcontentloaded');
     await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
     await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
     await page.getByRole('button', { name: /^Integrations/ }).click();
-    await page.getByRole('radio', { name: 'Built-in AI' }).click();
-    await page.getByRole('switch', { name: 'Enable AI' }).click();
-    await page.getByRole('button', { name: 'AI', exact: true }).first().click();
-    await page.getByLabel('Access code').fill('fixture-access-code-with-at-least-thirty-two-characters');
+    await expect(page.getByRole('switch', { name: 'Enable AI', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'AI', exact: true })).toHaveCount(0);
+    await page.getByRole('switch', { name: 'Mark my answers automatically' }).click();
+    await page.getByRole('checkbox', { name: /I understand/ }).check();
+    await page.getByRole('button', { name: 'Turn on', exact: true }).click();
+    await page
+      .getByLabel('Access code')
+      .fill('fixture-access-code-with-at-least-thirty-two-characters');
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
-    await expect(page.getByText('Built-in AI connected')).toBeVisible();
-    await page.getByRole('textbox', { name: 'Message AI' }).fill('Check Electron hosted transport.');
-    await page.getByRole('button', { name: 'Send message' }).click();
-    await expect(page.getByText('Electron hosted reply.')).toBeVisible();
+    await expect(page.getByLabel('Access code')).toHaveCount(0);
+    await expect(page.getByRole('switch', { name: 'Mark my answers automatically' })).toBeChecked();
     expect(requests.some((url) => url.endsWith('/session'))).toBe(true);
-    expect(requests.some((url) => url.endsWith('/inference'))).toBe(true);
+    expect(requests.some((url) => url.endsWith('/inference'))).toBe(false);
   } finally {
     await app?.close();
     await rm(profile, { recursive: true, force: true });

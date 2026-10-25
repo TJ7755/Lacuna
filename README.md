@@ -10,9 +10,9 @@ Use Lacuna at [getlacuna.app](https://getlacuna.app). Browser study data is loca
 origin: moving from the previous Vercel address requires exporting a full backup there
 and importing it at the new address. The previous address remains available.
 
-Study data lives in IndexedDB without an account. Optional device sync and external web AI use
-encrypted relay payloads; external desktop AI connects through a local companion. Built-in AI sends
-selected conversation and tool content to a hosted model. Export a full JSON backup from
+Study data lives in IndexedDB without an account. Optional device sync uses encrypted relay
+payloads. Optional Jev automatic marking sends answers, questions and mark schemes to TypeSafe AI
+after you accept its consent warning. Export a full JSON backup from
 **Settings → Full backup & recovery** before moving devices or replacing data.
 
 The [contributor guide](CONTRIBUTING.md) covers the complete validation matrix, relay and companion

@@ -1,4 +1,4 @@
-import { useState, useMemo, type RefObject } from 'react';
+import { useState, useMemo } from 'react';
 import { AnimatePresence, m as motion } from 'motion/react';
 import { useTheme } from '../../state/ThemeContext';
 import { useSidebarSettings } from '../../state/sidebarSettings';
@@ -31,7 +31,7 @@ import { useSidebarData } from '../../state/useCourseData';
 import type { Lesson } from '../../db/types';
 import { calendarDaysUntil, formatDate } from '../../utils/datetime';
 import { glyphLoad } from '../course/CourseGlyph';
-import { NavItem, ActionNavItem, NAV_LABELS, FOOTER_NAV } from './SidebarNavItem';
+import { NavItem, NAV_LABELS, FOOTER_NAV } from './SidebarNavItem';
 import { forecastStatus } from '../dashboard/forecastStatus';
 import { CourseRow, type SidebarGlyph } from './SidebarCourseRow';
 import { SidebarFrame, SidebarLabel } from './SidebarMotion';
@@ -47,11 +47,6 @@ interface SidebarProps {
   collapseControl?: boolean;
   /** Rendered in the phone drawer, where Today has no room for its Import button. */
   drawer?: boolean;
-  aiAction?: {
-    active: boolean;
-    onClick: () => void;
-    triggerRef: RefObject<HTMLButtonElement | null>;
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +59,6 @@ export function Sidebar({
   toggleLabel,
   collapseControl = true,
   drawer = false,
-  aiAction,
 }: SidebarProps) {
   const { resolvedTheme, toggleTheme } = useTheme();
   const data = useSidebarData();
@@ -235,19 +229,6 @@ export function Sidebar({
             collapsed={collapsed}
             compact={sidebarSettings.compactMode}
           />
-        )}
-        {aiAction && (
-          <div>
-            <ActionNavItem
-              onClick={aiAction.onClick}
-              icon={<SparklesIcon />}
-              label="AI"
-              collapsed={collapsed}
-              compact={sidebarSettings.compactMode}
-              active={aiAction.active}
-              buttonRef={aiAction.triggerRef}
-            />
-          </div>
         )}
       </nav>
 
