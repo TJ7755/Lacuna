@@ -32,20 +32,31 @@ async function cachedAssetPaths(page: Page): Promise<string[]> {
 }
 
 async function expectCardsRouteCached(page: Page) {
+  const requiredAssets = [
+    '/fonts/InstrumentSans-Variable.ttf',
+    '/fonts/SpaceGrotesk-Variable.ttf',
+    '/fonts/JetBrainsMono-Variable.ttf',
+    /^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/,
+    /^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/,
+  ];
   await expect
-    .poll(() => cachedAssetPaths(page), {
-      message:
-        'the visited Cards route and its lazy Markdown stylesheet to remain in Cache Storage',
-    })
-    .toEqual(
-      expect.arrayContaining([
-        '/fonts/InstrumentSans-Variable.ttf',
-        '/fonts/SpaceGrotesk-Variable.ttf',
-        '/fonts/JetBrainsMono-Variable.ttf',
-        expect.stringMatching(/^\/assets\/CardsPage-[A-Za-z0-9_-]{8}\.js$/),
-        expect.stringMatching(/^\/assets\/(?:markdown|MarkdownView)-[A-Za-z0-9_-]{8}\.css$/),
-      ]),
-    );
+    .poll(
+      async () => {
+        const paths = await cachedAssetPaths(page);
+        return requiredAssets
+          .filter(
+            (asset) =>
+              !paths.some((path) =>
+                typeof asset === 'string' ? path === asset : asset.test(path),
+              ),
+          )
+          .map(String);
+      },
+      {
+        message: 'missing cached assets for the visited Cards route and its Markdown stylesheet',
+      },
+    )
+    .toEqual([]);
 }
 
 test('reloads a visited card library with persisted data while offline', async ({
@@ -65,8 +76,10 @@ test('reloads a visited card library with persisted data while offline', async (
   const page = await context.newPage();
 
   try {
-    await enterFreshLacuna(page);
+    // Install before onboarding can fetch Markdown outside service-worker control.
+    await page.goto('/');
     await waitForServiceWorkerControl(page);
+    await enterFreshLacuna(page);
     await createCourse(page, courseName);
 
     await page.getByRole('button', { name: 'Edit mode' }).click();
@@ -109,9 +122,13 @@ test('reloads a visited card library with persisted data while offline', async (
       await expect(cardsMain.getByText(front, { exact: true })).toBeVisible();
 
       await page.evaluate(() => document.fonts.ready);
-      expect(await page.evaluate(() => [...document.fonts]
-        .filter((face) => ['Instrument Sans', 'Space Grotesk'].includes(face.family))
-        .map((face) => `${face.family}:${face.status}`).sort()),
+      expect(
+        await page.evaluate(() =>
+          [...document.fonts]
+            .filter((face) => ['Instrument Sans', 'Space Grotesk'].includes(face.family))
+            .map((face) => `${face.family}:${face.status}`)
+            .sort(),
+        ),
       ).toEqual(['Instrument Sans:loaded', 'Space Grotesk:loaded']);
 
       const search = cardsMain.getByLabel('Search all cards');

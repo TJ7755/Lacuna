@@ -54,29 +54,39 @@ for (const width of [1280, 390]) {
     await openLibrary(page, navigation);
   });
 
-  test(`learner can discover courses from creation and import at ${width}px`, async ({
-    page,
-  }) => {
+  test(`learner can discover courses from creation and import at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await enterFreshLacuna(page);
     await page.locator('main').getByRole('button', { name: 'New course' }).click();
     const form = page.getByRole('form', { name: 'New course' });
     await form.getByRole('textbox').fill('Unfinished course');
-    const creation = form.locator(librarySelector);
-    await checkLibraryLink(creation);
+    const creation = form.getByRole('button', { name: /Course library/ });
+    await expect(creation).toBeVisible();
+    await creation.focus();
+    await creation.press('Enter');
+    const search = page.getByRole('searchbox', { name: 'Search the course library' });
+    await expect(search).toBeFocused();
+    await search.fill('8461');
+    await expect(page.getByRole('button', { name: /^Biology/ })).toHaveCount(1);
     await capture(page, 'new-course', width);
-    await openLibrary(page, creation);
+    await search.press('Escape');
+    await expect(creation).toBeFocused();
     await expect(form.getByRole('textbox')).toHaveValue('Unfinished course');
     await form.getByRole('button', { name: 'Cancel', exact: true }).click();
     await openImport(page);
-    const importing = page.locator('.import-panel').locator(librarySelector);
-    await checkLibraryLink(importing);
+    const importing = page.locator('.import-panel').getByRole('button', { name: /Course library/ });
+    await expect(importing).toBeFocused();
+    await importing.press('Enter');
+    await expect(search).toBeFocused();
+    await search.fill('8461');
+    await expect(page.getByRole('button', { name: /^Biology/ })).toHaveCount(1);
     await capture(page, 'import', width);
-    await openLibrary(page, importing);
+    await page.getByRole('button', { name: 'Back to import sources' }).click();
+    await expect(importing).toBeFocused();
     await expect(page.locator('.import-panel')).toBeVisible();
     await page.goto('/#/import');
-    await checkLibraryLink(importing);
+    await expect(importing).toBeVisible();
   });
 
   test(`public course index and detail expose the library without JavaScript at ${width}px`, async ({
