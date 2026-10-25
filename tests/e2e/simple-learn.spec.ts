@@ -10,6 +10,7 @@ for (const width of [1280, 390]) {
     await createCourse(page, 'Anytime revision');
     await addLessonNote(page, 'Overview');
     await page.setViewportSize({ width, height: 844 });
+    await page.getByRole('link', { name: 'Path', exact: true }).click();
     await page.getByRole('button', { name: 'Study', exact: true }).click();
     const preview = page.getByRole('region', { name: 'Session preview' });
     await expect(preview).toBeVisible();

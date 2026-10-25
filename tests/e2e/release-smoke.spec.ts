@@ -34,7 +34,7 @@ test('creates a course with its first lesson', async ({ page }) => {
   await steady.press('Space');
   await expect(steady).toBeChecked();
   await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Lesson 1', exact: true })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Course sections' })).toBeVisible();
 });
 

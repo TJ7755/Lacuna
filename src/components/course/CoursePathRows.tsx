@@ -1,8 +1,8 @@
-import type { RefObject } from 'react';
-import { m as motion } from 'motion/react';
+import { useLayoutEffect, useRef, type RefObject } from 'react';
+import { m as motion, type HTMLMotionProps } from 'motion/react';
 import { formatShortDate } from '../../utils/datetime';
 import { countOf } from '../../utils/plural';
-import { MOTION_EASING, scaledSpring } from '../ui/motion';
+import { MOTION_EASING, expandingActionSpring, scaledSpring } from '../ui/motion';
 import { cn } from '../ui/cn';
 import { CardsIcon, CheckIcon, ChevronRightIcon, FlagIcon } from '../ui/icons';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
@@ -213,11 +213,8 @@ export function renderCoursePathRows(
           ? lessonContextMenu(() => lessonMenus.current.get(lessonId))
           : {})}
       >
-        <motion.button
-          // Motion keeps the first ref it is given, so remount when authoring
-          // starts or the reorder hook never sees this row.
-          key={authoring ? 'author' : 'study'}
-          ref={reorder?.registerElement}
+        <PathRowButton
+          registerElement={reorder?.registerElement}
           data-path-row=""
           type="button"
           aria-label={label}
@@ -266,44 +263,31 @@ export function renderCoursePathRows(
             )}
           </span>
           <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-            {/* The name wraps to a second line rather than losing itself on a phone,
-                          and keeps 8rem so the counts drop beneath it before a word breaks. */}
-            <span className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-              <span
-                className={cn(
-                  'line-clamp-2 min-w-[8rem] flex-[1_1_8rem] break-words font-bold',
-                  locked && 'text-ink-soft',
-                )}
-              >
-                {name}
+            <span className={cn('break-words font-bold', locked && 'text-ink-soft')}>{name}</span>
+            <span className="text-sm text-ink-faint">{state}</span>
+            {!locked && (
+              <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
+                <motion.span
+                  className={cn(
+                    'block h-1 origin-left rounded-full',
+                    done ? 'bg-positive' : 'bg-ink',
+                  )}
+                  style={{ width: '100%' }}
+                  initial={false}
+                  animate={{ scaleX: pct / 100 }}
+                  transition={expandingActionSpring(m)}
+                />
               </span>
-              <span className="shrink-0 whitespace-nowrap text-sm text-ink-faint">{state}</span>
-            </span>
-            <span aria-hidden="true" className="block h-1 overflow-hidden rounded-full bg-line">
-              <motion.span
-                className={cn(
-                  'block h-1 origin-left rounded-full',
-                  done ? 'bg-positive' : 'bg-ink',
-                )}
-                style={{ width: `${locked ? 0 : pct}%` }}
-                initial={m > 0 ? { scaleX: 0 } : false}
-                animate={{ scaleX: 1 }}
-                transition={{
-                  duration: 0.7 * m,
-                  delay: (0.15 + Math.min(index, 8) * 0.04) * m,
-                  ease: MOTION_EASING.emphasised,
-                }}
-              />
-            </span>
+            )}
           </span>
-          {!(authoring && (lesson || practice)) && (
+          {!(locked && !authoring && !archived) && !(authoring && (lesson || practice)) && (
             <ChevronRightIcon
               width={16}
               height={16}
               className="shrink-0 text-ink-faint transition-transform duration-200 group-hover:translate-x-0.5"
             />
           )}
-        </motion.button>
+        </PathRowButton>
         {authoring && lesson && (
           <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
             <LessonActionsMenu
@@ -354,4 +338,19 @@ export function renderCoursePathRows(
       </motion.li>
     );
   });
+}
+
+function PathRowButton({
+  registerElement,
+  ...props
+}: HTMLMotionProps<'button'> & {
+  registerElement?: (element: HTMLButtonElement | null) => void;
+}) {
+  const element = useRef<HTMLButtonElement>(null);
+  // Motion retains its initial ref. Register later authoring handlers without replacing the row.
+  useLayoutEffect(() => {
+    registerElement?.(element.current);
+    return () => registerElement?.(null);
+  }, [registerElement]);
+  return <motion.button {...props} ref={element} />;
 }

@@ -18,7 +18,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
   }) => {
     await page.emulateMedia({ reducedMotion });
     await enterFreshLacuna(page);
-    await createCourse(page, 'Composer keyboard');
+    await createCourse(page, 'Composer keyboard', false);
     const coursePath = new URL(page.url()).hash.slice(1);
     await page.goto(`/#${coursePath}/questions`);
     await page.getByRole('button', { name: 'New question set', exact: true }).click();
@@ -86,7 +86,7 @@ for (const reducedMotion of ['reduce', 'no-preference'] as const) {
 test('resizes wrapped composer fields without ResizeObserver delivery errors', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
-  await createCourse(page, 'Composer resizing');
+  await createCourse(page, 'Composer resizing', false);
   const coursePath = new URL(page.url()).hash.slice(1);
   await page.goto(`/#${coursePath}/questions`);
   await page.getByRole('button', { name: 'New question set', exact: true }).click();

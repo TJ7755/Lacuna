@@ -10,31 +10,97 @@ import {
   pathState,
 } from './CoursePath.testFixtures';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { domAnimation, LazyMotion } from 'motion/react';
+import { ToastProvider } from '../components/ui/Toast';
+import { CoursePath } from './CoursePath';
+
+function coursePathSubject() {
+  return (
+    <MemoryRouter initialEntries={['/course/course-1']}>
+      <ToastProvider>
+        <LazyMotion features={domAnimation}>
+          <Routes>
+            <Route path="/course/:courseId" element={<CoursePath />} />
+          </Routes>
+        </LazyMotion>
+      </ToastProvider>
+    </MemoryRouter>
+  );
+}
+
 describe('CoursePath overview', () => {
   beforeEach(resetCoursePathFixtures);
-  it('opens a lesson straight from its row', () => {
+  it.each([1, 2])('keeps a %i-lesson course on its ladder until a lesson is selected', (count) => {
+    pathState.mockLessons = [lesson1, lesson2].slice(0, count);
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: 'Dynamics' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
+    const ladder = screen.getByRole('list', { name: 'Course path' });
+    expect(ladder).toHaveTextContent('Kinematics');
+    expect(mockNavigate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Kinematics' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-1');
   });
 
-  it('expands Add in place and creates a real lesson through its existing form', async () => {
-    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
-    renderPage();
-    const add = screen.getByRole('button', { name: 'Add' });
-    fireEvent.click(add);
-    expect(add).toHaveAttribute('aria-expanded', 'true');
-    const options = screen.getByRole('menu', { name: 'Add' });
-    expect(add.parentElement).toContainElement(options);
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
-      target: { value: 'Energy' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-    await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
-  });
+  it.each([false, true])(
+    'creates a lesson through the existing form (empty path=%s)',
+    async (empty) => {
+      pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+      if (empty) pathState.mockLessons = [];
+      renderPage();
+      if (empty) {
+        expect(screen.queryByRole('button', { name: 'Study' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
+      } else {
+        const add = screen.getByRole('button', { name: 'Add' });
+        fireEvent.click(add);
+        expect(add).toHaveAttribute('aria-expanded', 'true');
+        const options = screen.getByRole('menu', { name: 'Add' });
+        expect(add.parentElement).toContainElement(options);
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
+      }
+      fireEvent.change(screen.getByRole('textbox', { name: 'Lesson name' }), {
+        target: { value: 'Energy' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
+      await waitFor(() => expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Energy'));
+      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-3');
+    },
+  );
+  it.each(['cancel', 'view'] as const)(
+    'keeps the first-lesson draft during live arrivals, then closes through %s',
+    async (ending) => {
+      pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+      pathState.mockLessons = [];
+      const view = render(coursePathSubject());
+      fireEvent.click(screen.getByRole('button', { name: 'Add first lesson' }));
+      const input = screen.getByRole('textbox', { name: 'Lesson name' }) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'Fieldwork draft' } });
+      input.focus();
+      input.setSelectionRange(3, 9);
+
+      for (const lessons of [[lesson1], [lesson1, lesson2]]) {
+        pathState.mockLessons = lessons;
+        view.rerender(coursePathSubject());
+        expect(screen.getByRole('textbox', { name: 'Lesson name' })).toBe(input);
+        expect(input).toHaveValue('Fieldwork draft');
+        expect(input).toHaveFocus();
+        expect([input.selectionStart, input.selectionEnd]).toEqual([3, 9]);
+      }
+      if (ending === 'cancel') {
+        fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+        expect(screen.getByRole('button', { name: 'Dynamics' })).toBeInTheDocument();
+      } else {
+        pathState.mockLessons = [lesson1];
+        pathState.mockCourse = { ...course, lessonViewMode: 'study' };
+        view.rerender(coursePathSubject());
+        expect(screen.getByRole('list', { name: 'Course path' })).toHaveTextContent('Kinematics');
+        expect(screen.queryByRole('textbox', { name: 'Lesson name' })).not.toBeInTheDocument();
+      }
+      expect(mockNavigate).not.toHaveBeenCalled();
+    },
+  );
+
   it('shows the lock reason without opening an unreached lesson in View mode', () => {
     pathState.mockCourse = { ...course, unlockMode: 'semi-linear' };
     renderPage();
@@ -46,10 +112,15 @@ describe('CoursePath overview', () => {
   });
 
   it('retains keyboard lesson reordering in Edit mode', async () => {
-    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
     mockReorderLessons.mockResolvedValue(undefined);
-    renderPage();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Dynamics' }), {
+    const view = render(coursePathSubject());
+    const row = screen.getByRole('button', { name: 'Dynamics' });
+    row.focus();
+    pathState.mockCourse = { ...course, lessonViewMode: 'edit' };
+    view.rerender(coursePathSubject());
+    expect(screen.getByRole('button', { name: 'Dynamics' })).toBe(row);
+    expect(row).toHaveFocus();
+    fireEvent.keyDown(row, {
       key: 'ArrowUp',
       altKey: true,
     });

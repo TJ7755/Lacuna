@@ -1,32 +1,52 @@
 import { expect, test } from '@playwright/test';
-import { enterWithWelcomeCourse } from './fixtures/lacunaApp';
+import { createCourse, enterWithWelcomeCourse } from './fixtures/lacunaApp';
 
-test('a listed lesson opens its real workspace; Add creates a real lesson', async ({ page }) => {
-  await enterWithWelcomeCourse(page);
-  await page
-    .getByRole('region', { name: 'Today, most urgent first' })
-    .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
-    .click();
-  const courseUrl = page.url();
-  await page.getByRole('button', { name: 'Scheduling philosophy', exact: true }).click();
-  await expect(page).toHaveURL(/\/lesson\//);
-  await expect(page.locator('[data-lesson-workspace-mode]')).toBeVisible();
-  await page.goto(courseUrl);
-  await page.getByRole('button', { name: 'Edit mode' }).click();
-  const add = page.getByRole('button', { name: 'Add', exact: true });
-  await add.click();
-  await page.getByRole('menuitem', { name: 'Lesson', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Lesson name' }).fill('Course overview regression');
-  await page.getByRole('button', { name: 'Create lesson' }).click();
-  await expect(page).toHaveURL(/\/lesson\//);
-  await expect(
-    page.getByRole('heading', { name: 'Course overview regression', exact: true }),
-  ).toBeVisible();
-  await page.goto(courseUrl);
-  await expect(
-    page.getByRole('button', { name: 'Course overview regression', exact: true }),
-  ).toBeVisible();
-});
+for (const single of [true, false]) {
+  test(`a ${single ? 'single' : 'multi'}-lesson ladder opens its real workspace and returns to the path`, async ({
+    page,
+  }) => {
+    await enterWithWelcomeCourse(page);
+    if (single) await createCourse(page, 'Biology', false);
+    else
+      await page
+        .getByRole('region', { name: 'Today, most urgent first' })
+        .getByRole('button', { name: 'Welcome to Lacuna', exact: true })
+        .click();
+    const courseUrl = page.url();
+    await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+    await page.keyboard.press('s');
+    await expect(page.getByRole('region', { name: 'Session preview' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page
+      .getByRole('button', { name: single ? 'Lesson 1' : 'Scheduling philosophy', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/lesson\//);
+    await expect(page.locator('[data-lesson-workspace-mode]')).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(courseUrl);
+    await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+    await page.goForward();
+    await expect(page.locator('[data-lesson-workspace-mode]')).toBeVisible();
+    await page.getByRole('link', { name: 'Path', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit mode' }).click();
+    const add = page.getByRole('button', { name: 'Add', exact: true });
+    await add.click();
+    await page.getByRole('menuitem', { name: 'Lesson', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Lesson name' }).fill('Course overview regression');
+    await page.getByRole('button', { name: 'Create lesson' }).click();
+    await expect(page).toHaveURL(/\/lesson\//);
+    await expect(
+      page.getByRole('heading', { name: 'Course overview regression', exact: true }),
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Path', exact: true }).click();
+    await expect(page).toHaveURL(courseUrl);
+    await expect(
+      page.getByRole('button', { name: 'Course overview regression', exact: true }),
+    ).toBeVisible();
+  });
+}
 
 test('narrow-screen keyboard activation opens the focused lesson', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 });

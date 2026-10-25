@@ -70,11 +70,11 @@ export function AssessmentDetailSheet({
         animate={{ x: 0 }}
         exit={multiplier > 0 ? { x: 32 } : undefined}
         transition={transition.sheet}
-        className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-line-strong bg-paper pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] card-surface"
+        className="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-line-strong bg-paper pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] card-surface"
       >
-        <header className="flex items-start justify-between border-b border-line px-6 py-5">
-          <div>
-            <h2 className="font-display text-2xl">{assessment.name}</h2>
+        <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
+          <div className="min-w-0">
+            <h2 className="break-words font-display text-2xl">{assessment.name}</h2>
             <p className="mt-1 text-sm text-ink-soft">
               {assessment.kind === 'final' ? 'Final assessment' : 'Checkpoint'} ·{' '}
               {assessment.examDate === undefined
@@ -86,14 +86,13 @@ export function AssessmentDetailSheet({
             type="button"
             onClick={onClose}
             aria-label="Close assessment details"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink-soft hover:bg-ink/5"
           >
             <CloseIcon width={18} height={18} />
           </button>
         </header>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
-          <RelatedQuestionSets courseId={assessment.courseId} assessmentId={assessment.id} onNavigate={onClose} />
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto break-words px-6 py-6">
           <section>
             <h3 className="text-sm font-medium text-ink">Coverage</h3>
             <p className="mt-1 text-sm text-ink-soft">
@@ -107,6 +106,12 @@ export function AssessmentDetailSheet({
               ))}
             </ul>
           </section>
+
+          <RelatedQuestionSets
+            courseId={assessment.courseId}
+            assessmentId={assessment.id}
+            onNavigate={onClose}
+          />
 
           {excludedNames.length > 0 && (
             <section>
@@ -135,8 +140,13 @@ export function AssessmentDetailSheet({
         </div>
 
         <footer className="border-t border-line px-6 py-4">
-          <Button variant="primary" onClick={onRevise} className="w-full">
-            Revise for {assessment.name}
+          <Button
+            variant="primary"
+            onClick={onRevise}
+            aria-label={`Revise for ${assessment.name}`}
+            className="w-full"
+          >
+            Revise
           </Button>
         </footer>
       </motion.aside>

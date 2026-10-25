@@ -34,9 +34,7 @@ test('edits a checkpoint in place, excludes a card and persists a dragged anchor
   await expect(edited).toBeVisible();
   await edited.scrollIntoViewIfNeeded();
   const source = (await edited.boundingBox())!;
-  const second = (await page
-    .getByRole('button', { name: 'Scheduling philosophy', exact: true })
-    .boundingBox())!;
+  const second = page.getByRole('button', { name: 'Scheduling philosophy', exact: true });
   await edited.evaluate((button) => {
     const frames: number[] = [];
     (window as Window & { pathDropFrames?: number[] }).pathDropFrames = frames;
@@ -54,8 +52,16 @@ test('edits a checkpoint in place, excludes a card and persists a dragged anchor
   });
   await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
   await page.mouse.down();
-  await page.waitForTimeout(380);
-  await page.mouse.move(second.x + second.width / 2, second.y + second.height - 4, { steps: 20 });
+  await expect(edited).toHaveAttribute('data-drag-lifted', 'true');
+  const target = (await second.boundingBox())!;
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height - 4, { steps: 20 });
+  // Holding near the viewport edge can scroll the path during the drag.
+  const releaseTarget = (await second.boundingBox())!;
+  await page.mouse.move(
+    releaseTarget.x + releaseTarget.width / 2,
+    releaseTarget.y + releaseTarget.height - 4,
+    { steps: 4 },
+  );
   await page.mouse.up();
   await expect
     .poll(() =>

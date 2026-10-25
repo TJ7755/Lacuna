@@ -2,7 +2,6 @@ import {
   mockNavigate,
   mockCreateLesson,
   mockUpdateCourse,
-  mockLessonViewProps,
   live,
   mockOpenStudySheet,
   course,
@@ -17,8 +16,7 @@ import {
 import { CoursePath } from './CoursePath';
 import { expectAppDestination } from '../../tests/helpers/expectAppDestination';
 import { describe, expect, it, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import * as React from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ToastProvider } from '../components/ui/Toast';
 import type { Card, QuestionSetPracticeNode } from '../db/types';
@@ -72,7 +70,7 @@ describe('CoursePath View mode', () => {
         state: expect.objectContaining({ questionSetReturnTo: `/course/${course.id}` }),
       }),
     );
-    expect(mockLessonViewProps).not.toHaveBeenCalled();
+    expect(screen.getByRole('list', { name: 'Course path' })).toHaveTextContent('Kinematics');
   });
 
   it('opens an assessment deep link after the CoursePath is already mounted', async () => {
@@ -153,9 +151,13 @@ describe('CoursePath View mode', () => {
     expect(screen.queryByText(/cards? in \d+ lessons?/)).not.toBeInTheDocument();
   });
 
-  it('opens the session plan without its own Other ways, which sit beside Study', () => {
+  it.each([1, 2])('opens the course session plan from Study and S with %i lessons', (count) => {
+    pathState.mockLessons = [lesson1, lesson2].slice(0, count);
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Study' }));
+    expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1', { otherWays: false });
+    mockOpenStudySheet.mockClear();
+    fireEvent.keyDown(window, { key: 's' });
     expect(mockOpenStudySheet).toHaveBeenCalledWith('course-1', { otherWays: false });
   });
 
@@ -249,20 +251,6 @@ describe('CoursePath View mode', () => {
     live.exposures = [{ lessonId: 'lesson-1', cardId: 'card-1', taughtAt: 1, updatedAt: 1 }];
 
     renderPage();
-    await waitFor(() => {
-      expect(mockLessonViewProps).toHaveBeenCalledWith(
-        expect.objectContaining({
-          studyActions: expect.any(Function),
-          onAddPractice: expect.any(Function),
-          onAddCheckpoint: expect.any(Function),
-        }),
-      );
-    });
-    // The inline course offers the course page's own actions, Review due cards included.
-    const props = mockLessonViewProps.mock.lastCall![0] as {
-      studyActions: (disabled: boolean) => React.ReactNode;
-    };
-    render(<MemoryRouter>{props.studyActions(false)}</MemoryRouter>);
     fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
     expect(screen.getByRole('menuitem', { name: /Only review due cards/ })).toBeEnabled();
   });
@@ -287,20 +275,9 @@ describe('CoursePath View mode', () => {
 
       renderPage();
 
-      if (count === 1) {
-        await waitFor(() =>
-          expect(mockLessonViewProps).toHaveBeenCalledWith(
-            expect.objectContaining({
-              studyActions: expect.any(Function),
-              onStudy: expect.any(Function),
-            }),
-          ),
-        );
-      } else {
-        expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-        expect(screen.getByRole('button', { name: 'Other ways to study' })).toBeInTheDocument();
-        expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
-      }
+      expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Other ways to study' })).toBeInTheDocument();
+      expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
     },
   );
 

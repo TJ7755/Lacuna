@@ -10,7 +10,7 @@ for (const width of [1280, 390]) {
     await enterFreshLacuna(page);
     // Create on desktop; the assertions and picker captures use the target viewport.
     await page.setViewportSize({ width: 1280, height: 844 });
-    await createCourse(page, 'Biology search');
+    await createCourse(page, 'Biology search', false);
     const coursePath = new URL(page.url()).hash.slice(1);
     await page.goto(`/#${coursePath}/questions`);
     await page.getByRole('button', { name: 'New question set', exact: true }).click();

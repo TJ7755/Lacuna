@@ -13,6 +13,13 @@ export async function addCard(page: Page, courseId: string, front: string): Prom
 export async function addLessonCard(page: Page, courseId: string, front: string): Promise<void> {
   await page.goto(`/#/course/${courseId}`);
   await page.getByRole('button', { name: 'Edit mode' }).click();
+  await page
+    .getByRole('list', { name: 'Course path' })
+    .locator('[data-path-lesson]')
+    .first()
+    .getByRole('button')
+    .first()
+    .click();
   await expect(page.locator('[data-lesson-workspace-mode="edit"]')).toBeVisible();
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('textbox', { name: 'Front' }).fill(front);

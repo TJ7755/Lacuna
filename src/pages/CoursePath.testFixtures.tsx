@@ -52,7 +52,6 @@ const {
   mockUpdateCourseAssessment,
   mockDeleteCourseAssessment,
   mockReorderLessons,
-  mockLessonViewProps,
 } = vi.hoisted(() => ({
   mockCreateLesson: vi.fn(),
   mockUpdateCourse: vi.fn(),
@@ -63,7 +62,6 @@ const {
   mockUpdateCourseAssessment: vi.fn(),
   mockDeleteCourseAssessment: vi.fn(),
   mockReorderLessons: vi.fn(),
-  mockLessonViewProps: vi.fn(),
 }));
 const live = vi.hoisted(() => ({
   links: [] as LessonCardLink[],
@@ -154,12 +152,7 @@ vi.mock('../state/useCourseStudyFlowRecords', () => ({
   },
 }));
 
-vi.mock('./LessonView', () => ({
-  LessonView: (props: unknown) => {
-    mockLessonViewProps(props);
-    return null;
-  },
-}));
+vi.mock('./LessonView', () => ({ LessonView: () => null }));
 
 vi.mock('../db/lessonRepository', () => ({
   createLesson: mockCreateLesson,
@@ -329,7 +322,6 @@ export function resetCoursePathFixtures() {
   mockDeleteCourseAssessment.mockReset();
   mockDeleteCourseAssessment.mockResolvedValue(undefined);
   mockReorderLessons.mockReset();
-  mockLessonViewProps.mockReset();
 }
 
 export {
@@ -342,7 +334,6 @@ export {
   mockUpdateCourseAssessment,
   mockDeleteCourseAssessment,
   mockReorderLessons,
-  mockLessonViewProps,
   live,
   mockOpenStudySheet,
 };

@@ -53,7 +53,7 @@ it('reads one course card/history set for the path and its header summary', asyn
   expect(assessments).toHaveBeenCalledTimes(1);
 });
 
-it('reuses the ready course snapshot when arriving at a single lesson', async () => {
+it('reads one course card set when arriving at a single-lesson ladder', async () => {
   const course = await createCourse('Arrival');
   await createLesson(course.id, 'Lesson 1');
   const cards = vi.spyOn(db.cards, 'where');
@@ -66,7 +66,7 @@ it('reuses the ready course snapshot when arriving at a single lesson', async ()
       </ToastProvider>
     </MemoryRouter>,
   );
-  await screen.findByRole('heading', { name: 'Lesson 1' });
+  await screen.findByRole('button', { name: 'Lesson 1' });
   expect(cards.mock.calls.filter(([index]: unknown[]) => index === 'courseId')).toHaveLength(1);
 });
 

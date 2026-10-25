@@ -31,7 +31,7 @@ test('a new learner finishes onboarding inside their first course', async ({ pag
   await page.getByRole('button', { name: 'Open course' }).click();
 
   await expect(page).toHaveURL(/#\/course\/[^/?]+$/);
-  await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Lesson 1', exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('lacuna-onboarding'))).toBe('done');
   const assessment = await page.evaluate(
     () =>

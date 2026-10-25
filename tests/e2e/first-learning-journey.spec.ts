@@ -44,6 +44,8 @@ for (const { height, scale, reducedMotion, colorScheme } of [
     expect(bounds.y).toBeGreaterThanOrEqual(0);
     expect(bounds.y + bounds.height).toBeLessThanOrEqual(height);
     await submit.click();
+    await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+    await page.getByRole('button', { name: 'Lesson 1', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Lesson 1', exact: true })).toBeVisible();
 
     await page.getByRole('button', { name: 'New card', exact: true }).first().click();

@@ -81,8 +81,7 @@ for (const viewport of VIEWPORTS) {
   }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await enterFreshLacuna(page);
-    await createCourse(page, 'Scroll extent');
-    const courseUrl = page.url();
+    const courseUrl = await createCourse(page, 'Scroll extent');
     await page.setViewportSize(viewport);
     await page.goto('/#/help');
     await expect(page.getByRole('heading', { level: 1, name: 'Help' })).toBeVisible();

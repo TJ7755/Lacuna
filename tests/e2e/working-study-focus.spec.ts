@@ -5,7 +5,6 @@ test('Working study focuses the answer on entry and the next card', async ({ pag
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await enterFreshLacuna(page);
   await createCourse(page, 'Working focus');
-  const coursePath = new URL(page.url()).hash;
   await page.getByRole('button', { name: 'New card', exact: true }).first().click();
   await page.getByRole('button', { name: 'More card types', exact: true }).click();
   await page.getByRole('button', { name: 'Working', exact: true }).click();
@@ -19,7 +18,7 @@ test('Working study focuses the answer on entry and the next card', async ({ pag
   await scheme.fill('[1] substitution :: 2x = 10\n[1] answer :: equals :: 5');
   await page.getByRole('button', { name: 'Add card', exact: true }).click();
   await expect(page).not.toHaveURL(/\/cards\/new$/);
-  await page.goto(`/${coursePath}`);
+  await page.getByRole('link', { name: 'Path', exact: true }).click();
   await page.getByRole('button', { name: 'Study', exact: true }).click();
   await chooseScheduledStudy(page);
   const working = page.getByRole('textbox', { name: 'Your working', exact: true });

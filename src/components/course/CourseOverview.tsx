@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { speedMultiplier, useMotionSpeed } from '../../state/motionSpeed';
 import { cn } from '../ui/cn';
 import { AddCourseControl } from './AddCourseControl';
 import { AddLessonControl } from './AddLessonControl';
+import { ExpandingCreateControl } from '../ui/ExpandingCreateControl';
 import { AnimatedDisclosure } from '../ui/AnimatedDisclosure';
 import { FlagIcon } from '../ui/icons';
 import { PathNodeActionsMenu } from './PathNodeActionsMenu';
@@ -22,6 +23,15 @@ const CARD = 'rounded-3xl bg-surface card-surface';
 export function CourseOverview(props: CourseOverviewProps) {
   const { nodes, authoring, archived } = props;
   const [addingLesson, setAddingLesson] = useState(false);
+  const [creationAtEmpty, setCreationAtEmpty] = useState(nodes.length === 0);
+  useLayoutEffect(() => {
+    if (authoring || !addingLesson) return;
+    setAddingLesson(false);
+  }, [authoring, addingLesson]);
+  const startAddingLesson = () => {
+    setCreationAtEmpty(nodes.length === 0);
+    setAddingLesson(true);
+  };
   const [speed] = useMotionSpeed();
   const m = speedMultiplier(speed);
   const addRef = useRef<HTMLDivElement>(null);
@@ -49,14 +59,14 @@ export function CourseOverview(props: CourseOverviewProps) {
                 <AddCourseControl
                   kinds={props.lessonCount > 0 ? undefined : ['lesson', 'practice', 'checkpoint']}
                   onAdd={(kind) => {
-                    if (kind === 'lesson') setAddingLesson(true);
+                    if (kind === 'lesson') startAddingLesson();
                     else props.onAdd(kind);
                   }}
                 />
               </div>
             )}
           </div>
-          {authoring && (
+          {authoring && !creationAtEmpty && (
             <AnimatedDisclosure open={addingLesson} innerClassName="pb-3">
               <AddLessonControl
                 initiallyOpen
@@ -74,11 +84,39 @@ export function CourseOverview(props: CourseOverviewProps) {
           <div aria-live="polite" aria-atomic="true" className="sr-only">
             {props.announcement}
           </div>
-          {nodes.length === 0 ? (
-            <p className="py-12 text-center text-sm text-ink-soft">
-              This course has no lessons yet.
-            </p>
-          ) : (
+          {/* Keep the creation origin and form mounted when live nodes arrive. */}
+          <AnimatedDisclosure open={nodes.length === 0 || (creationAtEmpty && addingLesson)}>
+            <div className="flex flex-col items-center gap-4 py-10 text-center">
+              <p
+                className={cn('text-sm text-ink-soft', nodes.length > 0 && 'invisible')}
+                aria-hidden={nodes.length > 0 || undefined}
+              >
+                This course has no lessons yet.
+              </p>
+              {authoring && (creationAtEmpty || !addingLesson) && (
+                <ExpandingCreateControl
+                  label="Add first lesson"
+                  prominent
+                  align="centre"
+                  closedWidth={176}
+                  open={addingLesson}
+                  onOpenChange={(open) => {
+                    if (open) setCreationAtEmpty(true);
+                    setAddingLesson(open);
+                  }}
+                >
+                  <AddLessonControl
+                    initiallyOpen
+                    courseId={props.courseId}
+                    lessonCount={props.lessonCount}
+                    onCancel={() => setAddingLesson(false)}
+                    onCreated={props.onLessonCreated}
+                  />
+                </ExpandingCreateControl>
+              )}
+            </div>
+          </AnimatedDisclosure>
+          {nodes.length > 0 && (
             <ol className="m-0 list-none p-0" aria-label="Course path">
               {renderCoursePathRows(props, m, lessonMenus, lessons)}
             </ol>
@@ -138,7 +176,7 @@ export function CourseOverview(props: CourseOverviewProps) {
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <strong className="block truncate font-bold">{assessment.name}</strong>
+                      <strong className="block break-words font-bold">{assessment.name}</strong>
                       <span className="text-sm text-ink-faint">
                         {assessment.kind === 'final' ? 'All lessons' : 'Checkpoint'}
                       </span>

@@ -6,15 +6,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { LessonView } from './LessonView';
 import { CourseSectionNavigation } from '../components/course/CourseSectionNavigation';
-import { CourseStudyActions } from '../components/course/CourseStudyActions';
 import { ToastProvider } from '../components/ui/Toast';
 import type { Card, Course, Lesson, Note } from '../db/types';
 import { defaultFsrsParameters, FSRS_VERSION, MS_PER_DAY } from '../fsrs/params';
 
 const mockNavigate = vi.fn();
-const mockOnStudy = vi.fn();
-const { mockCreateLesson, mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
-  mockCreateLesson: vi.fn(),
+const { mockUpdateCourse, mockUpdateLesson } = vi.hoisted(() => ({
   mockUpdateCourse: vi.fn(),
   mockUpdateLesson: vi.fn(),
 }));
@@ -70,7 +67,6 @@ vi.mock('../state/useCourseStudyFlow', () => ({
 }));
 
 vi.mock('../db/lessonRepository', () => ({
-  createLesson: mockCreateLesson,
   updateLesson: mockUpdateLesson,
 }));
 vi.mock('../db/courseRepository', () => ({ updateCourse: mockUpdateCourse }));
@@ -167,51 +163,7 @@ function renderPage() {
   return { ...view, refresh: () => view.rerender(page()) };
 }
 
-function renderInline(
-  showStudyNow = false,
-  practiceNowEnabled = false,
-  pathActions?: { onAddPractice: () => void; onAddCheckpoint: () => void },
-  courseCardCount = 1,
-) {
-  return render(
-    <MemoryRouter initialEntries={['/course/course-1']}>
-      <ToastProvider>
-        <CourseSectionNavigation courseId="course-1" />
-        <LessonView
-          courseId="course-1"
-          lessonId="lesson-1"
-          studyActions={
-            showStudyNow
-              ? (disabled) => (
-                  <CourseStudyActions
-                    courseId="course-1"
-                    dueCount={0}
-                    doneToday={0}
-                    disabled={disabled}
-                    onStudy={mockOnStudy}
-                    otherWays={[
-                      {
-                        label: 'Only review due cards',
-                        disabled: !practiceNowEnabled,
-                        onSelect: () => mockNavigate('/course/course-1/study?review=due'),
-                      },
-                    ]}
-                  />
-                )
-              : undefined
-          }
-          onStudy={showStudyNow ? mockOnStudy : undefined}
-          courseCardCount={courseCardCount}
-          onAddPractice={pathActions?.onAddPractice}
-          onAddCheckpoint={pathActions?.onAddCheckpoint}
-        />
-      </ToastProvider>
-    </MemoryRouter>,
-  );
-}
-
 beforeEach(() => {
-  mockOnStudy.mockClear();
   mockDueReviewCardIds = new Set();
   mockLesson = lesson;
   mockCourse = course;
@@ -220,13 +172,6 @@ beforeEach(() => {
   mockNotes = [note];
   mockLessonCards = [makeCard('card-1')];
   mockNavigate.mockClear();
-  mockCreateLesson.mockReset();
-  mockCreateLesson.mockResolvedValue({
-    ...lesson,
-    id: 'lesson-2',
-    name: 'Lesson 2',
-    orderIndex: 1,
-  });
   mockUpdateCourse.mockReset();
   mockUpdateCourse.mockResolvedValue(undefined);
   mockUpdateLesson.mockReset();
@@ -280,8 +225,8 @@ describe('LessonView View mode', () => {
         due: Date.now() + MS_PER_DAY,
       },
     ];
-    renderInline(true);
-    expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+    renderPage();
+    expect(screen.queryByText(/\d+ due/)).not.toBeInTheDocument();
     expect(screen.queryByText(/next lesson available/i)).not.toBeInTheDocument();
   });
 
@@ -296,17 +241,14 @@ describe('LessonView View mode', () => {
         due: Date.now() - MS_PER_DAY,
       },
     ];
-    renderInline(true);
-    expect(screen.getByText('Nothing due right now.')).toBeInTheDocument();
+    renderPage();
+    expect(screen.queryByText(/\d+ due/)).not.toBeInTheDocument();
   });
 
   it('keeps an archived single-lesson course read-only', () => {
     mockCourse = { ...course, archived: true, lessonViewMode: 'edit' };
 
-    const { container } = renderInline(true, true, {
-      onAddPractice: vi.fn(),
-      onAddCheckpoint: vi.fn(),
-    });
+    const { container } = renderPage();
 
     expect(screen.getByText('Archived course')).toBeInTheDocument();
     expectAppDestination(screen.getByRole('link', { name: 'Archived courses' }), '/archived');
@@ -407,10 +349,7 @@ describe('LessonView View mode', () => {
       },
     };
 
-    renderInline(false, false, {
-      onAddPractice: vi.fn(),
-      onAddCheckpoint: vi.fn(),
-    });
+    renderPage();
 
     expectAppDestination(
       screen.getByRole('link', { name: 'Authoring is locked for shared courses' }),
@@ -425,24 +364,7 @@ describe('LessonView View mode', () => {
   });
 });
 
-describe('LessonView inline (single-lesson course) rendering', () => {
-  it("shows the course page's Study and Other ways, not a lesson-only pair", () => {
-    renderInline(true, true);
-
-    expect(screen.getAllByRole('button', { name: 'Study' })).toHaveLength(1);
-    // Due reviews live in Other ways, as on a multi-lesson course page.
-    expect(screen.queryByRole('button', { name: 'Review due cards' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to study' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Only review due cards/ }));
-    expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/study?review=due');
-  });
-
-  it('opens the session plan from Study', () => {
-    renderInline(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Study' }));
-    expect(mockOnStudy).toHaveBeenCalledTimes(1);
-  });
-
+describe('LessonView workspace', () => {
   it('leaves out an empty notes panel in View mode but keeps it in Edit', () => {
     mockNotes = [];
     const { unmount } = renderPage();
@@ -455,30 +377,15 @@ describe('LessonView inline (single-lesson course) rendering', () => {
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument();
   });
 
-  it('withholds Study only when the course has no cards and the lesson no notes', () => {
-    mockLessonCards = [];
-    mockNotes = [];
-    const { unmount } = renderInline(true, false, undefined, 0);
-    expect(screen.getByRole('button', { name: 'Study' })).toBeDisabled();
-    fireEvent.keyDown(window, { key: 's' });
-    expect(mockOnStudy).not.toHaveBeenCalled();
-    unmount();
-
-    mockNotes = [note];
-    renderInline(true, false, undefined, 0);
-    expect(screen.getByRole('button', { name: 'Study' })).toBeEnabled();
-  });
-
   it('shows the course navigation with a Settings link', () => {
-    renderInline();
+    renderPage();
     const link = screen.getByRole('link', { name: 'Settings' });
     expectAppDestination(link, '/course/course-1/settings');
   });
 
   it('hides Add lesson in View mode', () => {
-    renderInline();
+    renderPage();
     expect(screen.queryByRole('button', { name: 'Add lesson' })).not.toBeInTheDocument();
-    expect(mockCreateLesson).not.toHaveBeenCalled();
   });
 });
 
@@ -519,32 +426,6 @@ describe('LessonView Edit mode', () => {
     expect(screen.getByRole('button', { name: 'New card' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: /Manage/ })).not.toBeInTheDocument();
     expect(container.querySelector('[data-lesson-workspace-mode] .card-surface:empty')).toBeNull();
-  });
-
-  it('opens a newly created lesson from the inline path', async () => {
-    renderInline();
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Lesson' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Create lesson' }));
-
-    await waitFor(() => {
-      expect(mockCreateLesson).toHaveBeenCalledWith('course-1', 'Lesson 2');
-      expect(mockNavigate).toHaveBeenCalledWith('/course/course-1/lesson/lesson-2');
-    });
-  });
-
-  it('keeps practice and checkpoint creation on a single-lesson path', () => {
-    const onAddPractice = vi.fn();
-    const onAddCheckpoint = vi.fn();
-
-    renderInline(false, false, { onAddPractice, onAddCheckpoint });
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Card practice' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Checkpoint' }));
-
-    expect(onAddPractice).toHaveBeenCalledOnce();
-    expect(onAddCheckpoint).toHaveBeenCalledOnce();
   });
 
   it('renames the lesson from its header', async () => {

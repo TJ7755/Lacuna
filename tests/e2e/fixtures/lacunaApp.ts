@@ -74,7 +74,8 @@ export async function enterWithWelcomeCourse(page: Page) {
   await importWelcomeCourse(page);
 }
 
-export async function createCourse(page: Page, courseName: string) {
+/** Creates a course, then selects its first lesson for authoring unless the caller needs the ladder. */
+export async function createCourse(page: Page, courseName: string, openLesson = true) {
   await page.locator('main').getByRole('button', { name: 'New course' }).click();
   const form = page.getByRole('form', { name: 'New course' });
   await form.getByRole('textbox', { name: 'Course name' }).fill(courseName);
@@ -90,7 +91,14 @@ export async function createCourse(page: Page, courseName: string) {
       .getByRole('navigation', { name: 'Courses' })
       .getByRole('link', { name: courseName, exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
+  const courseUrl = page.url();
+  await expect(page.getByRole('list', { name: 'Course path' })).toBeVisible();
+  if (openLesson) {
+    await page.getByRole('button', { name: 'Lesson 1', exact: true }).click();
+    await expect(page).toHaveURL(/#\/course\/[^/]+\/lesson\/[^/]+$/);
+    await expect(page.getByRole('heading', { name: 'Lesson 1' })).toBeVisible();
+  }
+  return courseUrl;
 }
 
 /** Gives the open lesson a note, so a new course has something to study. */
