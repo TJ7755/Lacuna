@@ -130,19 +130,19 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
     <>
       <div className="flex flex-col gap-5 px-6 py-6">
         {library && (
-          <div className="import-sources">
-            <button
-              ref={libraryButtonRef}
-              type="button"
-              data-featured
-              disabled={saving}
-              onClick={() => setBrowsing(true)}
-            >
-              <BookIcon width={24} height={24} />
-              <strong>Course library</strong>
-              <span>Ready-made GCSE and IGCSE courses</span>
-            </button>
-          </div>
+          <Button
+            ref={libraryButtonRef}
+            type="button"
+            variant="secondary"
+            className="w-full justify-start py-3"
+            style={{ borderRadius: '1rem', paddingInline: '0.875rem', borderWidth: '1.5px' }}
+            hoverScale={false}
+            disabled={saving}
+            onClick={() => setBrowsing(true)}
+          >
+            <BookIcon width={18} height={18} aria-hidden="true" />
+            Course library
+          </Button>
         )}
         <div className="flex flex-col gap-2">
           <label htmlFor={nameInputId} className={fieldLabelClassName}>
@@ -162,10 +162,9 @@ export function NewCourseForm({ onClose, inline = false, library = true }: NewCo
             aria-invalid={nameError ? 'true' : undefined}
             aria-describedby={nameError ? 'new-course-name-error' : undefined}
             className={cn(
-              // The text input's frame (Field's inputFrameClassName), red while invalid.
-              'w-full rounded-xl border-[1.5px] bg-surface px-3.5 py-2.5 text-ink',
+              'w-full rounded-2xl border-[1.5px] bg-surface px-3.5 py-2.5 text-ink',
               nameError ? 'border-negative' : 'border-line focus:border-accent',
-              'placeholder:text-ink-faint focus:outline-none',
+              'placeholder:text-ink-faint focus:outline-none focus-visible:shadow-[inset_0_0_0_1px_hsl(var(--accent-ink))]',
               'disabled:opacity-40',
             )}
           />

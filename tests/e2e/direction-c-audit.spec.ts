@@ -94,6 +94,7 @@ test('controls on phone pages reach the 44px target', async ({ page }) => {
     await page.waitForTimeout(500);
     if (route.endsWith('/cards/new')) {
       // A saved tag returns as a suggestion beside a fresh chip, so both are probed.
+      await page.getByRole('button', { name: /^Card options/ }).click();
       const tagField = page.getByRole('textbox', { name: 'Add tags' });
       await page.getByRole('textbox', { name: 'Front' }).fill('Target probe');
       await page.getByRole('textbox', { name: 'Back' }).fill('Answer');

@@ -13,9 +13,11 @@ export function ExpandingCreateControl({
   children,
   align = 'end',
   className = '',
+  prominent = false,
 }: {
-  align?: 'start' | 'end';
+  align?: 'start' | 'centre' | 'end';
   className?: string;
+  prominent?: boolean;
   label: string;
   closedWidth?: number;
   children: ReactNode | ((close: () => void) => ReactNode);
@@ -40,23 +42,33 @@ export function ExpandingCreateControl({
   const [speed] = useMotionSpeed();
   const multiplier = speedMultiplier(speed);
   const transition = expandingActionSpring(multiplier);
-  const anchor = align === 'start' ? 'left-0' : 'right-0';
+  const anchor = align === 'end' ? 'right-0' : 'left-0';
   const root = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
-  // Clamp the surface without moving the trigger that it expands from.
+  const [verticalOffset, setVerticalOffset] = useState(0);
+  const [availableHeight, setAvailableHeight] = useState<number>();
+  // Keep a useful form area in short windows, allowing the header to rise with its surface.
   useLayoutEffect(() => {
     if (!open) return;
     const measure = () => {
       const bounds = root.current?.getBoundingClientRect();
       if (!bounds) return;
       const width = Math.min(448, window.innerWidth - 36);
-      const left = align === 'start' ? bounds.left : bounds.right - width;
-      setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - left);
+      const originLeft = align === 'end' ? bounds.right - width : bounds.left;
+      const left = align === 'centre' ? bounds.left + (bounds.width - width) / 2 : originLeft;
+      setOffset(Math.min(Math.max(18, left), window.innerWidth - 18 - width) - originLeft);
+      const top = Math.max(18, Math.min(bounds.top, window.innerHeight - 18 - triggerHeight - 240));
+      setVerticalOffset(top - bounds.top);
+      setAvailableHeight(Math.max(triggerHeight, window.innerHeight - top - 18));
     };
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [open, align]);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
+  }, [open, align, triggerHeight]);
 
   const previouslyOpen = useRef(open);
   useEffect(() => {
@@ -81,13 +93,14 @@ export function ExpandingCreateControl({
         initial={false}
         animate={{
           x: open ? offset : 0,
+          y: open ? verticalOffset : 0,
           width: open ? 'min(448px, calc(100vw - 36px))' : closedWidth,
           height: open ? 'auto' : triggerHeight,
           borderRadius: open ? 24 : triggerHeight / 2,
         }}
         transition={transition}
         // The closed button uses an inset ring; the open form is a flat card.
-        className={`absolute ${anchor} top-0 overflow-hidden bg-surface-raised ring-1 ring-inset ${open ? 'ring-transparent card-surface' : 'ring-line-strong'}`}
+        className={`absolute ${anchor} top-0 overflow-hidden ring-1 ring-inset ${open ? 'bg-surface-raised ring-transparent card-surface' : prominent ? 'bg-accent ring-transparent' : 'bg-surface-raised ring-line-strong'}`}
       >
         <motion.button
           ref={trigger}
@@ -102,7 +115,7 @@ export function ExpandingCreateControl({
           data-press="none"
           transition={transition}
           style={{ width: closedWidth }}
-          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold text-ink focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
+          className={`absolute ${anchor} top-0 flex min-h-11 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold ${prominent && !open ? 'text-accent-fg' : 'text-ink'} focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent-ink`}
         >
           <motion.span
             aria-hidden="true"
@@ -134,7 +147,15 @@ export function ExpandingCreateControl({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.12 * multiplier }}
               >
-                {typeof children === 'function' ? children(close) : children}
+                <div
+                  className="overflow-y-auto overscroll-contain text-left"
+                  style={{
+                    maxHeight:
+                      availableHeight === undefined ? undefined : availableHeight - triggerHeight,
+                  }}
+                >
+                  {typeof children === 'function' ? children(close) : children}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

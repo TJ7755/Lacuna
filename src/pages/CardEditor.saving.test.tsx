@@ -6,6 +6,7 @@ import {
   generatedCard,
   renderEditing,
   renderNew,
+  chooseType,
   editorState,
 } from './CardEditor.testSupport';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -13,6 +14,80 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { CardEditor } from './CardEditor';
 import { draftKey, saveDraft } from '../utils/drafts';
+
+describe('CardEditor — supporting options', () => {
+  it('keeps options out of the quick path without losing tags when collapsed', async () => {
+    editorState.course = { ...course, lessonViewMode: 'edit' };
+    renderNew();
+    const options = screen.getByRole('button', { name: 'Card options' });
+    expect(options).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Also create reverse' })).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Card answer mode' })).toBeInTheDocument();
+
+    fireEvent.click(options);
+    const tags = screen.getByPlaceholderText('Add tags');
+    fireEvent.change(tags, { target: { value: 'cells' } });
+    fireEvent.keyDown(tags, { key: 'Enter' });
+    fireEvent.click(options);
+    expect(options).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.change(screen.getByPlaceholderText('Question or prompt'), {
+      target: { value: 'What does the nucleus do?' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Answer'), {
+      target: { value: 'Controls the cell.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add card' }));
+    await waitFor(() =>
+      expect(createCourseCard).toHaveBeenCalledWith(
+        'course-1',
+        'front_back',
+        'What does the nucleus do?',
+        'Controls the cell.',
+        ['cells'],
+        undefined,
+        undefined,
+      ),
+    );
+  });
+
+  it('shows existing tags when editing a saved card', () => {
+    editorState.card = { ...generatedCard, sequenceItemId: undefined, tags: ['cells'] };
+    renderEditing();
+    expect(screen.getByRole('button', { name: 'Card options (1 tag)' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Remove cells' })).toBeInTheDocument();
+  });
+
+  it('exposes restored reverse-card choices and tags without forcing options to stay open', async () => {
+    saveDraft(draftKey('bank:course-1', 'new'), {
+      type: 'front_back',
+      front: 'A restored question',
+      back: 'A restored answer',
+      tags: ['cells'],
+      alsoReverse: true,
+      timestamp: Date.now(),
+    });
+    renderNew();
+    fireEvent.click(await screen.findByRole('button', { name: 'Restore draft' }));
+    const options = screen.getByRole('button', { name: 'Card options (reverse on)' });
+    expect(options).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(options);
+    expect(screen.getByRole('button', { name: 'Remove cells' })).toBeInTheDocument();
+    const reverse = screen.getByRole('button', { name: 'Also create reverse' });
+    expect(reverse).toHaveAttribute('aria-pressed', 'true');
+    chooseType('Numeric answer');
+    expect(options).toHaveAccessibleName('Card options (1 tag)');
+    chooseType('Front / back');
+    expect(options).toHaveAccessibleName('Card options (reverse on)');
+    fireEvent.click(screen.getByRole('button', { name: 'Also create reverse' }));
+    expect(options).toHaveAccessibleName('Card options (1 tag)');
+    fireEvent.click(options);
+    expect(options).toHaveAttribute('aria-expanded', 'false');
+  });
+});
 
 describe('CardEditor — authored answer mode', () => {
   it('saves an explicit typing choice when creating a card', async () => {
