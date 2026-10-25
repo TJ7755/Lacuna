@@ -1,4 +1,4 @@
-# Desktop and AI setup
+# Desktop and automatic marking setup
 
 ### Handing out beta access codes
 
@@ -12,8 +12,8 @@ bun run ai:invites
    `AI_ACCESS_CREDENTIAL_HASHES` to its complete contents and redeploy once for the batch.
 2. Keep `codes.csv` private. Send each tester just one unused `access_code`, and record
    their name and the issue date in `issued_to` and `issued_on`. Do not send the whole CSV.
-3. The tester selects **Settings → AI → Built-in AI**, enables AI, opens the sidebar,
-   pastes their code and clicks **Connect**. Each code has a separate usage allowance.
+3. The tester opens **Settings → Integrations → Automatic marking**, turns it on, accepts
+   the consent warning, pastes their code and clicks **Connect**. Existing access codes still work.
 
 When adding more codes, save the **current deployed** `AI_ACCESS_CREDENTIAL_HASHES` JSON
 to a file inside `.ai-invites/`, then include it:
@@ -30,19 +30,9 @@ To revoke a tester, remove their `learner_id` entry from the deployed configurat
 redeploy. Codes are reusable bearer credentials, not single-use invitations; distribute
 them privately and keep the CSV in secure storage. Hashes cannot recover lost codes.
 
-### Hosted service operation
-
-Review actual provider pricing and free-tier conditions
-before enabling a chat provider key. Chat has no paid fallback.
-
-The hosted flow has browser and unpacked Windows Electron fixture tests. The preview deployment
-has completed live read, approved-write, rejected-write and Stop checks using zero-priced
-OpenRouter routes. The packaged app still needs a check on the target managed network. Keep the
-existing external client mode available if the hosted endpoint is unreachable.
-
 ### Optional Jev marking
 
-Jev also requires the hosted access/session configuration and existing Upstash Redis variables
+Jev requires the hosted access/session configuration and existing Upstash Redis variables
 above. It caches the one-hour access session in device memory. `AI_SERVICE_DISABLED` disables
 new shared session exchanges as well as chat; already-issued sessions can still access Jev
 unless its own kill switch is set. There are no per-learner Jev quotas. Session verification
@@ -69,30 +59,6 @@ before exchanging them. Existing undo removes the whole review event and its pro
 For a manual paid smoke check, run `bun scripts/jev-smoke.ts` with `TYPESAFE_API_KEY` supplied
 privately in the environment. It makes one noul call and one score call. Automated tests use
 fixtures and never require the key.
-
-### External AI client
-
-Enable **Settings → AI**, open the panel and copy its setup prompt into an MCP-capable client.
-Preserve the complete command, arguments and environment: these select the correct installation
-and Electron profile. Use the client's server registration flow and required reload/restart;
-do not start another ordinary Lacuna process as a connection test.
-
-Verify that the active client exposes `lacuna.connect` and `lacuna.wait_for_message`.
-If the panel's renderer runtime remains unavailable, use **Restart AI runtime**. Keep the
-Lacuna window and model task alive; the task must repeat `lacuna.wait_for_message`, because MCP
-cannot wake a completed task or make a client continue generating in the background.
-
-The browser uses the encrypted HTTPS relay and a short-lived pairing code. Build its standalone
-companion from the repository root, then register the built entry point in the client:
-
-```bash
-bun run build:ai-mcp
-node /absolute/path/to/Lacuna/tooling/lacuna-ai-mcp/dist/index.js
-```
-
-See the [web companion guide](../tooling/lacuna-ai-mcp/README.md).
-Managed networks may block the relay; desktop AI's local companion avoids that route, but device
-sync still requires the relay.
 
 ## Data MCP access
 

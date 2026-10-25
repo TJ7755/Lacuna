@@ -1,5 +1,5 @@
 import { expectAppDestination } from '../../../tests/helpers/expectAppDestination';
-import { createRef, type ComponentProps } from 'react';
+import { type ComponentProps } from 'react';
 import type * as MotionReact from 'motion/react';
 import { act, render, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -193,19 +193,6 @@ describe('Sidebar', () => {
     const search = screen.getByRole('link', { name: 'Search content' });
     expect(search.querySelector('kbd')).toBeNull();
     expectAppDestination(search, '/search');
-  });
-
-  it('exposes the inactive AI action as an unpressed toggle', () => {
-    render(
-      <Sidebar
-        collapsed={false}
-        onToggleCollapsed={vi.fn()}
-        aiAction={{ active: false, onClick: vi.fn(), triggerRef: createRef() }}
-      />,
-      { wrapper: MemoryRouter },
-    );
-
-    expect(screen.getByRole('button', { name: 'AI' })).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
