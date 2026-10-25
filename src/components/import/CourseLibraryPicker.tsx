@@ -18,8 +18,10 @@ const available = libraryCourses.filter((course) => resolveCourseShareUrl(course
  */
 export function CourseLibraryPicker({
   onChoose,
+  autoFocus = false,
 }: {
   onChoose: (course: LibraryCourse, shareUrl: string) => void;
+  autoFocus?: boolean;
 }) {
   const [query, setQuery] = useState('');
   const terms = query.trim().toLocaleLowerCase('en-GB').split(/\s+/).filter(Boolean);
@@ -34,6 +36,7 @@ export function CourseLibraryPicker({
     <div className="import-library">
       <Input
         id="import-library-search"
+        autoFocus={autoFocus}
         type="search"
         aria-label="Search the course library"
         placeholder="Subject, exam board or code"
@@ -51,14 +54,19 @@ export function CourseLibraryPicker({
               <span>
                 {course.qualification} · {courseCodes(course)}
               </span>
-              {course.stats && <span>{count.format(course.stats.cards)} cards</span>}
+              {course.stats && (
+                <span className="import-library-count">
+                  {count.format(course.stats.cards)} cards
+                </span>
+              )}
             </button>
           </li>
         ))}
       </ul>
-      {shown.length === 0 && (
-        <p role="status">No library course matches. Try a subject or exam board.</p>
-      )}
+      {/* Always mounted, so screen readers announce the message when it appears. */}
+      <p role="status">
+        {shown.length === 0 && 'No library course matches. Try a subject or exam board.'}
+      </p>
     </div>
   );
 }

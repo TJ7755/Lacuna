@@ -76,15 +76,23 @@ beforeEach(async () => {
   await db.open();
 });
 
-it('keeps a teacher suggestion unconfirmed when onboarding chose an exam date', async () => {
+it('imports with the onboarding exam date over a teacher suggestion, without asking again', async () => {
   markOnboardingPending();
   chooseStudyTarget({ mode: 'exam', examDate: learnerDate });
   render(<SharedCourseImport />);
   const input = screen.getByLabelText('Share link or code to import');
   fireEvent.change(input, { target: { value: `LAC0${btoa(JSON.stringify(payload()))}` } });
   fireEvent.click(screen.getByRole('button', { name: 'Read code' }));
-  expect(await screen.findByRole('button', { name: 'Add to my courses' })).toBeDisabled();
-  expect(screen.getByRole('radio', { name: /Exam date/ })).not.toBeChecked();
+  const add = await screen.findByRole('button', { name: 'Add to my courses' });
+  expect(add).toBeEnabled();
+  expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  expect(screen.getByText(/Reviews build up to your exam on/)).toBeInTheDocument();
+  fireEvent.click(add);
+  await waitFor(async () => expect(await db.courseAssessments.count()).toBe(1));
+  expect((await db.courseAssessments.toArray())[0]).toMatchObject({
+    schedulingMode: 'exam',
+    examDate: learnerDate,
+  });
 });
 
 it('starts a suggestion-free course with the onboarding choice', async () => {

@@ -9,7 +9,10 @@ import {
 } from './onboardingState';
 
 describe('onboarding state', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 
   it('leaves existing learners out of onboarding', () => {
     expect(onboardingPending()).toBe(false);
@@ -30,5 +33,16 @@ describe('onboarding state', () => {
     expect(onboardingPending()).toBe(false);
     expect(chosenStudyTarget()).toBeNull();
     expect(onboardingDestination('/course/a')).toBe('/course/a');
+  });
+
+  it('keeps the study target across a reload and ignores a damaged one', () => {
+    markOnboardingPending();
+    chooseStudyTarget({ mode: 'steady' });
+    expect(JSON.parse(sessionStorage.getItem('lacuna-onboarding-target')!)).toEqual({
+      mode: 'steady',
+    });
+    expect(chosenStudyTarget()).toEqual({ mode: 'steady' });
+    sessionStorage.setItem('lacuna-onboarding-target', '{"mode":"exam","examDate":"soon"}');
+    expect(chosenStudyTarget()).toBeNull();
   });
 });

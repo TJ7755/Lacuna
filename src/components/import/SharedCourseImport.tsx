@@ -93,14 +93,15 @@ async function resolvePending(payload: SharePayload, raw: string): Promise<Pendi
     raw,
     scheduling: payload.course
       ? {
-          // A teacher's suggested date is never taken as confirmed: the learner chooses, as before.
-          mode: suggestedDate === undefined ? (chosen?.mode ?? null) : null,
-          examDate: suggestedDate ?? chosen?.examDate ?? defaultExamDate(),
+          // Onboarding has just asked, so its answer (and the learner's own date) wins. Otherwise
+          // a teacher's suggested date is never taken as confirmed: the learner chooses.
+          mode: chosen?.mode ?? null,
+          examDate: chosen?.examDate ?? suggestedDate ?? defaultExamDate(),
           timeZone,
           valid: true,
           suggestion:
             suggestedDate === undefined ? undefined : formatDateTime(suggestedDate, timeZone),
-          fromOnboarding: suggestedDate === undefined && !!chosen,
+          fromOnboarding: !!chosen,
         }
       : undefined,
   };
@@ -342,7 +343,9 @@ export function SharedCourseImport({
     >
       <div className="mb-5 flex items-center gap-2">
         <UploadIcon width={18} height={18} className="text-accent-ink" />
-        <h2 className="font-display text-xl">Import a shared course</h2>
+        <h2 className="font-display text-xl">
+          {chosen ? 'Add this course' : 'Import a shared course'}
+        </h2>
       </div>
 
       {!chosen && (
@@ -489,6 +492,14 @@ export function SharedCourseImport({
                 <p className="mb-4 rounded-2xl bg-ink/[0.06] px-4 py-3 text-sm text-ink-soft">
                   This share code omitted media to keep the code small. Images and audio will appear
                   as placeholders after import. Use a full backup for an exact transfer.
+                </p>
+              )}
+              {pending.scheduling?.fromOnboarding && (
+                <p className="mb-5 text-sm text-ink-soft">
+                  {pending.scheduling.mode === 'exam'
+                    ? `Reviews build up to your exam on ${formatDateTime(pending.scheduling.examDate, pending.scheduling.timeZone)}.`
+                    : 'Reviews keep everything fresh, with no exam date.'}{' '}
+                  You can change this in Course settings.
                 </p>
               )}
               {pending.scheduling && !pending.scheduling.fromOnboarding && (

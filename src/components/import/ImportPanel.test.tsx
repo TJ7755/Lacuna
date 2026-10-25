@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type * as Router from 'react-router-dom';
 import type * as CardImport from '../../db/cardImport';
@@ -61,6 +61,7 @@ vi.mock('./ShareLinkImport', () => ({
     code: string;
     chosen?: boolean;
     isCurrent: () => boolean;
+    onBusyChange?: (busy: boolean) => void;
     onOpenCourse: (id: string) => void;
   }) => {
     mocks.shareLink(props);
@@ -120,6 +121,35 @@ it('leads with the course library and imports a chosen course inside the panel',
   expect(screen.getByRole('searchbox', { name: 'Search the course library' })).toHaveFocus();
   fireEvent.click(screen.getByRole('button', { name: 'Back to import sources' }));
   expect(screen.getByRole('button', { name: /Course library/ })).toHaveFocus();
+});
+
+it('holds the way back during a library import and ignores an earlier choice afterwards', () => {
+  open();
+  fireEvent.click(screen.getByRole('button', { name: /Course library/ }));
+  const search = screen.getByRole('searchbox', { name: 'Search the course library' });
+  fireEvent.change(search, { target: { value: '8461' } });
+  fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+  const first = mocks.shareLink.mock.lastCall![0];
+
+  act(() => {
+    first.onBusyChange(true);
+  });
+  const back = screen.getByRole('button', { name: 'Back to the course library' });
+  expect(back).toBeDisabled();
+  fireEvent.keyDown(back, { key: 'Escape' });
+  expect(screen.getByText(/^Importing/)).toBeInTheDocument();
+  act(() => {
+    first.onBusyChange(false);
+  });
+
+  fireEvent.click(back);
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Search the course library' }), {
+    target: { value: '8461' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^Biology/ }));
+  // The same course chosen again is a new import; the first one is stale.
+  expect(first.isCurrent()).toBe(false);
+  expect(mocks.shareLink.mock.lastCall![0].isCurrent()).toBe(true);
 });
 
 it('tells the learner when no library course matches', () => {

@@ -21,7 +21,11 @@ export function onboardingPending(): boolean {
 }
 
 export function finishOnboarding(): void {
-  studyTarget = null;
+  try {
+    sessionStorage.removeItem(STUDY_TARGET_KEY);
+  } catch {
+    // Nothing to clear without storage.
+  }
   try {
     localStorage.setItem(ONBOARDING_KEY, 'done');
   } catch {
@@ -43,14 +47,29 @@ export interface StudyTargetChoice {
   examDate?: number;
 }
 
-// The answer to "Do you have an exam coming up?", held for this visit so the course the
-// learner makes or imports next starts with it selected.
-let studyTarget: StudyTargetChoice | null = null;
+// The answer to "Do you have an exam coming up?", kept for this visit (surviving a reload) so
+// the course the learner makes or imports next starts with it, without asking again.
+const STUDY_TARGET_KEY = 'lacuna-onboarding-target';
 
 export function chooseStudyTarget(choice: StudyTargetChoice): void {
-  studyTarget = choice;
+  try {
+    sessionStorage.setItem(STUDY_TARGET_KEY, JSON.stringify(choice));
+  } catch {
+    // Without storage the next course simply asks again.
+  }
 }
 
 export function chosenStudyTarget(): StudyTargetChoice | null {
-  return onboardingPending() ? studyTarget : null;
+  if (!onboardingPending()) return null;
+  try {
+    const choice: unknown = JSON.parse(sessionStorage.getItem(STUDY_TARGET_KEY) ?? 'null');
+    if (!choice || typeof choice !== 'object') return null;
+    const { mode, examDate } = choice as Partial<StudyTargetChoice>;
+    if (mode === 'steady') return { mode };
+    if (mode === 'exam' && (examDate === undefined || Number.isFinite(examDate)))
+      return { mode, examDate };
+    return null;
+  } catch {
+    return null;
+  }
 }

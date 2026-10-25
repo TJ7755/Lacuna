@@ -65,9 +65,21 @@ export function ImportPanel({
   const [classCode, setClassCode] = useState('');
   const [classError, setClassError] = useState<string | null>(null);
   const [file, setFile] = useState<File>();
-  const [libraryCourse, setLibraryCourse] = useState<{ course: LibraryCourse; shareUrl: string }>();
-  const activeLibraryCourse = useRef<string>(undefined);
-  activeLibraryCourse.current = libraryCourse?.course.id;
+  // Each choice gets its own token, so a late import from an earlier choice, or from a closed
+  // panel, never navigates.
+  const [libraryCourse, setLibraryCourse] = useState<{
+    course: LibraryCourse;
+    shareUrl: string;
+    token: symbol;
+  }>();
+  const activeLibraryCourse = useRef<symbol>(undefined);
+  activeLibraryCourse.current = libraryCourse?.token;
+  useEffect(
+    () => () => {
+      activeLibraryCourse.current = undefined;
+    },
+    [],
+  );
   const [dragging, setDragging] = useState(false);
   const [pastedText, setPastedText] = useState('');
   const input = useRef<HTMLInputElement>(null);
@@ -256,12 +268,17 @@ export function ImportPanel({
                   <ShareLinkImport
                     code={libraryCourse.shareUrl}
                     chosen
-                    isCurrent={() => activeLibraryCourse.current === libraryCourse.course.id}
-                    onOpenCourse={(id) => void navigate(onboardingDestination(`/course/${id}`))}
+                    isCurrent={() => activeLibraryCourse.current === libraryCourse.token}
+                    onBusyChange={setBusy}
+                    onOpenCourse={(id) =>
+                      void navigate(onboardingDestination(`/course/${encodeURIComponent(id)}`))
+                    }
                   />
                 ) : (
                   <CourseLibraryPicker
-                    onChoose={(course, shareUrl) => setLibraryCourse({ course, shareUrl })}
+                    onChoose={(course, shareUrl) =>
+                      setLibraryCourse({ course, shareUrl, token: Symbol(course.id) })
+                    }
                   />
                 )
               ) : source === 'class' ? (

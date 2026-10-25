@@ -136,10 +136,13 @@
   font-size: 13px;
   color: hsl(var(--ink-soft));
 }
-.import-library li span:last-child {
+.import-library li .import-library-count {
   grid-column: 2;
   grid-row: 1 / span 2;
   align-self: center;
+}
+.import-library p:empty {
+  display: none;
 }
 .import-library p {
   font-size: 14px;

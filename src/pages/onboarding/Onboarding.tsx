@@ -314,7 +314,7 @@ function ContentStep() {
         <StepHeading>What do you want to learn?</StepHeading>
         <div className="overflow-hidden rounded-3xl bg-surface-raised card-surface">
           {fromScratch ? (
-            <NewCourseForm inline onClose={() => setFromScratch(false)} />
+            <NewCourseForm inline library={false} onClose={() => setFromScratch(false)} />
           ) : (
             <div className="pt-2">
               <ImportPanel />

@@ -48,6 +48,7 @@ export function ShareLinkImport({
   onOpenCourse,
   alternative,
   chosen,
+  onBusyChange,
 }: {
   code: string;
   /** False once the learner has moved on, so a late import does not navigate. */
@@ -58,6 +59,8 @@ export function ShareLinkImport({
   alternative?: (shortCode: boolean) => ReactNode;
   /** Passed to the importer when the learner picked the course in Lacuna. */
   chosen?: boolean;
+  /** True while the course is being written, so the surrounding way back can wait. */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [state, setState] = useState<ShareLinkState>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -209,12 +212,18 @@ export function ShareLinkImport({
           <ShareLinkSkeleton />
         </DelayedFallback>
       ) : state.status === 'unavailable' ? (
-        retry('This link is unavailable', state.message)
+        retry(
+          chosen ? 'This course is unavailable' : 'This link is unavailable',
+          chosen && state.message === UNAVAILABLE_MESSAGE
+            ? 'This course could not be loaded. Check your connection, then try again.'
+            : state.message,
+        )
       ) : state.status === 'ready' ? (
         <div className="space-y-6">
           <SharedCourseImport
             initialFile={state.file}
             chosen={chosen}
+            onBusyChange={onBusyChange}
             onImported={(courseId) => {
               if (!isCurrent()) return;
               void join(state.shareId, state.expectedLineageId, courseId, state.recipient)
