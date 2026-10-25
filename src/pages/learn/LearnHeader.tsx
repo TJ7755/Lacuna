@@ -131,6 +131,8 @@ export function LearnHeader({
   currentCardIds,
   canUndo = false,
   onUndo,
+  cardActions = true,
+  segmentNoun,
 }: {
   mode: LearnModeType;
   plannedRevision: boolean;
@@ -166,6 +168,10 @@ export function LearnHeader({
   /** Phone undo control; renders only when the parent supplies onUndo. */
   canUndo?: boolean;
   onUndo?: () => void;
+  /** False for a card that is not stored, which has nothing to edit, flag, bury or suspend. */
+  cardActions?: boolean;
+  /** What each Simple Learn segment stands for when it is not a card. */
+  segmentNoun?: string;
 }) {
   const info = computeHeaderInfo({
     singleDeck,
@@ -243,6 +249,7 @@ export function LearnHeader({
               value={displayedProgress}
               label={progressName}
               m={m}
+              noun={segmentNoun}
             />
           ) : (
             <SessionProgressTrack value={displayedProgress} label={progressName} m={m} />
@@ -257,108 +264,110 @@ export function LearnHeader({
           </span>
         )}
 
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Card actions"
-            aria-expanded={menuOpen}
-            title="Card actions"
-            className={cn(
-              'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
-              menuOpen
-                ? 'border-ink bg-ink text-paper'
-                : 'border-line-strong bg-surface text-ink hover:border-ink/40',
-            )}
-          >
-            <motion.span
-              className="inline-flex"
-              animate={{ rotate: menuOpen ? 90 : 0 }}
-              transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+        {cardActions && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Card actions"
+              aria-expanded={menuOpen}
+              title="Card actions"
+              className={cn(
+                'flex h-11 w-11 items-center justify-center rounded-full border transition-colors',
+                menuOpen
+                  ? 'border-ink bg-ink text-paper'
+                  : 'border-line-strong bg-surface text-ink hover:border-ink/40',
+              )}
             >
-              <MoreIcon width={18} height={18} />
-            </motion.span>
-          </button>
-          <AnimatePresence>
-            {menuOpen &&
-              current &&
-              (isTouchMode ? (
-                <TouchMenuSheet
-                  current={current}
-                  forecast={forecast}
-                  onEdit={onEdit}
-                  onToggleFlag={onToggleFlag}
-                  onBury={onBury}
-                  onSuspend={onSuspend}
-                  onShowShortcuts={onShowShortcuts}
-                  onToggleFocus={onToggleFocus}
-                  focusMode={focusMode}
-                  onClose={() => setMenuOpen(false)}
-                  m={m}
-                />
-              ) : (
-                <motion.div
-                  initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
-                  transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
-                >
-                  {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
-                  {current.sequenceItemId === undefined &&
-                    current.occlusionRegionId === undefined && (
-                      <MenuItem
-                        icon={<EditIcon width={16} height={16} />}
-                        label="Edit card"
-                        onClick={onEdit}
-                      />
-                    )}
-                  <MenuItem
-                    icon={<FlagIcon width={16} height={16} />}
-                    label={current.flagged ? 'Remove flag' : 'Flag card'}
-                    description={
-                      current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
-                    }
-                    onClick={onToggleFlag}
+              <motion.span
+                className="inline-flex"
+                animate={{ rotate: menuOpen ? 90 : 0 }}
+                transition={{ duration: 0.28 * m, ease: [0.2, 0.8, 0.2, 1] }}
+              >
+                <MoreIcon width={18} height={18} />
+              </motion.span>
+            </button>
+            <AnimatePresence>
+              {menuOpen &&
+                current &&
+                (isTouchMode ? (
+                  <TouchMenuSheet
+                    current={current}
+                    forecast={forecast}
+                    onEdit={onEdit}
+                    onToggleFlag={onToggleFlag}
+                    onBury={onBury}
+                    onSuspend={onSuspend}
+                    onShowShortcuts={onShowShortcuts}
+                    onToggleFocus={onToggleFocus}
+                    focusMode={focusMode}
+                    onClose={() => setMenuOpen(false)}
+                    m={m}
                   />
-                  <MenuItem
-                    icon={<ClockIcon width={16} height={16} />}
-                    label="Bury until tomorrow"
-                    description="Back tomorrow."
-                    onClick={onBury}
-                  />
-                  <MenuItem
-                    icon={<PauseIcon width={16} height={16} />}
-                    label="Suspend card"
-                    description="Out of study until you resume it."
-                    onClick={onSuspend}
-                  />
-                  <div className="mx-2 my-1.5 h-px bg-line" />
-                  <MenuItem
-                    icon={<FocusIcon width={16} height={16} />}
-                    label={focusMode ? 'Leave focus mode' : 'Focus mode'}
-                    onClick={onToggleFocus}
-                  />
-                  <MenuItem
-                    icon={
-                      isFullscreen ? (
-                        <RestoreIcon width={16} height={16} />
-                      ) : (
-                        <FullscreenIcon width={16} height={16} />
-                      )
-                    }
-                    label={isFullscreen ? 'Leave full screen' : 'Full screen'}
-                    onClick={onToggleFullscreen}
-                  />
-                  <MenuItem
-                    icon={<KeyboardIcon width={16} height={16} />}
-                    label="Keyboard shortcuts"
-                    onClick={onShowShortcuts}
-                  />
-                </motion.div>
-              ))}
-          </AnimatePresence>
-        </div>
+                ) : (
+                  <motion.div
+                    initial={m > 0 ? { opacity: 0, y: -6, scale: 0.94 } : false}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={m > 0 ? { opacity: 0, y: -4, scale: 0.97 } : undefined}
+                    transition={{ duration: 0.22 * m, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute right-0 top-[52px] z-20 w-[260px] origin-top-right overflow-hidden rounded-[18px] bg-surface p-1.5 card-surface"
+                  >
+                    {forecast && <p className="px-3 py-2.5 text-sm text-ink-soft">{forecast}</p>}
+                    {current.sequenceItemId === undefined &&
+                      current.occlusionRegionId === undefined && (
+                        <MenuItem
+                          icon={<EditIcon width={16} height={16} />}
+                          label="Edit card"
+                          onClick={onEdit}
+                        />
+                      )}
+                    <MenuItem
+                      icon={<FlagIcon width={16} height={16} />}
+                      label={current.flagged ? 'Remove flag' : 'Flag card'}
+                      description={
+                        current.flagged ? undefined : 'Find it later; its schedule is unchanged.'
+                      }
+                      onClick={onToggleFlag}
+                    />
+                    <MenuItem
+                      icon={<ClockIcon width={16} height={16} />}
+                      label="Bury until tomorrow"
+                      description="Back tomorrow."
+                      onClick={onBury}
+                    />
+                    <MenuItem
+                      icon={<PauseIcon width={16} height={16} />}
+                      label="Suspend card"
+                      description="Out of study until you resume it."
+                      onClick={onSuspend}
+                    />
+                    <div className="mx-2 my-1.5 h-px bg-line" />
+                    <MenuItem
+                      icon={<FocusIcon width={16} height={16} />}
+                      label={focusMode ? 'Leave focus mode' : 'Focus mode'}
+                      onClick={onToggleFocus}
+                    />
+                    <MenuItem
+                      icon={
+                        isFullscreen ? (
+                          <RestoreIcon width={16} height={16} />
+                        ) : (
+                          <FullscreenIcon width={16} height={16} />
+                        )
+                      }
+                      label={isFullscreen ? 'Leave full screen' : 'Full screen'}
+                      onClick={onToggleFullscreen}
+                    />
+                    <MenuItem
+                      icon={<KeyboardIcon width={16} height={16} />}
+                      label="Keyboard shortcuts"
+                      onClick={onShowShortcuts}
+                    />
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Focus mode keeps a control of its own only while it is active, so there is a
             visible way out of a chrome-less screen. Otherwise it lives in the menu. */}

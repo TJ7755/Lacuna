@@ -36,3 +36,9 @@ it('names and announces a joined pupil class', async () => {
   await waitFor(() => expect(document.title).toBe('Gaps · Lacuna'));
   expect(await screen.findByRole('status')).toHaveTextContent('Gaps');
 });
+
+it('names and announces onboarding', async () => {
+  render(<RouteAnnouncement pathname="/start" />);
+  await waitFor(() => expect(document.title).toBe('Get started · Lacuna'));
+  expect(await screen.findByRole('status')).toHaveTextContent('Get started');
+});

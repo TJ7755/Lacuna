@@ -9,7 +9,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/layout/ErrorBoundary';
 import { LandingTransition } from './components/layout/LandingTransition';
 import { seedWorkPending } from './db/seedFlags';
-import { ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
+import { db, ensurePreMigrationSnapshot, openDatabase, type DbOpenResult } from './db/schema';
 import { stampMissingLessonViewModes } from './db/lessonViewModeMigration';
 import { requestPersistentStorage } from './db/persistence';
 import { revokeAllCachedUrls } from './db/assetCache';
@@ -18,6 +18,11 @@ import { useStorageQuotaWarning } from './hooks/useStorageQuotaWarning';
 import { loadMcpBridgeController } from './routes/loaders';
 import { router } from './routes/router';
 import { consumeLandingHandover } from './landingHandover';
+import {
+  finishOnboarding,
+  markOnboardingPending,
+  onboardingPending,
+} from './onboarding/onboardingState';
 import { replacementLifecycle } from './db/replacementLifecycle';
 
 export { router } from './routes/router';
@@ -46,7 +51,9 @@ const DesktopUpdateController = lazy(() =>
 function isPublicEntry(hash: string): boolean {
   // Public links and comparison CTAs must preserve a new visitor’s destination
   // through first-run setup, including course sharing and material import.
-  return /^#\/(?:welcome|landing|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(hash);
+  return /^#\/(?:welcome|landing|start|download|share|import|teach|s\/[^/?#]+)\/?(?:[?#]|$)/.test(
+    hash,
+  );
 }
 
 export function App() {
@@ -107,11 +114,26 @@ export function App() {
         // The first-run checks load only while that work remains.
         if (seedWorkPending()) {
           const { isFirstRun, settleFirstRun } = await import('./db/seed');
-          if ((await isFirstRun()) && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
+          const firstRun = await isFirstRun();
+          if (firstRun && !isPublicEntry(window.location.hash) && !enteredFromLanding) {
             window.location.hash = '#/welcome';
           }
 
           await settleFirstRun();
+          if (firstRun) markOnboardingPending();
+        }
+        // Courses restored, synced or made outside the flow mean the learner is past onboarding,
+        // unless they are part-way through it.
+        if (
+          onboardingPending() &&
+          !window.location.hash.startsWith('#/start') &&
+          (await db.courses.count()) > 0
+        ) {
+          finishOnboarding();
+        }
+        // A new learner who chose to enter starts with onboarding rather than an empty Today.
+        if (enteredFromLanding && onboardingPending() && /^#?\/?$/.test(window.location.hash)) {
+          window.location.hash = '#/start';
         }
       } catch (error) {
         if (import.meta.env.DEV) {

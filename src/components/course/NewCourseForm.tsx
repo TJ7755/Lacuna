@@ -14,6 +14,7 @@ import { defaultExamDate, getLocalTimeZone } from '../../utils/datetime';
 import type { CourseSchedulingMode } from '../../db/types';
 import { DialogHeader, DialogPanel } from '../ui/DialogPanel';
 import { LIBRARY_ORIGIN } from '../../config/origins';
+import { chosenStudyTarget, onboardingDestination } from '../../onboarding/onboardingState';
 
 interface NewCourseFormProps {
   onClose: () => void;
@@ -32,9 +33,15 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [timeZone] = useState(getLocalTimeZone);
-  const [examDate, setExamDate] = useState(defaultExamDate);
+  const [examDate, setExamDate] = useState(
+    () => chosenStudyTarget()?.examDate ?? defaultExamDate(),
+  );
   const [examDateValid, setExamDateValid] = useState(true);
-  const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode>('steady');
+  const [schedulingMode, setSchedulingMode] = useState<CourseSchedulingMode>(
+    () => chosenStudyTarget()?.mode ?? 'steady',
+  );
+  // Onboarding has just asked about the exam, so the course takes that answer as it is.
+  const [targetChosen] = useState(() => chosenStudyTarget() !== null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (present && inline) nameInputRef.current?.focus();
@@ -76,7 +83,9 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
       );
       await createLesson(course.id, 'Lesson 1');
       onClose();
-      void navigate(`/course/${course.id}`, { state: { focusNewCard: true } });
+      void navigate(onboardingDestination(`/course/${course.id}`), {
+        state: { focusNewCard: true },
+      });
     } catch (err) {
       setSaving(false);
       notify(err instanceof Error ? err.message : 'Could not create the course.', 'negative');
@@ -137,16 +146,18 @@ export function NewCourseForm({ onClose, inline = false }: NewCourseFormProps) {
           )}
         </div>
 
-        <CourseStudyTarget
-          schedulingMode={schedulingMode}
-          setSchedulingMode={setSchedulingMode}
-          saving={saving}
-          datePickerRef={datePickerRef}
-          examDate={examDate}
-          setExamDate={setExamDate}
-          setExamDateValid={setExamDateValid}
-          timeZone={timeZone}
-        />
+        {!targetChosen && (
+          <CourseStudyTarget
+            schedulingMode={schedulingMode}
+            setSchedulingMode={setSchedulingMode}
+            saving={saving}
+            datePickerRef={datePickerRef}
+            examDate={examDate}
+            setExamDate={setExamDate}
+            setExamDateValid={setExamDateValid}
+            timeZone={timeZone}
+          />
+        )}
       </div>
 
       <footer className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">

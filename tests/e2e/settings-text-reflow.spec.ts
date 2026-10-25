@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { skipOnboarding } from './fixtures/lacunaApp';
 
 // Regression for #458: Settings must reflow with its own text-size setting on
 // narrow screens instead of pushing choice groups past their cards.
@@ -20,7 +21,7 @@ for (const width of [320, 390]) {
       }, scale.value);
       await page.goto('/');
       await page.getByRole('link', { name: 'Start revising', exact: true }).first().click();
-      await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+      await skipOnboarding(page);
       await page.goto('/#/settings#settings-study');
       await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
       await expect(page.getByRole('radiogroup', { name: 'Audio playback speed' })).toBeVisible();

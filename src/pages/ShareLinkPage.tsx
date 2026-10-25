@@ -7,6 +7,7 @@ import { useIsPresent } from 'motion/react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppLink as Link } from '../components/ui/AppLink';
 import { SharedCourseImport } from '../components/import/SharedCourseImport';
+import { onboardingDestination } from '../onboarding/onboardingState';
 import { DelayedFallback } from '../components/ui/DelayedFallback';
 import { Button } from '../components/ui/Button';
 import {
@@ -230,8 +231,9 @@ export function ShareLinkPage() {
                   .then(() => {
                     if (activeImportRoute.current !== location.key || state.recipient) return;
                     const pathname = `/course/${encodeURIComponent(courseId)}`;
-                    void navigate(pathname);
-                    focusImportedCourseHeading(pathname);
+                    const destination = onboardingDestination(pathname);
+                    void navigate(destination);
+                    if (destination === pathname) focusImportedCourseHeading(pathname);
                   })
                   .catch((error) =>
                     setJoinError(

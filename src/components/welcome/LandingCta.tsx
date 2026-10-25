@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getMotionMultiplier } from '../../state/motionSpeed';
 import { beginLandingTransition, COVERED_EVENT } from '../layout/LandingTransition';
+import { onboardingPending } from '../../onboarding/onboardingState';
 import './LandingCta.css';
 
 /** Keep the label visible on hover, then expand from the link's actual bounds.
@@ -19,7 +20,7 @@ export function LandingCta({
 
   useEffect(() => {
     const onCovered = () => {
-      if (started.current) void navigate('/');
+      if (started.current) void navigate(onboardingPending() ? '/start' : '/');
     };
     window.addEventListener(COVERED_EVENT, onCovered);
     return () => window.removeEventListener(COVERED_EVENT, onCovered);
@@ -27,7 +28,7 @@ export function LandingCta({
 
   return (
     <Link
-      to="/"
+      to={onboardingPending() ? '/start' : '/'}
       ref={ref}
       className={`landing-cta ${className}`}
       onClick={(event) => {

@@ -74,6 +74,10 @@ const QuestionEditor = lazy(loadQuestionEditor);
 const QuestionLearnMode = lazy(loadQuestionLearnMode);
 const MergeReviewPanel = lazy(loadMergeReviewPanel);
 const Landing = lazy(loadLanding);
+// Not in loaders: onboarding reaches the route prefetcher, which imports the loaders.
+const Onboarding = lazy(() =>
+  import('../pages/onboarding/Onboarding').then((module) => ({ default: module.Onboarding })),
+);
 const Download = lazy(loadDownload);
 const Method = lazy(loadMethod);
 
@@ -142,9 +146,18 @@ export const router = createHashRouter([
             path: 'course/:courseId/questions',
             element: workspaceRoute(QuestionsPage),
           },
-          { path: 'course/:courseId/question-sets/:setId/edit', element: courseAccessRoute(lazyRoute(QuestionSetEditor)) },
-          { path: 'course/:courseId/question-sets/:setId/attempts/:attemptId', element: courseAccessRoute(lazyRoute(QuestionSetPractice)) },
-          { path: 'course/:courseId/question-sets/:setId', element: courseAccessRoute(lazyRoute(QuestionSetOverview)) },
+          {
+            path: 'course/:courseId/question-sets/:setId/edit',
+            element: courseAccessRoute(lazyRoute(QuestionSetEditor)),
+          },
+          {
+            path: 'course/:courseId/question-sets/:setId/attempts/:attemptId',
+            element: courseAccessRoute(lazyRoute(QuestionSetPractice)),
+          },
+          {
+            path: 'course/:courseId/question-sets/:setId',
+            element: courseAccessRoute(lazyRoute(QuestionSetOverview)),
+          },
           {
             path: 'course/:courseId/questions/new',
             element: courseAccessRoute(lazyRoute(QuestionEditor)),
@@ -216,6 +229,11 @@ export const router = createHashRouter([
       {
         path: '/landing',
         element: isolatedRoute('the landing page', lazyRoute(Landing)),
+      },
+      {
+        // First-run onboarding is a full-screen sequence outside the shell.
+        path: '/start',
+        element: isolatedRoute('onboarding', lazyRoute(Onboarding)),
       },
       {
         // Public download guidance stays outside the application shell.
