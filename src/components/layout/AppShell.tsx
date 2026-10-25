@@ -19,23 +19,15 @@ import { CourseSectionBar } from '../course/CourseSectionBar';
 import { courseIdFromPath } from '../course/courseSections';
 import { cn } from '../ui/cn';
 import { useCourseSectionSwipe } from '../course/useCourseSectionSwipe';
-import { CloseIcon, LacunaIcon, SparklesIcon } from '../ui/icons';
+import { CloseIcon, LacunaIcon } from '../ui/icons';
 import { scaledSpring } from '../ui/motion';
 import { useMotionSpeed, speedMultiplier } from '../../state/motionSpeed';
 import { consumeLandingArrival } from './LandingTransition';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
-import { useAiSettings } from '../../ai/settings';
-import { useOptionalAiSession } from '../../ai/session/AiSessionContext';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { AiActivityCapsule } from '../ai/AiActivityCapsule';
-import { loadAiPanel } from '../ai/loaders';
-import { AiPanelLoadBoundary } from '../ai/AiPanelLoadBoundary';
-import { AiFloatingWindow } from '../ai/AiFloatingWindow';
 import { useMobileNavigationSwipe } from './useMobileNavigationSwipe';
 import { FinalExamLifecycleController } from '../course/FinalExamLifecycleController';
 import { keyMatches, loadBindings } from '../../state/shortcutBindings';
 
-const AiPanel = lazy(loadAiPanel);
 const CommandPalette = lazy(() =>
   import('../search/CommandPalette').then((module) => ({ default: module.CommandPalette })),
 );
@@ -48,7 +40,6 @@ const KeyHints = lazy(() =>
 
 const COLLAPSE_KEY = 'lacuna-sidebar-collapsed';
 const WIDE_DESKTOP_QUERY = '(min-width: 1280px)';
-const AI_DESKTOP_QUERY = '(min-width: 1024px)';
 
 export function AppShell() {
   const { pathname } = useLocation();
@@ -76,10 +67,6 @@ function AppShellLayout() {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [aiSettings] = useAiSettings();
-  const aiSession = useOptionalAiSession();
-  const [aiOpen, setAiOpen] = useState(false);
-  const aiDesktop = useMediaQuery(AI_DESKTOP_QUERY);
   const [wideDesktop, setWideDesktop] = useState(
     () => window.matchMedia?.(WIDE_DESKTOP_QUERY).matches ?? true,
   );
@@ -102,15 +89,9 @@ function AppShellLayout() {
   const titlebarRef = useRef<HTMLDivElement>(null);
   const bottomNavRef = useRef<HTMLDivElement>(null);
   const shellBodyRef = useRef<HTMLDivElement>(null);
-  const aiCapsuleRef = useRef<HTMLDivElement>(null);
   const mobileTriggerRef = useRef<HTMLButtonElement>(null);
   const mobileWasOpenRef = useRef(false);
   const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
-  const aiTriggerRef = useRef<HTMLButtonElement>(null);
-  const aiWasOpenRef = useRef(false);
-  // Whichever control opened the floating assistant gets focus back when it closes.
-  const aiOpenerRef = useRef<'trigger' | 'pill'>('trigger');
-  const aiPillRef = useRef<HTMLButtonElement>(null);
   const mobileDrawerRef = useFocusTrap(mobileOpen, {
     autoFocusSelector: '[data-mobile-close]',
     returnFocus: false,
@@ -124,18 +105,10 @@ function AppShellLayout() {
   // The section bar only exists inside a course, so only those pages need to clear it.
   const inCourse = courseIdFromPath(location.pathname) !== null;
   const studySheet = useStudySheetState();
-  const capsuleSuppressed = mobileOpen || paletteOpen || hintsOpen || studySheet.open;
   const mobileNavigationSwipe = useMobileNavigationSwipe({
     enabled: !mobileOpen && !paletteOpen && !hintsOpen && !studySheet.open,
     onOpen: () => setMobileOpen(true),
   });
-
-  useEffect(() => {
-    const capsule = aiCapsuleRef.current;
-    if (!capsule) return;
-    if (capsuleSuppressed) capsule.setAttribute('inert', '');
-    else capsule.removeAttribute('inert');
-  }, [aiSession, aiSettings.enabled, capsuleSuppressed]);
 
   // Keep an icon rail visible on narrower desktop windows instead of spending a
   // quarter of the viewport on the full sidebar. The user's preference resumes
@@ -148,20 +121,6 @@ function AppShellLayout() {
     query.addEventListener('change', onChange);
     return () => query.removeEventListener('change', onChange);
   }, []);
-
-  useEffect(() => {
-    if (!aiDesktop) setAiOpen(false);
-  }, [aiDesktop]);
-
-  useEffect(() => {
-    if (!aiSettings.enabled || !aiSession) setAiOpen(false);
-  }, [aiSession, aiSettings.enabled]);
-
-  useEffect(() => {
-    if (aiWasOpenRef.current && !aiOpen)
-      (aiOpenerRef.current === 'pill' ? aiPillRef : aiTriggerRef).current?.focus();
-    aiWasOpenRef.current = aiOpen;
-  }, [aiOpen]);
 
   // Debounce sidebar collapse writes so rapid toggles / drag-resize don't hammer localStorage.
   useEffect(() => {
@@ -293,76 +252,8 @@ function AppShellLayout() {
             collapsed={!wideDesktop || collapsed}
             onToggleCollapsed={() => setCollapsed((c) => !c)}
             collapseControl={wideDesktop}
-            aiAction={
-              aiSettings.enabled && aiSession && aiDesktop
-                ? {
-                    active: aiOpen,
-                    onClick: () => {
-                      aiOpenerRef.current = 'trigger';
-                      setAiOpen((open) => !open);
-                    },
-                    triggerRef: aiTriggerRef,
-                  }
-                : undefined
-            }
           />
         </div>
-
-        {!aiOpen && aiSettings.enabled && aiSession && (
-          <div
-            ref={aiCapsuleRef}
-            aria-hidden={capsuleSuppressed || undefined}
-            className={cn(
-              'absolute right-4 top-4 z-30',
-              capsuleSuppressed && 'pointer-events-none select-none',
-            )}
-          >
-            <AiActivityCapsule
-              session={aiSession}
-              canOpenConversation={aiDesktop}
-              stoppableOnly={!aiDesktop}
-              onOpenConversation={() => {
-                aiOpenerRef.current = 'trigger';
-                if (aiDesktop) setAiOpen(true);
-              }}
-            />
-          </div>
-        )}
-
-        {aiSession && (
-          <AiFloatingWindow open={aiOpen && aiDesktop} multiplier={m} inert={paletteOpen}>
-            {(controls) => (
-              <AiPanelLoadBoundary onClose={() => setAiOpen(false)}>
-                <Suspense fallback={null}>
-                  <AiPanel session={aiSession} onClose={() => setAiOpen(false)} window={controls} />
-                </Suspense>
-              </AiPanelLoadBoundary>
-            )}
-          </AiFloatingWindow>
-        )}
-
-        {!aiOpen && aiSettings.enabled && aiSession && aiDesktop && (
-          <motion.button
-            ref={aiPillRef}
-            type="button"
-            inert={capsuleSuppressed}
-            onClick={() => {
-              aiOpenerRef.current = 'pill';
-              setAiOpen(true);
-            }}
-            initial={motionEnabled ? { opacity: 0, scale: 0.9, y: 10 } : false}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={
-              motionEnabled
-                ? { ...scaledSpring(m, 380, 30), opacity: { duration: 0.16 * m } }
-                : { duration: 0 }
-            }
-            className="fixed bottom-6 right-6 z-30 inline-flex h-12 items-center gap-2 rounded-full bg-ink pl-4 pr-5 text-sm font-semibold text-paper shadow-[0_16px_40px_-16px_hsl(var(--ink)/0.5)] transition-colors hover:bg-ink/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink focus-visible:ring-offset-2"
-          >
-            <SparklesIcon width={17} height={17} />
-            Assistant
-          </motion.button>
-        )}
 
         {/* Mobile drawer */}
         <AnimatePresence>

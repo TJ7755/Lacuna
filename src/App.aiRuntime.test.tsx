@@ -1,11 +1,10 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
-import { useEffect, useState } from 'react';
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ReactRouterDom from 'react-router-dom';
 import type * as MigrationModule from './db/lessonViewModeMigration';
 import type * as SchemaModule from './db/schema';
 import { useOptionalAiSession } from './ai/session/AiSessionContext';
-import type { AiSession } from './ai/session/types';
 
 const dependencies = vi.hoisted(() => ({
   ensurePreMigrationSnapshot: vi.fn(),
@@ -15,29 +14,7 @@ const dependencies = vi.hoisted(() => ({
   isFirstRun: vi.fn(),
   settleFirstRun: vi.fn(),
 }));
-interface TestAiSession extends AiSession {
-  testId: string;
-  provider: 'external' | 'hosted';
-  dispose: Mock<() => void>;
-}
-const runtime = vi.hoisted(() => ({
-  createdSessions: [] as TestAiSession[],
-  mountedSessions: [] as TestAiSession[],
-  restartListener: null as (() => void) | null,
-}));
-
-const AI_RUNTIME_READY_TIMEOUT_MS = 5_000;
-const AI_RUNTIME_TEST_TIMEOUT_MS = 10_000;
-
-function createTestSession(): TestAiSession {
-  const session = {
-    testId: crypto.randomUUID(),
-    provider: readAiSettings().provider,
-    dispose: vi.fn<() => void>(),
-  } as unknown as TestAiSession;
-  runtime.createdSessions.push(session);
-  return session;
-}
+const runtime = vi.hoisted(() => ({ mount: vi.fn() }));
 
 vi.mock('react-router-dom', async (importOriginal) => ({
   ...(await importOriginal<typeof ReactRouterDom>()),
@@ -48,7 +25,7 @@ vi.mock('react-router-dom', async (importOriginal) => ({
       <main
         data-testid="router-surface"
         data-instance={instance}
-        data-ai-session={(session as TestAiSession | null)?.testId ?? 'none'}
+        data-ai-session={session?.provider ?? 'none'}
       />
     );
   },
@@ -76,52 +53,14 @@ vi.mock('./hooks/useStorageQuotaWarning', () => ({ useStorageQuotaWarning: vi.fn
 vi.mock('./components/layout/LandingTransition', () => ({
   LandingTransition: () => null,
 }));
-vi.mock('./ai/session/EnabledAiRuntime', () => ({
-  EnabledAiRuntime: ({
-    retainedSession,
-    onSessionReady,
-  }: {
-    retainedSession: AiSession | null;
-    onSessionReady: (session: AiSession) => void;
-  }) => {
-    const [instance] = useState(() => crypto.randomUUID());
-    const [session] = useState(() => retainedSession ?? createTestSession());
-    useEffect(() => {
-      runtime.mountedSessions.push(session as TestAiSession);
-      onSessionReady(session);
-    }, [onSessionReady, session]);
-    return <span data-testid="enabled-ai-runtime" data-instance={instance} />;
-  },
-}));
+vi.mock('./ai/session/EnabledAiRuntime', () => ({ EnabledAiRuntime: runtime.mount }));
 
 import { App } from './App';
-import { readAiSettings, writeAiSettings } from './ai/settings';
+import { writeAiSettings } from './ai/settings';
 
 describe('optional AI runtime', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runtime.createdSessions.length = 0;
-    runtime.mountedSessions.length = 0;
-    runtime.restartListener = null;
-    Object.defineProperty(window, 'electronAPI', {
-      configurable: true,
-      value: {
-        platform: 'win32',
-        isElectron: true,
-        ai: {
-          protocolVersion: 1,
-          disconnect: vi.fn(),
-          requestRestart: vi.fn(),
-          onRestartRequested: vi.fn((listener: () => void) => {
-            runtime.restartListener = listener;
-            return () => {
-              if (runtime.restartListener === listener) runtime.restartListener = null;
-            };
-          }),
-          listen: vi.fn(),
-        },
-      },
-    });
     localStorage.removeItem('lacuna.aiSettings');
     localStorage.setItem('lacuna-lesson-view-mode-migrated', '1');
     window.location.hash = '#/';
@@ -136,113 +75,16 @@ describe('optional AI runtime', () => {
     dependencies.settleFirstRun.mockResolvedValue(undefined);
   });
 
-  it(
-    'keeps the routed application mounted when AI is enabled',
-    async () => {
-      render(<App />);
-      const originalSurface = await screen.findByTestId('router-surface');
-      originalSurface.scrollTop = 420;
-
-      act(() => writeAiSettings({ enabled: true }));
-      await screen.findByTestId('enabled-ai-runtime', {}, { timeout: AI_RUNTIME_READY_TIMEOUT_MS });
-
-      await waitFor(() => expect(screen.getByTestId('router-surface')).toBe(originalSurface));
-      expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-      expect(screen.getByTestId('router-surface')).not.toHaveAttribute('data-ai-session', 'none');
-      // React may abandon a speculative render while the lazy runtime resolves.
-      // Assert disposal of the session actually committed to the routed app.
-      const activeSession = runtime.mountedSessions.find(
-        (session) => session.testId === originalSurface.getAttribute('data-ai-session'),
-      );
-      if (!activeSession) throw new Error('The routed AI session must have mounted.');
-
-      act(() => writeAiSettings({ enabled: false }));
-
-      await waitFor(() =>
-        expect(screen.getByTestId('router-surface')).toHaveAttribute('data-ai-session', 'none'),
-      );
-      expect(screen.getByTestId('router-surface')).toBe(originalSurface);
-      expect(screen.getByTestId('router-surface')).toHaveProperty('scrollTop', 420);
-      await waitFor(() => expect(activeSession.dispose).toHaveBeenCalledOnce());
-    },
-    AI_RUNTIME_TEST_TIMEOUT_MS,
-  );
-
-  it(
-    'remounts only the enabled AI runtime when Electron requests recovery',
-    async () => {
-      writeAiSettings({ enabled: true });
+  it.each(['external', 'hosted'] as const)(
+    'ignores a saved enabled %s chat preference',
+    async (provider) => {
+      writeAiSettings({ enabled: true, provider });
       render(<App />);
 
-      const originalSurface = await screen.findByTestId('router-surface');
-      const originalRuntime = await screen.findByTestId(
-        'enabled-ai-runtime',
-        {},
-        { timeout: AI_RUNTIME_READY_TIMEOUT_MS },
-      );
-      const originalRuntimeInstance = originalRuntime.getAttribute('data-instance');
-      await waitFor(() => expect(runtime.restartListener).not.toBeNull());
-      const originalSession = runtime.createdSessions[0];
-      const originalSessionId = originalSession.testId;
-      expect(screen.getByTestId('router-surface')).toHaveAttribute(
-        'data-ai-session',
-        originalSessionId,
-      );
-
-      act(() => runtime.restartListener?.());
-
-      await waitFor(() =>
-        expect(screen.getByTestId('enabled-ai-runtime')).not.toHaveAttribute(
-          'data-instance',
-          originalRuntimeInstance,
-        ),
-      );
-      expect(screen.getByTestId('router-surface')).toBe(originalSurface);
-      expect(runtime.createdSessions).toHaveLength(1);
-      expect(runtime.mountedSessions).toEqual([originalSession, originalSession]);
-      expect(originalSession.dispose).toHaveBeenCalledOnce();
-      expect(screen.getByTestId('router-surface')).toHaveAttribute(
-        'data-ai-session',
-        originalSessionId,
-      );
+      const surface = await screen.findByTestId('router-surface');
+      expect(surface).toHaveAttribute('data-ai-session', 'none');
+      expect(screen.queryByTestId('enabled-ai-runtime')).not.toBeInTheDocument();
+      expect(runtime.mount).not.toHaveBeenCalled();
     },
-    AI_RUNTIME_TEST_TIMEOUT_MS,
-  );
-
-  it(
-    'disposes the old session and retains the new session when the provider changes',
-    async () => {
-      writeAiSettings({ enabled: true, provider: 'hosted' });
-      render(<App />);
-      await screen.findByTestId('enabled-ai-runtime');
-      await waitFor(() => expect(runtime.createdSessions).toHaveLength(1));
-      const hosted = runtime.createdSessions[0];
-
-      act(() => writeAiSettings({ provider: 'external' }));
-
-      await waitFor(() => expect(runtime.createdSessions.length).toBeGreaterThan(1));
-      const external = runtime.createdSessions.find((session) => session.provider === 'external');
-      expect(external).toBeDefined();
-      await waitFor(() => expect(hosted.dispose).toHaveBeenCalledOnce());
-      expect(external!.dispose).not.toHaveBeenCalled();
-      expect(screen.getByTestId('router-surface')).toHaveAttribute(
-        'data-ai-session',
-        external!.testId,
-      );
-
-      act(() => writeAiSettings({ provider: 'hosted' }));
-      await waitFor(() => expect(runtime.createdSessions.length).toBeGreaterThan(2));
-      const nextHosted = runtime.createdSessions.find(
-        (session) => session.provider === 'hosted' && session !== hosted,
-      );
-      expect(nextHosted).toBeDefined();
-      await waitFor(() => expect(external!.dispose).toHaveBeenCalledOnce());
-      expect(nextHosted!.dispose).not.toHaveBeenCalled();
-      expect(screen.getByTestId('router-surface')).toHaveAttribute(
-        'data-ai-session',
-        nextHosted!.testId,
-      );
-    },
-    AI_RUNTIME_TEST_TIMEOUT_MS,
   );
 });

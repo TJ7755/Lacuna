@@ -144,7 +144,7 @@ function JevAccessCodeForm({
       <Field
         className="min-w-0 flex-1"
         label="Access code"
-        hint="The same code as Built-in AI. Stored only on this device."
+        hint="Your automatic marking access code. Stored only on this device."
         error={error}
       >
         <Input
