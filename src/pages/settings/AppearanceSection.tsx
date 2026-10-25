@@ -51,12 +51,14 @@ export function AppearanceSection() {
             {ACCENTS.map((option) => {
               const active = accent === option.key;
               return (
-                <button
+                <motion.button
                   key={option.key}
                   type="button"
                   role="radio"
                   aria-checked={active}
                   onClick={() => setAccent(option.key)}
+                  whileHover={multiplier > 0 ? { scale: 1.1 } : undefined}
+                  transition={scaledSpring(multiplier, 520, 32)}
                   title={option.label}
                   aria-label={option.label}
                   className="relative grid h-9 w-9 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink"
@@ -75,7 +77,7 @@ export function AppearanceSection() {
                       className="absolute inset-0.5 rounded-full ring-2 ring-ink"
                     />
                   )}
-                </button>
+                </motion.button>
               );
             })}
           </LayoutGroup>
