@@ -62,7 +62,9 @@ for (const viewport of VIEWPORTS) {
       await expectCollapsed();
       const integrations = page.getByRole('button', { name: /^Integrations/ });
       await integrations.click();
-      await expect(page.getByRole('searchbox', { name: 'Search teaching memory' })).toBeVisible();
+      await expect(
+        page.getByRole('switch', { name: 'Mark my answers automatically' }),
+      ).toBeVisible();
       await integrations.click();
       await expectCollapsed();
       await page
