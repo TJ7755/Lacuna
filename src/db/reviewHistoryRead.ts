@@ -45,17 +45,37 @@ function mergeReviewHistoryForRead(
       .filter((entry) => entry.eventId)
       .map((entry) => `${entry.cardId}\u0000${entry.eventId}`),
   );
-  const projections = cards
-    .flatMap(reviewHistoryEntriesForCard)
-    .filter(
-      (entry) =>
-        !entry.eventId || !canonicalEvents.has(`${entry.cardId}\u0000${entry.eventId}`),
-    );
+  const projections = cards.flatMap((card) =>
+    reviewHistoryEntriesForCard({
+      ...card,
+      history: (Array.isArray(card.history) ? card.history : []).filter(
+        (review) => !review.eventId || !canonicalEvents.has(`${card.id}\u0000${review.eventId}`),
+      ),
+    }),
+  );
+  if (projections.length === 0) {
+    // These rows came from IndexedDB, so primary keys are already unique. Only
+    // cross-card event ownership can require collision repair on a canonical-only read.
+    const owners = new Map<string, string>();
+    let collision = false;
+    for (const entry of canonical) {
+      if (!entry.eventId) continue;
+      const owner = owners.get(entry.eventId);
+      if (owner && owner !== entry.cardId) {
+        collision = true;
+        break;
+      }
+      owners.set(entry.eventId, entry.cardId);
+    }
+    if (!collision) return [...canonical];
+  }
   return resolveReviewHistoryCollisions([...canonical, ...projections]);
 }
 
 /** Resolve an explicitly supplied canonical result without consulting projections. */
-function resolveExplicitReviewHistory(entries: readonly ReviewHistoryEntry[]): ReviewHistoryEntry[] {
+function resolveExplicitReviewHistory(
+  entries: readonly ReviewHistoryEntry[],
+): ReviewHistoryEntry[] {
   return resolveReviewHistoryCollisions([...entries]);
 }
 

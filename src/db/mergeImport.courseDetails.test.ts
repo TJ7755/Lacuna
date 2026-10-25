@@ -1,0 +1,60 @@
+import 'fake-indexeddb/auto';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { db } from './schema';
+import type { SharePayloadV2 } from './share';
+import { importLineageFirstTime, mergeLineageUpdate } from './mergeImport';
+import { coursePayload, lessonOne } from './mergeImport.testFixtures';
+
+describe('mergeImport: course details', () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+  });
+
+  const course = (overrides: Partial<SharePayloadV2['course']> = {}): SharePayloadV2['course'] => ({
+    n: 'Biology',
+    d: 'Cells and genes',
+    o: 0,
+    c: 1000,
+    um: 'open',
+    ...overrides,
+  });
+
+  it("passes the teacher's new name, description and unlock mode on to the copy", async () => {
+    const imported = await importLineageFirstTime(
+      coursePayload({ course: course(), lessons: [lessonOne()] }),
+    );
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({
+        rv: 2,
+        course: course({ n: 'Biology A', d: 'Revised', um: 'linear' }),
+        lessons: [lessonOne()],
+      }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'Biology A',
+      description: 'Revised',
+      unlockMode: 'linear',
+    });
+  });
+
+  it("keeps the learner's own rename while still taking other teacher changes", async () => {
+    const imported = await importLineageFirstTime(
+      coursePayload({ course: course(), lessons: [lessonOne()] }),
+    );
+    await db.courses.update(imported.course.id, { name: 'My biology' });
+    await mergeLineageUpdate(
+      imported.course.id,
+      coursePayload({
+        rv: 2,
+        course: course({ n: 'Biology A', d: 'Revised' }),
+        lessons: [lessonOne()],
+      }),
+    );
+    expect(await db.courses.get(imported.course.id)).toMatchObject({
+      name: 'My biology',
+      description: 'Revised',
+    });
+  });
+});

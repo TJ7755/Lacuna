@@ -286,4 +286,144 @@ describe('schema v24 Card and Question separation', () => {
     expect(await db.lessonCardExposures.get(['lesson-1', 'numeric-card'])).toBeDefined();
     expect(await db.tombstones.get(['cards', 'numeric-card'])).toBeUndefined();
   });
+
+  it('retains pending merge Cards while pruning revision scopes and recalculating surviving evidence', async () => {
+    await createV23Database();
+    const legacy = new Dexie('lacuna');
+    legacy.version(23).stores(v23Stores);
+    await legacy.open();
+    const numeric = await legacy.table('cards').get('numeric-card');
+    const protectedIds = [
+      'pending-create',
+      'pending-update',
+      'pending-removal',
+      'pending-conflict',
+    ];
+    await legacy.table('cards').bulkAdd(protectedIds.map((id) => ({ ...numeric, id })));
+    const pending = {
+      id: 'pending',
+      courseId: 'course-1',
+      lineageId: 'lineage-1',
+      revision: 2,
+      diff: {
+        creates: { lessons: [], notes: [], cards: [{ ...numeric, id: protectedIds[0] }] },
+        updates: { lessons: [], notes: [], cards: [{ id: protectedIds[1] }] },
+        removals: { lessonIds: [], noteIds: [], cardIds: [protectedIds[2]] },
+        conflicts: [
+          { kind: 'card', entityId: protectedIds[3], incoming: null },
+          { kind: 'note', entityId: 'note-conflict', incoming: null },
+        ],
+      },
+    };
+    await legacy.table('pendingMergeReviews').add(pending);
+    const sourceReview = await legacy.table('reviewHistory').get('review:event-1');
+    await legacy.table('reviewHistory').bulkAdd([
+      {
+        ...sourceReview,
+        id: 'surviving-1',
+        eventId: 'surviving-1',
+        cardId: 'ordinary-card',
+        correct: undefined,
+        responseTimeSec: 2,
+      },
+      {
+        ...sourceReview,
+        id: 'surviving-2',
+        eventId: 'surviving-2',
+        cardId: 'ordinary-card',
+        responseTimeSec: 6,
+      },
+      {
+        ...sourceReview,
+        id: 'incorrect',
+        eventId: 'incorrect',
+        cardId: 'ordinary-card',
+        correct: false,
+        responseTimeSec: 100,
+      },
+      {
+        ...sourceReview,
+        id: 'non-finite',
+        eventId: 'non-finite',
+        cardId: 'ordinary-card',
+        responseTimeSec: Infinity,
+      },
+    ]);
+    await legacy.table('sessionHistory').bulkAdd([
+      { eventId: 'surviving-1', courseId: 'course-1', timestamp: 201 },
+      { courseId: 'course-1', timestamp: 202 },
+    ]);
+    const pendingScope = {
+      excludedCardIds: ['numeric-card', 'ordinary-card'],
+      eligibleCardIds: ['numeric-card', 'ordinary-card'],
+      unavailableCardIds: ['numeric-card', 'ordinary-card'],
+    };
+    await legacy.table('revisionPlans').update('plan-1', {
+      pendingReplan: {
+        scope: pendingScope,
+        cardStates: [{ cardId: 'numeric-card' }, { cardId: 'ordinary-card' }],
+      },
+    });
+    await legacy.table('revisionPlans').add({
+      id: 'legacy-plan',
+      assessmentId: 'legacy-assessment',
+      courseId: 'other-course',
+      updatedAt: 100,
+    });
+    const unaffected = {
+      runningMeanResponseTime: 7,
+      runningStdDevResponseTime: 0,
+      m2: 0,
+      totalCorrectReviews: 1,
+      updatedAt: 100,
+    };
+    await legacy.table('coursePerformance').add({ ...unaffected, courseId: 'other-course' });
+    await legacy.table('schedulingPerformance').add({
+      ...unaffected,
+      schedulingUnitId: 'other-unit',
+      courseId: 'other-course',
+      lessonId: null,
+    });
+    legacy.close();
+
+    await db.open();
+
+    expect(await db.cards.get('numeric-card')).toBeUndefined();
+    for (const id of protectedIds) {
+      expect(await db.cards.get(id)).toMatchObject({ payload: { kind: 'numeric' }, reps: 1 });
+      expect(await db.tombstones.get(['cards', id])).toBeUndefined();
+    }
+    expect(await db.pendingMergeReviews.get('pending')).toEqual(pending);
+    expect(await db.revisionPlans.get('plan-1')).toMatchObject({
+      pendingReplan: {
+        scope: {
+          excludedCardIds: ['ordinary-card'],
+          eligibleCardIds: ['ordinary-card'],
+          unavailableCardIds: ['ordinary-card'],
+        },
+        cardStates: [{ cardId: 'ordinary-card' }],
+      },
+    });
+    expect(await db.revisionPlans.get('legacy-plan')).toEqual({
+      id: 'legacy-plan',
+      assessmentId: 'legacy-assessment',
+      courseId: 'other-course',
+      updatedAt: 100,
+    });
+    const recalculated = {
+      runningMeanResponseTime: 4,
+      runningStdDevResponseTime: 2,
+      m2: 8,
+      totalCorrectReviews: 2,
+    };
+    expect(await db.coursePerformance.get('course-1')).toMatchObject(recalculated);
+    expect(await db.schedulingPerformance.get('lesson-1')).toMatchObject(recalculated);
+    expect(await db.coursePerformance.get('other-course')).toMatchObject(unaffected);
+    expect(await db.schedulingPerformance.get('other-unit')).toMatchObject(unaffected);
+    expect(await db.sessionHistory.count()).toBe(2);
+    expect(await db.reviewHistory.get('surviving-1')).toMatchObject({
+      cardId: 'ordinary-card',
+      responseTimeSec: 2,
+    });
+  });
 });
