@@ -4,9 +4,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 170px max(32px, 8vw) 180px;
+  padding: 240px max(32px, 8vw) 144px;
   text-align: center;
-  background: radial-gradient(ellipse at 50% 42%, #30271a55, transparent 57%);
+  background: radial-gradient(ellipse at 50% 50%, #30271a55, transparent 57%);
 }
 .motion-opening-content {
   width: 100%;
@@ -174,7 +174,7 @@
 }
 @media (max-width: 700px) {
   .motion-opening {
-    padding: 145px 32px 165px;
+    padding: 176px 32px 128px;
   }
   .motion-opening h1 {
     font-size: clamp(32px, 8vw, 52px);
