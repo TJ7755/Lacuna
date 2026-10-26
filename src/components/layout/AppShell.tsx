@@ -437,11 +437,19 @@ function StudyPending({ anchor, onClose }: { anchor: HTMLElement; onClose: () =>
     const outside = (event: PointerEvent) => {
       if (!anchor.contains(event.target as Node)) onClose();
     };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault();
+      onClose();
+      anchor.focus({ preventScroll: true });
+    };
     document.addEventListener('pointerdown', outside);
+    window.addEventListener('keydown', escape);
     return () => {
       anchor.removeAttribute('aria-busy');
       anchor.style.position = position;
       document.removeEventListener('pointerdown', outside);
+      window.removeEventListener('keydown', escape);
     };
   }, [anchor, onClose]);
   return createPortal(

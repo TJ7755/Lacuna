@@ -69,6 +69,39 @@ test('cold Study acknowledges input and Escape cancels before the chunk arrives'
   }
 });
 
+test('one Escape cancels Study launch before its destination arrives', async ({ page }) => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/assets/LearnMode-*.js', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  try {
+    await enterFreshLacuna(page);
+    await importWelcomeCourse(page);
+    await page.getByRole('button', { name: 'Study Welcome to Lacuna' }).click();
+    await page
+      .getByRole('region', { name: 'Session preview' })
+      .getByRole('button', { name: 'Start session', exact: true })
+      .first()
+      .click();
+    const cover = page.getByTestId('study-cover');
+    await expect(cover).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(cover).toBeHidden();
+    await expect(page).toHaveURL(/#\/$/);
+    release();
+    await page.waitForTimeout(900);
+    await expect(cover).toBeHidden();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.getByRole('button', { name: 'Study Welcome to Lacuna' })).toBeEnabled();
+  } finally {
+    release();
+  }
+});
+
 test('forecast arrival keeps actionable queue coordinates and failed chunks recover', async ({
   page,
 }) => {

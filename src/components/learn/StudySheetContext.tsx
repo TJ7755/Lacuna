@@ -1,5 +1,5 @@
 // Study buttons and their keyboard shortcuts share one anchored session preview.
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export interface StudySheetOptions {
@@ -61,18 +61,6 @@ export function useStudySheetState(): {
 
   // Keeps otherWays as it was, so the closing preview does not change while it leaves.
   const close = useCallback(() => setState((prev) => ({ ...prev, open: false })), []);
-  // This controller is eager: Escape must cancel even before the sheet chunk arrives.
-  useEffect(() => {
-    if (!state.open) return;
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
-      event.preventDefault();
-      close();
-      state.anchor?.focus({ preventScroll: true });
-    };
-    window.addEventListener('keydown', escape);
-    return () => window.removeEventListener('keydown', escape);
-  }, [state.open, state.anchor, close]);
   const value = useMemo(() => ({ openStudySheet }), [openStudySheet]);
 
   return {
